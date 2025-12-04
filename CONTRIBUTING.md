@@ -190,13 +190,8 @@ Líder revisa:
     Se precisa correção → Comentários → card volta para In Progress
 Quando todas completas → PR release → main → Aprovado pela Gestão
 ```
-Aqui está a **versão em Mermaid** do fluxo completo, clara, visual e pronta para colocar no **README**, **CONTRIBUTING.md** ou em qualquer documento do repositório.
-
----
- **Fluxo de Trabalho (Workflow) — Diagrama Mermaid**
 
 ```mermaid 
-
 flowchart TD
 
     %% NODES PRINCIPAIS
@@ -226,6 +221,7 @@ flowchart TD
 
     K --> |Aprovado| L[Merge na main<br/>Release concluída]
 
-    K --> |Requer ajustes| M[Correções no PR]<br/> --> J
+    K --> |Requer ajustes| M[Correções no PR] --> J
 ```
+
 
