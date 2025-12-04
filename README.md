@@ -126,18 +126,18 @@ O projeto investiga, de forma sistemática e aplicada, o uso de IA Generativa (L
 
 ## 🛠️ **Como Contribuir**
 
-Leia o arquivo **CONTRIBUTING.md**, mas em resumo:
+Leia o arquivo [CONTRIBUTING.md](./CONTRIBUTING.md), mas em resumo:
 
-### 📌 Fluxo de contribuições
-
-1. Crie uma branch com nome descritivo:
-   `squad1/revisao-ana`
-   `squad2/experimento-copilot-joao`
-2. Faça commits pequenos e claros
-3. Abra um Pull Request para revisão
-4. Utilize os templates de PR
-5. Espere aprovação da gestão antes de merge
-
+```
+Gestão cria Issue → Cria card → Atribui responsável
+Responsável cria branch → Começa tarefa (In Progress)
+Responsável faz commits → Preenche template
+Responsável abre PR → Marca líder como revisor → Move card para Review
+Líder revisa:
+    Se OK → Merge na release → card Done
+    Se precisa correção → Comentários → card volta para In Progress
+Quando todas completas → PR release → main → Aprovado pela Gestão
+```
 ---
 
 ## 💬 **Comunicação**
@@ -179,26 +179,3 @@ Licença a definir conforme diretrizes internas do CEIA/UFG.
 Sugestão: MIT ou Apache 2.0 (para uso aberto de código e pipelines sem dados sensíveis).
 
 ---
-
-## 🤖 **Equipe**
-
-Projeto desenvolvido pelos bolsistas e pesquisadores do **Centro de Excelência em IA – CEIA/UFG**, sob coordenação de:
-
-* **Direção:** Telma Woerle
-* **Coordenação técnica:** Renato Bulcão Neto, Taciana Pontes
-* **Gerência de projeto:** Natalie Tolentino
-* **Squads 1, 2 e 3:** conforme documento de kick-off
-
----
-
-## 🚀 **Vamos construir a nova geração da Engenharia de Software com IA!**
-
-Se desejar, posso também gerar:
-
-* **CONTRIBUTING.md**
-* **Template de issues**
-* **Template de Pull Request**
-* **Versão minimalista do README**
-* **Versão em inglês**
-
-Quer alguma dessas versões?
