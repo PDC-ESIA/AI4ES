@@ -128,54 +128,13 @@ O projeto investiga, de forma sistemática e aplicada, o uso de IA Generativa (L
 
 Leia o arquivo [CONTRIBUTING.md](./CONTRIBUTING.md), mas em resumo:
 
-```
-Gestão cria Issue → Cria card → Atribui responsável
-Responsável cria branch → Começa tarefa (In Progress)
-Responsável faz commits → Preenche template
-Responsável abre PR → Marca líder como revisor → Move card para Review
-Líder revisa:
-    Se OK → Merge na release → card Done
-    Se precisa correção → Comentários → card volta para In Progress
-Quando todas completas → PR release → main → Aprovado pela Gestão
-```
----
+### 📌 Fluxo de contribuições
 
-## 💬 **Comunicação**
-
-Toda a comunicação do projeto ocorre via **Discord** nos canais:
-
-* `#geral`
-* `#gestao`
-* `#squad1-*`
-* `#squad2-*`
-* `#squad3-*`
-* `#documentacao`
-
-Reuniões:
-
-* Gestão – quinzenais
-* Geral – mensais
-* Squads – semanais
+1. Crie uma branch com nome descritivo
+2. Faça commits pequenos e claros
+3. Abra um Pull Request para revisão
+4. Utilize os templates de PR
+5. Espere aprovação da gestão antes de merge
 
 ---
 
-## 📅 **Cronograma Resumido**
-
-### 🟦 **Macroentrega 1 – Fevereiro/2026**
-
-* RSL (Squad 1)
-* Comparativo de ferramentas
-* Ambiente configurado (Squad 2)
-* Experimentação inicial
-* Visão de integração da TACO (Squad 3)
-
-As próximas macroentregas seguem conforme documento oficial do projeto.
-
----
-
-## 🔐 **Licença**
-
-Licença a definir conforme diretrizes internas do CEIA/UFG.
-Sugestão: MIT ou Apache 2.0 (para uso aberto de código e pipelines sem dados sensíveis).
-
----

@@ -1,227 +1,201 @@
 
 ---
 
-# 🔄 **Fluxo Oficial de Trabalho (Workflow de Contribuição)**
+# 📘 **CONTRIBUTING.md**
 
-*PDC – IA Generativa para Engenharia de Software*
+**Guia Oficial de Contribuição – Projeto PDC: IA Generativa para Engenharia de Software**
 
-Este fluxo define **como Issues, Branches, Pull Requests, Reviews e Releases** devem ser criados, organizados e integrados ao GitHub Project.
+Este documento explica **como contribuir de maneira padronizada**, seguindo o fluxo aprovado entre Gestão e Squads.
+
+---
+# Fluxo Oficial de Trabalho
+## **Etapa 1 — Líder abre Issue-mãe (Epic)**
+
+O líder inicia o processo criando uma **Issue-mãe** contendo:
+
+* Contexto da entrega
+* Objetivo
+* Escopo
+* Dependências
+* **DoR básico** (Definition of Ready)
+* Prazo estimado
+* DoD geral (Definition of Done)
+* Lista de tarefas da squad (alto nível)
+
+A Issue-mãe é atribuída à **Gestão**.
 
 ---
 
-# #️⃣ 1. Criação das Issues (Responsabilidade da Gestão)
+## **Etapa 2 — Gestão revisa e estrutura as tasks**
 
-A Gestão é responsável por:
+A gestão:
 
-### ✔ Criar todas as Issues no GitHub
+1. Revisa a Issue-mãe
+2. Ajusta descrição, escopo e datas
+3. Aplica label **`epic`**
+4. Cria **issues filhas** (uma por tarefa) usando templates oficiais
+5. Cria **cards no GitHub Project** com status inicial `to-refine`
 
-Cada Issue deve conter:
+Após criar as tasks, a gestão **comenta na Issue-mãe** com:
 
-* Título claro
-* Descrição da tarefa
-* Critérios de aceitação
-* Pasta onde o arquivo deve ser criado
-* Template a ser usado
-* Dependências (se houver)
-
-### ✔ Criar automaticamente um **card** correspondente no GitHub Projects
-
-Todos os cards devem ter:
-
-* **Status inicial:** `To Do`
-* **Data de início (start date)**
-* **Data de entrega (due date)**
-* **Squad responsável**
-* **Assignee (responsável)**
-
-### ✔ Garantir priorização
-
-A gestão define o que deve ser executado primeiro.
+* Links dos cards
+* Observações necessárias
 
 ---
 
-# #️⃣ 2. Criação da Branch pelo Responsável
+## **Etapa 3 — Líder revisa e libera tasks**
 
-O assignee cria a branch seguindo a nomenclatura:
+O líder revisa o conteúdo das issues
+Se ajustes forem necessários → solicita à gestão.
+Se estiver tudo OK:
+
+➡️ O líder move os cards de `to-refine` para **`to-do`**.
+
+---
+
+## **Etapa 4 — Execução pelos membros da Squad**
+
+### Cada responsável deve:
+
+### ✔ Criar branch no padrão:
 
 ```
-squadX/numero_issue
+squadX/numero_issue-titulo
 ```
+
+Ex.:
+
+* `squad1/23-analise-scispace`
+* `squad2/07-levantamento-artigos-arxiv`
+
+### ✔ Executar a tarefa no diretório correto
+
+Usando o **template apropriado** (RSL, Experimentação, Comparativo, Documentação etc.).
+
+### ✔ Fazer commits padronizados
+
+Formato:
+
+```
+tipo: descrição breve
+```
+
+Tipos permitidos:
+
+* `add:` inclusão
+* `update:` modificação
+* `fix:` correção
+* `refactor:` reorganização
+* `docs:` documentação
+* `test:` testes
 
 Exemplos:
 
-* `squad1/23`
-* `squad2/07`
-* `squad3/15`
-
-Sempre baseada na branch da release atual.
+```
+add: adiciona relatório inicial da ferramenta Copilot
+update: melhora tabela de métricas T3
+docs: adiciona links no comparativo
+```
 
 ---
 
-# #️⃣ 3. Execução da Tarefa
-
-Dentro da **pasta indicada na Issue**, o responsável deve:
-
-### ✔ Criar ou editar o arquivo usando **o template apropriado**
-
-* Templates para RSL
-* Templates para análise comparativa
-* Templates para experimentação
-* Templates de documentação técnica
-* Etc.
-
-### ✔ Fazer commits pequenos e frequentes
-
-Padrão:
-
-```
-tipo: descrição breve da alteração
-```
-
-**Tipos permitidos:**
-
-* `add:` inclusão de conteúdo
-* `update:` melhoria ou modificação
-* `fix:` correção de erros
-* `refactor:` reorganização sem alterar conteúdo
-* `docs:` ajustes documentais
-* `test:` inclusão/alteração de testes
-
-**Exemplos:**
-
-```
-add: adiciona resultados da tarefa T2
-update: melhora tabela de métricas da experimentação
-fix: corrige link quebrado no relatório
-docs: adiciona referência no comparativo
-```
-
-Durante a execução, o responsável atualiza o card no Project para:
-
-➡️ **`In Progress`**
-
----
-
-# #️⃣ 4. Abrir Pull Request (PR) para Branch de Release
+## **Etapa 5 — Pull Request para branch de release**
 
 Quando concluir a tarefa:
 
-1. Abrir um PR da sua branch → para a **branch da release atual**.
+1. Abra um PR de sua branch → para **branch da release**
+2. Inclua no PR:
 
-2. Na descrição do PR incluir:
+   * Link direto da Issue (`Closes #23`)
+   * Resumo da entrega
+   * Observações relevantes
+3. Atribua o **Líder da squad** como revisor
+4. Movimente o card para **`review`**
 
-   * ✔ Link direto para a Issue (ex.: `Closes #23`)
-   * ✔ Resumo do que foi feito
-   * ✔ Observações importantes
-   * ✔ Checklist de conformidade, se aplicável
+O líder revisa:
 
-3. Atribuir o **líder da Squad** como revisor.
+* Estrutura
+* Template
+* Conteúdo
+* Clareza
+* Aderência ao DoD da tarefa
 
-4. No GitHub Project mover o card para:
-
-➡️ **`Review`**
-
----
-
-# #️⃣ 5. Revisão pelo Líder da Squad
-
-O líder deve:
-
-### ✔ Ler o material
-
-### ✔ Acessar arquivos vinculados
-
-### ✔ Conferir aderência ao template
-
-### ✔ Validar evidências e métricas (quando aplicável)
-
-### Se precisar de ajustes:
-
-* Comentar diretamente no PR
-* Movimentar o card para:
-
-➡️ **`In Progress`**
-
-### Se estiver tudo aprovado:
-
-* O líder faz o **merge do PR na branch de release**
-* O card vai para:
-
-➡️ **`Done`** *(relativo à release atual)*
+Se ajustes forem necessários → card volta para **`in progress`**.
+Se aprovado → líder faz merge na release e card vai para `done`.
 
 ---
 
-# #️⃣ 6. Fechamento da Release
+## **Etapa 6 — Fechamento da Release**
 
-Quando **todas as Issues** da release estiverem completas, o líder ou gestão:
+Quando **todas as tasks da release estiverem em `done`**, o líder:
 
-1. Abre um **Pull Request de release → main**
-2. Na descrição incluir:
+1. Abre **PR da branch de release → main**
+2. Descreve:
 
-   * Lista de todas as entregas
-   * Link para todos os PRs incluídos
-   * Quais squads contribuíram
-   * Impacto geral da release
-3. A gestão revisa o PR final
-4. Após aprovação, o merge é realizado na **main**
+   * Todas as entregas incluídas
+   * Links dos PRs
+   * Squads envolvidas
+3. Atribui à Gestão para aprovação final
 
----
+A Gestão revisa e, se aprovado:
 
-# #️⃣ 7. Boas Práticas Gerais
-
-* Nunca commitar diretamente na `main`
-* Nunca mergear PR sem revisão do líder ou gestão
-* Commits devem ser curtos e específicos
-* Sempre respeitar estrutura de pastas
-* Nunca mover arquivos fora da pasta da Squad
-* Arquivos devem ser sempre `.md` (exceto código, scripts e notebooks)
+➡️ Faz o **merge na main**
+➡️ A release é concluída oficialmente
 
 ---
 
-# #️⃣ 8. Ciclo Resumido (Mapa Visual)
+## **Fluxo completo de Gestão + Squads**
 
-```
-Gestão cria Issue → Cria card → Atribui responsável
-Responsável cria branch → Começa tarefa (In Progress)
-Responsável faz commits → Preenche template
-Responsável abre PR → Marca líder como revisor → Move card para Review
-Líder revisa:
-    Se OK → Merge na release → card Done
-    Se precisa correção → Comentários → card volta para In Progress
-Quando todas completas → PR release → main → Aprovado pela Gestão
-```
-
-```mermaid 
+```mermaid
 flowchart TD
 
-    %% NODES PRINCIPAIS
-    A[Gestão cria Issue<br/>+ Cria Card no Project<br/>+ Define datas e responsável] --> B
+    %% Abertura e planejamento
 
-    B[Responsável cria Branch<br/>Formato: squadX/numero_issue] --> C
+    A[Líder abre Issue-mãe<br/>com DoR básico<br/>e atribui à Gestão] --> B
 
-    C[Responsável executa tarefa<br/>Usa template adequado<br/>Commits: tipo: descrição] --> D
+    B[Gestão revisa Issue-mãe<br/>e ajusta se necessário] --> C
 
-    D[Responsável abre PR<br/>Branch → release<br/>Adiciona Issue + observações<br/>Atribui líder para revisão] --> E
+    C[Gestão aplica label 'epic'] --> D
 
-    D --> |Move card| E
+    D[Gestão cria Issues filhas<br/>via templates<br/>+ cards 'to-refine'] --> E
 
-    E[Líder revisa PR] --> F{Aprovado?}
+    E[Gestão comenta na Issue-mãe<br/>com links das Issues e cards] --> F
 
-    F --> |Não| G[Comentários no PR<br/>Card volta para 'In Progress'] --> C
+    %% Revisão do líder
 
-    F --> |Sim| H[Merge na branch de release<br/>Card marcado como Done]
+    F[Líder revisa tasks] --> G{Ajustes necessários?}
 
-    H --> I{Todas as issues da release concluídas?}
+    G --> |Sim| H[Líder solicita ajustes<br/>Gestão corrige] --> D
 
-    I --> |Não| B
+    G --> |Não| I[Líder move cards<br/>para 'to-do'] --> J
 
-    I --> |Sim| J[Gestão cria PR release → main<br/>Descreve entregas e PRs]
+    %% Execução
 
-    J --> K[Gestão revisa PR final]
+    J[Responsáveis iniciam trabalho<br/>Branch: squadX/numero_issue] --> K[Responsáveis executam<br/>commits padronizados]
 
-    K --> |Aprovado| L[Merge na main<br/>Release concluída]
+    K --> L[Responsável abre PR<br/>para branch da release<br/>+ link da Issue<br/>+ atribui líder]
 
-    K --> |Requer ajustes| M[Correções no PR] --> J
+    L --> M[Líder revisa PR]
+
+    M --> N{Aprovado?}
+
+    N --> |Não| O[Comentários no PR<br/>card volta para 'in progress'] --> K
+
+    N --> |Sim| P[Líder mergeia PR<br/>na release<br/>card vai para 'done']
+
+    %% Fechamento de release
+
+    P --> Q{Todas tasks da release estão done?}
+
+    Q --> |Não| J
+
+    Q --> |Sim| R[PR release → main<br/>lista entregas e PRs]
+
+    R --> S[Gestão revisa PR final]
+
+    S --> T{Aprovado?}
+
+    T --> |Não| U[Ajustes solicitados] --> R
+
+    T --> |Sim| V[Gestão faz merge na main<br/>Release concluída]
 ```
-
-
