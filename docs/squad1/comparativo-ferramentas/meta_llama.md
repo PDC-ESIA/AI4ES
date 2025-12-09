@@ -146,52 +146,197 @@
 Criar uma classe em Python para gerenciar um banco de dados de "Clientes" (CRUD completo)
 
 ### ● Resultados quantitativos
+#### Uso de IA
+* Tempo: < 1 minuto (geração instantânea)
+* Número de erros: 0 (código pré-validado, mas possivel de sofrer alucinacoes da LLM)
+* Qualidade do código: Alta (segue PEP 8 por padrão)
+* Cobertura de testes: N/A (solicitado apenas o código fonte neste passo)
+* Comentários qualitativos: Aumento de eficiencia e praticidade se for realizado por profissional com competencia para identificar erros e acertos da IA.
 
-* Tempo com IA x sem IA
-* Número de erros
-* Qualidade do código
-* Cobertura de testes
-* Comentários qualitativos
+#### Sem uso de IA
+* Tempo: 15 - 30 minutos (escrita manual + consulta a doc)
+* Número de erros: 2 - 5 (erros de digitação comuns durante o processo)
+* Qualidade do código: Variável (depende da disciplina do dev)
+* Cobertura de testes: N/A 
+* Comentários qualitativos: Ineficiente e demorado, mesmo trabalho poderia ser feito por IA, mas analisado por dev.
 
 ### ● Exemplos (copie trechos de código, respostas etc.)
+```python
+import sqlite3
 
----
+class ClienteManager:
+    """Gerencia operações CRUD para a tabela de Clientes."""
 
+    def __init__(self, db_name="clientes.db"):
+        self.conn = sqlite3.connect(db_name)
+        self.cursor = self.conn.cursor()
+        self.criar_tabela()
+
+    def criar_tabela(self):
+        """Cria a tabela se não existir."""
+        sql = """
+        CREATE TABLE IF NOT EXISTS clientes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE
+        )
+        """
+        self.cursor.execute(sql)
+        self.conn.commit()
+
+    def criar_cliente(self, nome, email):
+        """Insere um novo cliente no banco."""
+        try:
+            sql = "INSERT INTO clientes (nome, email) VALUES (?, ?)"
+            self.cursor.execute(sql, (nome, email))
+            self.conn.commit()
+            print(f"Cliente {nome} adicionado com sucesso.")
+        except sqlite3.IntegrityError:
+            print(f"Erro: O email {email} já está cadastrado.")
+
+    def ler_cliente(self, cliente_id):
+        """Retorna os dados de um cliente pelo ID."""
+        sql = "SELECT * FROM clientes WHERE id = ?"
+        self.cursor.execute(sql, (cliente_id,))
+        return self.cursor.fetchone()
+
+    def atualizar_email(self, cliente_id, novo_email):
+        """Atualiza o email de um cliente."""
+        sql = "UPDATE clientes SET email = ? WHERE id = ?"
+        self.cursor.execute(sql, (novo_email, cliente_id))
+        self.conn.commit()
+
+    def deletar_cliente(self, cliente_id):
+        """Remove um cliente do banco."""
+        sql = "DELETE FROM clientes WHERE id = ?"
+        self.cursor.execute(sql, (cliente_id,))
+        self.conn.commit()
+        print(f"Cliente {cliente_id} removido.")
+
+    def fechar_conexao(self):
+        self.conn.close()
+
+#Exemplo de uso (Teste manual rápido)
+
+if __name__ == "__main__":
+    manager = ClienteManager()
+    manager.criar_cliente("Ana Silva", "ana@email.com")
+    print(manager.ler_cliente(1))
+    manager.fechar_conexao()
+```
 #  **7. Pontos Fortes e Fracos da Ferramenta**
 
 ### **Pontos fortes**
 
-* …
+* Código aberto / acesso amplo: 
+Permite uso comercial, customização, fine-tuning e implantação local sem custos de licença.
+
+* Performance competitiva: 
+Modelos Llama 3 e superiores entregam resultados comparáveis a modelos proprietários de grande porte.
+
+* Ecosistema sólido: 
+Grande suporte da comunidade, documentação extensa, e integração com frameworks como Hugging Face, LangChain e PyTorch.
+
+* Boa eficiência: 
+Pode rodar em hardware mais acessível, com quantizações e otimizações que reduzem o custo operacional.
+
+* Privacidade e controle: 
+Organizações podem manter dados sensíveis internamente, sem depender da nuvem de terceiros.
 
 ### **Limitações**
 
-* …
+* Inferior a modelos fechados de ponta: 
+Modelos como GPT-5 e Claude 3 costumam superar o Llama em tarefas complexas, raciocínio profundo, e conversação longa.
+
+* Necessidade de infraestrutura própria: 
+Quem instala localmente precisa gerenciar servidores, GPU, monitoramento, segurança e atualizações.
+
+* Fine-tuning pode ser caro e demorado: 
+Exige GPUs potentes, bons datasets e know-how, o que nem sempre é simples.
+
+* Menor especialização pronta: 
+Muitos casos de uso (ex.: agentes avançados, pesquisa científica, programação complexa) demandam adaptação adicional.
 
 ---
 
 #  **8. Riscos, Custos e Considerações de Uso**
 
-* Dependência de vendor
-* Custos recorrentes
-* Limitações em privacidade ou compliance
-* Barreiras técnicas de adoção
-* Dificuldades de execução local
-* Restrições para fine-tuning ou RAG
+## **Riscos**
 
+* Alucinações e respostas incorretas: 
+Como todo LLM, não garante precisão absoluta, podendo inventar fatos.
+
+* Vazamento involuntário de dados: 
+Sem controles adequados, modelos locais podem registrar ou expor logs sensíveis.
+
+* Riscos de compliance: 
+Dependendo da aplicação, pode ser necessário validar conformidade com normas (LGPD, GDPR, SOX etc.).
+
+* Dependência técnica da equipe: 
+Projetos podem falhar se não houver equipe qualificada para manter e ajustar o modelo.
+
+* Segurança do modelo: 
+Modelos open-source são mais fáceis de examinar e explorar, exigindo cuidado com jailbreaking e abuse cases.
+
+## **Custos**
+
+### **Custos diretos**
+
+* Se rodar na nuvem: custos de GPU por hora.
+
+* Se rodar on-premise: investimento em hardware (GPUs, servidores) + manutenção.
+
+* Se fizer fine-tuning: custo elevado de GPU e preparação de dataset.
+
+### **Custos indiretos**
+
+* Treinamento da equipe
+
+* Desenvolvimento de pipelines de inferência
+
+* Implementação de monitoramento, logging e guardrails
+
+* Segurança e compliance
+
+## **Considerações de Uso**
+### **Quando usar**
+
+* Quando você precisa de controle total sobre o modelo.
+
+* Quando quer evitar depender de APIs caras.
+
+* Quando é necessário treinar com dados internos.
+
+* Para produtos embarcados, edge, ou aplicações internas sensíveis.
+
+### **Quando evitar**
+
+* Se você precisa da melhor performance do mercado sem esforço.
+
+* Se não tem equipe para operar modelos localmente.
+
+* Se o projeto exige alta segurança e responsabilidade legal e você não tem governança robusta.
 ---
 
 #  **9. Conclusão Geral da Análise**
 
-* A ferramenta é adequada para quais atividades de ES?
-* Em quais casos deve ser evitada?
-* Em qual maturidade técnica ela se encontra?
-* Vale a pena para a organização?
+O Meta Llama é uma das melhores opções open-source do mercado, combinando desempenho competitivo, custo reduzido e grande flexibilidade. É ideal para empresas e desenvolvedores que precisam de personalização, controle de dados e infraestrutura própria.
+
+Por outro lado, exige investimento técnico e operacional maior do que simplesmente usar modelos comerciais via API, e nem sempre atinge o nível de raciocínio ou estabilidade dos modelos proprietários mais avançados.
+
+É uma escolha excelente para projetos customizados, laboratórios de IA, ambientes corporativos sensíveis e soluções que precisam rodar localmente, desde que a equipe tenha experiência para operá-lo com segurança.
 
 ---
 
 #  **10. Referências e Links Consultados**
 
-* Documentação oficial
-* Artigos
-* Tutoriais
-* Benchmarks independentes
+- [Llama 3.2 Official Release & Guide](https://www.llama.com/)
+- [Llama 3.2 Model Cards (Hugging Face)](https://huggingface.co/docs/transformers/model_doc/llama3)
+- [Meta Llama 3.1 - The official Meta Llama website](https://www.llama.com/)
+- [Llama 3.1 Technical Overview (IBM/Meta)](https://www.ibm.com/think/news/meta-releases-llama-3-1-models-405b-parameter-variant)
+- [Code Llama: Open Foundation Models for Code (arXiv)](https://arxiv.org/abs/2308.12950)
+- [Ollama Library - CodeLlama](https://ollama.com/library/codellama)
+- [Deep Dive into Llama 3 Architecture](https://towardsdatascience.com/deep-dive-into-llama-3-by-hand-%EF%B8%8F-6c6b23dc92b2/)
+- [Decoder-Only Transformer Explained (Hugging Face)](https://huggingface.co/learn/llm-course/chapter1/6)
+- [What is Agentic RAG? (IBM)](https://www.ibm.com/think/topics/agentic-rag)
+- [Llama-Agents: Multi-Agent Systems Guide](https://www.analyticsvidhya.com/blog/2024/07/llama-agents-agents-as-a-service/)
