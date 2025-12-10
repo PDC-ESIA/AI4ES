@@ -4,7 +4,7 @@
 | ------------------------------- | ------------------------------------------------------------------------------ |
 | **Nome da ferramenta**          |           Meta Llama                                                                     |
 | **Fabricante / Comunidade**     |                Meta Platforms, Inc                                                                |
-| **Site oficial / documentação** |                  [Docuemntação Meta Llama](https://llama.developer.meta.com/docs/overview/)                                                              |
+| **Site oficial / documentação** |                  [Docuementação Meta Llama](https://llama.developer.meta.com/docs/overview/)                                                              |
 | **Tipo de ferramenta**          | LLM de Propósito Geral e Modelo de Fundação (Foundation Model). |
 | **Licença / acesso**            |  Modelo de pesos abertos (OpenSource sob uma licença comunitária permissiva para uso comercial e pesquisa)                                              |
 
