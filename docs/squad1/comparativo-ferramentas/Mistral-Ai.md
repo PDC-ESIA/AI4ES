@@ -214,7 +214,9 @@ class Product(models.Model):
 
 #  **10. Referências e Links Consultados**
 
-* Documentação oficial
-* Artigos
-* Tutoriais
-* Benchmarks independentes
+* Documentação oficial: https://mistral.ai/
+* Mais documentação: https://docs.mistral.ai/
+* Framework de testes para Python: https://docs.pytest.org/
+* Estratégias para testes unitários, de integração e E2E: https://martinfowler.com/articles/practical-test-pyramid.html
+* Automação de testes em pipelines CI/CD: https://docs.github.com/en/actions
+* Benchmarks independentes: https://lmsys.org/
