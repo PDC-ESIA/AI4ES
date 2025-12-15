@@ -19,10 +19,10 @@
 | **Versão**                          |                                                                                                   |
 | **Tamanho (nº de parâmetros)**      | Varia de 7B a 123B+ parâmetros                                                                    |
 | **Acesso**                          | Híbrido. Open-weights (pesos abertos para Codestral/Mixtral) e Comercial (Mistral Large via API). |
-| **Suporte a Fine-tuning**           | Sim/Não + tipo (LoRA, Full FT, Adapters)                                                          |
+| **Suporte a Fine-tuning**           | Parcial: possível via técnicas como LoRA/Adapters em modelos open-weights                         |
 | **Suporte a RAG**                   | Sim                                                                                               |
-| **Métodos de prompting suportados** | CoT, ReAct, PoT, Self-Refine etc.                                                                 |
-| **Ferramentas adicionais**          | LangChain, LangGraph, Ollama, Groq, extensões VSCode etc.                                         |
+| **Métodos de prompting suportados** | Chain-of-Thought (CoT), Few-shot, In-context learning                                             |
+| **Ferramentas adicionais**          | Ollama, LangChain, LangGraph, Continue.dev (VS Code), frameworks RAG                              |
 
 ---
 
