@@ -2,10 +2,10 @@
 
 | Item                            | Descrição                                                                      |
 | ------------------------------- | ------------------------------------------------------------------------------ |
-| **Nome da ferramenta**          |                                                                                |
-| **Fabricante / Comunidade**     |                                                                                |
+| **Nome da ferramenta**          | Mistral AI                                                                     |
+| **Fabricante / Comunidade**     | Mistral AI                                                                     |
 | **Site oficial / documentação** |                                                                                |
-| **Tipo de ferramenta**          | (ex.: assistente de código, LLM geral, plataforma multimodal, plugin IDE etc.) |
+| **Tipo de ferramenta**          | assistente de código, LLM geral, plataforma multimodal, plugin IDE etc.) |
 | **Licença / acesso**            | (Comercial, open-source, híbrido)                                              |
 
 ---
