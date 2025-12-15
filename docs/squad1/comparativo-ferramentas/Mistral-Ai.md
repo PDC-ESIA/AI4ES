@@ -30,9 +30,7 @@
 
 | Item                                  | Descrição                               |
 | ------------------------------------- | --------------------------------------- |
-| **Onde roda?**                        |  Flexibilidade total. Pode rodar 100% offline (Local)
-garantindo privacidade de código, ou via API (La
-Plateforme/Azure/Bedrock)    |
+| **Onde roda?**                        |  Flexibilidade total. Pode rodar 100% offline (Local) garantindo privacidade de código, ou via API (La Plateforme/Azure/Bedrock)    |
 | **Infraestrutura utilizada no teste** | (GPU, CPU, RAM ou serviço utilizado)    |
 | **Custos (quando aplicável)**         | Preço por token, por licença ou por uso |
 
