@@ -2,27 +2,27 @@
 
 | Item                            | Descrição                                                                      |
 | ------------------------------- | ------------------------------------------------------------------------------ |
-| **Nome da ferramenta**          | Mistral AI                                                                     |
+| **Nome da ferramenta**          | Le chat                                                                        |
 | **Fabricante / Comunidade**     | Mistral AI                                                                     |
-| **Site oficial / documentação** |                                                                                |
-| **Tipo de ferramenta**          | assistente de código, LLM geral, plataforma multimodal, plugin IDE etc.) |
-| **Licença / acesso**            | (Comercial, open-source, híbrido)                                              |
+| **Site oficial / documentação** | https://mistral.ai/                                                            |
+| **Tipo de ferramenta**          | Assistente de código, plataforma multimodal, plugin IDE                        |
+| **Licença / acesso**            | Híbrido                                                                        |
 
 ---
 
 #  **2. Informações do Modelo de IA Utilizado**
 
-| Item                                | Descrição                                                    |
-| ----------------------------------- | ------------------------------------------------------------ |
-| **Tipo de IA Generativa**           | LLM / multimodal / difusão / híbrido                         |
-| **Nome do Modelo**                  | ex.: GPT-4.1, Claude 3.5, DeepSeek-Coder, CodeLlama-34B etc. |
-| **Versão**                          |                                                              |
-| **Tamanho (nº de parâmetros)**      | Se disponível                                                |
-| **Acesso**                          | API comercial / Open-source / Local                          |
-| **Suporte a Fine-tuning**           | Sim/Não + tipo (LoRA, Full FT, Adapters)                     |
-| **Suporte a RAG**                   | Sim/Não                                                      |
-| **Métodos de prompting suportados** | CoT, ReAct, PoT, Self-Refine etc.                            |
-| **Ferramentas adicionais**          | LangChain, LangGraph, Ollama, Groq, extensões VSCode etc.    |
+| Item                                | Descrição                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------                                      |
+| **Tipo de IA Generativa**           |  LLM (Decoder-only Transformer) e MoE (Mixture of Experts).                                       |
+| **Nome do Modelo**                  |  Codestral (22B), Mixtral 8x22B, Mistral Large 2                                                  |
+| **Versão**                          |                                                                                                   |
+| **Tamanho (nº de parâmetros)**      | Varia de 7B a 123B+ parâmetros                                                                    |
+| **Acesso**                          | Híbrido. Open-weights (pesos abertos para Codestral/Mixtral) e Comercial (Mistral Large via API). |
+| **Suporte a Fine-tuning**           | Sim/Não + tipo (LoRA, Full FT, Adapters)                                                          |
+| **Suporte a RAG**                   | Sim                                                                                               |
+| **Métodos de prompting suportados** | CoT, ReAct, PoT, Self-Refine etc.                                                                 |
+| **Ferramentas adicionais**          | LangChain, LangGraph, Ollama, Groq, extensões VSCode etc.                                         |
 
 ---
 
@@ -30,7 +30,9 @@
 
 | Item                                  | Descrição                               |
 | ------------------------------------- | --------------------------------------- |
-| **Onde roda?**                        | Local / Cloud / Híbrido                 |
+| **Onde roda?**                        |  Flexibilidade total. Pode rodar 100% offline (Local)
+garantindo privacidade de código, ou via API (La
+Plateforme/Azure/Bedrock)    |
 | **Infraestrutura utilizada no teste** | (GPU, CPU, RAM ou serviço utilizado)    |
 | **Custos (quando aplicável)**         | Preço por token, por licença ou por uso |
 
