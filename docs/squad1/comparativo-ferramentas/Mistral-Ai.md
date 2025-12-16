@@ -14,9 +14,9 @@
 
 | Item                                | Descrição                                                                                         |
 | ----------------------------------- | ------------------------------------------------------------                                      |
-| **Tipo de IA Generativa**           |  LLM (Decoder-only Transformer) e MoE (Mixture of Experts).                                       |
-| **Nome do Modelo**                  |  Codestral (22B), Mixtral 8x22B, Mistral Large 2                                                  |
-| **Versão**                          |                                                                                                   |
+| **Tipo de IA Generativa**           | LLM (Decoder-only Transformer) e MoE (Mixture of Experts).                                       |
+| **Nome do Modelo**                  | Codestral (22B), Mixtral 8x22B, Mistral Large 2                                                  |
+| **Versão**                          | mistral-large-2407                                                                                                 |
 | **Tamanho (nº de parâmetros)**      | Varia de 7B a 123B+ parâmetros                                                                    |
 | **Acesso**                          | Híbrido. Open-weights (pesos abertos para Codestral/Mixtral) e Comercial (Mistral Large via API). |
 | **Suporte a Fine-tuning**           | Parcial: possível via técnicas como LoRA/Adapters em modelos open-weights                         |
@@ -32,7 +32,7 @@
 | ------------------------------------- | --------------------------------------- |
 | **Onde roda?**                        |  Flexibilidade total. Pode rodar 100% offline (Local) garantindo privacidade de código, ou via API (La Plateforme/Azure/Bedrock)    |
 | **Infraestrutura utilizada no teste** | Requer GPUs (ex: NVIDIA RTX 3090/4090) para rodar modelos maiores localmente com boa latência   |
-| **Custos (quando aplicável)**         | Baixíssimo ou zero (se rodado localmente em hardware próprio); API competitiva em relação ao GPT-4. |
+| **Custos (quando aplicável)**         | Livre / Pró - base: $14,99 students: $5,99 / Team - valor: $24,99 acrescimo: $25,00/user|
 
 ---
 
@@ -115,7 +115,7 @@ Use N/A quando não aplicável.
 
 | Subatividade            | Suporte da Ferramenta | Evidências / Observações |
 | ----------------------- | --------------------- | ------------------------ |
-| Correções automatizadas |                       |                          |
+| Correções automatizadas | Parcial               | Gera correções de forma automatizada, mas sempre depende do ser humano para validar, testar e aplicar as mudanças |
 
 ---
 
