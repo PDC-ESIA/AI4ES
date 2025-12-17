@@ -14,7 +14,7 @@
 
 | Item                                | Descrição                                                                  |
 | ----------------------------------- | -------------------------------------------------------------------------- |
-| **Tipo de IA Generativa**           | LLM Multimodal (Código e Texto)                                            |
+| **Tipo de IA Generativa**           | LLM Multimodal (Código e Texto)                                            | 
 | **Nome do Modelo**                  | Orquestração via Amazon Bedrock (Titan + Claude ajustados) / Sem nome único|
 | **Versão**                          | Proprietária (não divulgada)                                               |
 | **Tamanho (nº de parâmetros)**      | Não divulgado                                                              |
