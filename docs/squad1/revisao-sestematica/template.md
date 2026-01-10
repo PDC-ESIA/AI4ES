@@ -1,29 +1,23 @@
-# 📄 **TEMPLATE DE REGISTRO – Revisão Sistemática da Literatura (RSL)**
+# *IA Generativa na Engenharia de Software (SWEBOK)*
 
-### *Tema: IA Generativa na Engenharia de Software (SWEBOK)*
-
-*Versão para uso pela Squad 1*
-
----
-
-# #️⃣ 1. Identificação do Pesquisador
+# #️⃣ 1.1. Identificação do Pesquisador
 
 | Item                     | Informação |
 | ------------------------ | ---------- |
-| **Responsável**          |            |
+| **Responsável**          | Leonardo Lima e Silva  |
 | **Squad**                | Squad 1    |
-| **Data de início**       |            |
+| **Data de início**       | 27/11      |
 | **Versão do formulário** | 1.0        |
 
 ---
 
-# #️⃣ 2. Base(s) de Dados Pesquisada(s)
+# #️⃣ 1.2. Base(s) de Dados Pesquisada(s)
 
 Marque as bases usadas para esta sessão de busca:
 
 * [ ] Scopus
 * [ ] IEEE Xplore
-* [ ] ACM Digital Library
+* [X] ACM Digital Library
 * [ ] Engineering Village
 * [ ] Web of Science
 * [ ] arXiv
@@ -31,188 +25,665 @@ Marque as bases usadas para esta sessão de busca:
 
 ---
 
-# #️⃣ 3. String de Busca Utilizada
-
-*(Adaptada para sintaxe da base)*
+# #️⃣ 1.3. String de Busca Utilizada
 
 ```
-(cole aqui a string completa utilizada)
+"generative AI" AND "software engineering"
 ```
 
 ---
 
-# #️⃣ 4. Resultado da Busca
+# #️⃣ 1.4. Resultado da Busca
 
 | Item                           | Quantidade |
 | ------------------------------ | ---------- |
-| **Estudos retornados**         |            |
+| **Estudos retornados**         |    1255    |
+| **Duplicatas identificadas**   |           |
+| **Após remoção de duplicatas** |        |
+
+---
+
+# #️⃣ 2.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          | Leonardo Lima e Silva  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 27/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 2.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 2.3. String de Busca Utilizada
+
+```
+ ("generative AI" OR "genAI") AND "software engineering"
+```
+
+---
+
+# #️⃣ 2.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    1300    |
+| **Duplicatas identificadas**   |          |
+| **Após remoção de duplicatas** |        |
+
+---
+
+# #️⃣ 3.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 28/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 3.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 3.3. String de Busca Utilizada
+
+```
+ ("generative AI" OR "genAI") AND ("software engineering" OR "requirements engineering")
+```
+
+---
+
+# #️⃣ 3.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    1310    |
 | **Duplicatas identificadas**   |            |
 | **Após remoção de duplicatas** |            |
 
 ---
 
-# #️⃣ 5. Triagem Inicial (Título e Resumo)
+# #️⃣ 4.1. Identificação do Pesquisador
 
-Preencher tabela com os estudos avaliados nesta etapa:
-
-| ID  | Título | Aceito? (S/N) | Motivo da Exclusão (se aplicável) |
-| --- | ------ | ------------- | --------------------------------- |
-| 1   |        |               |                                   |
-| 2   |        |               |                                   |
-| ... |        |               |                                   |
-
----
-
-# #️⃣ 6. Triagem por Texto Completo
-
-| ID  | Título | Aceito? (S/N) | Motivo da Exclusão | Observações |
-| --- | ------ | ------------- | ------------------ | ----------- |
-| 1   |        |               |                    |             |
-| 2   |        |               |                    |             |
-| ... |        |               |                    |             |
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 28/11      |
+| **Versão do formulário** | 1.0        |
 
 ---
 
-# #️⃣ 7. Lista Final de Estudos Incluídos
+# #️⃣ 4.2. Base(s) de Dados Pesquisada(s)
 
-| ID | Referência completa | PDF disponível? | Link |
-| -- | ------------------- | --------------- | ---- |
-| 1  |                     | (S/N)           |      |
-| 2  |                     |                 |      |
+Marque as bases usadas para esta sessão de busca:
 
----
-
-# #️⃣ 8. Avaliação de Qualidade (0–2)
-
-Para cada estudo incluído, aplicar os 8 critérios:
-
-### ✔️ **Legenda**
-
-0 = Não descrito
-1 = Parcialmente descrito
-2 = Totalmente descrito
-
-| Estudo | CQ1 | CQ2 | CQ3 | CQ4 | CQ5 | CQ6 | CQ7 | CQ8 | **Total** |
-| ------ | --- | --- | --- | --- | --- | --- | --- | --- | --------- |
-| (ID)   |     |     |     |     |     |     |     |     |           |
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
 
 ---
 
-# #️⃣ 9. Formulário de Extração de Dados (por estudo)
+# #️⃣ 4.3. String de Busca Utilizada
 
-Copiar e preencher esta seção **para cada estudo aceito**:
-
----
-
-## 📘 **Estudo ID: X**
-
-### 9.1 Metadados
-
-| Campo                                 | Informação                                       |
-| ------------------------------------- | ------------------------------------------------ |
-| Título                                |                                                  |
-| Autores                               |                                                  |
-| Ano                                   |                                                  |
-| País                                  |                                                  |
-| Veículo (journal/conference/workshop) |                                                  |
-| Tipo de contribuição                  | (proposta, experimento, ferramenta, survey etc.) |
-| Fonte de busca                        |                                                  |
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM") AND ("software engineering" OR "requirements engineering")
+```
 
 ---
 
-### 9.2 Tipo e Qualidade do Estudo
+# #️⃣ 4.4. Resultado da Busca
 
-| Campo             | Informação                                 |
-| ----------------- | ------------------------------------------ |
-| Tipo de evidência | (experimento, estudo de caso, survey etc.) |
-| Amostra (n)       |                                            |
-| Reprodutibilidade | (código/dados/prompts disponíveis?)        |
-
----
-
-### 9.3 Atividade de Engenharia de Software (SWEBOK)
-
-Marcar todas as aplicáveis:
-
-* [ ] Requisitos
-* [ ] Arquitetura
-* [ ] Design
-* [ ] Construção
-* [ ] Testes
-* [ ] Operações / DevOps
-* [ ] Manutenção
-* [ ] Gestão de Projeto
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3276    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
 
 ---
 
-### 9.4 Tipo de IA Generativa
+# #️⃣ 5.1. Identificação do Pesquisador
 
-| Item                | Informação                                        |
-| ------------------- | ------------------------------------------------- |
-| Modelo              | GPT-x, Llama, Claude etc.                         |
-| Tipo                | LLM / multimodal / difusão                        |
-| Tamanho             |                                                   |
-| Acesso              | open-source / comercial                           |
-| Técnicas utilizadas | Prompting, CoT, PoT, ReAct, RAG, Multi-agent etc. |
-
----
-
-### 9.5 Métricas Utilizadas
-
-Marque as reportadas:
-
-* [ ] Precisão
-* [ ] Correção
-* [ ] Coerência
-* [ ] Produtividade
-* [ ] Redução de esforço
-* [ ] Carga cognitiva
-* [ ] Segurança
-* [ ] Custos
-* [ ] Outras: ________
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
 
 ---
 
-### 9.6 Resultados (Síntese)
+# #️⃣ 5.2. Base(s) de Dados Pesquisada(s)
 
-## **Benefícios:**
+Marque as bases usadas para esta sessão de busca:
 
-## **Limitações:**
-
-## **Desafios:**
-
-## **Lacunas identificadas:**
-
-## **Recomendações dos autores:**
-
----
-
-# #️⃣ 10. Síntese Parcial (do pesquisador)
-
-### 10.1 Contribuições relevantes encontradas
-
-*
-
-### 10.2 Padrões observados
-
-*
-
-### 10.3 Observações importantes para as RQs
-
-## Relacionar com RQ1–RQ6.
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
 
 ---
 
-# #️⃣ 11. Ameaças à Validade (*per estudo ou geral da sessão*)
+# #️⃣ 5.3. String de Busca Utilizada
 
-* Viés de seleção:
-* Viés de extração:
-* Viés do pesquisador:
-* Velocidade de evolução da área:
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM") AND ("software engineering" OR "requirements engineering" OR "software architecture")
+```
 
 ---
 
-# #️⃣ 12. Observações Finais / Notas do Pesquisador
+# #️⃣ 5.4. Resultado da Busca
 
-(Usar para anotações pessoais, insights, dificuldades, alertas de inconsistências etc.)
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3407    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
 
+---
+
+# #️⃣ 6.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 6.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 6.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model") AND ("software engineering" OR "requirements engineering" OR "software architecture")
+```
+
+---
+
+# #️⃣ 6.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3462    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 7.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Leonardo Lima e Silva  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 7.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 7.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design")
+```
+
+---
+
+# #️⃣ 7.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3611    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 8.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 8.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 8.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design")
+```
+
+---
+
+# #️⃣ 8.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3645    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 9.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Leonardo Lima e Silva  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 9.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 9.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing")
+```
+
+---
+
+# #️⃣ 9.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3781    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 10.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima  |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 10.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 10.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model" OR "diffusion model") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing")
+```
+
+---
+
+# #️⃣ 10.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3919    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 11.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Leonardo Lima e Silva |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 11.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 11.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model" OR "diffusion model") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing" OR "devops")
+```
+
+---
+
+# #️⃣ 11.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    3962    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 12.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 12.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 12.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model" OR "diffusion model" OR "AI-assisted") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing" OR "devops")
+```
+
+---
+
+# #️⃣ 12.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    4102    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 13.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Leonardo Lima e Silva |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 13.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 13.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model" OR "diffusion model" OR "AI-assisted") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing" OR "devops" OR "software maintenance")
+```
+
+---
+
+# #️⃣ 13.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    4147    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 14.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 14.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 14.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model" OR "diffusion model" OR "AI-assisted") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing" OR "devops" OR "software maintenance" OR "software project management")
+```
+
+---
+
+# #️⃣ 14.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    4148    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 15.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Leonardo Lima e Silva |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 15.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 15.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model" OR "diffusion model" OR "AI-assisted") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing" OR "devops" OR "software maintenance" OR "software project management" OR "code generation")
+```
+
+---
+
+# #️⃣ 15.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    5211    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
+
+# #️⃣ 16.1. Identificação do Pesquisador
+
+| Item                     | Informação |
+| ------------------------ | ---------- |
+| **Responsável**          |  Henrique da Rocha Lima |
+| **Squad**                | Squad 1    |
+| **Data de início**       | 29/11      |
+| **Versão do formulário** | 1.0        |
+
+---
+
+# #️⃣ 16.2. Base(s) de Dados Pesquisada(s)
+
+Marque as bases usadas para esta sessão de busca:
+
+* [ ] Scopus
+* [ ] IEEE Xplore
+* [X] ACM Digital Library
+* [ ] Engineering Village
+* [ ] Web of Science
+* [ ] arXiv
+* [ ] Outra: ________
+
+---
+
+# #️⃣ 16.3. String de Busca Utilizada
+
+```
+  ("generative AI" OR "genAI" OR "large language model" OR "LLM" OR "foundation model" OR "multimodal model" OR "diffusion model" OR "AI-assisted") AND ("software engineering" OR "requirements engineering" OR "software architecture" OR "software design" OR "software testing" OR "devops" OR "software maintenance" OR "software project management" OR "code generation" OR "test generation")
+```
+
+---
+
+# #️⃣ 16.4. Resultado da Busca
+
+| Item                           | Quantidade |
+| ------------------------------ | ---------- |
+| **Estudos retornados**         |    5235    |
+| **Duplicatas identificadas**   |            |
+| **Após remoção de duplicatas** |            |
+
+---
