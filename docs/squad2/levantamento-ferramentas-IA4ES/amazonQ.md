@@ -113,12 +113,12 @@ Use N/A quando não aplicável.
 
 | Critério | Avaliação | Observações |
 |---|---|---|
-| Precisão | | Corrigiu incoerências críticas em requisitos (regra FIFO) e identificou erros lógicos em código (inicialização de variáveis). Teve um deslize ao alterar arquivos sem comando direto, mas corrigiu prontamente. |
-| Profundidade técnica | | Demonstrou domínio ao sugerir padrões como Chain of Responsibility para validações complexas e ao realizar análise profunda de bugs via comando /review. |
-| Contextualização no código/problema | | Mapeou corretamente o domínio farmacêutico (ANVISA) e demonstrou consciência do workspace ao detectar arquivos deletados e sugerir novos caminhos de import. |
-| Clareza | | Respostas bem estruturadas com listas e exemplos práticos. Explicou de forma didática o uso de slash commands e referências com @. |
-| Aderência às melhores práticas | | Recomendou padrões de mercado como Clean Architecture, SOLID.. |
-| Consistência entre respostas | | As definições de arquitetura e padrões de projeto mantiveram-se alinhadas com as User Stories e códigos gerados posteriormente. |
+| Precisão |⭐⭐⭐⭐| Corrigiu incoerências críticas em requisitos (regra FIFO) e identificou erros lógicos em código (inicialização de variáveis). Teve um deslize ao alterar arquivos sem comando direto, mas corrigiu prontamente. |
+| Profundidade técnica |⭐⭐⭐⭐⭐| Demonstrou domínio ao sugerir padrões como Chain of Responsibility para validações complexas e ao realizar análise profunda de bugs via comando /review. |
+| Contextualização no código/problema |⭐⭐⭐⭐⭐| Mapeou corretamente o domínio farmacêutico (ANVISA) e demonstrou consciência do workspace ao detectar arquivos deletados e sugerir novos caminhos de import. |
+| Clareza |⭐⭐⭐⭐⭐| Respostas bem estruturadas com listas e exemplos práticos. Explicou de forma didática o uso de slash commands e referências com @. |
+| Aderência às melhores práticas |⭐⭐⭐⭐⭐| Recomendou padrões de mercado como Clean Architecture, SOLID.. |
+| Consistência entre respostas |⭐⭐⭐⭐⭐| As definições de arquitetura e padrões de projeto mantiveram-se alinhadas com as User Stories e códigos gerados posteriormente. |
 | Ocorrência de alucinações | Baixa | A ferramenta mostrou-se capaz de identificar erros reais nos inputs do usuário (incoerências em documentos e bugs em código) em vez de apenas concordar com o erro. |
 
 # 6. Experimentos Realizados
