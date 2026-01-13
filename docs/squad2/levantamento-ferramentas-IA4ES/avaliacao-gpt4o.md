@@ -17,12 +17,12 @@
 | **Tipo de IA Generativa**           | LLM                         |
 | **Nome do Modelo**                  | GPT 4o |
 | **Versão**                          | 4o                                                             |
-| **Tamanho (nº de parâmetros)**      |                                                 |
+| **Tamanho (nº de parâmetros)**      | Não divulgado oficialmente pela OpenAI                                                |
 | **Acesso**                          | API comercial / Site oficial                          |
-| **Suporte a Fine-tuning**           | Sim                    |
-| **Suporte a RAG**                   | Sim                                                     |
-| **Métodos de prompting suportados** |                             |
-| **Ferramentas adicionais**          |     |
+| **Suporte a Fine-tuning**           | Sim (via API, com restrições)                    |
+| **Suporte a RAG**                   | Sim (externo, via embeddings + ferramentas)                                                     |
+| **Métodos de prompting suportados** | Não divulgado                            |
+| **Ferramentas adicionais**          | Visão, análise de imagens, leitura de documentos, execução de código, voz    |
 
 ---
 
@@ -32,7 +32,7 @@
 | ------------------------------------- | --------------------------------------- |
 | **Onde roda?**                        | Cloud                 |
 | **Infraestrutura utilizada no teste** | (GPU, CPU, RAM ou serviço utilizado)    |
-| **Custos (quando aplicável)**         | De R$99,90 a 999,90 por mês |
+| **Custos (quando aplicável)**         | De R$99,90 a R$999,90/mês (planos ChatGPT) + cobrança por token na API |
 
 ---
 
@@ -53,12 +53,12 @@ Use N/A quando não aplicável.
 
 | Subatividade            | Suporte da Ferramenta | Evidências / Observações |
 | ----------------------- | --------------------- | ------------------------ |
-| Elicitação              | Suporta               |                          |
-| Análise                 | Suporta               |                          |
-| Priorização             | Suporta               |                          |
-| Modelagem               | Suporta               |                          |
-| Validação / Verificação | Parcialmente          |                          |
-| Documentação            | Parcalmente           |                          |
+| Elicitação              | Suporta               | Interpreta requisitos a partir de linguagem natural, perguntas abertas e exemplos                         |
+| Análise                 | Suporta               | Identifica inconsistências, ambiguidades e regras implícitas                         |
+| Priorização             | Suporta               | Sugere backlog, valor vs. esforço                         |
+| Modelagem               | Suporta               | Gera UML textual, entidades, fluxos e modelos conceituais                         |
+| Validação / Verificação | Parcialmente          | Depende de validação humana; não executa requisitos em ambiente real                         |
+| Documentação            | Parcalmente           | Gera documentação, mas sem controle formal de versionamento                         |
 
 ---
 
@@ -66,10 +66,10 @@ Use N/A quando não aplicável.
 
 | Subatividade                     | Suporte da Ferramenta | Evidências / Observações |
 | -------------------------------- | --------------------- | ------------------------ |
-| Geração de designs arquiteturais | Suporta               |                          |
-| Decisões arquiteturais           | Suporta               |                          |
-| Avaliação de trade-offs          | Suporta               |                          |
-| Uso de padrões arquiteturais     | Suporta               |                          |
+| Geração de designs arquiteturais | Suporta               | Sugestão de arquiteturas em camadas, hexagonal, microserviços                         |
+| Decisões arquiteturais           | Suporta               | Justifica decisões com base em requisitos não funcionais                         |
+| Avaliação de trade-offs          | Suporta               | Justifica decisões com base em requisitos não funcionais                         |
+| Uso de padrões arquiteturais     | Suporta               | MVC, Clean Architecture, Event-Driven, CQRS                         |
 
 ---
 
@@ -77,7 +77,7 @@ Use N/A quando não aplicável.
 
 | Subatividade                       | Suporte da Ferramenta | Evidências / Observações |
 | ---------------------------------- | --------------------- | ------------------------ |
-| Sugestão/uso de padrões de projeto | Suporta               |                          |
+| Sugestão/uso de padrões de projeto | Suporta               | Factory, Strategy, Observer, Adapter, SOLID                         |
 
 ---
 
@@ -85,9 +85,9 @@ Use N/A quando não aplicável.
 
 | Subatividade      | Suporte da Ferramenta | Evidências / Observações |
 | ----------------- | --------------------- | ------------------------ |
-| Geração de código | Suporta               |                          |
-| Refatoração       | Suporta               |                          |
-| Detecção de bugs  | Suporta               |                          |
+| Geração de código | Suporta               | Código funcional, legível e alinhado a boas práticas                         |
+| Refatoração       | Suporta               | Melhoria de legibilidade, redução de complexidade ciclomática                         |
+| Detecção de bugs  | Suporta               | Identificação de erros lógicos e edge cases                         |
 
 ---
 
@@ -95,8 +95,8 @@ Use N/A quando não aplicável.
 
 | Subatividade                                     | Suporte da Ferramenta | Evidências / Observações |
 | ------------------------------------------------ | --------------------- | ------------------------ |
-| Geração de testes (unit., integração, aceitação) | Suporta               |                          |
-| Execução de testes automatizados                 | Suporta               |                          |
+| Geração de testes (unit., integração, aceitação) | Suporta               | Unitários, integração e testes baseados em casos de uso                         |
+| Execução de testes automatizados                 | Não Suporta           | Somente via ambientes externos (ex.: Code Interpreter, CI humano)                         |
 
 ---
 
@@ -104,10 +104,10 @@ Use N/A quando não aplicável.
 
 | Subatividade                      | Suporte da Ferramenta | Evidências / Observações |
 | --------------------------------- | --------------------- | ------------------------ |
-| CI/CD                             | Não suporta           |                          |
-| Automação                         | Não suporta           |                          |
-| Monitoramento                     | Não suporta           |                          |
-| Documentação técnica automatizada | Não suporta           |                          |
+| CI/CD                             | Não suporta           | Integração indireta apenas via scripts externos                         |
+| Automação                         | Não suporta           | Não executa pipelines autonomamente                         |
+| Monitoramento                     | Não suporta           | Sem observabilidade nativa                         |
+| Documentação técnica automatizada | Não suporta           | Pode gerar docs, mas não publica ou mantém automaticamente                         |
 
 ---
 
@@ -115,7 +115,7 @@ Use N/A quando não aplicável.
 
 | Subatividade            | Suporte da Ferramenta | Evidências / Observações |
 | ----------------------- | --------------------- | ------------------------ |
-| Correções automatizadas | Não suporta           |                          |
+| Correções automatizadas | Não suporta           | Sugere correções, mas não aplica em produção                         |
 
 ---
 
@@ -123,13 +123,13 @@ Use N/A quando não aplicável.
 
 | Subatividade                        | Suporte da Ferramenta | Evidências / Observações |
 | ----------------------------------- | --------------------- | ------------------------ |
-| Planejamento                        | Suporta               |                          |
-| Execução                            | Parcialmente          |                          |
-| Controle                            | Parcialmente          |                          |
-| Encerramento                        | Parcialmente          |                          |
-| Gestão de riscos                    | Parcialmente          |                          |
-| Estimativas (tempo, custo, esforço) | Parcialmente          |                          |
-| Medição                             | Parcialmente          |                          |
+| Planejamento                        | Suporta               | Roadmaps, cronogramas                         |
+| Execução                            | Parcialmente          | Apoio conceitual, sem execução real                         |
+| Controle                            | Parcialmente          | Sugere métricas e indicadores                         |
+| Encerramento                        | Parcialmente          | Checklists e relatórios finais                         |
+| Gestão de riscos                    | Parcialmente          | Identificação e mitigação teórica                         |
+| Estimativas (tempo, custo, esforço) | Parcialmente          | Estimativas heurísticas, não contratuais                         |
+| Medição                             | Parcialmente          | KPIs sugeridos, sem coleta automática                         |
 
 ---
 
@@ -137,13 +137,13 @@ Use N/A quando não aplicável.
 
 | Critério                            | Avaliação        | Observações |
 | ----------------------------------- | ---------------- | ----------- |
-| Precisão                            | ⭐⭐⭐⭐             |             |
-| Profundidade técnica                | ⭐⭐⭐⭐⭐            |             |
-| Contextualização no código/problema | ⭐⭐⭐⭐⭐            |             |
-| Clareza                             | ⭐⭐⭐⭐⭐            |             |
-| Aderência às melhores práticas      | ⭐⭐⭐⭐             |             |
-| Consistência entre respostas        | ⭐⭐⭐⭐             |             |
-| Ocorrência de alucinações           | Média                  |             |
+| Precisão                            | ⭐⭐⭐⭐             | O GPT-4o apresenta alto grau de correção sintática e semântica na maioria das respostas, especialmente em problemas bem definidos. No experimento de detecção de brute force, a solução gerada foi correta, passou por todos os testes automatizados e respeitou integralmente as regras do enunciado.             |
+| Profundidade técnica                | ⭐⭐⭐⭐⭐            | As respostas vão além do “como fazer”, explicando por que determinada abordagem é adequada, o que é especialmente relevante para decisões técnicas e arquiteturais.            |
+| Contextualização no código/problema | ⭐⭐⭐⭐⭐            | No experimento apresentado, o GPT-4o compreendeu corretamente o conceito de falhas consecutivas por IP e aplicou o reset de contagem após sucesso, sem ambiguidade.            |
+| Clareza                             | ⭐⭐⭐⭐⭐            | Isso reduz o esforço cognitivo do desenvolvedor e facilita revisões de código, onboarding e documentação.            |
+| Aderência às melhores práticas      | ⭐⭐⭐⭐             | Em alguns casos, pode priorizar clareza em detrimento de micro-otimizações, o que é desejável na maioria dos contextos, mas pode não atender cenários de alta performance sem ajuste humano.            |
+| Consistência entre respostas        | ⭐⭐⭐⭐             | Mudanças sutis no prompt podem gerar abordagens diferentes para o mesmo problema, exigindo padronização de prompts em ambientes corporativos.            |
+| Ocorrência de alucinações           | Baixa                  | Alucinações não foram observadas durante o experimento empirico            |
 
 ---
 
@@ -266,27 +266,35 @@ PS. You do not need to validate the IP addresses.
 
 #  **8. Riscos, Custos e Considerações de Uso**
 
-* Dependência de vendor
-* Custos recorrentes
-* Limitações em privacidade ou compliance
-* Barreiras técnicas de adoção
-* Dificuldades de execução local
-* Restrições para fine-tuning ou RAG
+* Dependência de fornecedor
+* Custos recorrentes por uso intensivo
+* Questões de privacidade e compliance (dados sensíveis exigem cautela)
+* Impossibilidade de execução totalmente on-premises
+* Fine-tuning e RAG limitados às políticas da OpenAI
 
 ---
 
 #  **9. Conclusão Geral da Análise**
 
-* A ferramenta é adequada para quais atividades de ES?
-* Em quais casos deve ser evitada?
-* Em qual maturidade técnica ela se encontra?
+* Adequada para:
+    * Engenharia de requisitos, design, arquitetura, codificação, testes e apoio à gestão de projetos.
+
+* Deve ser evitada quando:
+*   Há exigência de execução local, compliance rígido, ou automação totalmente autônoma.
+
+* Maturidade técnica:
+*   Alta — ferramenta consolidada, estável e amplamente utilizada em ambientes profissionais.
+
 * Vale a pena para a organização?
+*   Sim, especialmente como copiloto de engenharia, aumentando produtividade e qualidade, desde que usada com governança adequada.
 
 ---
 
 #  **10. Referências e Links Consultados**
 
-* Documentação oficial
-* Artigos
-* Tutoriais
-* Benchmarks independentes
+* OpenAI – GPT-4o
+    * https://openai.com/pt-BR/index/hello-gpt-4o/
+* OpenAI API Documentation
+    * https://platform.openai.com/docs
+* SWEBOK v3.0 – IEEE
+* Benchmarks e experiências práticas (Codewars, testes empíricos)
