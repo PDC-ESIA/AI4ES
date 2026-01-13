@@ -146,6 +146,296 @@
 | Ocorrência de alucinações           | Baixa            | Resultados consistentes em tarefas de lógica |
 
 ---
+## 6. Experimentos Realizados
+
+### ● Geração da estrutura inicial do site a partir de prompts em linguagem natural
+
+### ● Criação do layout visual e identidade do site
+
+### ● Geração e otimização de código CSS para responsividade
+
+### ● Geração de componentes interativos com JavaScript
+
+### ● Refatoração e melhoria da organização do código
+
+---
+
+## Resultados Quantitativos
+
+### Usando IA
+- **Tempo:** 5 minutos  
+- **Número de erros:** 1  
+- **Qualidade do código:** Alta  
+- **Cobertura de testes:** Alta  
+- **Documentação:** Completa  
+
+---
+
+### Sem uso de IA
+- **Tempo:** 2 horas  
+- **Número de erros:** Inúmeros  
+- **Qualidade do código:** Variável  
+- **Cobertura de testes:** Baixa  
+- **Documentação:** Totalmente ignorada no rascunho  
+
+---
+### ● Exemplos (copie trechos de código, respostas etc.)
+### Usando IA
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido de Restaurante</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            height: 100vh;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .menu {
+            flex: 2;
+            padding: 20px;
+            background-color: #fff;
+            overflow-y: auto;
+        }
+        .menu h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #d32f2f;
+        }
+        .dish {
+            display: flex;
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .dish img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 15px;
+        }
+        .dish-info {
+            flex: 1;
+        }
+        .dish-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.2rem;
+        }
+        .dish-info p {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .price {
+            font-weight: 700;
+            color: #d32f2f;
+        }
+        .add-btn {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .add-btn:hover {
+            background-color: #45a049;
+        }
+        .cart {
+            flex: 1;
+            padding: 20px;
+            background-color: #fff;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+        .cart h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #d32f2f;
+        }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .cart-item span {
+            font-size: 0.9rem;
+        }
+        .subtotal {
+            font-weight: 700;
+            margin-top: 20px;
+            font-size: 1.1rem;
+        }
+        .finalize-btn {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-top: auto;
+        }
+        .finalize-btn:hover {
+            background-color: #b71c1c;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .cart {
+                border-left: none;
+                border-top: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="menu">
+            <h1>Cardápio</h1>
+            <div class="dish">
+                <img src="https://via.placeholder.com/100" alt="Pizza Margherita">
+                <div class="dish-info">
+                    <h3>Pizza Margherita</h3>
+                    <p>Massa fina com molho de tomate, queijo e manjericão.</p>
+                    <span class="price">R$ 25,00</span>
+                    <button class="add-btn" onclick="addToCart('Pizza Margherita', 25)">Adicionar</button>
+                </div>
+            </div>
+            <div class="dish">
+                <img src="https://via.placeholder.com/100" alt="Hambúrguer">
+                <div class="dish-info">
+                    <h3>Hambúrguer Clássico</h3>
+                    <p>Carne bovina, queijo, alface e molho especial.</p>
+                    <span class="price">R$ 18,00</span>
+                    <button class="add-btn" onclick="addToCart('Hambúrguer Clássico', 18)">Adicionar</button>
+                </div>
+            </div>
+            <div class="dish">
+                <img src="https://via.placeholder.com/100" alt="Salada Caesar">
+                <div class="dish-info">
+                    <h3>Salada Caesar</h3>
+                    <p>Alface romana, croutons, parmesão e molho caesar.</p>
+                    <span class="price">R$ 15,00</span>
+                    <button class="add-btn" onclick="addToCart('Salada Caesar', 15)">Adicionar</button>
+                </div>
+            </div>
+        </div>
+        <div class="cart">
+            <h2>Carrinho</h2>
+            <div id="cart-items"></div>
+            <div class="subtotal">Subtotal: R$ <span id="subtotal">0,00</span></div>
+            <button class="finalize-btn" onclick="finalizeOrder()">Finalizar Pedido</button>
+        </div>
+    </div>
+
+    <script>
+        let cart = [];
+        let subtotal = 0;
+
+        function addToCart(name, price) {
+            cart.push({ name, price });
+            subtotal += price;
+            updateCart();
+        }
+
+        function updateCart() {
+            const cartItems = document.getElementById('cart-items');
+            cartItems.innerHTML = '';
+            cart.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'cart-item';
+                div.innerHTML = `<span>${item.name}</span><span>R$ ${item.price.toFixed(2)}</span>`;
+                cartItems.appendChild(div);
+            });
+            document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+        }
+
+        function finalizeOrder() {
+            alert('Pedido finalizado! Total: R$ ' + subtotal.toFixed(2));
+            cart = [];
+            subtotal = 0;
+            updateCart();
+        }
+    </script>
+</body>
+</html>
+
+### Sem usar IA
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurante Bom Sabor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Restaurante Bom Sabor</h1>
+        <p>Faça seu pedido online</p>
+    </header>
+
+    <main>
+        <h2>Cardápio</h2>
+
+        <div class="cardapio">
+            <div class="item">
+                <h3>Hambúrguer</h3>
+                <p>Pão, carne e queijo</p>
+                <span>R$ 25,00</span>
+                <button>Adicionar</button>
+            </div>
+
+            <div class="item">
+                <h3>Pizza</h3>
+                <p>Pizza de mussarela</p>
+                <span>R$ 40,00</span>
+                <button>Adicionar</button>
+            </div>
+
+            <div class="item">
+                <h3>Refrigerante</h3>
+                <p>Lata 350ml</p>
+                <span>R$ 6,00</span>
+                <button>Adicionar</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 - Restaurante Bom Sabor</p>
+    </footer>
+
+</body>
+</html>
+
+---
+
 
 #  **7. Pontos Fortes e Fracos da Ferramenta**
 
@@ -170,7 +460,7 @@
 
 #  **9. Conclusão Geral da Análise**
 
-* **A ferramenta é adequada para**: Desenvolvimento acelerado, refatoração de código e debugging assistido.
-* **Em quais casos deve ser evitada**: Projetos que exigem processamento estritamente local (on-premise).
-* **Maturidade técnica**: Alta, consolidada como um dos principais concorrentes do GitHub Copilot.
-* **Vale a pena para a organização?** Sim, pela flexibilidade de agentes e ganho imediato de produtividade.
+* A ferramenta é adequada para desenvolvimento acelerado, refatoração de código e debugging assistido.
+* Os casos deve ser evitada: Projetos que exigem processamento estritamente local (on-premise).
+* Possui maturidade técnica alta, consolidada como um dos principais concorrentes do GitHub Copilot.
+* Vale a pena para a organização, pela flexibilidade de agentes e ganho imediato de produtividade.
