@@ -87,7 +87,7 @@
 | Subatividade                                     | Suporte da Ferramenta | Evidências / Observações |
 | ------------------------------------------------ | --------------------- | ------------------------ |
 | Geração de testes (unit., integração, aceitação) |         N/A           | Não gera testes unitários, de integração ou de aceitação.                          |
-| Execução de testes automatizados                 |         N/A           | Não realiza a execução de testes automatizados.                        |
+| Execução de testes automatizados                 |         Sim           | Executa testes automatizados, mas apenas em planos pagos.                       |
 
 ---
 
