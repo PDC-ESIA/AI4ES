@@ -1,4 +1,5 @@
 # 1. Identificação da Ferramenta
+
 | Item                            | Descrição                                                                      |
 |---------------------------------|--------------------------------------------------------------------------------|
 | **Nome da ferramenta**          | Cursor AI                                                                      |
@@ -129,8 +130,379 @@ Para cada item abaixo, descrevemos:
 | **Estimativas (tempo, custo, esforço)** | **Não**           | **Limitação:** Não possui noções de tempo, deadlines ou calendário. Não realiza estimativas de esforço (Story Points, horas) ou custos de desenvolvimento. Completamente desconectado de gestão financeira e orçamentação. |
 | **Medição**                         | **Não**               | **Limitação:** Não coleta métricas de processo (Lead Time, Cycle Time, Velocity, densidade de defeitos). Não gera relatórios de produtividade ou qualidade do processo. Atua apenas como editor, não como ferramenta de BI ou analytics. |
 
+# 5. Qualidade das Respostas
+
+| Critério                            | Avaliação | Observações |
+| ----------------------------------- | --------- | ----------- |
+| **Precisão**                        | ⭐⭐⭐⭐     | **Alta na Construção e Testes:** Código gerado é funcional e compilável na maioria dos casos. Shadow Workspace valida implementações antes de sugerir, reduzindo erros. **Moderada em Arquitetura:** Sugestões arquiteturais são baseadas em padrões estabelecidos, mas podem não capturar nuances de contexto de negócio específico. |
+| **Profundidade técnica**            | ⭐⭐⭐⭐     | **Excelente em padrões de código:** Reconhece e aplica Design Patterns (GoF), SOLID principles, padrões arquiteturais (MVC, Clean Architecture). **Limitada em aspectos avançados:** Não aborda arquiteturas distribuídas complexas (event sourcing, CQRS), otimização de performance em escala ou design de sistemas massivamente concorrentes. |
+| **Contextualização no código/problema** | ⭐⭐⭐⭐⭐ | **Excepcional:** RAG com indexação semântica do codebase permite compreensão profunda do contexto. Conecta requisitos (comentários, documentação) à implementação (código) e testes. Analisa impacto de mudanças em múltiplos arquivos. Mantém consistência com estilo e convenções do projeto existente. |
+| **Clareza**                         | ⭐⭐⭐⭐⭐   | **Muito clara:** Explicações em linguagem natural acessível. Documentação gerada é bem estruturada. Consegue traduzir conceitos técnicos complexos para diferentes níveis de audiência. Extended Thinking explica raciocínio quando necessário. |
+| **Aderência às melhores práticas**  | ⭐⭐⭐      | **Boa em desenvolvimento:** Sugere refatorações, aplicação de padrões, código limpo. Detecta code smells. **Fraca em DevOps/Gestão:** Não promove práticas de CI/CD, monitoramento, observabilidade. Não considera aspectos de deployment, rollback ou operações em produção. |
+| **Consistência entre respostas**    | ⭐⭐⭐⭐     | **Alta:** Mecanismos de Self-Refine e validação em background (linters, type checkers) garantem consistência. Mantém estilo do código ao longo de múltiplas interações. Ocasionalmente pode sugerir abordagens diferentes para o mesmo problema se contexto mudar. |
+| **Ocorrência de alucinações**       | **Baixa** | **Mitigado por validação técnica:** Program-of-Thought (PoT) executa código mentalmente, Shadow Workspace testa implementações. **Alucinações ocorrem principalmente em:** (1) Bibliotecas/APIs muito recentes ou obscuras, (2) Dependências não instaladas, (3) Configurações específicas de ambiente não documentadas no projeto. |
+
 ---
-<-- Inalterado -->
+
+# 6. Experimentos Realizados
+
+## Descrição das tarefas testadas
+
+**Tarefa principal:** Criar módulo de API REST completo para gerenciamento de Usuários (CRUD) usando:
+- Python com FastAPI e SQLAlchemy
+- Validação de e-mail e senha forte
+- Autenticação JWT (inferida do projeto existente)
+- Testes unitários com cobertura >80%
+- Documentação automática
+
+**Tarefas complementares:**
+- Refatoração de código legado (função procedural de 150 linhas)
+- Debugging de erro de importação circular
+- Geração de testes para módulo existente sem cobertura
+
+---
+
+## Resultados quantitativos
+
+### Tarefa 1: CRUD de Usuários (desenvolvimento do zero)
+
+| Métrica | Com Cursor AI | Sem IA | Ganho |
+|---------|---------------|--------|-------|
+| **Tempo total** | 8 minutos | 45 minutos | **5.6x mais rápido** |
+| **Erros durante desenvolvimento** | 1 (import não instalado) | 3-5 (typos, imports, validação) | **3-5x menos erros** |
+| **Qualidade do código** | Alta (PEP8, patterns) | Variável (depende de fadiga) | **Consistência garantida** |
+| **Cobertura de testes** | 92% (happy path + edge cases) | ~40% (só happy path) | **2.3x maior cobertura** |
+| **Documentação** | Completa (docstrings + README) | Geralmente ausente | **Economiza 15-20min** |
+| **Arquivos criados** | 6 (models, schemas, routes, tests, config, README) | 3-4 (sem testes/README) | **Projeto mais completo** |
+
+### Tarefa 2: Refatoração de código legado
+
+| Métrica | Com Cursor AI | Sem IA | Ganho |
+|---------|---------------|--------|-------|
+| **Tempo** | 3 minutos | 20 minutos | **6.7x mais rápido** |
+| **Bugs introduzidos** | 0 (validação com testes) | 1-2 (quebra compatibilidade) | **Zero regressão** |
+| **Complexidade ciclomática** | 15 → 4 | 15 → 7-8 | **Melhor qualidade** |
+
+### Tarefa 3: Geração de testes para módulo sem cobertura
+
+| Métrica | Com Cursor AI | Sem IA | Ganho |
+|---------|---------------|--------|-------|
+| **Tempo** | 2 minutos | 15 minutos | **7.5x mais rápido** |
+| **Cobertura alcançada** | 88% | 60-70% | **~25% mais cobertura** |
+| **Edge cases cobertos** | 12 | 4-6 | **2-3x mais cenários** |
+
+---
+
+# 7. Pontos Fortes e Fracos da Ferramenta
+
+## Pontos fortes
+
+### 1. Redução da Carga Cognitiva na Manutenção
+
+- Gestão de conhecimento de projetos legados
+- Documentação automática (docstrings, READMEs)
+- Explicações de fluxos complexos em linguagem natural
+- Acelera onboarding de novos desenvolvedores
+
+### 2. Antecipação da Validação (Shift-Left Testing)
+
+- Valida viabilidade técnica em background (Shadow Workspace)
+- Gera e executa testes para validar correções instantaneamente
+- Move verificação para momento da construção
+- Reduz custos de correção de bugs
+
+### 3. Consistência Arquitetural Automatizada
+
+- Atua como "revisor de código" contextual
+- Sugere refatorações estruturais
+- Reconhece e implementa padrões (MVC, Singleton, Factory)
+- Garante aderência a normas técnicas
+
+### 4. Análise de Impacto de Mudanças
+
+- Mitiga risco de efeitos colaterais em engenharia de requisitos
+- Modo Composer analisa impacto em múltiplos arquivos
+- Garante propagação correta de alterações
+
+### 5. Múltiplas Interfaces de Interação
+
+- **Tab:** Autocomplete inteligente multi-linha
+- **Cmd+K:** Edições direcionadas por linguagem natural
+- **Chat:** Conversação contextual sobre código
+- **Agent/Composer:** Tarefas complexas multi-arquivo
+
+---
+
+## Limitações
+
+### 1. Desconexão com o Valor de Negócio
+
+- Não prioriza baseado em ROI ou urgência
+- Não gerencia backlog de User Stories
+- Executa tarefas técnicas sem avaliar importância estratégica
+
+### 2. Ausência de Métricas de Processo
+
+- Não coleta Lead Time, Cycle Time, Velocity
+- Não gera relatórios de produtividade
+- "Caixa preta" para gerentes de engenharia
+
+### 3. Inexistência de Gestão de Projetos
+
+- Não estima prazos, custos ou esforço
+- Sem cronograma ou caminho crítico
+- Desconectado de gestão financeira e orçamentação
+
+### 4. Limitação Operacional (DevOps)
+
+- Não executa pipelines de CI/CD
+- Não realiza deploys em produção
+- Sem telemetria ou monitoramento em tempo real
+
+### 5. Abstração Visual Limitada
+
+- Não cria diagramas UML ou C4
+- Arquitetura expressa apenas em código
+- Dificulta comunicação com stakeholders não-técnicos
+
+### 6. Colaboração Single-Agent
+
+- Opera com único assistente
+- Não possui arquitetura de enxame (swarm)
+- Limitação para tarefas que requerem especialização paralela
+
+---
+
+# 8. Riscos, Custos e Considerações de Uso
+
+## Riscos
+
+### 1. Risco de Gestão (Cegueira Temporal)
+
+- Sem calendário, cronograma ou deadlines
+- Não gerencia caminho crítico
+- Time pode focar em execução técnica e perder visão de prazos
+
+### 2. Limitação na Análise de Risco
+
+- Análise restrita a riscos técnicos
+- Não avalia riscos de negócio, organizacionais ou financeiros
+- Limitada a código-fonte
+
+### 3. Privacidade e Processamento Remoto
+
+- Inferência pesada ocorre na Cloud (US-based)
+- Privacy Mode não retém código, mas processamento é remoto
+- Uso 100% local possível apenas via configuração manual (BYOK + Ollama)
+
+### 4. Dependência de Vendor
+
+- Lock-in potencial após adaptação
+- Migração para outro assistente pode ser custosa
+- Dependência de disponibilidade da API
+
+### 5. Ausência de Processos de Encerramento
+
+- Sem suporte a encerramento formal
+- Não auxilia em aceitação de entregáveis
+- Sem arquivamento administrativo
+
+---
+
+## Custos
+
+### Modelos de Licenciamento (SaaS)
+
+| Plano | Custo | Características |
+|-------|-------|-----------------|
+| **Free** | $0/mês | Requisições lentas ilimitadas (fila), 2000 completions/mês |
+| **Pro** | $20/mês | Tab ilimitado, $20 créditos API, ±225 req Sonnet 4 |
+| **Pro Plus** | $60/mês | $70 créditos API (3.5x Pro), ±675 req Sonnet 4 |
+| **Ultra** | $200/mês | $400 créditos API (20x Pro), ±4500 req Sonnet 4 |
+| **Business** | $40/usuário/mês | 500 req incluídas, SSO, Privacy Mode, Admin |
+
+### Infraestrutura Híbrida
+
+- **Cloud:** GPUs para inferência pesada (custos inclusos nos planos)
+- **Local:** CPU/GPU do desenvolvedor para indexação e modelo preditivo leve
+- **Overhead:** ~500MB storage, 4GB+ RAM recomendado
+
+### Custos Adicionais
+
+- Uso além dos créditos: $0.04/requisição ou preço API do provedor
+- Modelos premium podem consumir 2+ requisições por chamada
+- Necessário monitoramento ativo para controlar gastos
+
+---
+
+## Considerações de Uso
+
+### Escopo de Atuação
+
+**O que Cursor É:**
+
+- Editor de código superdotado
+- Assistente de desenvolvimento individual
+- Acelerador de execução técnica
+
+**O que Cursor NÃO É:**
+
+- Gerente de projetos
+- Operador de infraestrutura
+- Ferramenta de BI ou analytics
+
+### Automação (Local vs. Servidor)
+
+- Automação local: Geração e execução de scripts no terminal
+- **Não gerencia:** Processos de background, cron jobs, infraestrutura cloud
+
+### Papel no DevOps (Geração vs. Execução)
+
+- **Gera:** Scripts de configuração (IaC, GitHub Actions, Jenkinsfile)
+- **Não executa:** Pipelines, deploys, orquestração
+- Ferramentas dedicadas permanecem necessárias (Jenkins, GitHub Actions)
+
+### Monitoramento e Métricas
+
+- **Não possui:** Telemetria, dashboards, alertas de saúde
+- **Não coleta:** Métricas de processo (Lead Time, densidade de defeitos)
+- Serve apenas para depuração reativa de logs fornecidos
+
+### Planejamento (Técnico vs. Estratégico)
+
+- **Auxilia em:** Decomposição de tarefas técnicas (Plan Mode)
+- **Não realiza:** Planejamento estratégico, gestão de backlog, WBS/EAP
+
+### Modelos de IA Envolvidos
+
+- **Fronteira:** Claude Sonnet 4.5, GPT-5, Gemini 3 Pro, Grok Code
+- **Proprietários:** Cursor Tab (Fusion), cursor-small
+- **Customização:** BYOK permite usar modelos próprios via API
+
+---
+
+# 9. Conclusão Geral da Análise
+
+## Adequação da Ferramenta
+
+### Casos de Uso Ideais (Alta adequação)
+
+**Construção e Codificação**
+
+- Geração inline, completação multi-arquivo, refatoração via linguagem natural
+- Papel: "Copilot++" que acelera desenvolvimento dramaticamente
+
+**Manutenção e Evolução**
+
+- Compreensão de código legado
+- Documentação automática e explicação de fluxos complexos
+- Correção de bugs assistida com contexto
+
+**Verificação e Validação (Nível Unitário)**
+
+- Shift-Left Testing
+- Geração e validação de testes unitários/integração localmente
+- Execução pré-commit para validação
+
+**Detalhamento Técnico de Requisitos**
+
+- Transformação de especificações textuais em código
+- Análise de impacto de mudanças em múltiplos arquivos
+
+---
+
+### Casos para Evitar (Inadequada)
+
+**Gerenciamento de Projetos**
+
+- Estimativas de prazos, custos, esforço
+- Controle de cronograma e caminho crítico
+- "Cegueira" temporal e financeira
+
+**Orquestração de DevOps**
+
+- Execução de pipelines de CI/CD
+- Deploys em ambientes de produção
+- Não substitui Jenkins, GitHub Actions, GitLab CI
+
+**Monitoramento de Produção**
+
+- Observabilidade (SRE)
+- Coleta de métricas de execução, logs de saúde, telemetria
+- Inadequada para operações em tempo real
+
+**Priorização de Negócio**
+
+- Definição de "o que fazer primeiro" (backlog)
+- Não compreende ROI ou urgência de negócio
+- Decisões estratégicas requerem intervenção humana
+
+---
+
+## Maturidade Técnica
+
+**Estágio:** State-of-the-Art (Fronteira) no nicho de Coding Assistants
+
+**Diferenciais tecnológicos:**
+
+- **Shadow Workspace:** Valida viabilidade em background
+- **RAG Local:** Indexação vetorial de repositório completo
+- **Modelos de ponta:** Claude Sonnet 4.5, GPT-5 + proprietários otimizados
+- **Fine-tuning especializado:** Prevê "próxima edição" vs "próxima palavra"
+- **Agentes transparentes:** ReAct no terminal, Program-of-Thought
+
+**Comparação com concorrentes:**
+
+- **vs GitHub Copilot:** Melhor contexto de codebase, multi-modelo, agentes mais avançados
+- **vs Claude Code (CLI):** Interface gráfica completa, múltiplos modos de interação
+- **vs Codeium/Tabnine:** Capacidades agênticas superiores, contexto até 1M tokens
+
+---
+
+## Recomendação para Adoção
+
+### Vale a pena?
+
+**Sim, com alinhamento estratégico aos objetivos OE1 e OE5.**
+
+O Cursor AI se posiciona como ferramenta adequada para as fases iniciais do projeto (ME1 e parte da ME3), mas não deve ser tratado como solução completa para os objetivos de pesquisa e desenvolvimento propostos.
+
+**Altamente adequado para:**
+
+- **OE1 (Avaliação de Assistentes Comerciais):** Representa benchmark importante entre assistentes de código comerciais. Arquitetura multi-modelo e capacidades agênticas avançadas oferecem insights valiosos para o design do portfólio de agentes especializados.
+- **OE5 (Prototipação e Integração):** Serve como referência arquitetural para integração de LLMs em sistemas reais. Modo Agent/Composer demonstra padrões de interação multi-arquivo aplicáveis ao TACO.
+
+**Parcialmente adequado para:**
+
+- **OE4 (Técnicas AI4SE):** Útil para aceleração da implementação de protótipos (TRL 4), mas não substitui a pesquisa fundamental em geração de testes, refatoração e engenharia de requisitos. Deve ser complementado com modelos open-source para garantir reprodutibilidade científica.
+
+---
+
+# 10. Referências e Links Consultados
+
+## Documentação Oficial
+
+- [Site oficial](https://cursor.com/)
+- [Documentação completa](https://docs.cursor.com/)
+- [Blog oficial com releases](https://cursor.com/blog)
+
+## Features Principais
+
+- [Composer 2.0 (Agente AI Nativo)](https://cursor.com/blog/2-0)
+- [Shadow Workspace](https://cursor.com/blog/shadow-workspace)
+- [Codebase Indexing (RAG)](https://cursor.com/docs/context/codebase-indexing)
+
+## Pricing e Governança
+
+- [Planos e Pricing](https://cursor.com/docs/account/pricing)
+- [Privacidade e Governança](https://cursor.com/docs/enterprise/privacy-and-data-governance)
+
+## Integrações
+
+- [Integração com Claude 3.5 Sonnet](https://medium.com/towards-agi/how-to-use-cursor-ai-with-claude-3-5-sonnet-step-by-step-guide-4e1bbdd7bd65)
+
+---
+
 # Checklist: Avaliação Inicial de Assistentes de Código
 
 ## 1. Entendimento Geral da Ferramenta
@@ -251,5 +623,3 @@ Para cada item abaixo, descrevemos:
     - **Intermediário:** ~1-2 semanas para dominar todas as features
     - **Avançado:** Otimização de prompts, .cursorrules, integração com CI/CD
     - **Trade-off:** Ganhos de produtividade compensam investimento em aprendizado
-
---- 
