@@ -2,11 +2,11 @@
 
 | Item                            | Descrição                                                                      |
 | ------------------------------- | ------------------------------------------------------------------------------ |
-| **Nome da ferramenta**          |                                                                                |
-| **Fabricante / Comunidade**     |                                                                                |
-| **Site oficial / documentação** |                                                                                |
-| **Tipo de ferramenta**          | (ex.: assistente de código, LLM geral, plataforma multimodal, plugin IDE etc.) |
-| **Licença / acesso**            | (Comercial, open-source, híbrido)                                              |
+| **Nome da ferramenta** | Harness AI (ou Harness AIDA - AI Development Assistant)              |
+| **Fabricante / Comunidade** | Harness Inc.            |
+| **Site oficial / documentação** | harness.io / developer.harness.io                                    |
+| **Tipo de ferramenta** | Plataforma de Entrega de Software (SDLC) AI-Native; inclui Agentes de IA para Codificação (Code Agent), DevOps, QA e Segurança.  |
+| **Licença / acesso** | Comercial (SaaS/Enterprise). Possui camadas "Free" para módulos específicos e componentes Open Source (como o Gitness/Drone), mas a IA em si é parte da oferta comercial da plataforma.  |
 
 ---
 
@@ -14,15 +14,15 @@
 
 | Item                                | Descrição                                                    |
 | ----------------------------------- | ------------------------------------------------------------ |
-| **Tipo de IA Generativa**           | LLM / multimodal / difusão / híbrido                         |
-| **Nome do Modelo**                  | ex.: GPT-4.1, Claude 3.5, DeepSeek-Coder, CodeLlama-34B etc. |
-| **Versão**                          |                                                              |
-| **Tamanho (nº de parâmetros)**      | Se disponível                                                |
-| **Acesso**                          | API comercial / Open-source / Local                          |
-| **Suporte a Fine-tuning**           | Sim/Não + tipo (LoRA, Full FT, Adapters)                     |
-| **Suporte a RAG**                   | Sim/Não                                                      |
-| **Métodos de prompting suportados** | CoT, ReAct, PoT, Self-Refine etc.                            |
-| **Ferramentas adicionais**          | LangChain, LangGraph, Ollama, Groq, extensões VSCode etc.    |
+| **Tipo de IA Generativa** | LLM (Large Language Model) / Híbrido. A plataforma utiliza uma arquitetura de "Agente" que orquestra múltiplos modelos conforme a tarefa (ex: geração de código vs. análise de logs).  |
+| **Nome do Modelo** | Multi-modelo: Suporta nativamente OpenAI GPT-4o, Google Gemini Flash e Claude 3.7 Sonnet (num contexto de *Bring Your Own Model* ou integração nativa).  |
+| **Versão** | Variável consoante o fornecedor escolhido (ex: GPT-4o, Gemini 1.5 Flash, Claude 3.7 Sonnet).  |
+| **Tamanho (nº de parâmetros)** | Não divulgado / Proprietário (depende dos modelos da OpenAI/Google/Anthropic conectados).  |
+| **Acesso** | Híbrido. Acesso via API comercial (SaaS) na plataforma Harness, mas com suporte a "Bring Your Own Model" (BYOM) para integrar modelos locais ou privados.  |
+| **Suporte a Fine-tuning** | Sim (via BYOM). Embora a plataforma foque em RAG, a arquitetura aberta permite que as equipas tragam os seus próprios modelos que podem ter sido fine-tuned externamente para frameworks internos.  |
+| **Suporte a RAG** | Sim (Nativo). Utiliza Retrieval Augmented Generation (RAG) para indexar semanticamente todo o código, documentação e logs de erros, garantindo contexto real sem re-treinar o modelo.  |
+| **Métodos de prompting suportados** | Chain Prompts (Cadeia de comandos), Iterative Prompting (Refinamento iterativo), e Context-Aware Prompts (Injeção automática de contexto do repositório/erros).  |
+| **Ferramentas adicionais** | Extensões para VS Code e JetBrains; Integração com Git (PRs automáticos), Jira e CLI (Harness AI x Gemini CLI Extension).  |
 
 ---
 
@@ -30,9 +30,9 @@
 
 | Item                                  | Descrição                               |
 | ------------------------------------- | --------------------------------------- |
-| **Onde roda?**                        | Local / Cloud / Híbrido                 |
-| **Infraestrutura utilizada no teste** | (GPU, CPU, RAM ou serviço utilizado)    |
-| **Custos (quando aplicável)**         | Preço por token, por licença ou por uso |
+| **Onde roda?** | Modelo Híbrido (SaaS + Local Delegate). A inteligência (AIDA) e o painel de controle rodam na nuvem da Harness (SaaS). A execução das tarefas no seu código roda na sua infraestrutura através de um agente chamado "Harness Delegate".  |
+| **Infraestrutura utilizada no teste** | (Requisitos Mínimos Recomendados): Para conectar a sua infraestrutura ao SaaS, é necessário rodar o Harness Delegate (via Docker ou Kubernetes), que exige no mínimo 2 vCPUs e 8GB de RAM por réplica.  |
+| **Custos (quando aplicável)** | Modelo "Developer 360" (Por Desenvolvedor). Para módulos de CI e Código, a cobrança é por usuário ativo. Existe um plano Free (Gratuito) que inclui o uso da IA (AIDA) para times pequenos. Para módulos de CD (Deployment), a cobrança pode ser por "Instância de Serviço".  |
 
 ---
 
