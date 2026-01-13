@@ -22,7 +22,7 @@
 | *Suporte a Fine-tuning*           | Parcialmente                                                   |
 | *Suporte a RAG*                   | Não                                                            |
 | *Métodos de prompting suportados* | ???                                                            |
-| *Ferramentas adicionais*          | ???                                                            |
+| *Ferramentas adicionais*          | Chat integrado à IDE, autocomplete contextual, sugestões inline, edição multi-arquivo assistida, explicação de código, geração de testes, comandos de refatoração                                                            |
 
 ---
 
@@ -165,3 +165,141 @@ Use N/A quando não aplicável.
 | Medição                             | N/A                      | O modelo é um code assistant                         |
 
 ---
+
+#  **7. Qualidade das Respostas**
+
+| Critério                            | Avaliação        | Observações |
+| ----------------------------------- | ---------------- | ----------- |
+| Precisão                            | ⭐⭐⭐⭐⭐            | Respostas geralmente corretas para padrões conhecidos, APIs populares e boas práticas consolidadas. Erros são raros e normalmente ligados a regras de negócio não explícitas.            |
+| Profundidade técnica                | ⭐⭐⭐⭐⭐            | Demonstra bom domínio de estruturas de código, padrões de projeto, testes, refatoração e arquitetura comum. Limitação em discussões teóricas profundas quando comparado a LLMs focados em pesquisa.            |
+| Contextualização no código/problema | ⭐⭐⭐⭐⭐            | Excelente uso do contexto do projeto aberto na IDE, incluindo múltiplos arquivos, dependências e padrões existentes no repositório.            |
+| Clareza                             | ⭐⭐⭐⭐⭐            | Código gerado é legível, organizado e geralmente segue convenções da linguagem e do projeto. Comentários e nomes de variáveis são claros.            |
+| Aderência às melhores práticas      | ⭐⭐⭐⭐⭐            | Aplica princípios como SOLID, separação de responsabilidades, testes automatizados e linting, quando o contexto permite.            |
+| Consistência entre respostas        | ⭐⭐⭐⭐              | Pode variar levemente conforme o modelo selecionado (GPT, Claude, Gemini), mas mantém coerência geral dentro da mesma sessão.            |
+| Ocorrência de alucinações           | Baixa                   | Ocorre principalmente ao assumir comportamentos de bibliotecas pouco comuns ou versões muito recentes. Geralmente mitigável com prompts mais específicos.            |
+
+---
+
+#  **8. Experimentos Realizados**
+
+### ● Descrição das tarefas testadas
+
+Desenvolvimento de calculadora de IMC em Java
+
+### ● Resultados quantitativos
+
+* Com IA
+    * Tempo para solucionar: 01 minuto e 21 segundos
+
+* Sem IA
+    * Tempo para solucionar: 06 minutos e 43 segundos
+
+### ● Exemplos (copie trechos de código, respostas etc.)
+
+* Código com IA
+
+```Java
+
+    void main() {
+    Scanner scanner = new Scanner(System.in);
+
+    float wheight, height, IMC;
+
+    System.out.print("Digite o seu peso (kg): ");
+
+    wheight = scanner.nextFloat();
+
+    System.out.print("Digite a sua altura (m): ");
+
+    height = scanner.nextFloat();
+
+    IMC = wheight / (height * height);
+
+    System.out.printf("O seu IMC é: %.2f\n", IMC);
+
+}
+
+    
+```
+
+* Código sem IA
+
+```Java
+
+    import java.util.Scanner;
+
+    void main() {
+        Scanner scan = new Scanner(System.in);
+        float weight, height, IMC;
+
+        System.out.println("Qual é o seu peso? (em Kg)");
+
+        weight = scan.nextFloat();
+
+        System.out.println("Qual é a sua altura? (em m)");
+
+        height = scan.nextFloat();
+
+        IMC = weight / (height * height);
+
+        System.out.printf("O seu imc é igual a: %.2f", IMC);
+    }
+    
+```
+
+#  **9. Pontos Fortes e Fracos da Ferramenta**
+
+### **Pontos fortes**
+
+* Integração profunda com IDE (baixo atrito)
+* Forte entendimento de contexto de projeto
+* Excelente para refatoração e testes
+* Suporte a múltiplas linguagens e stacks
+* Redução significativa de esforço cognitivo em tarefas repetitivas
+
+### **Limitações**
+
+* Dependência total do ecossistema GitHub
+* Não cita fontes ou justificativas formais
+* Pode gerar código “correto” mas desalinhado à regra de negócio
+* Não executa código nem valida resultados
+* RAG e fine-tuning não disponíveis ao usuário final
+
+---
+
+#  **10. Riscos, Custos e Considerações de Uso**
+
+* Dependência de vendor: Alta (GitHub/Microsoft)
+* Custos recorrentes: USD 10/mês por desenvolvedor
+* Privacidade: Código enviado à nuvem (atenção a projetos sensíveis)
+* Compliance: Pode ser problemático em ambientes regulados
+* Execução local: Não disponível
+* Customização avançada: Limitada (sem RAG/fine-tuning direto)
+
+---
+
+#  **11. Conclusão Geral da Análise**
+
+* Adequada para:
+    * Construção de software, refatoração, testes, documentação técnica e apoio a design/arquitetura.
+* Deve ser evitada quando:
+    * Regras de negócio são altamente específicas
+    * Código é extremamente sensível (segurança/compliance)
+    * É necessária rastreabilidade formal de decisões
+* Maturidade técnica:
+    *  Alta para engenharia de software prática
+    *  Média para processos formais de ES
+
+* Vale a pena para a organização?
+    * Sim, especialmente para equipes de desenvolvimento, desde que usada como assistente, não como substituto de revisão humana.
+
+---
+
+#  **12. Referências e Links Consultados**
+
+* Documentação oficial do GitHub Copilot
+    * https://github.com/features/copilot
+* GitHub Copilot Trust Center
+    * https://github.com/trust-center
+* Relatos técnicos da comunidade (GitHub Issues, blogs)
+* Experiência prática em IDE (VSCode)
