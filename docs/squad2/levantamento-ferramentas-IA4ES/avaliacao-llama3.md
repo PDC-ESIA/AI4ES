@@ -183,6 +183,94 @@ Use N/A quando não aplicável.
 
 ### ● Exemplos (copie trechos de código, respostas etc.)
 
+- Análise de requisitos
+```
+>>> crie user stories para um sistema de gerenciamento de consultas médicas
+**Sistema de Gerenciamento de Consultas Médicas**
+
+Aqui estão algumas possíveis user stories para o sistema de gerenciamento de consultas médicas:
+
+**User Story 1: Criar e Editar Consultas**
+
+* Como um médico, eu quero poder criar e editar consultas de pacientes de forma rápida e fácil.
+* Precondição: O paciente já está registrado no sistema.
+* Ação: O médico insere os detalhes da consulta, como data e hora, sintomas do paciente, diagnóstico e tratamento
+proposto.
+* Resultado: A consulta é criada ou editada com sucesso, e o paciente recebe um histórico atualizado de suas
+consultas.
+
+**User Story 2: Consultar Pacientes**
+
+* Como um médico, eu quero poder consultar pacientes que já foram registrados no sistema.
+* Precondição: O paciente está registrado no sistema.
+* Ação: O médico busca informações sobre o paciente em um histórico de visitas ou em uma lista de pacientes
+atuais.
+* Resultado: O médico vê as informações do paciente, incluindo histórico de saúde, medicamentos e
+resultados de exames
+
+**User Story 3: Agendar Consultas**
+
+* Como um clínico, eu quero poder agendar consultas com pacientes de forma eficiente.
+* Precondição: O sistema está configurado para suportar agendamento de consultas.
+* Ação: O clínico marca uma consulta no calendário do paciente ou do médico.
+* Resultado: A consulta é agendada com sucesso, e o paciente recebe notificação do agendamento.
+
+**User Story 4: Gerenciar Medicamentos**
+
+* Como um médico, eu quero poder gerenciar medicamentos prescritos para pacientes de forma eficiente.
+* Precondição: O sistema está configurado para suportar gerenciamento de medicamentos.
+* Ação: O médico insere os medicamentos prescritos para o paciente e atualiza a quantidade disponível.
+* Resultado: O paciente recebe os medicamentos prescritos, e o sistema atualiza a quantidade disponível.
+```
+
+- Modelagem
+```
+Aqui está uma sugestão de como o banco de dados (BD) poderia ser modelado para o sistema de gerenciamento de
+consultas médicas:
+
+**Tabelas**
+
+1. **pacientes**
+ * `id` (chave primária, int)
+ * `nome`
+ * `endereco`
+ * `telefone`
+ * `email`
+2. **médicos**
+ * `id` (chave primária, int)
+ * `nome`
+ * `especialidade`
+ * `contato`
+3. **consultas**
+ * `id` (chave primária, int)
+ * `data_e_hora`
+ * `tipo` (atendimento/avaliação)
+ * `resultado_exame`
+ * `médico_id` (referência para médicos)
+ * `paciente_id` (referência para pacientes)
+4. **exames**
+ * `id` (chave primária, int)
+ * `tipo` (radiografia/sangue/outras)
+ * `resultado`
+ * `data_e_hora`
+5. **medicamentos**
+ * `id` (chave primária, int)
+ * `nome`
+ * `dose`
+ * `frequencia_administrazione`
+6. **prescricoes**
+ * `id` (chave primária, int)
+ * `medicamento_id` (referência para medicamentos)
+ * `paciente_id` (referência para pacientes)
+ * `data_e_hora`
+
+**Relacionamentos**
+
+1. Um paciente pode ter várias consultas (um-p-uno): `consultas.paciente_id = pacientes.id`
+2. Uma consulta é realizada por um médico: `consultas.médico_id = médicos.id`
+3. Um exame pode ser realizado durante uma consulta: `exames.consulta_id = consultas.id`
+4. Um medicamento pode ser prescrito para um paciente: `prescricoes.medicamento_id = medicamentos.id`
+```
 ---
 
 #  **7. Pontos Fortes e Fracos da Ferramenta**
