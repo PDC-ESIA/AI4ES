@@ -201,3 +201,12 @@ Além disso, a Harness lançou uma extensão CodeAssistant (chamarei de CA a par
 No geral, destaco que a Harness AI é excelentíssima para diversas áreas do desenvolvimento pela sua capacidade nativa de automatizar diversos processos de forma relativamente simples, entretando, nada disso estava acessível para mim no plano "Free/Trial". Minha má experiência não invalida as grandes capacidades que a Harness possui.
 
 **Veredito:** É uma ferramenta recomendada exclusivamente para **Grandes Empresas (Enterprise)** com equipes de Plataforma/DevOps maduras, que buscam governança e automação de ponta a ponta. Para desenvolvedores individuais, startups ou times ágeis que buscam apenas produtividade em codificação, soluções mais leves e diretas são mais indicadas.
+
+---
+
+#  **10. Referências e Links Consultados**
+
+1.  HARNESS INC. **Harness Platform Documentation**. Disponível em: <https://developer.harness.io/>. Acesso durante a realização dos testes.
+2.  HARNESS INC. **Harness AI Development Assistant (AIDA)**. Disponível em: <https://www.harness.io/products/platform>.
+3.  HARNESS INC. **Pricing & Plans**. Disponível em: <https://www.harness.io/pricing>.
+4.  Resultados dos experimentos práticos realizados na plataforma Harness Cloud (Versão Free Tier/Trial) conforme descrito na Seção 6 deste documento.
