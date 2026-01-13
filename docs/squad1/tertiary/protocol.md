@@ -23,16 +23,16 @@ Map requirements engineering activities applied to machine learning research in 
 ## Research Questions and Justification
 
 ### RQ1
-**What is the state of the art of requirements engineering for machine learning systems and what are the most researched topics in requirements engineering for machine learning?**
+**What is the state of the art of genAI for software engineering and what are the most researched topics in this area?**
 
 **Justification:**  
 Identify research and proposals regarding the use of generative AI for software engineering activities. Identify the main methods, techniques, proposals, uses, evaluation methods and metrics, when and by whom they occurred, as well as the supporting tools and roles involved in the use of requirements engineering for machine learning and artificial intelligence.
 
 ### RQ2
-**What are the challenges and gaps highlighted by the requirements engineering literature for machine learning and artificial intelligence?**
+**What are the challenges and gaps highlighted by the genAI for software engineering activities?**
 
 **Justification:**  
-Verify the risks, limitations, challenges, and possible paths for future research on requirements engineering for machine learning and artificial intelligence.
+Verify the risks, limitations, challenges, and possible paths for future research on gen AI for software engineering.
 
 ---
 
