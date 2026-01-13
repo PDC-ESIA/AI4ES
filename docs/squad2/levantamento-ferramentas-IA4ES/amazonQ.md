@@ -123,7 +123,7 @@ Use N/A quando não aplicável.
 
 # 6. Experimentos Realizados
 
--  Descrição das tarefas testadas
+## • Descrição das tarefas testadas
 -  Elicitação e Análise de Requisitos: Criação de ata de reunião com 28 perguntas de conformidade e definição de requisitos funcionais/não-funcionais para um sistema de farmácia.
 -  Modelagem de Sistemas: Geração de diagramas de classes em formatos Mermaid e PlantUML.
 -  Arquitetura e Design: Definição de estrutura de pastas seguindo Clean Architecture e sugestão de padrões de projeto (Strategy, Observer, Factory).
@@ -191,7 +191,7 @@ Use N/A quando não aplicável.
 
 # 9. Conclusão Geral da Análise
 
--  **A ferramenta é adequada para quais atividades de ES? O Amazon Q** Developer mostrou-se extremamente versátil em quase todo o ciclo de vida (SWEBOK). É particularmente forte na Elicitação e Análise de Requisitos, **Arquitetura (pelo suporte a diagramas e padrões) e Construção de** **Software (debugging e geração de testes).**
+-  **A ferramenta é adequada para quais atividades de ES? O Amazon Q** Developer mostrou-se extremamente versátil em quase todo o ciclo de vida (SWEBOK). É particularmente forte na Elicitação e Análise de Requisitos, **Arquitetura (pelo suporte a diagramas e padrões) e Construção de** **Software (debugging, geração de código e de testes).**
 -  **Em quais casos deve ser evitada? Deve ser evitada em projetos que** exigem total agnostia de nuvem (onde o viés AWS pode atrapalhar) ou em organizações com restrições severas ao processamento de código em nuvens públicas por terceiros.
 -  **Em qual maturidade técnica ela se encontra? A ferramenta encontra-se** numa fase de maturidade elevada, especialmente após a integração com os modelos Claude 3.5. Demonstra uma capacidade de raciocínio superior a simples geradores de código, conseguindo identificar falhas lógicas e contradições documentais.
 -  **Vale a pena para a organização? Sim, principalmente se a organização já** utiliza a infraestrutura AWS. O ganho de produtividade no bootstrapping de projetos (estimado em ~70%) e a redução de erros lógicos críticos através do comando / review justificam o investimento na versão Pro.
