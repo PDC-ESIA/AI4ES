@@ -157,12 +157,12 @@
 # **7. Pontos Fortes e Fracos da Ferramenta**
 
 ### **Pontos fortes**
-* Janela de contexto extremamente longa para tarefas complexas. :contentReference[oaicite:5]{index=5}  
-* Multimodalidade (texto, código, imagem, áudio, vídeo). :contentReference[oaicite:6]{index=6}  
-* Forte em raciocínio e geração de explicações complexas. :contentReference[oaicite:7]{index=7}  
+* Janela de contexto extremamente longa para tarefas complexas. :contentReference
+* Multimodalidade (texto, código, imagem, áudio, vídeo). :contentReference
+* Forte em raciocínio e geração de explicações complexas. :contentReference 
 
 ### **Limitações**
-* Fine-tuning nem sempre disponível ou completo. :contentReference[oaicite:8]{index=8}  
+* Fine-tuning nem sempre disponível ou completo. :contentReference
 * Custo elevado comparado a modelos menores.  
 * Pode alucinar sem ancoragem/RAG explícita.
 
@@ -173,7 +173,7 @@
 * Dependência de fornecedor (Google Cloud).  
 * Custos podem variar conforme volume de tokens.  
 * Privacidade e compliance dependem de configurações de nuvem.  
-* Fine-tuning ainda não totalmente aberto. :contentReference[oaicite:9]{index=9}  
+* Fine-tuning ainda não totalmente aberto. :contentReference
 * RAG exige integração adicional.
 
 ---
