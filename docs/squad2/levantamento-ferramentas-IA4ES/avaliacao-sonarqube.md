@@ -1,5 +1,3 @@
-# Análise de Ferramenta de IA Generativa para Engenharia de Software
-
 # **1. Identificação da Ferramenta**
 
 | Item                            | Descrição                                                                      |
@@ -19,7 +17,6 @@
 | **Tipo de IA Generativa**           | LLM multimodal (text-to-code)                                |
 | **Nome do Modelo**                  | Claude Sonnet 4 (recomendado) ou OpenAI GPT-4o               |
 | **Versão**                          | Claude Sonnet 4 / GPT-4o (configurável pelo usuário)         |
-| **Tamanho (nº de parâmetros)**      | Claude Sonnet 4: ~175B parâmetros (estimado); GPT-4o: não divulgado oficialmente |
 | **Acesso**                          | API comercial (Anthropic e OpenAI) - gerenciado pela Sonar  |
 | **Suporte a Fine-tuning**           | Não - utiliza modelos base das APIs comerciais              |
 | **Suporte a RAG**                   | Sim (implícito) - contexto do código e regras do SonarQube são fornecidos ao LLM |
