@@ -406,6 +406,22 @@ cursor.execute(query, (user_id,))
 - **Priorização:** Atlassian AI sugere prioridade baseada em severidade SonarQube
 - **Sprint planning:** Tech debt do SonarQube alimenta backlog de refatoração
 
+### **SonarQube + Uizard**
+
+- **Limitado:** SonarQube analisa código gerado a partir de designs do Uizard
+- **Validação:** Garante que implementação do design respeita padrões de qualidade
+
+### **SonarQube + ReqView**
+
+- **Rastreabilidade:** Quality Gates do SonarQube validam requisitos não-funcionais documentados no ReqView
+- **Compliance:** Relatórios do SonarQube evidenciam conformidade com requisitos de segurança/qualidade
+
+### **SonarQube + Gemini 1.5 Pro**
+
+- **MCP Server:** Gemini pode consultar análises do SonarQube via MCP durante geração de código
+- **Prevenção:** Evita gerar código que violaria regras organizacionais
+- **Exemplo:** "Gemini, gera um endpoint REST seguindo as regras do nosso SonarQube profile"
+
 ---
 
 ## **Em quais casos deve ser evitada?**

@@ -222,6 +222,91 @@
 - Ambiente TRL 4 laboratório (free tier inadequado)
 - Projetos pequenos <5 hosts (overhead setup vs benefício)
 
+---
+
+## **Pontos de Integração com Outras Ferramentas de IA para ES**
+
+### **Datadog + SonarQube** ⭐ **COMPLEMENTARIDADE ESSENCIAL**
+
+**Workflow integrado:**
+
+- **SonarQube (Pre-production):** Análise estática, code quality, débito técnico
+- **Datadog (Production):** Performance runtime, errors, incident response
+- **Feedback loop:** Issues produção → Correlação com technical debt → Priorização refatoração
+
+**Integração técnica:**
+
+```yaml
+# Correlação via tags/metadata
+SonarQube Quality Gate fail → Block deploy
+Datadog APM: Latência alta → Correlacionar com SonarQube metrics (complexity, debt)
+Watchdog anomaly → Buscar código recente com issues SonarQube
+```
+
+### **Datadog + GitHub Copilot/CodeWhisperer**
+
+**Complementaridade:**
+
+- **Copilot/CodeWhisperer:** Gera código
+- **Datadog LLM Observability:** Monitora qualidade código gerado
+- **Bits AI:** Detecta se código AI introduziu bugs
+
+**Integração:**
+```javascript
+// Código gerado por Copilot
+async function getUserOrders(userId) {
+  const orders = await db.query(`SELECT * FROM orders WHERE user_id = ${userId}`);
+  return orders;
+}
+
+// Datadog APM detecta: SQL Injection vulnerability
+// Bits AI alerta: "Código gerado por AI tem security issue"
+// Recomendação: "Use prepared statements"
+```
+
+### **Datadog + Jira + Atlassian Intelligence**
+
+**Automação incident management:**
+```
+Datadog Watchdog anomaly → Webhook → Jira ticket automático
+  - Título: [INCIDENT] Checkout latency spike
+  - Descrição: Bits AI summary + APM links
+  - Assignee: On-call engineer (PagerDuty integration)
+  
+Atlassian AI prioriza baseado em:
+  - Datadog impact metrics (users affected, revenue loss)
+  - Historical MTTR for similar incidents
+```
+
+**Sprint planning data-driven:**
+
+- Datadog Top 10 Error-prone Services → Jira refactoring epics
+- DORA metrics → Velocity insights para planning
+
+### **Datadog + LLMs (Gemini, Claude, ChatGPT)**
+
+**LLM Observability para aplicações AI:**
+
+```python
+# TACO usando Gemini 1.5 Pro
+from ddtrace.llmobs import LLMObs
+
+LLMObs.enable()  # Rastreamento automático
+
+response = gemini.generate(
+    prompt=f"Explain this error to student: {code_error}"
+)
+
+# Datadog rastreia:
+# - Latency: 2.1s
+# - Tokens: 450 input, 380 output  
+# - Cost: $0.04/request
+# - Hallucination detection: Sentiment analysis
+# - Context overflow: Prompt size trends
+```
+
+---
+
 ## **Projeto AI4SE - CEIA-UFG:**
 
 ### **SIM para Produção Pós-Projeto**
