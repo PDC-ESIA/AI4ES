@@ -175,7 +175,7 @@ Descrição: A ferramenta representa uma categoria relevante de ferramentas AI4S
 
 ## **5) Decisão Final de Inclusão**
 
-**Decisão:** ☐ Incluir ☑ Incluir com ressalvas ☐ Não incluir  
+**Decisão:** ☐ Incluir ☐ Incluir com ressalvas ☑ Não incluir  
 
 **Justificativa**  
 > A ferramenta apresenta alto potencial agêntico para a fase de testes, porém sua inclusão no experimento é limitada pela dependência de um ambiente real em execução (URL ativa). Portanto, a adoção da ferramenta no protocolo de avaliação estará condicionada à disponibilidade de um ambiente em produção e à elaboração de prompts textuais para a criação dos testes. Essa dependência pode dificultar a padronização dos cenários e a comparação dos resultados.
