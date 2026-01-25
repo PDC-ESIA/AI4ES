@@ -2,28 +2,6 @@
 
 **Análise de critérios mínimos para que uma ferramenta seja incluída no estudo.**
 
----
-
-## **1) Identificação da Ferramenta**
-
-| Item | Preenchimento |
-|---|---|
-| **Nome da ferramenta:** | SonarQube |
-| **Versão (se aplicável):** | SonarQube Cloud Team (2025) / SonarQube Server Community Edition 10.x |
-| **URL oficial para acesso à ferramenta/documentação:** | [Site oficial](https://www.sonarqube.org) / [Documentação](https://docs.sonarsource.com) |
-| **Data da avaliação:** | Janeiro 2026 |
-| **Avaliador:** | Leonardo Côrtes Filho |
-
----
-
-## **2) Visão Geral da Ferramenta (1 parágrafo)**
-
-SonarQube é uma plataforma de análise estática de código com recursos de IA generativa (AI CodeFix, AI Code Assurance) destinada a equipes de desenvolvimento que buscam garantir qualidade, segurança e manutenibilidade do código-fonte. A ferramenta atua principalmente nas fases de implementação, testes e manutenção do SDLC, fornecendo análise automática em 35+ linguagens, detecção de vulnerabilidades (OWASP Top 10, CWE), cálculo de débito técnico e correções automáticas via LLMs (Claude Sonnet 4 ou GPT-4o). No contexto de avaliação, foi testada para validar código gerado por assistentes de IA (OE1), validar outputs de LLMs open-source (OE2), integrar-se a pipelines LLMOps (OE3), e fornecer feedback técnico para o protótipo TACO (OE5)# Critérios de seleção de ferramentas AI4SE
-
-**Análise de critérios mínimos para que uma ferramenta seja incluída no estudo.**
-
----
-
 ## **1) Identificação da Ferramenta**
 
 | Item | Preenchimento |
@@ -174,7 +152,7 @@ Parcialmente. SonarQube possui: (1) Motor análise estática (5000+ regras deter
 - **OE3 LLMOps:** Métricas como KPIs desempenho LLM, Quality Gates bloqueiam código ruim
 - **OE4/OE5:** AI CodeFix baseline refatoração, MCP Server integra TACO+Gemini
 
-**Há outras ferramentas muito similares já avaliadas?** Não, mas para registrar exemplos para possíveis estudos futuros: Semgrep, CodeQL, Snyk, Checkmarx. 
+**Há outras ferramentas muito similares já avaliadas?** Não, mas para registrar exemplos para possíveis estudos futuros: Semgrep, CodeQL, Snyk, Checkmarx.
 
 **Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
 
