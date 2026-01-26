@@ -48,7 +48,7 @@ SonarQube é uma plataforma de análise estática de código com recursos de IA 
 - **Manutenção:** Sim - one-click fix, gestão débito técnico, priorização severidade
 - **Segurança:** Sim - SAST robusto (OWASP Top 10, PCI-DSS, CWE), compliance reports
 
-**Atende ao critério?** [ ] Sim [X] Parcial [ ] Não
+**Atende ao critério?** ☐ Sim ☑ Parcial ☐ Não
 
 ---
 
@@ -71,7 +71,7 @@ Parcialmente. SonarQube possui: (1) Motor análise estática (5000+ regras deter
 3. **RAG Implícito:** AI CodeFix usa código+regra+contexto+best practices (não configurável)
 4. **MCP Server (Preview):** LLMs (Gemini/Claude) consultam análises SonarQube via Model Context Protocol
 
-**Atende ao critério?** [ ] Sim [X] Parcial [ ] Não
+**Atende ao critério?** ☐ Sim ☑ Parcial ☐ Não
 
 ---
 
@@ -89,7 +89,7 @@ Parcialmente. SonarQube possui: (1) Motor análise estática (5000+ regras deter
 
 **Retrabalho necessário:** Marginal (10-20%). Análise estática: 5-10% falsos positivos. AI CodeFix: 78% aprovadas, 22% requerem ajuste, 1.95 issues/tarefa introduzidas. Supervisão humana essencial.
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -117,7 +117,7 @@ Parcialmente. SonarQube possui: (1) Motor análise estática (5000+ regras deter
 - **Case studies:** 60% redução débito (6 meses), 3 CVEs evitados, código AI CodeFix 40% menos incidents
 - **TACO (OE5):** Alunos recebem feedback técnico preciso, code smells desde início, bugs pré-submissão
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -137,7 +137,7 @@ Parcialmente. SonarQube possui: (1) Motor análise estática (5000+ regras deter
 - AI CodeFix: Early Access (2024, funcional)
 - AI Code Assurance: Production-ready com limitações (só GitHub Copilot)
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -154,7 +154,7 @@ Parcialmente. SonarQube possui: (1) Motor análise estática (5000+ regras deter
 
 **Há outras ferramentas muito similares já avaliadas?** Não, mas para registrar exemplos para possíveis estudos futuros: Semgrep, CodeQL, Snyk, Checkmarx.
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -183,40 +183,30 @@ Parcialmente. SonarQube possui: (1) Motor análise estática (5000+ regras deter
 
 ### **Pontos fortes**
 
-- Cobertura SDLC excepcional: 6 fases (requisitos, projeto, implementação, testes, CI/CD, manutenção)
-- IA generativa funcional: AI CodeFix 78% aprovação, redução 95-98% tempo
-- Validação código AI: AI Code Assurance único mercado (Copilot/CodeWhisperer)
 - Análise estática robusta: 5000+ regras, 35 linguagens, OWASP/PCI-DSS/HIPAA
 - CI/CD nativo: Quality Gates bloqueiam merges, PR Decoration, webhooks
-- Technical Debt quantificado: SQALE methodology, priorização automática
-- Custo TRL 4: Community Edition $0 self-hosted
-- Maturidade: 15+ anos, 7M+ devs, Gartner "Challengers"
-- Complementaridade: OE1 (valida Copilot), OE2 (valida LLMs), OE3 (KPIs LLMOps), OE4 (baseline), OE5 (MCP TACO)
-- Categoria única: SAST + IA generativa + validação código AI + MCP
-- Documentação excelente
+- Capacidade de quantificar débito técnico de forma objetiva, facilitando priorização em sprints
+- Documentação clara permitiu configuração inicial sem necessidade de treinamento especializado
+- Eficaz na detecção precoce de vulnerabilidades de segurança antes da integração em produção
 
 ### **Pontos fracos**
 
+- Geração excessiva de alertas em projetos legados, exigindo configuração inicial trabalhosa
 - AI CodeFix Early Access: não production-ready todas orgs, cobertura limitada (500/5000 regras)
 - APIs externas: offline impossível (Anthropic/OpenAI connectivity)
 - Custo escalável: SonarCloud +125% sem features (risco pricing)
-- Vendor lock-in AI: LLM APIs via Sonar, sem fine-tuning/RAG custom
-- Falsos positivos: 5-10% (configuração necessária)
 - Não gera código do zero: apenas corrige existente (vs Copilot)
-- Setup complexo: Quality Profile 2-4 dias
-- Alert fatigue: primeiro scan legado milhares issues
 - Performance CI/CD: +2-5min pipeline
-- AI CodeFix limitado: 22% requerem ajuste, supervisão necessária
 
 ---
 
 ## **5) Decisão Final de Inclusão**
 
-**Decisão:** ☑ **Incluir**
+**Decisão:** ☑ Incluir ☐ Incluir com ressalvas ☐ Não incluir
 
 **Justificativa:**
 
-A ferramenta oferece capacidades únicas de validação de código gerado por IA através do AI Code Assurance, sendo a única no mercado com esta funcionalidade, além de integração com LLMs via MCP Server e análise estática robusta com mais de 5000 regras em 35 linguagens. Sua relevância é essencial para cinco objetivos específicos do projeto: validação de assistentes como Copilot e CodeWhisperer, validação de outputs de LLMs open-source, fornecimento de métricas para pipelines LLMOps, estabelecimento de baseline para técnicas de refatoração, e integração com o protótipo TACO através do Gemini. Os riscos identificados são gerenciáveis através de supervisão humana, uso da Community Edition como fallback e configuração adequada do Quality Profile. A complementaridade com outras ferramentas avaliadas, onde assistentes de código geram e SonarQube valida, somada à maturidade técnica de 15 anos com 7 milhões de desenvolvedores e reconhecimento Gartner, reforçam a decisão de inclusão.
+A ferramenta oferece capacidades únicas de validação de código gerado por IA através do AI Code Assurance, sendo a única no mercado com esta funcionalidade, além de integração com LLMs via MCP Server e análise estática robusta com mais de 5000 regras em 35 linguagens.
 
 ---
 

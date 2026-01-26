@@ -50,7 +50,7 @@ Datadog é uma plataforma SaaS de monitoramento e observabilidade full-stack com
 - **Manutenção:** Sim - root cause analysis automática, postmortems gerados, MTTR 4min vs 30-60min manual
 - **CI/CD:** Sim - pipeline tracing, deployment correlation, DORA metrics nativas
 
-**Atende ao critério?** [ ] Sim [X] Parcial [ ] Não
+**Atende ao critério?** ☐ Sim ☑ Parcial ☐ Não
 
 ---
 
@@ -73,7 +73,7 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 3. **LLM Observability:** Rastreia latency/tokens/cost, detecta hallucinations, prompt optimization (único mercado)
 4. **Bits AI Dev (Preview):** Gera code fixes + unit tests, abre PRs automaticamente
 
-**Atende ao critério?** [ ] Sim [X] Parcial [ ] Não
+**Atende ao critério?** ☐ Sim ☑ Parcial ☐ Não
 
 ---
 
@@ -91,7 +91,7 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 
 **Retrabalho necessário:** Marginal (10-15%). Watchdog: false positives 5-10% após tuning. Bits AI SRE: 15% erram root cause (supervisão humana crítica).
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -119,7 +119,7 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 - Uptime: 99.5% → 99.9% (forecasting + auto-remediation)
 - LLM quality: hallucination 3.2% → 0.4%, cost $1.20 → $0.48/conversa
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -140,7 +140,7 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 - Bits AI SRE: Limited Availability (2024)
 - LLM Observability: Production-ready (líder mercado)
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -148,7 +148,8 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 
 **Categoria:** Observabilidade Runtime com IA (APM + AI Incident Response + LLM Observability)
 
-**Adiciona diversidade?** Sim - complementar crítico:
+**Adiciona diversidade?** Sim - complementar:
+
 - **vs SonarQube:** SonarQube pré-deploy (análise estática) + Datadog pós-deploy (runtime) = ciclo completo
 - **vs Copilot:** Copilot gera → SonarQube valida → Deploy → Datadog monitora (pipeline completo)
 - **OE3 LLMOps:** LLM Observability ÚNICO mercado (OpenAI/Anthropic/Bedrock) - essencial monitoring pipeline
@@ -156,7 +157,7 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 
 **Há outras ferramentas muito similares já avaliadas?** Não, mas para registrar exemplos para possíveis estudos futuros: New Relic, Dynatrace, Prometheus.
 
-**Atende ao critério?** [X] Sim [ ] Parcial [ ] Não
+**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
 
 ---
 
@@ -169,7 +170,7 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 - ☑ Dependência IA (equipes podem confiar cegamente, ignorar alertas por fadiga)
 - ☑ Outros: **Custo altíssimo, Vendor lock-in SaaS-only, Free tier inadequado**
 
-**Atende ao critério?** [ ] Sim [X] Parcial [ ] Não
+**Atende ao critério?** ☐ Sim ☑ Parcial ☐ Não
 
 ---
 
@@ -200,7 +201,7 @@ Parcialmente. Core monitoring funciona sem IA (desde 2010). IA/ML é essencial p
 
 ## **5) Decisão Final de Inclusão**
 
-**Decisão:** **Não**
+**Decisão:** ☐ Incluir ☐ Incluir com ressalvas ☑ Não incluir  
 
 **Justificativa(s):**
 
