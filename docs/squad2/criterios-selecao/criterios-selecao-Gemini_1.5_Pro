@@ -1,0 +1,215 @@
+# Critérios de seleção de ferramentas AI4SE 
+
+**Análise de critérios mínimos para que uma ferramenta seja incluída no estudo.**
+
+---
+
+## **1) Identificação da Ferramenta**
+
+| Item | Preenchimento |
+|---|---|
+| **Nome da ferramenta:** | Gemini 1.5 Pro |
+| **Versão (se aplicável):** | gemini-1.5-pro-002 |
+| **URL oficial para acesso à ferramenta/documentação:** | [Documentação](https://ai.google.dev/docs) |
+| **Data da avaliação:** | 26/01/2026 |
+| **Avaliador:** | Vinícius Epíndola |
+
+---
+
+## **2) Visão Geral da Ferramenta (1 parágrafo)**
+
+Descreva brevemente:
+- O propósito principal da ferramenta  
+- Para que tipo de usuário/atividade ela é destinada  
+- Em que contexto foi testada na avaliação prática  
+
+> _O Gemini 1.5 Pro é um modelo de IA multimodal de longo contexto (2M tokens) voltado para engenheiros de software, cujo propósito é automatizar e analisar tarefas complexas em todo o SDLC_  
+> 
+
+---
+
+## **3) Avaliação por Critérios de Inclusão**
+
+Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-chave fornecendo as evidências necessárias.
+
+---
+
+### **C1 — Cobertura do SDLC**
+
+Descrição: A ferramenta apoia explicitamente pelo menos uma fase do SDLC (ex.: requisitos, projeto, implementação, testes, manutenção).
+
+**Fase(s) do SDLC apoiadas (marque todas):**  
+- [x] Requisitos  
+- [x] Projeto/Arquitetura  
+- [x] Implementação  
+- [x] Testes  
+- ☐ Integração/CI-CD  
+- [x] Manutenção/Evolução  
+- ☐ Outra: ___________
+
+**Perguntas orientadoras (responder brevemente):**
+- Em qual(is) fase(s) a ferramenta atua de forma explícita?  
+
+Atua de forma transversal em Requisitos, Projeto, Implementação, Testes e Manutenção. Sua única limitação direta é a execução física de pipelines de CI-CD, embora possa gerar os scripts de configuração (YAML/Bash) para tal fazer isso.
+
+- A atuação cobre atividades centrais da fase? Quais? 
+
+Sim. Nos Requisitos, realiza elicitação e análise de inconsistências; no Projeto, gera diagramas Mermaid e definições de API; na Implementação, escreve código funcional; nos Testes, gera casos de teste unitários; e na Manutenção, auxilia no refactoring e explicação de código legado.
+
+**Atende ao critério?** [x] Sim ☐ Parcial ☐ Não  
+
+---
+
+### **C2 — Apoio ativo por IA**
+
+Descrição: A ferramenta realiza geração, sugestão, análise ou automação inteligente baseada em IA (não apenas edição ou automação tradicional).  
+
+**Tipo de apoio por IA (marque):**  
+- [x] Geração automática  
+- [x] Sugestão/recomendação  
+- [x] Análise inteligente  
+- [x] Automação baseada em IA  
+- ☐ Outro: ___________
+
+**Perguntas orientadoras (responder brevemente):**
+- A IA é central para a funcionalidade da ferramenta?  
+
+Sim. O Gemini 1.5 Pro é um modelo de linguagem de grande escala (LLM) em que as funções dependem integralmente de algoritmos de deep learning para processar e gerar informações.
+
+- Que capacidades “inteligentes” foram observadas na prática?  
+
+Foi observado a geração de código complexo a partir de descrições em linguagem natural, raciocínio lógico para depuração de erros, capacidade de síntese de grandes volumes de documentos e compreensão multimodal de diagramas de arquitetura
+
+
+**Atende ao critério?** [x] Sim ☐ Parcial ☐ Não
+
+---
+
+### **C3 — Redução de esforço manual**
+
+Descrição: A ferramenta reduz ou elimina esforço manual recorrente em atividades típicas de ES.
+
+**Perguntas orientadoras:**
+- Quais tarefas repetitivas foram reduzidas ou eliminadas?  
+
+A ferramenta elimina a necessidade de escrita manual de código repetitivo, geração de dados de teste fictícios para banco de dados e a transcrição manual de requisitos de documentos PDF/imagens para código.
+
+- O ganho de produtividade foi significativo ou marginal?  
+
+O ganho é significativo. Tarefas que levariam horas, como a criação de uma API CRUD completa com validações baseada em uma lista de requisitos, são realizadas em menos tempo. A capacidade de resumir discussões técnicas e gerar documentação técnica automaticamente acelera o ciclo de entrega também.
+
+- Foi necessário muito retrabalho/revisão manual?    
+
+Moderado. Embora a ferramenta seja altamente capaz, ainda exige uma revisão técnica e curadoria humana para garantir que a lógica de negócio específica esteja 100% correta e que não existam alucinações.
+
+
+**Atende ao critério?** [x] Sim ☐ Parcial ☐ Não
+
+---
+
+### **C4 — Impacto na Qualidade**
+
+Descrição: A ferramenta demonstra potencial para melhorar qualidade técnica (código, arquitetura, testes) ou qualidade documental (requisitos, especificações, rastreabilidade, etc.).
+
+**Tipo de impacto observado (marque):**  
+- [x] Qualidade dos requisitos
+- [x] Qualidade do design
+- [x] Qualidade do código  
+- [x] Qualidade dos testes  
+- [x] Qualidade da documentação  
+- [x] Consistência/detecção de erros  
+- ☐ Outro: ___________
+
+**Perguntas orientadoras:**
+- A ferramenta ajudou a evitar erros ou inconsistências na tarefa realizada?  
+
+Sim. O modelo identificou falhas de segurança potenciais e apontou inconsistências lógicas.
+
+- Houve melhoria perceptível na qualidade do artefato gerado?  
+
+Sim. O código gerado segue padrões de mercado (Clean Code), com comentários explicativos e tipagem adequada. Além disso, a documentação gerada é estruturada e muito boa.
+
+
+**Atende ao critério?** [x] Sim ☐ Parcial ☐ Não  
+
+---
+
+### **C5 — Maturidade e Adoção**
+
+Descrição: Há evidências de uso prático, integração com outras ferramentas, documentação disponível e/ou casos de uso reportados.
+
+**Marque o que foi observado:**
+- [x] Documentação clara e acessível  
+- [x] Tutoriais/exemplos disponíveis  
+- [x] Integração com ferramentas comuns (GitHub, GitLab, VS Code, Jira, etc.)  
+- [x] Comunidade ativa / relatos de uso  
+- [x] Estudos acadêmicos ou relatos industriais  
+
+**Atende ao critério?** [x] Sim ☐ Parcial ☐ Não
+
+---
+
+### **C6 — Representatividade Funcional**
+
+Descrição: A ferramenta representa uma categoria relevante de ferramentas AI4SE (ex.: geração de código, apoio a requisitos, teste automatizado, análise estática com IA, etc.).
+
+**Perguntas orientadoras:**
+- Que “categoria” de AI4SE esta ferramenta representa?  
+
+Ela representa a categoria de Modelos de Fundação Multimodais de Longo Contexto (General-Purpose LLMs for SE). Diferente de uma ferramenta de nicho, ela é uma solução que atua como motor para geração de código, análise de requisitos e arquitetura.
+
+- Ela adiciona diversidade ao conjunto de ferramentas avaliadas?  
+
+Sim. Gemini traz a flexibilidade da linguagem natural e a capacidade única de correlacionar informações de diferentes tipos de arquivos (multimodalidade) em uma janela de contexto massiva.
+
+- Há outras ferramentas muito similares já avaliadas?  
+
+No contexto desta avaliação, ferramentas como o GPT-4o ou Claude 3.5 Sonnet seriam concorrentes diretos.
+
+
+**Atende ao critério?** [x] Sim ☐ Parcial ☐ Não  
+
+---
+
+### **C7 — Riscos e Limitações** 
+
+**Riscos observados (se houver):**
+- [x] Pode introduzir erros críticos  
+- [x] Pode gerar resultados enganosos  
+- [x] Dependência excessiva de IA  
+- [x] Outros: Privacidade de Dados: O envio de requisitos sensíveis ou código proprietário para nuvens de terceiros exige políticas de governança de dados fortes para evitar vazamentos de propriedade intelectual.
+
+**Atende ao critério?** [x] Sim ☐ Parcial ☐ Não 
+
+---
+
+## **4) Sobre os testes realizados até o momento**
+
+### **Pontos fortes (bullet points)**
+
+- Contexto de 2M de Tokens: Permite a análise simultânea de vários artefatos, garantindo consistência sistêmica.
+
+- Versatilidade Transversal: Atua com alta qualidade em todas as fases.
+
+- Raciocínio Multimodal: Capacidade de converter imagens de interfaces e diagramas de fluxo em código funcional. 
+ 
+### **Pontos fracos (bullet points)**
+
+- Risco de Alucinação: Tendência a sugerir parâmetros inexistentes, exigindo revisão técnica constante.
+
+- Latência em Prompts Longos: O tempo de resposta aumenta significativamente ao processar grandes volumes de arquivos simultaneamente.
+
+- Dependência de Nuvem: A necessidade de conexão constante com a API limita o uso em ambientes de desenvolvimento offline ou altamente restritos.
+
+---
+
+## **5) Decisão Final de Inclusão**
+
+**Decisão:** [x] Incluir ☐ Incluir com ressalvas ☐ Não incluir  
+ 
+---
+
+## **6) Evidências Anexas (opcional)**
+- Links:  [Documentação Técnica](https://aistudio.google.com/), [Benchmarks de Codificação e Raciocínio](https://storage.googleapis.com/deepmind-media/gemini/gemini_v1_5_report.pdf)
+
+---
