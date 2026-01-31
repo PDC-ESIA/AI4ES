@@ -161,12 +161,12 @@ O Visure é uma plataforma de ALM (Application Lifecycle Management) focada na E
 - [ ] Pode introduzir erros críticos
 - [ ] Pode gerar resultados enganosos
 - [ ] Dependência excessiva de IA
-- [x] Outros: Custo elevado e Curva de aprendizado.
+- [x] Outros: Custo elevado, Barreira de entrada, Inviabilidade de teste prático por depender de documentação e licença Enterprise.
 
 **Atende ao critério?** (A ferramenta é segura o suficiente para ser incluída?)
-- [x] Sim
+- [ ] Sim
 - [ ] Parcial
-- [ ] Não
+- [x] Não
 
 ---
 
@@ -180,8 +180,9 @@ O Visure é uma plataforma de ALM (Application Lifecycle Management) focada na E
 
 **Pontos fracos:**
 * Ferramenta Enterprise "pesada", com interface complexa para iniciantes.
-* Não possui versão gratuita permanente (apenas Trial).
+* Não possui versão gratuita permanente.
 * Foca apenas no texto, não auxiliando na geração de diagramas ou código a partir dos requisitos.
+* **Bloqueante:** Acesso depende de agendamento comercial, inviabilizando testes unitários ágeis.
 
 ---
 
@@ -189,11 +190,11 @@ O Visure é uma plataforma de ALM (Application Lifecycle Management) focada na E
 
 **Decisão:**
 - [ ] Incluir
-- [x] Incluir com ressalvas
-- [ ] Não incluir
+- [ ] Incluir com ressalvas
+- [x] Não incluir
 
 **Justificativa resumida em caso de não incluir:**
-[N/A]
+Ferramenta excluída devido à barreira de acesso e custo elevado, o que inviabiliza a realização dos testes práticos e a validação unitária necessárias para o estudo comparativo do Squad. É uma ferramenta muito prática e útil para a função de requisitos e gestão de documentos, mas é usado em projetos mais complexos."
 
 ---
 
