@@ -8,7 +8,7 @@
 | ------------------------ | ---------- |
 | **Responsável**          | Claudio Ferreira |
 | **Squad**                | Squad 1    |
-| **Data de início**       | 25/11      |
+| **Data de início**       | 25/11/2024 |
 | **Versão do formulário** | 1.0        |
 
 ---
