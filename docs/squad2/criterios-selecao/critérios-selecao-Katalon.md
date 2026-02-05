@@ -9,7 +9,7 @@
 | Item | Preenchimento |
 |---|---|
 | **Nome da ferramenta:** | Katalon Platform (Katalon Studio + TestOps + TrueTest) |
-| **Versão (se aplicável):** | Versão 2025 (StudioAssist + TrueTest Agent-Aware Testing - janeiro 2026) |
+| **Versão (se aplicável):** | v11 (StudioAssist + TrueTest Agent-Aware Testing - janeiro 2026) |
 | **URL oficial para acesso à ferramenta/documentação:** | https://katalon.com / https://docs.katalon.com |
 | **Data da avaliação:** | Janeiro 2026 |
 | **Avaliador:** | Victor Rangel - Equipe de Pesquisa AI4SE - CEIA-UFG |
@@ -22,7 +22,7 @@ Descreva brevemente:
 - Para que tipo de usuário/atividade ela é destinada  
 - Em que contexto foi testada na avaliação prática  
 
->Katalon Platform é uma **plataforma de automação de testes augmented-by-AI** abrangente, composta por três produtos principais: **Katalon Studio** (IDE local para criação/execução de testes), **Katalon TestOps** (gerenciamento cloud de testes e analytics) e **Katalon TrueTest** (geração automática de testes E2E de comportamento real capturado em produção). A plataforma destina-se a engenheiros de QA, desenvolvedores e equipes DevOps que necessitam automatizar testes para aplicações web, mobile (iOS/Android), API e desktop. Utiliza **StudioAssist** (GPT-4.1-mini via Katalon AI Service ou modelos externos via BYOK) para geração de código de teste via natural language e **TrueTest** para captura de tráfego real (human e **agentic**) e geração de testes E2E. Recursos chave incluem **self-healing** (correção automática de locators quebrados), **AI Failure Analysis** (explicação de root causes), **Agent-Aware Testing** (suporta tráfego de agentes IA, não apenas humanos - first in market) e integração nativa com CI/CD. O contexto de teste envolveu tarefas de **geração de testes E2E via TrueTest**, **self-healing de testes UI**, **geração de API tests de OpenAPI specs**, **StudioAssist code generation** e **AI Failure Analysis** em aplicações web Java/Groovy e REST APIs.
+>Katalon Platform é uma **plataforma de automação de testes augmented-by-AI** abrangente, composta por três produtos principais: **Katalon Studio** (IDE local para criação/execução de testes), **Katalon TestOps** (gerenciamento cloud de testes e analytics) e **Katalon TrueTest** (geração automática de testes E2E de comportamento real capturado em produção). A plataforma destina-se a engenheiros de QA, desenvolvedores e equipes DevOps que necessitam automatizar testes para aplicações web, mobile (iOS/Android), API e desktop. Utiliza **StudioAssist** (GPT-4.1-mini via Katalon AI Service ou modelos externos via BYOK) para geração de código de teste via natural language e **TrueTest** para captura de tráfego real (human e **agentic**) e geração de testes E2E. Recursos chave incluem **self-healing** (correção automática de locators quebrados), **AI Failure Analysis** (explicação de root causes), **Agent-Aware Testing** (suporta tráfego de agentes IA, não apenas humanos - first in market) e integração nativa com CI/CD. O contexto de teste envolveu tarefas de **geração de testes E2E via TrueTest**, **self-healing de testes UI**, **geração de API tests de OpenAPI specs**, **StudioAssist code generation** e **AI Failure Analysis** em aplicações web Java/Groovy e REST APIs,O contexto de teste envolveu **tentativa** de tarefas de geração de testes E2E via TrueTest, self-healing de testes UI, geração de API tests de OpenAPI specs, StudioAssist code generation e AI Failure Analysis em aplicações web Java/Groovy e REST APIs. **Importante**: A avaliação foi significativamente limitada por restrições de acesso (free tier não inclui recursos de IA) e problemas críticos de onboarding (deadlock de permissões), resultando em avaliação parcial baseada principalmente em documentação oficial e literatura secundária.
 
 ---
 
@@ -35,13 +35,13 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 ### **C1 — Cobertura do SDLC**
 
 **Fase(s) do SDLC apoiadas (marque todas):**  
-- ☑ Requisitos  
+- ☐ Requisitos  
 - ☐ Projeto/Arquitetura  
 - ☐ Implementação (foco em test code, não production code)
 - ☑ Testes  
 - ☑ Integração/CI-CD  
 - ☑ Manutenção/Evolução  
-- ☑ Outra: **Operações (Monitoramento via TrueTest Agent)**
+- ☐ Outra: 
 
 **Perguntas orientadoras:**
 
@@ -50,7 +50,6 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 >- **Integração/CI-CD**: Integração nativa com Jenkins, Azure DevOps, GitLab CI, GitHub Actions, CircleCI. TestOps gerencia execução paralela e scheduling.
 >- **Manutenção**: Self-healing detecta e corrige locators quebrados automaticamente. SmartWait evita flakiness esperando elementos carregarem.
 >- **Operações**: TrueTest Agent monitora produção em tempo real para capturar tráfego real (human e agentic) e identificar gaps de cobertura.
->- **Requisitos (parcial)**: TrueTest captura comportamento real de usuários como proxy de requisitos não documentados. Integração com Jira permite sincronização de requirements. Manual Test Case Generator cria test cases de tickets Jira via GPT.
 
 **A atuação cobre atividades centrais da fase? Quais?**  
 >Sim, para fases em que atua:
@@ -61,7 +60,7 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 
 **Observação importante**: Katalon é **ferramenta de teste**, não de desenvolvimento de software de produção. Não atua em implementação de código de produção, arquitetura de sistemas ou design de aplicações. Seu escopo é **exclusivamente teste e qualidade**.
 
-**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
+**Atende ao critério?** ☐ Sim ☐ Parcial ☑ Não
 
 ---
 
@@ -77,7 +76,7 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 **Perguntas orientadoras:**
 
 **A IA é central para a funcionalidade da ferramenta?**  
->**Sim**, mas de forma **complementar**. Katalon Studio roda sem IA (record & playback tradicional), mas recursos de IA são **diferenciais competitivos** chave:
+>**Não**, Katalon Studio roda sem IA (record & playback tradicional), mas recursos de IA são **diferenciais competitivos** chave:
 >- **StudioAssist** (GPT-4.1-mini): Central para geração de código de teste via natural language.
 >- **TrueTest**: IA é central para análise comportamental de tráfego real e geração de User Journey Maps + test cases.
 >- **Self-healing**: ML/IA para detectar locators quebrados e aplicar fixes automaticamente.
@@ -129,13 +128,13 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 ### **C4 — Impacto na Qualidade**
 
 **Tipo de impacto observado (marque):**  
-- ☑ Qualidade dos requisitos (TrueTest captura requisitos implícitos)
+- ☐ Qualidade dos requisitos (TrueTest captura requisitos implícitos)
 - ☐ Qualidade do design (não aplicável - ferramenta de teste)
 - ☐ Qualidade do código de produção (não aplicável)
 - ☑ Qualidade dos testes (core strength)
 - ☑ Qualidade da documentação (test cases documentados, AI explica test code)
 - ☑ Consistência/detecção de erros (self-healing, visual testing, AI Failure Analysis)
-- ☑ Outro: **Cobertura de testes (TrueTest Gap Analysis)**
+- ☐ Outro: 
 
 **Perguntas orientadoras:**
 
@@ -148,29 +147,28 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 >- **AI Failure Analysis**: Ajuda a distinguir entre bugs reais e falhas de ambiente/configuração (acelera triagem).
 
 **Houve melhoria perceptível na qualidade do artefato gerado?**  
->Sim. Evidências:
+>Pouca, dependeu muito de conhecimento de programação. Evidências:
 >- **Testes**: Test cases gerados são claros, legíveis e seguem padrões (Page Object Model). StudioAssist gera código Groovy/Java válido (mas requer revisão para alucinações).
 >- **Cobertura**: TrueTest garante cobertura de fluxos **reais**, não apenas casos imaginados (aumenta cobertura efetiva vs QA tradicional).
 >- **Estabilidade**: Self-healing reduz significativamente falsos positivos em suites de testes (suites mais estáveis = maior confiança).
 >- **Documentação**: Test cases são auto-documentados; AI Failure Analysis explica falhas em linguagem simples.
 >- **Consistência**: Visual Testing AI detecta regressões visuais inesperadas (garante consistência de UI).
 
-**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não  
+**Atende ao critério?** ☐ Sim ☐ Parcial ☑ Não  
 
 ---
 
 ### **C5 — Maturidade e Adoção**
 
 **Marque o que foi observado:**
-- ☑ Documentação clara e acessível  
-- ☑ Tutoriais/exemplos disponíveis  
+- ☐ Documentação clara e acessível  
+- ☐ Tutoriais/exemplos disponíveis  
 - ☑ Integração com ferramentas comuns (GitHub, GitLab, VS Code, Jira, etc.)  
 - ☑ Comunidade ativa / relatos de uso  
-- ☑ Estudos acadêmicos ou relatos industriais  
+- ☐ Estudos acadêmicos ou relatos industriais  
 
 **Evidências:**
 >- **Documentação oficial**: Docs completos em https://docs.katalon.com com guias, API reference, tutoriais e best practices.
->- **Tutoriais**: Katalon Academy (cursos gratuitos), YouTube oficial (centenas de vídeos), webinars mensais.
 
 **Integrações**: 
   >- CI/CD: Jenkins, Azure DevOps, GitLab CI, GitHub Actions, CircleCI, TeamCity.
@@ -178,11 +176,6 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
   >- Cloud: AWS Device Farm, BrowserStack, Sauce Labs, LambdaTest.
   >- ALM: qTest, TestRail, Zephyr.
 >- **Comunidade**: Katalon Community Forum (ativo desde 2016), 65k+ usuários, Slack community, presença forte em Stack Overflow.
-
-**Adoção**: 
-  >- **Gartner Peer Insights**: 4.4/5 (70+ reviews).
-  >- **G2 Crowd**: 4.4/5 (300+ reviews, Leader em Software Test Automation Winter 2025).
-  >- **Capterra**: 4.4/5 (40+ reviews).
 
 >- **Estudos acadêmicos**: Múltiplos papers em conferências IEEE/ACM sobre test automation, self-healing, AI-driven testing (2022-2025).
 >- **Cases industriais**: Publicados em site oficial (Fortune 500 companies: Deloitte, Fujitsu, Orange, etc.).
@@ -194,8 +187,9 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 >- **StudioAssist**: Beta lançado em 2024, GA em 2025 (1 ano no mercado).
 >- **Agent-Aware Testing**: Lançado em janeiro 2026 (muito recente).
 
-**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
+**Atende ao critério?** ☐ Sim ☐ Parcial ☑ Não
 
+**Observação**: Apesar de existirem estudos acadêmicos sobre self-healing e AI testing em geral, a documentação específica do Katalon (StudioAssist, TrueTest) não foi suficientemente clara para uso efetivo durante testes práticos. Tutoriais disponíveis focam em uso básico (record & playback, scripting manual), não em workflows avançados de AI-augmented testing (StudioAssist, TrueTest, Agent-Aware Testing). **Problemas específicos não resolvidos pela documentação**: (1) como acessar recursos de IA no free tier (documentação não deixa claro que são bloqueados), (2) como resolver deadlock de permissões para usuário único, (3) workflows práticos de integração StudioAssist + TrueTest + TestOps.
 ---
 
 ### **C6 — Representatividade Funcional**
@@ -204,7 +198,6 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 
 **Que "categoria" de AI4SE esta ferramenta representa?**  
 >**Categoria: Plataforma de Automação de Testes Augmented-by-AI**
-
 >Katalon representa categoria de **ferramentas AI4SE focadas em teste e qualidade** que combinam:
 >- Automação tradicional de testes (record & playback, scripting).
 >- **AI-augmented testing**: StudioAssist para code generation, self-healing, AI >Failure Analysis.
@@ -213,7 +206,7 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 >- **Cloud test orchestration**: TestOps para gerenciamento centralizado.
 
 **Ela adiciona diversidade ao conjunto de ferramentas avaliadas?**  
->**Sim**. Diversidade significativa:
+>**Não Muita**. Diversidade significativa:
 >- **Escopo diferente**: Katalon foca em **teste**, não em desenvolvimento de código de produção (vs Zencoder, Google Antigravity que focam em codificação).
 >- **Agent-Aware Testing**: Única ferramenta avaliada que suporta **tráfego de agentes IA** (tendência emergente crítica para era de agentic applications).
 >- **Behavior-driven approach**: TrueTest captura tráfego **real** de produção (vs testes gerados de specs/requisitos).
@@ -223,11 +216,10 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 **Há outras ferramentas muito similares já avaliadas?**  
 >Não no contexto deste estudo. Ferramentas similares no mercado (Selenium + plugins, Cypress, Playwright) mas Katalon é única em:
 >- **All-in-one platform**: Studio + TestOps + TrueTest integrados nativamente.
->- **Agent-Aware Testing**: First in market (janeiro 2026).
 >- **TrueTest**: Geração de testes de tráfego real (vs geração de specs).
 >- **Self-healing nativo**: Sem necessidade de plugins externos.
 
-**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não  
+**Atende ao critério?** ☐ Sim ☐ Parcial ☑ Não  
 
 ---
 
@@ -237,7 +229,7 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 - ☑ Pode introduzir erros críticos  
 - ☑ Pode gerar resultados enganosos  
 - ☑ Dependência excessiva de IA  
-- ☑ Outros: **Dependência de cloud, custos recorrentes, vendor lock-in, curva de aprendizado**
+- ☑ Outros: **Dependência de cloud, custos recorrentes, vendor lock-in, curva de aprendizado, dificuldade para testes**
 
 **Detalhamento dos riscos:**
 
@@ -284,7 +276,15 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
     Lançado em janeiro 2026 (muito recente).
     - Pode ter bugs, limitações ou mudanças breaking.
 
-**Atende ao critério?** ☑ Sim ☐ Parcial ☐ Não
+>11. **Falha crítica de UX no onboarding (evidência empírica)**:
+- Usuário único (criador da conta) não recebeu automaticamente papel de "Owner" conforme prometido na documentação.
+- Sistema apresentou deadlock: para se tornar admin, precisa de outro admin para promovê-lo, mas não existe outro usuário.
+- Documentação oficial contradiz comportamento real do produto.
+- Suporte técnico forneceu orientação genérica sem resolver o problema específico.
+- Tempo desperdiçado: 2h30-3h sem resolução.
+- Evidência de "dark pattern": Free tier intencionalmente dificulta acesso a recursos administrativos para forçar upgrade.
+
+**Atende ao critério?** ☐ Sim ☐ Parcial ☑ Não
 
 ---
 
@@ -305,7 +305,8 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 - **SmartWait**: Elimina flakiness de timing (testes mais confiáveis).
 
 ### **Pontos fracos (bullet points)**
-- **Interface não intuitiva**: Plataforma com 3 produtos integrados (Studio, TestOps, TrueTest) apresenta curva de aprendizado acentuada; navegação entre módulos não é sempre óbvia para novos usuários; documentação fragmentada entre produtos.
+- **Deadlock de permissões no onboarding**: Durante testes práticos, o fluxo de criação de conta apresentou problema crítico: usuário único (criador da conta) não recebeu automaticamente papel de "Owner", ficando sem acesso a recursos administrativos. Para se tornar admin, outro admin precisaria promovê-lo - mas não existe outro usuário. Documentação oficial contradiz comportamento real (afirma que criador é automaticamente Owner). Suporte técnico forneceu orientação genérica de 2000+ palavras sem resolver o problema específico. Isso evidencia **falha crítica de UX** e **processo de onboarding inadequado** para uso em pesquisa aplicada.
+- **Interface não intuitiva e documentação fragmentada**: Plataforma com 3 produtos integrados (Studio, TestOps, TrueTest) apresenta curva de aprendizado acentuada; navegação entre módulos não é óbvia para novos usuários; **durante testes práticos, foi difícil localizar funcionalidades de IA sem conhecimento**; documentação oficial foca em casos triviais, não em workflows complexos de AI-augmented testing.
 - **Escopo limitado a testes**: Não atua em desenvolvimento de código de produção (vs ferramentas agentic como Zencoder/Antigravity).
 - **Custos elevados**: \$208/mês por usuário (Ultimate) + \$69-\$399/mês TestCloud + \$125-\$250/mês TrueTest (pode ser barreira para startups/pequenas equipes).
 - **Vendor lock-in**: Formato proprietário dificulta migração para outras ferramentas.
@@ -322,18 +323,26 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 
 ## **5) Decisão Final de Inclusão**
 
-**Decisão:** ☐ Incluir ☑ Incluir com ressalvas ☐ Não incluir  
+**Decisão:** ☐ Incluir ☐ Incluir com ressalvas ☑ Não incluir  
 
-**Justificativa resumida em caso de não incluir (3–5 linhas):**  
+**Justificativa resumida em caso de não incluir:**
 
-**Katalon Platform atende todos os 7 critérios de inclusão.** Incluída com ressalvas por: 
-- (1) escopo exclusivo em testes, não codificação de produção; 
-- (2) custos elevados (\$208-\$650+/mês); 
-- (3) vendor lock-in proprietário; 
-- (4) dependência de cloud para TestOps/TrueTest; 
-- (5) riscos de compliance ao capturar dados reais de produção. 
+**Incompatibilidade de escopo e metodologia:**
+- (1) Escopo exclusivo em testes automatizados, não desenvolvimento de código de produção (fora do escopo central do projeto TACO).
 
-**Recomendação: Incluir** — diferencial único de Agent-Aware Testing (first in market, jan 2026) é crítico para pesquisa de agentes inteligentes, alinhado com objetivos de pesquisa do TACO.
+**Barreiras técnicas e econômicas:**
+- (2) Custos proibitivos para pesquisa acadêmica ($208-$650+/mês por desenvolvedor).
+- (3) Free tier extremamente limitado (sem recursos de IA).
+- (6) Trial insuficiente para avaliação rigorosa (14-30 dias com sessões limitadas).
+
+**Riscos técnicos e de governança:**
+- (4) Vendor lock-in via formato proprietário (.tc, .ts).
+- (5) Dependência de cloud obrigatória (TestOps/TrueTest não self-hosted).
+- (5) Riscos de compliance (captura tráfego real de produção com possíveis dados sensíveis).
+
+**Falha crítica de UX (evidência empírica):**
+- (7) Deadlock de permissões no onboarding (usuário único não recebe papel de Owner automaticamente conforme documentação), com suporte técnico ineficaz, resultando em **2h30-3h de tempo desperdiçado** sem resolução - barreira inaceitável para experimentação em pesquisa aplicada (TRL 4).
+
 
 ---
 
@@ -344,27 +353,69 @@ Para cada critério, marque **Sim / Parcial / Não**, responda às perguntas-cha
 - Katalon Docs: https://docs.katalon.com
 - Katalon Academy: https://academy.katalon.com
 - Katalon TrueTest: https://katalon.com/truetest
-- Katalon StudioAssist: https://docs.katalon.com/docs/studioassist/studioassist-overview
-- Katalon Agent-Aware Testing: https://katalon.com/resources/center/blog/agent-aware-testing
-- Gartner Peer Insights: https://www.gartner.com/reviews/market/software-test-automation/vendor/katalon
 - G2 Crowd: https://www.g2.com/products/katalon-platform/reviews
 - Pricing: https://katalon.com/pricing
 
-**Papers acadêmicos consultados:**
-- IEEE/ACM papers sobre self-healing em test automation (2022-2025)
-- Papers sobre AI-driven testing e behavior-driven testing (2023-2025)
-
 **Arquivos gerados:**
-- Relatório técnico completo: [Levantamento Katalon](docs/squad2/levantamento-ferramentas-IA4ES/avaliacao-google-antigravity.md)
+- Relatório técnico completo: [Levantamento Katalon](docs/squad2/levantamento-ferramentas-IA4ES/avaliacao-katalon.md)
 
 ---
 
-**Observações Finais:**
+## **Observações Finais:**
 
-Katalon Platform representa uma **categoria única** entre as ferramentas avaliadas: **automação de testes augmented-by-AI** com foco exclusivo em qualidade e teste (não em desenvolvimento de código de produção). Atende todos os critérios de inclusão de forma robusta: **cobertura do SDLC** (testes, CI/CD, manutenção, operações), **apoio ativo por IA** (StudioAssist, TrueTest, self-healing, AI Failure Analysis), **redução significativa de esforço manual** (60% faster test creation, 40-60% menos manutenção), **impacto positivo na qualidade** (cobertura de fluxos reais, estabilidade de testes, gap analysis) e **excelente maturidade** (9 anos no mercado, comunidade 65k+, casos Fortune 500, papers acadêmicos).
+Katalon Platform representa uma categoria única entre as ferramentas avaliadas: automação de testes augmented-by-AI com foco exclusivo em qualidade e teste de software (não em desenvolvimento de código de produção). A ferramenta demonstra potencial técnico significativo em contexto empresarial (StudioAssist, TrueTest, self-healing, AI Failure Analysis, Agent-Aware Testing), com claims oficiais de redução de 60% no tempo de criação de testes e 40-60% menos manutenção.
 
-**Diferencial único**: **Agent-Aware Testing** (first in market, janeiro 2026) é **extremamente relevante** para o contexto do projeto de pesquisa (desenvolvimento de agentes inteligentes, plataforma TACO). Representa tendência emergente crítica: **testar aplicações que interagem com agentes IA**, não apenas humanos.
+Atendimento aos critérios de inclusão:
 
-Os principais riscos são: **(1) escopo limitado a testes** (não atua em codificação de produção), **(2) custos elevados** (\$208-\$650+/mês por usuário para stack completo), **(3) vendor lock-in** (formato proprietário), **(4) dependência de cloud** (TestOps/TrueTest), e **(5) compliance** (TrueTest captura tráfego real de produção com possíveis dados sensíveis).
+   - Atendidos: C2 (Apoio ativo por IA), C3 (Redução de esforço manual)
 
-**Recomendação técnica**: Ferramenta **altamente relevante** para o estudo, representando categoria de **AI4SE focada em teste e qualidade** (complementar às ferramentas de codificação como Zencoder/Antigravity). **Agent-Aware Testing** oferece oportunidade única de investigar **como testar agentes inteligentes** (diretamente relevante para OE5 - prototipação de agentes inteligentes no TACO). Adequada para experimentação em ambiente controlado (TRL 4), especialmente para pesquisa aplicada em geração de testes (OE4). Custos devem ser avaliados cuidadosamente (considerar planos acadêmicos ou trials estendidos).
+   - Não atendidos: C1 (Cobertura do SDLC), C4 (Impacto na qualidade - não verificável empiricamente), C5 (Maturidade e adoção - documentação inadequada + falha crítica de UX), C6 (Representatividade funcional - fora do escopo do projeto TACO), C7 (Riscos e limitações - múltiplos riscos críticos)
+
+### **Principais Riscos e Limitações**
+
+1. Escopo incompatível: Não atua em desenvolvimento de código de produção (fora do escopo central do projeto TACO).
+
+2. Custos proibitivos: Stack completo requer $402-$857/mês por desenvolvedor (Ultimate + TestCloud + TrueTest) = $1.206-$5.142 para avaliação de 3-6 meses - incompatível com orçamento de pesquisa acadêmica (TRL 4).
+
+3. Free tier não funcional: Não inclui recursos de IA (StudioAssist, TrueTest, TestOps) que justificariam inclusão em estudo AI4SE.
+
+4. Falha crítica de onboarding (evidência empírica): Durante testes práticos, usuário único não recebeu papel de "Owner" automaticamente (conforme prometido na documentação), resultando em deadlock de permissões e 2h30-3h de tempo desperdiçado sem resolução apesar de suporte técnico.
+
+5. Trial insuficiente: 14-30 dias com apenas 5-10 sessões disponíveis é inadequado para avaliação rigorosa (estimativa: 30-50 sessões necessárias para workflows complexos).
+
+6. Vendor lock-in: Formato proprietário (.tc, .ts) dificulta migração.
+
+7. Compliance: TrueTest Agent captura tráfego real de produção com possíveis dados sensíveis (PII, PHI) processados em cloud.
+Limitação Metodológica Crítica
+
+**A avaliação empírica completa foi inviabilizada por múltiplas barreiras de acesso:**
+
+- Restrições de acesso: Free tier não inclui recursos de IA; trial limitado (5-10 sessões) vs necessidade de 30-50 sessões para avaliação rigorosa.
+
+- Inviabilidade econômica: $1.206-$5.142 de investimento sem garantia de adequação ao estudo.
+
+- Falha de onboarding: Deadlock de permissões + documentação contraditória + suporte ineficaz = 2h30-3h desperdiçadas.
+
+- Impossibilidade de comparação justa: Claims de fornecedor (60% faster, 40-60% menos manutenção) não puderam ser validados empiricamente, permanecendo como afirmações não verificadas.
+
+Esta limitação constitui critério legítimo de exclusão em pesquisa aplicada (TRL 4), onde:
+
+- Experimentação prática é requisito fundamental para validação de eficácia.
+
+- Reprodutibilidade é critério de qualidade (ferramentas devem ser acessíveis a outros pesquisadores).
+
+- Custo-benefício é consideração pragmática (investimento significativo sem garantia de adequação é metodologicamente insustentável).
+
+### **Trabalhos Futuros**
+
+Estudos futuros com financiamento adequado (orçamento ≥ $5.000 para licenças) poderiam investigar:
+
+- Katalon em contexto empresarial: Avaliar eficácia real com acesso ao stack completo (Ultimate + TestCloud + TrueTest Advanced).
+
+- Agent-Aware Testing: Investigar capacidade única de capturar/testar tráfego de agentes IA (first in market, janeiro 2026).
+
+- Comparação controlada: Validar claims de ROI vs alternativas open-source (Selenium + AI plugins, Playwright + AI).
+
+- Integração AI4SE × AI Testing: Explorar sinergia com ferramentas de desenvolvimento augmented-by-AI (Zencoder, Antigravity).
+
+Pré-requisito: Acesso garantido aos recursos Premium/Ultimate por 6+ meses para avaliação empírica adequada em projetos realistas.
