@@ -37,7 +37,6 @@ def merge_data(quality_csv, extraction_xls, output_csv, output_excel):
     # Reordenar colunas para ficar organizado
     # ID, Artigo, Ano, Score Total, Fonte, Q1-Q7, depois as colunas da extração
     cols = list(merged_df.columns)
-    # Mover colunas de qualidade para o início se necessário (já devem estar)
     
     # Salvar CSV
     merged_df.to_csv(output_csv, index=False, encoding='utf-8-sig')
