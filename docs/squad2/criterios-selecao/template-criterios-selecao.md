@@ -163,7 +163,7 @@ Descrição: A ferramenta representa uma categoria relevante de ferramentas AI4S
 **Decisão:** ☐ Incluir ☐ Incluir com ressalvas ☐ Não incluir  
 
 **Justificativa resumida em caso de não incluir (3–5 linhas):**  
-> _[Inserir justificativa]_  
+    > _[Inserir justificativa]_  
 
 ---
 
