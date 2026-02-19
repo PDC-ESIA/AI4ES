@@ -252,7 +252,7 @@ nav a {
 #  **9. Conclusão Geral da Análise**
 
 * A ferramenta é adequada para as atividades de prototipagem técnica, construção de front-end, validação de UX e criação de MVPs funcionais.
-* **Os casos deve ser evitada: Sistemas puramente backend, lógica de negócio crítica off-cloud ou sistemas de baixa latência/nível.
+* **Casos em que deve ser evitada:** Sistemas puramente backend, lógica de negócio crítica off-cloud ou sistemas de baixa latência/nível.
 * A maturidade técnica que se encontra é na fase Experimental (Labs), mas com alta funcionalidade prática.
 * Vale a pena para a organização, especialmente para acelerar ciclos de inovação e reduzir o gap entre design e engenharia.
 
