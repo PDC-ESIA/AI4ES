@@ -58,7 +58,7 @@ Use N/A quando não aplicável.
 | Priorização             | Suporta               | Sugere backlog, valor vs. esforço                         |
 | Modelagem               | Suporta               | Gera UML textual, entidades, fluxos e modelos conceituais                         |
 | Validação / Verificação | Parcialmente          | Depende de validação humana; não executa requisitos em ambiente real                         |
-| Documentação            | Parcalmente           | Gera documentação, mas sem controle formal de versionamento                         |
+| Documentação            | Parcialmente          | Gera documentação, mas sem controle formal de versionamento                         |
 
 ---
 
