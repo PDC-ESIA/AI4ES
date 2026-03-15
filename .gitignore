@@ -1,0 +1,228 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+.htpasswd
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.env
+.venv
+venv/
+env/
+ENV/
+
+# Google ADK
+.adk/
+.adk/sessions/
+.adk/sessions/*
+.adk/sessions/db.sqlite
+.adk/sessions/db.sqlite-journal
+
+# OpenAI
+.openai/
+.openai/*
+.openai/sessions/
+.openai/sessions/*
+.openai/sessions/db.sqlite
+.openai/sessions/db.sqlite-journal
+
+# Qdrant
+.qdrant/
+.qdrant/*
+.qdrant/sessions/
+.qdrant/sessions/*
+.qdrant/sessions/db.sqlite
+.qdrant/sessions/db.sqlite-journal
+
+# Langfuse
+.langfuse/
+.langfuse/*
+.langfuse/sessions/
+.langfuse/sessions/*
+.langfuse/sessions/db.sqlite
+.langfuse/sessions/db.sqlite-journal
+
+# Langsmith
+.langsmith/
+.langsmith/*
+.langsmith/sessions/
+.langsmith/sessions/*
+.langsmith/sessions/db.sqlite
+.langsmith/sessions/db.sqlite-journal
+
+# Langchain
+.langchain/
+.langchain/*
+.langchain/sessions/
+.langchain/sessions/*
+.langchain/sessions/db.sqlite
+.langchain/sessions/db.sqlite-journal
+
+# Langchain Community
+.langchain_community/
+.langchain_community/*
+.langchain_community/sessions/
+.langchain_community/sessions/*
+.langchain_community/sessions/db.sqlite
+.langchain_community/sessions/db.sqlite-journal
+
+# Langchain Core
+.langchain_core/
+.langchain_core/*
+.langchain_core/sessions/
+.langchain_core/sessions/*
+.langchain_core/sessions/db.sqlite
+.langchain_core/sessions/db.sqlite-journal
+
+# Langchain OpenAI
+.langchain_openai/
+.langchain_openai/*
+.langchain_openai/sessions/
+.langchain_openai/sessions/*
+.langchain_openai/sessions/db.sqlite
+.langchain_openai/sessions/db.sqlite-journal
+
+# Langchain Qdrant
+.langchain_qdrant/
+.langchain_qdrant/*
+.langchain_qdrant/sessions/
+.langchain_qdrant/sessions/*
+.langchain_qdrant/sessions/db.sqlite
+.langchain_qdrant/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text_splitters/
+.langchain_text_splitters/*
+.langchain_text_splitters/sessions/
+.langchain_text_splitters/sessions/*
+.langchain_text_splitters/sessions/db.sqlite
+.langchain_text_splitters/sessions/db.sqlite-journal
+
+# Langchain Text Splitters
+.langchain_text
