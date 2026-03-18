@@ -9,7 +9,7 @@
 | Nome do projeto | PDC-AI4SE |
 | Framework de agentes | Google ADK |
 | Localização dos agentes | `adk/src/agents/` |
-| Localização do sub-agente QA | `adk/src/agents/tests/ ` |
+| Localização do agente QA | `adk/src/agents/qa_agent/ ` |
 | Branch de desenvolvimento Principal | `feature/time3-testes` e as branchs das subs-task: `task-[issue]/[descrição]` |
 
 ---
@@ -49,42 +49,42 @@ Os requisitos podem chegar em diferentes formatos. Preencha quais o seu time sup
 
 ### 3.2 O que o Supervisor envia ao QA
 
-```python
-# Estrutura da mensagem recebida pelo QA Agent
-mensagem_do_supervisor = {
-    "id_artefato": "[ ex: RF-001 ]",   # Identificador único
-    "tipo": "[ RF | HU | UC | RNF | RN ]",
-    "conteudo": "[ texto do requisito ]",
-    "modulo": "[ módulo do sistema ]",
-    "criticidade": "[ alta | media | baixa ]",
+#### Estrutura da mensagem em json recebida pelo QA Agent
+```json
+{
+    "id_artefato": "RF-001",
+    "tipo": "RF | HU | UC | RNF | RN",
+    "conteudo": "texto do requisito",
+    "modulo": "módulo do sistema",
+    "criticidade": "alta | media | baixa",
     "metadados": {
         "enviado_por": "supervisor_agent",
         "timestamp": "ISO-8601",
-        "versao_protocolo": "1.0",
+        "versao_protocolo": "1.0"
     }
 }
 ```
 
 ### 3.3 O que o QA retorna ao Supervisor
 
-```python
-resposta_do_qa = {
-    "id_artefato": "[ eco do ID recebido ]",
-    "status": "[ sucesso | falha | parcial ]",
+```json
+{
+    "id_artefato": "eco do ID recebido",
+    "status": "sucesso | falha | parcial",
     "tipo_teste": "pytest",
     "testes_gerados": [
         {
-            "nome": "[ ex: test_rf001_login_valido ]",
-            "arquivo": "[ /caminho do arquivo gerado ]",
-            "resultado": "[ passou | falhou | pendente ]",
+            "nome": "test_rf001_login_valido",
+            "arquivo": "/caminho do arquivo gerado",
+            "resultado": "passou | falhou | pendente"
         }
     ],
     "cobertura": {
-        "percentual": 0.0,       # preenchido em tempo de execução
+        "percentual": 0.0,
         "linhas_cobertas": 0,
-        "linhas_totais": 0,
+        "linhas_totais": 0
     },
-    "erros": [],
+    "erros": []
 }
 ```
 
@@ -94,7 +94,7 @@ resposta_do_qa = {
 
 ### 4.1 Definição inicial do QA Agent 
 ```python
-# arquivo: adk/src/agents/tests/qa_agent.py PARCIAL 
+# arquivo: adk/src/agents/qa_agent/agent.py PARCIAL 
 #[... def e imports do agente para o fluxo]
 
 qa_agent = Agent(
@@ -135,43 +135,98 @@ supervisor_agent = Agent(
 ```
 
 ---
-
-## 5. Testando o QA Agent Sem o Supervisor
-
-Enquanto o Supervisor não estiver pronto, use o ADK diretamente:
-
+ 
+## 5. Testando o QA Agent Sem o Supervisor (Uvicorn + HTTP)
+ 
+Enquanto o Supervisor não estiver pronto, suba um servidor local com **Uvicorn** para simular o envio de requisitos ao QA Agent via HTTP — o mesmo protocolo que o Supervisor usará em produção.
+ 
+### 5.1 Instalação
+ 
 ```bash
-# [ PREENCHER: ajuste o caminho conforme a estrutura do projeto ]
-cd [ PREENCHER: raiz do ADK ]
-
-# Interface web (simula conversas com o agente)
-adk web
-
-# Ou via terminal
-adk run [ PREENCHER: caminho do qa_agent.py ]
+pip install uvicorn fastapi
 ```
-
-Exemplo de mensagem para simular o Supervisor:
-
+ 
+### 5.2 Servidor de teste
+ 
+```python
+# arquivo: [ ex: adk/src/agents/qa_agent/server_test.py ]
+ 
+from fastapi import FastAPI
+from pydantic import BaseModel
+from agents.[ PREENCHER ].qa_agent import receber_requisitos
+import json
+ 
+app = FastAPI(title="QA Agent — Simulador do Supervisor")
+ 
+ 
+class Artefato(BaseModel):
+    id_artefato: str
+    tipo: str
+    conteudo: str
+    modulo: str = "geral"
+    criticidade: str = "media"
+ 
+ 
+@app.post("/requisito")
+def enviar_requisito(artefato: Artefato):
+    """Simula o Supervisor enviando um único artefato ao QA Agent."""
+    resultado = receber_requisitos(json.dumps([artefato.model_dump()]))
+    return resultado
+ 
+ 
+@app.post("/requisitos")
+def enviar_requisitos(artefatos: list[Artefato]):
+    """Simula o Supervisor enviando múltiplos artefatos em paralelo."""
+    payload = [a.model_dump() for a in artefatos]
+    resultado = receber_requisitos(json.dumps(payload))
+    return resultado
+ 
+ 
+@app.get("/health")
+def health():
+    return {"status": "ok", "agente": "qa_agent"}
 ```
-Gere testes para o seguinte requisito:
-{
-  "id_artefato": "[ PREENCHER ]",
-  "tipo": "[ PREENCHER ]",
-  "conteudo": "[ PREENCHER ]",
-  "modulo": "[ PREENCHER ]",
-  "criticidade": "[ PREENCHER ]"
-}
+ 
+### 5.3 Subindo o servidor
+ 
+```bash
+# [ PREENCHER: ajuste o caminho do módulo ]
+uvicorn [ PREENCHER: ex: src.agents.<time>.server_test ]:app --reload --port 8000
 ```
-
+ 
+### 5.4 Enviando requisitos de teste
+ 
+Com o servidor rodando, use `curl` ou qualquer cliente HTTP:
+ 
+```bash
+# Enviar um único artefato
+curl -X POST http://localhost:8000/requisito \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id_artefato": "RF-001",
+    "tipo": "RF",
+    "conteudo": "[ PREENCHER: texto do requisito ]",
+    "modulo": "[ PREENCHER ]",
+    "criticidade": "alta"
+  }'
+ 
+# Enviar múltiplos artefatos (testa o paralelismo)
+curl -X POST http://localhost:8000/requisitos \
+  -H "Content-Type: application/json" \
+  -d '[
+    { "id_artefato": "RF-001", "tipo": "RF", "conteudo": "[ PREENCHER ]", "modulo": "[ PREENCHER ]" },
+    { "id_artefato": "RF-002", "tipo": "RF", "conteudo": "[ PREENCHER ]", "modulo": "[ PREENCHER ]" }
+  ]'
+```
+ 
 ---
 
 ## 6. Os Dois Tipos de Pytest no Projeto
 
 | Tipo | Finalidade | Quem escreve | Localização |
 |---|---|---|---|
-| **Pytest de produto** | Testa o código da aplicação | Agente QA gera automaticamente | `[ AINDA À DEFINIR ex: adk/src/agents/test/ ]` |
-| **Pytest de eval** | Testa o próprio Agente QA | Desenvolvedor do time escreve | `[ AINDA À DEFINIR ex: adk/src/agents/tests/evals/ ]` |
+| **Pytest de produto** | Testa o código da aplicação | Agente QA gera automaticamente | `[ AINDA À DEFINIR ex: adk/src/agents/qa_agent/tools/ ]` |
+| **Pytest de eval** | Testa o próprio Agente QA | Desenvolvedor do time escreve | `[ AINDA À DEFINIR ex: adk/src/agents/qa_agent/evalsTest/ ]` |
 
 ---
  
@@ -230,7 +285,7 @@ O QA Agent deve parar e gerar o arquivo sempre que não conseguir prosseguir de 
 ### 7.3 Localização do arquivo
  
 ```
-adk/src/agents/tests/
+adk/src/agents/qa_agent/
 └── doubt_artifacts/
     └── Doubt_Artifact_[ id_artefato ]_[ timestamp ].md
 ```
@@ -265,7 +320,7 @@ return {
 | `ERR_MODULO_NAO_ENCONTRADO` | Módulo informado não existe | Informar o caminho esperado e o caminho recebido |
 | `ERR_TESTE_FALHOU` | Teste gerado e executado com falha | Reportar qual teste e por quê com logs explícitos |
 | `ERR_TIMEOUT` | Execução ultrapassou o tempo limite | Reportar quais testes não concluíram |
-| `ERR_LOOP` | Loop infinito ao executar a tool| Finalizar a execução, gerar o Doubt_Artifact e informar no log |
+| `ERR_LOOP` | Tentou processar a tool 5 vezes e deu erro| Finalizar a execução, gerar o Doubt_Artifact e informar no log |
 
 ---
 
