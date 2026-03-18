@@ -10,7 +10,7 @@
 | Formato inicial adotado | `[ PREENCHER: RF / HU / UC / RNF / RN ]` |
 | Número típico de artefatos por ciclo | `[ PREENCHER: ex: 5 a 20 ]` |
 | Limite máximo de tarefas paralelas | `[ PREENCHER: ex: 5 ]` |
-| Pasta de destino dos testes gerados | `[ PREENCHER: ex: adk/src/agents/tests/artefactsTests/ ]` |
+| Pasta de destino dos testes gerados | `[ PREENCHER: ex: adk/src/agents/qa_agent/artefactsTests/ ]` |
 
 ---
 
@@ -58,7 +58,7 @@ Quando o volume de artefatos for grande, o paralelismo é essencial para manter 
    │  cada um executa independentemente:
    │  1. analisa artefato
    │  2. gera código pytest
-   │  3. salva arquivo .py em [ PREENCHER: tests/ ]
+   │  3. salva arquivo .py em [ PREENCHER: artefactsTests/]
    │
    └─────────────┼─────────────┘
                  │
@@ -257,28 +257,27 @@ async def _gerar_doubt_artifact(id_artefato: str, motivo: str) -> str:
     caminho = doubt_dir / nome_arquivo
 
     conteudo = f"""# Doubt Artifact — QA Agent
+        **ID do Artefato:** {id_artefato}
+        **Data/Hora:** {timestamp}
+        **Agente:** qa_agent
+        **Status:** BLOQUEADO — aguardando intervenção humana
 
-**ID do Artefato:** {id_artefato}
-**Data/Hora:** {timestamp}
-**Agente:** qa_agent
-**Status:** BLOQUEADO — aguardando intervenção humana
+        ---
 
----
+        ## Descrição do Bloqueio
 
-## Descrição do Bloqueio
+        {motivo}
 
-{motivo}
+        ## O que é necessário para continuar
 
-## O que é necessário para continuar
+        [ PREENCHER após intervenção: descreva o que foi fornecido ou decidido para desbloquear ]
 
-[ PREENCHER após intervenção: descreva o que foi fornecido ou decidido para desbloquear ]
+        ## Resolução
 
-## Resolução
-
-- **Resolvido por:** [ PREENCHER ]
-- **Data:** [ PREENCHER ]
-- **Ação tomada:** [ PREENCHER ]
-"""
+        - **Resolvido por:** [ PREENCHER ]
+        - **Data:** [ PREENCHER ]
+        - **Ação tomada:** [ PREENCHER ]
+        """
 
     caminho.write_text(conteudo, encoding="utf-8")
     return str(caminho)
@@ -298,28 +297,28 @@ async def _gerar_codigo_pytest(
     # Placeholder — substitua pela sua lógica:
     classe = f"Test{tipo}{id_artefato.replace('-', '')}"
     return f'''
-    Testes gerados automaticamente pelo QA Agent
-    Artefato: {id_artefato} ({tipo}) | Módulo: {modulo}
-    Requisito: {conteudo}
-    """
+        Testes gerados automaticamente pelo QA Agent
+        Artefato: {id_artefato} ({tipo}) | Módulo: {modulo}
+        Requisito: {conteudo}
+        """
 
-    import pytest
-    # [ PREENCHER: importar módulos da aplicação sendo testada ]
+        import pytest
+        # [ PREENCHER: importar módulos da aplicação sendo testada ]
 
 
-    class {classe}:
-        """Suite de testes para {id_artefato}"""
+        class {classe}:
+            """Suite de testes para {id_artefato}"""
 
-        def test_caminho_feliz(self):
-            # [ PREENCHER ]
-            pass
+            def test_caminho_feliz(self):
+                # [ PREENCHER ]
+                pass
 
-        def test_entrada_invalida(self):
-            with pytest.raises(Exception):
+            def test_entrada_invalida(self):
+                with pytest.raises(Exception):
+                    pass  # [ PREENCHER ]
+
+            def test_caso_de_borda(self):
                 pass  # [ PREENCHER ]
-
-        def test_caso_de_borda(self):
-            pass  # [ PREENCHER ]
     '''
 ```
 
@@ -390,8 +389,8 @@ Relatório final:
 ### Estrutura de pastas
 
 ```
-[ PREENCHER: pasta do agente ]/
-├── tests/               ← testes gerados com sucesso
+adk/src/agents/qa_agent/
+├── artefactsTests/               ← testes gerados com sucesso
 │   ├── test_rf_001.py
 │   └── test_rf_003.py
 └── doubt_artifacts/     ← artefatos com bloqueio aguardando humano
