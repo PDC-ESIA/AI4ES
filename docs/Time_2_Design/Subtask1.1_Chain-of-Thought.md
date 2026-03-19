@@ -70,7 +70,7 @@ Define a identidade fixa do agente, suas restrições de comportamento e os form
 
 Template principal que força o agente a percorrer cinco passos antes de emitir qualquer código Mermaid:
 
-1. **Compreensão dos requisitos e HU** — identificação do ator, ação central, critérios de aceite com impacto arquitetural e possíveis ambiguidades;
+1. **Compreensão das HU** — identificação do ator, ação central, critérios de aceite com impacto arquitetural e possíveis ambiguidades;
 2. **Escolha do tipo de diagrama** — seleção justificada com base em uma tabela de decisão mapeando cenários a tipos Mermaid;
 3. **Identificação de componentes** — listagem de cada entidade com sua responsabilidade e dependências diretas;
 4. **Geração do diagrama** — produção do bloco Mermaid somente após os três passos anteriores;
