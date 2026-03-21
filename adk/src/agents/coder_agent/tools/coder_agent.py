@@ -56,12 +56,12 @@ def trava_seguranca_git_commit(mensagem: str) -> dict:
 
     if not diff.strip():
         return {
-            "success": False,
+            "sucesso": False,
             "mensagem": "Nada para commitar"
         }
     
     return {
-        "success": True,
+        "sucesso": True,
         "mensagem": mensagem,
         "diff": diff
     }
@@ -96,7 +96,7 @@ def tool_git_commit(mensagem: str) -> dict:
         
 
     resposta = run(
-        ['git', 'commit'] + mensagem.split,
+        ['git', 'commit', '-m', mensagem],
         capture_output=True,
         text=True
     )
@@ -121,7 +121,7 @@ def tool_git_checkout(branch: str, criar: bool = False) -> dict:
     """
 
     if criar:
-        comando = ['git', 'checkout', 'b'] + branch.split()
+        comando = ['git', 'checkout', '-b'] + branch.split()
     else:
         comando = ['git', 'checkout'] + branch.split()
 
