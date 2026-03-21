@@ -10,17 +10,26 @@ from google.adk.agents import ParallelAgent, SequentialAgent
 from google.adk.tools.agent_tool import AgentTool
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from .tools.coder_agent import tool_git_add, tool_git_checkout, tool_git_commit
+from .tools.coder_agent import tool_git_add, tool_git_checkout, tool_git_commit, tool_criar_arquivo
 from .prompts import coder_agent_description, coder_agent_instruction
 from google.adk.tools import ToolContext
 from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool 
 
+tool_git_commit_com_aprovacao = FunctionTool(
+    tool_git_commit,
+    require_confirmation=True 
+)
 
 root_agent = LlmAgent(
     model=LiteLlm("mistral/mistral-small-latest"),
     name="root_agent",
     description=coder_agent_description,
     instruction=coder_agent_instruction,
-    tools=[tool_git_commit, tool_git_checkout, tool_git_add]
+    tools=[
+        tool_git_commit_com_aprovacao, 
+        tool_git_checkout, 
+        tool_git_add, 
+        tool_criar_arquivo
+    ]
 )
-
