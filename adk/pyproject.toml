@@ -25,4 +25,30 @@ dependencies = [
     "gunicorn>=20.1.0,<22.0.0",
     "langfuse>=3.3.5",
     "openinference-instrumentation-google-adk>=0.1.4",
+    "pytest>=8.2.0",
+    "pytest-cov>=5.0.0",
+    "pytest-asyncio>=0.23.0",
+    "python-dotenv>=1.0.0,<2.0.0",
 ]
+ 
+[tool.pytest.ini_options]
+testpaths = ["src/agents"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+pythonpath = ["."]
+ 
+[tool.coverage.run]
+source = ["src/agents/qa_agent"]
+omit = [
+    "src/agents/qa_agent/artefactsTests/*",
+    "src/agents/qa_agent/evalsTest/*",
+    "src/agents/qa_agent/server_test.py",
+]
+ 
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+ 
