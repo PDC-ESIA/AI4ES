@@ -35,7 +35,8 @@ def tool_ler_diff(branch_alvo: str = "main") -> dict:
     resposta = subprocess.run(
         comando, 
         capture_output=True, 
-        text=True
+        text=True,
+        encoding="utf-8"
     )
 
     if resposta.returncode != 0:
@@ -68,7 +69,7 @@ def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_rev
     Returns:
         dict: Contém status da operação, caminho absoluto do arquivo criado e erros.
     """
-    # 1. Validação estrita via Pydantic
+    
     try:
         dados_validados = RelatorioSchema(conteudo=conteudo, nome_arquivo=nome_arquivo)
     except ValidationError as e:
@@ -80,8 +81,6 @@ def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_rev
 
     path = Path(dados_validados.nome_arquivo)
 
-    # 2. Trava de Segurança (Semelhante ao coder_agent)
-    # Impede que o agente tente salvar fora da pasta do projeto usando caminhos relativos maliciosos
     if path.is_absolute() or ".." in path.parts:
         return {
             "sucesso": False,
@@ -89,7 +88,6 @@ def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_rev
             "caminho": str(path)
         }
 
-    # 3. Execução segura da escrita
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(dados_validados.conteudo, encoding="utf-8")

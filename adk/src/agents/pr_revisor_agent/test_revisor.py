@@ -1,17 +1,17 @@
 import asyncio
-from dotenv import load_dotenv
+import sys
 from pathlib import Path
-from src.agents.pr_revisor_agent.agent import pr_revisor_agent
-
-# NOVA IMPORTAÇÃO: O "envelope" oficial do ADK
+from dotenv import load_dotenv
 from google.adk.models.llm_request import LlmRequest
+from src.agents.pr_revisor_agent.agent import root_agent
 
-# 1. Carrega as variáveis de ambiente
+# aqui ele vai carregar as variáveis de ambiente (API Key) no arquivo .env que deve estar localizado na raiz do projeto.
 caminho_env = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(caminho_env)
 
-async def executar_teste_local():
-    print("🚀 Acordando o Agente Revisor de PRs...")
+async def executar_auditoria_automatizada():
+    # apenas para garantir que o script seja executado no terminal, sem interface gráfica, e que o agente possa imprimir seus pensamentos em tempo real.
+    print("Iniciando Agente Revisor de PRs em modo Headless (sem interface)...")
     
     instrucao_inicial = """
     Inicie o processo de auditoria de código.
@@ -20,24 +20,38 @@ async def executar_teste_local():
     3. Utilize a ferramenta de salvar relatório para gerar o arquivo 'doubt_artifact_revisao.md'.
     """
     
-    # 2. Colocamos o texto dentro do envelope LlmRequest
-    # (Usamos 'prompt' aqui. Se o Pydantic chiar, ele nos avisará qual é a palavra exata)
     requisicao = LlmRequest(
         prompt=instrucao_inicial,
-        session_id="sessao_teste_01"
+        session_id="sessao_pipeline_automatizado"
     )
     
     try:
-        print("\n=== RESPOSTA DO AGENTE (AO VIVO) ===\n")
-        
-        # 3. Passamos o envelope (requisicao) em vez do texto solto
-        async for pedaco in pr_revisor_agent.run_live(requisicao):
+        # vai executar o agente
+        async for pedaco in root_agent.run_live(requisicao):
+            # imprimir o pensamento do agente no terminal em tempo real
             print(pedaco, end="", flush=True)
             
-        print("\n\n✅ Teste finalizado!")
+        print("\n\nExecução do agente finalizada. Analisando o veredito...\n")
         
+        # vai ler a saída para decidir o status da máquina (Exit Code)
+        caminho_relatorio = Path("doubt_artifact_revisao.md")
+        
+        if caminho_relatorio.exists():
+            conteudo = caminho_relatorio.read_text(encoding="utf-8")
+            
+            if "STATUS: APROVADO" in conteudo:
+                print("RESULTADO: PR Aprovado pelo Agente!")
+                sys.exit(0) # retorna 0 para sucesso - PR aprovado
+            else:
+                print("RESULTADO: PR Rejeitado pelo Agente (ou requer ajustes).")
+                sys.exit(1) # retorna 1 para falha) - PR bloqueado
+        else:
+            print("ERRO: O agente não conseguiu gerar o arquivo de relatório.")
+            sys.exit(1) # também considera falha se o arquivo não foi criado
+
     except Exception as e:
-        print(f"\n❌ Erro durante a execução do agente: {e}")
+        print(f"\nErro crítico durante a execução: {e}")
+        sys.exit(1) # e também considera falha se houve uma exceção não tratada.
 
 if __name__ == "__main__":
-    asyncio.run(executar_teste_local())
+    asyncio.run(executar_auditoria_automatizada())
