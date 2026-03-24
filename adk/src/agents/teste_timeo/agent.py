@@ -1,4 +1,3 @@
-
 from google.adk.agents import LlmAgent
 from google.genai.types import GenerateContentConfig
 from google.adk.agents.callback_context import CallbackContext
