@@ -109,7 +109,7 @@ flowchart TD
 
 ## 4. Sistema multi-agente
 
-```
+```mermaid
 flowchart TD
     A([HU validada]) --> B[Orquestrador\nCoorena e roteia entre especialistas]
     B --> C[Especialista de design\nCoT, trade-offs, componentes]
