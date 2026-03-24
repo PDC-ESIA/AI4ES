@@ -104,3 +104,17 @@ flowchart TD
     I --> J[Bloco de Trade-offs]
     J --> K([Entrega ao membro do time\npara commit e abertura de PR])
 ```
+
+---
+
+## 4. Sistema multi-agente
+
+```
+flowchart TD
+    A([HU validada]) --> B[Orquestrador\nCoorena e roteia entre especialistas]
+    B --> C[Especialista de design\nCoT, trade-offs, componentes]
+    B --> D[Especialista Mermaid\nGera e valida diagramas .md]
+    C -.-> B
+    D -.-> B
+    B --> E([Diagrama + trade-offs])
+```
