@@ -1,4 +1,3 @@
-
 from google.adk.agents import LlmAgent
 from google.genai.types import GenerateContentConfig
 from google.adk.agents.callback_context import CallbackContext
@@ -7,7 +6,7 @@ from google.adk.agents import ParallelAgent, SequentialAgent
 from google.adk.tools.agent_tool import AgentTool
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from .tools.coder_agent import tool_get_weather
+from .tools.weather import tool_get_weather
 from .prompts import weather_agent_description, weather_agent_instruction
 from google.adk.tools import ToolContext
 
