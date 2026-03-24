@@ -5,8 +5,14 @@ import asyncio
 
 # as duas linhas abaixo adicionam a pasta adk/ do repositório à lista de pastas conhecidas do python. Em seguida, ele importa o agente dessa pasta
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from google.adk.models.llm_request import LlmRequest
+
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
 from src.agents.pr_revisor_agent.agent import root_agent
+
+APP_NAME = "validador_pr"
+USER_ID = "ci_pipeline"
 
 
 def extrair_diff_codigo():
@@ -36,19 +42,39 @@ async def main():
 
     prompt = f"Analise o seguinte git diff e diga se o código segue as boas práticas. Termine a sua resposta dizendo 'APROVADO' ou 'REPROVADO'. Diff:\n{diff}"
 
-    requisicao = LlmRequest(prompt=prompt, session_id="sessao_validador_pr")
-    try:
-        # chama o agente
+    # Configura o serviço de sessão em memória e o Runner — forma correta de acionar agentes no ADK
+    session_service = InMemorySessionService()
+    session = await session_service.create_session(app_name=APP_NAME, user_id=USER_ID)
 
+    runner = Runner(
+        agent=root_agent,
+        app_name=APP_NAME,
+        session_service=session_service,
+    )
+
+    mensagem = types.Content(
+        role="user",
+        parts=[types.Part(text=prompt)],
+    )
+
+    try:
         print("\n ----- Relatório do Agente ----- ")
 
         tex_resposta = ""
 
-        async for pedaco in root_agent.run_live(requisicao):
-            print(pedaco, end="", flush=True)
-            tex_resposta += str(pedaco)
+        async for evento in runner.run_async(
+            user_id=USER_ID,
+            session_id=session.id,
+            new_message=mensagem,
+        ):
+            # Extrai o texto de cada evento de resposta final
+            if evento.is_final_response() and evento.content and evento.content.parts:
+                for part in evento.content.parts:
+                    if hasattr(part, "text") and part.text:
+                        print(part.text, end="", flush=True)
+                        tex_resposta += part.text
 
-        print("---------------------------------\n")
+        print("\n---------------------------------\n")
         relatorio = tex_resposta.upper()
         if "REPROVADO" in relatorio or "ERRO" in relatorio:
             print("Erros encontrados no código ou no agente. Bloqueado")
