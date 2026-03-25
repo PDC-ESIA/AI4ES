@@ -27,6 +27,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests pydantic
 
+      - name: Instalar dependências (uv)
+        working-directory: ./adk
+        run: |
+          pip install uv
+          uv sync
+
       - name: Executar Agente Revisor
         # vai para a pasta "adk", onde haverão os scripts de validação.
         working-directory: ./adk
@@ -35,5 +41,5 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           # temporariamente, utilizando a LLM Mistral para testes
 
-        run: python validador.py
+        run: uv run python validador.py
         # o script criar o arquivo diff, contendo as diferenças apresentadas no PR e serializando-as para que o agente possa fazer a análise
