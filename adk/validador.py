@@ -11,7 +11,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from src.agents.pr_revisor_agent.agent import root_agent
 
-APP_NAME = "validador_pr"
+APP_NAME = "pr_revisor_agent"  # deve coincidir com o nome do agente registrado
 USER_ID = "ci_pipeline"
 
 
