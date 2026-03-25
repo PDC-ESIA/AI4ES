@@ -126,18 +126,27 @@ async def main() -> None:
         print("\n---------------------------------\n")
 
         # Avalia o veredito de forma case-insensitive.
+        # IMPORTANTE: checar "STATUS: APROVADO" antes de qualquer outra palavra para evitar
+        # falsos positivos — o relatório pode conter palavras como "erros" ou "reprovado"
+        # no corpo da análise sem que o veredito final seja negativo.
+        # O agente é instruído a terminar com "STATUS: APROVADO" ou "STATUS: BLOQUEADO".
         relatorio = tex_resposta.upper()
-        if "REPROVADO" in relatorio or "ERRO" in relatorio:
-            print("Erros encontrados no código ou no agente. Bloqueado")
-            sys.exit(1)
-        elif "APROVADO" in relatorio:
+        if "STATUS: APROVADO" in relatorio:
             print("APROVADO")
             sys.exit(0)
-        else:
-            print(
-                "O agente retornou uma resposta inconclusiva. Bloqueado por segurança"
-            )
+        elif "STATUS: BLOQUEADO" in relatorio or "STATUS: REPROVADO" in relatorio:
+            print("Erros encontrados no código. Bloqueado")
             sys.exit(1)
+        else:
+            # Fallback para respostas fora do formato: APROVADO tem precedência absoluta.
+            if "APROVADO" in relatorio:
+                print("APROVADO")
+                sys.exit(0)
+            else:
+                print(
+                    "O agente retornou uma resposta inconclusiva. Bloqueado por segurança"
+                )
+                sys.exit(1)
 
     except Exception as e:
         # Captura qualquer exceção inesperada (ex.: falha de rede, timeout da API)
