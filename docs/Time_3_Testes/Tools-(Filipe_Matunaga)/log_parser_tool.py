@@ -2,6 +2,7 @@ import re
 import json
 from dataclasses import dataclass, asdict
 from typing import Optional
+from definicao_tools_para_agente import LOG_PARSER_TOOLS
 
 
 @dataclass
@@ -50,6 +51,10 @@ PATTERN_NGINX = re.compile(
     r'\s+"(?P<message>[^"]+)"'
     r"\s+(?P<status>\d{3})"
     r"\s+\d+"
+)
+
+PATTERN_PYTEST = re.compile(
+    r'File "(?P<file>[^"]+)", line (?P<line>\d+), in (?P<function>\S+)'
 )
 
 NIVEL_HTTP = {
@@ -174,6 +179,64 @@ def parse_raw(raw: str) -> Optional[LogEntry]:
     )
 
 
+def parse_pytest_log(traceback_text: str) -> dict:
+    """
+    Faz o parse de um traceback completo de pytest e retorna um dicionário estruturado.
+
+    Args:
+        traceback_text (str): O texto completo do traceback gerado pelo pytest.
+
+    Returns:
+        dict: Dicionário com as chaves:
+            - file: Arquivo onde ocorreu o erro
+            - line: Linha do erro
+            - function: Função onde ocorreu o erro
+            - error_type: Tipo do erro (ex: AssertionError)
+            - error_message: Mensagem do erro
+            - assertion: A linha de assert que falhou (se aplicável)
+            - raw: O traceback original
+    """
+    lines = traceback_text.strip().split('\n')
+    result = {
+        "file": None,
+        "line": None,
+        "function": None,
+        "error_type": None,
+        "error_message": None,
+        "assertion": None,
+        "raw": traceback_text.strip()
+    }
+
+    for line in lines:
+        line = line.strip()
+        # Extrair função de linhas como "def test_falha_proposital():"
+        if line.startswith('def ') and 'test_' in line:
+            func_name = line.split('(')[0].replace('def ', '').strip()
+            result["function"] = func_name
+        # Extrair file, line, error_type de linhas como "path/file.py:7: AssertionError"
+        elif ':' in line and line.count(':') >= 2:
+            parts = line.split(':')
+            if len(parts) >= 3:
+                file_part = ':'.join(parts[:-2])
+                line_part = parts[-2]
+                error_part = parts[-1]
+                if line_part.isdigit():
+                    result["file"] = file_part
+                    result["line"] = int(line_part)
+                    result["error_type"] = error_part
+        # Extrair assertion de linhas como ">    assert 2 + 2 == 5" ou "assert 2 + 2 == 5"
+        elif 'assert ' in line:
+            if '>    ' in line:
+                result["assertion"] = line.replace('>    ', '').strip()
+            else:
+                result["assertion"] = line.strip()
+        # Extrair mensagem de erro de linhas como "E    assert (2 + 2) == 5"
+        elif line.startswith('E    '):
+            result["error_message"] = line.replace('E    ', '').strip()
+
+    return result
+
+
 PARSERS = [
     parse_json_log,
     parse_log4j,
@@ -280,115 +343,6 @@ def filter_by_module(entries: list[dict], module: str) -> list[dict]:
         Lista filtrada com apenas as entradas do módulo especificado.
     """
     return [e for e in entries if e["module"] == module]
-
-
-# ── definição da tool para o agente ──────────────────────────────────────────
-
-LOG_PARSER_TOOLS = [
-    {
-        "name": "parse_log_line",
-        "description": (
-            "Faz o parse de uma única linha de log e retorna os campos extraídos "
-            "(timestamp, level, module, message, format). "
-            "Suporta os formatos: padrão, log4j, syslog, python logging, nginx/apache, JSON e raw. "
-            "Use quando precisar analisar uma linha isolada de log em um teste."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "line": {
-                    "type": "string",
-                    "description": "A linha de log a ser parseada."
-                }
-            },
-            "required": ["line"]
-        },
-        "function": parse_log_line,
-    },
-    {
-        "name": "parse_log_lines",
-        "description": (
-            "Faz o parse de uma lista de linhas de log e retorna uma lista de entradas estruturadas. "
-            "Linhas vazias são ignoradas. "
-            "Use quando precisar processar múltiplas linhas individualmente em um teste."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "lines": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Lista de linhas de log."
-                }
-            },
-            "required": ["lines"]
-        },
-        "function": parse_log_lines,
-    },
-    {
-        "name": "parse_log_text",
-        "description": (
-            "Faz o parse de um bloco de texto com múltiplas linhas de log. "
-            "Use quando o log estiver em formato de texto corrido com quebras de linha."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "text": {
-                    "type": "string",
-                    "description": "Bloco de texto com as linhas de log separadas por quebras de linha."
-                }
-            },
-            "required": ["text"]
-        },
-        "function": parse_log_text,
-    },
-    {
-        "name": "filter_by_level",
-        "description": (
-            "Filtra uma lista de entradas de log por nível de severidade (ex: ERROR, INFO, WARN). "
-            "Use após parse_log_lines ou parse_log_text para isolar entradas de um nível específico."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "entries": {
-                    "type": "array",
-                    "description": "Lista de entradas de log (dicionários retornados pelo parser)."
-                },
-                "level": {
-                    "type": "string",
-                    "description": "Nível de log desejado. Ex: 'ERROR', 'INFO', 'WARN', 'CRITICAL'."
-                }
-            },
-            "required": ["entries", "level"]
-        },
-        "function": filter_by_level,
-    },
-    {
-        "name": "filter_by_module",
-        "description": (
-            "Filtra uma lista de entradas de log por nome de módulo. "
-            "Use após parse_log_lines ou parse_log_text para isolar entradas de um módulo específico."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "entries": {
-                    "type": "array",
-                    "description": "Lista de entradas de log (dicionários retornados pelo parser)."
-                },
-                "module": {
-                    "type": "string",
-                    "description": "Nome do módulo desejado. Ex: 'auth', 'db', 'api'."
-                }
-            },
-            "required": ["entries", "module"]
-        },
-        "function": filter_by_module,
-    },
-]
-
 
 def execute_tool(tool_name: str, tool_input: dict):
     """

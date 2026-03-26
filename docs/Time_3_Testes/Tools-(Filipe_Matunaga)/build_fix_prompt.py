@@ -1,4 +1,6 @@
 from typing import Optional
+from definicao_tools_para_agente import CODE_FIX_PROMPT_TOOLS
+from log_parser_tool import parse_pytest_log
  
  
 # ── builders de prompt ────────────────────────────────────────────────────────
@@ -187,105 +189,55 @@ def build_fix_prompt_from_log_entry(
         context=context,
         language=language,
     )
- 
- 
-# ── definição das tools para o agente ────────────────────────────────────────
- 
-CODE_FIX_PROMPT_TOOLS = [
-    {
-        "name": "build_fix_prompt_from_error",
-        "description": (
-            "Gera um prompt estruturado para um agente de correção de código "
-            "a partir da descrição textual de um erro. "
-            "O prompt resultante instrui o agente a identificar a causa raiz, "
-            "explicar o problema e reescrever o código corrigido. "
-            "Use quando tiver a mensagem de erro ou traceback em formato de texto."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "error_description": {
-                    "type": "string",
-                    "description": (
-                        "Descrição do erro, mensagem de exceção ou traceback completo. "
-                        "Ex: 'AssertionError: assert entry.module == \"auth\"' ou "
-                        "um traceback completo do pytest."
-                    )
-                },
-                "original_code": {
-                    "type": "string",
-                    "description": "Código-fonte que precisa ser corrigido (opcional)."
-                },
-                "test_code": {
-                    "type": "string",
-                    "description": "Código dos testes que falharam (opcional)."
-                },
-                "context": {
-                    "type": "string",
-                    "description": "Contexto adicional sobre o comportamento esperado (opcional)."
-                },
-                "language": {
-                    "type": "string",
-                    "description": "Linguagem de programação do código. Padrão: 'Python'."
-                }
-            },
-            "required": ["error_description"]
-        },
-        "function": build_fix_prompt_from_error,
-    },
-    {
-        "name": "build_fix_prompt_from_log_entry",
-        "description": (
-            "Gera um prompt estruturado para um agente de correção de código "
-            "a partir de uma entrada de log já parseada. "
-            "Encadeia diretamente com as tools do log_parser_tool — "
-            "passe o dict retornado por parse_log_line como log_entry. "
-            "Use quando o erro vier de um log estruturado."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "log_entry": {
-                    "type": "object",
-                    "description": (
-                        "Entrada de log parseada com os campos: "
-                        "level, module, message, timestamp, raw, format. "
-                        "Retornada por parse_log_line ou parse_log_lines."
-                    )
-                },
-                "original_code": {
-                    "type": "string",
-                    "description": "Código-fonte que precisa ser corrigido (opcional)."
-                },
-                "test_code": {
-                    "type": "string",
-                    "description": "Código dos testes que falharam (opcional)."
-                },
-                "language": {
-                    "type": "string",
-                    "description": "Linguagem de programação do código. Padrão: 'Python'."
-                }
-            },
-            "required": ["log_entry"]
-        },
-        "function": build_fix_prompt_from_log_entry,
-    },
-]
- 
- 
-def execute_tool(tool_name: str, tool_input: dict):
+
+
+def build_fix_prompt_from_pytest(
+    traceback_text: str,
+    original_code: Optional[str] = None,
+    test_code: Optional[str] = None,
+    language: str = "Python",
+) -> dict:
     """
-    Executa uma tool pelo nome, passando os inputs necessários.
-    Use essa função no loop do agente para despachar chamadas de tool.
- 
-    Exemplo:
-        result = execute_tool("build_fix_prompt_from_error", {
-            "error_description": "AssertionError: assert entry.module == 'auth'",
-            "original_code": "def parse_line(raw): ...",
-            "test_code": "def test_modulo(entry): assert entry.module == 'auth'",
-        })
+    Gera um prompt estruturado para um agente de correção de código a partir
+    de um traceback completo de pytest.
+
+    Útil para encadear diretamente com parse_pytest_log do log_parser_tool.
+
+    Parâmetros:
+        traceback_text (str): Texto completo do traceback de pytest.
+        original_code (str, optional): Código-fonte que precisa ser corrigido.
+        test_code (str, optional): Código dos testes que falharam.
+        language (str): Linguagem de programação. Padrão: "Python".
+
+    Retorna:
+        dict com:
+            - prompt (str): Prompt estruturado pronto para envio ao agente.
+            - metadata (dict): Informações sobre o que foi incluído no prompt.
     """
-    for tool in CODE_FIX_PROMPT_TOOLS:
-        if tool["name"] == tool_name:
-            return tool["function"](**tool_input)
+    pytest_parsed = parse_pytest_log(traceback_text)
+
+    error_description = (
+        f"Arquivo:   {pytest_parsed.get('file', 'unknown')}\n"
+        f"Linha:     {pytest_parsed.get('line', 'unknown')}\n"
+        f"Função:    {pytest_parsed.get('function', 'unknown')}\n"
+        f"Tipo:      {pytest_parsed.get('error_type', 'unknown')}\n"
+        f"Assertion: {pytest_parsed.get('assertion', 'N/A')}\n"
+        f"Mensagem:  {pytest_parsed.get('error_message', 'N/A')}\n\n"
+        f"Traceback completo:\n{pytest_parsed.get('raw', '')}"
+    )
+
+    context = (
+        f"Erro de teste detectado no arquivo {pytest_parsed.get('file', 'unknown')} "
+        f"na função {pytest_parsed.get('function', 'unknown')} "
+        f"(linha {pytest_parsed.get('line', 'unknown')}). "
+        f"O tipo de erro é {pytest_parsed.get('error_type', 'unknown')}."
+    )
+
+    return build_fix_prompt_from_error(
+        error_description=error_description,
+        original_code=original_code,
+        test_code=test_code,
+        context=context,
+        language=language,
+    )
     raise ValueError(f"Tool '{tool_name}' não encontrada.")
