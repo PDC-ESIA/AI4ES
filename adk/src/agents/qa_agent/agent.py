@@ -2,6 +2,7 @@ from google.adk.agents import Agent
 from google.adk.tools import FunctionTool
 
 from .tools.receive_requirements import receber_requisitos
+from .tools.pytest_runner import executar_pytest_tool
 
 qa_agent = Agent(
     name="qa_agent",
@@ -38,5 +39,6 @@ qa_agent = Agent(
     """,
     tools=[
         FunctionTool(receber_requisitos),
+        FunctionTool(executar_pytest_tool),
     ],
 )
