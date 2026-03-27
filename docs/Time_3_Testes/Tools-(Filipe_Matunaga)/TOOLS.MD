@@ -32,6 +32,7 @@ Responsável por **receber linhas de log brutas e transformá-las em dados estru
 | Python    | `ERROR:modulo:mensagem`                                                 |
 | Nginx     | `192.168.1.1 - - [15/Jan/2024:10:23:45 +0000] "GET /api HTTP/1.1" 404` |
 | JSON      | `{"level":"ERROR","module":"auth","message":"falha"}`                   |
+| Pytest    | Traceback completo de testes failhos do pytest                          |
 | Raw       | Qualquer linha não vazia (fallback)                                     |
 
 ### Estrutura de saída (`LogEntry`)
@@ -63,6 +64,25 @@ Filtra uma lista de entradas pelo nível de severidade. Ex: retorna apenas entra
 
 #### `filter_by_module(entries, module)`
 Filtra uma lista de entradas pelo nome do módulo. Ex: retorna apenas entradas do módulo `auth`.
+
+#### `parse_pytest_log(traceback_text)`
+Parseia um traceback completo de pytest e retorna um dicionário estruturado com:
+- `file`: Arquivo onde ocorreu o erro
+- `line`: Número da linha do erro
+- `function`: Nome da função de teste
+- `error_type`: Tipo do erro (ex: `AssertionError`)
+- `error_message`: Mensagem do erro
+- `assertion`: A linha de assert que falhou
+- `raw`: Traceback original
+
+```python
+from log_parser_tool import execute_tool
+
+error_dict = execute_tool("parse_pytest_log", {
+    "traceback_text": "def test_falha():\n    assert 2 + 2 == 5\nE    assert (2 + 2) == 5\nfile.py:7: AssertionError"
+})
+# → {"file": "file.py", "line": 7, "function": "test_falha", "error_type": "AssertionError", ...}
+```
 
 #### `execute_tool(tool_name, tool_input)`
 Dispatcher central — executa qualquer tool pelo nome, sem precisar importá-la diretamente.
@@ -145,6 +165,24 @@ result = fix_tool("build_fix_prompt_from_log_entry", {
 print(result["prompt"])
 ```
 
+#### `build_fix_prompt_from_pytest(traceback_text, original_code?, test_code?, language?)`
+Gera o prompt a partir de um traceback completo de pytest — encadeia diretamente com `parse_pytest_log`.
+
+```python
+from log_parser_tool import execute_tool as log_tool
+from code_fix_prompt_tool import execute_tool as fix_tool
+
+traceback = "def test_falha():\n    assert 2 + 2 == 5\nE    assert (2 + 2) == 5\nfile.py:7: AssertionError"
+
+result = fix_tool("build_fix_prompt_from_pytest", {
+    "traceback_text": traceback,
+    "original_code": "...",
+    "test_code": "...",
+})
+
+print(result["prompt"])
+```
+
 #### `execute_tool(tool_name, tool_input)`
 Dispatcher central — mesmo padrão do `log_parser_tool`.
 
@@ -169,6 +207,37 @@ result = fix_tool("build_fix_prompt_from_log_entry", {
 })
 
 # 3. Envia o prompt para o LLM (ex: API do Claude)
+prompt = result["prompt"]
+```
+
+### Fluxo específico com pytest
+
+```python
+from log_parser_tool import execute_tool as log_tool
+from code_fix_prompt_tool import execute_tool as fix_tool
+
+# 1. Obtém o traceback completo do pytest (ex: do JSON retornado pela tool de QA)
+traceback = """def test_falha_proposital():
+    # Isso aqui vai forçar o pytest a falhar para vermos se a tool captura o erro
+>    assert 2 + 2 == 5
+E    assert (2 + 2) == 5
+
+Tool_test\\artefactsTests\\test_dummy_rf001.py:7: AssertionError"""
+
+# 2. Parseia o traceback
+pytest_error = log_tool("parse_pytest_log", {
+    "traceback_text": traceback
+})
+# → {"file": "test_dummy_rf001.py", "line": 7, "function": "test_falha_proposital", ...}
+
+# 3. Gera o prompt para o agente corretor
+result = fix_tool("build_fix_prompt_from_pytest", {
+    "traceback_text": traceback,
+    "original_code": "def parse_line(raw): ...",
+    "test_code": "def test_falha_proposital(): assert 2 + 2 == 5",
+})
+
+# 4. Envia o prompt para o LLM
 prompt = result["prompt"]
 ```
 
