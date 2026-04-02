@@ -40,15 +40,6 @@ A diretriz de padronização do Time 2 estabelece o uso de Mermaid ou PlantUML e
 | Dependência de instalação local | ✅ Nenhuma | ⚠️ Requer Java/servidor |
 | Maturidade do ecossistema | ✅ Alta | ✅ Alta |
 
-### 1.3 Planos Futuros: Suporte a PlantUML
-
-Está previsto para versões futuras do Agente MVP o desenvolvimento de um **conjunto paralelo de prompts para PlantUML**, para cobrir casos de uso que Mermaid não suporta adequadamente, especialmente:
-
-- Diagramas de componentes C4 com granularidade avançada;
-- Modelos UML completos exigidos por documentação formal de engenharia.
-
-Os blocos de raciocínio (CoT) e de trade-off desenvolvidos nesta subtask são agnósticos ao formato de saída e poderão ser reaproveitados com ajustes mínimos para PlantUML.
-
 ---
 
 ## 2. Arquitetura Multi-Agente e Distribuição de Responsabilidades
@@ -97,17 +88,16 @@ O Especialista Mermaid recebe a análise do Design e percorre **dois passos**:
 **Convenção de nomenclatura dos arquivos gerados:**
 
 ```
-diagrama_{hu_id}_{tipo}.md
+diagrama_{hu_id}_{descricao_resumida}.mmd
 ```
 
 Exemplos:
-- `diagrama_HU-042_flowchart.md`
-- `diagrama_HU-015_sequenceDiagram.md`
-- `diagrama_HU-091_erDiagram.md`
+- `diagrama_HU-042_processo_compra.mmd`
+- `diagrama_HU-015_processo_login.mmd`
 
 **Cabeçalho obrigatório de cada arquivo gerado:**
 
-```
+```markdown
 <!-- HU de origem: HU-{id} -->
 <!-- Tipo de diagrama: {tipo Mermaid} -->
 <!-- Gerado por: Especialista Mermaid — Agente MVP Time 2 -->
@@ -167,7 +157,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([HU validada]) --> B[Orquestrador\nCoorena e roteia entre especialistas]
+    A([HU validada]) --> B[Orquestrador\nCoordena e roteia entre especialistas]
     B --> C[Especialista de design\nCoT, trade-offs, componentes]
     B --> D[Especialista Mermaid\nGera e valida diagramas .md]
     C -.->|Retorna analise| B
