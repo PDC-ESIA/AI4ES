@@ -226,3 +226,6 @@ ENV/
 
 # Langchain Text Splitters
 .langchain_text
+
+# ide
+.vscode/*
