@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app = get_fast_api_app(
-    agents_dir="agents/roles",
+    # Único agente de entrada: orquestrador
+    agents_dir="runners",
     web=True,
     allow_origins=["*"],
 )
