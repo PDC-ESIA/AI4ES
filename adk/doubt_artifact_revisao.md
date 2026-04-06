@@ -1,58 +1,52 @@
-# Revisão de Código — Página Web "Hello World" (Flask)
+# Revisão de Código — Página Web "Hello World"
 
-## Visão Geral
-Foram implementados os seguintes arquivos:
-
-- `src/app.py`: Inicializa um servidor Flask e serve a rota '/'
-- `src/templates/index.html`: Template exibe o texto “Hello World”
-- `src/static/style.css`: CSS opcional, aparência leve
+## Contexto
+- **Requisito:** Exibir o texto 'hello world' centralizado na tela, sem outros elementos (REQ-1)
+- **Arquitetura:**
+  - `src/index.html`: HTML principal
+  - `src/styles/main.css`: CSS para centralizar e estilizar
+- **Testes planejados:** Verificar centralização e ausência de outros elementos visíveis
 
 ## Análise dos Arquivos
 
-### 1. src/app.py
-- Utiliza Flask corretamente e renderiza o template esperado em `index.html`.
-- Segue a arquitetura proposta (rotas via decorators, render_template, main).
-- Código limpo, simples e legível. Não há riscos de bug.
-- Pequeno comentário no handler `index()` explica a renderização.
-- Atende totalmente ao REQ-1.
+### 1. src/index.html
+- Estrutura correta (HTML5, charset, viewport).
+- Importa `styles/main.css` adequadamente.
+- Apenas um elemento `<div class="centered-text">hello world</div>` — cumpre o critério de não conter outros elementos visíveis.
+- Sem excessos, bem minimalista.
 
-### 2. src/templates/index.html
-- HTML bem formado, encoding e viewport definidos.
-- Importa o CSS opcionalmente. Estrutura com `<div class="container">Hello World</div>`.
-- Usabilidade e acessibilidade condizentes ao escopo.
-- Cumpre o critério: o texto "Hello World" está visível ao acessar a página principal.
+### 2. src/styles/main.css
+- Regras de CSS para garantir centralização do texto (flex, justify-content, align-items, 100vh, etc.).
+- Estilo limpo, responsivo e sem poluição visual.
 
-### 3. src/static/style.css
-- Proporciona apresentação visual leve, legível.
-- Não há excesso de regras ou dependências complexas.
+## Aderência à arquitetura
+- Os caminhos e responsabilidade dos arquivos estão exatas conforme a arquitetura definida.
+- Não há outros arquivos/códigos além do escopo mínimo do requisito.
 
-## Aderência à Arquitetura
-- Estrutura de diretórios (static, templates, app.py) conforme especificado pela arquitetura.
-- Uso de Flask e templates Jinja2 conforme technical decision documentada.
+## Qualidade
+- HTML válido, sem logic bugs possíveis; código limpo.
+- CSS adequado para a proposta, sem complexidade ou más práticas.
+- Mantém o princípio da responsabilidade única (cada arquivo possui papel claro).
 
-## Qualidade & Princípios
-- Não há lógica suficiente para violação de SOLID (código trivial e correto).
-- Nenhum risco de bug; fluxo é evidente.
-- Não há dependências além do Flask (essencial).
-- Código simples, exato ao escopo funcional.
+## Testes x Plano
+- O único teste planejado é abrir a página e observar: texto "hello world" centralizado, sem outros elementos.
+- O código entrega isso diretamente; devido à simplicidade, o risco de desvio é zero.
+- Não são providos testes automatizados, mas não são necessários nem requisitados neste MVP.
 
-## Cobertura de Testes
-- Plano de testes exige exibição do texto “Hello World” na raiz.
-- Embora o projeto ainda **não contenha testes automatizados para a rota**, dada a trivialidade e clareza da implementação, **não é considerado bloqueante** nesta etapa (por ser MVP e protótipo).
-
-## Possíveis Melhorias
-- Em projetos maiores: considerar testes automatizados para rotas HTTP.
-- Adicionar README sobre como rodar o projeto (fora de escopo da tarefa atual).
+## Possíveis melhorias (NÃO bloqueantes)
+- Considerar testes automatizados de interface caso o projeto cresça.
+- Adicionar README orientando como abrir/rodar a página.
 
 ## Conclusão
-A implementação está ***APROVADA*** para a demanda e arquitetura estabelecidas. Todos os arquivos criados estão corretos, claros e fiéis ao proposto. Não foram identificados bugs, riscos ou violações relevantes.
-
-**Checklist:**
-- [x] Funcionalidade principal entregue ("Hello World" visível)
-- [x] Estrutura e padrões aderentes
-- [x] Código limpo, seguro e mínimo
-- [x] Sem bugs
-- [ ] Teste automatizado (não bloqueante nesta etapa)
+- **APROVADO** para a proposta e arquitetura.
+- Nenhum bug detectado, nenhum desvio, nenhum ajuste obrigatório.
 
 ---
-*Para evoluções (como CI, deploy ou automação de testes), recomenda-se revisão futura conforme escala do projeto.*
+
+**Checklist:**
+- [x] Exibe "hello world" centralizado
+- [x] Arquitetura seguida
+- [x] Código limpo e mínimo
+- [x] Sem riscos ou bugs
+- [ ] Teste automatizado (não obrigatório para este escopo)
+

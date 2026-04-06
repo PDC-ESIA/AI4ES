@@ -4,11 +4,12 @@
 adk/
 ├── app/
 │   └── main.py                  # Entry point FastAPI + ADK
+├── runners/                     # Diretório escaneado pelo ADK (agents_dir)
+│   └── orchestrator/            # Único app exposto — re-exporta root_agent
+│       └── agent.py
 ├── agents/
-│   ├── orchestrator/            # App ADK (root_agent) — entrada principal
-│   │   ├── agent.py
-│   │   └── prompt.py
 │   ├── roles/                   # Agentes especialistas reutilizáveis
+│   │   ├── orchestrator/        # root_agent (LlmAgent + AgentTools)
 │   │   ├── coder/
 │   │   ├── requirements/
 │   │   ├── architect/
