@@ -229,3 +229,4 @@ ENV/
 
 # ide
 .vscode/*
+.src/*
