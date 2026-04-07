@@ -1,6 +1,8 @@
+# ADK — agentes e orquestração
+
 ## Estrutura
 
-```
+```text
 adk/
 ├── app/
 │   └── main.py                  # Entry point FastAPI + ADK
@@ -47,6 +49,20 @@ source .venv/bin/activate
 uvicorn app.main:app --reload --port 8081
 ```
 
+### Expor roles diretamente (somente dev)
+
+Por padrão, o servidor expõe apenas os apps em `runners/` (produção). Para expor **roles** diretamente na Dev UI (útil para depurar/agir em um role específico), ajuste:
+
+```bash
+export ADK_AGENTS_DIR=agents/roles
+```
+
+Para voltar ao padrão:
+
+```bash
+export ADK_AGENTS_DIR=runners
+```
+
 ## Execução com Docker
 
 Pré-requisito: **Docker** (e Docker Compose) instalados. Copie `.env.example` para `.env` e preencha.
@@ -75,9 +91,9 @@ Na **primeira vez** que o container subir, o LiteLLM iniciará o fluxo de autent
 docker compose logs -f
 ```
 
-2. Procure por uma linha contendo um **código** e a URL `https://github.com/login/device`.
-3. Abra a URL no navegador, cole o código e autorize.
-4. Após a autorização, os tokens são salvos no volume `copilot-tokens` e **não será necessário repetir** este passo em execuções futuras.
+1. Procure por uma linha contendo um **código** e a URL `https://github.com/login/device`.
+1. Abra a URL no navegador, cole o código e autorize.
+1. Após a autorização, os tokens são salvos no volume `copilot-tokens` e **não será necessário repetir** este passo em execuções futuras.
 
 > **Sem Docker:** o mesmo fluxo ocorre no terminal onde o `uvicorn` está rodando.
 

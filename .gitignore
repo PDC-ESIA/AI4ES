@@ -32,6 +32,7 @@ MANIFEST
 venv/
 env/
 ENV/
+adk/.venv-docker/
 
 # Google ADK
 .adk/

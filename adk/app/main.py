@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import litellm
@@ -14,9 +15,13 @@ litellm.drop_params = True
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+_DEFAULT_AGENTS_DIR = "runners"
+
 app = get_fast_api_app(
-    # Único agente de entrada: orquestrador
-    agents_dir="runners",
+    # Profissional: configura por ambiente, com default seguro (produção).
+    # - runners: expõe somente apps em adk/runners/ (ex.: orchestrator)
+    # - agents/roles: expõe roles diretamente (útil em desenvolvimento)
+    agents_dir=os.environ.get("ADK_AGENTS_DIR", _DEFAULT_AGENTS_DIR),
     web=True,
     allow_origins=["*"],
 )

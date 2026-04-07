@@ -2,6 +2,8 @@ services:
   adk:
     image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
     working_dir: /app
+    environment:
+      - UV_PROJECT_ENVIRONMENT=/venv
     command: >
       sh -c "uv sync --no-dev && uv run uvicorn app.main:app --host 0.0.0.0 --port 8081"
     ports:
@@ -9,9 +11,11 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/app
+      - .:/app:ro
+      - adk-venv-docker:/venv
       - copilot-tokens:/root/.config/litellm/github_copilot
     restart: unless-stopped
 
 volumes:
+  adk-venv-docker:
   copilot-tokens:
