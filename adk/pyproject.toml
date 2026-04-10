@@ -25,4 +25,10 @@ dependencies = [
     "gunicorn>=20.1.0,<22.0.0",
     "langfuse>=3.3.5",
     "openinference-instrumentation-google-adk>=0.1.4",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
 ]

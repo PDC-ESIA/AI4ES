@@ -1,14 +1,10 @@
-import os
-
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 
+from shared.llm import get_model
 from . import prompt, schemas
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
-
 agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+    model=get_model(),
     name="finalization_agent",
     description=prompt.description,
     instruction=prompt.instruction,

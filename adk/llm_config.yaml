@@ -1,0 +1,31 @@
+# Configuração de modelos LLM com fallback via LiteLLM Router.
+# Documentação: https://docs.litellm.ai/docs/routing
+#
+# Cada entrada em model_list define um deployment.  O Router tenta o modelo
+# primário e, em caso de RateLimitError ou timeout, segue a cadeia de fallbacks.
+#
+# API keys podem referenciar variáveis de ambiente:
+#   api_key: "os.environ/GROQ_API_KEY"
+
+model_list:
+  - model_name: "github_copilot/gpt-4"
+    litellm_params:
+      model: "github_copilot/gpt-4"
+
+  - model_name: "groq/llama-3.3-70b-versatile"
+    litellm_params:
+      model: "groq/llama-3.3-70b-versatile"
+      api_key: "os.environ/GROQ_API_KEY"
+
+  - model_name: "openrouter/google/gemini-2.5-flash"
+    litellm_params:
+      model: "openrouter/google/gemini-2.5-flash"
+      api_key: "os.environ/OPENROUTER_API_KEY"
+
+router_settings:
+  num_retries: 2
+  timeout: 120
+  fallbacks:
+    - github_copilot/gpt-4:
+        - groq/llama-3.3-70b-versatile
+        - openrouter/google/gemini-2.5-flash

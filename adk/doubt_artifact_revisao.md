@@ -1,52 +1,46 @@
 # Revisão de Código — Página Web "Hello World"
 
 ## Contexto
-- **Requisito:** Exibir o texto 'hello world' centralizado na tela, sem outros elementos (REQ-1)
+- **Requisito:** Exibir a mensagem 'Hello, World!' ao usuário (REQ-1)
 - **Arquitetura:**
-  - `src/index.html`: HTML principal
-  - `src/styles/main.css`: CSS para centralizar e estilizar
-- **Testes planejados:** Verificar centralização e ausência de outros elementos visíveis
+  - `src/index.html`: Página principal responsável pela mensagem
+  - `src/styles/main.css`: CSS básico para centralização e estilo visual
+- **Testes:** Verificação visual da mensagem na tela
 
 ## Análise dos Arquivos
-
 ### 1. src/index.html
-- Estrutura correta (HTML5, charset, viewport).
-- Importa `styles/main.css` adequadamente.
-- Apenas um elemento `<div class="centered-text">hello world</div>` — cumpre o critério de não conter outros elementos visíveis.
-- Sem excessos, bem minimalista.
+- Utiliza corretamente HTML5, charset e importação de CSS.
+- Apenas um `<h1>` com "Hello, World!", em perfeita aderência ao requisito e arquitetura.
+- Sem excesso de elementos; estrutura limpa e mínima.
 
 ### 2. src/styles/main.css
-- Regras de CSS para garantir centralização do texto (flex, justify-content, align-items, 100vh, etc.).
-- Estilo limpo, responsivo e sem poluição visual.
+- CSS para centralizar e estilizar de modo simples.
+- Sem regras desnecessárias.
 
-## Aderência à arquitetura
-- Os caminhos e responsabilidade dos arquivos estão exatas conforme a arquitetura definida.
-- Não há outros arquivos/códigos além do escopo mínimo do requisito.
+## Aderência à Arquitetura
+- Os arquivos estão exatamente nos caminhos definidos.
+- Uso de HTML puro e CSS separado conforme acordado.
 
-## Qualidade
-- HTML válido, sem logic bugs possíveis; código limpo.
-- CSS adequado para a proposta, sem complexidade ou más práticas.
-- Mantém o princípio da responsabilidade única (cada arquivo possui papel claro).
+## Qualidade, SOLID, Bugs
+- Não há lógica de programação a ser inspecionada (apenas HTML e CSS).
+- O código segue boas práticas (responsabilidade única, clareza, sem redundância).
+- Sem bugs ou problemas de qualidade possíveis neste escopo.
 
-## Testes x Plano
-- O único teste planejado é abrir a página e observar: texto "hello world" centralizado, sem outros elementos.
-- O código entrega isso diretamente; devido à simplicidade, o risco de desvio é zero.
-- Não são providos testes automatizados, mas não são necessários nem requisitados neste MVP.
+## Cobertura de Testes
+- O teste planejado (exibição da mensagem no acesso à página) é diretamente atendido. Não são necessários testes automatizados para o objetivo do requisito.
 
-## Possíveis melhorias (NÃO bloqueantes)
-- Considerar testes automatizados de interface caso o projeto cresça.
-- Adicionar README orientando como abrir/rodar a página.
+## Pontos de Atenção ou Melhoria (NÃO bloqueantes)
+- Para evoluções, considerar testes end-to-end automatizados.
+- Um arquivo README poderia orientar futuros usuários, mas não é obrigatório.
 
 ## Conclusão
-- **APROVADO** para a proposta e arquitetura.
-- Nenhum bug detectado, nenhum desvio, nenhum ajuste obrigatório.
+- **APROVADO** — O código atende totalmente ao requisito, arquitetura e plano de testes, sem nenhum bloqueio.
 
 ---
 
-**Checklist:**
-- [x] Exibe "hello world" centralizado
-- [x] Arquitetura seguida
-- [x] Código limpo e mínimo
-- [x] Sem riscos ou bugs
-- [ ] Teste automatizado (não obrigatório para este escopo)
-
+**Checklist**
+- [x] Exibe "Hello, World!" visível na tela;
+- [x] Estrutura aderente à arquitetura proposta;
+- [x] Código limpo e mínimo;
+- [x] Sem riscos ou bugs identificáveis neste contexto.
+- [ ] Teste automatizado (não obrigatório nesta etapa)
