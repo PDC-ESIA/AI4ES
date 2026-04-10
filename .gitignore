@@ -32,6 +32,7 @@ MANIFEST
 venv/
 env/
 ENV/
+adk/.venv-docker/
 
 # Google ADK
 .adk/
@@ -226,3 +227,7 @@ ENV/
 
 # Langchain Text Splitters
 .langchain_text
+
+# ide
+.vscode/*
+.src/*
