@@ -147,7 +147,7 @@ Leia o [CONTRIBUTING.md](./CONTRIBUTING.md) para as regras completas e o [GUIDE_
 ### 📌 Fluxo de contribuições
 
 1. Crie uma branch a partir de `develop` seguindo o padrão `feature/<equipe>/<issue>-descricao`
-2. Faça commits usando **Conventional Commits**: `tipo(escopo): descrição #issue`
+2. Faça commits usando **Conventional Commits**: `tipo(escopo): #issue descrição`
 3. Sincronize com `develop` e resolva conflitos localmente
 4. Abra um Pull Request usando o [template padrão](./.github/PULL_REQUEST_TEMPLATE.md)
 5. Aguarde as aprovações e status checks antes do merge

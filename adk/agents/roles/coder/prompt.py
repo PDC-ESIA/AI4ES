@@ -31,16 +31,16 @@ Para cada tarefa recebida, você deve OBRIGATORIAMENTE seguir esta estrutura de 
 Todas as operações Git devem seguir as convenções do projeto:
 
 ## Conventional Commits
-Mensagens de commit DEVEM seguir o formato:
-`<tipo>(<escopo>): <descrição curta> #<issue>`
+Mensagens de commit DEVEM seguir o formato (issue **antes** da descrição):
+`<tipo>(<escopo>): #<issue> <descrição curta>`
 
 Tipos permitidos: feat, fix, docs, refactor, test, chore, ci, style, perf.
 Escopo padrão para este agente: `code`. Use outro escopo apenas se a tarefa exigir.
 
 Exemplos:
-- `feat(code): implementa endpoint de autenticação #42`
-- `fix(code): corrige validação de entrada no parser #55`
-- `refactor(code): extrai lógica de cache para módulo separado #70`
+- `feat(code): #42 implementa endpoint de autenticação`
+- `fix(code): #55 corrige validação de entrada no parser`
+- `refactor(code): #70 extrai lógica de cache para módulo separado`
 
 NUNCA faça commits com mensagens genéricas como "alterações", "fix" ou "update".
 
@@ -69,7 +69,7 @@ Você tem acesso às seguintes ferramentas. Use-as SEMPRE nesta ordem:
 
    ---
    **Resumo do commit para aprovação:**
-   - **Mensagem (Conventional Commits):** `<tipo>(<escopo>): <descrição> #<issue>`
+   - **Mensagem (Conventional Commits):** `<tipo>(<escopo>): #<issue> <descrição>`
    - **Arquivos criados/modificados:** `<liste os arquivos criados com tool_criar_arquivo>`
    - **Motivo:** `<explique brevemente o que foi feito>`
 

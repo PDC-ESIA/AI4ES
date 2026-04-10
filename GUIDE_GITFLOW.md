@@ -54,7 +54,7 @@ main ← release/* ← develop ← feature/<equipe>/<issue>-descricao
 
 ## Conventional Commits — Cheat Sheet
 
-Formato: `<tipo>(<escopo>): <descrição> #<issue>`
+Formato: `<tipo>(<escopo>): #<issue> <descrição>`
 
 | Tipo       | Uso                                |
 | ---------- | ---------------------------------- |
@@ -73,9 +73,9 @@ Formato: `<tipo>(<escopo>): <descrição> #<issue>`
 Exemplos:
 
 ```text
-feat(code): cria endpoint de autenticação #42
-fix(test): corrige teste flaky de login #99
-docs(req): documenta requisitos do módulo X #101
+feat(code): #42 cria endpoint de autenticação
+fix(test): #99 corrige teste flaky de login
+docs(req): #101 documenta requisitos do módulo X
 ```
 
 ---
@@ -92,7 +92,7 @@ git checkout -b feature/code/42-minha-feature
 # ... trabalhe nos arquivos ...
 
 git add <arquivos>
-git commit -m "feat(code): implementa minha feature #42"
+git commit -m "feat(code): #42 implementa minha feature"
 git push -u origin feature/code/42-minha-feature
 # Abra o PR para develop no GitHub
 ```
@@ -107,7 +107,7 @@ git checkout -b hotfix/code/55-corrige-crash
 # ... corrija o bug ...
 
 git add <arquivos>
-git commit -m "fix(code): corrige crash no login #55"
+git commit -m "fix(code): #55 corrige crash no login"
 git push -u origin hotfix/code/55-corrige-crash
 # Abra PR para main; depois garanta merge de volta em develop
 ```
@@ -122,7 +122,7 @@ git checkout -b release/v1.2.0
 # ... ajustes finais, bump de versão ...
 
 git add <arquivos>
-git commit -m "chore(pipeline): prepara release v1.2.0 #60"
+git commit -m "chore(pipeline): #60 prepara release v1.2.0"
 git push -u origin release/v1.2.0
 # Abra PR para main (gera tag) e depois para develop
 ```
@@ -135,7 +135,7 @@ Antes de abrir ou marcar um PR como "Ready for review":
 
 - [ ] Branch criada a partir da origem correta (`develop` para feature, `main` para hotfix)
 - [ ] Nome da branch segue o padrão `tipo/<equipe>/<issue>-descricao`
-- [ ] Commits seguem Conventional Commits (`tipo(escopo): descrição #issue`)
+- [ ] Commits seguem Conventional Commits (`tipo(escopo): #issue descrição`)
 - [ ] Branch sincronizada com o destino (`git pull origin develop` / `main`)
 - [ ] Conflitos resolvidos localmente
 - [ ] Testes passando (se aplicável)

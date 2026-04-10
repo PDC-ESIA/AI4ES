@@ -182,10 +182,10 @@ Use o prefixo da sua sub-equipe no nome da branch para facilitar a rastreabilida
 
 ### Conventional Commits
 
-Este projeto adota o padrão [Conventional Commits](https://www.conventionalcommits.org/). Toda mensagem de commit deve seguir o formato:
+Este projeto adota o padrão [Conventional Commits](https://www.conventionalcommits.org/). Toda mensagem de commit deve seguir o formato (o **número da issue vem logo após os dois pontos**, antes da descrição):
 
 ```text
-<tipo>(<escopo>): <descrição curta> #<issue>
+<tipo>(<escopo>): #<issue> <descrição curta>
 ```
 
 **Tipos permitidos:**
@@ -209,11 +209,11 @@ Este projeto adota o padrão [Conventional Commits](https://www.conventionalcomm
 **Exemplos:**
 
 ```text
-feat(code): adiciona validação de login #42
-fix(test): corrige flaky test de auth #99
-docs(req): atualiza requisitos do módulo X #101
-refactor(orchestrator): simplifica roteamento de agentes #150
-ci(pipeline): adiciona lint de commits no workflow #206
+feat(code): #42 adiciona validação de login
+fix(test): #99 corrige flaky test de auth
+docs(req): #101 atualiza requisitos do módulo X
+refactor(orchestrator): #150 simplifica roteamento de agentes
+ci(pipeline): #206 adiciona lint de commits no workflow
 ```
 
 > **Agentes ADK** também devem seguir este padrão ao executar `git commit`. As instruções estão embutidas nos prompts dos agentes (veja `adk/agents/roles/coder/prompt.py`).

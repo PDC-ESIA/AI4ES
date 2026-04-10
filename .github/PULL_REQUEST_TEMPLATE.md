@@ -32,7 +32,7 @@ Closes #
 
 - [ ] Branch criada a partir da origem correta (`develop` ou `main`)
 - [ ] Nome da branch segue `tipo/<equipe>/<issue>-descricao`
-- [ ] Commits seguem Conventional Commits (`tipo(escopo): descrição #issue`)
+- [ ] Commits seguem Conventional Commits (`tipo(escopo): #issue descrição`)
 - [ ] Branch sincronizada com o destino (sem conflitos)
 - [ ] Testes passando (se aplicável)
 - [ ] Documentação atualizada (se aplicável)
