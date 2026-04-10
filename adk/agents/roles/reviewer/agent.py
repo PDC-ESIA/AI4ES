@@ -9,7 +9,7 @@ from . import prompt
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
 
-agent = LlmAgent(
+root_agent = LlmAgent(
     model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
     name="review_agent",
     description=prompt.description,
