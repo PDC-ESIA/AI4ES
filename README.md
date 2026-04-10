@@ -73,8 +73,12 @@ O projeto investiga, de forma sistemática e aplicada, o uso de IA Generativa (L
 │   ├── resultados/
 │   └── scripts/
 │
+├── .github/
+│   └── PULL_REQUEST_TEMPLATE.md
+│
 ├── README.md
 ├── CONTRIBUTING.md
+├── GUIDE_GITFLOW.md
 └── LICENSE
 ```
 
@@ -138,14 +142,23 @@ O projeto investiga, de forma sistemática e aplicada, o uso de IA Generativa (L
 
 ## 🛠️ **Como Contribuir**
 
-Leia o arquivo [CONTRIBUTING.md](./CONTRIBUTING.md), mas em resumo:
+Leia o [CONTRIBUTING.md](./CONTRIBUTING.md) para as regras completas e o [GUIDE_GITFLOW.md](./GUIDE_GITFLOW.md) para um guia rápido. Em resumo:
 
 ### 📌 Fluxo de contribuições
 
-1. Crie uma branch com nome descritivo
-2. Faça commits pequenos e claros
-3. Abra um Pull Request para revisão
-4. Utilize os templates de PR
-5. Espere aprovação da gestão antes de merge
+1. Crie uma branch a partir de `develop` seguindo o padrão `feature/<equipe>/<issue>-descricao`
+2. Faça commits usando **Conventional Commits**: `tipo(escopo): descrição #issue`
+3. Sincronize com `develop` e resolva conflitos localmente
+4. Abra um Pull Request usando o [template padrão](./.github/PULL_REQUEST_TEMPLATE.md)
+5. Aguarde as aprovações e status checks antes do merge
+
+### 🏷️ Sub-equipes e prefixos
+
+| Sub-equipe  | Prefixo (branch/scope) | Foco                                 |
+| ----------- | ---------------------- | ------------------------------------ |
+| Requisitos  | `req`                  | Levantamento e análise de requisitos |
+| Design      | `design`               | Arquitetura e decisões técnicas      |
+| Codificação | `code`                 | Implementação e refatoração          |
+| Testes      | `test`                 | Planos e execução de testes          |
 
 ---

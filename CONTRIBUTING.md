@@ -4,24 +4,24 @@ Este projeto utiliza o fluxo de trabalho **Gitflow** para gerenciar o versioname
 
 ## Branches Principais
 
-- **`main`** (ou `master`): Reflete o estado exato da produção. Restrita a merges vindos de `release` ou `hotfix`.
+- **`main`**: Reflete o estado exato da produção. Restrita a merges vindos de `release` ou `hotfix`.
 - **`develop`**: Branch principal de desenvolvimento. O código atual da próxima versão fica centralizado aqui.
 
 ## Como Contribuir
 
 ### 1. Novas Funcionalidades (`feature/`)
-Crie sempre a partir da `develop`. **Obrigatório incluir o número da issue no nome**:
+Crie sempre a partir da `develop`. **Obrigatório incluir o prefixo da equipe e o número da issue**:
 ```bash
 git checkout develop
-git checkout -b feature/123-nome-da-sua-feature
+git checkout -b feature/code/123-nome-da-sua-feature
 ```
 *Ao finalizar, abra um Pull Request (PR) para a `develop`.*
 
 ### 2. Correções Emergenciais (`hotfix/`)
-Para bugs críticos em produção, crie a partir da `main`. **Inclua o número da issue do bug**:
+Para bugs críticos em produção, crie a partir da `main`. **Inclua o prefixo da equipe e o número da issue**:
 ```bash
 git checkout main
-git checkout -b hotfix/124-nome-do-bug
+git checkout -b hotfix/code/124-nome-do-bug
 ```
 *Após corrigir, faça o merge tanto na `main` (gerando nova tag) quanto na `develop`.*
 
@@ -61,7 +61,7 @@ O projeto utiliza o [Google ADK](https://google.github.io/adk-docs/) com a segui
 | ------------ | ------------------------ | -------------------------------------------------------------------------- |
 | **Role**     | `agents/roles/<nome>/`   | Agente especialista individual (`LlmAgent`)                                |
 | **Workflow** | `agents/workflows/<nome>/` | Composição de roles (`SequentialAgent`, `ParallelAgent`, …)              |
-| **Runner**   | `runners/<nome>/`        | Entry point ADK — re-exporta um `root_agent` para ser exposto via FastAPI  |
+| **Runner**   | `runners/<nome>/`        | Entry point ADK - re-exporta um `root_agent` para ser exposto via FastAPI. Na prática, filtra os agentes root  |
 
 ### 1. Criar um novo Role
 
@@ -70,7 +70,7 @@ Crie a pasta `agents/roles/<nome>/` com no mínimo:
 ```text
 agents/roles/meu_agente/
 ├── __init__.py
-├── agent.py      # exporta `agent` (instância de LlmAgent)
+├── agent.py      # exporta `agent` (instância de Agent)
 └── prompt.py     # exporta `description` e `instruction`
 ```
 
@@ -92,37 +92,33 @@ agent = LlmAgent(
 )
 ```
 
-### 2. Adicionar o role ao orquestrador
+### 2. Adicionar o role a um Workflow
 
-O orquestrador (`agents/roles/orchestrator/agent.py`) é o único agente exposto ao usuário. Para que um novo role seja acessível, registre-o como `AgentTool`:
+O orquestrador **não executa roles diretamente**. Ele é um `LlmAgent` de roteamento que decide qual **workflow** (`AgentTool`) acionar com base no pedido do usuário. Cada workflow compõe roles em sequência ou paralelo.
 
-1. Importe o agente no arquivo do orquestrador:
-
-```python
-from agents.roles.meu_agente.agent import agent as meu_agente
-```
-
-2. Adicione à lista `tools` do `root_agent`:
+Portanto, um novo role de engenharia de software deve ser inserido no workflow adequado (e não no orquestrador):
 
 ```python
-from google.adk.tools.agent_tool import AgentTool
-
-root_agent = LlmAgent(
-    ...
-    tools=[
-        ...,                            # ferramentas já existentes
-        AgentTool(agent=meu_agente),    # novo role
+# agents/workflows/coding/agent.py
+agent = SequentialAgent(
+    name="sdlc_pipeline",
+    sub_agents=[
+        requirements_agent,
+        architecture_agent,
+        test_planning_agent,
+        implementation_agent,   # roles existentes
+        review_agent,
+        meu_novo_role,          # ← insira aqui
+        finalization_agent,
     ],
 )
 ```
 
-3. Atualize o prompt do orquestrador (`agents/roles/orchestrator/prompt.py`) para que ele saiba **quando** e **por que** acionar o novo agente. Sem essa orientação no prompt, o orquestrador pode nunca invocá-lo.
-
-> **Dica:** Se o novo role deve fazer parte de um workflow existente (ex.: pipeline SDLC), insira-o na lista `sub_agents` do `SequentialAgent` correspondente em `agents/workflows/` em vez de adicioná-lo diretamente ao orquestrador.
+Depois, atualize o prompt do orquestrador (`agents/roles/orchestrator/prompt.py`) para descrever a nova capacidade que o workflow ganhou.
 
 ### 3. Criar um novo Workflow
 
-Crie `agents/workflows/<nome>/agent.py` exportando um `SequentialAgent` (ou `ParallelAgent`) que referencia roles existentes:
+Se o role não se encaixa em nenhum workflow existente, crie um novo em `agents/workflows/<nome>/agent.py`:
 
 ```python
 from google.adk.agents import SequentialAgent
@@ -136,7 +132,26 @@ agent = SequentialAgent(
 )
 ```
 
-Registre o workflow como `AgentTool` no orquestrador, assim como faria com um role.
+Em seguida, registre-o como `AgentTool` no orquestrador para que ele possa selecioná-lo:
+
+```python
+# agents/roles/orchestrator/agent.py
+from agents.workflows.meu_workflow.agent import agent as meu_workflow
+
+root_agent = LlmAgent(
+    ...
+    tools=[
+        AgentTool(agent=sdlc_pipeline),       # workflow existente
+        AgentTool(agent=meu_workflow),         # ← novo workflow
+        AgentTool(agent=coder_specialist),
+        AgentTool(agent=reviewer_specialist),
+    ],
+)
+```
+
+Atualize também o prompt do orquestrador para que ele saiba **quando** e **por que** acionar o novo workflow. Sem essa orientação, o orquestrador pode nunca selecioná-lo.
+
+> **Resumo da arquitetura:** Usuário → Orquestrador (roteador) → `AgentTool` (workflow ou agente pontual) → Roles especialistas.
 
 ### 4. Expor um novo app ADK (runner)
 
@@ -150,7 +165,65 @@ O ADK descobre automaticamente subpastas de `runners/` que contenham `agent.py` 
 
 ## Regras Gerais
 
-- **Nomenclatura de Branches**: Siga o padrão `tipo/numero-da-issue-breve-descricao` (ex: `feature/42-adicionar-login`).
+- **Nomenclatura de Branches**: Siga o padrão `tipo/<equipe>/<issue>-breve-descricao` (ex: `feature/code/42-adicionar-login`). Veja a tabela de prefixos de equipe abaixo.
 - **Branches Protegidas**: As branches `main` e `develop` são protegidas. O código deve ser integrado a elas **exclusivamente via Pull Request (PR)**. Nunca realize commits diretos.
-- **Commits Descritivos**: A mensagem do commit deve ser curta, objetiva e sempre **conter a referência ao número da issue** de trabalho (ex: `#42 Adiciona validação de login`).
 - **Sincronização**: Antes de finalizar sua tarefa, sincronize sua branch com as mudanças mais recentes da branch de destino (ex: `git pull origin develop`).
+
+### Prefixos de Equipe
+
+Use o prefixo da sua sub-equipe no nome da branch para facilitar a rastreabilidade:
+
+| Sub-equipe   | Prefixo   | Exemplo                              |
+| ------------ | --------- | ------------------------------------ |
+| Requisitos   | `req`     | `feature/req/206-politica-branching` |
+| Design       | `des`     | `feature/des/210-arquitetura-api` |
+| Codificação  | `cod`     | `feature/cod/42-adicionar-login`    |
+| Testes       | `tst`     | `feature/tst/99-cobertura-auth`     |
+
+### Conventional Commits
+
+Este projeto adota o padrão [Conventional Commits](https://www.conventionalcommits.org/). Toda mensagem de commit deve seguir o formato:
+
+```text
+<tipo>(<escopo>): <descrição curta> #<issue>
+```
+
+**Tipos permitidos:**
+
+| Tipo       | Quando usar                                  |
+| ---------- | -------------------------------------------- |
+| `feat`     | Nova funcionalidade                          |
+| `fix`      | Correção de bug                              |
+| `docs`     | Alteração exclusiva em documentação          |
+| `refactor` | Refatoração sem mudança de comportamento     |
+| `test`     | Criação ou ajuste de testes                  |
+| `chore`    | Tarefas de manutenção (CI, deps, configs)    |
+| `ci`       | Alteração em pipelines de CI/CD              |
+| `style`    | Formatação (sem mudança de lógica)           |
+| `perf`     | Melhoria de desempenho                       |
+
+**Escopos sugeridos** (alinhados às sub-equipes):
+
+`req` · `design` · `code` · `test` · `orchestrator` · `pipeline`
+
+**Exemplos:**
+
+```text
+feat(code): adiciona validação de login #42
+fix(test): corrige flaky test de auth #99
+docs(req): atualiza requisitos do módulo X #101
+refactor(orchestrator): simplifica roteamento de agentes #150
+ci(pipeline): adiciona lint de commits no workflow #206
+```
+
+> **Agentes ADK** também devem seguir este padrão ao executar `git commit`. As instruções estão embutidas nos prompts dos agentes (veja `adk/agents/roles/coder/prompt.py`).
+
+### Proteção de Branches (Branch Protection Rules)
+
+As seguintes regras de proteção são recomendadas no GitHub:
+
+| Regra                                     | `main`       | `develop`    |
+| ----------------------------------------- | ------------ | ------------ |
+| Requer PR para merge                      | Sim          | Sim          |
+| Aprovações mínimas                        | 1            | 1            |
+| Bloquear force push                       | Sim          | Sim          |
