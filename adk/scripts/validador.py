@@ -23,14 +23,14 @@ import os
 import subprocess
 import asyncio
 
-# Adiciona a pasta adk/ ao PYTHONPATH para que os módulos src.* sejam encontrados
+# Adiciona a pasta adk/ ao PYTHONPATH para que os módulos agents.* sejam encontrados
 # independentemente do diretório de trabalho do processo.
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
-from src.agents.pr_revisor_agent.agent import root_agent
+from agents.roles.reviewer.agent import agent as root_agent
 
 # O ADK infere o app_name a partir do caminho de instalação do pacote google.adk.agents.
 # Para evitar o aviso "App name mismatch", usamos o mesmo valor que ele infere: "agents".

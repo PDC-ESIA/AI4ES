@@ -6,6 +6,21 @@ on:
     #   - main
       # Avalia só os PRs que buscam um merge na main
 jobs:
+
+  auditoria-coder:
+    runs-on: ubuntu-latest
+    # JOB PLACEHOLDER - A ser implementado no futuro
+    steps:
+      - name: Executar Agente Coder
+        run: echo "Job do Agente Coder placeholder"
+
+  auditoria-requisitos:
+    runs-on: ubuntu-latest
+    # JOB PLACEHOLDER - A ser implementado no futuro
+    steps:
+      - name: Executar Agente Requisitos
+        run: echo "Job do Agente de Requisitos placeholder"
+
   auditoria-agente:
     runs-on: ubuntu-latest
     # Roda uma VR no ubuntu
@@ -41,5 +56,5 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           # temporariamente, utilizando a LLM Mistral para testes
 
-        run: uv run python validador.py
+        run: uv run python scripts/validador.py
         # o script criar o arquivo diff, contendo as diferenças apresentadas no PR e serializando-as para que o agente possa fazer a análise

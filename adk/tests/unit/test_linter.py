@@ -25,7 +25,7 @@ import os
 from pathlib import Path
 
 # Arquivos que podem conter print() legitimamente (scripts de CLI/entrada).
-ARQUIVOS_COM_PRINT_PERMITIDO = {"validador.py", "main.py", "teste_linter.py"}
+ARQUIVOS_COM_PRINT_PERMITIDO = {"validador.py", "main.py", "test_linter.py"}
 
 # Importações proibidas e a razão de cada uma.
 IMPORTACOES_PROIBIDAS = {
@@ -97,7 +97,7 @@ def verificar_prints_indevidos(arquivos: list[Path]) -> list[str]:
 
 
 def main() -> None:
-    raiz = Path(__file__).parent
+    raiz = Path(__file__).parent.parent.parent
 
     # Se arquivos foram passados como argumento, usa apenas eles; senão, varre tudo.
     if len(sys.argv) > 1:

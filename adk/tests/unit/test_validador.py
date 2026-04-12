@@ -24,8 +24,8 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Garante que o diretório adk/ está no path (necessário ao rodar testes isolados)
-sys.path.insert(0, str(Path(__file__).parent))
+# Garante que o diretório adk/scripts está no path para importar validador
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 
 
 # ---------------------------------------------------------------------------
