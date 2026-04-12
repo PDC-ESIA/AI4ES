@@ -32,10 +32,7 @@ MANIFEST
 venv/
 env/
 ENV/
-<<<<<<< HEAD
-=======
 adk/.venv-docker/
->>>>>>> aceaeef008b30a9ff6b07e2245140b05575cd20a
 
 # Google ADK
 .adk/
@@ -230,10 +227,7 @@ adk/.venv-docker/
 
 # Langchain Text Splitters
 .langchain_text
-<<<<<<< HEAD
-=======
 
 # ide
 .vscode/*
 .src/*
->>>>>>> aceaeef008b30a9ff6b07e2245140b05575cd20a
