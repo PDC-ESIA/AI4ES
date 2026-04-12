@@ -1,0 +1,67 @@
+name: "Pipeline Revisor de código"
+ 
+on:
+  pull_request:
+    # branches:
+    #   - main
+      # Avalia só os PRs que buscam um merge na main
+jobs:
+ 
+  auditoria-coder:
+    runs-on: ubuntu-latest
+    # JOB PLACEHOLDER - A ser implementado no futuro
+    steps:
+      - name: Executar Agente Coder
+        run: echo "Job do Agente Coder placeholder"
+ 
+  auditoria-requisitos:
+    runs-on: ubuntu-latest
+    # JOB PLACEHOLDER - A ser implementado no futuro
+    steps:
+      - name: Executar Agente Requisitos
+        run: echo "Job do Agente de Requisitos placeholder"
+ 
+  auditoria-agente:
+    runs-on: ubuntu-latest
+    # Roda uma VR no ubuntu
+ 
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # clona o repositório na VR e pega o log dos commits
+ 
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+ 
+      - name: Instalar dependências da automação
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pydantic
+ 
+      - name: Instalar dependências (uv)
+        working-directory: ./adk
+        run: |
+          pip install uv
+          uv sync
+ 
+      - name: Restaurar token do GitHub Copilot
+        env:
+          COPILOT_ACCESS_TOKEN: ${{ secrets.COPILOT_ACCESS_TOKEN }}
+          COPILOT_API_KEY_JSON: ${{ secrets.COPILOT_API_KEY_JSON }}
+        run: |
+          mkdir -p ~/.config/litellm/github_copilot
+          echo "$COPILOT_ACCESS_TOKEN" > ~/.config/litellm/github_copilot/access-token
+          echo "$COPILOT_API_KEY_JSON" > ~/.config/litellm/github_copilot/api-key.json
+ 
+      - name: Executar Agente Revisor
+        working-directory: ./adk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # O reviewer/agent.py usa ADK_LLM_MODEL para selecionar o modelo;
+          ADK_LLM_MODEL: "github_copilot/gpt-4"
+ 
+        run: uv run python scripts/validador.py

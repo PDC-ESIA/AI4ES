@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace # remove espaços inúteis no fim das linhas
+      - id: end-of-file-fixer # garante que todo arquivo termina com uma linha vazia
+      - id: check-yaml # verifica se os seus arquivos .yml estão bem formatados
+      - id: check-added-large-files # impede que você comite arquivos gigantes no Git por engano
+        exclude: '.*\.lock$'
+
+  # fiscal de formatação Python
+  - repo: https://github.com/psf/black
+    rev: 24.2.0
+    hooks:
+      - id: black
+        language_version: python3.12
+
+  - repo: https://github.com/iterative/dvc
+    rev: main
+    hooks:
+      - id: dvc-pre-commit
+        language_version: python3.12
