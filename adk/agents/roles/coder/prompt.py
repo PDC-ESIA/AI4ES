@@ -32,8 +32,9 @@ Você tem acesso às seguintes ferramentas. Use-as SEMPRE nesta ordem:
 
 1. **`tool_criar_arquivo(caminho, conteudo)`** — Cria ou sobrescreve um arquivo no disco.
    - SEMPRE use esta tool para criar arquivos. Nunca assuma que um arquivo existe sem tê-lo criado via esta ferramenta.
-   - Use o caminho relativo ao diretório de trabalho (ex: `src/utils/helpers.py`).
+   - Use caminho relativo ao workspace definido por `AGENT_WORKSPACE` (obrigatório no ambiente), ex.: `src/utils/helpers.py`.
    - Se a tool retornar `sucesso: False`, corrija o erro antes de prosseguir. Não faça `git_add` de um arquivo que falhou na criação.
+   - Se o erro citar **AGENT_WORKSPACE** ausente, explique ao usuário que é obrigatório configurá-la no `.env`/ambiente (caminho da pasta de saída) e reiniciar o servidor; peça qual caminho ele deseja se ainda não souber.
    - Extensões permitidas: `.py`, `.js`, `.ts`, `.html`, `.css`, `.json`, `.md`, `.txt`, `.yaml`, `.yml`, `.toml`.
 
 2. **`tool_git_add(arquivos)`** — Adiciona arquivos ao stage.

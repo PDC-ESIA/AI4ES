@@ -23,8 +23,9 @@ from shared.tools.filesystem import tool_criar_arquivo
  
 @pytest.fixture
 def diretorio(tmp_path, monkeypatch):
-    """Muda o cwd para um diretório temporário isolado."""
+    """CWD + AGENT_WORKSPACE apontando para o mesmo diretório temporário."""
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("AGENT_WORKSPACE", str(tmp_path))
     return tmp_path
  
  
@@ -141,4 +142,28 @@ class TestCriarArquivoSeguranca:
         result = tool_criar_arquivo("script.sh", "conteudo")
         assert {"sucesso", "erro", "caminho"}.issubset(result)
         assert result["sucesso"] is False
+
+    def test_path_com_ponto_ponto_rejeitado(self, diretorio):
+        result = tool_criar_arquivo("../fora.py", "x")
+        assert result["sucesso"] is False
+        assert ".." in result["erro"] or "workspace" in result["erro"].lower()
+
+
+class TestWorkspaceEnv:
+    def test_sem_agent_workspace_falha(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("AGENT_WORKSPACE", raising=False)
+        result = tool_criar_arquivo("x.py", "pass\n")
+        assert result["sucesso"] is False
+        assert "AGENT_WORKSPACE" in result["erro"]
+
+    def test_agent_workspace_redireciona_gravacao(self, tmp_path, monkeypatch):
+        ws = tmp_path / "out"
+        ws.mkdir()
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("AGENT_WORKSPACE", str(ws))
+        result = tool_criar_arquivo("rel/a.py", "pass\n")
+        assert result["sucesso"] is True
+        assert (ws / "rel" / "a.py").read_text() == "pass\n"
+        assert Path(result["caminho"]) == (ws / "rel" / "a.py").resolve()
  

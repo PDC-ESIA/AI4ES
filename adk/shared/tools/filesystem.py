@@ -1,5 +1,6 @@
 """Ferramentas de filesystem compartilhadas entre agentes."""
 
+import os
 from pathlib import Path
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -12,6 +13,40 @@ EXTENSOES_PERMITIDAS = {
 DIRETORIOS_PROIBIDOS = {
     ".git", ".venv", "venv", "node_modules", "__pycache__", ".env",
 }
+
+_ERRO_AGENT_WORKSPACE_AUSENTE = (
+    "AGENT_WORKSPACE não está definida nas variáveis de ambiente. "
+    "Peça ao usuário qual pasta deve receber os arquivos gerados (caminho absoluto recomendado) "
+    "e oriente-o a definir a variável AGENT_WORKSPACE com esse caminho no .env (ou ambiente) "
+    "e reiniciar o servidor antes de tentar de novo."
+)
+
+
+def _workspace_root_resolved() -> tuple[Path | None, str | None]:
+    """Retorna (raiz, None) ou (None, mensagem de erro) se ``AGENT_WORKSPACE`` estiver ausente."""
+    raw = os.environ.get("AGENT_WORKSPACE", "").strip()
+    if not raw:
+        return None, _ERRO_AGENT_WORKSPACE_AUSENTE
+    p = Path(raw)
+    root = p.resolve() if p.is_absolute() else (Path.cwd() / p).resolve()
+    return root, None
+
+
+def _resolve_safe_under_workspace(rel: str) -> tuple[Path | None, str | None]:
+    """Resolve ``rel`` dentro do workspace; retorna (path, erro)."""
+    root, werr = _workspace_root_resolved()
+    if werr:
+        return None, werr
+
+    path = Path(rel)
+    if path.is_absolute() or ".." in path.parts:
+        return None, "Caminho deve ser relativo ao workspace, sem '..'."
+    full = (root / path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        return None, "Caminho fora do workspace."
+    return full, None
 
 
 class RelatorioSchema(BaseModel):
@@ -38,7 +73,7 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
     - Cria diretórios intermediários automaticamente se necessário
  
     Args:
-        caminho (str): Caminho relativo ao diretório de trabalho atual 
+        caminho (str): Caminho relativo ao workspace (variável de ambiente obrigatória ``AGENT_WORKSPACE``).
         conteudo (str): Conteúdo completo a ser escrito no arquivo
  
     Returns:
@@ -52,16 +87,19 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
             "caminho": None
         }
  
-    path = Path(caminho)
- 
-    partes = set(path.parts[:-1])  
-    bloqueados = partes & DIRETORIOS_PROIBIDOS
+    caminho_limpo = caminho.strip()
+    partes_rel = set(Path(caminho_limpo).parts[:-1])
+    bloqueados = partes_rel & DIRETORIOS_PROIBIDOS
     if bloqueados:
         return {
             "sucesso": False,
             "erro": f"Escrita não permitida em diretório protegido: {bloqueados}",
             "caminho": caminho
         }
+
+    path, err = _resolve_safe_under_workspace(caminho_limpo)
+    if err:
+        return {"sucesso": False, "erro": err, "caminho": caminho}
  
     if path.suffix not in EXTENSOES_PERMITIDAS:
         return {
@@ -72,7 +110,6 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
             ),
             "caminho": caminho
         }
-
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +134,6 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
             "erro": f"Erro inesperado: {e}",
             "caminho": caminho
         }
- 
 
 
 def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md") -> dict:
@@ -115,14 +151,9 @@ def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_rev
     except ValidationError as e:
         return {"sucesso": False, "erro": f"Parâmetros inválidos: {e}", "caminho": None}
 
-    path = Path(dados.nome_arquivo)
-
-    if path.is_absolute() or ".." in path.parts:
-        return {
-            "sucesso": False,
-            "erro": "Caminho deve ser relativo e sem '..'.",
-            "caminho": str(path),
-        }
+    path, err = _resolve_safe_under_workspace(dados.nome_arquivo)
+    if err:
+        return {"sucesso": False, "erro": err, "caminho": dados.nome_arquivo}
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -130,7 +161,7 @@ def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_rev
         return {
             "sucesso": True,
             "erro": None,
-            "caminho": str(path.resolve()),
+            "caminho": str(path),
             "bytes_escritos": len(dados.conteudo.encode("utf-8")),
         }
     except Exception as e:

@@ -79,6 +79,31 @@ docker compose up
 docker compose -f docker-compose.build.yml up --build
 ```
 
+### Stack local com Langfuse (observabilidade)
+
+Com os arquivos de compose deste repositório, o Langfuse sobe junto do ADK.
+
+- ADK API: `http://localhost:8081`
+- ADK Dev UI: `http://localhost:8081/dev-ui/?app=orchestrator`
+- Langfuse UI: `http://localhost:3000`
+- MinIO API (interno do Langfuse): `http://localhost:9090`
+- MinIO Console: `http://127.0.0.1:9091`
+
+Credenciais iniciais (dev) definidas no `.env`:
+
+- Langfuse user: `admin@ai4es.local`
+- Langfuse password: `admin1234`
+- Project public key: `pk-lf-adk-dev`
+- Project secret key: `sk-lf-adk-dev`
+
+Variáveis mais importantes para a stack local:
+
+- `LANGFUSE_HOST=http://langfuse-web:3000` (uso interno entre containers)
+- `LANGFUSE_PUBLIC_KEY=pk-lf-adk-dev`
+- `LANGFUSE_SECRET_KEY=sk-lf-adk-dev`
+- `LANGFUSE_ENABLED=false` (desliga callback LiteLLM->Langfuse temporariamente)
+- `REDIS_BLOCKING_SOCKET_TIMEOUT_MS=120000` (evita timeout em filas do worker)
+
 Acesse `http://localhost:8081/dev-ui/?app=orchestrator`.
 
 ### Primeira execução — autenticação obrigatória

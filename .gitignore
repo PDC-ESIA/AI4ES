@@ -34,6 +34,9 @@ env/
 ENV/
 adk/.venv-docker/
 
+# Entregáveis gerados pelos agentes (ex.: AGENT_WORKSPACE=agent-workspace a partir de adk/)
+adk/agent-workspace/
+
 # Google ADK
 .adk/
 .adk/sessions/
