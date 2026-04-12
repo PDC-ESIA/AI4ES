@@ -64,4 +64,4 @@ jobs:
           # O reviewer/agent.py usa ADK_LLM_MODEL para selecionar o modelo;
           ADK_LLM_MODEL: "github_copilot/gpt-4"
  
-        run: uv run python scripts/validador.p
+        run: uv run python scripts/validador.py
