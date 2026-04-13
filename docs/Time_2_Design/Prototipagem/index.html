@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusUI - Platforma de Geração de UI</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <!-- TRUQUE DO CHECKBOX PARA TRANSIÇÃO DE TELAS SEM JAVASCRIPT -->
+    <input type="checkbox" id="trigger-gen" hidden>
+
+
+    <!-- ==========================================
+         TELA 1: LANDING PAGE INICIAL
+         ========================================== -->
+    <div class="screen-1-landing">
+        <header class="landing-header">
+            <div class="ai-logo">
+                <div class="logo-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                <span>NexusUI</span>
+            </div>
+            <div class="landing-user">
+                <img src="https://i.pravatar.cc/100?img=33" alt="User Profile">
+            </div>
+        </header>
+
+        <main class="landing-main">
+            <div class="ambient-glow glow-1"></div>
+            <div class="ambient-glow glow-2"></div>
+            
+            <h1 class="landing-title">What do you want to build?</h1>
+            <p class="landing-subtitle">Descreva sua ideia, e a Inteligência Artificial fará perguntas para construir o software do zero para você.</p>
+
+            <div class="prompt-container">
+                <div class="prompt-box">
+                    <textarea class="prompt-input" readonly>Quero criar um incrível aplicativo de cardápio online para o meu restaurante. Ele precisa ser muito moderno, dinâmico e impressionar os meus clientes.</textarea>
+                    
+                    <div class="prompt-actions">
+                        <div class="prompt-tools">
+                            <button title="Anexar arquivo"><i class="fa-solid fa-paperclip"></i></button>
+                            <button title="Usar microfone"><i class="fa-solid fa-microphone"></i></button>
+                            <button title="Configurações"><i class="fa-solid fa-sliders"></i></button>
+                        </div>
+                        <label for="trigger-gen" class="btn-generate">
+                            Iniciar Interação Socrática <i class="fa-solid fa-bolt"></i>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="suggested-prompts">
+                    <button class="suggest-btn"><i class="fa-solid fa-chart-line"></i> Dashboard SaaS Analítico</button>
+                    <button class="suggest-btn"><i class="fa-solid fa-cart-shopping"></i> Interface para E-commerce</button>
+                    <button class="suggest-btn"><i class="fa-solid fa-calendar-check"></i> Sistema de Agendamento</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- ==========================================
+         TELA 2: WORKSPACE E SISTEMA GERADO
+         ========================================== -->
+    <div class="ai-app-container">
+        <!-- Sidebar - Interface da Ferramenta -->
+        <aside class="ai-sidebar">
+            <div class="ai-logo">
+                <div class="logo-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                <span>NexusUI</span>
+            </div>
+            
+            <div class="ai-nav-section">
+                <p class="ai-nav-title">Workspaces <i class="fa-solid fa-plus add-icon"></i></p>
+                <ul class="ai-nav-list">
+                    <li class="ai-nav-item active">
+                        <i class="fa-solid fa-layer-group"></i> Cardápio Online
+                    </li>
+                    <li class="ai-nav-item">
+                        <i class="fa-regular fa-file-code"></i> App Financeiro
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="ai-sidebar-bottom">
+                <div class="ai-user-profile">
+                    <img src="https://i.pravatar.cc/100?img=33" alt="User Profile">
+                    <div class="profile-info">
+                        <p class="name">Maria Silva</p>
+                        <p class="plan">Pro Plan</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace - Interface da Ferramenta -->
+        <main class="ai-workspace">
+            
+            <!-- Contexto 1: Chat Socrático Restaurado e Expandido (Esquerda) -->
+            <section class="ai-chat-interface">
+                <div class="ai-chat-header">
+                    <h2>Design Composer</h2>
+                    <div class="ai-status">
+                        <span class="ai-pulse"></span>
+                        Nexus-Smart-v4
+                    </div>
+                </div>
+                
+                <!-- Diálogo socrático ultra-detalhado -->
+                <div class="ai-chat-messages">
+                    <!-- M1 -->
+                    <div class="ai-message user-msg fade-delay-1">
+                        <div class="msg-bubble">
+                            Quero criar um incrível aplicativo de cardápio online para o meu restaurante. Ele precisa ser muito moderno, dinâmico e impressionar os meus clientes.
+                        </div>
+                    </div>
+                    
+                    <!-- M2 -->
+                    <div class="ai-message system-msg fade-delay-2">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Desafio aceito! Antes de começarmos a desenhar o sistema, preciso entender melhor seus objetivos.<br><br>
+                            1. O cardápio será apenas <strong>visualização de pratos</strong> ou também permitirá <strong>realizar pedidos</strong>?<br>
+                            2. Seus clientes acessarão o cardápio principalmente via <strong>QR Code no restaurante</strong>, <strong>link na internet</strong>, ou ambos?<br>
+                            3. Qual é o principal objetivo do aplicativo?<br>
+                            - melhorar a experiência do cliente<br>
+                            - aumentar vendas<br>
+                            - reduzir trabalho da equipe<br>
+                            - todos os anteriores
+                        </div>
+                    </div>
+                    
+                    <!-- M3 -->
+                    <div class="ai-message user-msg fade-delay-3">
+                        <div class="msg-bubble">
+                            Quero melhorar a experiência e aumentar as vendas. Os clientes devem acessar tanto por QR Code nas mesas quanto por um link online.
+                        </div>
+                    </div>
+                    
+                    <!-- M4 -->
+                    <div class="ai-message system-msg fade-delay-4">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Excelente. Isso indica que devemos priorizar <strong>usabilidade rápida e visual forte</strong>.<br><br>
+                            Pensando na experiência do cliente:<br><br>
+                            1. Você deseja incluir <strong>fotos dos pratos</strong>?<br>
+                            2. Os clientes poderão <strong>pesquisar pratos pelo nome</strong>?<br>
+                            3. Gostaria de destacar pratos com etiquetas como:<br>
+                            - promoção<br>
+                            - mais vendidos<br>
+                            - recomendação do chef
+                        </div>
+                    </div>
+                    
+                    <!-- M5 -->
+                    <div class="ai-message user-msg fade-delay-5">
+                        <div class="msg-bubble">
+                            Sim, quero fotos dos pratos, pesquisa e etiquetas promocionais.
+                        </div>
+                    </div>
+                    
+                    <!-- M6 -->
+                    <div class="ai-message system-msg fade-delay-6">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Perfeito. Agora vamos estruturar o cardápio.<br><br>
+                            1. Os itens devem ser organizados por <strong>categorias</strong> (ex.: entradas, pratos principais, bebidas, sobremesas)?<br>
+                            2. Cada item pode pertencer a <strong>apenas uma categoria</strong> ou várias?<br>
+                            3. Você quer poder <strong>marcar um prato como indisponível temporariamente</strong> sem removê-lo do cardápio?
+                        </div>
+                    </div>
+                    
+                    <!-- M7 -->
+                    <div class="ai-message user-msg fade-delay-7">
+                        <div class="msg-bubble">
+                            Sim, quero categorias e também poder marcar itens como indisponíveis.
+                        </div>
+                    </div>
+                    
+                    <!-- M8 -->
+                    <div class="ai-message system-msg fade-delay-8">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Ótimo. Agora vamos pensar na navegação.<br><br>
+                            Para facilitar a descoberta dos pratos podemos adicionar:<br>
+                            - barra de <strong>pesquisa</strong><br>
+                            - <strong>filtros rápidos</strong><br>
+                            - destaque visual para promoções<br>
+                            - seção de pratos recomendados<br><br>
+                            Quais desses elementos você gostaria de incluir?
+                        </div>
+                    </div>
+                    
+                    <!-- M9 -->
+                    <div class="ai-message user-msg fade-delay-9">
+                        <div class="msg-bubble">
+                            Quero pesquisa, filtros e um destaque no topo com promoções.
+                        </div>
+                    </div>
+                    
+                    <!-- M10 -->
+                    <div class="ai-message system-msg fade-delay-10">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Excelente escolha.<br><br>
+                            Isso permitirá criar um <strong>header visual com destaque de promoções</strong> e uma <strong>pesquisa inteligente</strong>.<br><br>
+                            Agora vamos discutir o comportamento de compra:<br><br>
+                            1. Você deseja incluir um <strong>carrinho de pedidos</strong>?<br>
+                            2. Caso exista carrinho, o cliente finalizará o pedido:<br>
+                            - diretamente no aplicativo<br>
+                            - via WhatsApp<br>
+                            - apenas para visualização
+                        </div>
+                    </div>
+                    
+                    <!-- M11 -->
+                    <div class="ai-message user-msg fade-delay-11">
+                        <div class="msg-bubble">
+                            Quero um carrinho flutuante. A finalização pode ser apenas ilustrativa por enquanto.
+                        </div>
+                    </div>
+                    
+                    <!-- M12 -->
+                    <div class="ai-message system-msg fade-delay-12">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Perfeito. Um <strong>carrinho flutuante persistente</strong> ajuda bastante na conversão.<br><br>
+                            Agora vamos definir a <strong>gestão do sistema</strong>.<br><br>
+                            Você deseja ter uma <strong>área administrativa</strong> onde o restaurante possa:<br>
+                            - cadastrar novos itens<br>
+                            - editar pratos<br>
+                            - remover pratos<br>
+                            - criar categorias<br>
+                            - controlar disponibilidade?
+                        </div>
+                    </div>
+                    
+                    <!-- M13 -->
+                    <div class="ai-message user-msg fade-delay-13">
+                        <div class="msg-bubble">
+                            Sim, preciso de uma área administrativa completa para gerenciar tudo isso.
+                        </div>
+                    </div>
+                    
+                    <!-- M14 -->
+                    <div class="ai-message system-msg fade-delay-14">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Perfeito.<br><br>
+                            Vamos definir algumas características dessa área:<br><br>
+                            1. O acesso deve ser protegido por <strong>login e senha</strong>?<br>
+                            2. Haverá <strong>apenas um administrador</strong> ou múltiplos usuários?<br>
+                            3. Deseja um <strong>dashboard inicial</strong> com métricas simples (ex.: número de pratos cadastrados)?
+                        </div>
+                    </div>
+                    
+                    <!-- M15 -->
+                    <div class="ai-message user-msg fade-delay-15">
+                        <div class="msg-bubble">
+                            Pode ter login e um dashboard simples. Apenas um administrador já está bom.
+                        </div>
+                    </div>
+                    
+                    <!-- M16 -->
+                    <div class="ai-message system-msg fade-delay-16">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Ótimo. Agora vamos definir o <strong>estilo visual do aplicativo</strong>.<br><br>
+                            Qual estilo você prefere?<br>
+                            - minimalista<br>
+                            - moderno e visualmente impactante<br>
+                            - estilo aplicativo mobile<br><br>
+                            E como os pratos devem aparecer?<br>
+                            - cartões grandes com fotos<br>
+                            - lista compacta<br>
+                            - grid visual
+                        </div>
+                    </div>
+                    
+                    <!-- M17 -->
+                    <div class="ai-message user-msg fade-delay-17">
+                        <div class="msg-bubble">
+                            Quero algo moderno com cartões grandes e fotos.
+                        </div>
+                    </div>
+                    
+                    <!-- M18 -->
+                    <div class="ai-message system-msg fade-delay-18">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Excelente. Para reforçar a experiência visual podemos incluir:<br>
+                            - badges promocionais<br>
+                            - selo "mais vendido"<br>
+                            - animações sutis nos cards<br>
+                            - botão rápido de adicionar ao carrinho<br><br>
+                            Deseja incluir esses elementos?
+                        </div>
+                    </div>
+                    
+                    <!-- M19 -->
+                    <div class="ai-message user-msg fade-delay-19">
+                        <div class="msg-bubble">
+                            Sim, quero badges promocionais e botões rápidos de adicionar ao carrinho.
+                        </div>
+                    </div>
+                    
+                    <!-- M20 -->
+                    <div class="ai-message system-msg fade-delay-20">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Perfeito. Agora tenho informações suficientes para consolidar o sistema.
+                        </div>
+                    </div>
+                    
+                    <!-- M21 -->
+                    <div class="ai-message system-msg fade-delay-21">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Consolidando as características do aplicativo solicitado:<br><br>
+                            <h3>Estrutura do Cardápio</h3>
+                            • organização por categorias<br>
+                            • itens com foto, nome, descrição e preço<br>
+                            • indicação visual de indisponibilidade<br><br>
+                            <h3>Experiência do Cliente</h3>
+                            • pesquisa textual inteligente<br>
+                            • filtros dinâmicos<br>
+                            • header com destaque de promoções<br><br>
+                            <h3>Conversão</h3>
+                            • carrinho flutuante persistente<br>
+                            • badges promocionais e selos visuais<br><br>
+                            <h3>Administração</h3>
+                            • login administrativo<br>
+                            • dashboard simples<br>
+                            • CRUD de itens<br>
+                            • CRUD de categorias<br>
+                            • controle de disponibilidade<br><br>
+                            <h3>Design</h3>
+                            • interface moderna<br>
+                            • cards visuais com imagens grandes<br>
+                            • layout responsivo para mobile e desktop
+                        </div>
+                    </div>
+                    
+                    <!-- M22 -->
+                    <div class="ai-message system-msg fade-delay-22">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Antes de iniciar a renderização da interface, confirme:<br><br>
+                            1. O sistema terá <strong>área pública (clientes)</strong> e <strong>área administrativa (gestor)</strong>.<br>
+                            2. O cardápio terá <strong>categorias, fotos, pesquisa e filtros</strong>.<br>
+                            3. O fluxo incluirá <strong>carrinho flutuante e badges promocionais</strong>.<br><br>
+                            Tudo correto para iniciar a geração do protótipo?
+                        </div>
+                    </div>
+                    
+                    <!-- M23 -->
+                    <div class="ai-message user-msg fade-delay-23">
+                        <div class="msg-bubble">
+                            Tudo completamente validado! Quero ver o resultado agora.
+                        </div>
+                    </div>
+                    
+                    <!-- M24 -->
+                    <div class="ai-message system-msg fade-delay-24">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble">
+                            Perfeito. Iniciando a <strong>renderização da interface do aplicativo de cardápio online</strong>.
+                        </div>
+                    </div>
+
+                    <!-- M25 (Loading) -->
+                    <div class="ai-message system-msg loading-msg fade-delay-25">
+                        <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                        <div class="msg-bubble status-bubble">
+                            <span class="ai-typing"><i class="fa-solid fa-layer-group"></i> Compilando Componentes...</span>
+                            <div class="progress-bar"><div class="progress-fill"></div></div>
+                        </div>
+                    </div>
+                    
+                    <!-- M26 (Success) -->
+                    <div class="ai-message system-msg fade-delay-26">
+                        <div class="msg-avatar"><i class="fa-solid fa-check-double" style="color: #10b981;"></i></div>
+                        <div class="msg-bubble">
+                            Sistema processado com sucesso! Explore os painéis interativos renderizados ao lado.
+                        </div>
+                    </div>
+                    
+                    <!-- Padding visual pro final do scroll -->
+                    <div style="height: 40px; min-height: 40px;"></div>
+                </div>
+                
+                <div class="ai-chat-input-area fade-delay-26">
+                    <div class="ai-input-wrapper">
+                        <i class="fa-solid fa-paperclip attach-icon"></i>
+                        <input type="text" placeholder="Peça refinamentos contínuos ou de layout..." class="chat-input" disabled>
+                        <button class="ai-send-btn" disabled><i class="fa-solid fa-arrow-up"></i></button>
+                    </div>
+                    <div class="ai-input-footer">A Inteligência Artificial pode propor designs iterativos mediante novos prompts.</div>
+                </div>
+            </section>
+
+            <!-- Contexto 2: Preview do Sistema Gerado (Direita) -->
+            <section class="ai-preview-panel fade-delay-26">
+                <div class="ai-preview-toolbar">
+                    <div class="browser-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="browser-url">
+                        <i class="fa-solid fa-lock" style="color: #10b981;"></i> localhost:3000/restaurante/12
+                    </div>
+                    <div class="preview-actions">
+                        <button class="action-btn active"><i class="fa-solid fa-desktop"></i></button>
+                        <button class="action-btn"><i class="fa-solid fa-mobile-screen"></i></button>
+                        <div class="divider"></div>
+                        <button class="btn-publish"><i class="fa-solid fa-cloud-arrow-up"></i> Deploy</button>
+                        <button class="btn-export">Code <i class="fa-solid fa-code"></i></button>
+                    </div>
+                </div>
+                
+                <div class="ai-preview-canvas">
+                    <!--=======================================
+                        SISTEMA GERADO ENRIQUECIDO
+                        ========================================-->
+                    <div class="generated-app">
+                        
+                        <!-- Header App Enriquecido -->
+                        <header class="gen-header">
+                            <div class="gen-logo">
+                                <span class="logo-emoji">🍕</span>
+                                <div>
+                                    <h1>Gourmet Express</h1>
+                                    <p>Cardápio Inteligente</p>
+                                </div>
+                            </div>
+                            <nav class="gen-nav">
+                                <a href="#" class="nav-link active">Menu</a>
+                                <a href="#" class="nav-link">Avaliações <i class="fa-solid fa-star" style="color:#fbbf24; font-size:0.8rem;"></i></a>
+                                <div class="nav-divider"></div>
+                                <a href="#" class="nav-link gen-cart-icon">
+                                    <i class="fa-solid fa-basket-shopping"></i>
+                                    <span class="cart-badge">2</span>
+                                </a>
+                                <div class="nav-divider"></div>
+                                <a href="#" class="gen-btn-admin"><i class="fa-solid fa-gear"></i> Portal do Logista</a>
+                            </nav>
+                        </header>
+                        
+                        <!-- Main Content App -->
+                        <main class="gen-main">
+                            <section class="gen-hero">
+                                <!-- Componente de Informações da Loja -->
+                                <div class="gen-restaurant-info">
+                                    <span class="status-badge open">Aberto agora</span>
+                                    <span class="info-dot">•</span>
+                                    <span><i class="fa-regular fa-clock"></i> Entrega: 45-60 min</span>
+                                    <span class="info-dot">•</span>
+                                    <span><i class="fa-solid fa-star" style="color:#fbbf24"></i> 4.9 (3k+ pedidos)</span>
+                                </div>
+
+                                <h2>O que vamos pedir hoje?</h2>
+                                
+                                <div class="gen-search-tools">
+                                    <div class="gen-search">
+                                        <i class="fa-solid fa-magnifying-glass"></i>
+                                        <input type="text" placeholder="Buscar no cardápio de Gourmet Express...">
+                                    </div>
+                                    <button class="gen-filter-btn"><i class="fa-solid fa-sliders"></i> Filtros</button>
+                                </div>
+                                
+                                <div class="gen-categories">
+                                    <button class="gen-cat-pill active">Destaques <i class="fa-solid fa-fire"></i></button>
+                                    <button class="gen-cat-pill">Ouro Burgers</button>
+                                    <button class="gen-cat-pill">Porções em Dobro <span class="pill-badge">Promo</span></button>
+                                    <button class="gen-cat-pill">Bebidas e Cervejas</button>
+                                    <button class="gen-cat-pill">Sobremesas</button>
+                                </div>
+                            </section>
+                            
+                            <section class="gen-menu-grid">
+                                <!-- Produto 1 -->
+                                <article class="gen-card">
+                                    <div class="gen-card-badge featured"><i class="fa-solid fa-medal"></i> Top #1 da Casa</div>
+                                    <div class="gen-card-img" style="background-image: url('https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=400');"></div>
+                                    <div class="gen-card-body">
+                                        <div class="gen-card-header">
+                                            <h3>Smash Clássico Duplo</h3>
+                                            <span class="gen-price">R$ 38,90</span>
+                                        </div>
+                                        <p class="gen-desc">Pão brioche tostado na manteiga, dois smash burgers de 90g, duplo queijo cheddar derretido, picles e molho secreto.</p>
+                                        
+                                        <div class="gen-card-tags">
+                                            <span>Serve 1 pessoa</span>
+                                            <span>Preparado na brasa</span>
+                                        </div>
+                                        
+                                        <div class="gen-card-actions">
+                                            <button class="gen-btn-add"><i class="fa-solid fa-plus"></i> Adicionar</button>
+                                        </div>
+                                    </div>
+                                </article>
+                                
+                                <!-- Produto 2 (RF10 e marcação de indisponibilidade) -->
+                                <article class="gen-card unavailable">
+                                    <div class="gen-ribbon">Esgotado</div>
+                                    <div class="gen-card-img" style="background-image: url('https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&q=80&w=400');">
+                                        <div class="overlay-unavailable"></div>
+                                    </div>
+                                    <div class="gen-card-body">
+                                        <div class="gen-card-header">
+                                            <h3>Batata Rústica</h3>
+                                            <span class="gen-price muted">R$ 25,00</span>
+                                        </div>
+                                        <p class="gen-desc">Porção de 400g de batatas rústicas perfeitamente temperadas com páprica doce e ramo de alecrim crocante.</p>
+                                        
+                                        <div class="gen-card-tags">
+                                            <span><i class="fa-solid fa-leaf" style="color: #10b981;"></i> Opção Vegetariana</span>
+                                        </div>
+
+                                        <div class="gen-card-actions">
+                                            <button class="gen-btn-add disabled" disabled>Sem estoque</button>
+                                        </div>
+                                    </div>
+                                </article>
+
+                                <!-- Produto 3 -->
+                                <article class="gen-card">
+                                    <div class="gen-card-img" style="background-image: url('https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=400');"></div>
+                                    <div class="gen-card-body">
+                                        <div class="gen-card-header">
+                                            <h3>Refrigerante Lata Seca</h3>
+                                            <span class="gen-price">R$ 7,50</span>
+                                        </div>
+                                        <p class="gen-desc">Suas opções clássicas estalando de gelada: Coca-cola, Guaraná Antarctica ou Sprite (Lata 350ml).</p>
+                                        
+                                        <div class="gen-card-tags">
+                                            <span>Embalagem segura</span>
+                                        </div>
+
+                                        <div class="gen-card-actions">
+                                            <button class="gen-btn-add"><i class="fa-solid fa-plus"></i> Adicionar</button>
+                                        </div>
+                                    </div>
+                                </article>
+                            </section>
+                        </main>
+                        
+                        <!-- Carrinho Flutuante Inferior Sticky (Fixo) -->
+                        <div class="gen-floating-cart">
+                            <div class="cart-info">
+                                <div class="cart-icon-bg">
+                                    <i class="fa-solid fa-basket-shopping"></i>
+                                    <span class="cart-badge-big">2</span>
+                                </div>
+                                <div class="cart-text">
+                                    <p class="cart-title">Meu Pedido</p>
+                                    <p class="cart-subtitle">Você tem 2 itens no carrinho</p>
+                                </div>
+                            </div>
+                            <div class="cart-total-action">
+                                <span class="cart-price">Total: R$ 46,40</span>
+                                <button class="btn-checkout">Finalizar Compra <i class="fa-solid fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Footer Institucional -->
+                        <footer class="gen-footer">
+                            <div class="footer-content">
+                                <div class="footer-col brand">
+                                    <h4>🍕 Gourmet Express</h4>
+                                    <p>As melhores opções artesanais da cidade, preparadas com carinho e entregues quentinhas em sua casa.</p>
+                                    <div class="social-links">
+                                        <i class="fa-brands fa-instagram"></i>
+                                        <i class="fa-brands fa-whatsapp"></i>
+                                    </div>
+                                </div>
+                                <div class="footer-col info">
+                                    <h4>Horário de Funcionamento</h4>
+                                    <p><i class="fa-regular fa-calendar-days"></i> Terça a Domingo</p>
+                                    <p><i class="fa-regular fa-clock"></i> 18h00 às 23h30</p>
+                                </div>
+                                <div class="footer-col info">
+                                    <h4>Endereço e Contato</h4>
+                                    <p><i class="fa-solid fa-location-dot"></i> Av. das Esmeraldas, 1024</p>
+                                    <p><i class="fa-solid fa-phone"></i> (11) 98765-4321</p>
+                                </div>
+                            </div>
+                            <div class="footer-bottom">
+                                <p>© 2026 Gourmet Express • Plataforma digital gerada e desenvolvida por <strong>NexusUI Inteligência Artificial</strong>.</p>
+                            </div>
+                        </footer>
+
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
