@@ -198,7 +198,6 @@ Este projeto adota o padrão [Conventional Commits](https://www.conventionalcomm
 | `refactor` | Refatoração sem mudança de comportamento     |
 | `test`     | Criação ou ajuste de testes                  |
 | `chore`    | Tarefas de manutenção (CI, deps, configs)    |
-| `ci`       | Alteração em pipelines de CI/CD              |
 | `style`    | Formatação (sem mudança de lógica)           |
 | `perf`     | Melhoria de desempenho                       |
 
