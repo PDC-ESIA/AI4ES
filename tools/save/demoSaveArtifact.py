@@ -25,7 +25,7 @@ _TEMP_ROOT = tempfile.mkdtemp(prefix="repo_demo_")
 os.environ["REPO_ROOT"] = _TEMP_ROOT
  
 # Importa APÓS definir REPO_ROOT (o módulo lê a env var no import)
-from saveDiagram import (
+from tools.save.saveDiagram import (
     save_artifact,
     promote_artifact,
     check_lock,
