@@ -1,0 +1,84 @@
+# Prompts para testes do MVP
+
+1.
+
+```markdown
+Lote de HUs para análise:
+
+HU-001
+Solicitante: Leonardo
+Como usuário autenticado,
+quero fazer login na plataforma com e-mail e senha
+para acessar meu painel personalizado.
+Critérios de aceite:
+- Validar e-mail e senha no backend
+- Retornar token JWT em caso de sucesso
+- Bloquear acesso após 3 tentativas falhas
+```
+
+2.
+
+```markdown
+Lote de HUs para análise:
+
+HU-002
+Solicitante: Leonardo
+Como administrador do sistema,
+quero redefinir a senha de qualquer usuário
+para poder recuperar acessos bloqueados sem intervenção manual.
+Critérios de aceite:
+- Apenas administradores autenticados podem acionar a redefinição
+- O sistema envia e-mail com link temporário válido por 30 minutos
+- O link expira após o primeiro uso
+- A operação deve ser registrada em log de auditoria
+
+HU-003
+Solicitante: Leonardo
+Como usuário autenticado,
+quero visualizar o histórico das minhas últimas 10 sessões ativas
+para monitorar acessos suspeitos à minha conta.
+Critérios de aceite:
+- Exibir data, hora, IP e dispositivo de cada sessão
+- Destacar visualmente sessões de IPs desconhecidos
+- Permitir encerramento remoto de sessões individuais
+- Dados atualizados em tempo real via websocket
+```
+
+3.
+
+```markdown
+Lote de HUs para análise:
+
+HU-004
+Solicitante: Leonardo
+Como usuário não autenticado,
+quero me cadastrar na plataforma com e-mail e senha
+para criar minha conta e acessar os recursos disponíveis.
+Critérios de aceite:
+- Validar formato do e-mail e força mínima da senha
+- Verificar se o e-mail já está cadastrado antes de criar
+- Enviar e-mail de confirmação após cadastro bem-sucedido
+- Conta permanece inativa até confirmação do e-mail
+
+HU-005
+Solicitante: Leonardo
+Como usuário autenticado,
+quero alterar minha senha atual
+para manter a segurança da minha conta.
+Critérios de aceite:
+- Exigir senha atual antes de permitir alteração
+- Validar força mínima da nova senha
+- Invalidar todos os tokens de sessão ativos após alteração
+- Confirmar alteração por e-mail
+
+HU-006
+Solicitante: Leonardo
+Como administrador do sistema,
+quero visualizar um painel com métricas de autenticação em tempo real
+para monitorar tentativas suspeitas de acesso.
+Critérios de aceite:
+- Exibir total de logins bem-sucedidos e falhos nas últimas 24h
+- Destacar IPs com mais de 5 tentativas falhas consecutivas
+- Atualização automática a cada 30 segundos via websocket
+- Permitir exportação do relatório em CSV
+```

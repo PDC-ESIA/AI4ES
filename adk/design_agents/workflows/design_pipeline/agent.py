@@ -3,11 +3,11 @@ from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.agent_tool import AgentTool
 
-from agents.roles.design_architect.agent import agent as design_architect
-from agents.roles.mermaid_specialist.agent import agent as mermaid_specialist
-from agents.roles.markdown_specialist.agent import agent as markdown_specialist
-from agents.roles.validator.agent import agent as validator
-from agents.roles.io_agent.agent import agent as io_agent
+from design_agents.roles.design_architect.agent import agent as design_architect
+from design_agents.roles.mermaid_specialist.agent import agent as mermaid_specialist
+from design_agents.roles.markdown_specialist.agent import agent as markdown_specialist
+from design_agents.roles.validator.agent import agent as validator
+from design_agents.roles.io_agent.agent import agent as io_agent
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
 

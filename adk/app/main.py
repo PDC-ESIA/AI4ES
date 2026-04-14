@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app: FastAPI = get_fast_api_app(
-    agents_dir="agents/roles",
+    agents_dir="design_agents/roles",
     web=True,
     allow_origins=["*"]
 )

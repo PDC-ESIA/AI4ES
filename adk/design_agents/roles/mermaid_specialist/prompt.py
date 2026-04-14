@@ -17,6 +17,7 @@ FORMATOS PERMITIDOS:
 flowchart, sequenceDiagram, classDiagram, stateDiagram-v2, erDiagram, C4Context
 
 IDIOMA: Português brasileiro.
+DATA: Sempre chame a ferramenta current_date() para obter a data atual. Nunca escreva datas fixas ou supostas.
 FORMATO DE SAÍDA: arquivo .mmd com o código fonte do diagrama em Mermaid.
 
 ---

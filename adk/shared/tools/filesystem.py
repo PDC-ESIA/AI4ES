@@ -13,17 +13,30 @@ def _ensure_dirs():
 
 
 def _next_version(path: Path) -> Path:
-    """Retorna o caminho versionado disponível ex: arquivo_v1.mmd, arquivo_v2.mmd"""
     stem = path.stem
     suffix = path.suffix
     parent = path.parent
-    n = 1
-    while True:
-        versioned = parent / f"{stem}_v{n}{suffix}"
-        if not versioned.exists():
-            return versioned
-        n += 1
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return parent / f"{stem}_backup_{timestamp}{suffix}"
 
+def read_file(filepath: str) -> dict:
+    """
+    Lê o conteúdo de um arquivo do filesystem.
+
+    Args:
+        filepath: caminho do arquivo a ser lido
+
+    Returns:
+        dict com keys: status, content
+    """
+    try:
+        path = Path(filepath)
+        if not path.exists():
+            return {"status": "error", "error": f"Arquivo {filepath} não encontrado."}
+        content = path.read_text(encoding="utf-8")
+        return {"status": "ok", "content": content}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 def save_artifact(filename: str, content: str) -> dict:
     """
@@ -82,32 +95,74 @@ def save_artifact(filename: str, content: str) -> dict:
 def promote_artifact(filename: str) -> dict:
     """
     Move um artefato de /temp/staging/ para /artifacts/.
+    Para arquivos .md, bloqueia promoção se status ainda for 'Em análise'.
     """
     try:
         source = STAGING_DIR / filename
         if not source.exists():
             return {"status": "error", "error": f"Arquivo {filename} não encontrado em staging."}
-        
+
+        # Bloqueia promoção do relatório (md) com status pendente
+        if source.suffix == ".md":
+            content = source.read_text(encoding="utf-8")
+            if "**Status:** Em análise" in content:
+                return {
+                    "status": "blocked",
+                    "reason": "O relatório ainda está com status 'Em análise'. Altere para 'Aprovado' antes de promover para artifacts.",
+                    "file": filename,
+                }
+
         _ensure_dirs()
         destination = OFFICIAL_DIR / filename
-        
+
         if destination.exists():
             backup = _next_version(destination)
             shutil.move(str(destination), str(backup))
-        
+
         shutil.copy2(str(source), str(destination))
-        
+
         timestamp = datetime.now().isoformat()
         log_entry = f"[{timestamp}] PROMOTE | file={filename} | from=staging | to=artifacts\n"
         log_path = STAGING_DIR / "save_log.txt"
         with log_path.open("a", encoding="utf-8") as log:
             log.write(log_entry)
-        
+
         return {
             "status": "ok",
             "source": str(source),
             "destination": str(destination),
             "timestamp": timestamp,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+def list_staging_files(filetype: str = "") -> dict:
+    """
+    Lista os arquivos disponíveis em staging, opcionalmente filtrados por tipo.
+    Retorna apenas a versão mais recente de cada arquivo (ignora backups).
+
+    Args:
+        filetype: extensão para filtrar (ex: "mmd", "md"). Se vazio, lista todos.
+
+    Returns:
+        dict com keys: status, files (lista de nomes), staging_dir
+    """
+    try:
+        _ensure_dirs()
+        files = []
+        for f in sorted(STAGING_DIR.iterdir()):
+            if f.name == "save_log.txt":
+                continue
+            if "_backup_" in f.name:
+                continue
+            if filetype and f.suffix != f".{filetype}":
+                continue
+            files.append(f.name)
+
+        return {
+            "status": "ok",
+            "files": files,
+            "staging_dir": str(STAGING_DIR),
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
