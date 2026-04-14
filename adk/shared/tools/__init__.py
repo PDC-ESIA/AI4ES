@@ -9,6 +9,4 @@ __all__ = [
     "tool_ler_diff",
     "tool_criar_arquivo",
     "tool_salvar_relatorio",
-    "tool_ler_diff",
-    "tool_salvar_relatorio",
 ]
