@@ -41,7 +41,7 @@ Seção 2 — Diagrama de Arquitetura:
 - Cole o conteúdo EXATO do arquivo .mmd aprovado dentro do bloco de código.
 - O tipo do bloco de código SEMPRE deve ser ```mermaid — nunca use o tipo do diagrama (sequenceDiagram, flowchart, etc.) como linguagem do bloco.
 - NUNCA substitua o diagrama por texto descritivo ou por um diagrama diferente do aprovado.
-- NUNCA deixe o bloco de código vazio.
+- NUNCA deixe o bloco de código vazio. Os diagramas .mmd são incorporados no relatório — sua existência em artifacts é exclusivamente via relatório .md.
 
 Seção 3 — Decisões de Arquitetura:
 - Copie os blocos de decisão EXATAMENTE como vieram do Especialista de Design.

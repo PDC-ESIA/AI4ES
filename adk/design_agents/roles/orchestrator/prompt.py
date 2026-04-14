@@ -36,8 +36,7 @@ FLUXO OBRIGATÓRIO:
 5. Encaminhe os artefatos ao Validador antes da entrega final.
 6. Após aprovação do Validador, confirme com o Agente IO que os arquivos foram persistidos em staging.
 7. Entregue ao solicitante:
-   - Todos os arquivos diagrama_<hu_id>_<descricao_resumida>.mmd gerados.
-   - Relatórios relatorio_<hu_id>_<YYYY-MM-DD>.md correspondentes.
+   - Relatório consolidado em .md com todos os diagramas incorporados (os diagramas .mmd ficam apenas em staging como artefatos intermediários).
    - Bloco(s) de trade-off gerado(s) pelo Especialista de Design.
    - Relação de HUs bloqueadas (se houver), com o respectivo trecho que gerou o bloqueio.
 

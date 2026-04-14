@@ -6,11 +6,9 @@ from pathlib import Path
 STAGING_DIR = Path("temp/staging")
 OFFICIAL_DIR = Path("artifacts")
 
-
 def _ensure_dirs():
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
-
 
 def _next_version(path: Path) -> Path:
     stem = path.stem
@@ -94,23 +92,31 @@ def save_artifact(filename: str, content: str) -> dict:
 
 def promote_artifact(filename: str) -> dict:
     """
-    Move um artefato de /temp/staging/ para /artifacts/.
-    Para arquivos .md, bloqueia promoção se status ainda for 'Em análise'.
+    Move um artefato de .../temp/staging/ para .../artifacts/.
+    Apenas arquivos .md são aceitos — diagramas .mmd ficam somente em staging.
+    Bloqueia promoção se status ainda for 'Em análise'.
     """
     try:
         source = STAGING_DIR / filename
         if not source.exists():
             return {"status": "error", "error": f"Arquivo {filename} não encontrado em staging."}
 
-        # Bloqueia promoção do relatório (md) com status pendente
-        if source.suffix == ".md":
-            content = source.read_text(encoding="utf-8")
-            if "**Status:** Em análise" in content:
-                return {
-                    "status": "blocked",
-                    "reason": "O relatório ainda está com status 'Em análise'. Altere para 'Aprovado' antes de promover para artifacts.",
-                    "file": filename,
-                }
+        # Somente relatórios .md podem ser promovidos
+        if source.suffix != ".md":
+            return {
+                "status": "blocked",
+                "reason": f"Apenas relatórios .md podem ser promovidos para artifacts. Diagramas .mmd permanecem em staging.",
+                "file": filename,
+            }
+
+        # Bloqueia se status ainda pendente
+        content = source.read_text(encoding="utf-8")
+        if "**Status:** Em análise" in content:
+            return {
+                "status": "blocked",
+                "reason": "O relatório ainda está com status 'Em análise'. Altere para 'Aprovado' antes de promover.",
+                "file": filename,
+            }
 
         _ensure_dirs()
         destination = OFFICIAL_DIR / filename
