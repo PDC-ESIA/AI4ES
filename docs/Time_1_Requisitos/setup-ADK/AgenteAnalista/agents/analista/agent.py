@@ -16,7 +16,7 @@ FEW_SHOTS_LIBRARY = {
 **SAÍDA ESPERADA:**
 | ID | Descrição | Prioridade | Relacionado a |
 |:---|:---|:---|:---|
-| RF-001 | O sistema deve fornecer uma IDE online que permita a escrita e execução de código no navegador. | Alta | HU-010 |
+| RF-001 | O sistema deve fornecer uma IDE online que permita a escrita e execução de código no navegador. | Alta | HU-001 |
 | RF-002 | O sistema deve realizar a correção automática de submissões baseada em casos de teste. | Alta | UC-001 |""",
 
     "RNF": """### EXEMPLO DE REQUISITO NÃO FUNCIONAL (RNF)
