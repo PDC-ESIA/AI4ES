@@ -47,12 +47,19 @@ FEW_SHOTS_LIBRARY = {
 4. Sistema valida a sintaxe dos casos de teste e armazena a lista."""
 }
 
-def create_analista_agent(tipo_artefato=None):
+TIPOS_ARTEFATO_SUPORTADOS = ("HU", "RF", "RNF", "RN", "UC")
+
+def create_analista_agent(tipo_artefato):
     """
     Tipos suportados: 'HU', 'RF', 'RNF', 'RN', 'UC'.
     """
-    exemplo_especifico = FEW_SHOTS_LIBRARY.get(tipo_artefato, "Selecione um tipo de artefato para ver o exemplo.")
+    if tipo_artefato not in TIPOS_ARTEFATO_SUPORTADOS:
+        raise ValueError(
+            f"tipo_artefato inválido: {tipo_artefato!r}. "
+            f"Use um dos valores suportados: {', '.join(TIPOS_ARTEFATO_SUPORTADOS)}."
+        )
 
+    exemplo_especifico = FEW_SHOTS_LIBRARY[tipo_artefato]
     return Agent(
         name="Agente Analista",
         instructions=f"""
