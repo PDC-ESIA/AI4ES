@@ -1,8 +1,7 @@
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 
-from tools.slicer_tool import run_slicer
-from tools.search_tool import run_search
+from tools.file_tools import run_slicer, run_search
 from agents.glossario.agent import glossario_agent
 
 

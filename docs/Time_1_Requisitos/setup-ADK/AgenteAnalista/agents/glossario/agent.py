@@ -1,9 +1,7 @@
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 
-from tools.slicer_tool import extract_text, run_slicer
-from tools.search_tool import run_search
-from tools.file_tools import add_to_glossary, add_doubt, check_glossary
+from tools.file_tools import extract_text, run_slicer, run_search, add_to_glossary, add_doubt, check_glossary
 
 
 def create_glossario_agent():
