@@ -4,36 +4,53 @@
 > **3. Lógica:** A IA usou caminhos absurdos (ex: recursão infinita) ou mascarou erros (usando `try...except` que força o sucesso)?
 > **4. Validação (Asserts):** O `assert` está validando o resultado real do sistema ou apenas testando variáveis fixas/vazias (ex: `assert True`)?
 
-# Artefato de Dúvidas (Doubt Artifact)
-**Documentação de anomalias, erros, alucinações e comportamentos suspeitos da IA.**
+# DOUBT ARTEFACT | [ID-DA-000]
 
----
+## 1. Identificação Técnica
+- **ID do Artefato:** `{{artifact_id}}`
+- **Timestamp:** `{{timestamp}}`
+- **Agente Responsável:** `qa_agente`
+- **Módulo/Ferramenta:** `{{module_name}}`
+- **Severidade:** 🔴 Crítico | 🟠 Anomalia Lógica | 🟡 Contexto | 🟣 Segurança
 
-* **ID do Artefato:** [ Ex: RF-001 ou ID do teste ]
-* **Data/Hora do Erro:** {{timestamp}}
-* **Arquivo Analisado:** {{test_name}}
-* **Agente:** qa_agente
-* **Status:** 🔴 Alucinação Confirmada
+## 2. Gatilho de Pausa (Diagnóstico de Falha do Agente)
+> **[ Falhas de Execução & Limites ]**
+> - [ ] **Erro de Sintaxe/Runtime:** Código gerado falhou na compilação/execução.
+> - [ ] **Timeout / Indisponibilidade:** API ou Tool externa não respondeu.
+> - [ ] **Rate Limit / Cota Mínima:** Limite de requisições do modelo atingido (429).
+> - [ ] **Estouro de Tokens:** Limite da janela de contexto excedido.
+> 
+> **[ Anomalias de Lógica & Alucinação ]**
+> - [ ] **Assinatura Inválida:** Agente inventou parâmetros ou ferramentas (Alucinação).
+> - [ ] **Loop Infinito de Tools:** Agente preso em ciclo de repetição sem progresso.
+> - [ ] **Falha de Parseamento:** Saída do modelo fora do formato exigido (ex: não é JSON válido).
+> 
+> **[ Intenção, Contexto & Segurança ]**
+> - [ ] **Ambiguidade / Falta de Contexto:** Instrução imprecisa ou falta de histórico/regras.
+> - [ ] **Violação de Guardrail / Prompt Injection:** Tentativa de burlar regras do *System Prompt*.
+> - [ ] **Risco de Dados (PII):** Operação expõe ou requer dados sensíveis não autorizados.
 
-**Trecho Suspeito:**
-O agente deve colar o código suspeito aqui
+## 3. Evidência
+**Trecho, Prompt ou StackTrace:**
 
-**Motivo da Dúvida/Invalidação:**
-O motivo da invalidacao/suvida
+{{suspect_code_or_prompt}}
 
-**Contexto**
-Artefato recebido: [ Ex: RF-001 - Teste de geração de vetor ]
+**Análise / Motivo da Interrupção:**
+> `{{reason_for_invalidation}}`
 
-Módulo: [ Ex: Processamento de Dados ]
+## 4. Contexto de Execução
+- **Artefato de Entrada:** `{{input_artifact_name}}`
+- **Ação Realizada:** `{{action_attempted}}`
+- **Resposta Bruta (Raw Output):** `{{system_raw_response}}`
 
-Etapa onde o bloqueio ocorreu: Validação manual do código gerado (Monitoramento QA).
+## 5. Próximos Passos (Resolução)
+- [ ] Ajustar System Prompt ou In-Context Learning (Few-shot).
+- [ ] Implementar retry automático ou truncamento de tokens.
+- [ ] Corrigir Tool/API ou refinar esquema de parâmetros (Pydantic/JSON Schema).
+- [ ] Esclarecer intenção com o usuário/coordenação.
 
-**O que foi tentado**
-O agente tentou fazer a validacao atraves de uma API que não foi respondida
-
-
-**O que é necessário para continuar**
-Revalidar a API usada e substituir
+**Gerado automaticamente via ADK Tool v1.0**
+*Status da Validação (Coordenação Técnica): [ ] Aprovado | [ ] Reprovado*
 
 
 **Artefatos relacionados**
