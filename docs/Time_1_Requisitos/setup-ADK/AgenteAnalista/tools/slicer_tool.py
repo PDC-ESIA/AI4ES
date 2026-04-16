@@ -40,12 +40,13 @@ def run_slicer(filename: str, paragraphs_per_chunk: int = 2, overlap_count: int 
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    else:
-        # Limpa chunks antigos
-        for file in os.listdir(output_dir):
-            os.remove(os.path.join(output_dir, file))
 
     try:
+        # Limpa apenas chunks antigos esperados
+        for file in os.listdir(output_dir):
+            file_path = os.path.join(output_dir, file)
+            if file.startswith("chunk_") and file.endswith(".txt") and os.path.isfile(file_path):
+                os.remove(file_path)
         # 1. Extração do texto completo
         content = extract_text(input_path)
 
