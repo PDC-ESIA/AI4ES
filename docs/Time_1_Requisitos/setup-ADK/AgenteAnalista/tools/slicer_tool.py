@@ -1,12 +1,20 @@
 import os
-import fitz  
 import re
+
+try:
+    import fitz
+except ImportError:
+    fitz = None
 
 def extract_text(file_path):
     """Extrai texto de diferentes formatos."""
     ext = os.path.splitext(file_path)[1].lower()
-    
+
     if ext == '.pdf':
+        if fitz is None:
+            raise ImportError(
+                "Suporte a PDF requer PyMuPDF. Instale com `pip install pymupdf`."
+            )
         text = ""
         with fitz.open(file_path) as doc:
             for page in doc:
