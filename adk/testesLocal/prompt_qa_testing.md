@@ -1,6 +1,4 @@
-# PROMPT PARA QA AGENT - TESTES AUTOMATIZADOS
-
-## OBJETIVO
+# OBJETIVO
 Gerar testes pytest automatizados completos para a classe `SistemaAutenticacao` baseado no código fonte e nos requisitos da HU.
 
 ## ARQUIVOS DE ENTRADA

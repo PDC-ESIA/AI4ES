@@ -231,3 +231,10 @@ adk/.venv-docker/
 # ide
 .vscode/*
 .src/*
+
+#  code-assintant
+.claude/
+.claude/*
+
+.abacusai/
+.abacusai/*

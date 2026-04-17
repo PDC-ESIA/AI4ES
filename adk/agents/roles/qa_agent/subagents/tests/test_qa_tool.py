@@ -2,7 +2,7 @@ import pytest
 import textwrap
 from pathlib import Path
 
-from ...tools.pytest_runner import executar_pytest_tool, _contador_execucoes, MAX_TENTATIVAS
+from adk.agents.roles.qa_agent.tools.pytest_runner import executar_pytest_tool, _contador_execucoes, MAX_TENTATIVAS
 
 @pytest.fixture
 def setup_ambiente_teste(tmp_path):

@@ -7,7 +7,7 @@ from .subagents.action_planner.agent import agent as action_planner_agent
 from .subagents.code_fix_agent.agent import agent as code_fix_agent
 from .subagents.qa_runner_agent import agent as qa_runner_agent
 
-from .tools.receive_requirements import receber_requisitos
+from .subagents.receive_requirements import agent as receber_requisitos_agent
 from .tools.pytest_runner import executar_pytest_tool
 
 from .qa_prompt import QA_PROMPT
@@ -22,7 +22,7 @@ agent = LlmAgent(
     ),
     instruction=QA_PROMPT,
     tools=[
-        FunctionTool(receber_requisitos),
+        AgentTool(agent=receber_requisitos_agent),
         FunctionTool(executar_pytest_tool),
         AgentTool(agent=action_planner_agent),
         AgentTool(agent=code_fix_agent),

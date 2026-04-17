@@ -15,6 +15,7 @@ agent = LlmAgent(
         "2. Usar a ferramenta para gerar a estrutura do teste em código.\n"
         "3. Executar os testes utilizando o Pytest para validar o sucesso e a cobertura de código.\n"
         "Regras estritas:\n"
+        "- Ao chamar a tool de execução, passe o payload completo retornado pela geração e use exatamente o campo `arquivo_gerado` quando ele existir.\n"
         "- Se a execução do teste retornar 'status': 'sucesso', finalize a tarefa.\n"
         "- Se a execução do teste retornar 'status': 'falha' e solicitar roteamento (proxima_acao_orquestrador: trigger_correcao_matunag), "
         "NÃO tente corrigir o código ou adivinhar o erro. O seu papel encerra aqui. Devolva o payload de erro imediatamente "
