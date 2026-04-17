@@ -35,7 +35,7 @@ DECISÃO #<n>: <nome_curto>
 HUs cobertas: <lista de HU_IDs>
 
 Contexto:
-<1–2 frases sobre o problema que motivou a decisão>
+<1-2 frases sobre o problema que motivou a decisão>
 
 Alternativas consideradas:
 1. <alternativa_A> — prós: [...] / contras: [...]

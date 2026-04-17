@@ -16,6 +16,8 @@ Critérios de aceite:
 - Bloquear acesso após 3 tentativas falhas
 ```
 
+---
+
 2.
 
 ```markdown
@@ -43,6 +45,8 @@ Critérios de aceite:
 - Permitir encerramento remoto de sessões individuais
 - Dados atualizados em tempo real via websocket
 ```
+
+---
 
 3.
 
@@ -81,4 +85,123 @@ Critérios de aceite:
 - Destacar IPs com mais de 5 tentativas falhas consecutivas
 - Atualização automática a cada 30 segundos via websocket
 - Permitir exportação do relatório em CSV
+```
+
+---
+---
+
+## Diagramas esperados
+
+Feito com o Claude
+
+1.
+
+```mermaid
+sequenceDiagram
+    Usuário->>Frontend: e-mail e senha
+    Frontend->>AuthService: POST /login
+    AuthService->>UserStore: valida credenciais
+    alt válido
+        AuthService->>TokenService: gera JWT
+        AuthService-->>Frontend: 200 + token
+    else inválido
+        AuthService->>UserStore: incrementa falhas
+        alt 3 tentativas
+            AuthService-->>Frontend: 403 bloqueado
+        else abaixo do limite
+            AuthService-->>Frontend: 401 inválido
+        end
+    end
+```
+
+---
+
+2.
+
+```mermaid
+sequenceDiagram
+    Admin->>AuthService: POST /admin/reset-password
+    AuthService->>AuthGuard: valida permissão
+    AuthService->>TokenService: gera link (TTL 30min)
+    AuthService->>EmailService: envia link ao usuário
+    AuthService->>AuditLog: registra operação
+    Usuário->>TokenService: acessa link
+    alt válido e não usado
+        TokenService-->>Frontend: autorizado
+        Usuário->>AuthService: nova senha
+        AuthService->>TokenService: invalida link
+    else expirado ou usado
+        TokenService-->>Frontend: 410 inválido
+    end
+```
+
+```mermaid
+sequenceDiagram
+    Usuário->>SessionService: GET /sessions?limit=10
+    SessionService->>SessionStore: consulta sessões
+    SessionStore-->>Frontend: lista + flag IP suspeito
+    Usuário->>SessionService: DELETE /sessions/{id}
+    SessionService->>SessionStore: invalida sessão
+    loop websocket
+        SessionService->>Frontend: push nova sessão
+    end
+```
+
+---
+
+3.
+
+```mermaid
+sequenceDiagram
+    Usuário->>AuthService: POST /register
+    AuthService->>AuthService: valida e-mail e senha
+    alt dados inválidos
+        AuthService-->>Frontend: 400
+    else válidos
+        AuthService->>UserStore: e-mail existe?
+        alt duplicado
+            AuthService-->>Frontend: 409
+        else disponível
+            AuthService->>UserStore: cria conta inativa
+            AuthService->>EmailService: envia confirmação
+            Usuário->>AuthService: GET /confirm?token=...
+            AuthService->>UserStore: ativa conta
+            AuthService-->>Frontend: conta ativada
+        end
+    end
+```
+
+```mermaid
+sequenceDiagram
+    Usuário->>AuthService: PUT /password
+    AuthService->>UserStore: valida senha atual
+    alt incorreta
+        AuthService-->>Frontend: 401
+    else correta
+        AuthService->>AuthService: valida força nova senha
+        alt senha fraca
+            AuthService-->>Frontend: 400
+        else válida
+            AuthService->>UserStore: atualiza senha
+            AuthService->>SessionStore: invalida todos os tokens
+            AuthService->>EmailService: envia confirmação
+            AuthService-->>Frontend: 200
+        end
+    end
+```
+
+```mermaid
+flowchart TD
+    Admin-->Dashboard
+    Dashboard-->MetricsService
+    MetricsService-->MetricsStore[(Metrics Store)]
+    MetricsStore-->MetricsService
+    MetricsService-->Dashboard
+
+    Dashboard-->|websocket a cada 30s|MetricsService
+    MetricsService-->|IPs com mais de 5 falhas|Dashboard
+
+    Dashboard-->|exportar|ExportService
+    ExportService-->MetricsStore
+    ExportService-->|CSV|Admin
 ```

@@ -22,12 +22,15 @@ Exemplo: relatorio_HU-001_HU-002_2025-01-15.md
 ---
 
 PASSO 0 — CONFIRMAÇÃO DOS ARQUIVOS
-Acione o Agente IO para chamar list_staging_files(filetype="mmd") e confirme que os
-arquivos .mmd esperados estão presentes em temp/staging/ antes de prosseguir.
+Acione o Agente IO via AgentTool com a mensagem: "Liste os arquivos .mmd disponíveis em staging."
+Confirme que os arquivos .mmd esperados estão presentes antes de prosseguir.
+Em seguida, acione o Agente IO com a mensagem: "Liste os arquivos .md disponíveis em staging."
+Se já existir um relatório para as mesmas HUs, reutilize EXATAMENTE o mesmo filename — não gere um nome novo com data diferente.
 
 PASSO 1 — LEITURA DO TEMPLATE E DIAGRAMAS
-- Leia o template via Agente IO: read_file("shared/templates/relatorio_template.md")
-- Para cada HU, leia o diagrama via Agente IO: read_file("temp/staging/<nome_do_arquivo>.mmd")
+Acione o Agente IO via AgentTool com as seguintes mensagens, uma por vez:
+- "Leia o arquivo shared/templates/relatorio_template.md"
+- "Leia o arquivo temp/staging/<nome_do_arquivo>.mmd" — repita para cada HU do lote.
 O template é a estrutura canônica — não invente seções, não remova seções, não reordene.
 
 PASSO 2 — PREENCHIMENTO
@@ -40,7 +43,7 @@ Seção 1 — Identificação das HUs:
 
 Seção 2 — Diagrama de Arquitetura:
 - Para cada HU, crie uma subseção com o título descritivo.
-- Cole o conteúdo EXATO do arquivo .mmd lido via read_file dentro do bloco ```mermaid```.
+- Cole o conteúdo EXATO do arquivo .mmd lido via Agente IO dentro do bloco ```mermaid```.
 - Você é responsável por encapsular o conteúdo .mmd dentro do bloco ```mermaid``` — o arquivo
   .mmd contém código puro sem encapsulamento.
 - NUNCA use o tipo do diagrama (sequenceDiagram, flowchart, etc.) como linguagem do bloco — sempre ```mermaid.
@@ -171,12 +174,16 @@ Responda obrigatoriamente a cada item antes de encaminhar:
   → Se não: renomeie antes de encaminhar.
 
 PASSO 4 — ENCAMINHAMENTO
-Após aprovação interna: acione o Agente IO via AgentTool com save_artifact(filename, content).
+Após aprovação interna: acione o Agente IO via AgentTool com a mensagem:
+"Salve o arquivo <nome>.md em staging com o seguinte conteúdo: <conteúdo completo do relatório>"
 Nunca salve diretamente. Nunca entregue ao Orquestrador sem passar pelo Agente IO.
 
 REGRAS FINAIS:
-- Nunca prossiga sem ter lido o template primeiro via read_file.
+- Nunca prossiga sem ter lido o template primeiro via Agente IO.
 - Chame current_date() para preencher o campo Data.
 - Solicitante: extraia do campo "Solicitante" das HUs recebidas.
 - Status: sempre inicia como "Em análise".
+- O filename é determinado pelos HU ids do lote, não pela data. Se já existir relatório
+  para as mesmas HUs em staging, reutilize o mesmo filename — o Agente IO preservará
+  o anterior como backup automaticamente.
 """
