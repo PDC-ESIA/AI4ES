@@ -1,8 +1,16 @@
 import asyncio
+import base64
 import json
 import logging
+import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+from google.adk.tools import FunctionTool
+from litellm import completion
 
 logger = logging.getLogger("qa_agent")
 
@@ -130,18 +138,32 @@ async def _processar_artefato(artefato: dict) -> dict:
         }
 
     try:
-        codigo = _gerar_template_pytest(id_artefato, tipo, conteudo, modulo)
+        slug = _slugify(id_artefato)
+        artefato_dir = TESTS_DIR / slug
+        artefato_dir.mkdir(parents=True, exist_ok=True)
 
-        TESTS_DIR.mkdir(parents=True, exist_ok=True)
-        nome = f"test_{id_artefato.lower().replace('-', '_')}.py"
-        caminho = TESTS_DIR / nome
+        anexos_salvos = _salvar_arquivos_apoio(artefato, artefato_dir)
+
+        nome_teste = f"test_{slug}.py"
+        caminho = artefato_dir / nome_teste
+
+        codigo = _gerar_pytest_via_llm(
+            id_artefato=id_artefato,
+            tipo=tipo,
+            conteudo=conteudo,
+            modulo=modulo,
+            arquivos_apoio=anexos_salvos,
+            nome_teste=nome_teste,
+        )
         caminho.write_text(codigo, encoding="utf-8")
 
         logger.info(f"[QA] Concluído: {id_artefato} → {caminho}")
         return {
             "id_artefato": id_artefato,
             "status": "sucesso",
+            "pasta_gerada": str(artefato_dir),
             "arquivo_gerado": str(caminho),
+            "arquivos_apoio": [str(p) for p in anexos_salvos],
             "erro": None,
         }
 
@@ -216,44 +238,116 @@ async def _gerar_doubt_artifact(id_artefato: str, motivo: str) -> str:
 # Geração do template pytest
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _gerar_template_pytest(
-    id_artefato: str, tipo: str, conteudo: str, modulo: str
+def _slugify(texto: str) -> str:
+    base = (texto or "artefato").strip().lower()
+    base = re.sub(r"[^a-z0-9]+", "_", base)
+    base = base.strip("_")
+    return base or "artefato"
+
+
+def _safe_filename(nome: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9._-]", "_", (nome or "arquivo.txt").strip())
+    cleaned = cleaned.lstrip(".")
+    return cleaned or "arquivo.txt"
+
+
+def _salvar_arquivos_apoio(artefato: dict, destino: Path) -> list[Path]:
+    arquivos = artefato.get("arquivos_apoio", [])
+    if not isinstance(arquivos, list):
+        return []
+
+    salvos: list[Path] = []
+    for item in arquivos:
+        if not isinstance(item, dict):
+            continue
+
+        nome = _safe_filename(item.get("nome") or item.get("filename") or "arquivo.txt")
+        conteudo_texto = item.get("conteudo")
+        conteudo_b64 = item.get("conteudo_base64")
+
+        caminho = destino / nome
+
+        if isinstance(conteudo_texto, str):
+            caminho.write_text(conteudo_texto, encoding="utf-8")
+            salvos.append(caminho)
+            continue
+
+        if isinstance(conteudo_b64, str):
+            try:
+                bruto = base64.b64decode(conteudo_b64)
+            except Exception:
+                continue
+            caminho.write_bytes(bruto)
+            salvos.append(caminho)
+
+    return salvos
+
+
+def _gerar_pytest_via_llm(
+    id_artefato: str,
+    tipo: str,
+    conteudo: str,
+    modulo: str,
+    arquivos_apoio: list[Path],
+    nome_teste: str,
 ) -> str:
-    """
-    Gera o esqueleto pytest para o artefato.
-    TODO: substituir por chamada ao modelo Gemini para geração inteligente.
-    """
-    classe = f"Test{tipo}{id_artefato.replace('-', '')}"
-    return f'''"""
-Testes gerados automaticamente pelo QA Agent — PDC-AI4SE
-Artefato : {id_artefato} ({tipo})
-Módulo   : {modulo}
-Requisito: {conteudo}
+    model_name = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
+    arquivos_desc = "\n".join([f"- {p.name}" for p in arquivos_apoio])
+    contexto_arquivos = (
+        "Arquivos de apoio salvos na mesma pasta do teste:\n"
+        f"{arquivos_desc}\n"
+        if arquivos_desc
+        else "Nenhum arquivo de apoio foi fornecido.\n"
+    )
+    prompt = f"""Gere SOMENTE código Python válido para {nome_teste}.
+Artefato: {id_artefato}
+Tipo: {tipo}
+Módulo alvo: {modulo}
+Requisito:
+{conteudo}
+
+{contexto_arquivos}
+Regras obrigatórias:
+- Retorne apenas código Python, sem markdown.
+- Use pytest.
+- O teste deve ser executável mesmo sem instalação de módulos externos ao diretório local.
+- Se houver arquivo-fonte local, faça import relativo via pathlib/sys.path usando a própria pasta do teste.
+- Se não houver código-fonte importável, gere testes de contrato (validações e comportamentos inferíveis) sem import quebrado.
+- Cubra cenários feliz, inválido e borda.
+- Inclua asserts objetivos.
+- Não use placeholders TODO, não use pass vazio, não deixe testes sem lógica.
 """
 
-import pytest
-# TODO: from src.<modulo> import <funcao>
+    response = completion(
+        model=model_name,
+        messages=[
+            {
+                "role": "system",
+                "content": "Você gera exclusivamente código de teste pytest executável.",
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        temperature=0,
+    )
 
+    codigo = ""
+    choices = getattr(response, "choices", None)
+    if choices and len(choices) > 0:
+        message = getattr(choices[0], "message", None)
+        codigo = getattr(message, "content", "") if message else ""
 
-class {classe}:
-    """Suite de testes para {id_artefato}."""
+    if not codigo and isinstance(response, dict):
+        response_choices = response.get("choices", [])
+        if response_choices:
+            codigo = response_choices[0].get("message", {}).get("content", "")
 
-    def test_caminho_feliz(self):
-        """Comportamento correto com entradas válidas."""
-        # Arrange
-        # Act
-        # Assert
-        pass  # TODO: implementar
+    if not isinstance(codigo, str) or not codigo.strip():
+        raise ValueError("Modelo retornou conteúdo vazio para geração de pytest.")
 
-    def test_entrada_invalida(self):
-        """Comportamento com entradas incorretas."""
-        with pytest.raises(Exception):
-            pass  # TODO: implementar
-
-    def test_caso_de_borda(self):
-        """Comportamento em casos extremos (vazio, zero, máximo, etc.)."""
-        pass  # TODO: implementar
-'''
+    return codigo.strip() + "\n"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -263,3 +357,20 @@ class {classe}:
 def _ordenar_por_criticidade(lista: list) -> list:
     prioridade = {"alta": 0, "media": 1, "baixa": 2}
     return sorted(lista, key=lambda a: prioridade.get(a.get("criticidade", "media"), 1))
+
+
+agent = LlmAgent(
+    name="receber_requisitos",
+    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")),
+    description=(
+        "Subagente que recebe artefatos de requisito em JSON e gera arquivos pytest "
+        "funcionais em artefactsTests."
+    ),
+    instruction=(
+        "Você deve sempre chamar a tool receber_requisitos com o JSON recebido, "
+        "sem alterar o payload. Retorne o resultado da tool ao final."
+    ),
+    tools=[
+        FunctionTool(receber_requisitos),
+    ],
+)

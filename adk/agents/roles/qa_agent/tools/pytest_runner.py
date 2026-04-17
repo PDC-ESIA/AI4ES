@@ -54,14 +54,20 @@ def gerar_teste_via_hu(hu_conteudo: str, caminho_destino: Path) -> dict:
     return {
         "status": "sucesso",
         "acao": "geracao_teste",
+        "arquivo_gerado": str(caminho_destino),
         "arquivo": str(caminho_destino)
     }
 
-def executar_pytest_tool(caminho_arquivo: str) -> dict:
+def _normalizar_caminho_arquivo(caminho_arquivo) -> Path:
+    if isinstance(caminho_arquivo, dict):
+        caminho_arquivo = caminho_arquivo.get("arquivo_gerado") or caminho_arquivo.get("arquivo") or caminho_arquivo.get("caminho_arquivo")
+    return Path(caminho_arquivo)
+
+def executar_pytest_tool(caminho_arquivo) -> dict:
     """
     Subagente Tool: Executa o pytest, valida a cobertura e aciona o trigger de erro se necessário.
     """
-    caminho = Path(caminho_arquivo)
+    caminho = _normalizar_caminho_arquivo(caminho_arquivo)
     dir_base = caminho.parent
     
     if not caminho.exists():
