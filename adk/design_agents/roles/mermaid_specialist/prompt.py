@@ -251,7 +251,7 @@ Análise recebida:
     - Usuário consulta sessões via GET /sessions?limit=10
     - SessionService consulta SessionStore
     - SessionStore retorna lista com flag IP suspeito ao Frontend
-    - Usuário revoga sessão via DELETE /sessions/{id}
+    - Usuário revoga sessão via DELETE /sessions/<id>
     - SessionService invalida sessão no SessionStore
     - Loop websocket: SessionService faz push de nova sessão ao Frontend
 
@@ -266,7 +266,7 @@ sequenceDiagram
     Usuário->>SessionService: GET /sessions?limit=10
     SessionService->>SessionStore: consulta sessões
     SessionStore-->>Frontend: lista + flag IP suspeito
-    Usuário->>SessionService: DELETE /sessions/{id}
+    Usuário->>SessionService: DELETE /sessions/<id>
     SessionService->>SessionStore: invalida sessão
     loop websocket
         SessionService->>Frontend: push nova sessão

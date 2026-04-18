@@ -58,19 +58,56 @@ Reversibilidade: [Alta / Média / Baixa]
 Repita o bloco para cada decisão relevante.
 
 PASSO 3 — DECISÃO DO TIPO DE DIAGRAMA
-Para cada HU sem bloqueio registrado, escolha o tipo Mermaid que melhor representa sua arquitetura:
 
-| Cenário                       | Diagrama recomendado |
-|-------------------------------|----------------------|
-| Fluxo de processos/decisões   | flowchart TD         |
-| Comunicação entre componentes | sequenceDiagram      |
-| Estrutura de entidades        | classDiagram         |
-| Ciclo de vida / estados       | stateDiagram-v2      |
-| Modelo de dados               | erDiagram            |
-| Visão de contexto C4          | C4Context            |
+Para cada HU sem bloqueio registrado, aplique o algoritmo de decisão abaixo em ordem.
+Pare na primeira regra que se aplicar. Não avalie as demais.
 
-Informe: "Escolho [TIPO] para [HU_ID] porque [RAZÃO TÉCNICA baseada na arquitetura decidida]."
-Escolha apenas um tipo por HU. Se dois tipos parecerem igualmente válidos, justifique a preferência e descarte o outro explicitamente.
+ALGORITMO DE DECISÃO (aplicar em sequência):
+
+1. A HU descreve ações de um usuário ou ator humano com ordem temporal definida?
+   (palavras-chave: "usuário faz X", "solicita", "acessa", "envia", endpoints REST, fluxo de login,
+   cadastro, confirmação, troca de senha, revogação)
+   → sequenceDiagram
+
+2. A HU descreve estados pelos quais uma entidade passa ao longo do tempo?
+   (palavras-chave: "pendente", "ativo", "expirado", "bloqueado", "ciclo de vida", transições)
+   → stateDiagram-v2
+
+3. A HU descreve a estrutura de classes, herança ou contratos de interface?
+   (palavras-chave: "herda de", "implementa", "interface", "atributos e métodos")
+   → classDiagram
+
+4. A HU descreve o modelo de dados com entidades e relacionamentos?
+   (palavras-chave: "tabela", "entidade", "chave estrangeira", "1:N", "N:N", "schema")
+   → erDiagram
+
+5. A HU descreve a visão de alto nível do sistema e seus atores externos?
+   (palavras-chave: "contexto do sistema", "sistemas externos", "usuários do sistema", "fronteiras")
+   → C4Context
+
+6. Nenhuma das regras anteriores se aplicou — a HU descreve componentes de infraestrutura,
+   pipelines de dados, ou arquitetura sem sequência temporal nem ator humano primário?
+   (palavras-chave: "painel", "métricas", "pipeline", "gateway", "broker", "cache", "exportação")
+   → flowchart TD
+
+REGRA DE DESEMPATE:
+Se duas regras parecerem aplicáveis simultaneamente, prefira sempre a que aparece primeiro
+no algoritmo. A ordem é intencional: ator humano + sequência temporal sempre prevalece sobre
+estrutura de componentes.
+
+Exemplo: uma HU descreve um painel de métricas (regra 6) mas também descreve o fluxo
+de um admin acessando e exportando dados (regra 1). Aplica-se a regra 1 → sequenceDiagram.
+
+FORMATO DE SAÍDA OBRIGATÓRIO:
+Para cada HU, declare:
+
+"Escolho [TIPO] para [HU_ID].
+Regra aplicada: [número e texto da regra].
+Descartei [TIPO_ALTERNATIVO] porque [razão técnica de uma linha]."
+
+Se nenhuma HU gerou dúvida de tipo, basta declarar o tipo escolhido e a regra aplicada.
+
+---
 
 PASSO 4 — IDENTIFICAÇÃO DE COMPONENTES
 Para cada HU sem bloqueio registrado, liste os componentes que aparecerão no diagrama:
