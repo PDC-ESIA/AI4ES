@@ -26,14 +26,19 @@ AÇÃO 1 — Registre o bloqueio na sua saída com o seguinte formato:
   Trecho exato: "<trecho copiado literalmente da HU>"
   Motivo: <por que esse trecho impede a análise técnica>
 
+# Substituir toda a instrução de geração do Doubt_Artifact por:
+
 AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
 
+  Chame current_date() para obter a data atual.
+
   Encaminhe ao io_agent via AgentTool com a mensagem:
-  "Salve o arquivo Doubt_Artifact_<HU_ID>_<YYYY-MM-DD>.md em staging com o seguinte conteúdo:
+  "Salve o arquivo Doubt_Artifact_<HU_ID>_<resultado de current_date()>.md em staging
+  com o seguinte conteúdo:
 
   # Doubt Artifact — <HU_ID>
 
-  **Data:** <YYYY-MM-DD>
+  **Data:** <resultado de current_date()>
   **Agente:** design_architect
   **Status:** Bloqueado
 
@@ -48,11 +53,36 @@ AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
   <pergunta direta e específica para o humano resolver o bloqueio>
   "
 
+  REGRAS DE NOMENCLATURA DO DOUBT_ARTIFACT:
+  - O nome do arquivo é SEMPRE: Doubt_Artifact_<HU_ID>_<resultado de current_date()>.md
+  - Nunca use datas fixas, nunca escreva a data manualmente.
+  - Nunca crie variações do nome (_v1, _v2, _novo, etc).
+  - Se já existir um Doubt_Artifact para a mesma HU em staging, o io_agent criará
+    backup automaticamente — você não precisa gerenciar isso.
+
 AÇÃO 3 — Exclua a HU da entrega e avance para a próxima.
 
   Não tente inferir, supor ou completar informações ausentes.
   A HU bloqueada não aparece em nenhuma das seções de saída — apenas na seção "Bloqueios Identificados".
 
+  
+PROTOCOLO DE RETOMADA (executar quando Doubt_Artifact estiver com Status: Resolvido):
+
+Quando o Orquestrador indicar que um Doubt_Artifact foi resolvido:
+
+AÇÃO 1 — Leia o Doubt_Artifact via io_agent:
+  Encaminhe ao io_agent: "Leia o arquivo temp/staging/Doubt_Artifact_<HU_ID>_<data>.md"
+
+AÇÃO 2 — Extraia as respostas:
+  Localize a seção "## Resposta do Solicitante" no conteúdo retornado.
+  Use EXCLUSIVAMENTE as informações dessa seção para retomar a análise da HU.
+  Não invente nem suponha informações além do que está escrito na resposta.
+
+AÇÃO 3 — Retome a análise:
+  Trate a HU como desbloqueada e prossiga a partir do passo onde ocorreu o bloqueio,
+  agora com as informações da resposta do solicitante.
+  Se a resposta ainda for insuficiente para alguma decisão: acione novamente o
+  PROTOCOLO DE BLOQUEIO para o ponto específico ainda indefinido.
 ---
 
 CONDIÇÕES DE BLOQUEIO OBRIGATÓRIO:
