@@ -1,5 +1,9 @@
 # Prompts para testes do MVP
 
+## Testes básicos
+
+### Prompt
+
 1.
 
 ```markdown
@@ -90,7 +94,7 @@ Critérios de aceite:
 ---
 ---
 
-## Diagramas esperados
+### Diagramas esperados
 
 Feito com o Claude
 
@@ -205,3 +209,75 @@ flowchart TD
     ExportService-->MetricsStore
     ExportService-->|CSV|Admin
 ```
+
+
+## Testes anti alucinação
+
+### Prompt
+
+4.
+
+```markdown
+Lote de HUs para análise:
+
+HU-007
+Solicitante: Leonardo
+Como usuário,
+quero acessar o sistema
+para usar as funcionalidades.
+Critérios de aceite:
+- Deve funcionar
+- Deve ser rápido
+```
+
+5.
+
+```markdown
+Lote de HUs para análise:
+
+HU-008
+Solicitante: Leonardo
+Como administrador,
+quero que o sistema sincronize os dados dos usuários automaticamente
+para manter as informações sempre atualizadas.
+Critérios de aceite:
+- Sincronização deve ocorrer em tempo real
+- Dados devem estar sempre consistentes entre os sistemas
+- Em caso de falha, o sistema deve se recuperar automaticamente
+
+HU-009
+Solicitante: Leonardo
+Como usuário autenticado,
+quero receber notificações sobre atividades suspeitas na minha conta
+para agir rapidamente em caso de invasão.
+Critérios de aceite:
+- Notificar o usuário imediatamente ao detectar atividade suspeita
+- Suportar múltiplos canais de notificação
+- O usuário pode configurar quais alertas deseja receber
+```
+
+6.
+
+```markdown
+
+```
+
+### Resultado esperado
+
+4. 
+
+Propositalmente incompleto em todos os pontos críticos para o design_architect:
+
+- Ator genérico ("usuário" sem especificação)
+- Ação vaga ("acessar o sistema" sem definir o que isso significa tecnicamente)
+- Sem menção a autenticação, serviços, dados ou integrações
+- Critérios de aceite sem métricas ("rápido" sem SLA, "funcionar" sem definição)
+
+5.
+
+A ambiguidade aqui é técnica, não óbvia:
+
+- HU-008 — "sincronizar com o quê?" nunca é definido. "Tempo real" e "consistência" são contraditórios em sistemas distribuídos sem definir o modelo de consistência. "Recuperação automática" sem definir o mecanismo (retry, fila, rollback) impede decisão arquitetural.
+- HU-009 — "múltiplos canais" sem listar quais (e-mail, SMS, push, webhook?) impede decisão de componentes. "Atividade suspeita" sem critério mensurável (threshold de tentativas? IP desconhecido? horário?) torna impossível definir o serviço de detecção.
+
+6.

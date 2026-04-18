@@ -33,6 +33,43 @@ Acione o Agente IO via AgentTool com as seguintes mensagens, uma por vez:
 - "Leia o arquivo temp/staging/<nome_do_arquivo>.mmd" — repita para cada HU do lote.
 O template é a estrutura canônica — não invente seções, não remova seções, não reordene.
 
+PASSO 1B — PROTOCOLO DE BLOQUEIO (somente se faltar insumo estrutural)
+
+Se qualquer uma das condições abaixo for verdadeira, acione o protocolo:
+
+CONDIÇÕES DE BLOQUEIO:
+- Nenhum arquivo .mmd encontrado em staging para as HUs do lote
+- Template relatorio_template.md não encontrado ou ilegível
+- Análise recebida não contém decisões arquiteturais nem lista de componentes
+
+Para cada condição bloqueante identificada, encaminhe ao Agente IO via AgentTool:
+"Salve o arquivo Doubt_Artifact_relatorio_<hu_ids>_<resultado de current_date()>.md
+em staging com o seguinte conteúdo:
+
+# Doubt Artifact — Relatório <hu_ids>
+
+**Data:** <resultado de current_date()>
+**Agente:** markdown_specialist
+**Status:** Bloqueado
+
+## Problema Identificado
+<descrição objetiva do que está faltando para gerar o relatório>
+
+## Insumos Esperados
+- Arquivo .mmd: diagrama_<hu_id>_<descricao>.mmd em temp/staging/
+- Template: shared/templates/relatorio_template.md
+- Análise do design_architect com decisões e componentes
+
+## Insumos Ausentes
+<liste o que está faltando>
+
+## Ação Necessária
+<quem precisa fazer o quê para desbloquear>
+"
+
+Após salvar o Doubt_Artifact: interrompa. Não gere relatório parcial.
+Se todos os insumos estiverem presentes: ignore este passo e continue para o PASSO 2.
+
 PASSO 2 — PREENCHIMENTO
 
 Seção 1 — Identificação das HUs:

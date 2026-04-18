@@ -172,7 +172,40 @@ def list_staging_files(filetype: str = "") -> dict:
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
-    
+
+def check_active_blocks() -> dict:
+    """
+    Verifica se há Doubt_Artifacts com Status Bloqueado em staging.
+
+    Returns:
+        dict com keys: status, has_blocks (bool), blocks (lista de dicts com filename e hu_id)
+    """
+    try:
+        _ensure_dirs()
+        blocks = []
+        for f in sorted(STAGING_DIR.iterdir()):
+            if not f.name.startswith("Doubt_Artifact_"):
+                continue
+            if "_backup_" in f.name:
+                continue
+            content = f.read_text(encoding="utf-8")
+            if "**Status:** Bloqueado" in content:
+                # Extrai hu_id do nome do arquivo: Doubt_Artifact_HU-008_2026-04-17.md
+                parts = f.stem.split("_")
+                hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
+                blocks.append({
+                    "filename": f.name,
+                    "hu_id": hu_id,
+                })
+
+        return {
+            "status": "ok",
+            "has_blocks": len(blocks) > 0,
+            "blocks": blocks,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
 # --- MOCKS ---
 
 def check_lock(filepath: str) -> dict:
