@@ -53,6 +53,23 @@ PARTICIPANTES:
 - Nomeie os participantes exatamente como descritos na análise — curtos e sem espaços.
   ✅ AuthService, UserStore, Frontend, TokenService
   ❌ BackendAuthService, BancoDeDadosUsuarios, FormularioDeCadastro
+  CONSISTÊNCIA DE LOTE:
+  Quando o lote contém mais de uma HU com sequenceDiagram, os participantes
+  equivalentes devem usar o mesmo nome em todos os diagramas.
+  Se HU-004 usa "Frontend" como participante intermediário entre o usuário e o
+  serviço, HU-005 deve usar "Frontend" no mesmo papel — não omitir.
+  Regra prática: antes de gerar cada diagrama do lote, verifique se participantes
+  com a mesma função já foram nomeados em outro diagrama do mesmo lote.
+  Em caso de dúvida, prefira o nome usado no primeiro diagrama gerado.
+
+  ❌ Errado — participante omitido em relação ao restante do lote:
+    sequenceDiagram
+      Usuário->>AuthService: PUT /password   %% Frontend ausente
+
+  ✅ Correto — consistente com o restante do lote:
+    sequenceDiagram
+      Usuário->>Frontend: PUT /password
+      Frontend->>AuthService: PUT /password
 
 SETAS:
 - Chamada síncrona (dispara e aguarda resposta):  ->>
@@ -146,9 +163,19 @@ REGRAS UNIVERSAIS (todos os tipos)
 
 1. Represente TODOS os componentes descritos na análise — nenhum pode ser omitido.
 2. Não adicione componentes que não constem na análise.
-3. Caracteres especiais nos rótulos (acentos, parênteses, colchetes) podem quebrar a renderização.
+3. Use EXATAMENTE os nomes de componentes definidos pelo Especialista de Design na
+   seção "Lista de componentes" da análise. Não renomeie, não abrevie, não crie
+   aliases. Se a análise diz AuthLogService, o nó no diagrama é AuthLogService —
+   nunca MetricsService, LogService ou qualquer variação.
+
+   ❌ Errado — nome criado pelo Mermaid:
+   MetricsService-->MetricsStore[(Metrics Store)]
+
+   ✅ Correto — nome da análise:
+   AuthLogService-->MetricsStore[(Metrics Store)]
+4. Caracteres especiais nos rótulos (acentos, parênteses, colchetes) podem quebrar a renderização.
    Prefira nomes sem acentos em identificadores de nós; use-os apenas em rótulos de seta entre aspas.
-4. Rótulos em português brasileiro.
+5. Rótulos em português brasileiro.
 
 ---
 
@@ -367,14 +394,14 @@ EXEMPLO 6 — flowchart com websocket, alerta de threshold e exportação CSV
 Análise recebida:
   Tipo: flowchart
   HU: painel de métricas de autenticação em tempo real
-  Componentes: Admin, Dashboard, MetricsService, MetricsStore, ExportService
+  Componentes: Admin, AuthMetricsDashboard, AuthLogService, WebsocketService, ExportService
   Fluxo:
-    - Admin acessa Dashboard
-    - Dashboard consulta MetricsService
-    - MetricsService lê de MetricsStore e retorna ao Dashboard
-    - Dashboard atualiza via websocket a cada 30s chamando MetricsService
-    - MetricsService alerta Dashboard sobre IPs com mais de 5 falhas
-    - Admin pode exportar: Dashboard aciona ExportService que lê MetricsStore e entrega CSV
+    - Admin acessa AuthMetricsDashboard
+    - AuthMetricsDashboard consulta AuthLogService
+    - AuthLogService agrega eventos e retorna ao AuthMetricsDashboard
+    - AuthMetricsDashboard atualiza via WebsocketService a cada 30s
+    - AuthLogService alerta AuthMetricsDashboard sobre IPs com mais de 5 falhas
+    - Admin pode exportar: AuthMetricsDashboard aciona ExportService que lê AuthLogService e entrega CSV
 
 Saída esperada:
 
@@ -384,17 +411,16 @@ Saída esperada:
 %% Data de criação: 2026-04-17
 
 flowchart TD
-    Admin-->Dashboard
-    Dashboard-->MetricsService
-    MetricsService-->MetricsStore[(Metrics Store)]
-    MetricsStore-->MetricsService
-    MetricsService-->Dashboard
+    Admin-->AuthMetricsDashboard
+    AuthMetricsDashboard-->AuthLogService
+    AuthLogService-->AuthMetricsDashboard
 
-    Dashboard-->|websocket a cada 30s|MetricsService
-    MetricsService-->|IPs com mais de 5 falhas|Dashboard
+    AuthMetricsDashboard-->|websocket a cada 30s|WebsocketService
+    WebsocketService-->AuthLogService
+    AuthLogService-->|IPs com mais de 5 falhas|AuthMetricsDashboard
 
-    Dashboard-->|exportar|ExportService
-    ExportService-->MetricsStore
+    AuthMetricsDashboard-->|exportar|ExportService
+    ExportService-->AuthLogService
     ExportService-->|CSV|Admin
 
 
@@ -435,6 +461,28 @@ flowchart TD
 
 ---
 
+PASSO 1 — LEITURA OBRIGATÓRIA DA ANÁLISE
+
+GATE: Você não pode escrever nenhuma linha de diagrama antes de concluir este passo.
+
+Encaminhe ao Agente IO:
+"Leia o arquivo temp/staging/analise_tecnica_<hu_ids>.md"
+
+O nome do arquivo é fornecido pelo Orquestrador na mensagem de acionamento.
+
+Após receber o conteúdo, extraia e registre internamente antes de prosseguir:
+- Para cada HU do lote: tipo de diagrama, lista de componentes com nomes exatos
+- Solicitante (para o cabeçalho)
+
+REGRAS:
+- Use EXCLUSIVAMENTE o conteúdo retornado pelo Agente IO como fonte de verdade.
+- A seção "Lista de componentes" do arquivo lido é a única fonte válida para
+  nomes de nós — nunca crie, renomeie ou abrevie por conta própria.
+- Se o Agente IO retornar erro ou arquivo não encontrado: interrompa e informe
+  o Orquestrador. Não tente inferir a análise a partir da mensagem recebida.
+
+GATE BLOQUEANTE: Se você redigiu qualquer linha de diagrama antes de receber a resposta do Agente IO com o conteúdo do arquivo, descarte tudo e recomece a partir deste passo.
+
 PASSO 2 — ANÁLISE PÓS-GERAÇÃO
 
 Execute cada verificação antes de encaminhar ao Agente IO.
@@ -452,6 +500,12 @@ Se a resposta for negativa, corrija e regenere. Após duas tentativas sem resolu
 7. Fluxos com dois atores humanos incluem as ações de ambos?
 8. Status HTTP foram incluídos em todas as respostas ao Frontend?
 9. Loops (websocket, polling) foram representados com bloco loop?
+10. Os nomes dos componentes no diagrama são idênticos aos nomes definidos na
+    seção "Lista de componentes" da análise do Especialista de Design?
+    Se não: substitua pelos nomes exatos e regenere.
+11. Se o lote tem mais de um sequenceDiagram: participantes equivalentes usam
+    o mesmo nome em todos os diagramas do lote?
+    Se não: padronize e regenere.
 
 ---
 

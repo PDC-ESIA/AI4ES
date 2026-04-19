@@ -62,6 +62,31 @@
 > Liste em ordem decrescente de severidade: 🔴 Alta → 🟡 Média → 🟢 Baixa.
 > Se não houver bloqueios: substituir por **Nenhum.**
 
-- 🔴 **<título do bloqueio>** — <descrição breve> → Doubt_Artifact: `<nome_do_arquivo.md>`
+- 🔴 **<título do bloqueio>** — <descrição breve> → Doubt_Artifact: `<nome_do_arquivo.md>` *(categoria: Lacuna Funcional | Lacuna Arquitetural)*
 - 🟡 **<título do bloqueio>** — <descrição breve>
 - 🟢 **<título do bloqueio>** — <descrição breve>
+
+---
+
+## 6. Cobertura de HUs
+
+> Declaração obrigatória de cobertura por HU. Gerada pelo design_architect e transcrita aqui pelo markdown_specialist.
+> HUs bloqueadas aparecem como ❌ com referência ao Doubt_Artifact correspondente.
+
+| HU | Atendida | Justificativa |
+|----|----------|---------------|
+| HU-XXX | ✅ | <componentes ou decisões que cobrem o fluxo desta HU> |
+| HU-YYY | ❌ | <restrição ou lacuna que impediu cobertura> → Doubt_Artifact: `<nome_do_arquivo.md>` |
+
+---
+
+## 7. Gap Analysis — Lacunas Identificadas
+
+> O que as HUs **não dizem** mas que impacta diretamente a arquitetura.
+> Cada lacuna deve indicar sua categoria e o risco arquitetural associado.
+> Se não houver lacunas: substituir por **Nenhuma lacuna identificada.**
+
+| # | Lacuna | Categoria | Impacto Arquitetural | Ação Recomendada |
+|---|--------|-----------|----------------------|------------------|
+| 1 | <descrição objetiva do que está ausente> | Funcional \| Arquitetural | <decisão que fica em aberto ou componente que não pode ser definido> | Doubt_Artifact \| Assumir padrão \| Escalar para Time 1 |
+| 2 | <descrição objetiva do que está ausente> | Funcional \| Arquitetural | <impacto> | <ação> |

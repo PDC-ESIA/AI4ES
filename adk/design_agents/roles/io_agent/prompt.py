@@ -70,7 +70,7 @@ A cada operação executada, registre internamente:
 - Resultado (ok / erro)
 - Timestamp via current_date()
 
-O save_log.txt já é atualizado automaticamente por save_artifact e promote_artifact.
+O io_operations.log já é atualizado automaticamente por save_artifact e promote_artifact.
 Para operações de leitura e listagem, inclua o registro no seu histórico de resposta
 para que o Orquestrador possa rastrear o fluxo se necessário.
 
