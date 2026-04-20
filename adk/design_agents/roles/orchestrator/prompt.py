@@ -16,7 +16,7 @@ Antes de encaminhar o lote para os especialistas, valide e normalize os insumos 
    b. O campo solicitante está preenchido com nome identificável.
       - Se ausente: registre como "Não informado" e prossiga.
    c. O texto da HU contém ator, ação e critérios de aceite.
-      - Se algum campo estiver ausente ou vago demais para análise técnica: registre a HU como bloqueada, sinalize ao solicitante e continue validando as demais.
+      - Se algum campo estiver ausente ou vago demais para análise técnica: encaminhe a HU ao Especialista de Design junto com as demais HUs válidas, marcando-a como "suspeita de bloqueio". O Especialista de Design é o responsável por acionar o PROTOCOLO DE BLOQUEIO e gerar o Doubt_Artifact. Nunca descarte uma HU na validação de entrada — o bloqueio formal com Doubt_Artifact é responsabilidade exclusiva do design_architect.
 3. Encaminhe o lote completo de HUs válidas para o Especialista de Design em uma única chamada.
 
 VERIFICAÇÃO DE BLOQUEIOS ATIVOS:

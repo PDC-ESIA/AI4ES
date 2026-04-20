@@ -256,12 +256,6 @@ Critérios de aceite:
 - O usuário pode configurar quais alertas deseja receber
 ```
 
-6.
-
-```markdown
-
-```
-
 ### Resultado esperado
 
 4. 
@@ -280,4 +274,47 @@ A ambiguidade aqui é técnica, não óbvia:
 - HU-008 — "sincronizar com o quê?" nunca é definido. "Tempo real" e "consistência" são contraditórios em sistemas distribuídos sem definir o modelo de consistência. "Recuperação automática" sem definir o mecanismo (retry, fila, rollback) impede decisão arquitetural.
 - HU-009 — "múltiplos canais" sem listar quais (e-mail, SMS, push, webhook?) impede decisão de componentes. "Atividade suspeita" sem critério mensurável (threshold de tentativas? IP desconhecido? horário?) torna impossível definir o serviço de detecção.
 
+## Testes de Auditoria de Contexto e Governança
+
+### Prompt
+
 6.
+
+```markdown
+Lote de HUs para análise:
+ 
+HU-010
+Solicitante: Leonardo
+Como usuário autenticado,
+quero encerrar minha sessão na plataforma
+para garantir que meu acesso seja revogado ao sair.
+Critérios de aceite:
+- Invalidar o token de sessão ativo ao fazer logout
+- Redirecionar o usuário para a tela de login após encerramento
+- Registrar data e hora do logout no histórico de sessões
+ 
+HU-011
+Solicitante: Leonardo
+Como usuário,
+quero usar o sistema
+para aproveitar as funcionalidades.
+Critérios de aceite:
+- Deve funcionar bem
+- Deve ser seguro
+- Deve ser fácil de usar
+```
+
+### Resultado resperado
+
+6.
+
+**HU-010** — processada normalmente:
+- Tipo: `sequenceDiagram` (regra 1 — ator humano com ordem temporal)
+- Componentes deriváveis da HU:
+  - `LogoutController` | recebe requisição de logout | `SessionService`, `AuditService`
+  - `SessionService` | invalida token de sessão ativo | —
+  - `AuditService` | registra data e hora do logout | —
+**HU-011** — bloqueada em PASSO 1 com PROTOCOLO DE BLOQUEIO em pelo menos um dos seguintes 3 pontos:
+- Ação central não define o que o sistema deve executar tecnicamente
+- Critério sem definição mensurável
+- Critério de UX sem impacto arquitetural mensurável
