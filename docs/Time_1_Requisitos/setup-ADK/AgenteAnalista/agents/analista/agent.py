@@ -1,20 +1,5 @@
 from google.adk.agents import Agent
 
-def create_analista_agent():
-    """
-    Configura o Agente Analista com as diretrizes do Time 1.
-    """
-    return agent.Agent(
-        name="Agente Analista MVP",
-        #(Subtask 2.1) refinar o System Prompt
-        instructions="""
-            Você é o Agente Analista...
-        """,
-        tools=["file_tools"] 
-    )
-
-    
-        # (Subtask 1.1) vinculará as tools aqui
 # Biblioteca de Few-Shots segmentada por tipo de artefato
 FEW_SHOTS_LIBRARY = {
     "HU": """### EXEMPLO DE HISTÓRIA DE USUÁRIO (HU)
@@ -103,4 +88,6 @@ Documente seu raciocínio passo a passo antes da entrega final. Cada etapa deve 
 
 INSTRUÇÃO DE CONTROLE:
 Se o insumo do contexto for insuficiente para o artefato '{tipo_artefato}', preencha 'Doubt_Artifact.md' detalhando exatamente quais informações faltam para concluir o raciocínio e interrompa a execução.
-"""
+""",
+        tools=["file_tools"] 
+    )

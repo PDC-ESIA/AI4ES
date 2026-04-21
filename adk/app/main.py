@@ -15,7 +15,7 @@ litellm.drop_params = True
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-_DEFAULT_AGENTS_DIR = "runners"
+_DEFAULT_AGENTS_DIR = "agents/roles"
 
 app = get_fast_api_app(
     # Profissional: configura por ambiente, com default seguro (produção).

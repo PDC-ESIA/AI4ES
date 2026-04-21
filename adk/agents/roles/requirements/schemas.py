@@ -31,11 +31,21 @@ class GlossaryTerm(BaseModel):
     definition: str = Field(..., description="Definição clara do termo")
     source: str = Field(..., description="Onde o termo foi encontrado no documento")
 
+class UseCase(BaseModel):
+    id: str = Field(..., description="Identificador do UC (ex: UC-001)")
+    title: str = Field(..., description="Título do caso de uso")
+    actor: str = Field(..., description="Ator principal")
+    description: str = Field(..., description="Breve descrição do fluxo")
+    pre_conditions: List[str] = Field(default_factory=list, description="Pré-condições para o início")
+    main_flow: List[str] = Field(..., description="Passos do fluxo principal")
+    post_conditions: List[str] = Field(default_factory=list, description="Estados finais esperados")
+
 class AnalystOutput(BaseModel):
     status: str = Field(..., description="Status da execução: 'concluido' ou 'bloqueado'")
     user_stories: List[UserStory] = Field(default_factory=list)
     functional_requirements: List[FunctionalRequirement] = Field(default_factory=list)
     non_functional_requirements: List[NonFunctionalRequirement] = Field(default_factory=list)
+    use_cases: List[UseCase] = Field(default_factory=list)
     business_rules: List[BusinessRule] = Field(default_factory=list)
     glossary: List[GlossaryTerm] = Field(default_factory=list)
     doubt_generated: bool = Field(False, description="Indica se houve geração de Doubt Artifact")

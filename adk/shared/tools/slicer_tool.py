@@ -7,7 +7,7 @@ except ImportError:
     fitz = None
 
 def extract_text(file_path):
-    """Extrai texto de diferentes formatos."""
+    """Extrai texto de diferentes formatos (PDF, TXT, MD)."""
     ext = os.path.splitext(file_path)[1].lower()
 
     if ext == '.pdf':
@@ -24,7 +24,7 @@ def extract_text(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             return f.read()
     else:
-        raise ValueError(f"Extensão {ext} não suportada ainda.")
+        raise ValueError(f"Extensão {ext} não suportada.")
 
 def run_slicer(filename: str, paragraphs_per_chunk: int = 2, overlap_count: int = 1):
     """
@@ -35,25 +35,20 @@ def run_slicer(filename: str, paragraphs_per_chunk: int = 2, overlap_count: int 
         paragraphs_per_chunk: Quantos parágrafos cada arquivo .txt terá.
         overlap_count: Quantos parágrafos do final do chunk anterior serão repetidos no próximo.
     """
-    input_path = os.path.join("data", "matrix", filename)
+    input_path = os.path.join("data", "matrix", filename) # @todo avaliar se o contexto esta sendo sempre salvo como matrix
     output_dir = os.path.join("data", "chunks")
     
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     try:
-        # Limpa apenas chunks antigos esperados
-        for file in os.listdir(output_dir):
-            file_path = os.path.join(output_dir, file)
-            if file.startswith("chunk_") and file.endswith(".txt") and os.path.isfile(file_path):
-                os.remove(file_path)
         # 1. Extração do texto completo
         content = extract_text(input_path)
+        if not content.strip():
+            return "Erro: Nenhum texto encontrado no arquivo."
 
         # 2. Divisão em parágrafos 
         # (Usa regex para capturar quebras de linha duplas ou múltiplas, comum em documentos)
         paragraphs = [p.strip() for p in re.split(r'\n\s*\n', content) if p.strip()]
-
         chunks = []
         start = 0
         
@@ -65,10 +60,9 @@ def run_slicer(filename: str, paragraphs_per_chunk: int = 2, overlap_count: int 
             chunk_content = "\n\n".join(paragraphs[start:end])
             chunks.append(chunk_content)
             
-            if end >= len(paragraphs):
-                break
+            if end >= len(paragraphs): break
             
-            # O índice de início avança o tamanho do chunk menos o overlap
+             # O índice de início avança o tamanho do chunk menos o overlap
             start += (paragraphs_per_chunk - overlap_count)
 
         # 4. Salvamento em .txt
@@ -81,3 +75,15 @@ def run_slicer(filename: str, paragraphs_per_chunk: int = 2, overlap_count: int 
 
     except Exception as e:
         return f"Erro no fatiamento: {str(e)}"
+    
+    
+    
+
+def ler_chunk(index: int):
+    """Lê um chunk específico já gerado."""
+    chunk_path = os.path.join("data", "chunks", f"chunk_{index:03d}.txt")
+    if not os.path.exists(chunk_path):
+        return f"Erro: Chunk {index} não encontrado."
+    with open(chunk_path, "r", encoding="utf-8") as f:
+        return f.read()
+
