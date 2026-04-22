@@ -1,1 +1,0 @@
-from .qa_prompt import QA_PROMPT
