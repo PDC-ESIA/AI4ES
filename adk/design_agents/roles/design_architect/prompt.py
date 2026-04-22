@@ -59,7 +59,7 @@ AÇÃO 1 — Registre o bloqueio na sua saída com o seguinte formato:
 
 AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
 
-  Chame current_date() para obter a data atual.
+  SEMPRE chame current_date() para obter a data atual.
 
   Classifique o bloqueio em uma das duas categorias antes de gerar o arquivo:
   - Lacuna Funcional: o que o sistema deve fazer não está claro na HU.

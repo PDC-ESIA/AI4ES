@@ -15,9 +15,10 @@ Como usuário autenticado,
 quero fazer login na plataforma com e-mail e senha
 para acessar meu painel personalizado.
 Critérios de aceite:
-- Validar e-mail e senha no backend
-- Retornar token JWT em caso de sucesso
-- Bloquear acesso após 3 tentativas falhas
+- Validar e-mail e senha no backend; retornar erro genérico em caso de falha (sem indicar qual campo está errado)
+- Retornar token JWT com expiração de 1h e refresh token com expiração de 7 dias em caso de sucesso
+- Bloquear acesso temporariamente por 15 minutos após 3 tentativas falhas consecutivas; o contador reseta após login bem-sucedido
+- Redirecionar automaticamente para o painel do usuário após autenticação bem-sucedida
 ```
 
 ---
@@ -41,13 +42,19 @@ Critérios de aceite:
 HU-003
 Solicitante: Leonardo
 Como usuário autenticado,
-quero visualizar o histórico das minhas últimas 10 sessões ativas
+quero visualizar o histórico das minhas últimas 10 sessões
 para monitorar acessos suspeitos à minha conta.
 Critérios de aceite:
-- Exibir data, hora, IP e dispositivo de cada sessão
-- Destacar visualmente sessões de IPs desconhecidos
+- Exibir as últimas 10 sessões (ativas ou encerradas); se houver menos de 10, exibir todas
+- Campos por sessão: data, hora, IP, SO e navegador (extraídos do user-agent)
+- Destacar visualmente sessões de IPs que nunca apareceram em nenhuma sessão anterior do usuário, considerando TODO o histórico armazenado (não apenas as 10 exibidas)
 - Permitir encerramento remoto de sessões individuais
-- Dados atualizados em tempo real via websocket
+- A lista deve ser atualizada em tempo real via websocket nos seguintes eventos:
+  * Nova sessão iniciada (login bem-sucedido)
+  * Sessão encerrada (logout manual ou expiração de token)
+  * Sessão encerrada remotamente pelo próprio usuário
+  * Ao receber o evento, o frontend deve atualizar a lista sem recarregar a página,
+    refletindo o novo estado (adição, remoção ou alteração de status da sessão afetada)
 ```
 
 ---
@@ -88,7 +95,12 @@ Critérios de aceite:
 - Exibir total de logins bem-sucedidos e falhos nas últimas 24h
 - Destacar IPs com mais de 5 tentativas falhas consecutivas
 - Atualização automática a cada 30 segundos via websocket
-- Permitir exportação do relatório em CSV
+- Permitir exportação do relatório em CSV com os seguintes campos obrigatórios:
+  * timestamp (data e hora do evento)
+  * tipo_evento (login_sucesso | login_falha)
+  * ip_origem
+  * usuario (e-mail ou ID)
+  * flag_suspeito (true se IP com 5+ tentativas falhas consecutivas)
 ```
 
 ---
