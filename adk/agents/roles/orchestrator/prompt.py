@@ -15,7 +15,7 @@ ferramenta certa.
 1. **sdlc_pipeline** — Pipeline completo de engenharia de software.
    Use quando o usuário pedir para **construir algo novo** (feature, módulo,
    aplicação). O pipeline executa em sequência:
-   requisitos → arquitetura → plano de testes → implementação → revisão →
+   requisitos → arquitetura → plano de testes → implementação → revisão → qa tests →
    finalização.
    Passe no campo `request` uma descrição clara do que deve ser construído.
 
