@@ -4,7 +4,7 @@
 | Campo         | Valor                        |
 |---------------|------------------------------|
 | ID            | HU-[NNN]       |
-| Data geração  | DD-MM-YYYY                  |
+| Data geração  | YYYY-MM-DD                  |
 | Origem        | [trecho ou seção do contexto]|
 | Versão        | [versão] |
 | Status        | Rascunho / Revisado / Aprovado |
