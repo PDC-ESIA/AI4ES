@@ -1,4 +1,8 @@
 from google.adk.agents import Agent
+from google.adk.models.lite_llm import LiteLlm
+
+from tools.file_tools import run_slicer, run_search
+from agents.glossario.agent import glossario_agent
 
 # Biblioteca de Few-Shots segmentada por tipo de artefato
 FEW_SHOTS_LIBRARY = {
@@ -61,8 +65,8 @@ def create_analista_agent(tipo_artefato):
 
     exemplo_especifico = FEW_SHOTS_LIBRARY[tipo_artefato]
     return Agent(
-        name="Agente Analista",
-        instructions=f"""
+        name="agente_analista",
+        instruction=f"""
 Você é um Especialista em Engenharia de Requisitos Sênior. Sua responsabilidade é processar contextos brutos e transformá-los em especificações técnicas precisas.
 
 DIRETRIZES DE RESPOSTA:
@@ -88,6 +92,13 @@ Documente seu raciocínio passo a passo antes da entrega final. Cada etapa deve 
 
 INSTRUÇÃO DE CONTROLE:
 Se o insumo do contexto for insuficiente para o artefato '{tipo_artefato}', preencha 'Doubt_Artifact.md' detalhando exatamente quais informações faltam para concluir o raciocínio e interrompa a execução.
+
+GLOSSÁRIO DE TERMOS TÉCNICOS:
+- Sempre que iniciar uma análise, delegue ao sub-agente GlossarioAgent para que ele extraia e defina os termos técnicos do documento-matriz.
+- O glossário será gerado automaticamente em 'knowledge/glossario.md'.
+- Consulte o glossário para manter a terminologia consistente nos requisitos gerados.
 """,
-        tools=["file_tools"] 
+        model=LiteLlm(model="github_copilot/gpt-4o"),
+        tools=[run_slicer, run_search],
+        sub_agents=[glossario_agent]
     )
