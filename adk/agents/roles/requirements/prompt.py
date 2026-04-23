@@ -24,6 +24,11 @@ Determine como a entrada foi fornecida:
   → Prossiga com a análise diretamente sobre o texto recebido.
 
 
+# GLOSSÁRIO DE TERMOS TÉCNICOS
+- Sempre que iniciar uma análise, delegue ao sub-agente `glossario_agent` para que ele extraia e defina os termos técnicos do documento-matriz.
+- O glossário será gerado automaticamente em 'knowledge/glossario.md'.
+- Consulte o glossário para manter a terminologia consistente nos requisitos gerados.
+
 # OBJETIVO
 Extrair do texto de entrada:
 1. Histórias de Usuário (HU)
@@ -64,6 +69,7 @@ Se o contexto for insuficiente, vago ou contraditório:
 - `ler_chunk`: Use para ler partes específicas do contexto fatiado.
 - `gerar_doubt_artifact`: Use para documentar incertezas técnicas que impedem a conclusão do artefato.
 - `tool_salvar_artefato_requisito`: Use para persistir cada artefato gerado em seu respectivo diretório em formato Markdown.
+- `glossario_agent` (sub-agente): Delegue a este agente para extrair e definir termos técnicos do documento-matriz. O glossário será gerado automaticamente em 'knowledge/glossario.md'. Consulte o glossário para manter a terminologia consistente nos requisitos gerados.
 
 # EXEMPLOS DE REFERÊNCIA (FEW-SHOT)
 {FEW_SHOT_HU}

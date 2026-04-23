@@ -1,20 +1,39 @@
 import os
 import re
+from pathlib import Path
 
 try:
     import fitz
 except ImportError:
     fitz = None
 
-def extract_text(file_path):
-    """Extrai texto de diferentes formatos (PDF, TXT, MD)."""
-    ext = os.path.splitext(file_path)[1].lower()
 
+def _base_dir() -> Path:
+    """Retorna o diretório base absoluto para resolução de caminhos das tools."""
+    env = os.environ.get("ADK_AGENT_DATA_DIR")
+    return (Path.cwd() / env).resolve() if env else Path.cwd()
+
+
+def _resolve(path: str) -> str:
+    """Resolve um caminho relativo contra _base_dir(), absolutos passam direto."""
+    p = Path(path)
+    return str(p) if p.is_absolute() else str(_base_dir() / p)
+
+
+def extract_text(file_path: str) -> str:
+    """Extrai texto de um arquivo PDF, TXT ou MD. Se file_path for um diretório, lê o primeiro arquivo encontrado."""
+    file_path = _resolve(file_path)
+    if os.path.isdir(file_path):
+        supported = ('.pdf', '.txt', '.md')
+        files = [f for f in sorted(os.listdir(file_path)) if f.endswith(supported)]
+        if not files:
+            return f"Erro: nenhum arquivo suportado encontrado em '{file_path}'."
+        file_path = os.path.join(file_path, files[0])
+
+    ext = os.path.splitext(file_path)[1].lower()
     if ext == '.pdf':
         if fitz is None:
-            raise ImportError(
-                "Suporte a PDF requer PyMuPDF. Instale com `pip install pymupdf`."
-            )
+            raise ImportError("Suporte a PDF requer PyMuPDF. Instale com `pip install pymupdf`.")
         text = ""
         with fitz.open(file_path) as doc:
             for page in doc:
@@ -24,66 +43,65 @@ def extract_text(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             return f.read()
     else:
-        raise ValueError(f"Extensão {ext} não suportada.")
+        raise ValueError(f"Extensão '{ext}' não suportada.")
 
-def run_slicer(filename: str, paragraphs_per_chunk: int = 2, overlap_count: int = 1):
+
+def run_slicer(filename: str = "", paragraphs_per_chunk: int = 2, overlap_count: int = 1) -> str:
     """
-    Fatia o documento matriz por PARÁGRAFOS com overlap.
-    
-    Args:
-        filename: Nome do arquivo em data/matrix/
-        paragraphs_per_chunk: Quantos parágrafos cada arquivo .txt terá.
-        overlap_count: Quantos parágrafos do final do chunk anterior serão repetidos no próximo.
+    Fatia o documento matriz por parágrafos com overlap.
+    Se filename não for informado, usa o primeiro arquivo encontrado em data/matrix/.
     """
-    input_path = os.path.join("data", "matrix", filename) # @todo avaliar se o contexto esta sendo sempre salvo como matrix
-    output_dir = os.path.join("data", "chunks")
-    
-    os.makedirs(output_dir, exist_ok=True)
+    if paragraphs_per_chunk <= 0:
+        return "Erro: paragraphs_per_chunk deve ser maior que 0."
+    if not (0 <= overlap_count < paragraphs_per_chunk):
+        return f"Erro: overlap_count deve ser entre 0 e {paragraphs_per_chunk - 1} (menor que paragraphs_per_chunk)."
+
+    matrix_dir = str(_base_dir() / "data" / "matrix")
+
+    if not filename:
+        supported = ('.pdf', '.txt', '.md')
+        files = [f for f in sorted(os.listdir(matrix_dir)) if f.endswith(supported)]
+        if not files:
+            return "Erro: nenhum arquivo encontrado em data/matrix/."
+        filename = files[0]
+
+    input_path = filename if os.path.isabs(filename) else os.path.join(matrix_dir, os.path.basename(filename))
+    output_dir = str(_base_dir() / "data" / "chunks")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    else:
+        for file in os.listdir(output_dir):
+            file_path = os.path.join(output_dir, file)
+            if file.startswith("chunk_") and file.endswith(".txt") and os.path.isfile(file_path):
+                os.remove(file_path)
 
     try:
-        # 1. Extração do texto completo
         content = extract_text(input_path)
-        if not content.strip():
-            return "Erro: Nenhum texto encontrado no arquivo."
-
-        # 2. Divisão em parágrafos 
-        # (Usa regex para capturar quebras de linha duplas ou múltiplas, comum em documentos)
         paragraphs = [p.strip() for p in re.split(r'\n\s*\n', content) if p.strip()]
         chunks = []
         start = 0
-        
-        # 3. Lógica de Janela Deslizante por LISTA de parágrafos
+
         while start < len(paragraphs):
             end = start + paragraphs_per_chunk
-            
-            # Pega o subconjunto de parágrafos e junta-os com quebra de linha dupla
-            chunk_content = "\n\n".join(paragraphs[start:end])
-            chunks.append(chunk_content)
-            
-            if end >= len(paragraphs): break
-            
-             # O índice de início avança o tamanho do chunk menos o overlap
+            chunks.append("\n\n".join(paragraphs[start:end]))
+            if end >= len(paragraphs):
+                break
             start += (paragraphs_per_chunk - overlap_count)
 
-        # 4. Salvamento em .txt
         for i, text in enumerate(chunks):
-            chunk_name = f"chunk_{i:03d}.txt"
-            with open(os.path.join(output_dir, chunk_name), 'w', encoding='utf-8') as out:
+            with open(os.path.join(output_dir, f"chunk_{i:03d}.txt"), 'w', encoding='utf-8') as out:
                 out.write(text)
-        
-        return f"Sucesso: {filename} fatiado em {len(chunks)} arquivos (por parágrafo com overlap)."
 
+        return f"Sucesso: {filename} fatiado em {len(chunks)} arquivos (por parágrafo com overlap)."
     except Exception as e:
         return f"Erro no fatiamento: {str(e)}"
-    
-    
-    
+
 
 def ler_chunk(index: int):
     """Lê um chunk específico já gerado."""
-    chunk_path = os.path.join("data", "chunks", f"chunk_{index:03d}.txt")
+    chunk_path = str(_base_dir() / "data" / "chunks" / f"chunk_{index:03d}.txt")
     if not os.path.exists(chunk_path):
         return f"Erro: Chunk {index} não encontrado."
     with open(chunk_path, "r", encoding="utf-8") as f:
         return f.read()
-
