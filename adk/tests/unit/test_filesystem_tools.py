@@ -151,7 +151,7 @@ class TestSalvarArtefatoRequisitoSeguranca:
         assert Path("docs/Time_1_Requisitos/HUs/HU-001.md").exists()
 
     def test_salva_glossario_com_nome_fixo(self, diretorio):
-        result = tool_salvar_artefato_requisito("Glossario", "IGNORADO", "# Glossário\n")
+        result = tool_salvar_artefato_requisito("GLOSSARIO", "IGNORADO", "# Glossário\n")
         assert result.startswith("SUCESSO:")
         assert Path("docs/Time_1_Requisitos/Glossario.md").exists()
 

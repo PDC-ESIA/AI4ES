@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+ID_REQ_PATTERN = re.compile(r"^[A-Z]{1,4}-\d{3}$")
+
 def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
     """Cria um arquivo com validações básicas de segurança."""
     caminho_limpo = (caminho or "").strip()
@@ -76,11 +78,10 @@ def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> 
     tipo_normalizado = (tipo or "").strip().upper()
     id_req_normalizado = (id_req or "").strip()
     pasta_base = mapa_pastas.get(tipo_normalizado, "docs/Time_1_Requisitos/Outros")
-    id_req_pattern = re.compile(r"^[A-Z]{1,4}-\d{3}$")
 
     try:
         if tipo_normalizado != "GLOSSARIO":
-            if not id_req_pattern.fullmatch(id_req_normalizado):
+            if not ID_REQ_PATTERN.fullmatch(id_req_normalizado):
                 return "ERRO ao salvar artefato: id_req inválido. Use o padrão AAAA-999."
 
         nome_arquivo = f"{id_req_normalizado}.md" if tipo_normalizado != "GLOSSARIO" else "Glossario.md"
@@ -89,7 +90,10 @@ def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> 
         pasta_base_path.mkdir(parents=True, exist_ok=True)
         caminho_completo = (pasta_base_path / nome_arquivo).resolve()
 
-        if caminho_completo != pasta_base_path and pasta_base_path not in caminho_completo.parents:
+        if (
+            caminho_completo.parent != pasta_base_path
+            and pasta_base_path not in caminho_completo.parents
+        ):
             return "ERRO ao salvar artefato: caminho de saída inválido."
 
         caminho_completo.write_text(conteudo_md, encoding="utf-8")
