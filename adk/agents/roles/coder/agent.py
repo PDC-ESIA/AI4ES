@@ -31,3 +31,6 @@ agent = LlmAgent(
         FunctionTool(tool_substituir_trecho),
     ],
 )
+
+# ADK CLI busca por `root_agent` ao carregar um app diretamente.
+root_agent = agent
