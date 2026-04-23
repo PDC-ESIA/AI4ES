@@ -150,8 +150,18 @@ class TestSalvarArtefatoRequisitoSeguranca:
         assert result.startswith("SUCESSO:")
         assert Path("docs/Time_1_Requisitos/HUs/HU-001.md").exists()
 
+    def test_salva_glossario_com_nome_fixo(self, diretorio):
+        result = tool_salvar_artefato_requisito("Glossario", "IGNORADO", "# Glossário\n")
+        assert result.startswith("SUCESSO:")
+        assert Path("docs/Time_1_Requisitos/Glossario.md").exists()
+
     def test_bloqueia_id_req_com_path_traversal(self, diretorio):
         result = tool_salvar_artefato_requisito("HU", "../../.env", "x")
         assert result.startswith("ERRO ao salvar artefato:")
         assert not Path(".env.md").exists()
+
+    @pytest.mark.parametrize("id_malicioso", ["/etc/passwd", "..\\..\\file", "subdir/HU-001"])
+    def test_bloqueia_outros_padroes_maliciosos(self, diretorio, id_malicioso):
+        result = tool_salvar_artefato_requisito("HU", id_malicioso, "x")
+        assert result.startswith("ERRO ao salvar artefato:")
  

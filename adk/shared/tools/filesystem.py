@@ -82,8 +82,6 @@ def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> 
         if tipo_normalizado != "GLOSSARIO":
             if not id_req_pattern.fullmatch(id_req_normalizado):
                 return "ERRO ao salvar artefato: id_req inválido. Use o padrão AAAA-999."
-            if ".." in id_req_normalizado or "/" in id_req_normalizado or "\\" in id_req_normalizado:
-                return "ERRO ao salvar artefato: id_req contém separadores de caminho inválidos."
 
         nome_arquivo = f"{id_req_normalizado}.md" if tipo_normalizado != "GLOSSARIO" else "Glossario.md"
 
