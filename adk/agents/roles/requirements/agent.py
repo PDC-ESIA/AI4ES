@@ -14,7 +14,7 @@ from . import prompt, schemas
 
 _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
 
-root_agent = LlmAgent(
+agent = LlmAgent(
     model=LiteLlm(_DEFAULT_MODEL),
     name="requirements",
     description=prompt.description,
