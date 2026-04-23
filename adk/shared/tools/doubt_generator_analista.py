@@ -17,7 +17,7 @@ def gerar_doubt_artifact(
     caminho_base: str = "docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/"
 ) -> str:
     """
-    Gera ou atualiza o arquivo Doubt_Artifact.md baseado no template oficial do Agente Analista.
+    Gera um arquivo versionado Doubt_Artifact_<ID>_<TS>.md baseado no template oficial do Agente Analista.
     
     Args:
         id_duvida: Identificador sequencial da dúvida (ex: D-001).
@@ -30,20 +30,22 @@ def gerar_doubt_artifact(
         sugestao: Proposta do agente para resolução.
         sessao: Número da sessão/rodada atual.
         contexto_geral: Nome do arquivo ou resumo do contexto lido.
-        caminho_base: Diretório onde o arquivo Doubt_Artifact.md será salvo.
+        caminho_base: Diretório onde o arquivo Doubt_Artifact_<ID>_<TS>.md será salvo.
         
     Returns:
-        Caminho completo do arquivo gerado/atualizado.
+        Caminho completo do arquivo gerado.
     """
     diretorio = Path(caminho_base)
     diretorio.mkdir(parents=True, exist_ok=True)
-    arquivo_path = diretorio / "Doubt_Artifact.md"
-    
-    data_hora = datetime.now().strftime("%d-%m-%Y %H:%M")
-    
-    # Se o arquivo não existe, cria com o cabeçalho do template
-    if not arquivo_path.exists():
-        cabecalho = f"""# Doubt_Artifact — Log de Dúvidas do Agente
+    data_hora_obj = datetime.now()
+    data_hora = data_hora_obj.strftime("%d-%m-%Y %H:%M")
+    timestamp = data_hora_obj.strftime("%Y%m%d_%H%M%S")
+    id_duvida_seguro = "".join(c for c in id_duvida if c.isalnum() or c in {"-", "_"})
+    if not id_duvida_seguro:
+        id_duvida_seguro = "D-UNKNOWN"
+    arquivo_path = diretorio / f"Doubt_Artifact_{id_duvida_seguro}_{timestamp}.md"
+
+    cabecalho = f"""# Doubt_Artifact — Log de Dúvidas do Agente
 
 > Este arquivo registra todas as incertezas, ambiguidades e informações faltantes
 > identificadas pelo agente durante a leitura do contexto e geração de requisitos.
@@ -65,8 +67,6 @@ def gerar_doubt_artifact(
 ## Dúvidas Registradas
 
 """
-        with open(arquivo_path, "w", encoding="utf-8") as f:
-            f.write(cabecalho)
 
     # Formata a nova seção de dúvida D-NNN
     status_bloqueante = "Sim" if bloqueante else "Não"
@@ -85,8 +85,8 @@ def gerar_doubt_artifact(
 ---
 """
 
-    # Adiciona a dúvida ao final do arquivo
-    with open(arquivo_path, "a", encoding="utf-8") as f:
+    with open(arquivo_path, "w", encoding="utf-8") as f:
+        f.write(cabecalho)
         f.write(secao_duvida)
         
     return str(arquivo_path.absolute())
