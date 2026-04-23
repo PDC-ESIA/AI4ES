@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
  
 sys.path.insert(0, str(Path(__file__).parent))
-from shared.tools.filesystem import tool_criar_arquivo
+from shared.tools.filesystem import tool_criar_arquivo, tool_salvar_artefato_requisito
  
  
 # ===========================================================================
@@ -141,4 +141,17 @@ class TestCriarArquivoSeguranca:
         result = tool_criar_arquivo("script.sh", "conteudo")
         assert {"sucesso", "erro", "caminho"}.issubset(result)
         assert result["sucesso"] is False
+
+
+class TestSalvarArtefatoRequisitoSeguranca:
+
+    def test_salva_artefato_com_id_valido(self, diretorio):
+        result = tool_salvar_artefato_requisito("HU", "HU-001", "# HU\n")
+        assert result.startswith("SUCESSO:")
+        assert Path("docs/Time_1_Requisitos/HUs/HU-001.md").exists()
+
+    def test_bloqueia_id_req_com_path_traversal(self, diretorio):
+        result = tool_salvar_artefato_requisito("HU", "../../.env", "x")
+        assert result.startswith("ERRO ao salvar artefato:")
+        assert not Path(".env.md").exists()
  

@@ -1,4 +1,4 @@
-import os
+import re
 from pathlib import Path
 
 def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
@@ -70,20 +70,32 @@ def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> 
         "RF": "docs/Time_1_Requisitos/RFs",
         "RNF": "docs/Time_1_Requisitos/RNFs",
         "RN": "docs/Time_1_Requisitos/RNs",
-        "Glossario": "docs/Time_1_Requisitos"
+        "GLOSSARIO": "docs/Time_1_Requisitos"
     }
-    
-    pasta_base = mapa_pastas.get(tipo, "docs/Time_1_Requisitos/Outros")
-    
+
+    tipo_normalizado = (tipo or "").strip().upper()
+    id_req_normalizado = (id_req or "").strip()
+    pasta_base = mapa_pastas.get(tipo_normalizado, "docs/Time_1_Requisitos/Outros")
+    id_req_pattern = re.compile(r"^[A-Z]{1,4}-\d{3}$")
+
     try:
-        os.makedirs(pasta_base, exist_ok=True)
-        
-        nome_arquivo = f"{id_req}.md" if tipo != "Glossario" else "Glossario.md"
-        caminho_completo = os.path.join(pasta_base, nome_arquivo)
-        
-        with open(caminho_completo, "w", encoding="utf-8") as f:
-            f.write(conteudo_md)
-            
+        if tipo_normalizado != "GLOSSARIO":
+            if not id_req_pattern.fullmatch(id_req_normalizado):
+                return "ERRO ao salvar artefato: id_req inválido. Use o padrão AAAA-999."
+            if ".." in id_req_normalizado or "/" in id_req_normalizado or "\\" in id_req_normalizado:
+                return "ERRO ao salvar artefato: id_req contém separadores de caminho inválidos."
+
+        nome_arquivo = f"{id_req_normalizado}.md" if tipo_normalizado != "GLOSSARIO" else "Glossario.md"
+
+        pasta_base_path = Path(pasta_base).resolve()
+        pasta_base_path.mkdir(parents=True, exist_ok=True)
+        caminho_completo = (pasta_base_path / nome_arquivo).resolve()
+
+        if caminho_completo != pasta_base_path and pasta_base_path not in caminho_completo.parents:
+            return "ERRO ao salvar artefato: caminho de saída inválido."
+
+        caminho_completo.write_text(conteudo_md, encoding="utf-8")
+
         return f"SUCESSO: {tipo} {id_req} salvo em {caminho_completo}"
     except Exception as e:
         return f"ERRO ao salvar artefato: {str(e)}"
