@@ -45,10 +45,10 @@ def gerar_doubt_artifact(
         id_duvida_seguro = "D-UNKNOWN"
     arquivo_path = diretorio / f"Doubt_Artifact_{id_duvida_seguro}_{timestamp}.md"
 
-    cabecalho = f"""# Doubt_Artifact — Log de Dúvidas do Agente
+    cabecalho = f"""# Doubt_Artifact — Registro de Dúvida do Agente
 
-> Este arquivo registra todas as incertezas, ambiguidades e informações faltantes
-> identificadas pelo agente durante a leitura do contexto e geração de requisitos.
+> Este arquivo registra uma incerteza, ambiguidade ou informação faltante
+> identificada pelo agente durante a leitura do contexto e geração de requisitos.
 > Deve ser revisado por um humano antes da próxima rodada de refinamento.
 
 ---
@@ -64,11 +64,11 @@ def gerar_doubt_artifact(
 
 ---
 
-## Dúvidas Registradas
+## Dúvida Registrada
 
 """
 
-    # Formata a nova seção de dúvida D-NNN
+    # Formata a seção de dúvida D-NNN
     status_bloqueante = "Sim" if bloqueante else "Não"
     secao_duvida = f"""### {id_duvida}
 
