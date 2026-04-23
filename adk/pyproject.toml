@@ -26,3 +26,10 @@ dependencies = [
     "langfuse>=3.3.5",
     "openinference-instrumentation-google-adk>=0.1.4",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "pytest-asyncio>=0.23.0"
+]
