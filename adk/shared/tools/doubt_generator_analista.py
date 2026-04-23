@@ -39,16 +39,16 @@ def gerar_doubt_artifact(
     diretorio.mkdir(parents=True, exist_ok=True)
     data_hora_obj = datetime.now()
     data_hora = data_hora_obj.strftime("%d-%m-%Y %H:%M")
-    timestamp = data_hora_obj.strftime("%Y%m%d_%H%M%S")
-    id_duvida_seguro = "".join(c for c in id_duvida if c.isalnum() or c in {"-", "_"})
+    timestamp = data_hora_obj.strftime("%Y%m%d_%H%M%S_%f")
+    id_duvida_seguro = "".join(c for c in id_duvida if c.isalnum() or c == "-").strip("-")
     if not id_duvida_seguro:
         id_duvida_seguro = "D-UNKNOWN"
     arquivo_path = diretorio / f"Doubt_Artifact_{id_duvida_seguro}_{timestamp}.md"
 
-    cabecalho = f"""# Doubt_Artifact — Log de Dúvidas do Agente
+    cabecalho = f"""# Doubt_Artifact — Registro de Dúvida do Agente
 
-> Este arquivo registra todas as incertezas, ambiguidades e informações faltantes
-> identificadas pelo agente durante a leitura do contexto e geração de requisitos.
+> Este arquivo registra uma incerteza, ambiguidade ou informação faltante
+> identificada pelo agente durante a leitura do contexto e geração de requisitos.
 > Deve ser revisado por um humano antes da próxima rodada de refinamento.
 
 ---
@@ -64,11 +64,11 @@ def gerar_doubt_artifact(
 
 ---
 
-## Dúvidas Registradas
+## Dúvida Registrada
 
 """
 
-    # Formata a nova seção de dúvida D-NNN
+    # Formata a seção de dúvida D-NNN
     status_bloqueante = "Sim" if bloqueante else "Não"
     secao_duvida = f"""### {id_duvida}
 
@@ -86,7 +86,6 @@ def gerar_doubt_artifact(
 """
 
     with open(arquivo_path, "w", encoding="utf-8") as f:
-        f.write(cabecalho)
-        f.write(secao_duvida)
+        f.write(cabecalho + secao_duvida)
         
     return str(arquivo_path.absolute())

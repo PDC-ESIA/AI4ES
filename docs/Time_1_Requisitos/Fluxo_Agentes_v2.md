@@ -22,7 +22,7 @@ sequenceDiagram
     end
 
     alt Inconsistência ou Falta de Informação
-        A->>T: gerar_doubt_artifact(id, motivo)
+        A->>T: gerar_doubt_artifact(id_duvida, id_artefato_afetado, trecho_contexto, duvida_descricao, motivo, impacto, ...)
         T->>FS: Salva Doubt_Artifact_<ID>_<TS>.md
         T-->>A: Retorna caminho do arquivo
         A-->>O: Notifica Bloqueio de Domínio
@@ -31,7 +31,7 @@ sequenceDiagram
         O->>A: Retoma Processamento com novo contexto
     else Fluxo Nominal (Requisitos Claros)
         A->>A: Valida consistência e aplica templates (HU, RF, RNF, Glossary)
-        A->>T: tool_salvar_artefato_requisito(conteudo)
+        A->>T: tool_salvar_artefato_requisito(tipo, id_req, conteudo_md)
         T->>FS: Salva artefatos Markdown
     end
 
@@ -52,5 +52,5 @@ sequenceDiagram
     *   `run_slicer` / `ler_chunk`: Para navegação granular no contexto.
     *   `gerar_doubt_artifact`: Criação formal de pedidos de esclarecimento.
     *   `tool_salvar_artefato_requisito`: Persistência dos requisitos validados.
-*   **Doubt_Artifact_<ID>.md:** Documento de bloqueio que exige revisão humana para prosseguir.
+*   **Doubt_Artifact_<ID>_<TS>.md:** Documento de bloqueio que exige revisão humana para prosseguir.
 *   **Output Final:** Artefatos técnicos estruturados salvos no sistema de arquivos.
