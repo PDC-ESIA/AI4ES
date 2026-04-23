@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+  # roda em caso de push para qualquer branch ou em caso de PR para a develop ou main
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+    # LINT: baixa o código para uma VR Ubuntu e limpa o código executando o ruff check e format
+
+  test:
+    name: Tests
+    needs: lint
+    # só roda se o lint passar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run unit tests
+        run: uv run pytest tests/unit/ -v --tb=short
+    # TEST: baixa o código para uma VR Ubuntu, instala as dependências e roda os testes unitários
+
+  build:
+    name: Docker Build
+    needs: test
+    # só roda se o test passar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: adk
+          push: false
+          tags: ai4es-adk:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
