@@ -1,137 +1,103 @@
-"""Ferramentas de filesystem compartilhadas entre agentes."""
-
+import re
 from pathlib import Path
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
-
-EXTENSOES_PERMITIDAS = {
-    ".py", ".js", ".ts", ".html", ".css", ".json",
-    ".md", ".txt", ".yaml", ".yml", ".toml", ".env.example",
-}
-
-DIRETORIOS_PROIBIDOS = {
-    ".git", ".venv", "venv", "node_modules", "__pycache__", ".env",
-}
-
-
-class RelatorioSchema(BaseModel):
-    conteudo: str = Field(..., description="Conteúdo em Markdown do relatório")
-    nome_arquivo: str = Field(
-        default="doubt_artifact_revisao.md",
-        description="Nome do arquivo de saída",
-    )
-
-    @field_validator("nome_arquivo")
-    @classmethod
-    def validar_extensao(cls, v: str) -> str:
-        if not v.endswith(".md"):
-            raise ValueError("O relatório DEVE ser um arquivo Markdown (.md)")
-        return v
-
+ID_REQ_PATTERN = re.compile(r"^[A-Z]{1,4}-\d{3}$")
 
 def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
-    """Ferramenta para criar ou sobrescrever um arquivo no disco com o conteúdo fornecido.
- 
-    Possui validações de segurança:
-    - Só permite extensões conhecidas e seguras
-    - Impede escrita em diretórios protegidos (.git, .venv, etc.)
-    - Cria diretórios intermediários automaticamente se necessário
- 
-    Args:
-        caminho (str): Caminho relativo ao diretório de trabalho atual 
-        conteudo (str): Conteúdo completo a ser escrito no arquivo
- 
-    Returns:
-        dict: Contém status da operação, caminho absoluto criado e possíveis erros
-    """
- 
-    if not caminho or not caminho.strip():
-        return {
-            "sucesso": False,
-            "erro": "Caminho do arquivo não pode ser vazio.",
-            "caminho": None
-        }
- 
-    path = Path(caminho)
- 
-    partes = set(path.parts[:-1])  
-    bloqueados = partes & DIRETORIOS_PROIBIDOS
-    if bloqueados:
-        return {
-            "sucesso": False,
-            "erro": f"Escrita não permitida em diretório protegido: {bloqueados}",
-            "caminho": caminho
-        }
- 
-    if path.suffix not in EXTENSOES_PERMITIDAS:
-        return {
-            "sucesso": False,
-            "erro": (
-                f"Extensão '{path.suffix}' não permitida. "
-                f"Permitidas: {', '.join(sorted(EXTENSOES_PERMITIDAS))}"
-            ),
-            "caminho": caminho
-        }
-
+    """Cria um arquivo com validações básicas de segurança."""
+    caminho_limpo = (caminho or "").strip()
+    retorno_base = {"sucesso": False, "caminho": caminho_limpo, "bytes_escritos": 0, "erro": None}
+    extensoes_permitidas = {".py", ".md", ".json", ".txt", ".yaml", ".yml", ".toml", ".csv"}
+    diretorios_protegidos = {".git", ".venv", "node_modules", "__pycache__"}
 
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(conteudo, encoding="utf-8")
- 
+        if not caminho_limpo:
+            retorno_base["erro"] = "Caminho vazio não permitido."
+            return retorno_base
+
+        path_relativo = Path(caminho_limpo)
+        if path_relativo.is_absolute():
+            retorno_base["erro"] = "Caminho absoluto não permitido."
+            return retorno_base
+
+        if ".." in path_relativo.parts:
+            retorno_base["erro"] = "Caminho com '..' não permitido."
+            return retorno_base
+
+        if any(parte.lower() in diretorios_protegidos for parte in path_relativo.parts):
+            retorno_base["erro"] = "Escrita em diretório protegido não permitida."
+            return retorno_base
+
+        if path_relativo.suffix.lower() not in extensoes_permitidas:
+            retorno_base["erro"] = (
+                f"Extensão não permitida: {path_relativo.suffix or '<sem extensão>'}."
+            )
+            return retorno_base
+
+        raiz = Path.cwd().resolve()
+        path_final = (raiz / path_relativo).resolve()
+        if path_final != raiz and raiz not in path_final.parents:
+            retorno_base["erro"] = "Caminho fora do diretório permitido."
+            return retorno_base
+
+        path_final.parent.mkdir(parents=True, exist_ok=True)
+        path_final.write_text(conteudo, encoding="utf-8")
         return {
             "sucesso": True,
-            "caminho": str(path.resolve()),
+            "caminho": str(path_final),
             "bytes_escritos": len(conteudo.encode("utf-8")),
-            "erro": None
-        }
- 
-    except PermissionError as e:
-        return {
-            "sucesso": False,
-            "erro": f"Permissão negada: {e}",
-            "caminho": caminho
-        }
-    except Exception as e:
-        return {
-            "sucesso": False,
-            "erro": f"Erro inesperado: {e}",
-            "caminho": caminho
-        }
- 
-
-
-def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md") -> dict:
-    """Salva relatório de revisão em Markdown no disco.
-
-    Args:
-        conteudo: Texto do relatório.
-        nome_arquivo: Nome do arquivo (padrão: doubt_artifact_revisao.md).
-
-    Returns:
-        dict com sucesso, caminho, bytes_escritos e erro.
-    """
-    try:
-        dados = RelatorioSchema(conteudo=conteudo, nome_arquivo=nome_arquivo)
-    except ValidationError as e:
-        return {"sucesso": False, "erro": f"Parâmetros inválidos: {e}", "caminho": None}
-
-    path = Path(dados.nome_arquivo)
-
-    if path.is_absolute() or ".." in path.parts:
-        return {
-            "sucesso": False,
-            "erro": "Caminho deve ser relativo e sem '..'.",
-            "caminho": str(path),
-        }
-
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(dados.conteudo, encoding="utf-8")
-        return {
-            "sucesso": True,
             "erro": None,
-            "caminho": str(path.resolve()),
-            "bytes_escritos": len(dados.conteudo.encode("utf-8")),
         }
     except Exception as e:
-        return {"sucesso": False, "erro": f"Erro ao salvar relatório: {e}", "caminho": str(path)}
+        retorno_base["erro"] = f"ERRO ao criar arquivo: {str(e)}"
+        return retorno_base
+
+def tool_salvar_relatorio(caminho: str, conteudo: str) -> dict:
+    """Salva um relatório estruturado."""
+    return tool_criar_arquivo(caminho, conteudo)
+
+def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> str:
+    """
+    Salva um artefato de requisito (HU, RF, RNF, RN, Glossario).
+    
+    Args:
+        tipo: Tipo do artefato (HU, RF, RNF, RN, Glossario)
+        id_req: Identificador único do requisito (ex: HU-001, RF-002)
+        conteudo_md: Conteúdo do artefato em formato Markdown   
+    """
+    # Mapeamento de pastas relativo à raiz do projeto
+    # Em ambiente Docker do ADK, a raiz costuma ser o diretório pai ou o CWD
+    mapa_pastas = {
+        "HU": "docs/Time_1_Requisitos/HUs",
+        "RF": "docs/Time_1_Requisitos/RFs",
+        "RNF": "docs/Time_1_Requisitos/RNFs",
+        "RN": "docs/Time_1_Requisitos/RNs",
+        "GLOSSARIO": "docs/Time_1_Requisitos"
+    }
+
+    tipo_normalizado = (tipo or "").strip().upper()
+    id_req_normalizado = (id_req or "").strip()
+    pasta_base = mapa_pastas.get(tipo_normalizado, "docs/Time_1_Requisitos/Outros")
+
+    try:
+        if tipo_normalizado != "GLOSSARIO":
+            if not ID_REQ_PATTERN.fullmatch(id_req_normalizado):
+                return "ERRO ao salvar artefato: id_req inválido. Use o padrão AAAA-999."
+
+        nome_arquivo = f"{id_req_normalizado}.md" if tipo_normalizado != "GLOSSARIO" else "Glossario.md"
+
+        pasta_base_path = Path(pasta_base).resolve()
+        pasta_base_path.mkdir(parents=True, exist_ok=True)
+        caminho_completo = (pasta_base_path / nome_arquivo).resolve()
+
+        if (
+            caminho_completo.parent != pasta_base_path
+            and pasta_base_path not in caminho_completo.parents
+        ):
+            return "ERRO ao salvar artefato: caminho de saída inválido."
+
+        caminho_completo.write_text(conteudo_md, encoding="utf-8")
+
+        return f"SUCESSO: {tipo} {id_req} salvo em {caminho_completo}"
+    except Exception as e:
+        return f"ERRO ao salvar artefato: {str(e)}"
