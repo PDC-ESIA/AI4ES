@@ -16,7 +16,7 @@ _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
 
 agent = LlmAgent(
     model=LiteLlm(_DEFAULT_MODEL),
-    name="requirements",
+    name="requirements_agent",
     description=prompt.description,
     instruction=prompt.instruction,
     output_key="analysis_result",

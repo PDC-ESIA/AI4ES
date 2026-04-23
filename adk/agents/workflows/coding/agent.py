@@ -2,7 +2,7 @@
 
 from google.adk.agents import SequentialAgent
 
-from agents.roles.requirements.agent import root_agent as requirements
+from agents.roles.requirements.agent import agent as requirements_agent
 from agents.roles.architect.agent import agent as architecture_agent
 from agents.roles.test_planner.agent import agent as test_planning_agent
 from agents.roles.coder.agent import agent as implementation_agent
@@ -16,7 +16,7 @@ agent = SequentialAgent(
         "→ plano de testes → implementação → revisão → finalização."
     ),
     sub_agents=[
-        requirements,
+        requirements_agent,
         architecture_agent,
         test_planning_agent,
         implementation_agent,
