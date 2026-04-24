@@ -1,259 +1,294 @@
 """
 test_sequencer.py
 =================
-Testes unitários para o agente sequenciador: contrato, resiliência e runner.
+Testes unitários para o sequenciador: contrato, resiliência e runner.
 
 Execute com:
-    pytest test_sequencer.py -v
+    uv run pytest tests/unit/test_sequencer.py -v --tb=short
 """
 
 import asyncio
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 # Garante que o diretório adk/ esteja no sys.path para imports absolutos.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from agents.sequencer.contract import PIPELINE_STAGES, validate_state
-from agents.sequencer.resilience import SequencerError, run_with_resilience
+from agents.workflows.sequencer.contract import PIPELINE_STAGES, stage_index, validate_state
+from agents.workflows.sequencer.resilience import (
+    SequencerError,
+    _record_failure,
+    run_with_resilience,
+)
 
 
 # ===========================================================================
-# Testes: contrato (PIPELINE_STAGES + validate_state)
+# Helpers
 # ===========================================================================
 
 
-class TestPipelineStages:
+def _full_state() -> dict:
+    """Retorna um session_state com todas as output_keys preenchidas."""
+    return {stage["output_key"]: f"mock_{stage['output_key']}" for stage in PIPELINE_STAGES}
 
-    def test_pipeline_stages_count(self):
-        """O pipeline deve conter exatamente 6 estágios."""
-        assert len(PIPELINE_STAGES) == 6
 
-    def test_pipeline_stages_order(self):
-        """Os estágios devem seguir a ordem do SDLC."""
-        expected_names = [
-            "requirements_agent",
-            "architecture_agent",
-            "test_planning_agent",
-            "coder_agent",
-            "review_agent",
-            "finalization_agent",
-        ]
-        actual_names = [s["name"] for s in PIPELINE_STAGES]
-        assert actual_names == expected_names
+class _FakeEvent:
+    """Evento stub para testes de run_with_resilience."""
 
-    def test_pipeline_stages_output_keys(self):
-        """Cada estágio deve declarar um output_key não-vazio."""
-        for stage in PIPELINE_STAGES:
-            assert "output_key" in stage, f"{stage['name']} sem output_key"
-            assert stage["output_key"], f"{stage['name']} com output_key vazio"
+    def __init__(self, label: str = "evt"):
+        self.label = label
 
-    def test_pipeline_stages_have_schema(self):
-        """Cada estágio deve referenciar um output_schema."""
-        for stage in PIPELINE_STAGES:
-            assert "output_schema" in stage, f"{stage['name']} sem output_schema"
-            assert stage["output_schema"] is not None
+
+def _make_fake_agent(events=None, *, raises=None, sleep_seconds=0.0):
+    """Cria um agente mock cujo ``run_async`` é um async generator."""
+    agent = MagicMock()
+    agent.name = "fake_agent"
+
+    async def _run_async(ctx):
+        if sleep_seconds > 0:
+            await asyncio.sleep(sleep_seconds)
+        if raises is not None:
+            raise raises
+        for evt in (events or []):
+            yield evt
+
+    agent.run_async = _run_async
+    return agent
+
+
+# ===========================================================================
+# 1. test_stage_index_por_name
+# ===========================================================================
+
+
+class TestStageIndex:
+
+    def test_stage_index_por_name(self):
+        """stage_index('requirements_agent') retorna 0."""
+        assert stage_index("requirements_agent") == 0
+
+    def test_stage_index_por_output_key(self):
+        """stage_index('requirements') retorna 0."""
+        assert stage_index("requirements") == 0
+
+    def test_stage_index_todos_por_name(self):
+        """Cada agent name deve retornar o índice correto."""
+        for i, stage in enumerate(PIPELINE_STAGES):
+            assert stage_index(stage["name"]) == i
+
+    def test_stage_index_todos_por_output_key(self):
+        """Cada output_key deve retornar o índice correto."""
+        for i, stage in enumerate(PIPELINE_STAGES):
+            assert stage_index(stage["output_key"]) == i
+
+    def test_stage_index_inexistente(self):
+        """stage_index('nao_existe') levanta KeyError."""
+        with pytest.raises(KeyError, match="nao_existe"):
+            stage_index("nao_existe")
+
+
+# ===========================================================================
+# 2. test_validate_state
+# ===========================================================================
 
 
 class TestValidateState:
 
-    @pytest.fixture
-    def full_state(self):
-        """Estado completo com todas as output_keys preenchidas."""
-        return {stage["output_key"]: "mock_value" for stage in PIPELINE_STAGES}
-
-    def test_all_keys_present(self, full_state):
-        """Deve retornar (True, []) quando todas as chaves existem."""
-        ok, missing = validate_state(full_state)
+    def test_validate_state_completo(self):
+        """Todas as 6 chaves presentes → (True, [])."""
+        ok, missing = validate_state(_full_state())
         assert ok is True
         assert missing == []
 
-    def test_missing_single_key(self, full_state):
-        """Deve detectar uma chave ausente."""
-        del full_state["architecture"]
-        ok, missing = validate_state(full_state)
+    def test_validate_state_parcial(self):
+        """up_to_stage=2 com 3 primeiras chaves presentes → (True, [])."""
+        state = {}
+        for stage in PIPELINE_STAGES[:3]:
+            state[stage["output_key"]] = "ok"
+        ok, missing = validate_state(state, up_to_stage=2)
+        assert ok is True
+        assert missing == []
+
+    def test_validate_state_chave_ausente(self):
+        """Chave faltando → (False, ['chave'])."""
+        state = _full_state()
+        del state["architecture"]
+        ok, missing = validate_state(state)
         assert ok is False
         assert "architecture" in missing
 
-    def test_missing_multiple_keys(self):
-        """Deve listar todas as chaves ausentes."""
+    def test_validate_state_vazio(self):
+        """Estado vazio → todas as 6 chaves ausentes."""
         ok, missing = validate_state({})
         assert ok is False
         assert len(missing) == 6
 
-    def test_up_to_stage_partial(self, full_state):
-        """Valida apenas até o estágio indicado (inclusive)."""
-        # Remove chave do último estágio — não deve afetar validação parcial
-        del full_state["finalization"]
-        ok, missing = validate_state(full_state, up_to_stage="review_agent")
+    def test_validate_state_parcial_nao_inclui_alem(self):
+        """up_to_stage=1 não deve reclamar de chaves do estágio 2+."""
+        state = {"requirements": "ok", "architecture": "ok"}
+        ok, missing = validate_state(state, up_to_stage=1)
         assert ok is True
         assert missing == []
-
-    def test_up_to_stage_with_missing(self):
-        """Detecta chave ausente dentro do range parcial."""
-        state = {"requirements": "ok"}
-        ok, missing = validate_state(state, up_to_stage="architecture_agent")
-        assert ok is False
-        assert "architecture" in missing
-        # Não deve incluir chaves além do estágio indicado
-        assert "test_plan" not in missing
-
-    def test_up_to_stage_first_only(self, full_state):
-        """Valida apenas o primeiro estágio."""
-        ok, missing = validate_state(full_state, up_to_stage="requirements_agent")
-        assert ok is True
-        assert missing == []
-
-    def test_up_to_stage_first_missing(self):
-        """Detecta chave ausente no primeiro estágio."""
-        ok, missing = validate_state({}, up_to_stage="requirements_agent")
-        assert ok is False
-        assert missing == ["requirements"]
 
 
 # ===========================================================================
-# Testes: resiliência (SequencerError + run_with_resilience)
+# 3. test_sequencer_error
 # ===========================================================================
 
 
 class TestSequencerError:
 
-    def test_error_attributes(self):
-        """SequencerError deve carregar error_type e detail."""
-        err = SequencerError(error_type="timeout", detail="Excedeu 300s")
+    def test_sequencer_error_atributos(self):
+        """SequencerError('timeout', 'msg', 'agente') carrega os 3 atributos."""
+        err = SequencerError("timeout", "excedeu 300s", "requirements_agent")
         assert err.error_type == "timeout"
-        assert err.detail == "Excedeu 300s"
+        assert err.detail == "excedeu 300s"
+        assert err.failed_at == "requirements_agent"
 
-    def test_error_str(self):
-        """A representação string deve conter tipo e detalhe."""
+    def test_sequencer_error_str(self):
+        """A representação string contém tipo e detalhe."""
         err = SequencerError("api_error", "Connection refused")
         assert "[api_error]" in str(err)
         assert "Connection refused" in str(err)
 
-    def test_error_is_exception(self):
+    def test_sequencer_error_is_exception(self):
         """SequencerError deve ser subclasse de Exception."""
         assert issubclass(SequencerError, Exception)
+
+
+# ===========================================================================
+# 4. test_record_failure
+# ===========================================================================
+
+
+class TestRecordFailure:
+
+    def test_record_failure_escreve_state(self):
+        """_record_failure escreve sequencer_error, error_detail, failed_at."""
+        state: dict = {}
+        _record_failure(state, "timeout", "excedeu 300s", "coder_agent")
+        assert state["sequencer_error"] == "timeout"
+        assert state["error_detail"] == "excedeu 300s"
+        assert state["failed_at"] == "coder_agent"
+
+    def test_record_failure_sem_failed_at(self):
+        """Sem failed_at, a chave não deve ser criada."""
+        state: dict = {}
+        _record_failure(state, "api_error", "erro genérico")
+        assert state["sequencer_error"] == "api_error"
+        assert "failed_at" not in state
+
+
+# ===========================================================================
+# 5. test_run_with_resilience
+# ===========================================================================
 
 
 class TestRunWithResilience:
 
     @pytest.mark.asyncio
-    async def test_success_passthrough(self):
-        """Deve retornar o resultado quando a coroutine tem sucesso."""
-        async def success_coro():
-            return "ok"
+    async def test_run_with_resilience_sucesso(self):
+        """Agente mock que retorna eventos → lista de eventos."""
+        events = [_FakeEvent("a"), _FakeEvent("b")]
+        agent = _make_fake_agent(events)
+        state: dict = {}
 
-        state = {}
-        result = await run_with_resilience(success_coro(), state)
-        assert result == "ok"
+        result = await run_with_resilience(
+            agent=agent,
+            ctx=MagicMock(),
+            session_state=state,
+            timeout_seconds=5.0,
+            failed_at="fake_agent",
+        )
+
+        assert len(result) == 2
+        assert result[0].label == "a"
+        assert result[1].label == "b"
         assert "sequencer_error" not in state
 
     @pytest.mark.asyncio
-    async def test_timeout_raises_sequencer_error(self):
-        """Deve capturar TimeoutError e lançar SequencerError."""
-        async def slow_coro():
-            await asyncio.sleep(10)
+    async def test_run_with_resilience_timeout(self):
+        """Agente que dorme > timeout → SequencerError(error_type='timeout')."""
+        agent = _make_fake_agent(sleep_seconds=10.0)
+        state: dict = {}
 
-        state = {}
         with pytest.raises(SequencerError) as exc_info:
             await run_with_resilience(
-                slow_coro(),
-                state,
-                timeout_seconds=0.01,
-                current_agent_name="test_agent",
+                agent=agent,
+                ctx=MagicMock(),
+                session_state=state,
+                timeout_seconds=0.05,
+                failed_at="slow_agent",
             )
 
         assert exc_info.value.error_type == "timeout"
         assert state["sequencer_error"] == "timeout"
-        assert state["failed_at"] == "test_agent"
+        assert state["failed_at"] == "slow_agent"
 
     @pytest.mark.asyncio
-    async def test_api_error_raises_sequencer_error(self):
-        """Deve capturar exceções genéricas como api_error."""
-        async def failing_coro():
-            raise ConnectionError("Connection refused")
+    async def test_run_with_resilience_api_error(self):
+        """Agente que levanta Exception → SequencerError(error_type='api_error')."""
+        agent = _make_fake_agent(raises=ConnectionError("Connection refused"))
+        state: dict = {}
 
-        state = {}
         with pytest.raises(SequencerError) as exc_info:
             await run_with_resilience(
-                failing_coro(),
-                state,
-                current_agent_name="coder_agent",
+                agent=agent,
+                ctx=MagicMock(),
+                session_state=state,
+                timeout_seconds=5.0,
+                failed_at="broken_agent",
             )
 
         assert exc_info.value.error_type == "api_error"
         assert state["sequencer_error"] == "api_error"
         assert "Connection refused" in state["error_detail"]
-        assert state["failed_at"] == "coder_agent"
-
-    @pytest.mark.asyncio
-    async def test_validation_error_raises_sequencer_error(self):
-        """Deve capturar ValidationError como schema_violation."""
-        from pydantic import BaseModel
-
-        class Strict(BaseModel):
-            x: int
-
-        async def schema_fail_coro():
-            Strict(x="not_an_int")  # type: ignore[arg-type]
-
-        state = {}
-        with pytest.raises(SequencerError) as exc_info:
-            await run_with_resilience(schema_fail_coro(), state)
-
-        assert exc_info.value.error_type == "schema_violation"
-        assert state["sequencer_error"] == "schema_violation"
-
-    @pytest.mark.asyncio
-    async def test_no_state_pollution_on_success(self):
-        """Estado não deve conter chaves de erro após sucesso."""
-        async def ok():
-            return 42
-
-        state = {"existing_key": "value"}
-        await run_with_resilience(ok(), state)
-        assert "sequencer_error" not in state
-        assert "error_detail" not in state
-        assert "failed_at" not in state
-        assert state["existing_key"] == "value"
+        assert state["failed_at"] == "broken_agent"
 
 
 # ===========================================================================
-# Testes: sdlc_pipeline e runner
+# 6. test_pipeline / runner instanciação
 # ===========================================================================
 
 
-class TestSdlcPipeline:
+class TestPipelineStagesOrdem:
 
-    def test_sub_agents_count(self):
-        """O sdlc_pipeline deve ter exatamente 6 sub-agentes."""
-        from agents.workflows.coding.agent import agent as sdlc_pipeline
-
-        assert len(sdlc_pipeline.sub_agents) == 6
-
-    def test_sub_agents_names(self):
-        """Os nomes dos sub-agentes devem corresponder aos esperados."""
-        from agents.workflows.coding.agent import agent as sdlc_pipeline
-
-        expected = [
-            "requirements_agent",
-            "architecture_agent",
-            "test_planning_agent",
-            "coder_agent",
-            "review_agent",
-            "finalization_agent",
+    def test_pipeline_stages_ordem(self):
+        """Ordem: requirements → architecture → test_plan → implementation → review → finalization."""
+        expected_keys = [
+            "requirements",
+            "architecture",
+            "test_plan",
+            "implementation",
+            "review",
+            "finalization",
         ]
-        actual = [a.name for a in sdlc_pipeline.sub_agents]
-        assert actual == expected
+        actual_keys = [s["output_key"] for s in PIPELINE_STAGES]
+        assert actual_keys == expected_keys
 
 
-class TestSequencerRunner:
+class TestResilientSequencerInstancia:
 
-    def test_runner_exports_root_agent(self):
-        """O runner deve exportar root_agent como sdlc_pipeline."""
+    def test_resilient_sequencer_instancia(self):
+        """root_agent instancia sem erro, wrapped_pipeline.name == 'sdlc_pipeline'."""
         from runners.sequencer.agent import root_agent
-        from agents.workflows.coding.agent import agent as sdlc_pipeline
 
-        assert root_agent is sdlc_pipeline
+        assert root_agent.name == "resilient_sequencer"
+        assert root_agent.wrapped_pipeline.name == "sdlc_pipeline"
+
+    def test_pipeline_sub_agents_count(self):
+        """O pipeline envolvido deve ter 6 sub-agentes."""
+        from runners.sequencer.agent import root_agent
+
+        assert len(root_agent.wrapped_pipeline.sub_agents) == 6
+
+    def test_pipeline_sub_agents_names(self):
+        """Os nomes dos sub-agentes devem corresponder ao contrato."""
+        from runners.sequencer.agent import root_agent
+
+        expected = [s["name"] for s in PIPELINE_STAGES]
+        actual = [a.name for a in root_agent.wrapped_pipeline.sub_agents]
+        assert actual == expected

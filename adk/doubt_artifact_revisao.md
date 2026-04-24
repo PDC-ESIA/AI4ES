@@ -1,52 +1,46 @@
-# Revisão de Código — Página Web "Hello World"
+# Revisão Técnica — API FastAPI `/ping`
 
-## Contexto
-- **Requisito:** Exibir o texto 'hello world' centralizado na tela, sem outros elementos (REQ-1)
+## Resumo
+- **Requisito REQ-1:** API expõe o endpoint GET /ping.
+- **Requisito REQ-2:** A resposta do endpoint é exatamente 'pong' com status 200.
 - **Arquitetura:**
-  - `src/index.html`: HTML principal
-  - `src/styles/main.css`: CSS para centralizar e estilizar
-- **Testes planejados:** Verificar centralização e ausência de outros elementos visíveis
+  - `src/main.py`: Instancia o FastAPI e expõe o endpoint diretamente.
+- **Testes Planejados:**
+  - Validação do status 200 na rota `/ping`.
+  - Validação de que o corpo da resposta é 'pong'.
 
-## Análise dos Arquivos
+---
 
-### 1. src/index.html
-- Estrutura correta (HTML5, charset, viewport).
-- Importa `styles/main.css` adequadamente.
-- Apenas um elemento `<div class="centered-text">hello world</div>` — cumpre o critério de não conter outros elementos visíveis.
-- Sem excessos, bem minimalista.
+## 1. Aderência ao Requisito e à Arquitetura
+- O endpoint GET `/ping` foi criado no arquivo previsto (`src/main.py`) e registrado no app conforme a arquitetura definida.
+- Handler da rota retorna texto plano `'pong'`, alinhado ao critério de resposta simples e ao uso da classe `PlainTextResponse` para garantir o tipo de conteúdo correto.
+- O escopo da entrega está estritamente limitado ao mínimo necessário para os requisitos.
 
-### 2. src/styles/main.css
-- Regras de CSS para garantir centralização do texto (flex, justify-content, align-items, 100vh, etc.).
-- Estilo limpo, responsivo e sem poluição visual.
+## 2. Análise de Qualidade e Padrões
+- Código limpo, direto, bem organizado e de manutenção fácil.
+- Sem lógica desnecessária, duplicação ou complexidade.
+- Uso explícito de `response_class=PlainTextResponse` elimina ambiguidades no retorno (bom detalhamento para documentação automática da API).
+- Sem dependências ou side effects não previstos.
+- Código adere ao princípio da responsabilidade única e estrutura modularizada, conforme os princípios SOLID.
+- Não são necessários testes automatizados de unidade/integração nesta entrega mínima, mas para crescimento futuro recomenda-se incluir no diretório `tests/`.
 
-## Aderência à arquitetura
-- Os caminhos e responsabilidade dos arquivos estão exatas conforme a arquitetura definida.
-- Não há outros arquivos/códigos além do escopo mínimo do requisito.
+## 3. Cobertura de Testes (conforme plano)
+- Embora não haja testes automatizados implementados ainda, ambos os critérios de aceitação são facilmente cobertos por testes que realizem GET `/ping` e validem status e corpo, conforme plano proposto.
 
-## Qualidade
-- HTML válido, sem logic bugs possíveis; código limpo.
-- CSS adequado para a proposta, sem complexidade ou más práticas.
-- Mantém o princípio da responsabilidade única (cada arquivo possui papel claro).
+## 4. Pontos de Atenção / Sugestões
+- Nenhum bug, vazamento de recursos ou inconformidade detectados.
+- Caso o projeto evolua, recomenda-se incluir testes automatizados e documentação mínima.
 
-## Testes x Plano
-- O único teste planejado é abrir a página e observar: texto "hello world" centralizado, sem outros elementos.
-- O código entrega isso diretamente; devido à simplicidade, o risco de desvio é zero.
-- Não são providos testes automatizados, mas não são necessários nem requisitados neste MVP.
-
-## Possíveis melhorias (NÃO bloqueantes)
-- Considerar testes automatizados de interface caso o projeto cresça.
-- Adicionar README orientando como abrir/rodar a página.
-
-## Conclusão
-- **APROVADO** para a proposta e arquitetura.
-- Nenhum bug detectado, nenhum desvio, nenhum ajuste obrigatório.
+## 5. Conclusão
+- Implementação **APROVADA**. Não há ajustes obrigatórios nesta entrega.
+- Pronta para merge/pull request.
 
 ---
 
 **Checklist:**
-- [x] Exibe "hello world" centralizado
-- [x] Arquitetura seguida
-- [x] Código limpo e mínimo
-- [x] Sem riscos ou bugs
-- [ ] Teste automatizado (não obrigatório para este escopo)
-
+- [x] Endpoint GET /ping criado
+- [x] Resposta plana 'pong'
+- [x] Arquivo em local correto
+- [x] Código limpo/modular
+- [x] Sem bugs
+- [ ] Testes automatizados (não obrigatórios neste escopo)
