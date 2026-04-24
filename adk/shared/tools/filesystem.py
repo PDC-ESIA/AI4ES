@@ -54,6 +54,9 @@ def read_file(filepath: str) -> dict:
 
         return {"status": "ok", "content": content}
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=READ | file={filepath} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
 
 def save_artifact(filename: str, content: str) -> dict:
@@ -96,13 +99,11 @@ def save_artifact(filename: str, content: str) -> dict:
             "versioned_backup": versioned_backup,
             "timestamp": timestamp,
         }
-
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "filename": filename,
-        }
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=SAVE | file={filename} | error={str(e)}\n"
+        _write_log(log_entry)
+        return {"status": "error", "error": str(e), "filename": filename}
 
 def promote_artifact(filename: str) -> dict:
     """
@@ -110,6 +111,12 @@ def promote_artifact(filename: str) -> dict:
     O único artefato que pode ser promovido é o relatorio<HUs>.md
     Apenas arquivos .md são aceitos — diagramas .mmd e análises técnicas ficam somente em staging.
     Bloqueia promoção se status ainda for 'Em análise'.
+
+    Args:
+        filename: Nome do arquivo a ser promovido
+
+    Returns:
+        dict com keys: status, source, destination, timestamp
     """
     try:
         source = STAGING_DIR / filename
@@ -158,6 +165,9 @@ def promote_artifact(filename: str) -> dict:
             "timestamp": timestamp,
         }
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=PROMOTE | file={filename} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
 
 def list_staging_files(filetype: str = "") -> dict:
@@ -189,7 +199,11 @@ def list_staging_files(filetype: str = "") -> dict:
             "staging_dir": str(STAGING_DIR),
         }
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=LIST | dir={STAGING_DIR} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
+
 
 def check_active_blocks() -> dict:
     """
@@ -210,10 +224,7 @@ def check_active_blocks() -> dict:
             if "**Status:** Bloqueado" in content:
                 parts = f.stem.split("_")
                 hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
-                blocks.append({
-                    "filename": f.name,
-                    "hu_id": hu_id,
-                })
+                blocks.append({"filename": f.name, "hu_id": hu_id})
 
         return {
             "status": "ok",
@@ -221,17 +232,20 @@ def check_active_blocks() -> dict:
             "blocks": blocks,
         }
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=CHECK_BLOCKS | dir={STAGING_DIR} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
 
 def clear_staging_folder() -> bool:
     """
-    Remove todos os arquivos do diretorio de staging, preservando subdiretórios.
+    Remove todos os arquivos do diretório de staging, preservando subdiretórios.
 
     Returns:
         bool: True se todos os arquivos foram removidos com sucesso, False caso contrário
     """
+    path: Path = STAGING_DIR
     try:
-        path: Path = STAGING_DIR
         _ensure_dirs()
         for file in path.iterdir():
             if file.is_file():
@@ -245,7 +259,7 @@ def clear_staging_folder() -> bool:
         return True
     except Exception as e:
         timestamp = datetime.now().isoformat()
-        log_entry = f"[{timestamp}] ERROR | dir={path} | error={str(e)}\n"
+        log_entry = f"[{timestamp}] ERROR | op=ERASE | dir={path} | error={str(e)}\n"
         _write_log(log_entry)
         return False
 
