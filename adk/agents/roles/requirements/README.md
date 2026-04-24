@@ -37,21 +37,21 @@ O agente segue obrigatoriamente 6 passos:
 A forma mais simples de testar o agente visualmente é através da interface web do ADK.
 
 ### 1. Subir o ambiente
-Navegue até a raiz do projeto e utilize o Docker Compose para subir os serviços:
+Navegue até a pasta `adk/` na raiz do projeto e utilize o Docker Compose para subir os serviços:
 
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.build.yml up --build
 ```
 
 ### 2. Acessar a Interface
 Abra o seu navegador e acesse:
-`http://localhost:3000` (ou a porta configurada no seu arquivo `.env`)
+`http://localhost:8081` (ou a porta configurada no seu arquivo `.env`)
 
 ### 3. Selecionar o Agente
 Na interface de chat:
-1. Localize o seletor de **Agentes/Roles**.
-2. Escolha o agente **Requirements Agent** (ou `requirements_agent`).
-3. Envie uma descrição de projeto ou o caminho de um arquivo para iniciar a análise.
+1. Localize o seletor de **Agentes/**.
+2. Escolha o agente `requirements`
+3. Envie uma descrição de projeto em texto paraniciar a análise.
 
 ---
 
