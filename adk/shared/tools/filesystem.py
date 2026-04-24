@@ -7,10 +7,11 @@ STAGING_DIR = Path("temp/staging")
 OFFICIAL_DIR = Path("artifacts")
 
 # LOG_DETAIL: controla o nível de detalhe do log de operações.
-# - "DEFAULT": apenas SAVE e PROMOTE são registrados (comportamento original).
-# - "HIGH":    READ também é registrado, útil para rastrear quais agentes
-#              leram quais arquivos e em que momento.
-LOG_DETAIL = "HIGH"
+# - "DEFAULT": apenas SAVE e PROMOTE são registrados.
+# - "HIGH":    READ e ERASE (staging) também é registrado.
+LOG_DETAIL = "DEFAULT"
+if not LOG_DETAIL: # fallback
+    LOG_DETAIL = "DEFAULT"
 
 def _ensure_dirs():
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
@@ -221,6 +222,32 @@ def check_active_blocks() -> dict:
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+def clear_staging_folder() -> bool:
+    """
+    Remove todos os arquivos do diretorio de staging, preservando subdiretórios.
+
+    Returns:
+        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário
+    """
+    try:
+        path: Path = STAGING_DIR
+        _ensure_dirs()
+        for file in path.iterdir():
+            if file.is_file():
+                file.unlink()
+
+        if LOG_DETAIL == "HIGH":
+            timestamp = datetime.now().isoformat()
+            log_entry = f"[{timestamp}] ERASE | dir={path}\n"
+            _write_log(log_entry)
+
+        return True
+    except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | dir={path} | error={str(e)}\n"
+        _write_log(log_entry)
+        return False
 
 # --- MOCKS ---
 

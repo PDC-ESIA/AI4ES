@@ -33,6 +33,14 @@ Se o Agente IO retornar aviso de BLOQUEIO ATIVO (⚠️):
   Agente IO se o Status do Doubt_Artifact foi alterado para "Resolvido" antes de prosseguir.
 
 FLUXO OBRIGATÓRIO:
+0. Na primeira interação da sessão, antes de qualquer outra ação, acione o Agente IO:
+   "Limpe o diretório staging."
+   Aguarde confirmação do Agente IO antes de prosseguir.
+   - Se o Agente IO confirmar sucesso: prossiga normalmente.
+   - Se o Agente IO retornar erro: informe o usuário imediatamente com o erro recebido
+     e aguarde instrução explícita antes de qualquer outra ação.
+     Nunca prossiga o fluxo se a limpeza do staging falhar.
+   Esta chamada ocorre UMA ÚNICA VEZ por sessão — nunca repita durante o fluxo normal.
 1. Verifique bloqueios ativos via Agente IO antes de prosseguir.
 2. Encaminhe o lote para o Especialista de Design.
 3. Aguarde o retorno do Especialista de Design.
