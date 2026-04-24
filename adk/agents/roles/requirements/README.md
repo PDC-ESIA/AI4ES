@@ -32,6 +32,29 @@ O agente segue obrigatoriamente 6 passos:
 5.  **Glossário:** Delegação ao sub-agente para definição de termos.
 6.  **Validação:** Garantia de requisitos SMART.
 
+## 🌐 Testando via Interface Web (Docker)
+
+A forma mais simples de testar o agente visualmente é através da interface web do ADK.
+
+### 1. Subir o ambiente
+Navegue até a raiz do projeto e utilize o Docker Compose para subir os serviços:
+
+```bash
+docker-compose up -d
+```
+
+### 2. Acessar a Interface
+Abra o seu navegador e acesse:
+`http://localhost:3000` (ou a porta configurada no seu arquivo `.env`)
+
+### 3. Selecionar o Agente
+Na interface de chat:
+1. Localize o seletor de **Agentes/Roles**.
+2. Escolha o agente **Requirements Agent** (ou `requirements_agent`).
+3. Envie uma descrição de projeto ou o caminho de um arquivo para iniciar a análise.
+
+---
+
 ## 🛠 Ferramentas (Tools)
 
 O agente possui acesso a diversas ferramentas utilitárias:
