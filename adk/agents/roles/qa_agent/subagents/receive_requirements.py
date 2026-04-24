@@ -24,9 +24,16 @@ DOUBT_DIR = _BASE_DIR / "doubt_artifacts"
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _run_async(coro):
-    """
-    Executa uma coroutine de forma segura independente de haver
-    um event loop rodando ou não (compatível com FastAPI + ADK).
+    """Executa coroutine de forma segura com ou sem event loop ativo.
+
+    Args:
+        coro: Coroutine a ser executada.
+
+    Returns:
+        Resultado da coroutine.
+
+    Note:
+        Compatível com FastAPI + ADK - usa ThreadPoolExecutor se houver loop ativo.
     """
     try:
         asyncio.get_running_loop()
@@ -107,6 +114,15 @@ async def _processar_todos_em_paralelo(
     lista_artefatos: list,
     max_paralelos: int = 5,
 ) -> list:
+    """Processa múltiplos artefatos em paralelo com limite de concorrência.
+
+    Args:
+        lista_artefatos: Lista de artefatos de requisito.
+        max_paralelos: Máximo de processamentos simultâneos (padrão: 5).
+
+    Returns:
+        list: Lista de resultados de cada artefato processado.
+    """
     semaforo = asyncio.Semaphore(max_paralelos)
 
     async def processar_com_limite(artefato):
@@ -117,6 +133,14 @@ async def _processar_todos_em_paralelo(
 
 
 async def _processar_artefato(artefato: dict) -> dict:
+    """Processa单个 artefato de requisito gerando teste pytest.
+
+    Args:
+        artefato: Dicionário com id_artefato, tipo, conteudo, modulo, criticidade.
+
+    Returns:
+        dict: Resultado com status (sucesso/bloqueado/falha) e caminhos gerados.
+    """
     id_artefato = artefato.get("id_artefato", "SEM_ID")
     tipo        = artefato.get("tipo", "RF")
     conteudo    = artefato.get("conteudo", "")
@@ -182,11 +206,18 @@ async def _processar_artefato(artefato: dict) -> dict:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _validar_artefato(artefato: dict) -> str | None:
-    """Retorna descrição do bloqueio ou None se o artefato estiver ok."""
+    """Valida artefato de requisito verificando campos obrigatórios.
+
+    Args:
+        artefato: Dicionário com campos do artefato.
+
+    Returns:
+        str | None: Descrição do bloqueio ou None se válido.
+    """
     if not artefato.get("conteudo", "").strip():
         return "Campo 'conteudo' vazio — impossível gerar testes sem descrição do requisito."
     if not artefato.get("modulo", "").strip():
-        return "Campo 'modulo' vazio — impossível identificar o código a ser testado."
+        artefato["modulo"] = "geral"
     if artefato.get("tipo") not in ("RF", "HU", "UC", "RNF", "RN"):
         return (
             f"Tipo desconhecido: '{artefato.get('tipo')}'. "
@@ -200,7 +231,15 @@ def _validar_artefato(artefato: dict) -> str | None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 async def _gerar_doubt_artifact(id_artefato: str, motivo: str) -> str:
-    """Gera Doubt_Artifact.md e retorna o caminho do arquivo criado."""
+    """Gera arquivo de doubt artifact para artefato bloqueado.
+
+    Args:
+        id_artefato: Identificador do artefato.
+        motivo: Motivo do bloqueio.
+
+    Returns:
+        str: Caminho do arquivo gerado.
+    """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     DOUBT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -239,6 +278,14 @@ async def _gerar_doubt_artifact(id_artefato: str, motivo: str) -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _slugify(texto: str) -> str:
+    """Normaliza texto para uso em nomes de arquivo.
+
+    Args:
+        texto: Texto a normalizar.
+
+    Returns:
+        str: Slug seguro para nomes de arquivo.
+    """
     base = (texto or "artefato").strip().lower()
     base = re.sub(r"[^a-z0-9]+", "_", base)
     base = base.strip("_")
@@ -246,12 +293,29 @@ def _slugify(texto: str) -> str:
 
 
 def _safe_filename(nome: str) -> str:
+    """Sanitiza nome de arquivo removendo caracteres especiais.
+
+    Args:
+        nome: Nome original do arquivo.
+
+    Returns:
+        str: Nome seguro para filesystem.
+    """
     cleaned = re.sub(r"[^a-zA-Z0-9._-]", "_", (nome or "arquivo.txt").strip())
     cleaned = cleaned.lstrip(".")
     return cleaned or "arquivo.txt"
 
 
 def _salvar_arquivos_apoio(artefato: dict, destino: Path) -> list[Path]:
+    """Salva arquivos de apoio (texto ou base64) no diretório de destino.
+
+    Args:
+        artefato: Dicionário contendo lista de arquivos_apoio.
+        destino: Path do diretório onde arquivos serão salvos.
+
+    Returns:
+        list[Path]: Lista de paths dos arquivos salvos.
+    """
     arquivos = artefato.get("arquivos_apoio", [])
     if not isinstance(arquivos, list):
         return []
@@ -291,6 +355,22 @@ def _gerar_pytest_via_llm(
     arquivos_apoio: list[Path],
     nome_teste: str,
 ) -> str:
+    """Gera código pytest usando LLM a partir de artefato de requisito.
+
+    Args:
+        id_artefato: Identificador do artefato.
+        tipo: Tipo do artefato (RF, HU, UC, RNF, RN).
+        conteudo: Conteúdo do requisito.
+        modulo: Módulo alvo do teste.
+        arquivos_apoio: Lista de paths de arquivos de apoio.
+        nome_teste: Nome do arquivo de teste a gerar.
+
+    Returns:
+        str: Código Python do teste pytest.
+
+    Raises:
+        ValueError: Se o modelo retornar conteúdo vazio.
+    """
     model_name = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
     arquivos_desc = "\n".join([f"- {p.name}" for p in arquivos_apoio])
     contexto_arquivos = (
@@ -355,6 +435,14 @@ Regras obrigatórias:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _ordenar_por_criticidade(lista: list) -> list:
+    """Ordena lista de artefatos por criticidade (alta > media > baixa).
+
+    Args:
+        lista: Lista de artefatos com campo criticidade.
+
+    Returns:
+        list: Lista ordenada por prioridade.
+    """
     prioridade = {"alta": 0, "media": 1, "baixa": 2}
     return sorted(lista, key=lambda a: prioridade.get(a.get("criticidade", "media"), 1))
 
@@ -367,9 +455,13 @@ agent = LlmAgent(
         "funcionais em artefactsTests."
     ),
     instruction=(
-        "Você deve sempre chamar a tool receber_requisitos com o JSON recebido, "
-        "sem alterar o payload. Retorne o resultado da tool ao final."
-    ),
+    "Ao receber uma mensagem do usuário, monte um JSON com os campos: "
+    "id_artefato (ex: 'HU-001'), tipo ('HU'), conteudo (texto completo do requisito ou "
+    "conteúdo dos arquivos anexados), modulo ('geral' se não informado), criticidade ('alta'). "
+    "Chame a tool receber_requisitos com esse JSON. "
+    "Se o usuário anexar arquivos, inclua o conteúdo deles no campo conteudo. "
+    "Retorne o resultado da tool ao final."
+),
     tools=[
         FunctionTool(receber_requisitos),
     ],

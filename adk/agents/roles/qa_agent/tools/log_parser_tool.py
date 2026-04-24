@@ -178,10 +178,13 @@ def parse_raw(raw: str) -> Optional[LogEntry]:
 
 
 def parse_pytest_log(traceback_text: str) -> dict:
-    """
-    Faz o parse de um traceback completo de pytest e retorna um dicionário estruturado 
-    com file, line, function, error_type, error_message, assertion e raw. 
-    Use quando precisar analisar erros de testes pytest que resultam em tracebacks.
+    """Parse de traceback pytest retornando estrutura para análise de erro.
+
+    Args:
+        traceback_text: Texto completo do traceback do pytest.
+
+    Returns:
+        dict: Dicionário com file, line, function, error_type, error_message, assertion e raw.
     """
     lines = traceback_text.strip().split('\n')
     result = {
@@ -247,11 +250,16 @@ def parse_line(raw: str) -> Optional[LogEntry]:
 # ── tool para agente de testes ────────────────────────────────────────────────
 
 def parse_log_line(line: str) -> dict:
-    """
-    Faz o parse de uma única linha de log e retorna os campos extraídos 
-    (timestamp, level, module, message, format). 
-    Suporta os formatos: padrão, log4j, syslog, python logging, nginx/apache, JSON e raw. 
-    Use quando precisar analisar uma linha isolada de log em um teste.
+    """Parse de linha única de log detectando formato automaticamente.
+
+    Args:
+        line: Linha de log a ser parseada.
+
+    Returns:
+        dict: Campos extraídos (timestamp, level, module, message, format) ou None se falhar.
+
+    Note:
+        Suporta formatos: padrão, log4j, syslog, python logging, nginx/apache, JSON e raw.
     """
     entry = parse_line(line)
     if entry is None:
@@ -260,10 +268,13 @@ def parse_log_line(line: str) -> dict:
 
 
 def parse_log_lines(lines: list[str]) -> list[dict]:
-    """
-    Faz o parse de uma lista de linhas de log e retorna uma lista de entradas estruturadas.
-    Linhas vazias são ignoradas. 
-    Use quando precisar processar múltiplas linhas individualmente em um teste.
+    """Parse de múltiplas linhas de log individualmente.
+
+    Args:
+        lines: Lista de linhas de log.
+
+    Returns:
+        list[dict]: Lista de entradas estruturadas (linhas vazias ignoradas).
     """
     results = []
     for line in lines:
@@ -274,14 +285,28 @@ def parse_log_lines(lines: list[str]) -> list[dict]:
 
 
 def parse_log_text(text: str) -> list[dict]:
-    """
-    Faz o parse de um bloco de texto com múltiplas linhas de log.
+    """Parse de bloco de texto com múltiplas linhas de log.
+
+    Args:
+        text: Bloco de texto com linhas de log separadas por newline.
+
+    Returns:
+        list[dict]: Lista de entradas estruturadas.
     """
     return parse_log_lines(text.splitlines())
 
 def execute_tool(tool_name: str, tool_input: dict):
-    """
-    Executa uma tool pelo nome, passando os inputs necessários.
+    """Executa tool de log parser pelo nome.
+
+    Args:
+        tool_name: Nome da tool (parse_log_line, parse_log_lines, parse_pytest_log).
+        tool_input: Dicionário de parâmetros para a tool.
+
+    Returns:
+        Resultado da execução da tool.
+
+    Raises:
+        ValueError: Se o nome da tool não for encontrado.
     """
     for tool in LOG_PARSER_TOOLS:
         if tool["name"] == tool_name:

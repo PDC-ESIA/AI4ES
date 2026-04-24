@@ -57,6 +57,20 @@ class DoubtArtifactGenerator:
 
     @classmethod
     def generate(cls, id_artefato: str, motivo: str, caminho_base: Path, trigger_type: str = "loop") -> str:
+        """Gera arquivo de doubt artifact a partir de template.
+
+        Args:
+            id_artefato: Identificador do artefato.
+            motivo: Motivo da geração do artifact.
+            caminho_base: Path base para diretório de doubt_artifacts.
+            trigger_type: Tipo de gatilho (loop, syntax, timeout, etc.).
+
+        Returns:
+            str: Caminho completo do arquivo gerado.
+
+        Raises:
+            KeyError: Se faltar chave no template de dados.
+        """
         # 1. Lógica de Caminho 
         doubt_dir = caminho_base.parent / "doubt_artifacts"
         doubt_dir.mkdir(parents=True, exist_ok=True)

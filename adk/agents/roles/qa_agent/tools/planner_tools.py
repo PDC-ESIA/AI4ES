@@ -51,8 +51,13 @@ QA_AGENT_TOOLS = [
 
 
 def list_available_tools(agent_name: str = "qa_agent") -> dict[str, Any]:
-    """
-    Lista as tools disponiveis para um agente conhecido pelo action_planner.
+    """Lista tools disponíveis para um agente específico.
+
+    Args:
+        agent_name: Nome do agente (padrão: "qa_agent").
+
+    Returns:
+        dict[str, Any]: Dicionário com agente, total e lista de tools.
     """
     normalized_agent = (agent_name or "qa_agent").strip()
     tools = [
@@ -74,12 +79,14 @@ def list_available_tools(agent_name: str = "qa_agent") -> dict[str, Any]:
 
 
 def describe_tools(tool_names: str = "", agent_name: str = "qa_agent") -> dict[str, Any]:
-    """
-    Descreve uma ou mais tools do qa_agent.
+    """Descreve uma ou mais tools do QA Agent.
 
     Args:
-        tool_names: nomes separados por virgula. Se vazio, descreve todas as tools.
-        agent_name: agente dono das tools.
+        tool_names: Nomes separados por vírgula. Vazio descreve todas as tools.
+        agent_name: Agente dono das tools (padrão: "qa_agent").
+
+    Returns:
+        dict[str, Any]: Dicionário com agente, tools descritas e unknown_tools (se houver).
     """
     normalized_agent = (agent_name or "qa_agent").strip()
     requested = {
@@ -111,8 +118,13 @@ def describe_tools(tool_names: str = "", agent_name: str = "qa_agent") -> dict[s
 
 
 def plan_validator(plan_json: str) -> dict[str, Any]:
-    """
-    Valida se o plano do action_planner esta completo, coerente e executavel.
+    """Valida plano do action_planner verificando completude e coerência.
+
+    Args:
+        plan_json: JSON string contendo o plano a validar.
+
+    Returns:
+        dict[str, Any]: Dicionário com valid (bool), errors (list) e warnings (list).
     """
     try:
         plan = json.loads(plan_json)
@@ -303,8 +315,13 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
 
 
 def create_hitl_checkpoint(plan_json: str) -> dict[str, Any]:
-    """
-    Registra o ponto de parada obrigatorio antes da execucao do plano.
+    """Registra checkpoint HITL (Human-In-The-Loop) antes da execução do plano.
+
+    Args:
+        plan_json: JSON string contendo o plano aprovado.
+
+    Returns:
+        dict[str, Any]: Status do checkpoint e informações para aprovação humana.
     """
     try:
         plan = json.loads(plan_json)
@@ -345,8 +362,16 @@ def register_human_validation(
     reviewer: str = "usuario",
     comments: str = "",
 ) -> dict[str, Any]:
-    """
-    Registra a decisao humana para um checkpoint HITL.
+    """Registra decisão humana para checkpoint HITL.
+
+    Args:
+        checkpoint_id: Identificador do checkpoint.
+        decision: Decisão tomada ("aprovar", "rejeitar", "solicitar_ajustes").
+        reviewer: Nome do revisor (padrão: "usuario").
+        comments: Comentários adicionais (opcional).
+
+    Returns:
+        dict[str, Any]: Status, decisão registrada e próximos passos.
     """
     normalized_decision = (decision or "").strip().lower()
     allowed_decisions = {"aprovar", "rejeitar", "solicitar_ajustes"}
@@ -380,8 +405,14 @@ def generate_compliance_report(
     planned_json: str,
     executed_json: str,
 ) -> dict[str, Any]:
-    """
-    Gera relatorio final comparando Planejado vs Executado apos um ciclo.
+    """Gera relatório de conformidade comparando planejado vs executado.
+
+    Args:
+        planned_json: JSON string do plano original.
+        executed_json: JSON string dos resultados da execução.
+
+    Returns:
+        dict[str, Any]: Relatório com status, divergências, evidências e resumo.
     """
     try:
         planned = json.loads(planned_json)
