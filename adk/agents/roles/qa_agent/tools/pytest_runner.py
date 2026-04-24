@@ -41,9 +41,14 @@ Revisão manual do teste ou do requisito (HU) gerado. O agente entrou em loop te
     return str(caminho)
 
 def gerar_teste_via_hu(hu_conteudo: str, caminho_destino: Path) -> dict:
-    """
-    DoD 1: Geração de casos de teste baseada em HUs/Requisitos funcionais.
-    Este método deve ser conectado à chamada do LLM do seu agente para escrever o arquivo.
+    """Gera casos de teste pytest a partir de História de Usuário ou requisito funcional.
+
+    Args:
+        hu_conteudo: Conteúdo da história de usuário ou requisito funcional.
+        caminho_destino: Path do arquivo onde o teste será gravado.
+
+    Returns:
+        dict: Dicionário com status da operação e caminho do arquivo gerado.
     """
     logger.info("[QA Subagent] Iniciando geração de teste baseado na HU...")
     
@@ -58,14 +63,30 @@ def gerar_teste_via_hu(hu_conteudo: str, caminho_destino: Path) -> dict:
         "arquivo": str(caminho_destino)
     }
 
-def _normalizar_caminho_arquivo(caminho_arquivo) -> Path:
+def _normalizar_caminho_arquivo(caminho_arquivo: str | dict) -> Path:
+    """Normaliza caminho de arquivo aceitando string ou dicionário.
+
+    Args:
+        caminho_arquivo: String com o path ou dicionário contendo chaves como 'arquivo_gerado', 'arquivo', 'caminho_arquivo'.
+
+    Returns:
+        Path: Objeto Path normalizado.
+    """
     if isinstance(caminho_arquivo, dict):
         caminho_arquivo = caminho_arquivo.get("arquivo_gerado") or caminho_arquivo.get("arquivo") or caminho_arquivo.get("caminho_arquivo")
     return Path(caminho_arquivo)
 
-def executar_pytest_tool(caminho_arquivo) -> dict:
-    """
-    Subagente Tool: Executa o pytest, valida a cobertura e aciona o trigger de erro se necessário.
+def executar_pytest_tool(caminho_arquivo: str | dict) -> dict:
+    """Executa testes pytest em um arquivo específico com análise de cobertura.
+
+    Args:
+        caminho_arquivo: Path do arquivo de teste ou dicionário com o caminho.
+
+    Returns:
+        dict: Resultado estruturado com status, cobertura e erros (se houver).
+
+    Raises:
+        subprocess.TimeoutExpired: Se a execução ultrapassar 30 segundos.
     """
     caminho = _normalizar_caminho_arquivo(caminho_arquivo)
     dir_base = caminho.parent
@@ -124,6 +145,16 @@ def executar_pytest_tool(caminho_arquivo) -> dict:
     
 
 def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProcess, cov_json_path: Path) -> dict:
+    """Parse do resultado de execução pytest com extração de cobertura.
+
+    Args:
+        caminho: Path do arquivo de teste executado.
+        resultado: Objeto CompletedProcess com stdout/stderr do pytest.
+        cov_json_path: Path do arquivo coverage.json gerado pelo pytest-cov.
+
+    Returns:
+        dict: Dicionário estruturado com status, testes gerados, cobertura e erros.
+    """
     status_geral = "sucesso" if resultado.returncode == 0 else "falha"
     erros = []
     
@@ -176,8 +207,15 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
     }
 
 def _gerar_erro_execucao(codigo: str, mensagem: str, caminho: Path = None) -> dict:
-    """
-    Gera o payload estruturado para roteamento imediato ao subagente de diagnóstico.
+    """Gera payload de erro estruturado para roteamento ao subagente de correção.
+
+    Args:
+        codigo: Código do erro (ex: ERR_TIMEOUT, ERR_TESTE_FALHOU).
+        mensagem: Descrição legível do erro.
+        caminho: Path do arquivo de teste (opcional).
+
+    Returns:
+        dict: Payload estruturado com status, agente_origem e erros.
     """
     return {
         "status": "falha",

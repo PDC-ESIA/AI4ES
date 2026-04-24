@@ -5,7 +5,15 @@ from .log_parser_tool import parse_pytest_log
 # ── builders de prompt ────────────────────────────────────────────────────────
  
 def _secao(titulo: str, conteudo: str) -> str:
-    """Formata uma seção do prompt com título e conteúdo."""
+    """Formata seção do prompt com título e conteúdo.
+
+    Args:
+        titulo: Título da seção.
+        conteudo: Conteúdo da seção.
+
+    Returns:
+        str: Seção formatada com separadores.
+    """
     linha = "─" * 60
     return f"{linha}\n{titulo}\n{linha}\n{conteudo.strip()}\n"
  
@@ -17,22 +25,17 @@ def build_fix_prompt(
     context: Optional[str] = None,
     language: str = "Python",
 ) -> str:
-    """
-    Constrói um prompt estruturado para um agente de correção de código.
- 
-    Recebe a descrição do erro (e opcionalmente o código original, os testes
-    que falharam e contexto adicional) e monta um prompt completo pronto para
-    ser enviado a outro agente LLM.
- 
-    Parâmetros:
-        error_description (str): Descrição do erro ou traceback capturado.
-        original_code (str, optional): Código que precisa ser corrigido.
-        test_code (str, optional): Código dos testes que falharam.
-        context (str, optional): Informações adicionais de contexto (ex: comportamento esperado).
-        language (str): Linguagem de programação do código. Padrão: "Python".
- 
-    Retorna:
-        str: Prompt estruturado pronto para ser enviado ao agente de correção.
+    """Constrói prompt estruturado para agente de correção de código.
+
+    Args:
+        error_description: Descrição do erro ou traceback.
+        original_code: Código original a ser corrigido (opcional).
+        test_code: Código dos testes que falharam (opcional).
+        context: Informações adicionais de contexto (opcional).
+        language: Linguagem de programação. Padrão: "Python".
+
+    Returns:
+        str: Prompt estruturado para o agente de correção.
     """
     secoes = []
  
@@ -112,11 +115,17 @@ def build_fix_prompt_from_error(
     context: Optional[str] = None,
     language: str = "Python",
 ) -> dict:
-    """
-    Gera um prompt estruturado para um agente de correção de código a partir da descrição textual de um erro. 
-    O prompt resultante instrui o agente a identificar a causa raiz, 
-    Explicar o problema e reescrever o código corrigido. 
-    Use quando tiver a mensagem de erro ou traceback em formato de texto.
+    """Gera prompt de correção a partir de descrição textual de erro.
+
+    Args:
+        error_description: Descrição do erro ou traceback.
+        original_code: Código original (opcional).
+        test_code: Testes que falharam (opcional).
+        context: Contexto adicional (opcional).
+        language: Linguagem de programação. Padrão: "Python".
+
+    Returns:
+        dict: Prompt gerado e metadados (language, prompt_length, etc.).
     """
     prompt = build_fix_prompt(
         error_description=error_description,
@@ -143,11 +152,19 @@ def build_fix_prompt_from_pytest(
     test_code: Optional[str] = None,
     language: str = "Python",
 ) -> dict:
-    """
-    Gera um prompt estruturado para um agente de correção de código 
-    a partir de um traceback completo de pytest. 
-    Encadeia diretamente com parse_pytest_log — passe o texto do traceback. 
-    Use quando o erro vier de um teste pytest que falhou.
+    """Gera prompt de correção a partir de traceback pytest.
+
+    Args:
+        traceback_text: Texto completo do traceback do pytest.
+        original_code: Código original (opcional).
+        test_code: Testes que falharam (opcional).
+        language: Linguagem de programação. Padrão: "Python".
+
+    Returns:
+        dict: Prompt gerado e metadados.
+
+    Note:
+        Usa internamente parse_pytest_log para extrair informações estruturadas.
     """
 
     pytest_parsed = parse_pytest_log(traceback_text)

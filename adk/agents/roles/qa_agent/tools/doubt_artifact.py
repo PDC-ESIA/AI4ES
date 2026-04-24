@@ -56,11 +56,28 @@ DOUBT_ARTEFACT_TEMPLATE = """# DOUBT ARTEFACT | [ID-DA-000]
 
 
 def _safe_file_part(value: str) -> str:
+    """Sanitiza string para uso em nome de arquivo.
+
+    Args:
+        value: String a ser sanitizada.
+
+    Returns:
+        str: String segura para nomes de arquivo.
+    """
     cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(value or "").strip())
     return cleaned.strip("_") or "SEM_ID"
 
 
 def _text(value: str, fallback: str = "N/A") -> str:
+    """Retorna valor como string ou fallback se None.
+
+    Args:
+        value: Valor a converter.
+        fallback: Valor padrão se value for None.
+
+    Returns:
+        str: String representando o valor.
+    """
     return str(value) if value is not None else fallback
 
 
@@ -73,8 +90,19 @@ def gerar_doubt_artifact(
     action_attempted: str = "Planejamento de ação",
     system_raw_response: str = "N/A",
 ) -> dict:
-    """
-    Gera um Doubt Artefact no template definido para pausas do Action Planner.
+    """Gera artefato de dúvida para documentação de bloqueios do agente.
+
+    Args:
+        reason_for_invalidation: Motivo da invalidação/bloqueio.
+        artifact_id: Identificador único do artefato.
+        module_name: Módulo/ferramenta que gerou o bloqueio.
+        suspect_code_or_prompt: Código ou prompt que causou a dúvida.
+        input_artifact_name: Nome do artefato de entrada.
+        action_attempted: Ação que estava sendo executada.
+        system_raw_response: Resposta bruta do sistema.
+
+    Returns:
+        dict: Status e path do artefato gerado.
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     safe_artifact_id = _safe_file_part(artifact_id)
