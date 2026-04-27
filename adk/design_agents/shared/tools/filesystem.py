@@ -83,7 +83,6 @@ def save_artifact(filename: str, content: str) -> dict:
             "versioned_backup": versioned_backup,
             "timestamp": timestamp,
         }
-
     except Exception as e:
         IOLogger.error("save_artifact", str(e))
         return {"status": "error", "error": str(e), "filename": filename}
@@ -96,6 +95,9 @@ def promote_artifact(filename: str) -> dict:
         - Apenas arquivos .md são aceitos.
         - O nome deve conter 'relatorio'.
         - O conteúdo não pode ter status 'Em análise'.
+
+    Args:
+        filename: Nome do arquivo a ser promovido
 
     Returns:
         dict com keys: status, source, destination, timestamp | reason | error
@@ -174,6 +176,7 @@ def list_staging_files(filetype: str = "") -> dict:
     except Exception as e:
         IOLogger.error("list_staging_files", str(e))
         return {"status": "error", "error": str(e)}
+
 
 def check_active_blocks() -> dict:
     """

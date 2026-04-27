@@ -33,7 +33,7 @@ O projeto investiga, de forma sistemática e aplicada, o uso de IA Generativa (L
 
 ## 🧩 **Estrutura do Repositório**
 
-```
+```text
 /
 ├── docs/
 │   ├── squad1/
@@ -137,4 +137,3 @@ Leia o arquivo [CONTRIBUTING.md](./CONTRIBUTING.md), mas em resumo:
 5. Espere aprovação da gestão antes de merge
 
 ---
-

@@ -34,10 +34,17 @@ Como administrador do sistema,
 quero redefinir a senha de qualquer usuário
 para poder recuperar acessos bloqueados sem intervenção manual.
 Critérios de aceite:
-- Apenas administradores autenticados podem acionar a redefinição
-- O sistema envia e-mail com link temporário válido por 30 minutos
-- O link expira após o primeiro uso
-- A operação deve ser registrada em log de auditoria
+- Apenas administradores autenticados via JWT podem acionar a redefinição;
+  a autorização é verificada pelo papel "admin" contido no payload do token
+- O sistema gera um token único de redefinição, armazena no banco com timestamp de criação e TTL de 30 minutos,
+  e envia por e-mail como link contendo esse token
+- Ao acessar o link, o backend valida: token existe, não foi usado e não expirou (datetime.now < criado_em + 30min);
+  após uso bem-sucedido, o token é marcado como consumido e não pode ser reutilizado
+- A operação deve ser registrada em log de auditoria com os campos:
+  * timestamp da ação
+  * ID e e-mail do administrador que acionou
+  * ID e e-mail do usuário alvo
+  * IP de origem do administrador
 
 HU-003
 Solicitante: Leonardo
