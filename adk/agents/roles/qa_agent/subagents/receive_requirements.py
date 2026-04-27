@@ -46,6 +46,25 @@ def _run_async(coro):
         # Sem loop rodando — pode usar asyncio.run normalmente
         return asyncio.run(coro)
 
+def _parse_fragmented_requirements(raw_input: str) -> list:
+    """Converte texto livre/fragmentado em uma lista estruturada de artefatos."""
+    prompt = f"""Extraia os requisitos do texto abaixo e retorne um JSON array estrito no formato:
+[{{ "id_artefato": "RF-001", "tipo": "RF", "conteudo": "...", "modulo": "...", "criticidade": "alta|media|baixa" }}]
+Identifique os tipos (RF, RNF, HU, UC, RN). Se não houver ID claro, gere um sequencial.
+Texto bruto: {raw_input}
+"""
+    model_name = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
+    response = completion(
+        model=model_name, 
+        messages=[{"role": "user", "content": prompt}], 
+        temperature=0
+    )
+    
+    conteudo = response.choices[0].message.content.strip()
+    # Limpa possíveis formatações markdown do retorno do LLM
+    if conteudo.startswith("```json"):
+        conteudo = conteudo.replace("```json\n", "").replace("```", "")
+    return json.loads(conteudo)
 
 def receber_requisitos(artefatos_json: str) -> dict:
     """
@@ -76,15 +95,18 @@ def receber_requisitos(artefatos_json: str) -> dict:
         if isinstance(lista, dict):
             lista = [lista]
     except json.JSONDecodeError as e:
-        logger.error(f"[QA] JSON inválido: {e}")
-        caminho = _run_async(
-            _gerar_doubt_artifact("ERR_ENTRADA_JSON", f"Erro ao parsear JSON de entrada: {e}")
-        )
-        return {
-            "status": "erro",
-            "mensagem": f"JSON inválido: {e}",
-            "arquivo_duvida": caminho,
-        }
+        logger.warning(f"[QA] Falha ao ler JSON estrito. Tentando extrair de fragmentos de texto...")
+        try:
+            lista = _parse_fragmented_requirements(artefatos_json)
+        except Exception as fallback_e:
+            caminho = _run_async(
+                _gerar_doubt_artifact("ERR_ENTRADA_JSON", f"Erro ao parsear JSON de entrada: {e}")
+            )
+            return {
+                "status": "erro",
+                "mensagem": f"JSON inválido: {e}",
+                "arquivo_duvida": caminho,
+            }
 
     lista = _ordenar_por_criticidade(lista)
     resultados = _run_async(_processar_todos_em_paralelo(lista))
