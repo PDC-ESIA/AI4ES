@@ -9,24 +9,59 @@ Logging de operações delegado integralmente ao IOLogger (io_logger.py).
 
 import os
 import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, Any, List, Optional
 
 from .logger import IOLogger
 
-STAGING_DIR  = Path("temp/staging")
-OFFICIAL_DIR = Path("artifacts")
+def _find_root(start_path: Path, target: str = "adk") -> Path:
+    for parent in start_path.parents:
+        if parent.name == target:
+            return parent
+    return start_path.parents[4]  # Fallback seguro (Atualizar se necessário)
+
+CURRENT_DIR = _find_root(Path(__file__).resolve())
+STAGING_DIR = CURRENT_DIR / "temp" / "staging"
+OFFICIAL_DIR = CURRENT_DIR / "artifacts"
+LOG_FILENAME = "io_operations.log"
+STATUS_IN_REVIEW = "**Status:** Em análise"
+STATUS_BLOCKED = "**Status:** Bloqueado"
+BACKUP_PREFIX = "_backup_"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Helpers Privados
+# ──────────────────────────────────────────────────────────────────────────────
 
 def _ensure_dirs() -> None:
+    """Garante que a estrutura de diretórios necessária exista."""
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _next_version(path: Path) -> Path:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return path.parent / f"{path.stem}_backup_{timestamp}{path.suffix}"
+def _is_safe_path(path: Path) -> bool:
+    """
+    Proteção contra Path Traversal.
+    Verifica se o caminho resolvido permanece dentro da raiz do projeto.
+    """
+    try:
+        resolved_path = path.resolve()
+        return resolved_path.is_relative_to(CURRENT_DIR.resolve())
+    except (ValueError, RuntimeError):
+        return False
 
-def read_file(filepath: str) -> dict:
+
+def _next_version(path: Path) -> Path:
+    """Gera um caminho para backup com timestamp único."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return path.parent / f"{path.stem}{BACKUP_PREFIX}{timestamp}{path.suffix}"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Funções Públicas (Ferramentas do Agente)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def read_file(filepath: str) -> Dict[str, Any]:
     """
     Lê o conteúdo de um arquivo do filesystem.
 
@@ -37,7 +72,11 @@ def read_file(filepath: str) -> dict:
         dict com keys: status, content | error
     """
     try:
-        path = Path(filepath)
+        path = Path(filepath).resolve()
+        
+        if not _is_safe_path(path):
+            return {"status": "error", "error": "Acesso negado: o caminho solicitado está fora do diretório do projeto."}
+
         if not path.exists():
             return {"status": "error", "error": f"Arquivo {filepath} não encontrado."}
 
@@ -64,7 +103,11 @@ def save_artifact(filename: str, content: str) -> dict:
     """
     try:
         _ensure_dirs()
-        destination = STAGING_DIR / filename
+        destination = (STAGING_DIR / filename).resolve()
+        
+        if not _is_safe_path(destination):
+            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
+
         versioned_backup = None
 
         if destination.exists():
@@ -87,7 +130,8 @@ def save_artifact(filename: str, content: str) -> dict:
         IOLogger.error("save_artifact", str(e))
         return {"status": "error", "error": str(e), "filename": filename}
 
-def promote_artifact(filename: str) -> dict:
+
+def promote_artifact(filename: str) -> Dict[str, Any]:
     """
     Move um artefato de staging para artifacts/.
 
@@ -103,7 +147,7 @@ def promote_artifact(filename: str) -> dict:
         dict com keys: status, source, destination, timestamp | reason | error
     """
     try:
-        source = STAGING_DIR / filename
+        source = (STAGING_DIR / filename).resolve()
 
         if not source.exists():
             return {"status": "error", "error": f"Arquivo {filename} não encontrado em staging."}
@@ -123,15 +167,15 @@ def promote_artifact(filename: str) -> dict:
             }
 
         content = source.read_text(encoding="utf-8")
-        if "**Status:** Em análise" in content:
+        if STATUS_IN_REVIEW in content:
             return {
                 "status": "blocked",
-                "reason": "O relatório ainda está com status 'Em análise'. Altere para 'Aprovado' antes de promover.",
+                "reason": f"O relatório ainda possui o marcador '{STATUS_IN_REVIEW}'. Aprovação manual necessária.",
                 "file": filename,
             }
 
         _ensure_dirs()
-        destination = OFFICIAL_DIR / filename
+        destination = (OFFICIAL_DIR / filename).resolve()
 
         if destination.exists():
             shutil.move(str(destination), str(_next_version(destination)))
@@ -152,7 +196,8 @@ def promote_artifact(filename: str) -> dict:
         IOLogger.error("promote_artifact", str(e))
         return {"status": "error", "error": str(e)}
 
-def list_staging_files(filetype: str = "") -> dict:
+
+def list_staging_files(filetype: str = "") -> Dict[str, Any]:
     """
     Lista arquivos em staging, ignorando backups e o log de operações.
 
@@ -167,8 +212,8 @@ def list_staging_files(filetype: str = "") -> dict:
         files = [
             f.name
             for f in sorted(STAGING_DIR.iterdir())
-            if f.name != "io_operations.log"
-            and "_backup_" not in f.name
+            if f.name != LOG_FILENAME
+            and BACKUP_PREFIX not in f.name
             and (not filetype or f.suffix == f".{filetype}")
         ]
         return {"status": "ok", "files": files, "staging_dir": str(STAGING_DIR)}
@@ -178,7 +223,7 @@ def list_staging_files(filetype: str = "") -> dict:
         return {"status": "error", "error": str(e)}
 
 
-def check_active_blocks() -> dict:
+def check_active_blocks() -> Dict[str, Any]:
     """
     Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.
 
@@ -187,21 +232,44 @@ def check_active_blocks() -> dict:
     """
     try:
         _ensure_dirs()
-        blocks = [
-            {
-                "filename": f.name,
-                "hu_id": (parts := f.stem.split("_"))[2] if len(parts) >= 3 else "desconhecido",
-            }
-            for f in sorted(STAGING_DIR.iterdir())
-            if f.name.startswith("Doubt_Artifact_")
-            and "_backup_" not in f.name
-            and "**Status:** Bloqueado" in f.read_text(encoding="utf-8")
-        ]
+        blocks = []
+        for f in sorted(STAGING_DIR.iterdir()):
+            if f.name.startswith("Doubt_Artifact_") and BACKUP_PREFIX not in f.name:
+                content = f.read_text(encoding="utf-8")
+                if STATUS_BLOCKED in content:
+                    parts = f.stem.split("_")
+                    hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
+                    blocks.append({"filename": f.name, "hu_id": hu_id})
+        
         return {"status": "ok", "has_blocks": len(blocks) > 0, "blocks": blocks}
 
     except Exception as e:
         IOLogger.error("check_active_blocks", str(e))
         return {"status": "error", "error": str(e)}
+
+def clear_staging_folder() -> bool:
+    """
+    Remove todos os arquivos do diretório de staging, preservando subdiretórios.
+    Segurança: só apaga se o diretório estiver dentro de CURRENT_DIR.
+
+    Returns:
+        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário
+    """
+    path: Path = STAGING_DIR
+    try:
+        if not _is_safe_path(path):
+            raise PermissionError(f"Segurança: Tentativa de apagar fora de {CURRENT_DIR}")
+
+        _ensure_dirs()
+        for file in path.iterdir():
+            if file.is_file():
+                file.unlink()
+
+        IOLogger.erase(str(path))
+        return True
+    except Exception as e:
+        IOLogger.error("ERASE", f"dir={path} | error={str(e)}")
+        return False
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Mocks

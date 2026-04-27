@@ -63,6 +63,10 @@ class IOLogger:
         _write(f"[{_now()}] PROMOTE | file={filename} | from=staging | to=artifacts\n")
 
     @staticmethod
+    def erase(directory: str) -> None:
+        _write(f"[{_now()}] ERASE   | dir={directory}\n")
+
+    @staticmethod
     def error(operation: str, detail: str) -> None:
         """Erros são sempre registrados, independente de LOG_DETAIL."""
         _write(f"[{_now()}] ERROR   | op={operation} | detail={detail}\n")
