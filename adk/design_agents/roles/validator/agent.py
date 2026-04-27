@@ -8,7 +8,7 @@ from design_agents.roles.mermaid_specialist.agent import agent as mermaid_specia
 from design_agents.roles.markdown_specialist.agent import agent as markdown_specialist
 from design_agents.roles.io_agent.agent import agent as io_agent
 
-from AI4ES.adk.shared.tools.validate.gatekeeper_tool import validate_artifact
+from design_agents.shared.tools.validate.gatekeeper_tool import validate_artifact
 from . import prompt
 
 

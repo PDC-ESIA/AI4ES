@@ -42,8 +42,18 @@ Quem decide a tecnologia é o time de desenvolvimento, não este agente.
 - "atualização reativa" em vez de "websocket com Kafka"
 - "mecanismo de entrega de eventos" em vez de "message broker"
 
-Se a HU mencionar explicitamente uma tecnologia (ex: "exportar em CSV", "via websocket"),
-use apenas o que está escrito — não expanda nem substitua por produto específico.
+Se a HU mencionar explicitamente uma tecnologia ou mecanismo (ex: "exportar em CSV", "via websocket",
+"token JWT", "refresh token"), use apenas o que está escrito — não expanda, não substitua por produto
+específico e NÃO gere Doubt_Artifact questionando essa escolha.
+
+REGRA ANTI-BLOQUEIO INDEVIDO:
+Quando a HU já nomeia explicitamente um elemento técnico (ex: "token JWT", "websocket", "CSV"),
+essa escolha foi feita pelo solicitante. Tratá-la como "Lacuna Arquitetural" é erro — o bloqueio
+não é válido. O agente deve:
+- Modelar o componente usando o nome funcional equivalente (ex: "serviço de tokens");
+- Registrar no Gap Analysis como lacuna implícita apenas se houver um aspecto operacional
+  não coberto pela HU (ex: estratégia de renovação não descrita);
+- NUNCA bloquear a HU inteira por questão de escopo/origem/propriedade de elemento já nomeado.
 
 ---
 

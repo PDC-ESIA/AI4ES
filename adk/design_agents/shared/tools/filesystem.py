@@ -1,70 +1,63 @@
+"""
+filesystem.py
+─────────────
+Camada de persistência usada exclusivamente pelo Agente IO.
+Responsabilidade: ler, salvar, promover e listar artefatos em disco.
+
+Logging de operações delegado integralmente ao IOLogger (io_logger.py).
+"""
+
 import os
 import shutil
 from datetime import datetime
 from pathlib import Path
 
-STAGING_DIR = Path("temp/staging")
+from .logger import IOLogger
+
+STAGING_DIR  = Path("temp/staging")
 OFFICIAL_DIR = Path("artifacts")
 
-# LOG_DETAIL: controla o nível de detalhe do log de operações.
-# - "DEFAULT": apenas SAVE e PROMOTE são registrados (comportamento original).
-# - "HIGH":    READ também é registrado, útil para rastrear quais agentes
-#              leram quais arquivos e em que momento.
-LOG_DETAIL = "HIGH"
-
-def _ensure_dirs():
+def _ensure_dirs() -> None:
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
 
-def _next_version(path: Path) -> Path:
-    stem = path.stem
-    suffix = path.suffix
-    parent = path.parent
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return parent / f"{stem}_backup_{timestamp}{suffix}"
 
-def _write_log(entry: str):
-    """Escreve uma entrada no log de operações."""
-    log_path = STAGING_DIR / "io_operations.log"
-    with log_path.open("a", encoding="utf-8") as log:
-        log.write(entry)
+def _next_version(path: Path) -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return path.parent / f"{path.stem}_backup_{timestamp}{path.suffix}"
 
 def read_file(filepath: str) -> dict:
     """
     Lê o conteúdo de um arquivo do filesystem.
 
     Args:
-        filepath: caminho do arquivo a ser lido
+        filepath: caminho do arquivo a ser lido.
 
     Returns:
-        dict com keys: status, content
+        dict com keys: status, content | error
     """
     try:
         path = Path(filepath)
         if not path.exists():
             return {"status": "error", "error": f"Arquivo {filepath} não encontrado."}
+
         content = path.read_text(encoding="utf-8")
-
-        if LOG_DETAIL == "HIGH":
-            _ensure_dirs()
-            timestamp = datetime.now().isoformat()
-            log_entry = f"[{timestamp}] READ  | file={path.name}\n"
-            _write_log(log_entry)
-
+        IOLogger.read(path.name)
         return {"status": "ok", "content": content}
+
     except Exception as e:
+        IOLogger.error("read_file", str(e))
         return {"status": "error", "error": str(e)}
 
 def save_artifact(filename: str, content: str) -> dict:
     """
     Salva o artefato em staging com versionamento automático.
 
-    - Se já existir um arquivo com o mesmo nome em staging: renomeia o atual para _backup_ antes de salvar.
-    - Registra log da operação em temp/staging/io_operations.log.
+    - Se já existir um arquivo com o mesmo nome: renomeia o atual para _backup_ antes de salvar.
 
     Args:
         filename: Nome do arquivo (ex: diagrama_HU-042_processo_compra.mmd)
-        content:  Conteúdo textual do artefato
+        content:  Conteúdo textual do artefato.
 
     Returns:
         dict com keys: status, path, versioned_backup (se houve), timestamp
@@ -80,14 +73,9 @@ def save_artifact(filename: str, content: str) -> dict:
             versioned_backup = str(backup_path)
 
         destination.write_text(content, encoding="utf-8")
-
         timestamp = datetime.now().isoformat()
-        log_entry = (
-            f"[{timestamp}] SAVE  | file={filename}"
-            + (f" | backup={versioned_backup}" if versioned_backup else "")
-            + "\n"
-        )
-        _write_log(log_entry)
+
+        IOLogger.save(filename, backup=versioned_backup)
 
         return {
             "status": "ok",
@@ -97,21 +85,24 @@ def save_artifact(filename: str, content: str) -> dict:
         }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "filename": filename,
-        }
+        IOLogger.error("save_artifact", str(e))
+        return {"status": "error", "error": str(e), "filename": filename}
 
 def promote_artifact(filename: str) -> dict:
     """
-    Move um artefato de .../temp/staging/ para .../artifacts/.
-    O único artefato que pode ser promovido é o relatorio<HUs>.md
-    Apenas arquivos .md são aceitos — diagramas .mmd e análises técnicas ficam somente em staging.
-    Bloqueia promoção se status ainda for 'Em análise'.
+    Move um artefato de staging para artifacts/.
+
+    Regras:
+        - Apenas arquivos .md são aceitos.
+        - O nome deve conter 'relatorio'.
+        - O conteúdo não pode ter status 'Em análise'.
+
+    Returns:
+        dict com keys: status, source, destination, timestamp | reason | error
     """
     try:
         source = STAGING_DIR / filename
+
         if not source.exists():
             return {"status": "error", "error": f"Arquivo {filename} não encontrado em staging."}
 
@@ -141,14 +132,12 @@ def promote_artifact(filename: str) -> dict:
         destination = OFFICIAL_DIR / filename
 
         if destination.exists():
-            backup = _next_version(destination)
-            shutil.move(str(destination), str(backup))
+            shutil.move(str(destination), str(_next_version(destination)))
 
         shutil.copy2(str(source), str(destination))
-
         timestamp = datetime.now().isoformat()
-        log_entry = f"[{timestamp}] PROMOTE | file={filename} | from=staging | to=artifacts\n"
-        _write_log(log_entry)
+
+        IOLogger.promote(filename)
 
         return {
             "status": "ok",
@@ -156,73 +145,64 @@ def promote_artifact(filename: str) -> dict:
             "destination": str(destination),
             "timestamp": timestamp,
         }
+
     except Exception as e:
+        IOLogger.error("promote_artifact", str(e))
         return {"status": "error", "error": str(e)}
 
 def list_staging_files(filetype: str = "") -> dict:
     """
-    Lista os arquivos disponíveis em staging, opcionalmente filtrados por tipo.
-    Retorna apenas a versão mais recente de cada arquivo (ignora backups).
+    Lista arquivos em staging, ignorando backups e o log de operações.
 
     Args:
         filetype: extensão para filtrar (ex: "mmd", "md"). Se vazio, lista todos.
 
     Returns:
-        dict com keys: status, files (lista de nomes), staging_dir
+        dict com keys: status, files, staging_dir | error
     """
     try:
         _ensure_dirs()
-        files = []
-        for f in sorted(STAGING_DIR.iterdir()):
-            if f.name == "io_operations.log":
-                continue
-            if "_backup_" in f.name:
-                continue
-            if filetype and f.suffix != f".{filetype}":
-                continue
-            files.append(f.name)
+        files = [
+            f.name
+            for f in sorted(STAGING_DIR.iterdir())
+            if f.name != "io_operations.log"
+            and "_backup_" not in f.name
+            and (not filetype or f.suffix == f".{filetype}")
+        ]
+        return {"status": "ok", "files": files, "staging_dir": str(STAGING_DIR)}
 
-        return {
-            "status": "ok",
-            "files": files,
-            "staging_dir": str(STAGING_DIR),
-        }
     except Exception as e:
+        IOLogger.error("list_staging_files", str(e))
         return {"status": "error", "error": str(e)}
 
 def check_active_blocks() -> dict:
     """
-    Verifica se há Doubt_Artifacts com Status Bloqueado em staging.
+    Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.
 
     Returns:
-        dict com keys: status, has_blocks (bool), blocks (lista de dicts com filename e hu_id)
+        dict com keys: status, has_blocks (bool), blocks (lista de dicts)
     """
     try:
         _ensure_dirs()
-        blocks = []
-        for f in sorted(STAGING_DIR.iterdir()):
-            if not f.name.startswith("Doubt_Artifact_"):
-                continue
-            if "_backup_" in f.name:
-                continue
-            content = f.read_text(encoding="utf-8")
-            if "**Status:** Bloqueado" in content:
-                parts = f.stem.split("_")
-                hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
-                blocks.append({
-                    "filename": f.name,
-                    "hu_id": hu_id,
-                })
+        blocks = [
+            {
+                "filename": f.name,
+                "hu_id": (parts := f.stem.split("_"))[2] if len(parts) >= 3 else "desconhecido",
+            }
+            for f in sorted(STAGING_DIR.iterdir())
+            if f.name.startswith("Doubt_Artifact_")
+            and "_backup_" not in f.name
+            and "**Status:** Bloqueado" in f.read_text(encoding="utf-8")
+        ]
+        return {"status": "ok", "has_blocks": len(blocks) > 0, "blocks": blocks}
 
-        return {
-            "status": "ok",
-            "has_blocks": len(blocks) > 0,
-            "blocks": blocks,
-        }
     except Exception as e:
+        IOLogger.error("check_active_blocks", str(e))
         return {"status": "error", "error": str(e)}
 
-# --- MOCKS ---
+# ──────────────────────────────────────────────────────────────────────────────
+# Mocks
+# ──────────────────────────────────────────────────────────────────────────────
 
 def check_lock(filepath: str) -> dict:
     """Mock: verifica se o arquivo está bloqueado por outro agente."""

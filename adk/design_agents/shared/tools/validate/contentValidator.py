@@ -67,21 +67,30 @@ class ContentValidator:
         warnings: List[str] = []
  
         stripped = content.strip()
- 
+
         # 1. Detecção de tipo de diagrama obrigatória
-        first_token = stripped.split()[0] if stripped.split() else ""
+        # Ignora linhas vazias e comentários (%%) até encontrar a primeira linha de conteúdo real
+        all_lines = stripped.splitlines()
+        content_lines = [
+            l for l in all_lines
+            if l.strip() and not l.strip().startswith("%%")
+        ]
+        first_content_line = content_lines[0].strip() if content_lines else ""
+        first_token = first_content_line.split()[0] if first_content_line.split() else ""
+
         known = ContentValidator.MERMAID_DIAGRAM_TYPES
-        found_type = next((t for t in known if stripped.lower().startswith(t.lower())), None)
- 
+        found_type = next((t for t in known if first_content_line.lower().startswith(t.lower())), None)
+
         if not found_type:
             errors.append(
                 f"Declaração de tipo de diagrama Mermaid ausente ou inválida. "
-                f"Primeiro token encontrado: '{first_token}'. "
+                f"Primeiro token de conteúdo encontrado: '{first_token}'. "
                 f"Tipos válidos: {', '.join(known[:8])}..."
             )
- 
+
         # 2. Corpo não pode estar vazio após o tipo
-        lines = [l for l in stripped.splitlines() if l.strip()]
+        # Usa content_lines (já sem vazios e comentários) para contar linhas reais
+        lines = content_lines
         if len(lines) < 2:
             errors.append("Corpo do diagrama Mermaid está vazio — nenhum nó ou relação definida")
  
@@ -198,5 +207,3 @@ class ContentValidator:
                 )
  
         return errors, warnings
-    
-    

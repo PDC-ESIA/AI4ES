@@ -1,10 +1,10 @@
 import os
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from shared.tools.date import current_date
+from design_agents.shared.tools.date import current_date
 from . import prompt
 
-from shared.tools.filesystem import (
+from design_agents.shared.tools.filesystem import (
     save_artifact,
     check_lock,
     release_lock,

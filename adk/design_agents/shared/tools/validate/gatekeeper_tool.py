@@ -4,7 +4,7 @@ gatekeeper_tool.py
 Adaptador: expõe ArtifactGatekeeper como FunctionTool do Google ADK.
  
 Uso no agente:
-    from AI4ES.adk.shared.tools.validate.gatekeeper_tool import validate_artifact
+    from shared.tools.validate.gatekeeper_tool import validate_artifact
     from google.adk.tools import FunctionTool
  
     tools=[FunctionTool(validate_artifact), ...]
