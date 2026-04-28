@@ -6,6 +6,13 @@ from pathlib import Path
 STAGING_DIR = Path("temp/staging")
 OFFICIAL_DIR = Path("artifacts")
 
+# LOG_DETAIL: controla o nível de detalhe do log de operações.
+# - "DEFAULT": apenas SAVE e PROMOTE são registrados.
+# - "HIGH":    READ e ERASE (staging) também é registrado.
+LOG_DETAIL = "DEFAULT"
+if not LOG_DETAIL: # fallback
+    LOG_DETAIL = "DEFAULT"
+
 def _ensure_dirs():
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
@@ -16,6 +23,12 @@ def _next_version(path: Path) -> Path:
     parent = path.parent
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return parent / f"{stem}_backup_{timestamp}{suffix}"
+
+def _write_log(entry: str):
+    """Escreve uma entrada no log de operações."""
+    log_path = STAGING_DIR / "io_operations.log"
+    with log_path.open("a", encoding="utf-8") as log:
+        log.write(entry)
 
 def read_file(filepath: str) -> dict:
     """
@@ -32,16 +45,26 @@ def read_file(filepath: str) -> dict:
         if not path.exists():
             return {"status": "error", "error": f"Arquivo {filepath} não encontrado."}
         content = path.read_text(encoding="utf-8")
+
+        if LOG_DETAIL == "HIGH":
+            _ensure_dirs()
+            timestamp = datetime.now().isoformat()
+            log_entry = f"[{timestamp}] READ  | file={path.name}\n"
+            _write_log(log_entry)
+
         return {"status": "ok", "content": content}
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=READ | file={filepath} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
 
 def save_artifact(filename: str, content: str) -> dict:
     """
     Salva o artefato em staging com versionamento automático.
 
-    - Se já existir um arquivo com o mesmo nome em staging: renomeia o atual para _v{n} antes de salvar.
-    - Registra log da operação em temp/staging/save_log.txt.
+    - Se já existir um arquivo com o mesmo nome em staging: renomeia o atual para _backup_ antes de salvar.
+    - Registra log da operação em temp/staging/io_operations.log.
 
     Args:
         filename: Nome do arquivo (ex: diagrama_HU-042_processo_compra.mmd)
@@ -55,26 +78,20 @@ def save_artifact(filename: str, content: str) -> dict:
         destination = STAGING_DIR / filename
         versioned_backup = None
 
-        # Versionamento: se já existe, move o atual para _v{n} antes de salvar
         if destination.exists():
             backup_path = _next_version(destination)
             shutil.move(str(destination), str(backup_path))
             versioned_backup = str(backup_path)
 
-        # Salva o novo artefato
         destination.write_text(content, encoding="utf-8")
 
         timestamp = datetime.now().isoformat()
-
-        # Log da operação
         log_entry = (
-            f"[{timestamp}] SAVE | file={filename}"
+            f"[{timestamp}] SAVE  | file={filename}"
             + (f" | backup={versioned_backup}" if versioned_backup else "")
             + "\n"
         )
-        log_path = STAGING_DIR / "save_log.txt"
-        with log_path.open("a", encoding="utf-8") as log:
-            log.write(log_entry)
+        _write_log(log_entry)
 
         return {
             "status": "ok",
@@ -82,34 +99,44 @@ def save_artifact(filename: str, content: str) -> dict:
             "versioned_backup": versioned_backup,
             "timestamp": timestamp,
         }
-
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "filename": filename,
-        }
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=SAVE | file={filename} | error={str(e)}\n"
+        _write_log(log_entry)
+        return {"status": "error", "error": str(e), "filename": filename}
 
 def promote_artifact(filename: str) -> dict:
     """
     Move um artefato de .../temp/staging/ para .../artifacts/.
-    Apenas arquivos .md são aceitos — diagramas .mmd ficam somente em staging.
+    O único artefato que pode ser promovido é o relatorio<HUs>.md
+    Apenas arquivos .md são aceitos — diagramas .mmd e análises técnicas ficam somente em staging.
     Bloqueia promoção se status ainda for 'Em análise'.
+
+    Args:
+        filename: Nome do arquivo a ser promovido
+
+    Returns:
+        dict com keys: status, source, destination, timestamp
     """
     try:
         source = STAGING_DIR / filename
         if not source.exists():
             return {"status": "error", "error": f"Arquivo {filename} não encontrado em staging."}
 
-        # Somente relatórios .md podem ser promovidos
         if source.suffix != ".md":
             return {
                 "status": "blocked",
-                "reason": f"Apenas relatórios .md podem ser promovidos para artifacts. Diagramas .mmd permanecem em staging.",
+                "reason": "Apenas relatórios .md podem ser promovidos para artifacts. Diagramas .mmd permanecem em staging.",
                 "file": filename,
             }
 
-        # Bloqueia se status ainda pendente
+        if "relatorio" not in filename:
+            return {
+                "status": "blocked",
+                "reason": "Apenas relatórios .md podem ser promovidos para artifacts. A analise tecnica permanece em staging.",
+                "file": filename,
+            }
+
         content = source.read_text(encoding="utf-8")
         if "**Status:** Em análise" in content:
             return {
@@ -129,9 +156,7 @@ def promote_artifact(filename: str) -> dict:
 
         timestamp = datetime.now().isoformat()
         log_entry = f"[{timestamp}] PROMOTE | file={filename} | from=staging | to=artifacts\n"
-        log_path = STAGING_DIR / "save_log.txt"
-        with log_path.open("a", encoding="utf-8") as log:
-            log.write(log_entry)
+        _write_log(log_entry)
 
         return {
             "status": "ok",
@@ -140,6 +165,9 @@ def promote_artifact(filename: str) -> dict:
             "timestamp": timestamp,
         }
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=PROMOTE | file={filename} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
 
 def list_staging_files(filetype: str = "") -> dict:
@@ -157,7 +185,7 @@ def list_staging_files(filetype: str = "") -> dict:
         _ensure_dirs()
         files = []
         for f in sorted(STAGING_DIR.iterdir()):
-            if f.name == "save_log.txt":
+            if f.name == "io_operations.log":
                 continue
             if "_backup_" in f.name:
                 continue
@@ -171,7 +199,11 @@ def list_staging_files(filetype: str = "") -> dict:
             "staging_dir": str(STAGING_DIR),
         }
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=LIST | dir={STAGING_DIR} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
+
 
 def check_active_blocks() -> dict:
     """
@@ -190,13 +222,9 @@ def check_active_blocks() -> dict:
                 continue
             content = f.read_text(encoding="utf-8")
             if "**Status:** Bloqueado" in content:
-                # Extrai hu_id do nome do arquivo: Doubt_Artifact_HU-008_2026-04-17.md
                 parts = f.stem.split("_")
                 hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
-                blocks.append({
-                    "filename": f.name,
-                    "hu_id": hu_id,
-                })
+                blocks.append({"filename": f.name, "hu_id": hu_id})
 
         return {
             "status": "ok",
@@ -204,7 +232,36 @@ def check_active_blocks() -> dict:
             "blocks": blocks,
         }
     except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=CHECK_BLOCKS | dir={STAGING_DIR} | error={str(e)}\n"
+        _write_log(log_entry)
         return {"status": "error", "error": str(e)}
+
+def clear_staging_folder() -> bool:
+    """
+    Remove todos os arquivos do diretório de staging, preservando subdiretórios.
+
+    Returns:
+        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário
+    """
+    path: Path = STAGING_DIR
+    try:
+        _ensure_dirs()
+        for file in path.iterdir():
+            if file.is_file():
+                file.unlink()
+
+        if LOG_DETAIL == "HIGH":
+            timestamp = datetime.now().isoformat()
+            log_entry = f"[{timestamp}] ERASE | dir={path}\n"
+            _write_log(log_entry)
+
+        return True
+    except Exception as e:
+        timestamp = datetime.now().isoformat()
+        log_entry = f"[{timestamp}] ERROR | op=ERASE | dir={path} | error={str(e)}\n"
+        _write_log(log_entry)
+        return False
 
 # --- MOCKS ---
 

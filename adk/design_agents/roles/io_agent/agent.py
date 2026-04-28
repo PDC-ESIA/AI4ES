@@ -12,6 +12,7 @@ from shared.tools.filesystem import (
     promote_artifact,
     read_file,
     list_staging_files,
+    clear_staging_folder,
 )
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
@@ -30,6 +31,7 @@ agent = LlmAgent(
         read_file,
         current_date,
         list_staging_files,
+        clear_staging_folder,
     ],
 )
 

@@ -16,6 +16,9 @@ FERRAMENTAS DISPONÍVEIS:
 - check_active_blocks(): verifica se há Doubt_Artifacts com Status Bloqueado em staging.
   Retorna has_blocks (bool) e lista de blocks com filename e hu_id.
   Use sempre que o Orquestrador solicitar verificação de bloqueios antes de uma etapa.
+- clear_staging_folder(): Remove todos os arquivos do diretorio de staging, preservando subdiretórios.
+  ⚠️ USE APENAS NO INÍCIO DE UMA NOVA SESSÃO, quando explicitamente solicitado pelo Orquestrador.
+  Nunca execute por iniciativa própria ou durante o fluxo normal de operações.
 
 ---
 
@@ -70,7 +73,7 @@ A cada operação executada, registre internamente:
 - Resultado (ok / erro)
 - Timestamp via current_date()
 
-O save_log.txt já é atualizado automaticamente por save_artifact e promote_artifact.
+O io_operations.log já é atualizado automaticamente por save_artifact e promote_artifact.
 Para operações de leitura e listagem, inclua o registro no seu histórico de resposta
 para que o Orquestrador possa rastrear o fluxo se necessário.
 
