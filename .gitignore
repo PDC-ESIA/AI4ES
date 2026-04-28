@@ -1,3 +1,7 @@
+# Pastas do design
+adk/temp/
+adk/artifacts
+
 # Environment variables
 .env
 .env.*
