@@ -46,7 +46,7 @@ PIPELINE_STAGES: list[dict[str, Any]] = [
     {
         "name": "coder_agent",
         "output_key": "implementation",
-        "output_schema": None,   # texto livre — sem output_schema no LlmAgent
+        "output_schema": None,  # texto livre — sem output_schema no LlmAgent
         "validates_schema": False,
     },
     {
@@ -64,9 +64,7 @@ PIPELINE_STAGES: list[dict[str, Any]] = [
 ]
 
 # Lookup rápido: output_key → estágio
-_STAGE_BY_KEY: dict[str, dict[str, Any]] = {
-    s["output_key"]: s for s in PIPELINE_STAGES
-}
+_STAGE_BY_KEY: dict[str, dict[str, Any]] = {s["output_key"]: s for s in PIPELINE_STAGES}
 
 
 def validate_state(
@@ -85,7 +83,11 @@ def validate_state(
         - ``sucesso`` é ``True`` quando todas as chaves estão presentes.
         - ``chaves_ausentes`` lista as output_keys faltando.
     """
-    stages = PIPELINE_STAGES[:up_to_stage + 1] if up_to_stage is not None else PIPELINE_STAGES
+    stages = (
+        PIPELINE_STAGES[: up_to_stage + 1]
+        if up_to_stage is not None
+        else PIPELINE_STAGES
+    )
     missing: list[str] = [
         stage["output_key"]
         for stage in stages

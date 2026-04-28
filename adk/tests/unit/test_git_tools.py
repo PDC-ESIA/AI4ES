@@ -42,6 +42,7 @@ from shared.tools.git import (
 # Fixtures
 # ===========================================================================
 
+
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     """Repositório Git temporário com um commit inicial."""
@@ -69,6 +70,7 @@ def repo_com_arquivo_staged(repo):
 # Helpers internos
 # ---------------------------------------------------------------------------
 
+
 def _git(args, cwd):
     subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, check=False)
 
@@ -76,7 +78,9 @@ def _git(args, cwd):
 def _branch_atual(cwd):
     r = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=str(cwd), capture_output=True, text=True,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
     )
     return r.stdout.strip()
 
@@ -84,7 +88,9 @@ def _branch_atual(cwd):
 def _commit_count(cwd):
     r = subprocess.run(
         ["git", "rev-list", "--count", "HEAD"],
-        cwd=str(cwd), capture_output=True, text=True,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
     )
     return int(r.stdout.strip()) if r.returncode == 0 else 0
 
@@ -92,6 +98,7 @@ def _commit_count(cwd):
 # ===========================================================================
 # tool_git_add
 # ===========================================================================
+
 
 class TestToolGitAdd:
 
@@ -132,6 +139,7 @@ class TestToolGitAdd:
 # trava_seguranca_git_commit
 # ===========================================================================
 
+
 class TestTrava:
 
     def test_trava_com_staged_retorna_sucesso_true(self, repo_com_arquivo_staged):
@@ -163,6 +171,7 @@ class TestTrava:
 # tool_git_commit
 # ===========================================================================
 
+
 class TestToolGitCommit:
 
     def test_commit_com_staged_sucesso(self, repo_com_arquivo_staged):
@@ -183,7 +192,9 @@ class TestToolGitCommit:
         tool_git_commit("feat: add feature")
         r = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
-            cwd=str(repo_com_arquivo_staged), capture_output=True, text=True,
+            cwd=str(repo_com_arquivo_staged),
+            capture_output=True,
+            text=True,
         )
         assert r.stdout.strip() == ""
 
@@ -210,6 +221,7 @@ class TestToolGitCommit:
 # ===========================================================================
 # tool_git_checkout
 # ===========================================================================
+
 
 class TestToolGitCheckout:
 

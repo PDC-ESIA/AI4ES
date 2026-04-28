@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any
-from typing import AsyncGenerator 
+from typing import AsyncGenerator
 
 from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
@@ -68,7 +68,6 @@ def _record_failure(
     )
 
 
-
 async def run_with_resilience(
     agent: BaseAgent,
     ctx: InvocationContext,
@@ -77,7 +76,7 @@ async def run_with_resilience(
     failed_at: str | None = None,
 ) -> AsyncGenerator[Event, None]:
     """Executa o agente em tempo real (streaming) com um relógio global de timeout."""
-    
+
     gen = agent.run_async(ctx)
     loop = asyncio.get_running_loop()
     end_time = loop.time() + timeout_seconds
@@ -94,7 +93,9 @@ async def run_with_resilience(
             yield event
 
     except asyncio.TimeoutError:
-        detail = f"Timeout de {timeout_seconds}s excedido" + (f" em '{failed_at}'" if failed_at else "")
+        detail = f"Timeout de {timeout_seconds}s excedido" + (
+            f" em '{failed_at}'" if failed_at else ""
+        )
         _record_failure(session_state, "timeout", detail, failed_at)
         raise SequencerError("timeout", detail, failed_at) from None
 

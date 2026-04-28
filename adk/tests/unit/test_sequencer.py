@@ -17,7 +17,11 @@ import pytest
 # Garante que o diretório adk/ esteja no sys.path para imports absolutos.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from agents.workflows.sequencer.contract import PIPELINE_STAGES, stage_index, validate_state
+from agents.workflows.sequencer.contract import (
+    PIPELINE_STAGES,
+    stage_index,
+    validate_state,
+)
 from agents.workflows.sequencer.resilience import (
     SequencerError,
     _record_failure,
@@ -32,7 +36,9 @@ from agents.workflows.sequencer.resilience import (
 
 def _full_state() -> dict:
     """Retorna um session_state com todas as output_keys preenchidas."""
-    return {stage["output_key"]: f"mock_{stage['output_key']}" for stage in PIPELINE_STAGES}
+    return {
+        stage["output_key"]: f"mock_{stage['output_key']}" for stage in PIPELINE_STAGES
+    }
 
 
 class _FakeEvent:
@@ -52,7 +58,7 @@ def _make_fake_agent(events=None, *, raises=None, sleep_seconds=0.0):
             await asyncio.sleep(sleep_seconds)
         if raises is not None:
             raise raises
-        for evt in (events or []):
+        for evt in events or []:
             yield evt
 
     agent.run_async = _run_async

@@ -5,12 +5,27 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 EXTENSOES_PERMITIDAS = {
-    ".py", ".js", ".ts", ".html", ".css", ".json",
-    ".md", ".txt", ".yaml", ".yml", ".toml", ".env.example",
+    ".py",
+    ".js",
+    ".ts",
+    ".html",
+    ".css",
+    ".json",
+    ".md",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".env.example",
 }
 
 DIRETORIOS_PROIBIDOS = {
-    ".git", ".venv", "venv", "node_modules", "__pycache__", ".env",
+    ".git",
+    ".venv",
+    "venv",
+    "node_modules",
+    "__pycache__",
+    ".env",
 }
 
 
@@ -31,38 +46,38 @@ class RelatorioSchema(BaseModel):
 
 def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
     """Ferramenta para criar ou sobrescrever um arquivo no disco com o conteúdo fornecido.
- 
+
     Possui validações de segurança:
     - Só permite extensões conhecidas e seguras
     - Impede escrita em diretórios protegidos (.git, .venv, etc.)
     - Cria diretórios intermediários automaticamente se necessário
- 
+
     Args:
-        caminho (str): Caminho relativo ao diretório de trabalho atual 
+        caminho (str): Caminho relativo ao diretório de trabalho atual
         conteudo (str): Conteúdo completo a ser escrito no arquivo
- 
+
     Returns:
         dict: Contém status da operação, caminho absoluto criado e possíveis erros
     """
- 
+
     if not caminho or not caminho.strip():
         return {
             "sucesso": False,
             "erro": "Caminho do arquivo não pode ser vazio.",
-            "caminho": None
+            "caminho": None,
         }
- 
+
     path = Path(caminho)
- 
-    partes = set(path.parts[:-1])  
+
+    partes = set(path.parts[:-1])
     bloqueados = partes & DIRETORIOS_PROIBIDOS
     if bloqueados:
         return {
             "sucesso": False,
             "erro": f"Escrita não permitida em diretório protegido: {bloqueados}",
-            "caminho": caminho
+            "caminho": caminho,
         }
- 
+
     if path.suffix not in EXTENSOES_PERMITIDAS:
         return {
             "sucesso": False,
@@ -70,37 +85,29 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
                 f"Extensão '{path.suffix}' não permitida. "
                 f"Permitidas: {', '.join(sorted(EXTENSOES_PERMITIDAS))}"
             ),
-            "caminho": caminho
+            "caminho": caminho,
         }
-
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(conteudo, encoding="utf-8")
- 
+
         return {
             "sucesso": True,
             "caminho": str(path.resolve()),
             "bytes_escritos": len(conteudo.encode("utf-8")),
-            "erro": None
+            "erro": None,
         }
- 
+
     except PermissionError as e:
-        return {
-            "sucesso": False,
-            "erro": f"Permissão negada: {e}",
-            "caminho": caminho
-        }
+        return {"sucesso": False, "erro": f"Permissão negada: {e}", "caminho": caminho}
     except Exception as e:
-        return {
-            "sucesso": False,
-            "erro": f"Erro inesperado: {e}",
-            "caminho": caminho
-        }
- 
+        return {"sucesso": False, "erro": f"Erro inesperado: {e}", "caminho": caminho}
 
 
-def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md") -> dict:
+def tool_salvar_relatorio(
+    conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md"
+) -> dict:
     """Salva relatório de revisão em Markdown no disco.
 
     Args:
@@ -134,4 +141,8 @@ def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_rev
             "bytes_escritos": len(dados.conteudo.encode("utf-8")),
         }
     except Exception as e:
-        return {"sucesso": False, "erro": f"Erro ao salvar relatório: {e}", "caminho": str(path)}
+        return {
+            "sucesso": False,
+            "erro": f"Erro ao salvar relatório: {e}",
+            "caminho": str(path),
+        }

@@ -6,6 +6,7 @@ adicionando:
   • validação de contrato após cada etapa (via ``contract.validate_state``);
   • registro estruturado de falhas em ``session.state``.
 """
+
 from __future__ import annotations
 
 from typing import AsyncGenerator
