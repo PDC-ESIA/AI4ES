@@ -401,14 +401,33 @@ def _gerar_pytest_via_llm(
         if arquivos_desc
         else "Nenhum arquivo de apoio foi fornecido.\n"
     )
+    tem_codigo = any(p.suffix in ['.py', '.java', '.js', '.c'] for p in arquivos_apoio)
+    
+    if tem_codigo:
+        instrucao_geracao = (
+            "O usuário forneceu o código fonte junto aos requisitos. "
+            "MAPEAMENTO: Mapeie os cenários de teste contra as funções e métodos reais presentes no código. "
+            "Gere os testes pytest COMPLETOS e integrados, importando as funções corretamente e utilizando asserts que validem as lógicas existentes."
+        )
+    else:
+        instrucao_geracao = (
+            "Nenhum código fonte foi fornecido, apenas o requisito. "
+            "Geração em MODO ESQUELETO (Skeleton): Crie as assinaturas de teste pytest baseadas nos cenários inferidos, "
+            "mas marque-os utilizando o decorator @pytest.mark.skip(reason='Aguardando implementação do código fonte') "
+            "ou utilize 'pass' contendo docstrings claras sobre o comportamento que deverá ser validado."
+        )
+
     prompt = f"""Gere SOMENTE código Python válido para {nome_teste}.
 Artefato: {id_artefato}
 Tipo: {tipo}
 Módulo alvo: {modulo}
-Requisito:
-{conteudo}
+Requisito: {conteudo}
 
 {contexto_arquivos}
+
+DIRETRIZ DE GERAÇÃO CONDICIONAL: 
+{instrucao_geracao}
+
 Regras obrigatórias:
 - Retorne apenas código Python, sem markdown.
 - Use pytest.
