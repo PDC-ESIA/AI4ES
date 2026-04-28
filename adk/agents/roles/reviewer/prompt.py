@@ -1,4 +1,6 @@
-description = "Revisa a implementação: qualidade, bugs, aderência à arquitetura e testes."
+description = (
+    "Revisa a implementação: qualidade, bugs, aderência à arquitetura e testes."
+)
 
 instruction = """
 # PAPEL E PERFIL
