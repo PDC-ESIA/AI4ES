@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
