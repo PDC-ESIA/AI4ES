@@ -45,8 +45,9 @@ class RelatorioSchema(BaseModel):
 
 
 def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
-    """Ferramenta para criar ou sobrescrever um arquivo no disco com o conteúdo fornecido.
-
+    """Ferramenta para criar ou sobrescrever um arquivo no disco com o conteúdo fornecido. 
+    Use esta ferramenta SEMPRE que precisar escrever um arquivo completo do zero.
+ 
     Possui validações de segurança:
     - Só permite extensões conhecidas e seguras
     - Impede escrita em diretórios protegidos (.git, .venv, etc.)
@@ -141,8 +142,41 @@ def tool_salvar_relatorio(
             "bytes_escritos": len(dados.conteudo.encode("utf-8")),
         }
     except Exception as e:
-        return {
-            "sucesso": False,
-            "erro": f"Erro ao salvar relatório: {e}",
-            "caminho": str(path),
-        }
+        return {"sucesso": False, "erro": f"Erro ao salvar relatório: {e}", "caminho": str(path)}
+
+
+def tool_ler_arquivo(caminho: str) -> str:
+    """Lê o conteúdo de um arquivo existente no disco.
+    Use esta ferramenta para ler e analisar códigos ANTES de modificá-los ou corrigi-los.
+    """
+    try:
+        path = Path(caminho)
+        if not path.is_file():
+            return f"Erro: O arquivo '{caminho}' não existe ou não é um arquivo válido."
+        return path.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"Erro inesperado ao ler o arquivo '{caminho}': {str(e)}"
+
+def tool_substituir_trecho(caminho: str, trecho_antigo: str, trecho_novo: str) -> str:
+    """ Use esta ferramenta para editar arquivos JÁ EXISTENTES, evitando reescrever o arquivo inteiro. 
+    Substitui um trecho de código existente (trecho_antigo) por um novo trecho (trecho_novo) em um arquivo.
+    Regra CRÍTICA: O 'trecho_antigo' deve ser uma cópia EXATA do trecho atual do arquivo,
+    incluindo qualquer espaço, indentação e quebra de linha.
+    """
+    try:
+        path = Path(caminho)
+        if not path.is_file():
+            return f"Erro: O arquivo '{caminho}' não existe. Use tool_escrever_arquivo para criar arquivos novos."
+        
+        content = path.read_text(encoding="utf-8")
+        
+        if trecho_antigo not in content:
+            return f"Erro: 'trecho_antigo' não foi encontrado da maneira exata que você informou no arquivo '{caminho}'. Lembre-se, tem que ser IDÊNTICO ao que foi retornado por tool_ler_arquivo."
+            
+        new_file_content = content.replace(trecho_antigo, trecho_novo, 1)
+        path.write_text(new_file_content, encoding="utf-8")
+        
+        return f"Sucesso: O bloco de código foi substituído no arquivo '{caminho}'."
+        
+    except Exception as e:
+        return f"Erro inesperado ao editar o arquivo '{caminho}': {str(e)}"

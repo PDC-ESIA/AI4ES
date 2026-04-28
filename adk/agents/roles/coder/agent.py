@@ -9,6 +9,8 @@ from shared.tools import (
     tool_git_add,
     tool_git_checkout,
     tool_git_commit,
+    tool_ler_arquivo,
+    tool_substituir_trecho,
 )
 from . import prompt
 
@@ -25,5 +27,10 @@ agent = LlmAgent(
         FunctionTool(tool_git_add),
         FunctionTool(tool_git_commit, require_confirmation=True),
         FunctionTool(tool_git_checkout),
+        FunctionTool(tool_ler_arquivo),
+        FunctionTool(tool_substituir_trecho),
     ],
 )
+
+# ADK CLI busca por `root_agent` ao carregar um app diretamente.
+root_agent = agent
