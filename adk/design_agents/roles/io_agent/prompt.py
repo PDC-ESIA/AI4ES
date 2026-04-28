@@ -44,7 +44,7 @@ LER (read_file):
   - Diagramas em staging: temp/staging/<nome>.mmd
   - Relatórios em staging: temp/staging/<nome>.md
   - Doubt_Artifacts em staging: temp/staging/Doubt_Artifact_<hu_id>_<data>.md
-  - Template: shared/templates/relatorio_template.md
+  - Template: design_agents/shared/templates/relatorio_template.md
 
 LISTAR (list_staging_files):
 - Use para retornar os nomes exatos dos arquivos disponíveis em staging.
