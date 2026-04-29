@@ -1,0 +1,178 @@
+{
+    "sistema": "Sistema de Controle de Estoque",
+    "requisitos_funcionais": [
+        {
+            "id": "RF01",
+            "descricao": "O sistema deve permitir que o operador cadastre novos produtos, informando nome, quantidade inicial e preço de custo."
+        },
+        {
+            "id": "RF02",
+            "descricao": "O sistema deve permitir que o operador edite os dados de um produto cadastrado."
+        },
+        {
+            "id": "RF03",
+            "descricao": "O sistema deve permitir que o operador remova um produto do cadastro."
+        },
+        {
+            "id": "RF04",
+            "descricao": "O sistema deve permitir que o operador registre uma entrada de mercadoria, informando o produto, a quantidade recebida e a data da entrada."
+        },
+        {
+            "id": "RF05",
+            "descricao": "O sistema deve permitir que o operador registre uma saída de produtos, informando o produto, a quantidade vendida e a data da saída."
+        },
+        {
+            "id": "RF06",
+            "descricao": "O sistema deve impedir o registro de saída com quantidade superior ao estoque disponível."
+        },
+        {
+            "id": "RF07",
+            "descricao": "O sistema deve atualizar o saldo em estoque automaticamente após cada lançamento de entrada ou saída."
+        },
+        {
+            "id": "RF08",
+            "descricao": "O sistema deve permitir configurar, por produto, um limite mínimo de estoque."
+        },
+        {
+            "id": "RF09",
+            "descricao": "O sistema deve emitir um alerta visível ao operador quando o estoque de um produto atingir ou ficar abaixo do limite mínimo configurado."
+        },
+        {
+            "id": "RF10",
+            "descricao": "O sistema deve exibir o saldo atual de estoque de todos os produtos em uma tela de consulta."
+        },
+        {
+            "id": "RF11",
+            "descricao": "O sistema deve permitir que o operador consulte o histórico de movimentações (entradas e saídas) por produto e por período."
+        },
+        {
+            "id": "RF12",
+            "descricao": "O sistema deve permitir pesquisar produtos por nome."
+        }
+    ],
+    "requisitos_nao_funcionais": [
+        {
+            "id": "RNF01",
+            "categoria": "Portabilidade",
+            "descricao": "O sistema deve funcionar como aplicação desktop em sistemas operacionais Windows."
+        },
+        {
+            "id": "RNF02",
+            "categoria": "Persistência",
+            "descricao": "Os dados devem ser armazenados localmente em banco de dados embarcado, sem necessidade de servidor externo."
+        },
+        {
+            "id": "RNF03",
+            "categoria": "Confiabilidade",
+            "descricao": "O sistema deve garantir que nenhum lançamento de entrada ou saída seja perdido em caso de fechamento inesperado da aplicação."
+        },
+        {
+            "id": "RNF04",
+            "categoria": "Usabilidade",
+            "descricao": "As operações de entrada e saída devem ser concluídas em no máximo três interações a partir da tela principal."
+        },
+        {
+            "id": "RNF05",
+            "categoria": "Desempenho",
+            "descricao": "A consulta de estoque e o histórico de movimentações devem ser carregados em até 2 segundos, mesmo com grande volume de registros."
+        },
+        {
+            "id": "RNF06",
+            "categoria": "Segurança",
+            "descricao": "O acesso ao sistema deve ser protegido por autenticação com usuário e senha."
+        },
+        {
+            "id": "RNF07",
+            "categoria": "Manutenibilidade",
+            "descricao": "O sistema deve permitir exportar os dados de estoque e movimentações em formato CSV para fins de backup e análise externa."
+        },
+        {
+            "id": "RNF08",
+            "categoria": "Rastreabilidade",
+            "descricao": "Todo lançamento deve registrar data, hora e usuário responsável pela operação."
+        }
+    ],
+    "historias_de_usuario": [
+        {
+            "id": "HU01",
+            "titulo": "Cadastrar produto",
+            "historia": "Como operador, quero cadastrar um produto com nome, quantidade inicial e preço de custo, para que ele passe a fazer parte do controle de estoque.",
+            "criterios_de_aceite": [
+                "Nome e quantidade inicial são campos obrigatórios.",
+                "O sistema não deve permitir cadastro duplicado para um mesmo nome de produto.",
+                "O produto deve aparecer imediatamente na tela de consulta de estoque após o cadastro."
+            ]
+        },
+        {
+            "id": "HU02",
+            "titulo": "Registrar entrada de mercadoria",
+            "historia": "Como operador, quero registrar a entrada de um lote de mercadoria, para que o estoque reflita as quantidades recebidas.",
+            "criterios_de_aceite": [
+                "Deve ser possível selecionar o produto a partir de uma lista ou busca por nome.",
+                "A quantidade informada deve ser um número inteiro positivo.",
+                "O saldo do produto deve ser atualizado imediatamente após o lançamento.",
+                "O lançamento deve constar no histórico de movimentações com data e hora."
+            ]
+        },
+        {
+            "id": "HU03",
+            "titulo": "Registrar saída de produto",
+            "historia": "Como operador, quero registrar a saída de produtos a cada venda realizada, para manter o estoque atualizado.",
+            "criterios_de_aceite": [
+                "O sistema deve impedir a saída caso a quantidade solicitada seja maior que o saldo disponível, exibindo mensagem de erro clara.",
+                "O saldo deve ser decrementado imediatamente após o lançamento.",
+                "O lançamento deve constar no histórico com data, hora e quantidade."
+            ]
+        },
+        {
+            "id": "HU04",
+            "titulo": "Ser alertado sobre estoque baixo",
+            "historia": "Como operador, quero receber um alerta quando o estoque de um produto atingir o limite mínimo configurado, para providenciar a reposição a tempo.",
+            "criterios_de_aceite": [
+                "O alerta deve ser exibido na interface de forma destacada (ex.: ícone, cor ou notificação) assim que o limite for atingido ou ultrapassado.",
+                "O alerta deve identificar claramente qual produto está com estoque baixo e exibir o saldo atual.",
+                "O alerta deve persistir até que o estoque seja reposto acima do limite mínimo."
+            ]
+        },
+        {
+            "id": "HU05",
+            "titulo": "Configurar limite mínimo de estoque por produto",
+            "historia": "Como operador, quero definir um limite mínimo de estoque para cada produto, para personalizar o gatilho de alerta conforme a realidade de cada item.",
+            "criterios_de_aceite": [
+                "O limite mínimo deve ser configurável individualmente por produto.",
+                "O campo deve aceitar apenas valores inteiros não negativos.",
+                "A alteração do limite deve ser refletida imediatamente no comportamento dos alertas."
+            ]
+        },
+        {
+            "id": "HU06",
+            "titulo": "Consultar saldo atual do estoque",
+            "historia": "Como operador, quero visualizar o saldo atual de todos os produtos em uma única tela, para ter uma visão geral do estoque da loja.",
+            "criterios_de_aceite": [
+                "A tela deve listar todos os produtos com nome, saldo atual e limite mínimo configurado.",
+                "Produtos com estoque abaixo do limite mínimo devem ter destaque visual diferenciado.",
+                "Deve ser possível ordenar a lista por nome ou por quantidade em estoque."
+            ]
+        },
+        {
+            "id": "HU07",
+            "titulo": "Consultar histórico de movimentações",
+            "historia": "Como operador, quero consultar o histórico de entradas e saídas de um produto em um período específico, para acompanhar a movimentação e identificar inconsistências.",
+            "criterios_de_aceite": [
+                "O histórico deve permitir filtro por produto e por intervalo de datas.",
+                "Cada registro deve exibir tipo de movimentação (entrada ou saída), quantidade, data, hora e usuário responsável.",
+                "O histórico deve ser exibido em ordem cronológica decrescente por padrão."
+            ]
+        },
+        {
+            "id": "HU08",
+            "titulo": "Exportar dados de estoque e movimentações",
+            "historia": "Como operador, quero exportar os dados de estoque e o histórico de movimentações em CSV, para realizar backups e análises em planilhas.",
+            "criterios_de_aceite": [
+                "A exportação deve gerar um arquivo CSV com todos os campos relevantes de cada registro.",
+                "O operador deve poder escolher o diretório de destino do arquivo exportado.",
+                "O sistema deve confirmar o sucesso da exportação com uma mensagem ao operador."
+            ]
+        }
+    ]
+}

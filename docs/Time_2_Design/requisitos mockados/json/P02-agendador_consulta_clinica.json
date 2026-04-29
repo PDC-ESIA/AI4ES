@@ -1,0 +1,183 @@
+{
+    "sistema": "Sistema de Agenda de Clínica",
+    "requisitos_funcionais": [
+        {
+            "id": "RF01",
+            "descricao": "O sistema deve permitir que a recepcionista cadastre novos pacientes, informando nome, data de nascimento, telefone e e-mail."
+        },
+        {
+            "id": "RF02",
+            "descricao": "O sistema deve permitir que a recepcionista edite os dados cadastrais de um paciente."
+        },
+        {
+            "id": "RF03",
+            "descricao": "O sistema deve permitir que a recepcionista pesquise pacientes pelo nome ou por outros dados cadastrais."
+        },
+        {
+            "id": "RF04",
+            "descricao": "O sistema deve exibir a agenda do profissional com os horários disponíveis e ocupados."
+        },
+        {
+            "id": "RF05",
+            "descricao": "O sistema deve permitir que a recepcionista registre uma consulta associando um paciente a um horário disponível."
+        },
+        {
+            "id": "RF06",
+            "descricao": "O sistema deve impedir o agendamento de duas consultas no mesmo horário."
+        },
+        {
+            "id": "RF07",
+            "descricao": "O sistema deve permitir que a recepcionista cancele uma consulta agendada."
+        },
+        {
+            "id": "RF08",
+            "descricao": "O sistema deve permitir que a recepcionista remarcque uma consulta para outro horário disponível."
+        },
+        {
+            "id": "RF09",
+            "descricao": "O sistema deve enviar um e-mail de confirmação ao paciente quando um agendamento for registrado."
+        },
+        {
+            "id": "RF10",
+            "descricao": "O sistema deve enviar um e-mail de notificação ao paciente quando uma consulta for cancelada ou remarcada."
+        },
+        {
+            "id": "RF11",
+            "descricao": "O sistema deve permitir configurar os horários de atendimento disponíveis do profissional (grade de horários)."
+        },
+        {
+            "id": "RF12",
+            "descricao": "O sistema deve exibir um histórico de consultas realizadas e canceladas por paciente."
+        }
+    ],
+    "requisitos_nao_funcionais": [
+        {
+            "id": "RNF01",
+            "categoria": "Segurança",
+            "descricao": "O acesso ao sistema deve ser restrito a usuários autenticados (recepcionista e administrador)."
+        },
+        {
+            "id": "RNF02",
+            "categoria": "Segurança",
+            "descricao": "Os dados dos pacientes devem ser armazenados em conformidade com a LGPD."
+        },
+        {
+            "id": "RNF03",
+            "categoria": "Usabilidade",
+            "descricao": "A interface deve permitir visualizar a agenda em formato de calendário (diário e semanal)."
+        },
+        {
+            "id": "RNF04",
+            "categoria": "Desempenho",
+            "descricao": "O carregamento da agenda do profissional deve ocorrer em até 2 segundos."
+        },
+        {
+            "id": "RNF05",
+            "categoria": "Confiabilidade",
+            "descricao": "O envio do e-mail de confirmação deve ocorrer em até 5 minutos após o registro do agendamento."
+        },
+        {
+            "id": "RNF06",
+            "categoria": "Disponibilidade",
+            "descricao": "O sistema deve estar disponível durante o horário de funcionamento da clínica com no mínimo 99% de uptime."
+        },
+        {
+            "id": "RNF07",
+            "categoria": "Compatibilidade",
+            "descricao": "O sistema deve funcionar nos principais navegadores modernos (Chrome, Firefox, Safari, Edge)."
+        },
+        {
+            "id": "RNF08",
+            "categoria": "Manutenibilidade",
+            "descricao": "O sistema deve registrar logs de operações críticas (criação, cancelamento e remarcação de consultas)."
+        }
+    ],
+    "historias_de_usuario": [
+        {
+            "id": "HU01",
+            "titulo": "Cadastrar paciente",
+            "historia": "Como recepcionista, quero cadastrar um novo paciente com seus dados pessoais e de contato, para que ele possa ser vinculado a agendamentos futuros.",
+            "criterios_de_aceite": [
+                "Os campos nome, telefone e e-mail são obrigatórios.",
+                "O sistema deve validar o formato do e-mail antes de salvar.",
+                "O sistema não deve permitir cadastro duplicado para um mesmo CPF ou e-mail."
+            ]
+        },
+        {
+            "id": "HU02",
+            "titulo": "Pesquisar paciente",
+            "historia": "Como recepcionista, quero pesquisar um paciente pelo nome ou telefone, para localizar rapidamente seu cadastro ao registrar uma consulta.",
+            "criterios_de_aceite": [
+                "A busca deve retornar resultados parciais (ex.: parte do nome).",
+                "Os resultados devem ser exibidos em lista com nome e telefone."
+            ]
+        },
+        {
+            "id": "HU03",
+            "titulo": "Visualizar agenda do profissional",
+            "historia": "Como recepcionista, quero visualizar a agenda do profissional em formato de calendário, para identificar horários livres e ocupados com facilidade.",
+            "criterios_de_aceite": [
+                "A agenda deve exibir visões diária e semanal.",
+                "Horários ocupados e disponíveis devem ter distinção visual clara.",
+                "Deve ser possível navegar entre dias e semanas."
+            ]
+        },
+        {
+            "id": "HU04",
+            "titulo": "Registrar agendamento",
+            "historia": "Como recepcionista, quero agendar uma consulta para um paciente em um horário disponível, para reservar o atendimento na agenda do profissional.",
+            "criterios_de_aceite": [
+                "Apenas horários disponíveis devem poder ser selecionados.",
+                "O sistema deve exibir confirmação após o registro bem-sucedido.",
+                "O paciente deve receber um e-mail de confirmação automaticamente."
+            ]
+        },
+        {
+            "id": "HU05",
+            "titulo": "Cancelar agendamento",
+            "historia": "Como recepcionista, quero cancelar uma consulta agendada, para liberar o horário na agenda e informar o paciente.",
+            "criterios_de_aceite": [
+                "O sistema deve solicitar confirmação antes de efetivar o cancelamento.",
+                "O horário cancelado deve voltar a ficar disponível na agenda imediatamente.",
+                "O paciente deve receber um e-mail informando o cancelamento."
+            ]
+        },
+        {
+            "id": "HU06",
+            "titulo": "Remarcar agendamento",
+            "historia": "Como recepcionista, quero remarcar uma consulta para outro horário disponível, para atender mudanças na disponibilidade do paciente ou do profissional.",
+            "criterios_de_aceite": [
+                "O novo horário deve ser selecionado dentre os horários disponíveis na grade.",
+                "O horário anterior deve ser liberado automaticamente.",
+                "O paciente deve receber um e-mail com o novo horário confirmado."
+            ]
+        },
+        {
+            "id": "HU07",
+            "titulo": "Consultar histórico do paciente",
+            "historia": "Como recepcionista, quero visualizar o histórico de consultas de um paciente, para ter contexto sobre seus atendimentos anteriores.",
+            "criterios_de_aceite": [
+                "O histórico deve listar consultas realizadas e canceladas com data, horário e status.",
+                "Deve ser possível acessar o histórico a partir do cadastro do paciente."
+            ]
+        },
+        {
+            "id": "HU08",
+            "titulo": "Receber confirmação de agendamento por e-mail",
+            "historia": "Como paciente, quero receber um e-mail quando minha consulta for agendada, para ter a confirmação do dia e horário do meu atendimento.",
+            "criterios_de_aceite": [
+                "O e-mail deve conter nome do profissional, data, horário e endereço da clínica.",
+                "O e-mail deve ser enviado em até 5 minutos após o registro do agendamento."
+            ]
+        },
+        {
+            "id": "HU09",
+            "titulo": "Receber notificação de cancelamento ou remarcação por e-mail",
+            "historia": "Como paciente, quero ser notificado por e-mail caso minha consulta seja cancelada ou remarcada, para me organizar com antecedência.",
+            "criterios_de_aceite": [
+                "Em caso de cancelamento, o e-mail deve informar claramente que a consulta foi cancelada.",
+                "Em caso de remarcação, o e-mail deve conter o novo dia e horário confirmados."
+            ]
+        }
+    ]
+}
