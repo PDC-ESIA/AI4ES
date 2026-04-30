@@ -11,7 +11,7 @@ from agents.workflows.coding.agent import agent as sdlc_pipeline
 from . import prompt
 
 root_agent = LlmAgent(
-    model=get_model(),
+    model=get_model(agent_name="orchestrator"),
     name="orchestrator",
     description=prompt.description,
     instruction=prompt.instruction,

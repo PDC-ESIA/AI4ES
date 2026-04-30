@@ -8,7 +8,7 @@ from .tools_requirements import (
 )
 
 agent = LlmAgent(
-    model=get_model(),
+    model=get_model(agent_name="requirements_agent"),
     name="requirements_agent",
     description=prompt.description,
     instruction=prompt.instruction,

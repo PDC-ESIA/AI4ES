@@ -13,7 +13,7 @@ from shared.tools import (
 from . import prompt
 
 agent = LlmAgent(
-    model=get_model(),
+    model=get_model(agent_name="coder_agent"),
     name="coder_agent",
     description=prompt.description,
     instruction=prompt.instruction,

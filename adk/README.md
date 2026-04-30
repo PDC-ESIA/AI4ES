@@ -138,3 +138,23 @@ Na raiz do diretório `adk/`:
 - `test_llm_router.py` — Router de fallback, client e `get_model()`
 - `test_git_tools.py` — Tools Git do coder agent
 - `test_filesystem_tools.py` — Tools de filesystem
+
+## Monitoramento de Consumo
+
+O Langfuse está **ativo por padrão** e registra métricas de tokens, latência e custo por agente.
+
+- **Dashboard:** `http://localhost:3000` (Langfuse self-hosted via Docker Compose)
+- **Credenciais padrão:** `admin@ai4es.local` / `admin1234`
+
+### Verificação manual de consumo
+
+Para checar se o consumo diário atingiu 80% do limite e disparar alerta via webhook:
+
+```bash
+.venv/bin/python -m scripts.check_usage
+```
+
+Variáveis necessárias no `.env`:
+- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`
+- `DAILY_TOKEN_LIMIT` (padrão: 1.000.000)
+- `ALERT_WEBHOOK_URL` (Discord/Slack webhook — opcional, sem ele o alerta vai para stdout)

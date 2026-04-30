@@ -4,7 +4,7 @@ from shared.llm import get_model
 from . import prompt, schemas
 
 agent = LlmAgent(
-    model=get_model(),
+    model=get_model(agent_name="test_planning_agent"),
     name="test_planning_agent",
     description=prompt.description,
     instruction=prompt.instruction,

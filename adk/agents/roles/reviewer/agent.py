@@ -6,7 +6,7 @@ from shared.tools import tool_ler_diff, tool_salvar_relatorio
 from . import prompt
 
 agent = LlmAgent(
-    model=get_model(),
+    model=get_model(agent_name="review_agent"),
     name="review_agent",
     description=prompt.description,
     instruction=prompt.instruction,

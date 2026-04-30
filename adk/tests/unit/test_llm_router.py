@@ -156,10 +156,11 @@ class TestGetModel:
         assert model.model == MODEL_NAME
 
     def test_singleton_router(self):
-        from shared.llm import _client, get_model
+        from shared.llm import _router, get_model
 
-        model1 = get_model()
-        model2 = get_model()
-        # Ambos usam o mesmo client (e portanto o mesmo router)
-        assert model1.llm_client is model2.llm_client
-        assert model1.llm_client is _client
+        model1 = get_model(agent_name="agent_a")
+        model2 = get_model(agent_name="agent_b")
+        # Clients diferentes (agent_name distinto), mas router compartilhado
+        assert model1.llm_client is not model2.llm_client
+        assert model1.llm_client._router is model2.llm_client._router
+        assert model1.llm_client._router is _router
