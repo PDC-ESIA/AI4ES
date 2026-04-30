@@ -110,3 +110,31 @@ Os agentes usam o provedor **`github_copilot/`** via [LiteLLM](https://docs.lite
 - **Orquestrador:** `http://127.0.0.1:8081/dev-ui/?app=orchestrator`
 
 O orquestrador decide entre o pipeline SDLC completo ou delegação pontual (coder / reviewer).
+
+## Testes
+
+Na raiz do diretório `adk/`:
+
+```bash
+# Rodar todos os testes unitários
+.venv/bin/python -m pytest tests/unit/ -v
+
+# Rodar um arquivo específico
+.venv/bin/python -m pytest tests/unit/test_llm_router.py -v
+```
+
+> **Importante:** Use `.venv/bin/python -m pytest` (não `pytest` direto) para garantir que o interpretador correto com as dependências instaladas seja utilizado.
+
+### Estrutura de testes
+
+| Diretório | Propósito |
+|-----------|-----------|
+| `tests/unit/` | Testes unitários (mocks, sem chamadas reais) |
+| `tests/integration/` | Testes de integração (com serviços reais) |
+| `tests/evals/` | Avaliações de qualidade dos agentes |
+
+### Testes disponíveis
+
+- `test_llm_router.py` — Router de fallback, client e `get_model()`
+- `test_git_tools.py` — Tools Git do coder agent
+- `test_filesystem_tools.py` — Tools de filesystem

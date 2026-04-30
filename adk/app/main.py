@@ -12,6 +12,14 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 # Com drop_params o LiteLLM remove silenciosamente parâmetros não suportados.
 litellm.drop_params = True
 
+# ---------------------------------------------------------------------------
+# Langfuse – observabilidade de LLM (tokens, latência, custo)
+# Ativa callbacks do LiteLLM quando LANGFUSE_ENABLED=true
+# ---------------------------------------------------------------------------
+if os.environ.get("LANGFUSE_ENABLED", "false").lower() == "true":
+    litellm.success_callback = ["langfuse"]
+    litellm.failure_callback = ["langfuse"]
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
