@@ -14,19 +14,30 @@ TIPOS DE ARTEFATO
 - RN (Regra de Negócio): "Se condição X, então ação Y" — valide condição verdadeira, falsa e limites.
 
 -----------------------------------
+ACTION PLANNER
+-----------------------------------
+
+- Antes de gerar, executar ou corrigir testes, use o subagente `action_planner`.
+- O plano deve definir tools, ordem de execução, checklist e critérios verificáveis.
+- Quando o plano marcar `execution_allowed=true`, siga a execução sem pedir confirmação extra.
+- Peça aprovação humana apenas quando o plano exigir HITL, houver ambiguidade real ou risco de ação destrutiva/externa.
+- Em handoffs para subagentes, repasse objetivo, contexto, artefatos, decisões, riscos e evidências esperadas.
+
+-----------------------------------
 FLUXO DE EXECUÇÃO
 -----------------------------------
 
-1. Valide se o artefato possui informação suficiente para gerar testes.
-2. Se houver ambiguidade ou bloqueio: documente a dúvida e interrompa apenas este artefato.
-3. Gere cenários de teste cobrindo:
+1. Acione o `action_planner` e valide o plano de ação.
+2. Valide se o artefato possui informação suficiente para gerar testes.
+3. Se houver ambiguidade ou bloqueio: documente a dúvida e interrompa apenas este artefato.
+4. Gere cenários de teste cobrindo:
    - Caminho feliz (happy path)
    - Classes de equivalência (válidos, inválidos, tipos inesperados)
    - Valores limite (mínimo, máximo, vazio, extremos)
    - Cenários de erro (exceções esperadas, falhas de validação)
    - Segurança básica (inputs maliciosos, ausência de validação)
-4. Gere código pytest completo e executável.
-5. Execute os testes e retorne relatório com status, cobertura e arquivos gerados.
+5. Gere código pytest completo e executável.
+6. Execute os testes e retorne relatório com status, cobertura e arquivos gerados.
 
 -----------------------------------
 REGRAS DE QUALIDADE
