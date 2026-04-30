@@ -47,6 +47,65 @@ QA_AGENT_TOOLS = [
             "A entrada e codigo/requisito bruto e primeiro precisa gerar testes.",
         ],
     },
+    {
+        "name": "DoubtArtifactGenerator.generate",
+        "agent": "qa_agent",
+        "category": "doubt_artifact",
+        "summary": "Documenta bloqueios tecnicos quando um artefato nao permite acao segura.",
+        "input_contract": (
+            "Descricao curta da duvida, artefato afetado e motivo tecnico do bloqueio."
+        ),
+        "output_contract": "Artefato de duvida rastreavel para revisao posterior.",
+        "use_when": [
+            "A entrada e contraditoria ou insuficiente para teste verificavel.",
+            "A duvida afeta somente parte dos artefatos e nao deve travar o lote inteiro.",
+        ],
+        "avoid_when": [
+            "O comportamento pode ser inferido com confianca razoavel.",
+            "A duvida e apenas falta de requisito explicito para codigo legivel.",
+        ],
+    },
+    {
+        "name": "qa_runner_agent",
+        "agent": "qa_agent",
+        "category": "test_generation_and_execution",
+        "summary": "Subagente que gera teste a partir de HU/requisito e audita via pytest.",
+        "input_contract": (
+            "Pacote de handoff com requisito/HU, criterios verificaveis, artefatos "
+            "relevantes e objetivo de cobertura."
+        ),
+        "output_contract": (
+            "Payload com arquivo gerado, status de execucao, erros e proxima acao "
+            "quando houver falha corrigivel."
+        ),
+        "use_when": [
+            "O fluxo precisa gerar teste e executar pytest em sequencia.",
+            "O plano exige evidencias de sucesso, falha ou cobertura.",
+        ],
+        "avoid_when": [
+            "Ja existe apenas um arquivo pytest para executar diretamente.",
+            "A entrada ainda precisa de triagem ou esta bloqueada por duvida real.",
+        ],
+    },
+    {
+        "name": "code_fix_agent",
+        "agent": "qa_agent",
+        "category": "test_failure_fix_prompt",
+        "summary": "Analisa logs de erro e cria prompt de correcao para agente codificador.",
+        "input_contract": (
+            "Pacote de handoff com log pytest, arquivo afetado, requisito, plano "
+            "original e divergencia observada."
+        ),
+        "output_contract": "Prompt estruturado de correcao ou resumo do erro identificado.",
+        "use_when": [
+            "A execucao pytest falha e o erro e corrigivel.",
+            "O runner retorna payload solicitando correcao pelo orquestrador.",
+        ],
+        "avoid_when": [
+            "A falha decorre de requisito contraditorio ou ausencia de contexto.",
+            "O usuario pediu apenas relatorio sem tentativa de correcao.",
+        ],
+    },
 ]
 
 
@@ -162,8 +221,26 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
     selected_tools = plan.get("tools", [])
     checklist = plan.get("checklist_inicial", [])
     doubt = plan.get("doubt")
+    risk_assessment = plan.get(
+        "risk_assessment",
+        {
+            "nivel": "medio",
+            "motivos": ["campo ausente; fallback conservador para HITL"],
+            "acoes_reversiveis": False,
+            "efeito_externo": False,
+        },
+    )
+    autonomy_decision = plan.get(
+        "autonomy_decision",
+        {
+            "mode": "hitl_required",
+            "reason": "campo ausente; manter comportamento conservador",
+            "less_prompt_more_action": False,
+        },
+    )
     lifecycle = plan.get("lifecycle", {})
     hitl_checkpoint = plan.get("hitl_checkpoint", {})
+    handoff_context = plan.get("handoff_context", {})
     relatorio_conformidade = plan.get("relatorio_conformidade_esperado", {})
 
     if tipo_entrada not in {"requisito", "codigo", "misto", "desconhecido"}:
@@ -190,6 +267,32 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
     if not doubt and not selected_tools:
         warnings.append("Plano sem doubt deveria selecionar pelo menos uma tool executavel.")
 
+    if not isinstance(risk_assessment, dict):
+        errors.append("risk_assessment deve ser um objeto.")
+        risk_assessment = {}
+    else:
+        if risk_assessment.get("nivel") not in {"baixo", "medio", "alto"}:
+            errors.append("risk_assessment.nivel deve ser baixo, medio ou alto.")
+        if not isinstance(risk_assessment.get("motivos", []), list):
+            errors.append("risk_assessment.motivos deve ser uma lista.")
+        if not isinstance(risk_assessment.get("acoes_reversiveis"), bool):
+            errors.append("risk_assessment.acoes_reversiveis deve ser booleano.")
+        if not isinstance(risk_assessment.get("efeito_externo"), bool):
+            errors.append("risk_assessment.efeito_externo deve ser booleano.")
+
+    if not isinstance(autonomy_decision, dict):
+        errors.append("autonomy_decision deve ser um objeto.")
+        autonomy_decision = {}
+    else:
+        if autonomy_decision.get("mode") not in {"autonomous", "hitl_required"}:
+            errors.append("autonomy_decision.mode deve ser autonomous ou hitl_required.")
+        if not autonomy_decision.get("reason"):
+            errors.append("autonomy_decision.reason e obrigatorio.")
+        if not isinstance(autonomy_decision.get("less_prompt_more_action"), bool):
+            errors.append(
+                "autonomy_decision.less_prompt_more_action deve ser booleano."
+            )
+
     if doubt and lifecycle is None:
         lifecycle = {}
     elif not isinstance(lifecycle, dict):
@@ -197,20 +300,30 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
         lifecycle = {}
 
     if not doubt:
-        if lifecycle.get("status") != "aguardando_validacao_humana":
+        autonomy_mode = autonomy_decision.get("mode")
+        expected_status = (
+            "planejado_para_execucao"
+            if autonomy_mode == "autonomous"
+            else "aguardando_validacao_humana"
+        )
+        expected_execution_allowed = autonomy_mode == "autonomous"
+
+        if lifecycle.get("status") != expected_status:
             errors.append(
-                "lifecycle.status deve ser aguardando_validacao_humana antes da execucao."
+                "lifecycle.status deve refletir a decisao de autonomia "
+                f"({expected_status})."
             )
-        if lifecycle.get("execution_allowed") is not False:
+        if lifecycle.get("execution_allowed") is not expected_execution_allowed:
             errors.append(
-                "lifecycle.execution_allowed deve ser false ate aprovacao humana."
+                "lifecycle.execution_allowed deve refletir a decisao de autonomia."
             )
-        if lifecycle.get("next_step_after_approval") not in {
+        next_step = lifecycle.get("next_step", lifecycle.get("next_step_after_approval"))
+        if next_step not in {
             "executar_plano",
             "revisar_plano",
         }:
             errors.append(
-                "lifecycle.next_step_after_approval deve ser executar_plano ou revisar_plano."
+                "lifecycle.next_step deve ser executar_plano ou revisar_plano."
             )
 
     if doubt and hitl_checkpoint is None:
@@ -220,18 +333,30 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
         hitl_checkpoint = {}
 
     if not doubt:
-        if hitl_checkpoint.get("required") is not True:
-            errors.append("hitl_checkpoint.required deve ser true.")
-        if not hitl_checkpoint.get("checkpoint_id"):
+        hitl_required = autonomy_decision.get("mode") == "hitl_required"
+        if hitl_checkpoint.get("required") is not hitl_required:
+            errors.append(
+                "hitl_checkpoint.required deve refletir autonomy_decision.mode."
+            )
+        if not hitl_required:
+            if risk_assessment.get("nivel") != "baixo":
+                warnings.append(
+                    "Execucao autonoma e recomendada apenas para risco baixo."
+                )
+            if risk_assessment.get("efeito_externo") is True:
+                errors.append("Plano autonomo nao deve ter efeito externo.")
+            if risk_assessment.get("acoes_reversiveis") is False:
+                errors.append("Plano autonomo deve conter apenas acoes reversiveis.")
+        if hitl_required and not hitl_checkpoint.get("checkpoint_id"):
             errors.append("hitl_checkpoint.checkpoint_id e obrigatorio.")
-        if not hitl_checkpoint.get("approval_question"):
+        if hitl_required and not hitl_checkpoint.get("approval_question"):
             errors.append("hitl_checkpoint.approval_question e obrigatorio.")
-        if not hitl_checkpoint.get("pause_reason"):
+        if hitl_required and not hitl_checkpoint.get("pause_reason"):
             errors.append("hitl_checkpoint.pause_reason e obrigatorio.")
         allowed_decisions = hitl_checkpoint.get("allowed_decisions", [])
-        if not isinstance(allowed_decisions, list):
+        if hitl_required and not isinstance(allowed_decisions, list):
             errors.append("hitl_checkpoint.allowed_decisions deve ser lista.")
-        else:
+        elif hitl_required:
             required_decisions = {"aprovar", "rejeitar", "solicitar_ajustes"}
             missing_decisions = required_decisions - set(allowed_decisions)
             if missing_decisions:
@@ -261,6 +386,35 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
     criterios = plan.get("criterios_verificaveis", [])
     if not doubt and (not isinstance(criterios, list) or not criterios):
         errors.append("Plano sem doubt precisa ter criterios_verificaveis.")
+
+    if handoff_context and not isinstance(handoff_context, dict):
+        errors.append("handoff_context deve ser um objeto.")
+        handoff_context = {}
+    elif handoff_context and not doubt:
+        required_handoff_fields = {
+            "objetivo",
+            "contexto_compacto",
+            "artefatos_relevantes",
+            "decisoes_tomadas",
+            "riscos_e_duvidas",
+            "evidencias_necessarias",
+        }
+        missing_handoff_fields = required_handoff_fields - set(handoff_context)
+        if missing_handoff_fields:
+            errors.append(
+                "handoff_context incompleto: "
+                + ", ".join(sorted(missing_handoff_fields))
+            )
+        for list_field in {
+            "artefatos_relevantes",
+            "decisoes_tomadas",
+            "riscos_e_duvidas",
+            "evidencias_necessarias",
+        }:
+            if list_field in handoff_context and not isinstance(
+                handoff_context.get(list_field), list
+            ):
+                errors.append(f"handoff_context.{list_field} deve ser lista.")
 
     if doubt and relatorio_conformidade is None:
         relatorio_conformidade = {}
@@ -341,6 +495,22 @@ def create_hitl_checkpoint(plan_json: str) -> dict[str, Any]:
 
     checkpoint = plan.get("hitl_checkpoint", {})
     lifecycle = plan.get("lifecycle", {})
+    autonomy_decision = plan.get("autonomy_decision", {})
+
+    if checkpoint.get("required") is not True:
+        return {
+            "status": "not_required_autonomous_execution",
+            "checkpoint_id": None,
+            "approval_question": None,
+            "pause_reason": None,
+            "allowed_decisions": [],
+            "execution_allowed": lifecycle.get("execution_allowed", False),
+            "autonomy_mode": autonomy_decision.get("mode"),
+            "message": (
+                "Checkpoint HITL nao criado. O plano foi validado para execucao "
+                "autonoma de baixo risco."
+            ),
+        }
 
     return {
         "status": "awaiting_human_validation",
