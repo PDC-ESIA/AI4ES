@@ -23,6 +23,6 @@ dependencies = [
     "asyncpg>=0.29.0,<1.0.0",
     "boto3>=1.40.15",
     "gunicorn>=20.1.0,<22.0.0",
-    "langfuse>=3.3.5",
+    "langfuse>=2.50,<3.0",
     "openinference-instrumentation-google-adk>=0.1.4",
 ]
