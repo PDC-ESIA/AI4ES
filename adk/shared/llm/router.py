@@ -7,7 +7,6 @@ Cadeia de prioridade:
 """
 
 import os
-from litellm import Router
 
 
 def _build_model_list() -> list[dict]:
@@ -51,13 +50,15 @@ def _build_model_list() -> list[dict]:
     return deployments
 
 
-def create_router() -> Router:
+def create_router():
     """Cria e retorna o Router LiteLLM configurado."""
+    from litellm import Router
+
     return Router(
         model_list=_build_model_list(),
         num_retries=2,
         retry_after=1,
         allowed_fails=1,
         cooldown_time=10,
-        routing_strategy="simple-shuffle",  # respeita order
+        routing_strategy="simple-shuffle",
     )

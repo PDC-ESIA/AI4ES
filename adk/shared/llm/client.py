@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from google.adk.models.lite_llm import LiteLLMClient
-from litellm import Router
 
 
 MODEL_NAME = "adk-model"
@@ -17,7 +16,7 @@ class RouterLiteLLMClient(LiteLLMClient):
     Opcionalmente injeta metadata do Langfuse para rastreamento por agente.
     """
 
-    def __init__(self, router: Router, agent_name: str | None = None):
+    def __init__(self, router, agent_name: str | None = None):
         super().__init__()
         self._router = router
         self._agent_name = agent_name

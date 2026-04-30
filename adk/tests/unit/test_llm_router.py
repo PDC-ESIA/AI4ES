@@ -4,18 +4,37 @@ test_llm_router.py
 Testes unitários para o módulo shared/llm (router, client, get_model).
 
 Execute com:
-    pytest tests/unit/test_llm_router.py -v
+    .venv/bin/python -m pytest tests/unit/test_llm_router.py -v
 """
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from shared.llm.router import _build_model_list, create_router
-from shared.llm.client import RouterLiteLLMClient, MODEL_NAME
+
+MODEL_NAME = "adk-model"
+
+# RouterLiteLLMClient depende de google.adk; importar condicionalmente
+try:
+    from shared.llm.client import RouterLiteLLMClient
+    _has_adk = True
+except (ImportError, TypeError, ModuleNotFoundError):
+    _has_adk = False
+    RouterLiteLLMClient = None
+
+# Verifica se litellm está disponível
+try:
+    from litellm import Router
+    _has_litellm = True
+except (ImportError, TypeError):
+    _has_litellm = False
+
+requires_litellm = pytest.mark.skipif(not _has_litellm, reason="litellm indisponível neste ambiente")
+requires_adk = pytest.mark.skipif(not _has_adk, reason="google.adk indisponível neste ambiente")
 
 
 # ===========================================================================
-# 1. Testes do Router
+# 1. Testes do Router (_build_model_list — sem deps externas)
 # ===========================================================================
 
 
@@ -51,6 +70,7 @@ class TestBuildModelList:
         assert deployments[2]["litellm_params"]["order"] == 3
 
 
+@requires_litellm
 class TestCreateRouter:
     def test_returns_router_instance(self):
         router = create_router()
@@ -63,10 +83,11 @@ class TestCreateRouter:
 
 
 # ===========================================================================
-# 2. Testes do Client
+# 2. Testes do Client (sem deps externas — usa mocks)
 # ===========================================================================
 
 
+@requires_adk
 class TestRouterLiteLLMClient:
     @pytest.mark.asyncio
     async def test_acompletion_delegates_to_router(self):
@@ -132,10 +153,12 @@ class TestRouterLiteLLMClient:
 
 
 # ===========================================================================
-# 3. Testes do get_model()
+# 3. Testes do get_model() (requer litellm + google.adk)
 # ===========================================================================
 
 
+@requires_litellm
+@requires_adk
 class TestGetModel:
     def test_returns_litellm_instance(self):
         from shared.llm import get_model
@@ -156,11 +179,11 @@ class TestGetModel:
         assert model.model == MODEL_NAME
 
     def test_singleton_router(self):
-        from shared.llm import _router, get_model
+        from shared.llm import _get_router, get_model
 
         model1 = get_model(agent_name="agent_a")
         model2 = get_model(agent_name="agent_b")
         # Clients diferentes (agent_name distinto), mas router compartilhado
         assert model1.llm_client is not model2.llm_client
         assert model1.llm_client._router is model2.llm_client._router
-        assert model1.llm_client._router is _router
+        assert model1.llm_client._router is _get_router()
