@@ -22,9 +22,15 @@ adk/
 │       ├── coding/              # Pipeline SDLC completo
 │       └── pr_review/           # Revisão avulsa de PR
 ├── shared/
+│   ├── llm/
+│   │   ├── __init__.py          # get_model(agent_name) — factory com fallback
+│   │   ├── router.py            # litellm.Router (3 níveis)
+│   │   └── client.py            # RouterLiteLLMClient + metadata Langfuse
 │   └── tools/
 │       ├── git.py               # git add, commit, checkout, diff
 │       └── filesystem.py        # criar arquivo, salvar relatório
+├── scripts/
+│   └── check_usage.py           # Verificação manual de consumo diário
 ├── tests/
 │   ├── unit/
 │   ├── integration/
@@ -105,6 +111,25 @@ Os agentes usam o provedor **`github_copilot/`** via [LiteLLM](https://docs.lite
 2. **Primeira autenticação** — Na primeira chamada, siga o device flow no **terminal do uvicorn** (`https://github.com/login/device`).
 3. **Tokens** — Salvos em `~/.config/litellm/github_copilot/` (configurável via `GITHUB_COPILOT_TOKEN_DIR`).
 
+## Fallback de LLM
+
+O ADK usa `litellm.Router` para garantir resiliência. Se o provider primário falhar (rate limit, timeout), a chamada é automaticamente redirecionada:
+
+```
+1. github_copilot/gpt-4          (primário, gratuito)
+2. openrouter/meta-llama/llama-4-scout  (fallback 1, gratuito)
+3. openrouter/google/gemini-2.0-flash   (fallback 2, custo mínimo)
+```
+
+Configuração via `.env`:
+
+```env
+ADK_LLM_MODEL=github_copilot/gpt-4
+ADK_LLM_FALLBACK_MODEL_1=openrouter/meta-llama/llama-4-scout
+ADK_LLM_FALLBACK_MODEL_2=openrouter/google/gemini-2.0-flash
+OPENROUTER_API_KEY=sk-or-v1-...
+```
+
 ## Dev UI
 
 - **Orquestrador:** `http://127.0.0.1:8081/dev-ui/?app=orchestrator`
@@ -141,10 +166,23 @@ Na raiz do diretório `adk/`:
 
 ## Monitoramento de Consumo
 
-O Langfuse está **ativo por padrão** e registra métricas de tokens, latência e custo por agente.
+O Langfuse está **ativo por padrão** e registra métricas de tokens, latência e custo **por agente**.
 
 - **Dashboard:** `http://localhost:3000` (Langfuse self-hosted via Docker Compose)
 - **Credenciais padrão:** `admin@ai4es.local` / `admin1234`
+
+### Fail-fast
+
+Se `LANGFUSE_ENABLED=true` mas a configuração estiver incorreta (variáveis ausentes ou serviço inacessível), a aplicação **não inicia** e exibe mensagem de erro indicando o problema.
+
+Variáveis obrigatórias quando Langfuse está ativo:
+- `LANGFUSE_PUBLIC_KEY`
+- `LANGFUSE_SECRET_KEY`
+- `LANGFUSE_HOST`
+
+### Rastreamento por agente
+
+Cada chamada LLM é identificada no Langfuse pelo nome do agente (`trace_name`). Isso permite filtrar métricas por role no dashboard (ex: consumo do `coder_agent` vs `orchestrator`).
 
 ### Verificação manual de consumo
 

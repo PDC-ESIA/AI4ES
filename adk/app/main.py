@@ -17,6 +17,36 @@ litellm.drop_params = True
 # Ativa callbacks do LiteLLM quando LANGFUSE_ENABLED=true
 # ---------------------------------------------------------------------------
 if os.environ.get("LANGFUSE_ENABLED", "false").lower() == "true":
+    _langfuse_vars = {
+        "LANGFUSE_PUBLIC_KEY": os.environ.get("LANGFUSE_PUBLIC_KEY"),
+        "LANGFUSE_SECRET_KEY": os.environ.get("LANGFUSE_SECRET_KEY"),
+        "LANGFUSE_HOST": os.environ.get("LANGFUSE_HOST"),
+    }
+    _missing = [k for k, v in _langfuse_vars.items() if not v]
+    if _missing:
+        raise RuntimeError(
+            f"LANGFUSE_ENABLED=true mas variáveis obrigatórias ausentes: "
+            f"{', '.join(_missing)}. Configure no .env ou desative com "
+            f"LANGFUSE_ENABLED=false."
+        )
+
+    # Valida conectividade com o Langfuse
+    try:
+        from langfuse import Langfuse
+
+        _lf_client = Langfuse(
+            public_key=_langfuse_vars["LANGFUSE_PUBLIC_KEY"],
+            secret_key=_langfuse_vars["LANGFUSE_SECRET_KEY"],
+            host=_langfuse_vars["LANGFUSE_HOST"],
+        )
+        _lf_client.auth_check()
+    except Exception as e:
+        raise RuntimeError(
+            f"LANGFUSE_ENABLED=true mas não foi possível conectar ao Langfuse "
+            f"({_langfuse_vars['LANGFUSE_HOST']}): {e}. "
+            f"Verifique se o serviço está acessível e as chaves estão corretas."
+        ) from e
+
     litellm.success_callback = ["langfuse"]
     litellm.failure_callback = ["langfuse"]
 
