@@ -1,17 +1,15 @@
-from google.adk.agents import LlmAgent
-
-from shared.llm import get_model
+from shared.factory import create_agent
 from . import prompt, schemas
 from .tools_requirements import (
     tool_ler_prd_arquivo_adk,
     tool_gerar_doubt_artifact_adk,
 )
 
-agent = LlmAgent(
-    model=get_model(agent_name="requirements_agent"),
+agent = create_agent(
     name="requirements_agent",
-    description=prompt.description,
+    model_key="requirements_agent",
     instruction=prompt.instruction,
+    description=prompt.description,
     output_schema=schemas.RequirementsOutput,
     output_key="requirements",
     tools=[
