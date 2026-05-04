@@ -1,17 +1,10 @@
 """
-test_coder_agent.py  [v2 — atualizado para o código corrigido]
-===============================================================
+test_git_tools.py
+=================
 Testes unitários para as tools Git do coder_agent.py.
 
-Estado atual do coder_agent.py
---------------------------------
-✅ tool_git_add          — sem bugs
-✅ trava_seguranca       — chave corrigida para 'sucesso'
-✅ tool_git_commit       — mensagem.split() e '-m' corrigidos
-🐛 tool_git_checkout     — ainda usa 'b' em vez de '-b' (criar=True)
-
 Execute com:
-    pytest test_coder_agent.py -v
+    pytest tests/unit/test_git_tools.py -v
 """
 
 import subprocess
