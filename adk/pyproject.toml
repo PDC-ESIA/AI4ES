@@ -43,9 +43,6 @@ pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["agents"]
-omit = [
-    "tests/*",
-]
 
 [tool.coverage.report]
 show_missing = true
