@@ -4,15 +4,13 @@ design_filesystem.py
 Camada de persistência usada exclusivamente pelo Agente IO.
 Responsabilidade: ler, salvar, promover e listar artefatos em disco.
 
-Logging de operações delegado integralmente ao IOLogger (io_logger.py).
+Logging de operações delegado integralmente ao IOLogger (design_logger.py).
 """
 
-import os
 import shutil
-import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 
 from .design_logger import IOLogger
 

@@ -92,17 +92,18 @@ diagrama_{hu_id}_{descricao_resumida}.mmd
 ```
 
 Exemplos:
+
 - `diagrama_HU-042_processo_compra.mmd`
 - `diagrama_HU-015_processo_login.mmd`
 
 **Cabeçalho obrigatório de cada arquivo gerado:**
 
-```markdown
-<!-- HU de origem: HU-{id} -->
-<!-- Tipo de diagrama: {tipo Mermaid} -->
-<!-- Gerado por: Especialista Mermaid — Agente MVP Time 2 -->
-<!-- Solicitado por: {nome do solicitante} -->
-<!-- Data de criação: {YYYY-MM-DD} -->
+```mermaid
+%% HU de origem: HU-{id}
+%% Tipo de diagrama: {tipo Mermaid}
+%% Gerado por: Especialista Mermaid — Agente MVP Time 2
+%% Solicitado por: {nome do solicitante}
+%% Data de criação: {YYYY-MM-DD}
 ```
 
 ### 3.3 Doubt Artifact
