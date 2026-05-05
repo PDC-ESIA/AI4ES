@@ -8,7 +8,7 @@ from design_agents.roles.mermaid_specialist.agent import agent as mermaid_specia
 from design_agents.roles.markdown_specialist.agent import agent as markdown_specialist
 from design_agents.roles.validator.agent import agent as validator
 from design_agents.roles.io_agent.agent import agent as io_agent
-from adk.design_agents.roles.prototyping_specialist.agent import agent as prototyping_specialist
+from design_agents.roles.prototyping_specialist.agent import agent as prototyping_specialist
 from . import prompt
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
