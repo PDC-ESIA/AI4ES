@@ -54,8 +54,8 @@ glossario_instruction = """
       (ex: Sandbox processando submissões de forma isolada)
     - Tecnologias com função específica no projeto que vai além do uso convencional,
       desde que o documento descreva essa função
-      (ex: nao armazenar a definicao generica do PostgreSQL, mas sim
-      como ele e usado no projeto: armazena todas as submissoes e resultados, unificando os dados de todas as filiais)
+      (ex: não armazenar a definição genérica do PostgreSQL, mas sim
+      como ele é usado no projeto: armazena todas as submissões e resultados, unificando os dados de todas as filiais)
 
     ### ETAPA 4 — Extração e validação
     Para cada termo candidato:
