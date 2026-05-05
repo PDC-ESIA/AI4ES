@@ -10,9 +10,13 @@ from agents.roles.coder.agent import agent as coder_specialist
 from agents.roles.reviewer.agent import agent as reviewer_specialist
 from agents.workflows.coding.agent import agent as sdlc_pipeline
 
+from adk.shared.tools.filesystem import tool_acessar_workspace
+
 from . import prompt
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
+
+WORKSPACE_PATH = os.environ.get("AI4ES_WORKSPACE")
 
 root_agent = LlmAgent(
     model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
@@ -23,5 +27,6 @@ root_agent = LlmAgent(
         AgentTool(agent=sdlc_pipeline),
         AgentTool(agent=coder_specialist),
         AgentTool(agent=reviewer_specialist),
+        tool_acessar_workspace
     ],
 )

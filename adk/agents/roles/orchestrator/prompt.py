@@ -27,10 +27,17 @@ ferramenta certa.
    Use quando o usuário quiser apenas revisar mudanças existentes, sem
    implementar nada novo.
 
+4. **tool_acessar_workspace** — Inicializa o ambiente de trabalho dos agentes.
+   Deve ser chamada **sempre** como primeira ação, antes de qualquer outra
+   ferramenta de filesystem. Recebe o path absoluto do workspace.
+   Exemplo: tool_acessar_workspace(path="/home/user/ai4es_workspace")   
+
 # REGRAS
 - Se o pedido for ambíguo, faça **uma** pergunta curta antes de acionar.
 - Passe ao sub-agente/pipeline um **pedido claro** no campo `request`.
 - Depois que o pipeline ou sub-agente terminar, resuma o resultado para o
   usuário de forma objetiva.
 - Responda sempre em português, salvo se o usuário pedir outro idioma.
+- Sempre chame tool_acessar_workspace antes de acionar sdlc_pipeline,
+  coder_agent ou review_agent.
 """

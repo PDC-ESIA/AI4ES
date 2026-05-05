@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
+from google.adk.tools import ToolContext
 
 EXTENSOES_PERMITIDAS = {
     ".py", ".js", ".ts", ".html", ".css", ".json",
@@ -29,9 +30,10 @@ class RelatorioSchema(BaseModel):
         return v
 
 
-def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
-    """Ferramenta para criar ou sobrescrever um arquivo no disco com o conteúdo fornecido. 
-    Use esta ferramenta SEMPRE que precisar escrever um arquivo completo do zero.
+def tool_criar_arquivo(caminho: str, conteudo: str, tool_context: ToolContext) -> dict:
+    """Ferramenta para criar ou sobrescrever um arquivo no disco com o conteúdo fornecido.
+       Use esta ferramenta SEMPRE que precisar escrever um arquivo completo do zero. 
+>>>>>>> c5d7f2d (feat(code): #240 cria a tool necessária para acessar o workspace)
  
     Possui validações de segurança:
     - Só permite extensões conhecidas e seguras
@@ -41,6 +43,7 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
     Args:
         caminho (str): Caminho relativo ao diretório de trabalho atual 
         conteudo (str): Conteúdo completo a ser escrito no arquivo
+        tool_context (ToolContext): Contexto de comunicação das tools
  
     Returns:
         dict: Contém status da operação, caminho absoluto criado e possíveis erros
@@ -55,15 +58,6 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
  
     path = Path(caminho)
  
-    partes = set(path.parts[:-1])  
-    bloqueados = partes & DIRETORIOS_PROIBIDOS
-    if bloqueados:
-        return {
-            "sucesso": False,
-            "erro": f"Escrita não permitida em diretório protegido: {bloqueados}",
-            "caminho": caminho
-        }
- 
     if path.suffix not in EXTENSOES_PERMITIDAS:
         return {
             "sucesso": False,
@@ -73,39 +67,44 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
             ),
             "caminho": caminho
         }
-
+    
+    workspace = _resolver_workspace(tool_context)
+    if workspace is None:
+        return {"sucesso": False, "erro": "Workspace não inicializado. Chame tool_acessar_workspace primeiro.", "caminho": None}
+ 
+    destino, erro = _validar_caminho_dentro_do_workspace(caminho, workspace)
+    if erro:
+        return {"sucesso": False, "erro": erro, "caminho": caminho}
 
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(conteudo, encoding="utf-8")
- 
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(conteudo, encoding="utf-8")
         return {
             "sucesso": True,
-            "caminho": str(path.resolve()),
+            "erro": None,
+            "caminho": str(destino),
             "bytes_escritos": len(conteudo.encode("utf-8")),
-            "erro": None
         }
- 
     except PermissionError as e:
         return {
             "sucesso": False,
             "erro": f"Permissão negada: {e}",
-            "caminho": caminho
+            "caminho": str(destino)
         }
     except Exception as e:
         return {
-            "sucesso": False,
-            "erro": f"Erro inesperado: {e}",
-            "caminho": caminho
-        }
- 
+            "sucesso": False, 
+            "erro": f"Erro ao salvar arquivo: {e}", 
+            "caminho": str(destino)
+        } 
 
 
-def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md") -> dict:
+def tool_salvar_relatorio(conteudo: str, tool_context: ToolContext, nome_arquivo: str = "doubt_artifact_revisao.md") -> dict:
     """Salva relatório de revisão em Markdown no disco.
 
     Args:
         conteudo: Texto do relatório.
+        tool_context: Contexto ADK da sessão.
         nome_arquivo: Nome do arquivo (padrão: doubt_artifact_revisao.md).
 
     Returns:
@@ -116,26 +115,30 @@ def tool_salvar_relatorio(conteudo: str, nome_arquivo: str = "doubt_artifact_rev
     except ValidationError as e:
         return {"sucesso": False, "erro": f"Parâmetros inválidos: {e}", "caminho": None}
 
-    path = Path(dados.nome_arquivo)
-
-    if path.is_absolute() or ".." in path.parts:
+    workspace = _resolver_workspace(tool_context)
+    if workspace is None:
         return {
             "sucesso": False,
-            "erro": "Caminho deve ser relativo e sem '..'.",
-            "caminho": str(path),
+            "erro": "Workspace não inicializado. Chame tool_acessar_workspace primeiro.",
+            "caminho": None,
         }
+        
+    destino, erro = _validar_caminho_dentro_do_workspace(dados.nome_arquivo, workspace)
+    if erro:
+        return {"sucesso": False, "erro": erro, "caminho": dados.nome_arquivo}
 
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(dados.conteudo, encoding="utf-8")
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(dados.conteudo, encoding="utf-8")
         return {
             "sucesso": True,
             "erro": None,
-            "caminho": str(path.resolve()),
+            "caminho": str(destino.resolve()),
             "bytes_escritos": len(dados.conteudo.encode("utf-8")),
         }
     except Exception as e:
-        return {"sucesso": False, "erro": f"Erro ao salvar relatório: {e}", "caminho": str(path)}
+        return {"sucesso": False, "erro": f"Erro ao salvar relatório: {e}", "caminho": str(destino)}
+
 
 
 def tool_ler_arquivo(caminho: str) -> str:
@@ -173,3 +176,64 @@ def tool_substituir_trecho(caminho: str, trecho_antigo: str, trecho_novo: str) -
         
     except Exception as e:
         return f"Erro inesperado ao editar o arquivo '{caminho}': {str(e)}"
+
+def _resolver_workspace(tool_context: ToolContext) -> Path | None:
+    raw = tool_context.state.get("workspace_path")
+    if not raw:
+        return None
+    return Path(raw).resolve()
+ 
+def _validar_caminho_dentro_do_workspace(caminho: str, workspace: Path) -> tuple[Path, str | None]:
+
+    destino = (workspace / caminho).resolve()
+
+    try:
+        destino.relative_to(workspace)  
+    except ValueError:
+        return destino, f"Caminho fora do workspace: '{caminho}'"
+    
+    partes = set(destino.relative_to(workspace).parts)
+    bloqueados = partes & DIRETORIOS_PROIBIDOS
+    
+    if bloqueados:
+        return destino, f"Escrita não permitida em diretório protegido: {bloqueados}"
+    return destino, None
+
+def tool_acessar_workspace(path: str, tool_context: ToolContext) -> dict:
+    """Valida e registra o diretório de trabalho dos agentes na sessão.
+
+    Deve ser chamada pelo orquestrador antes de qualquer outra tool de filesystem.
+    Persiste o path resolvido em tool_context.state['workspace_path'] para que
+    tool_criar_arquivo e tool_salvar_relatorio operem sempre dentro desse diretório.
+
+    Args:
+        path: Caminho absoluto ou relativo ao diretório de trabalho.
+        tool_context: Contexto ADK da sessão.
+
+    Returns:
+        dict com status, workspace resolvido, total e lista de arquivos.
+    """
+    workspace = Path(path).resolve()
+
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    if not workspace.is_dir():
+        return {
+            "status": "erro", 
+            "mensagem": f"Path não é um diretório: {workspace}"}
+
+    tool_context.state["workspace_path"] = str(workspace)
+
+    arquivos = [
+        str(p.relative_to(workspace))
+        for p in workspace.rglob("*")
+        if p.is_file()
+        and not any(part in DIRETORIOS_PROIBIDOS for part in p.parts)
+    ]
+
+    return {
+        "status": "ok",
+        "workspace": str(workspace),
+        "total_arquivos": len(arquivos),
+        "arquivos": arquivos[:50],
+    }
