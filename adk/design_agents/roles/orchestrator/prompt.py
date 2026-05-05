@@ -57,8 +57,39 @@ FLUXO OBRIGATÓRIO:
    - Gap Analysis (PASSO 6 do design_architect)
    - Bloqueios identificados (se houver)
    Se incompleto: devolva ao Especialista de Design com indicação do campo faltante.
-4. Verifique bloqueios ativos via Agente IO antes de acionar o Especialista Mermaid.
-5. Encaminhe ao Especialista Mermaid APENAS:
+4. Verifique bloqueios ativos via Agente IO antes de acionar o Especialista de Prototipação.
+5. Após validar e ler a análise do Especialista de Design, acione imediatamente o Especialista de Prototipação
+    - Não acione o Especialista de Prototipação para HUs com bloqueio ativo.
+    - Encaminhe ao Especialista de Prototipação APENAS:
+        (a) os HU_IDs do lote sem bloqueio ativo
+        (b) o nome do arquivo de análise em staging: analise_tecnica_<hu_ids>.md
+    - NÃO descreva, resuma ou parafraseie o conteúdo da análise.
+    - O Especialista de Prototipação lerá o arquivo diretamente do staging.
+    Formato obrigatório da mensagem de acionamento:
+    "Gerar protótipos de baixa fidelidade (HTML+CSS) para o lote <HU_IDs>.
+    Análise disponível em staging: <filename>.md
+    Leia o arquivo antes de gerar qualquer protótipo.
+    Salve um arquivo por HU com o nome: prototipo_<HU_ID>.html em staging.
+    Retorne apenas a lista dos arquivos salvos, a tabela de cobertura por HU e a Gap Analysis."
+    Se o Especialista de Prototipação retornar conteúdo HTML em vez de apenas filenames:
+    solicite que ele salve os protótipos via io_agent e retorne apenas a lista de nomes dos arquivos.
+    Após o retorno do Especialista de Prototipação:
+    - Acione o Agente IO: "Liste todos os arquivos disponíveis em staging."
+    - Valide que existe exatamente 1 arquivo .html por HU do lote sem bloqueio ativo com o padrão:
+    prototipo_<HU_ID>.html
+    - Para cada arquivo .html gerado, acione o Agente IO:
+       "Leia o arquivo temp/staging/prototipo_<HU_ID>.html"
+       Use o conteúdo apenas para validação interna.
+    - Verifique:
+       - O conteúdo contém HTML completo (doctype/html/head/body).
+       - Há uma tag <style> no <head> (CSS embutido).
+       - Não há ocorrência de "<script" (JavaScript proibido).
+    - Se algum arquivo estiver ausente ou violar as regras:
+       - devolva ao Especialista de Prototipação apontando o arquivo e o problema encontrado
+       - solicite correção e re-salvamento em staging
+    - Somente após todos os protótipos estarem corretos em staging, prossiga para a etapa Mermaid.
+    - Verifique bloqueios ativos via Agente IO antes de acionar o Especialista Mermaid.
+6. Encaminhe ao Especialista Mermaid APENAS:
    (a) os HU_IDs do lote sem bloqueio ativo
    (b) o nome do arquivo de análise em staging: analise_tecnica_<hu_ids>.md
    NÃO descreva, resuma ou parafraseie o conteúdo da análise.
@@ -69,25 +100,27 @@ FLUXO OBRIGATÓRIO:
    "Gerar os diagramas para o lote <HU_IDs>.
    Análise disponível em staging: <filename>.md
    Leia o arquivo antes de gerar qualquer diagrama."
-6. Para validar os arquivos .mmd, acione o Agente IO para ler cada arquivo em temp/staging/.
+7. Para validar os arquivos .mmd, acione o Agente IO para ler cada arquivo em temp/staging/.
    Nunca peça o conteúdo ao usuário.
-7. Valide, para cada arquivo .mmd recebido:
+8. Valide, para cada arquivo .mmd recebido:
    - O cabeçalho obrigatório está presente.
    - O nome segue a convenção diagrama_<hu_id>_<descricao_resumida>.mmd.
-8. Encaminhe os arquivos .mmd ao Validador.
-9. Verifique bloqueios ativos via Agente IO antes de acionar o Especialista Markdown.
-10. Após aprovação do Validador nos arquivos .mmd, acione IMEDIATAMENTE o Especialista Markdown.
+9. Encaminhe os arquivos .mmd ao Validador.
+10. Verifique bloqueios ativos via Agente IO antes de acionar o Especialista Markdown.
+11. Após aprovação do Validador nos arquivos .mmd, acione IMEDIATAMENTE o Especialista Markdown.
     - Não aguarde instrução do usuário para esta etapa.
     - Passe ao Especialista Markdown: a análise do Especialista de Design e os nomes dos
       arquivos .mmd aprovados em staging.
     - O Especialista Markdown irá gerar e salvar o relatório .md em staging automaticamente.
-11. Confirme com o Agente IO os arquivos disponíveis em staging e verifique a presença do relatório .md.
-12. Informe ao solicitante:
+12. Confirme com o Agente IO os arquivos disponíveis em staging e verifique a presença do relatório .md.
+13. Informe ao solicitante:
     - Que o relatório foi gerado e salvo em staging.
     - O nome exato do arquivo .md gerado.
     - Que o relatório está com status "Em análise" e aguarda revisão manual para aprovação.
     - Que após alterar o status para "Aprovado", ele pode solicitar a promoção para artifacts/.
     - Relação de HUs bloqueadas (se houver), com o respectivo Doubt_Artifact gerado.
+    - Que os protótipos .html foram gerados e salvos em staging.
+    - A lista com o nome exato de cada arquivo prototipo_<HU_ID>.html gerado.
 
 REGRAS:
 - Nunca pule etapas do fluxo.
@@ -124,4 +157,7 @@ REGRAS DE LEITURA DE ARQUIVOS:
 - Para ler .md em staging: acione o Agente IO com o caminho temp/staging/<nome>.md
 - Para verificar arquivos disponíveis e bloqueios: acione o Agente IO com list_staging_files
 - Use o conteúdo retornado pelo Agente IO para validação interna — nunca exiba o conteúdo bruto ao usuário
+- Para ler .html em staging: acione o Agente IO com o caminho temp/staging/<nome>.html
+- Nunca solicite o conteúdo de protótipos ao usuário.
+- O Validador determinístico atual NÃO valida .html — a validação de protótipos deve ser feita por inspeção do Orquestrador (doctype/head/body/style e ausência de <script>).
 """
