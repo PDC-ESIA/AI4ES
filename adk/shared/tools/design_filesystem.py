@@ -1,5 +1,5 @@
 """
-filesystem.py
+design_filesystem.py
 ─────────────
 Camada de persistência usada exclusivamente pelo Agente IO.
 Responsabilidade: ler, salvar, promover e listar artefatos em disco.
@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from .logger import IOLogger
+from .design_logger import IOLogger
 
 def _find_root(start_path: Path, target: str = "adk") -> Path:
     for parent in start_path.parents:
