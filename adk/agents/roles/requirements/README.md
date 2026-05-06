@@ -1,147 +1,152 @@
-# Agente Requirements
-**Time:** Codificação   
-**Branch:** feature/140-optimizer-requirements  
-**Modelo:** github_copilot/gpt-4 (padrão) — sobrescreva com `ADK_LLM_MODEL`
+# Requirements Agent
 
----
+**Time:** Requisitos
+**Modelo padrão:** `github_copilot/gpt-4`
+**Override:** `ADK_LLM_MODEL`
 
-## O que este agente faz
+## Objetivo
 
-Recebe pedidos de desenvolvimento ou PRDs brutos e os transforma em requisitos
-funcionais atômicos, verificáveis e estruturados para consumo pelo agente de
-codificção do pipeline.
+O Requirements Agent transforma solicitações em linguagem natural, PRDs e documentos de requisitos em uma análise estruturada para o pipeline de engenharia.
 
-O agente NÃO implementa código. NÃO sugere arquitetura. Apenas analisa e estrutura requisitos.
+O agente não implementa código, não define arquitetura e não escreve testes. Ele produz artefatos de requisitos claros, verificáveis e rastreáveis.
 
----
+## Contrato de Saída
 
-## Estrutura de arquivos
-
-```
-agents/roles/requirements/
-├── __init__.py
-├── agent.py                  
-├── prompt.py                 
-├── schemas.py                
-├── tools_requirements.py     — tools: leitura de PRD e Doubt Artifact
-└── README.md
-```
-
----
-
-## Tipos de entrada suportados
-
-**Tipo 1 — Pedido direto no terminal do ADK:**
-```
-crie uma página HTML com o conteúdo Hello World
-altere o conteúdo da página para Hello Brasil
-implemente uma função Python que ordena uma lista
-```
-
-**Tipo 2 — PRD bruto como texto no prompt:**
-```
-Módulo: Autenticação
-O sistema deve suportar login via e-mail e senha.
-Deve gerar token JWT com expiração de 8 horas.
-...
-```
-
-**Tipo 3 — PRD bruto como arquivo:**
-```
-Analise o PRD em: /caminho/absoluto/para/arquivo.md
-```
-IMPORTANTE: Para enviar um PRD como arquivo, informe o caminho
-absoluto diretamente no texto. O upload pela Dev UI
-não aciona a tool de leitura de arquivo.
-
-Exemplo correto:
-Analise o PRD em: C:\caminho\absoluto\para\arquivo.md
-
-Não use o botao de upload da Dev UI para PRDs.
----
-
-## Saída esperada
-
-O agente sempre retorna JSON estruturado no seguinte formato:
+A saída principal do agente é `analysis_result`, seguindo o schema `AnalystOutput`:
 
 ```json
 {
-  "requirements": [
-    {
-      "id": "REQ-001",
-      "description": "Criar arquivo index.html com conteúdo Hello World",
-      "acceptance_criteria": "Arquivo existe e exibe Hello World no navegador"
-    },
-    {
-      "id": "REQ-002",
-      "description": "...",
-      "acceptance_criteria": "..."
-    }
-  ]
+  "status": "concluido",
+  "user_stories": [],
+  "functional_requirements": [],
+  "non_functional_requirements": [],
+  "use_cases": [],
+  "business_rules": [],
+  "glossary": [],
+  "doubt_generated": false,
+  "summary": "Resumo objetivo do processamento."
 }
 ```
 
----
+Esse contrato substitui a saída simplificada baseada apenas em `requirements`.
 
-## Tools disponíveis
+## Estrutura
 
-| Tool | Quando é chamada |
-|------|-----------------|
-| `tool_ler_prd_arquivo` | A entrada é um caminho de arquivo .md ou .txt |
-| `tool_gerar_doubt_artifact` | A entrada é ambígua ou contraditória |
-
----
-
-## Protocolo de Doubt Artifact
-
-Quando o agente detecta ambiguidade ou contradição na entrada, ele gera
-automaticamente o arquivo `Doubt_Artifact_requirements.md` e pausa a execução.
-
-Exemplo de entrada que dispara o Doubt Artifact:
-```
-altere o sistema para funcionar melhor e ser mais rápido
+```text
+agents/roles/requirements/
+├── __init__.py
+├── agent.py
+├── prompt.py
+├── schemas.py
+├── few_shot.py
+├── data/
+│   ├── chunks/
+│   └── matrix/
+├── knowledge/
+│   └── glossario.md
+└── README.md
 ```
 
-O arquivo gerado fica na raiz de `adk/` para análise.
+## Funcionamento
 
----
+O agente opera em duas camadas:
 
-## Como testar localmente
+1. `requirements_agent`: coordena a análise global e gera HUs, RFs, RNFs, UCs, regras de negócio, glossário e resumo.
+2. `glossario_agent`: sub-agente especializado em extrair termos técnicos e manter `knowledge/glossario.md`.
 
-### 1. Cenários de teste sugeridos
+## Tipos de Entrada
 
-**Cenário 1 — Pedido simples (deve retornar JSON com requisitos):**
-```
-crie uma página HTML com o conteúdo Hello World
-```
+### Texto direto
 
-**Cenário 2 — Entrada ambígua (deve gerar Doubt Artifact):**
-```
-altere o sistema para funcionar melhor e ser mais rápido
-```
+Use para pedidos simples ou descrições curtas:
 
-**Cenario 3 — PRD com multiplos requisitos:**
-```
-Módulo: Autenticação de Usuários
-O sistema deve suportar dois perfis: Aluno e Professor.
-Login via e-mail e senha com token JWT de 8 horas.
-Bloqueio após 5 tentativas falhas consecutivas por 15 minutos.
-Professores podem criar turmas e visualizar relatórios.
+```text
+Preciso de um sistema de login com recuperação de senha por e-mail.
 ```
 
----
+### PRD como texto
 
-## Decisões técnicas
+Use para documentos colados diretamente no prompt:
 
-**Por que output_schema + tools juntos?**
-As tools deste agente (`tool_ler_prd_arquivo` e `tool_gerar_doubt_artifact`) são de suporte ao
-processamento — não de geração de saída — portanto não conflitam com o schema.
+```text
+Módulo: Autenticação
+O sistema deve permitir cadastro, login, logout e recuperação de senha.
+```
 
-**Por que apenas 2 tools?**
-As tools de salvar Context Windows em JSON e Markdown foram removidas pois
-a saída estruturada agora é entregue diretamente via `output_schema`,
-consumida pelo próximo agente no pipeline sem necessidade de arquivos intermediários.
+### Documento em arquivo
 
-**Schema adotado:**
-O schema segue exatamente o padrao definido garantindo compatibilidade com os demais agentes do pipeline.
+Use um caminho para `.md`, `.txt` ou `.pdf` quando o conteúdo estiver em arquivo:
 
+```text
+Analise o documento em: agents/roles/requirements/data/matrix/prd.md
+```
+
+Para documentos grandes, coloque o arquivo em `agents/roles/requirements/data/matrix/` e use as tools de fatiamento.
+
+## Tools
+
+As tools seguem um modelo misto:
+
+- Tools reutilizáveis ficam em `shared/tools`.
+- Lógica estritamente específica do papel Requirements pode ficar no diretório do agente.
+
+Tools usadas pelo agente:
+
+| Tool | Uso |
+| --- | --- |
+| `extract_text` | Ler `.md`, `.txt`, `.pdf` ou primeiro arquivo suportado em um diretório. |
+| `run_slicer` | Fragmentar documentos grandes em chunks. |
+| `ler_chunk` | Ler um chunk específico. |
+| `run_search` | Buscar termos nos chunks. |
+| `gerar_doubt_artifact` | Registrar ambiguidades, contradições ou lacunas. |
+| `tool_salvar_artefato_requisito` | Persistir HU, RF, RNF, RN, UC ou glossário em Markdown. |
+| `check_glossary` | Verificar se um termo já existe no glossário. |
+| `add_to_glossary` | Adicionar ou atualizar termos no glossário. |
+| `glossario_agent` | Delegar extração e validação de termos técnicos. |
+
+## Configuração
+
+No ambiente `adk/`, configure:
+
+```env
+ADK_LLM_MODEL=github_copilot/gpt-4
+ADK_AGENT_DATA_DIR=agents/roles/requirements
+```
+
+`ADK_AGENT_DATA_DIR` define a base para `data/matrix`, `data/chunks` e `knowledge/glossario.md`.
+
+## Doubt Artifact
+
+Quando a entrada tiver ambiguidade ou lacuna que impeça especificação confiável, o agente deve usar `gerar_doubt_artifact` e marcar `doubt_generated=true`.
+
+Se o bloqueio afetar apenas parte do escopo, o agente pode gerar os itens seguros e registrar a pendência no `summary`.
+
+## Como Testar
+
+### Pedido simples
+
+```text
+Crie requisitos para uma funcionalidade de login com e-mail e senha.
+```
+
+Resultado esperado: `analysis_result` com HUs e RFs coerentes.
+
+### Entrada ambígua
+
+```text
+Faça o sistema funcionar melhor e ser mais rápido.
+```
+
+Resultado esperado: Doubt Artifact gerado e `status` como `bloqueado` ou pendência documentada.
+
+### Documento-matriz
+
+1. Coloque um `.md`, `.txt` ou `.pdf` em `agents/roles/requirements/data/matrix/`.
+2. Peça a análise do documento.
+3. Verifique chunks em `data/chunks/`, glossário em `knowledge/glossario.md` e saída `analysis_result`.
+
+## Decisões de Merge
+
+Este agente preserva a proposta completa do Time 1.
+
+O commit `a1791fdd32c1eaad06e1691c63be8e5a84e4756e` foi usado como referência seletiva para padronizações, especialmente documentação, organização de tools e abandono das antigas Context Windows. A simplificação para `RequirementsOutput` com apenas `id`, `description` e `acceptance_criteria` não foi mantida como contrato principal.
