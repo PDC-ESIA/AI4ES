@@ -45,25 +45,27 @@ class DoubtArtifactGenerator:
 - **Resposta Bruta (Raw Output):** `{system_raw_response}`
 
 ## 5. Próximos Passos (Resolução)
-- [ ] Ajustar System Prompt ou In-Context Learning (Few-shot).
-- [ ] Implementar retry automático ou truncamento de tokens.
-- [ ] Corrigir Tool/API ou refinar esquema de parâmetros (Pydantic/JSON Schema).
-- [ ] Esclarecer intenção com o usuário/coordenação.
+- [{check_prompt}] Ajustar System Prompt ou In-Context Learning (Few-shot).
+- [{check_retry}] Implementar retry automático ou truncamento de tokens.
+- [{check_tool}] Corrigir Tool/API ou refinar esquema de parâmetros (Pydantic/JSON Schema).
+- [{check_clarify}] Esclarecer intenção com o usuário/coordenação.
 
 ---
 **Gerado automaticamente via ADK Tool v1.0**
-*Status da Validação (Coordenação Técnica): [ ] Aprovado | [ ] Reprovado*
+*Status da Validação (Coordenação Técnica): [{check_aprovado}] Aprovado | [{check_reprovado}] Reprovado*
 """
 
     @classmethod
-    def generate(cls, id_artefato: str, motivo: str, caminho_base: Path, trigger_type: str = "loop") -> str:
+    def generate(cls, id_artefato: str, motivo: str, trecho_suspeito: str, caminho_base: Path, 
+                 trigger_type: str = "loop", resolution_type: str = None, status_validacao: str = None) -> str:
         """Gera arquivo de doubt artifact a partir de template.
 
-        Args:
-            id_artefato: Identificador do artefato.
-            motivo: Motivo da geração do artifact.
-            caminho_base: Path base para diretório de doubt_artifacts.
-            trigger_type: Tipo de gatilho (loop, syntax, timeout, etc.).
+    Args:
+        id_artefato: Identificador do artefato.
+        motivo: Motivo da geração do artifact.
+        trecho_suspeito: O trecho exato de código, regra ou prompt que causou a dúvida ou ambiguidade.
+        caminho_base: Path base para diretório de doubt_artifacts.
+        trigger_type: Tipo de gatilho (loop, syntax, timeout, etc.).
 
         Returns:
             str: Caminho completo do arquivo gerado.
@@ -72,9 +74,10 @@ class DoubtArtifactGenerator:
             KeyError: Se faltar chave no template de dados.
         """
         # 1. Lógica de Caminho 
-        doubt_dir = caminho_base.parent / "doubt_artifacts"
+        qa_agent_dir = Path(__file__).resolve().parent.parent 
+        doubt_dir = qa_agent_dir / "doubt_artifacts"
         doubt_dir.mkdir(parents=True, exist_ok=True)
-
+        
         # 2. Timestamps e Nome do Arquivo
         timestamp_file = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
         timestamp_display = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -88,11 +91,18 @@ class DoubtArtifactGenerator:
             "timestamp": timestamp_display,
             "module_name": "qa_agent / pytest_runner",
             "reason_for_invalidation": motivo,
-            "suspect_code_or_prompt": "Verificar logs do pytest_runner",
+            "suspect_code_or_prompt": trecho_suspeito,
             "input_artifact_name": "N/A",
             "action_attempted": "Execução de testes",
-            "system_raw_response": "ERR_LOOP detectado"
+            "system_raw_response": "ERR_LOOP detectado",
+            "check_aprovado": "x" if status_validacao == "aprovado" else " ",
+            "check_reprovado": "x" if status_validacao == "reprovado" else " "
         }
+
+        resolutions = ["prompt", "retry", "tool", "clarify"]
+        for res in resolutions:
+        # Marca com 'x' se o tipo bater, senão deixa vazio
+            data[f"check_{res}"] = "x" if resolution_type == res else " "
 
         # 4. Lógica dos Checkboxes
         triggers = [
@@ -107,9 +117,19 @@ class DoubtArtifactGenerator:
         try:
             content = cls.TEMPLATE.format(**data)
             caminho_final.write_text(content, encoding="utf-8")
+            # Persistencia
+            print(f"\n[LOG] Sucesso: Artefato de dúvida persistido localmente em: {caminho_final}")
+            
+            # Pausa Human-in-the-Loop
+            mensagem_retorno = (
+            f"SUCESSO: Artefato salvo em {caminho_final}. "
+            f"INSTRUÇÃO DO SISTEMA: Pare o pipeline AGORA. Comunique a dúvida ao usuário no chat "
+            f"e peça instruções sobre como resolver os requisitos antes de continuar."
+        )
+            
         except KeyError as e:
             # Caso falte alguma chave no dicionário 'data'
             print(f"Erro ao gerar template: Chave faltando {e}")
             raise
 
-        return str(caminho_final)
+        return mensagem_retorno
