@@ -176,10 +176,12 @@ CONVENÇÃO DE NOMENCLATURA:
 diagrama_{hu_id}_{descricao_resumida}.mmd
 
 CABEÇALHO OBRIGATÓRIO:
-<!-- Tipo de diagrama: {tipo Mermaid} -->
-<!-- Gerado por: Especialista Mermaid — Agente MVP Time 2 -->
-<!-- Solicitado por: {nome do solicitante} -->
-<!-- Data de criação: {YYYY-MM-DD} -->
+```mermaid
+%% HU de origem: HU-{id}
+%% Tipo de diagrama: {tipo Mermaid}
+%% Gerado por: Especialista Mermaid — Agente MVP Time 2
+%% Solicitado por: {nome do solicitante}
+%% Data de criação: {YYYY-MM-DD}
 ```
 
 ---
