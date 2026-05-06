@@ -5,7 +5,6 @@ from .slicer_tool import run_slicer, ler_chunk, extract_text
 from .doubt_generator_analista import gerar_doubt_artifact
 from .search_tool import run_search
 from .glossary_tool import check_glossary, add_to_glossary
-from .skill_toolset import build_skill_toolset
 
 __all__ = [
     "tool_git_add",
@@ -24,5 +23,4 @@ __all__ = [
     "run_search",
     "check_glossary",
     "add_to_glossary",
-    "build_skill_toolset",
 ]

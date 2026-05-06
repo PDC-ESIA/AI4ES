@@ -1,5 +1,4 @@
 import os
-
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
@@ -15,21 +14,13 @@ from shared.tools import (
     run_search,
     check_glossary,
     add_to_glossary,
-    build_skill_toolset,
 )
-from .skills.hu_skill import hu_skill
-from .skills.rf_skill import rf_skill
-from .skills.rnf_skill import rnf_skill
-from .skills.rn_skill import rn_skill
-from .skills.uc_skill import uc_skill
-from . import prompt
+from . import prompt, schemas
 
 _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
 
-artefatos_toolset = build_skill_toolset(
-    [hu_skill, rf_skill, rnf_skill, rn_skill, uc_skill]
-)
 # ── Sub-Agente de Glossário ──────────────────────────────────────────────────
+
 glossario_agent = LlmAgent(
     name="glossario_agent",
     model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4o")),
@@ -46,11 +37,11 @@ glossario_agent = LlmAgent(
 
         ## SEU FLUXO DE TRABALHO OBRIGATÓRIO:
 
-        ### ETAPA 1 - Leitura do documento-matriz
+        ### ETAPA 1 — Leitura do documento-matriz
         Use a tool `extract_text` passando o caminho `data/matrix/` como argumento.
         A tool encontrará o arquivo automaticamente. Analise o conteúdo integralmente.
 
-        ### ETAPA 2 - Identificação de termos técnicos
+        ### ETAPA 2 — Identificação de termos técnicos
         A partir do texto completo, identifique TODOS os termos que podem
         enriquecer o contexto de uma especificação de requisitos:
         - Siglas técnicas (ex: LDAP, API, REST, SQL)
@@ -60,11 +51,11 @@ glossario_agent = LlmAgent(
 
         NÃO inclua termos genéricos ou de uso comum que não precisem de definição.
 
-        ### ETAPA 3 - Fatiamento do documento
+        ### ETAPA 3 — Fatiamento do documento
         Use a tool `run_slicer` sem argumentos. Ela encontrará o arquivo automaticamente
         e criará os chunks em `data/chunks/`.
 
-        ### ETAPA 4 - Busca de definições
+        ### ETAPA 4 — Busca de definições
         Para CADA termo identificado na Etapa 2:
         1. Use `check_glossary(termo)` para verificar se o termo já existe
         2. Se já existir, PULE para o próximo termo
@@ -72,7 +63,11 @@ glossario_agent = LlmAgent(
         4. Analise os trechos retornados e tente extrair uma DEFINIÇÃO FORMAL
         5. Uma definição formal deve explicar O QUE é o termo, não apenas citá-lo
 
-        ### ETAPA 5 - Alimentação do glossário
+        Exemplos de definição formal:
+        - "LDAP: Lightweight Directory Access Protocol, protocolo utilizado para autenticação e consulta de diretórios de usuários"
+        - "Timeout: Tempo máximo de espera para uma resposta do sistema antes de encerrar a conexão"
+
+        ### ETAPA 5 — Alimentação do glossário
         Para cada termo onde você CONSEGUIU extrair uma definição formal:
         - Use `add_to_glossary(term, definition, sources)`
         - Em `sources`, liste TODOS os chunks onde o termo foi encontrado, separados por vírgula
@@ -80,15 +75,22 @@ glossario_agent = LlmAgent(
         Para termos onde NÃO foi possível extrair uma definição formal:
         - IGNORE o termo. Não o adicione ao glossário sem definição.
 
-        ### ETAPA 6 - Verificação final
+        ### ETAPA 6 — Verificação final
         Após processar todos os termos:
         - Se o glossário ficou COMPLETAMENTE VAZIO (nenhum termo foi adicionado),
-          use `gerar_doubt_artifact` para registrar uma dúvida com os campos necessários.
+          use `gerar_doubt_artifact` para registrar uma dúvida:
+            - id_duvida: "D-GLOSSARIO"
+            - id_artefato_afetado: "Glossário"
+            - duvida_descricao: "Nenhum termo técnico com definição formal foi encontrado no documento-matriz"
+            - motivo: Explique por que não foi possível extrair definições
+            - impacto: "Glossário da especificação ficará vazio, prejudicando a compreensão dos termos técnicos"
+            - trecho_contexto: "Documento-matriz completo"
         - Se pelo menos um termo foi adicionado, retorne um resumo dos termos encontrados.
 
         ## REGRAS IMPORTANTES:
-        - Sempre siga as etapas na ordem (1 -> 2 -> 3 -> 4 -> 5 -> 6)
+        - Sempre siga as etapas na ordem (1 → 2 → 3 → 4 → 5 → 6)
         - Nunca invente definições. Extraia APENAS do documento-matriz.
+        - Se um mesmo termo aparece em múltiplos chunks, liste todos na coluna Fontes.
         - Seja criterioso: qualidade > quantidade.
     """,
     tools=[
@@ -100,15 +102,16 @@ glossario_agent = LlmAgent(
         FunctionTool(gerar_doubt_artifact),
     ],
 )
+
 # ── Agente Principal de Requisitos ───────────────────────────────────────────
-root_agent = LlmAgent(
+
+agent = LlmAgent(
     model=LiteLlm(_DEFAULT_MODEL),
     name="requirements_agent",
     description=prompt.description,
     instruction=prompt.instruction,
     output_key="analysis_result",
     tools=[
-        artefatos_toolset,
         FunctionTool(run_slicer),
         FunctionTool(ler_chunk),
         FunctionTool(gerar_doubt_artifact),
@@ -116,5 +119,3 @@ root_agent = LlmAgent(
         AgentTool(agent=glossario_agent),
     ],
 )
-
-agent = root_agent
