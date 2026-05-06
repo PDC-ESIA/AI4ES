@@ -232,9 +232,6 @@ adk/.venv-docker/
 .vscode/*
 .src/*
 
-# config
-.github/
-
 #  code-assintant
 .claude/
 .claude/*
