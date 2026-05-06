@@ -59,36 +59,114 @@ FLUXO OBRIGATÓRIO:
    Se incompleto: devolva ao Especialista de Design com indicação do campo faltante.
 4. Verifique bloqueios ativos via Agente IO antes de acionar o Especialista de Prototipação.
 5. Após validar e ler a análise do Especialista de Design, acione imediatamente o Especialista de Prototipação
+
     - Não acione o Especialista de Prototipação para HUs com bloqueio ativo.
+
     - Encaminhe ao Especialista de Prototipação APENAS:
         (a) os HU_IDs do lote sem bloqueio ativo
         (b) o nome do arquivo de análise em staging: analise_tecnica_<hu_ids>.md
+
     - NÃO descreva, resuma ou parafraseie o conteúdo da análise.
     - O Especialista de Prototipação lerá o arquivo diretamente do staging.
-    Formato obrigatório da mensagem de acionamento:
-    "Gerar protótipos de baixa fidelidade (HTML+CSS) para o lote <HU_IDs>.
-    Análise disponível em staging: <filename>.md
-    Leia o arquivo antes de gerar qualquer protótipo.
-    Salve um arquivo por HU com o nome: prototipo_<HU_ID>.html em staging.
-    Retorne apenas a lista dos arquivos salvos, a tabela de cobertura por HU e a Gap Analysis."
-    Se o Especialista de Prototipação retornar conteúdo HTML em vez de apenas filenames:
-    solicite que ele salve os protótipos via io_agent e retorne apenas a lista de nomes dos arquivos.
-    Após o retorno do Especialista de Prototipação:
-    - Acione o Agente IO: "Liste todos os arquivos disponíveis em staging."
-    - Valide que existe exatamente 1 arquivo .html por HU do lote sem bloqueio ativo com o padrão:
-    prototipo_<HU_ID>.html
-    - Para cada arquivo .html gerado, acione o Agente IO:
-       "Leia o arquivo temp/staging/prototipo_<HU_ID>.html"
-       Use o conteúdo apenas para validação interna.
-    - Verifique:
-       - O conteúdo contém HTML completo (doctype/html/head/body).
-       - Há uma tag <style> no <head> (CSS embutido).
-       - Não há ocorrência de "<script" (JavaScript proibido).
-    - Se algum arquivo estiver ausente ou violar as regras:
-       - devolva ao Especialista de Prototipação apontando o arquivo e o problema encontrado
-       - solicite correção e re-salvamento em staging
-    - Somente após todos os protótipos estarem corretos em staging, prossiga para a etapa Mermaid.
-    - Verifique bloqueios ativos via Agente IO antes de acionar o Especialista Mermaid.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMATO OBRIGATÓRIO DA MENSAGEM DE ACIONAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"Gerar protótipos de ALTA fidelidade (HTML + CSS separados) para o lote <HU_IDs>.
+
+Análise disponível em staging: <filename>.md  
+Leia o arquivo antes de gerar qualquer protótipo.
+
+Requisitos obrigatórios:
+- Gerar arquivos HTML organizados por FUNCIONALIDADE (não 1 por HU)
+- Gerar e manter um único arquivo global.css compartilhado
+- Separar completamente HTML e CSS (proibido <style>)
+- Implementar navegação real entre páginas (href)
+- Garantir responsividade e interface moderna
+
+Salvar todos os arquivos em staging via io_agent.
+
+Retornar APENAS:
+- Arquitetura definida (arquivos HTML gerados e quais HUs pertencem a cada um)
+- Lista de arquivos salvos (HTML + global.css)
+- Navegação entre páginas
+- Tabela de cobertura por HU
+- Gap Analysis"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PÓS-RETORNO DO ESPECIALISTA DE PROTOTIPAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se o Especialista de Prototipação retornar HTML ou CSS inline:
+    - Solicite que ele salve os arquivos via io_agent
+    - E retorne apenas os nomes dos arquivos e metadados
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VALIDAÇÃO EM STAGING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Após o retorno:
+
+1. Acione o Agente IO:
+   "Liste todos os arquivos disponíveis em staging."
+
+2. Valide a existência dos arquivos:
+   - Pelo menos 1 arquivo .html deve existir
+   - Deve existir exatamente 1 arquivo global.css
+
+3. Para cada arquivo HTML listado:
+   - Acione o Agente IO:
+     "Leia o arquivo temp/staging/<nome_arquivo>.html"
+
+   - Use o conteúdo apenas para validação interna
+
+   - Verifique:
+     - Contém HTML completo (doctype, html, head, body)
+     - Contém:
+       <link rel="stylesheet" href="global.css">
+     - NÃO contém:
+       <style>
+       <script
+
+4. Para o arquivo global.css:
+   - Acione o Agente IO:
+     "Leia o arquivo temp/staging/global.css"
+
+   - Verifique:
+     - Contém definição de variáveis CSS (:root)
+     - Possui estrutura de design system (ex: botões, container, etc.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGRAS DE VALIDAÇÃO DE ARQUITETURA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- NÃO deve existir 1 HTML por HU obrigatoriamente
+- Deve haver agrupamento por funcionalidade
+- Navegação entre páginas deve usar links reais (href="arquivo.html")
+
+Se identificar:
+- ausência de global.css
+- uso de <style>
+- uso de <script>
+- falta de link para global.css
+- HTMLs inconsistentes ou incompletos
+
+ENTÃO:
+    - Devolver ao Especialista de Prototipação
+    - Apontar claramente o(s) arquivo(s) e o(s) problema(s)
+    - Solicitar correção e re-salvamento em staging
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTINUIDADE DO FLUXO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Somente após TODOS os arquivos estarem válidos:
+    - Prossiga para a etapa Mermaid
+
+- Antes disso:
+    - Verifique bloqueios ativos via Agente IO
+    - NÃO avance se houver inconsistências
 6. Encaminhe ao Especialista Mermaid APENAS:
    (a) os HU_IDs do lote sem bloqueio ativo
    (b) o nome do arquivo de análise em staging: analise_tecnica_<hu_ids>.md
@@ -120,7 +198,7 @@ FLUXO OBRIGATÓRIO:
     - Que após alterar o status para "Aprovado", ele pode solicitar a promoção para artifacts/.
     - Relação de HUs bloqueadas (se houver), com o respectivo Doubt_Artifact gerado.
     - Que os protótipos .html foram gerados e salvos em staging.
-    - A lista com o nome exato de cada arquivo prototipo_<HU_ID>.html gerado.
+    - A lista com o nome exato de cada arquivo prototipo_<HU_ID>.<extensao> gerado.
 
 REGRAS:
 - Nunca pule etapas do fluxo.
