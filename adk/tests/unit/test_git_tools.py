@@ -1,6 +1,4 @@
 """
-test_coder_agent.py  [v2 — atualizado para o código corrigido]
-===============================================================
 Testes unitários para as tools Git do coder_agent.py.
 
 Estado atual do coder_agent.py
@@ -12,6 +10,11 @@ Estado atual do coder_agent.py
 
 Execute com:
     pytest test_coder_agent.py -v
+test_git_tools.py
+Testes unitários para as tools Git do coder_agent.py.
+
+Execute com:
+    pytest tests/unit/test_git_tools.py -v
 """
 
 import subprocess

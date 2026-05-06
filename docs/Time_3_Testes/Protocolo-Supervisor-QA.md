@@ -8,8 +8,8 @@
 |---|---|
 | Nome do projeto | PDC-AI4SE |
 | Framework de agentes | Google ADK |
-| Localização dos agentes | `adk/src/agents/` |
-| Localização do agente QA | `adk/src/agents/qa_agent/ ` |
+| Localização dos agentes | `adk/agents/roles/` |
+| Localização do agente QA | `adk/agents/roles/qa_agent/` |
 | Branch de desenvolvimento Principal | `feature/time3-testes` e as branchs das subs-task: `task-[issue]/[descrição]` |
 
 ---
@@ -94,7 +94,7 @@ Os requisitos podem chegar em diferentes formatos. Preencha quais o seu time sup
 
 ### 4.1 Definição inicial do QA Agent 
 ```python
-# arquivo: adk/src/agents/qa_agent/agent.py PARCIAL 
+# arquivo: adk/agents/roles/qa_agent/agent.py PARCIAL 
 #[... def e imports do agente para o fluxo]
 
 qa_agent = Agent(
@@ -149,7 +149,7 @@ pip install uvicorn fastapi
 ### 5.2 Servidor de teste
  
 ```python
-# arquivo: [ ex: adk/src/agents/qa_agent/server_test.py ]
+# arquivo: [ ex: adk/agents/roles/qa_agent/server_test.py ]
  
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -225,8 +225,8 @@ curl -X POST http://localhost:8000/requisitos \
 
 | Tipo | Finalidade | Quem escreve | Localização |
 |---|---|---|---|
-| **Pytest de produto** | Testa o código da aplicação | Agente QA gera automaticamente | `[ AINDA À DEFINIR ex: adk/src/agents/qa_agent/tools/ ]` |
-| **Pytest de eval** | Testa o próprio Agente QA | Desenvolvedor do time escreve | `[ AINDA À DEFINIR ex: adk/src/agents/qa_agent/evalsTest/ ]` |
+| **Pytest de produto** | Testa o código da aplicação | Agente QA gera automaticamente | `[ AINDA À DEFINIR ex: adk/agents/roles/qa_agent/tools/ ]` |
+| **Pytest de eval** | Testa o próprio Agente QA | Desenvolvedor do time escreve | `[ AINDA À DEFINIR ex: adk/agents/roles/qa_agent/evalsTest/ ]` |
 
 ---
  
@@ -285,7 +285,7 @@ O QA Agent deve parar e gerar o arquivo sempre que não conseguir prosseguir de 
 ### 7.3 Localização do arquivo
  
 ```
-adk/src/agents/qa_agent/
+adk/agents/roles/qa_agent/
 └── doubt_artifacts/
     └── Doubt_Artifact_[ id_artefato ]_[ timestamp ].md
 ```

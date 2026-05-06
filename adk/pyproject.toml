@@ -33,22 +33,17 @@ dependencies = [
 ]
  
 [tool.pytest.ini_options]
-testpaths = ["src/agents"]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short"
 pythonpath = ["."]
- 
+
 [tool.coverage.run]
-source = ["src/agents/qa_agent"]
-omit = [
-    "src/agents/qa_agent/artefactsTests/*",
-    "src/agents/qa_agent/evalsTest/*",
-    "src/agents/qa_agent/server_test.py",
-]
- 
+source = ["agents"]
+
 [tool.coverage.report]
 show_missing = true
 skip_empty = true

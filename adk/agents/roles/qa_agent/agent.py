@@ -10,7 +10,6 @@ from .subagents.qa_runner_agent import agent as qa_runner_agent
 
 from .subagents.receive_requirements import agent as receber_requisitos_agent
 from .tools.pytest_runner import executar_pytest_tool
-from .tools.doubt_tool import DoubtArtifactGenerator
 
 from .qa_prompt import QA_PROMPT
 
@@ -24,9 +23,8 @@ agent = LlmAgent(
     ),
     instruction=QA_PROMPT,
     tools=[
-        FunctionTool(executar_pytest_tool),
-        FunctionTool(DoubtArtifactGenerator.generate),
         AgentTool(agent=receber_requisitos_agent),
+        FunctionTool(executar_pytest_tool),
         AgentTool(agent=action_planner_agent),
         AgentTool(agent=code_fix_agent),
         AgentTool(agent=qa_runner_agent),
