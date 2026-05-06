@@ -193,4 +193,3 @@ def build_fix_prompt_from_pytest(
         context=context,
         language=language,
     )
-    raise ValueError(f"Tool '{tool_name}' não encontrada.")
