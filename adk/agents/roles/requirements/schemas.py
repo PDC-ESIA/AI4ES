@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class UserStory(BaseModel):
     id: str = Field(..., description="Identificador da HU (ex: HU-001)")

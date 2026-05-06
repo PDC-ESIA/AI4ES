@@ -18,7 +18,7 @@ def gerar_doubt_artifact(
 ) -> str:
     """
     Gera um arquivo versionado Doubt_Artifact_<ID>_<TS>.md baseado no template oficial do Agente Analista.
-    
+
     Args:
         id_duvida: Identificador sequencial da dúvida (ex: D-001).
         id_artefato_afetado: ID do artefato impactado (ex: HU-001, RF-002).
@@ -31,7 +31,7 @@ def gerar_doubt_artifact(
         sessao: Número da sessão/rodada atual.
         contexto_geral: Nome do arquivo ou resumo do contexto lido.
         caminho_base: Diretório onde o arquivo Doubt_Artifact_<ID>_<TS>.md será salvo.
-        
+
     Returns:
         Caminho completo do arquivo gerado.
     """
@@ -87,5 +87,5 @@ def gerar_doubt_artifact(
 
     with open(arquivo_path, "w", encoding="utf-8") as f:
         f.write(cabecalho + secao_duvida)
-        
+
     return str(arquivo_path.absolute())

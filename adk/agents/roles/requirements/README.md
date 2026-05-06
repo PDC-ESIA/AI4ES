@@ -1,108 +1,152 @@
-# Requirements Agent (Analista de Requisitos)
+# Requirements Agent
 
-Este diretório contém a implementação do **Requirements Agent**, um agente especializado em análise e estruturação de requisitos de software utilizando o Google ADK (Agent Development Kit).
+**Time:** Requisitos
+**Modelo padrão:** `github_copilot/gpt-4`
+**Override:** `ADK_LLM_MODEL`
 
-## 📌 Objetivo
+## Objetivo
 
-O Agente de Requisitos tem como função principal transformar descrições em linguagem natural, documentos de requisitos (PRDs) ou visões de projeto em artefatos técnicos estruturados, atômicos e verificáveis. Ele serve como a ponte inicial entre a visão de negócio e a implementação técnica.
+O Requirements Agent transforma solicitações em linguagem natural, PRDs e documentos de requisitos em uma análise estruturada para o pipeline de engenharia.
 
-## 📂 Estrutura de Arquivos
+O agente não implementa código, não define arquitetura e não escreve testes. Ele produz artefatos de requisitos claros, verificáveis e rastreáveis.
 
-- `agent.py`: Definição principal do agente (`requirements_agent`) e do seu sub-agente (`glossario_agent`).
-- `prompt.py`: Contém a `instruction` (System Prompt) e a `description` do agente.
-- `schemas.py`: Define as estruturas de dados (Pydantic) para a saída do agente (`AnalystOutput`).
-- `few_shot.py`: Exemplos de referência para guiar o comportamento do modelo.
-- `knowledge/`: Pasta contendo base de conhecimento local, como o `glossario.md` gerado.
-- `data/`: Diretório para armazenamento temporário de documentos (`matrix/`) e fatiamento (`chunks/`).
+## Contrato de Saída
 
-## 🤖 Funcionamento
+A saída principal do agente é `analysis_result`, seguindo o schema `AnalystOutput`:
+
+```json
+{
+  "status": "concluido",
+  "user_stories": [],
+  "functional_requirements": [],
+  "non_functional_requirements": [],
+  "use_cases": [],
+  "business_rules": [],
+  "glossary": [],
+  "doubt_generated": false,
+  "summary": "Resumo objetivo do processamento."
+}
+```
+
+Esse contrato substitui a saída simplificada baseada apenas em `requirements`.
+
+## Estrutura
+
+```text
+agents/roles/requirements/
+├── __init__.py
+├── agent.py
+├── prompt.py
+├── schemas.py
+├── few_shot.py
+├── data/
+│   ├── chunks/
+│   └── matrix/
+├── knowledge/
+│   └── glossario.md
+└── README.md
+```
+
+## Funcionamento
 
 O agente opera em duas camadas:
 
-1.  **Requirements Agent (Principal):** Coordena a análise global, gera Histórias de Usuário (HUs), Requisitos Funcionais (RFs), Casos de Uso (UCs) e Regras de Negócio (RNs).
-2.  **Glossário Agent (Sub-agente):** Focado exclusivamente em ler o documento-matriz, identificar termos técnicos e construir um glossário formal.
+1. `requirements_agent`: coordena a análise global e gera HUs, RFs, RNFs, UCs, regras de negócio, glossário e resumo.
+2. `glossario_agent`: sub-agente especializado em extrair termos técnicos e manter `knowledge/glossario.md`.
 
-### Fluxo de Pensamento (Chain of Thought)
+## Tipos de Entrada
 
-O agente segue obrigatoriamente 6 passos:
-1.  **Elicitação:** Identificação de atores e processos.
-2.  **Análise Crítica:** Detecção de ambiguidades ou contradições.
-3.  **Classificação:** Separação entre RF, HU, RNF e RN.
-4.  **Especificação:** Redação atômica dos itens.
-5.  **Glossário:** Delegação ao sub-agente para definição de termos.
-6.  **Validação:** Garantia de requisitos SMART.
+### Texto direto
 
-## 🌐 Testando via Interface Web (Docker)
+Use para pedidos simples ou descrições curtas:
 
-A forma mais simples de testar o agente visualmente é através da interface web do ADK.
-
-### 1. Subir o ambiente
-Navegue até a pasta `adk/` na raiz do projeto e utilize o Docker Compose para subir os serviços:
-
-```bash
-docker compose -f docker-compose.build.yml up --build
+```text
+Preciso de um sistema de login com recuperação de senha por e-mail.
 ```
 
-### 2. Acessar a Interface
-Abra o seu navegador e acesse:
-`http://localhost:8081` (ou a porta configurada no seu arquivo `.env`)
+### PRD como texto
 
-### 3. Selecionar o Agente
-Na interface de chat:
-1. Localize o seletor de **Agentes/**.
-2. Escolha o agente `requirements`
-3. Envie uma descrição de projeto em texto paraniciar a análise.
+Use para documentos colados diretamente no prompt:
 
----
-
-## 🛠 Ferramentas (Tools)
-
-O agente possui acesso a diversas ferramentas utilitárias:
-
-- `run_slicer`: Fragmenta documentos grandes em chunks processáveis.
-- `ler_chunk`: Lê partes específicas do contexto fatiado.
-- `extract_text`: Extrai o texto integral de documentos na pasta `data/matrix/`.
-- `add_to_glossary` / `check_glossary`: Gerenciamento do arquivo de glossário.
-- `gerar_doubt_artifact`: Documenta incertezas que impedem a conclusão de um requisito.
-- `tool_salvar_artefato_requisito`: Persiste os requisitos gerados em arquivos Markdown.
-
-## 🚀 Como Executar
-
-### Pré-requisitos
-
-1.  Ambiente Python 3.10+ configurado.
-2.  Dependências do ADK instaladas (`google-adk`).
-3.  Variável de ambiente `ADK_LLM_MODEL` configurada (ex: `github_copilot/gpt-4o`).
-
-### Exemplo de execução via código
-
-```python
-from adk.agents.roles.requirements.agent import agent
-
-# Exemplo de entrada: um texto descrevendo um sistema
-input_text = "Preciso de um sistema de login que suporte OAuth2 e tenha recuperação de senha via e-mail."
-
-# Executando o agente
-response = agent.run(input_text)
-
-print(response.analysis_result)
+```text
+Módulo: Autenticação
+O sistema deve permitir cadastro, login, logout e recuperação de senha.
 ```
 
-## 🧪 Como Testar
+### Documento em arquivo
 
-Para testar o agente de forma isolada:
+Use um caminho para `.md`, `.txt` ou `.pdf` quando o conteúdo estiver em arquivo:
 
-1.  **Teste de Glossário:** Forneça um documento técnico na pasta `data/matrix/` e peça ao agente para "gerar o glossário do documento". Verifique se o arquivo `knowledge/glossario.md` é criado/atualizado.
-2.  **Teste de Ambiguidade:** Envie um prompt vago como "Faça um sistema pra mim". O agente deve utilizar a tool `gerar_doubt_artifact` e retornar um status `bloqueado` ou solicitar mais informações.
-3.  **Teste de Requisitos:** Envie um PRD completo e valide se o JSON de saída (`AnalystOutput`) contém as HUs e RFs mapeados corretamente com IDs (ex: HU-001, RF-001).
+```text
+Analise o documento em: agents/roles/requirements/data/matrix/prd.md
+```
 
-## 📝 Saída Esperada
+Para documentos grandes, coloque o arquivo em `agents/roles/requirements/data/matrix/` e use as tools de fatiamento.
 
-A saída final é um objeto estruturado seguindo o schema `AnalystOutput`, contendo listas de:
-- `user_stories`
-- `functional_requirements`
-- `non_functional_requirements`
-- `use_cases`
-- `business_rules`
-- `glossary`
-- `status` (concluido/bloqueado)
+## Tools
+
+As tools seguem um modelo misto:
+
+- Tools reutilizáveis ficam em `shared/tools`.
+- Lógica estritamente específica do papel Requirements pode ficar no diretório do agente.
+
+Tools usadas pelo agente:
+
+| Tool | Uso |
+| --- | --- |
+| `extract_text` | Ler `.md`, `.txt`, `.pdf` ou primeiro arquivo suportado em um diretório. |
+| `run_slicer` | Fragmentar documentos grandes em chunks. |
+| `ler_chunk` | Ler um chunk específico. |
+| `run_search` | Buscar termos nos chunks. |
+| `gerar_doubt_artifact` | Registrar ambiguidades, contradições ou lacunas. |
+| `tool_salvar_artefato_requisito` | Persistir HU, RF, RNF, RN, UC ou glossário em Markdown. |
+| `check_glossary` | Verificar se um termo já existe no glossário. |
+| `add_to_glossary` | Adicionar ou atualizar termos no glossário. |
+| `glossario_agent` | Delegar extração e validação de termos técnicos. |
+
+## Configuração
+
+No ambiente `adk/`, configure:
+
+```env
+ADK_LLM_MODEL=github_copilot/gpt-4
+ADK_AGENT_DATA_DIR=agents/roles/requirements
+```
+
+`ADK_AGENT_DATA_DIR` define a base para `data/matrix`, `data/chunks` e `knowledge/glossario.md`.
+
+## Doubt Artifact
+
+Quando a entrada tiver ambiguidade ou lacuna que impeça especificação confiável, o agente deve usar `gerar_doubt_artifact` e marcar `doubt_generated=true`.
+
+Se o bloqueio afetar apenas parte do escopo, o agente pode gerar os itens seguros e registrar a pendência no `summary`.
+
+## Como Testar
+
+### Pedido simples
+
+```text
+Crie requisitos para uma funcionalidade de login com e-mail e senha.
+```
+
+Resultado esperado: `analysis_result` com HUs e RFs coerentes.
+
+### Entrada ambígua
+
+```text
+Faça o sistema funcionar melhor e ser mais rápido.
+```
+
+Resultado esperado: Doubt Artifact gerado e `status` como `bloqueado` ou pendência documentada.
+
+### Documento-matriz
+
+1. Coloque um `.md`, `.txt` ou `.pdf` em `agents/roles/requirements/data/matrix/`.
+2. Peça a análise do documento.
+3. Verifique chunks em `data/chunks/`, glossário em `knowledge/glossario.md` e saída `analysis_result`.
+
+## Decisões de Merge
+
+Este agente preserva a proposta completa do Time 1.
+
+O commit `a1791fdd32c1eaad06e1691c63be8e5a84e4756e` foi usado como referência seletiva para padronizações, especialmente documentação, organização de tools e abandono das antigas Context Windows. A simplificação para `RequirementsOutput` com apenas `id`, `description` e `acceptance_criteria` não foi mantida como contrato principal.

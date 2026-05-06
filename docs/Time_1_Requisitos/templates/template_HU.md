@@ -12,8 +12,8 @@
 
 ## História
 
-> Como **[Persona/Papel]**,  
-> quero **[Ação/Funcionalidade]**,  
+> Como **[Persona/Papel]**,
+> quero **[Ação/Funcionalidade]**,
 > para que **[Benefício ou objetivo]**.
 
 ## Critérios de Aceitação

@@ -1,5 +1,5 @@
 """
-Este arquivo contém exemplos de Few-Shot baseados no sistema TACO-IDE para calibrar 
+Este arquivo contém exemplos de Few-Shot baseados no sistema TACO-IDE para calibrar
 o comportamento do Agente Analista de Requisitos Crítico.
 """
 
@@ -53,7 +53,7 @@ FEW_SHOT_DOUBT = """
 "A inteligência artificial do sistema deve ajudar o aluno quando ele estiver travado."
 
 **PROCESSO ANALÍTICO:**
-1. O termo "ajudar" é vago. 
+1. O termo "ajudar" é vago.
 2. A ajuda pode ser: explicar o erro, dar a resposta pronta, dar uma dica progressiva ou sugerir documentação.
 3. Decisão: Bloquear a especificação dessa funcionalidade e questionar a regra pedagógica.
 

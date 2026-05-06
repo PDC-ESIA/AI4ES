@@ -14,7 +14,7 @@ def registrar_duvida(
 ) -> str:
     """
     Registra uma dúvida no arquivo Doubt_Artifact.md do projeto ou cria um novo se não existir.
-    
+
     Args:
         id_artefato: Identificador do artefato afetado (ex: HU-001, test_login).
         descricao: Descrição clara da dúvida ou incerteza.
@@ -23,14 +23,14 @@ def registrar_duvida(
         contexto: Trecho de código, prompt ou referência que gerou a dúvida.
         sugestao: Sugestão do agente para resolução.
         caminho_projeto: Caminho base para salvar o artefato.
-        
+
     Returns:
         Caminho do arquivo de dúvida atualizado.
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     base_path = Path(caminho_projeto)
     doubt_file = base_path / "Doubt_Artifact.md"
-    
+
     # Template para uma nova entrada
     nova_entrada = f"""
 ### [D-{datetime.now().strftime("%y%m%d%H%M%S")}] - {id_artefato}
@@ -58,7 +58,7 @@ Este arquivo centraliza as dúvidas identificadas pelos agentes para revisão hu
     else:
         with open(doubt_file, "a", encoding="utf-8") as f:
             f.write(nova_entrada)
-            
+
     return str(doubt_file.absolute())
 
 def listar_duvidas_pendentes(caminho_projeto: str = ".") -> List[Dict]:
@@ -68,11 +68,11 @@ def listar_duvidas_pendentes(caminho_projeto: str = ".") -> List[Dict]:
     doubt_file = Path(caminho_projeto) / "Doubt_Artifact.md"
     if not doubt_file.exists():
         return []
-    
+
     # Lógica simples de parseamento para exemplo (em produção usaria regex ou parser MD)
     with open(doubt_file, "r", encoding="utf-8") as f:
         conteudo = f.read()
-    
+
     duvidas = []
     # Divide por seções de dúvida
     secoes = conteudo.split("### [D-")[1:]
@@ -86,7 +86,7 @@ def listar_duvidas_pendentes(caminho_projeto: str = ".") -> List[Dict]:
                 "status": "Aberta",
                 "preview": linhas[4] if len(linhas) > 4 else ""
             })
-            
+
     return duvidas
 
 def registrar_resposta_humana(id_duvida: str, resposta: str, caminho_projeto: str = ".") -> bool:
@@ -96,10 +96,10 @@ def registrar_resposta_humana(id_duvida: str, resposta: str, caminho_projeto: st
     doubt_file = Path(caminho_projeto) / "Doubt_Artifact.md"
     if not doubt_file.exists():
         return False
-        
+
     with open(doubt_file, "r", encoding="utf-8") as f:
         linhas = f.readlines()
-        
+
     updated = False
     for i, linha in enumerate(linhas):
         if f"### [{id_duvida}]" in linha:
@@ -112,9 +112,9 @@ def registrar_resposta_humana(id_duvida: str, resposta: str, caminho_projeto: st
                     updated = True
                     break
         if updated: break
-            
+
     if updated:
         with open(doubt_file, "w", encoding="utf-8") as f:
             f.writelines(linhas)
-            
+
     return updated
