@@ -4,6 +4,8 @@ from pathlib import Path
 import logging
 import sys
 from datetime import datetime, timezone
+import re
+
 
 # Variáveis de controle de estado do agente
 _contador_execucoes = {}
@@ -116,6 +118,7 @@ def executar_pytest_tool(caminho_arquivo: str | dict) -> dict:
     arquivo_cov_json = dir_base / 'coverage.json'
 
     # Adicionando --cov-report=json para capturar a cobertura exata e cumprir o DoD
+    # --tb=short garante tracebacks concisos com número de linha exato
     comando = [
         sys.executable, 
         "-m", 
@@ -124,7 +127,8 @@ def executar_pytest_tool(caminho_arquivo: str | dict) -> dict:
         "--cov=.", 
         "--json-report", 
         f"--json-report-file={arquivo_report_json}",
-        "--cov-report=json"
+        "--cov-report=json",
+        "--tb=short"
     ]
     
     try:
@@ -144,6 +148,51 @@ def executar_pytest_tool(caminho_arquivo: str | dict) -> dict:
         return _gerar_erro_execucao("ERR_TESTE_FALHOU_CRITICO", str(e), caminho)
     
 
+def _extrair_linhas_com_erro(stdout: str, nome_arquivo: str) -> list[dict]:
+    """Extrai número de linha e tipo de erro do output --tb=short do pytest.
+
+    Args:
+        stdout: Saída capturada do pytest.
+        nome_arquivo: Nome do arquivo de teste (para filtrar linhas relevantes).
+
+    Returns:
+        Lista de dicts com 'linha' e 'erro'.
+    """
+    import re
+    # Padrão: arquivo.py:42: ErroTipo  (formato gerado por --tb=short)
+    padrao = re.compile(
+        rf'{re.escape(nome_arquivo)}:(\d+):\s*(\S.*)',
+        re.IGNORECASE
+    )
+    encontrados = []
+    vistos = set()
+    for match in padrao.finditer(stdout):
+        chave = (match.group(1), match.group(2))
+        if chave not in vistos:
+            vistos.add(chave)
+            encontrados.append({"linha": int(match.group(1)), "erro": match.group(2).strip()})
+    return encontrados
+
+
+def _classificar_resultado(stdout: str, returncode: int) -> tuple[str, int, int]:
+    """Classifica o resultado como sucesso_total, falha_parcial ou falha_total.
+
+    Returns:
+        Tupla (classificacao, qtd_passou, qtd_falhou).
+    """
+    passou = int((re.search(r'(\d+) passed', stdout) or re.search(r'(0)', '')).group(1)
+                 if re.search(r'(\d+) passed', stdout) else 0)
+    falhou = int(re.search(r'(\d+) failed', stdout).group(1)
+                 if re.search(r'(\d+) failed', stdout) else 0)
+
+    if returncode == 0 or (passou > 0 and falhou == 0):
+        return "sucesso_total", passou, falhou
+    elif passou > 0 and falhou > 0:
+        return "falha_parcial", passou, falhou
+    else:
+        return "falha_total", passou, falhou
+
+
 def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProcess, cov_json_path: Path) -> dict:
     """Parse do resultado de execução pytest com extração de cobertura.
 
@@ -155,9 +204,10 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
     Returns:
         dict: Dicionário estruturado com status, testes gerados, cobertura e erros.
     """
-    status_geral = "sucesso" if resultado.returncode == 0 else "falha"
+    classificacao, qtd_passou, qtd_falhou = _classificar_resultado(resultado.stdout, resultado.returncode)
+    status_geral = "sucesso" if classificacao == "sucesso_total" else "falha"
     erros = []
-    
+
     # Validação de Cobertura de Testes
     cobertura_dados = {
         "percentual": 0.0,
@@ -178,22 +228,27 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
 
     # Trigger automático para o subagente de parsing (Filipe)
     next_action = "finalizar_qa"
-    if status_geral == "falha":
-        # Junta o stdout e o stderr para não perder nenhuma informação do Pytest
+    if classificacao in ("falha_parcial", "falha_total"):
         log_completo = resultado.stdout
         if resultado.stderr:
             log_completo += f"\n--- AVISOS DE SISTEMA ---\n{resultado.stderr}"
 
+        linhas_com_erro = _extrair_linhas_com_erro(resultado.stdout, caminho.name)
+
         erros.append({
             "codigo": "ERR_TESTE_FALHOU",
-            "log": log_completo
+            "log": log_completo,
+            "linhas_com_erro": linhas_com_erro
         })
         next_action = "trigger_correcao_matunag"
 
     return {
         "status": status_geral,
+        "resultado_resumo": classificacao,      # sucesso_total | falha_parcial | falha_total
+        "testes_passaram": qtd_passou,
+        "testes_falharam": qtd_falhou,
         "agente_origem": "pytest_runner",
-        "proxima_acao_orquestrador": next_action, # Roteamento explícito
+        "proxima_acao_orquestrador": next_action,
         "tipo_teste": "pytest",
         "testes_gerados": [
             {

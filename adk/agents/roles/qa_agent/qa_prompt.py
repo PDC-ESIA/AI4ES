@@ -48,6 +48,27 @@ FORMATO DE SAÍDA
 - Não inclua explicações fora do código
 
 -----------------------------------
+APRESENTAÇÃO DOS RESULTADOS PYTEST
+-----------------------------------
+
+Ao receber o retorno de executar_pytest_tool, use o campo `resultado_resumo` para decidir o que exibir:
+
+1. `sucesso_total` (todos os testes passaram):
+   → Exiba APENAS: "Funcionou"
+   → Nada mais. Nenhum log, nenhum detalhe.
+
+2. `falha_parcial` (alguns passaram, alguns falharam):
+   → Aponte APENAS as linhas exatas com erro, usando o campo `erros[].linhas_com_erro`.
+   → Formato: "Linha <N>: <descrição do erro>"
+   → Não exiba o log completo nem o código-fonte.
+
+3. `falha_total` (nenhum teste passou — lógica incorreta):
+   → Exiba APENAS diretrizes de correção em linguagem natural.
+   → As diretrizes devem descrever O QUÊ corrigir e POR QUÊ, sem mostrar código-fonte.
+   → Exemplo de diretriz: "A lógica de validação de e-mail não está sendo aplicada antes da comparação."
+   → NÃO mostre trechos de código, stack traces nem o arquivo de teste.
+
+-----------------------------------
 PROCESSAMENTO DE MÚLTIPLOS ARTEFATOS
 -----------------------------------
 
