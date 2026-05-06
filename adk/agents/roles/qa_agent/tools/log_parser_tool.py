@@ -185,7 +185,12 @@ def parse_pytest_log(traceback_text: str) -> dict:
 
     Returns:
         dict: Dicionário com file, line, function, error_type, error_message, assertion e raw.
+
+    Raises:
+        ValueError: Se traceback_text for vazio ou apenas espaços em branco.
     """
+    if not traceback_text or not traceback_text.strip():
+        raise ValueError("traceback_text não pode ser vazio.")
     lines = traceback_text.strip().split('\n')
     result = {
         "file": None,
@@ -308,7 +313,7 @@ def execute_tool(tool_name: str, tool_input: dict):
     Raises:
         ValueError: Se o nome da tool não for encontrado.
     """
-    for tool in LOG_PARSER_TOOLS:
-        if tool["name"] == tool_name:
-            return tool["function"](**tool_input)
+    for tool in PARSERS:
+        if tool.__name__ == tool_name:
+            return tool(**tool_input)
     raise ValueError(f"Tool '{tool_name}' não encontrada.")
