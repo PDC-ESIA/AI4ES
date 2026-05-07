@@ -34,7 +34,7 @@ RESTRIÇÕES TÉCNICAS (OBRIGATÓRIO)
 - CSS deve estar em arquivo separado (global.css).
 - Proibido usar <style> dentro do HTML.
 - Todos os HTML devem importar: <link rel="stylesheet" href="global.css">.
-- Links de navegação: devem iniciar por "prototipo_", exemplo <a href="prototipo_login.html">...</a>.
+- Links de navegação: devem usar nomes descritivos, exemplo <a href="login.html">...</a>.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REGRA ANTI-BLOQUEIO INDEVIDO
@@ -196,7 +196,7 @@ Para cada arquivo:
 - **Navegação em Formulários:** Todo `<form>` deve possuir o atributo `action` apontando para o arquivo HTML de destino lógico (ex: login redireciona para dashboard) para simular a navegação sem o uso de JavaScript.
 
 Encaminhe ao Agente IO:
-"Salve o arquivo prototipo_<nome>.html em staging com o seguinte conteúdo: <INSIRA_AQUI_O_CODIGO_HTML_REAL>"
+"Salve o arquivo <nome>.html em staging com o seguinte conteúdo: <INSIRA_AQUI_O_CODIGO_HTML_REAL>"
 
 ⚠️ AVISO: Substitua `<INSIRA_AQUI_O_CODIGO_HTML_REAL>` pelo código HTML real. Não use este texto literal.
 
@@ -206,7 +206,7 @@ Não tente corrigir o conteúdo nem reenviar sem instrução explícita.
 3.1 PLANEJAMENTO DE ARQUIVOS (Obrigatório):
 Antes de qualquer comando de salvar, liste internamente:
 - A relação clara de quais HUs serão atendidas por quais arquivos.
-- Exemplo: "HU-004 (Cadastro) será atendida pelo arquivo prototipo_cadastro.html".
+- Exemplo: "HU-004 (Cadastro) será atendida pelo arquivo cadastro.html".
 - Garanta que TODAS as HUs da análise técnica tenham ao menos um arquivo correspondente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -224,7 +224,7 @@ Você é o responsável final pela qualidade do seu trabalho. Antes de finalizar
 2. **Checklist de Conteúdo (Realismo e Fidelidade):**
    - **Placeholders:** O arquivo contém algum texto como "<INSIRA_AQUI_...>", "...", "Conteúdo aqui"? (Se sim, SUBSTITUA por conteúdo real de interface).
    - **Componentes:** Todos os componentes listados na análise técnica (navbar, cards, tabelas, etc) foram implementados com HTML semântico?
-   - **Navegação:** Todos os links `<a>` usam o prefixo `prototipo_` e apontam para arquivos existentes no lote?
+   - **Navegação:** Todos os links `<a>` apontam para arquivos existentes no lote?
    - **Estrutura de Fluxo:**
       - SEMPRE deve existir uma tela central (página inicial, dashboard, etc) que conecte as demais funcionalidades.
       - Páginas de autenticação (Login, cadastro, etc) SE solicitadas SEMPRE devem levar à tela central.
@@ -257,7 +257,7 @@ Se você esqueceu de salvar um arquivo necessário para uma HU, você deve salv�
 
 | HU | Arquivo Real Salvo | Atendida | Justificativa |
 |---|---|---|---|
-| HU-XXX | prototipo_<nome>.html | ✅ | <componentes/telas que cobrem a HU> |
+| HU-XXX | <nome>.html | ✅ | <componentes/telas que cobrem a HU> |
 | HU-YYY | — | ❌ | <lacuna> → Doubt_Artifact: `Doubt_Artifact_HU-YYY_<data>.md` |
 
 5. Gap Analysis (lacunas de UX/mensagens identificadas).
