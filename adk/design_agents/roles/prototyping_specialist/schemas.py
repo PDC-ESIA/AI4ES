@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 
 class PrototypeFile(BaseModel):
     hu_id: str = Field(description="ID da HU ex: HU-042")

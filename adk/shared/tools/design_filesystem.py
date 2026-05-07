@@ -257,6 +257,50 @@ def list_staging_files(filetype: str = "") -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
+def copy_file(source_path: str, destination_filename: str) -> Dict[str, Any]:
+    """
+    Copia um arquivo existente para um novo local em staging/prototype.
+    Útil para aplicar templates sem carregar todo o conteúdo no contexto do LLM.
+
+    Args:
+        source_path: Caminho completo do arquivo de origem (ex: shared/templates/style.css)
+        destination_filename: Nome do arquivo de destino (será salvo em staging ou prototype/)
+
+    Returns:
+        dict com status e detalhes da operação.
+    """
+    try:
+        _ensure_dirs()
+        src = (CURRENT_DIR / source_path).resolve()
+        
+        if not src.exists():
+            return {"status": "error", "error": f"Arquivo de origem {source_path} não encontrado."}
+            
+        # Define o diretório de destino
+        clean_filename = destination_filename.replace("prototype/", "").replace("staging/", "")
+        target_dir = STAGING_DIR
+        if clean_filename.endswith(".html") or clean_filename == "global.css":
+            target_dir = PROTOTYPE_DIR
+            
+        dest = (target_dir / clean_filename).resolve()
+        
+        if not _is_safe_path(dest):
+            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
+
+        shutil.copy2(str(src), str(dest))
+        IOLogger.copy(source_path, dest)
+
+        return {
+            "status": "ok",
+            "source": str(src),
+            "destination": str(dest),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        IOLogger.error("copy_file", str(e))
+        return {"status": "error", "error": str(e)}
+
+
 def check_active_blocks() -> Dict[str, Any]:
     """
     Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.

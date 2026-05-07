@@ -70,3 +70,7 @@ class IOLogger:
     def error(operation: str, detail: str) -> None:
         """Erros são sempre registrados, independente de LOG_DETAIL."""
         _write(f"[{_now()}] ERROR   | op={operation} | detail={detail}\n")
+    
+    @staticmethod
+    def copy(source_path: str, destination_filename: str) -> None:
+        _write(f"[{_now()}] COPY    | source={source_path} | destination={destination_filename}\n") 

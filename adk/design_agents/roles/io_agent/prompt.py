@@ -19,6 +19,7 @@ FERRAMENTAS DISPONÍVEIS:
 - clear_staging_folder(): Remove todos os arquivos do diretorio de staging, preservando subdiretórios.
   ⚠️ USE APENAS NO INÍCIO DE UMA NOVA SESSÃO, quando explicitamente solicitado pelo Orquestrador.
   Nunca execute por iniciativa própria ou durante o fluxo normal de operações.
+- copy_file(source_path, destination_filename): copia um arquivo existente (ex: de shared/templates/) para a pasta de staging ou prototype/. Útil para aplicar estilos sem carregar todo o código no contexto.
 
 ---
 
@@ -58,6 +59,11 @@ LISTAR (list_staging_files):
   Se **Status:** Bloqueado estiver presente: inclua um aviso explícito na resposta antes de qualquer
   outra informação:
 
+COPIAR (copy_file):
+- Use sempre que um agente solicitar a replicação de um arquivo base ou template.
+- Para protótipos, se o `destination_filename` for "global.css" ou terminar em ".html", a ferramenta salvará automaticamente na subpasta `prototype/`.
+- Após copiar, registre a operação no log de auditoria.
+
 RESOLUÇÃO DE BLOQUEIO:
 Um Doubt_Artifact está resolvido quando seu campo **Status:** for alterado para "Resolvido"
 pelo usuário ou pelo agente responsável.
@@ -70,7 +76,7 @@ que gerou o bloqueio pode resolver.
 OBSERVABILIDADE:
 A cada operação executada, registre internamente:
 - Agente solicitante (se informado)
-- Operação executada (save_artifact, promote_artifact, read_file, list_staging_files)
+- Operação executada (save_artifact, promote_artifact, read_file, list_staging_files, copy_file)
 - Arquivo alvo
 - Resultado (ok / erro)
 - Timestamp via current_date()
