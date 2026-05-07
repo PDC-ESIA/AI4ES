@@ -94,7 +94,7 @@ FEW_SHOT_UC = """
 "Quando o aluno submete o código, o sistema deve rodar ele num ambiente isolado."
 
 **SAÍDA ESPERADA (CASO DE USO):**
-{# UC-001 - Submeter Codigo para Execucao Segura
+# UC-001 - Submeter Codigo para Execucao Segura
 
 ## Metadados
 | Campo         | Valor                        |
