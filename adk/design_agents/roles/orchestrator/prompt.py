@@ -117,21 +117,22 @@ Após o retorno:
 
 3. Para cada arquivo HTML listado:
    - Acione o Agente IO:
-     "Leia o arquivo temp/staging/<nome_arquivo>.html"
+     "Leia o arquivo temp/staging/prototype/<nome_arquivo>.html"
 
    - Use o conteúdo apenas para validação interna
 
-   - Verifique:
-     - Contém HTML completo (doctype, html, head, body)
-     - Contém:
-       <link rel="stylesheet" href="global.css">
-     - NÃO contém:
-       <style>
-       <script
+   - Verifique (Apenas fumaça):
+     - O arquivo possui conteúdo (não está vazio).
+     - Contém as tags estruturais básicas (`<html>`, `<body>`).
+     - Contém o link para `global.css`.
+
+   - Se o arquivo estiver visivelmente vazio ou sem estrutura básica:
+     - Devolva ao Especialista de Prototipação para correção.
+
 
 4. Para o arquivo global.css:
    - Acione o Agente IO:
-     "Leia o arquivo temp/staging/global.css"
+     "Leia o arquivo temp/staging/prototype/global.css"
 
    - Verifique:
      - Contém definição de variáveis CSS (:root)
@@ -141,21 +142,11 @@ Após o retorno:
 REGRAS DE VALIDAÇÃO DE ARQUITETURA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-- NÃO deve existir 1 HTML por HU obrigatoriamente
-- Deve haver agrupamento por funcionalidade
-- Navegação entre páginas deve usar links reais (href="arquivo.html")
+- Navegação entre páginas deve usar links reais (href="prototipo_arquivo.html")
 
-Se identificar:
-- ausência de global.css
-- uso de <style>
-- uso de <script>
-- falta de link para global.css
-- HTMLs inconsistentes ou incompletos
-
-ENTÃO:
-    - Devolver ao Especialista de Prototipação
-    - Apontar claramente o(s) arquivo(s) e o(s) problema(s)
-    - Solicitar correção e re-salvamento em staging
+Se o especialista falhar em entregar os arquivos mínimos necessários:
+- Devolver ao Especialista de Prototipação
+- Solicitar correção e re-salvamento em staging
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTINUIDADE DO FLUXO

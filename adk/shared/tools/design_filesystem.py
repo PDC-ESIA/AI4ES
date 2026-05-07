@@ -23,6 +23,7 @@ def _find_root(start_path: Path, target: str = "adk") -> Path:
 CURRENT_DIR = _find_root(Path(__file__).resolve())
 STAGING_DIR = CURRENT_DIR / "temp" / "staging"
 OFFICIAL_DIR = CURRENT_DIR / "artifacts"
+PROTOTYPE_DIR = STAGING_DIR / "prototype"
 LOG_FILENAME = "io_operations.log"
 STATUS_IN_REVIEW = "**Status:** Em análise"
 STATUS_BLOCKED = "**Status:** Bloqueado"
@@ -36,6 +37,7 @@ def _ensure_dirs() -> None:
     """Garante que a estrutura de diretórios necessária exista."""
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
+    PROTOTYPE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _is_safe_path(path: Path) -> bool:
@@ -72,6 +74,13 @@ def read_file(filepath: str) -> Dict[str, Any]:
     try:
         path = Path(filepath).resolve()
         
+        # Se o arquivo não existir no caminho direto, tenta procurar no subdiretório prototype
+        if not path.exists():
+            if filepath.endswith(".html") or filepath.endswith(".css"):
+                alt_path = (PROTOTYPE_DIR / Path(filepath).name).resolve()
+                if alt_path.exists():
+                    path = alt_path
+
         if not _is_safe_path(path):
             return {"status": "error", "error": "Acesso negado: o caminho solicitado está fora do diretório do projeto."}
 
@@ -101,10 +110,22 @@ def save_artifact(filename: str, content: str) -> dict:
     """
     try:
         _ensure_dirs()
-        destination = (STAGING_DIR / filename).resolve()
+        
+        # Limpa o nome do arquivo se o agente enviou com o prefixo do diretório
+        clean_filename = filename.replace("prototype/", "").replace("staging/", "")
+        
+        # Define o diretório de destino (staging ou prototype)
+        target_dir = STAGING_DIR
+        if clean_filename.endswith(".html") or clean_filename == "global.css":
+            target_dir = PROTOTYPE_DIR
+            
+        destination = (target_dir / clean_filename).resolve()
         
         if not _is_safe_path(destination):
             raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
+
+        # Garante que o diretório de destino existe (caso o agente tenha passado subpastas)
+        destination.parent.mkdir(parents=True, exist_ok=True)
 
         versioned_backup = None
 
@@ -207,14 +228,29 @@ def list_staging_files(filetype: str = "") -> Dict[str, Any]:
     """
     try:
         _ensure_dirs()
+        
+        # Lista arquivos da raiz de staging
         files = [
             f.name
             for f in sorted(STAGING_DIR.iterdir())
-            if f.name != LOG_FILENAME
+            if f.is_file() 
+            and f.name != LOG_FILENAME
             and BACKUP_PREFIX not in f.name
             and (not filetype or f.suffix == f".{filetype}")
         ]
-        return {"status": "ok", "files": files, "staging_dir": str(STAGING_DIR)}
+        
+        # Lista arquivos da pasta prototype (se aplicável)
+        if not filetype or filetype in ["html", "css"]:
+            proto_files = [
+                f.name
+                for f in sorted(PROTOTYPE_DIR.iterdir())
+                if f.is_file()
+                and BACKUP_PREFIX not in f.name
+                and (not filetype or f.suffix == f".{filetype}")
+            ]
+            files.extend(proto_files)
+
+        return {"status": "ok", "files": sorted(list(set(files))), "staging_dir": str(STAGING_DIR)}
 
     except Exception as e:
         IOLogger.error("list_staging_files", str(e))
@@ -247,26 +283,31 @@ def check_active_blocks() -> Dict[str, Any]:
 
 def clear_staging_folder() -> bool:
     """
-    Remove todos os arquivos do diretório de staging, preservando subdiretórios.
+    Remove todos os arquivos do diretório de staging e seus subdiretórios (como prototype),
+    preservando a estrutura de pastas.
     Segurança: só apaga se o diretório estiver dentro de CURRENT_DIR.
 
     Returns:
         bool: True se todos os arquivos foram removidos com sucesso, False caso contrário
     """
-    path: Path = STAGING_DIR
     try:
-        if not _is_safe_path(path):
-            raise PermissionError(f"Segurança: Tentativa de apagar fora de {CURRENT_DIR}")
-
         _ensure_dirs()
-        for file in path.iterdir():
-            if file.is_file():
-                file.unlink()
+        
+        def _clear_recursive(directory: Path):
+            if not _is_safe_path(directory):
+                return
+            for item in directory.iterdir():
+                if item.is_file():
+                    item.unlink()
+                elif item.is_dir():
+                    _clear_recursive(item)
 
-        IOLogger.erase(str(path))
+        _clear_recursive(STAGING_DIR)
+
+        IOLogger.erase(str(STAGING_DIR))
         return True
     except Exception as e:
-        IOLogger.error("ERASE", f"dir={path} | error={str(e)}")
+        IOLogger.error("ERASE", f"dir={STAGING_DIR} | error={str(e)}")
         return False
 
 # ──────────────────────────────────────────────────────────────────────────────

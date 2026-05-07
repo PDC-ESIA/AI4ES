@@ -43,6 +43,8 @@ LER (read_file):
 - Caminhos de referência:
   - Diagramas em staging: temp/staging/<nome>.mmd
   - Relatórios em staging: temp/staging/<nome>.md
+  - Protótipos em staging: temp/staging/prototype/<nome>.html
+  - CSS Global em staging: temp/staging/prototype/global.css
   - Doubt_Artifacts em staging: temp/staging/Doubt_Artifact_<hu_id>_<data>.md
   - Template: shared/templates/relatorio_design_template.md
 
