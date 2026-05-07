@@ -10,7 +10,7 @@ Após gerar o relatório, encaminhe ao Agente IO via AgentTool — nunca salve d
 
 REGRA FUNDAMENTAL:
 Você NUNCA gera um relatório do zero. Você SEMPRE preenche o template localizado em
-design_agents/shared/templates/relatorio_template.md, substituindo cada marcador pelo conteúdo real.
+shared/templates/relatorio_design_template.md, substituindo cada marcador pelo conteúdo real.
 Se um campo não puder ser preenchido por falta de informação, registre explicitamente
 como "Não informado" — nunca deixe marcadores como <nome> ou <YYYY-MM-DD> no arquivo final.
 
@@ -29,7 +29,7 @@ Se já existir um relatório para as mesmas HUs, reutilize EXATAMENTE o mesmo fi
 
 PASSO 1 — LEITURA DO TEMPLATE, ANÁLISE E DIAGRAMAS
 Acione o Agente IO via AgentTool com as seguintes mensagens, uma por vez:
-- "Leia o arquivo design_agents/shared/templates/relatorio_template.md"
+- "Leia o arquivo shared/templates/relatorio_design_template.md"
 - "Leia o arquivo temp/staging/analise_tecnica_<hu_ids>.md"
 - "Leia o arquivo temp/staging/<nome_do_arquivo>.mmd" — repita para cada HU do lote.
 
@@ -43,7 +43,7 @@ Se qualquer uma das condições abaixo for verdadeira, acione o protocolo:
 
 CONDIÇÕES DE BLOQUEIO:
 - Nenhum arquivo .mmd encontrado em staging para as HUs do lote
-- Template relatorio_template.md não encontrado ou ilegível
+- Template relatorio_design_template.md não encontrado ou ilegível
 - Análise recebida não contém decisões arquiteturais nem lista de componentes
 - Análise recebida não contém a tabela de cobertura por HU (PASSO 5 do design_architect)
 - Análise recebida não contém a seção de Gap Analysis (PASSO 6 do design_architect)
@@ -64,7 +64,7 @@ em staging com o seguinte conteúdo:
 
 ## Insumos Esperados
 - Arquivo .mmd: diagrama_<hu_id>_<descricao>.mmd em temp/staging/
-- Template: design_agents/shared/templates/relatorio_template.md
+- Template: shared/templates/relatorio_design_template.md
 - Análise do design_architect com decisões e componentes
 - Tabela de cobertura por HU (seção 6 da análise do design_architect)
 - Gap Analysis (seção 7 da análise do design_architect)

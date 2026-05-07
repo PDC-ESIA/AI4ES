@@ -1,201 +1,61 @@
+# Contribuindo com o Projeto (Gitflow)
 
----
+Este projeto utiliza o fluxo de trabalho **Gitflow** para gerenciar o versionamento de código. Suas contribuições devem seguir este padrão.
 
-# 📘 **CONTRIBUTING.md**
+## Branches Principais
 
-**Guia Oficial de Contribuição – Projeto PDC: IA Generativa para Engenharia de Software**
+- **`main`** (ou `master`): Reflete o estado exato da produção. Restrita a merges vindos de `release` ou `hotfix`.
+- **`develop`**: Branch principal de desenvolvimento. O código atual da próxima versão fica centralizado aqui.
 
-Este documento explica **como contribuir de maneira padronizada**, seguindo o fluxo aprovado entre Gestão e Squads.
+## Como Contribuir
 
----
-# Fluxo Oficial de Trabalho
-## **Etapa 1 — Líder abre Issue-mãe (Epic)**
-
-O líder inicia o processo criando uma **Issue-mãe** contendo:
-
-* Contexto da entrega
-* Objetivo
-* Escopo
-* Dependências
-* **DoR básico** (Definition of Ready)
-* Prazo estimado
-* DoD geral (Definition of Done)
-* Lista de tarefas da squad (alto nível)
-
-A Issue-mãe é atribuída à **Gestão**.
-
----
-
-## **Etapa 2 — Gestão revisa e estrutura as tasks**
-
-A gestão:
-
-1. Revisa a Issue-mãe
-2. Ajusta descrição, escopo e datas
-3. Aplica label **`epic`**
-4. Cria **issues filhas** (uma por tarefa) usando templates oficiais
-5. Cria **cards no GitHub Project** com status inicial `to-refine`
-
-Após criar as tasks, a gestão **comenta na Issue-mãe** com:
-
-* Links dos cards
-* Observações necessárias
-
----
-
-## **Etapa 3 — Líder revisa e libera tasks**
-
-O líder revisa o conteúdo das issues
-Se ajustes forem necessários → solicita à gestão.
-Se estiver tudo OK:
-
-➡️ O líder move os cards de `to-refine` para **`to-do`**.
-
----
-
-## **Etapa 4 — Execução pelos membros da Squad**
-
-### Cada responsável deve:
-
-### ✔ Criar branch no padrão:
-
+### 1. Novas Funcionalidades (`feature/`)
+Crie sempre a partir da `develop`. **Obrigatório incluir o número da issue no nome**:
+```bash
+git checkout develop
+git checkout -b feature/123-nome-da-sua-feature
 ```
-squadX/numero_issue-titulo
+*Ao finalizar, abra um Pull Request (PR) para a `develop`.*
+
+### 2. Correções Emergenciais (`hotfix/`)
+Para bugs críticos em produção, crie a partir da `main`. **Inclua o número da issue do bug**:
+```bash
+git checkout main
+git checkout -b hotfix/124-nome-do-bug
 ```
+*Após corrigir, faça o merge tanto na `main` (gerando nova tag) quanto na `develop`.*
 
-Ex.:
-
-* `squad1/23-analise-scispace`
-* `squad2/07-levantamento-artigos-arxiv`
-
-### ✔ Executar a tarefa no diretório correto
-
-Usando o **template apropriado** (RSL, Experimentação, Comparativo, Documentação etc.).
-
-### ✔ Fazer commits padronizados
-
-Formato:
-
+### 3. Lançamentos (`release/`)
+Para compilar uma nova versão, crie a partir da `develop`:
+```bash
+git checkout develop
+git checkout -b release/vX.Y.Z
 ```
-tipo: descrição breve
-```
+*Faça os últimos ajustes e, ao concluir, submeta o merge para a `main` (com tag) e para a `develop`.*
 
-Tipos permitidos:
+## Pull Requests (PR)
 
-* `add:` inclusão
-* `update:` modificação
-* `fix:` correção
-* `refactor:` reorganização
-* `docs:` documentação
-* `test:` testes
+1. **Branch de destino**
+   - `feature/*` → `develop`
+   - `hotfix/*` → `main` (e depois garantir o merge de volta em `develop`, conforme o fluxo de hotfix)
+   - `release/*` → `main` e `develop`, conforme o processo de release
 
-Exemplos:
+2. **Título e descrição**
+   - O título deve ser claro e, quando houver issue, **incluir o número** (ex.: `#123 — Descrição curta`).
+   - Na descrição, **referencie a issue** (`Closes #123`, `Refs #123` ou link) e resuma o que mudou e por quê.
+   - Se o PR for grande ou depender de contexto, liste pontos de atenção para quem revisa.
 
-```
-add: adiciona relatório inicial da ferramenta Copilot
-update: melhora tabela de métricas T3
-docs: adiciona links no comparativo
-```
+3. **Antes de abrir ou marcar como pronto**
+   - Sincronize com a branch de destino e resolva conflitos localmente.
+   - Garanta que commits e mensagens sigam as [Regras Gerais](#regras-gerais) (issue no nome da branch e nas mensagens, quando aplicável).
 
----
+4. **Revisão e merge**
+   - Aguarde aprovação conforme as políticas do repositório; não faça merge direto em `main` ou `develop`.
+   - Prefira PRs **pequenos e focados** em uma mudança ou tarefa; facilita revisão e rollback.
 
-## **Etapa 5 — Pull Request para branch de release**
+## Regras Gerais
 
-Quando concluir a tarefa:
-
-1. Abra um PR de sua branch → para **branch da release**
-2. Inclua no PR:
-
-   * Link direto da Issue (`Closes #23`)
-   * Resumo da entrega
-   * Observações relevantes
-3. Atribua o **Líder da squad** como revisor
-4. Movimente o card para **`review`**
-
-O líder revisa:
-
-* Estrutura
-* Template
-* Conteúdo
-* Clareza
-* Aderência ao DoD da tarefa
-
-Se ajustes forem necessários → card volta para **`in progress`**.
-Se aprovado → líder faz merge na release e card vai para `done`.
-
----
-
-## **Etapa 6 — Fechamento da Release**
-
-Quando **todas as tasks da release estiverem em `done`**, o líder:
-
-1. Abre **PR da branch de release → main**
-2. Descreve:
-
-   * Todas as entregas incluídas
-   * Links dos PRs
-   * Squads envolvidas
-3. Atribui à Gestão para aprovação final
-
-A Gestão revisa e, se aprovado:
-
-➡️ Faz o **merge na main**
-➡️ A release é concluída oficialmente
-
----
-
-## **Fluxo completo de Gestão + Squads**
-
-```mermaid
-flowchart TD
-
-    %% Abertura e planejamento
-
-    A[Líder abre Issue-mãe<br/>com DoR básico<br/>e atribui à Gestão] --> B
-
-    B[Gestão revisa Issue-mãe<br/>e ajusta se necessário] --> C
-
-    C[Gestão aplica label 'epic'] --> D
-
-    D[Gestão cria Issues filhas<br/>via templates<br/>+ cards 'to-refine'] --> E
-
-    E[Gestão comenta na Issue-mãe<br/>com links das Issues e cards] --> F
-
-    %% Revisão do líder
-
-    F[Líder revisa tasks] --> G{Ajustes necessários?}
-
-    G --> |Sim| H[Líder solicita ajustes<br/>Gestão corrige] --> D
-
-    G --> |Não| I[Líder move cards<br/>para 'to-do'] --> J
-
-    %% Execução
-
-    J[Responsáveis iniciam trabalho<br/>Branch: squadX/numero_issue] --> K[Responsáveis executam<br/>commits padronizados]
-
-    K --> L[Responsável abre PR<br/>para branch da release<br/>+ link da Issue<br/>+ atribui líder]
-
-    L --> M[Líder revisa PR]
-
-    M --> N{Aprovado?}
-
-    N --> |Não| O[Comentários no PR<br/>card volta para 'in progress'] --> K
-
-    N --> |Sim| P[Líder mergeia PR<br/>na release<br/>card vai para 'done']
-
-    %% Fechamento de release
-
-    P --> Q{Todas tasks da release estão done?}
-
-    Q --> |Não| J
-
-    Q --> |Sim| R[PR release → main<br/>lista entregas e PRs]
-
-    R --> S[Gestão revisa PR final]
-
-    S --> T{Aprovado?}
-
-    T --> |Não| U[Ajustes solicitados] --> R
-
-    T --> |Sim| V[Gestão faz merge na main<br/>Release concluída]
-```
+- **Nomenclatura de Branches**: Siga o padrão `tipo/numero-da-issue-breve-descricao` (ex: `feature/42-adicionar-login`).
+- **Branches Protegidas**: As branches `main` e `develop` são protegidas. O código deve ser integrado a elas **exclusivamente via Pull Request (PR)**. Nunca realize commits diretos.
+- **Commits Descritivos**: A mensagem do commit deve ser curta, objetiva e sempre **conter a referência ao número da issue** de trabalho (ex: `#42 Adiciona validação de login`).
+- **Sincronização**: Antes de finalizar sua tarefa, sincronize sua branch com as mudanças mais recentes da branch de destino (ex: `git pull origin develop`).

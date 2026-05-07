@@ -1,0 +1,211 @@
+{
+    "sistema": "Plataforma de Cursos em Vídeo",
+    "requisitos_funcionais": [
+        {
+            "id": "RF01",
+            "descricao": "O sistema deve permitir que o instrutor crie um curso, informando título, descrição, capa e preço."
+        },
+        {
+            "id": "RF02",
+            "descricao": "O sistema deve permitir que o instrutor organize o curso em módulos e adicione aulas a cada módulo."
+        },
+        {
+            "id": "RF03",
+            "descricao": "O sistema deve permitir que o instrutor faça upload de vídeo para cada aula."
+        },
+        {
+            "id": "RF04",
+            "descricao": "O sistema deve permitir que o instrutor edite e remova cursos, módulos e aulas."
+        },
+        {
+            "id": "RF05",
+            "descricao": "O sistema deve permitir que o instrutor publique ou despublique um curso, controlando sua visibilidade na plataforma."
+        },
+        {
+            "id": "RF06",
+            "descricao": "O sistema deve permitir que estudantes se cadastrem na plataforma informando nome, e-mail e senha."
+        },
+        {
+            "id": "RF07",
+            "descricao": "O sistema deve permitir que estudantes adquiram cursos disponíveis."
+        },
+        {
+            "id": "RF08",
+            "descricao": "O sistema deve liberar o acesso ao conteúdo de um curso somente após a aquisição pelo estudante."
+        },
+        {
+            "id": "RF09",
+            "descricao": "O sistema deve registrar a conclusão de uma aula quando o estudante a marca como concluída."
+        },
+        {
+            "id": "RF10",
+            "descricao": "O sistema deve controlar o progresso do estudante no curso com base no número de aulas concluídas."
+        },
+        {
+            "id": "RF11",
+            "descricao": "O sistema deve emitir um certificado de conclusão ao estudante quando todas as aulas do curso forem concluídas."
+        },
+        {
+            "id": "RF12",
+            "descricao": "O sistema deve exibir ao estudante seu percentual de progresso em cada curso adquirido."
+        },
+        {
+            "id": "RF13",
+            "descricao": "O sistema deve oferecer ao instrutor um painel com o número total de matrículas por curso."
+        },
+        {
+            "id": "RF14",
+            "descricao": "O sistema deve oferecer ao instrutor métricas de engajamento por aula, como número de visualizações e taxa de conclusão."
+        },
+        {
+            "id": "RF15",
+            "descricao": "O sistema deve permitir que o estudante acesse o certificado emitido para download."
+        },
+        {
+            "id": "RF16",
+            "descricao": "O sistema deve permitir que estudantes e instrutores façam login e logout na plataforma."
+        }
+    ],
+    "requisitos_nao_funcionais": [
+        {
+            "id": "RNF01",
+            "categoria": "Segurança",
+            "descricao": "O acesso ao conteúdo de um curso deve ser restrito exclusivamente a estudantes que o adquiriram."
+        },
+        {
+            "id": "RNF02",
+            "categoria": "Segurança",
+            "descricao": "As senhas dos usuários devem ser armazenadas com hash seguro (ex.: bcrypt)."
+        },
+        {
+            "id": "RNF03",
+            "categoria": "Desempenho",
+            "descricao": "Os vídeos devem ser entregues via streaming, evitando download integral antes da reprodução."
+        },
+        {
+            "id": "RNF04",
+            "categoria": "Escalabilidade",
+            "descricao": "O armazenamento de vídeos deve utilizar serviço externo de object storage (ex.: S3 ou equivalente), desacoplado do servidor da aplicação."
+        },
+        {
+            "id": "RNF05",
+            "categoria": "Usabilidade",
+            "descricao": "A interface deve ser responsiva e funcionar adequadamente em dispositivos móveis e desktops."
+        },
+        {
+            "id": "RNF06",
+            "categoria": "Desempenho",
+            "descricao": "O painel de métricas do instrutor deve ser carregado em até 3 segundos."
+        },
+        {
+            "id": "RNF07",
+            "categoria": "Confiabilidade",
+            "descricao": "O progresso do estudante deve ser salvo automaticamente a cada aula marcada como concluída, sem risco de perda."
+        },
+        {
+            "id": "RNF08",
+            "categoria": "Compatibilidade",
+            "descricao": "A plataforma deve funcionar nos principais navegadores modernos (Chrome, Firefox, Safari, Edge)."
+        },
+        {
+            "id": "RNF09",
+            "categoria": "Manutenibilidade",
+            "descricao": "O sistema deve registrar logs de eventos críticos: aquisição de curso, emissão de certificado e erros de upload de vídeo."
+        },
+        {
+            "id": "RNF10",
+            "categoria": "Acessibilidade",
+            "descricao": "O player de vídeo deve oferecer controles básicos de acessibilidade (play/pause, volume, velocidade de reprodução)."
+        }
+    ],
+    "historias_de_usuario": [
+        {
+            "id": "HU01",
+            "titulo": "Criar e estruturar um curso",
+            "historia": "Como instrutor, quero criar um curso com título, descrição e capa, organizá-lo em módulos e adicionar aulas com vídeos a cada módulo, para disponibilizar meu conteúdo de forma estruturada na plataforma.",
+            "criterios_de_aceite": [
+                "Título e descrição são campos obrigatórios para criação do curso.",
+                "Deve ser possível adicionar, reordenar e remover módulos e aulas livremente antes da publicação.",
+                "Cada aula deve aceitar o upload de um arquivo de vídeo."
+            ]
+        },
+        {
+            "id": "HU02",
+            "titulo": "Publicar e despublicar curso",
+            "historia": "Como instrutor, quero controlar quando meu curso fica visível na plataforma, para publicá-lo apenas quando estiver pronto e despublicá-lo se necessário.",
+            "criterios_de_aceite": [
+                "Um curso despublicado não deve aparecer para estudantes na plataforma.",
+                "Estudantes que já adquiriram o curso devem manter acesso mesmo após uma despublicação.",
+                "O instrutor deve visualizar claramente o status (publicado / rascunho) de cada curso no seu painel."
+            ]
+        },
+        {
+            "id": "HU03",
+            "titulo": "Acompanhar matrículas do curso",
+            "historia": "Como instrutor, quero visualizar o número total de matrículas em cada um dos meus cursos, para entender o alcance do meu conteúdo.",
+            "criterios_de_aceite": [
+                "O painel deve exibir o total de estudantes matriculados por curso.",
+                "Os dados devem ser atualizados em tempo real ou com defasagem máxima de 1 hora."
+            ]
+        },
+        {
+            "id": "HU04",
+            "titulo": "Acompanhar engajamento por aula",
+            "historia": "Como instrutor, quero visualizar métricas de engajamento por aula (visualizações e taxa de conclusão), para identificar quais partes do curso geram mais ou menos engajamento.",
+            "criterios_de_aceite": [
+                "O painel deve exibir, por aula, o número de visualizações e o percentual de estudantes que a concluíram.",
+                "As métricas devem ser acessíveis a partir do painel do curso correspondente."
+            ]
+        },
+        {
+            "id": "HU05",
+            "titulo": "Cadastrar-se na plataforma",
+            "historia": "Como estudante, quero me cadastrar na plataforma informando meu nome, e-mail e senha, para ter acesso à compra e ao consumo de cursos.",
+            "criterios_de_aceite": [
+                "E-mail e senha são obrigatórios; o e-mail deve ter formato válido e ser único na plataforma.",
+                "A senha deve ter no mínimo 8 caracteres.",
+                "Após o cadastro, o estudante deve ser redirecionado para a página inicial da plataforma."
+            ]
+        },
+        {
+            "id": "HU06",
+            "titulo": "Adquirir um curso",
+            "historia": "Como estudante, quero adquirir um curso disponível na plataforma, para ter acesso ao seu conteúdo completo.",
+            "criterios_de_aceite": [
+                "O acesso ao conteúdo do curso deve ser liberado imediatamente após a aquisição.",
+                "O curso adquirido deve aparecer na área de cursos do estudante.",
+                "Não deve ser possível adquirir o mesmo curso duas vezes."
+            ]
+        },
+        {
+            "id": "HU07",
+            "titulo": "Assistir aulas e acompanhar progresso",
+            "historia": "Como estudante, quero assistir às aulas do curso e marcar cada uma como concluída, para acompanhar meu progresso até a conclusão.",
+            "criterios_de_aceite": [
+                "O vídeo deve ser reproduzido via streaming diretamente na plataforma.",
+                "O estudante deve poder marcar uma aula como concluída manualmente.",
+                "O percentual de progresso no curso deve ser atualizado imediatamente após cada conclusão de aula."
+            ]
+        },
+        {
+            "id": "HU08",
+            "titulo": "Receber e baixar o certificado de conclusão",
+            "historia": "Como estudante, quero receber e fazer o download do meu certificado ao concluir todas as aulas de um curso, para ter comprovação do aprendizado.",
+            "criterios_de_aceite": [
+                "O certificado deve ser emitido automaticamente quando a última aula do curso for marcada como concluída.",
+                "O certificado deve conter nome do estudante, título do curso, nome do instrutor e data de conclusão.",
+                "O estudante deve poder baixar o certificado em formato PDF a qualquer momento após a emissão."
+            ]
+        },
+        {
+            "id": "HU09",
+            "titulo": "Acessar meus cursos adquiridos",
+            "historia": "Como estudante, quero visualizar todos os cursos que adquiri em uma área centralizada, para retomar facilmente de onde parei.",
+            "criterios_de_aceite": [
+                "A área do estudante deve listar todos os cursos adquiridos com título, capa e percentual de progresso.",
+                "Deve ser possível acessar qualquer aula diretamente a partir da listagem.",
+                "Cursos concluídos devem ser identificados visualmente com destaque distinto."
+            ]
+        }
+    ]
+}

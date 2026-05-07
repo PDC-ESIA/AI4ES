@@ -8,31 +8,17 @@
 
 ---
 
-## Primeira execução
+## Primeira execução (dentro da pasta adk/)
 
-### 1. Criar e ativar o ambiente virtual
+### 1. Instalar dependências e preparar o ambiente
 
-```bash
-python -m venv venv
-```
-
-Linux/macOS:
-```bash
-source venv/bin/activate
-```
-
-Windows:
-```bash
-venv\Scripts\activate
-```
-
-### 2. Instalar dependências
+O projeto utiliza o **uv** para gerenciar dependências. Este comando criará o ambiente virtual e instalará todas as ferramentas necessárias, incluindo o **uvicorn**:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
-### 3. Autenticação — GitHub Copilot (OAuth)
+### 2. Autenticação — GitHub Copilot (OAuth)
 
 Não é necessária nenhuma chave de API. A autenticação é feita via GitHub na primeira execução:
 
@@ -46,14 +32,15 @@ Não é necessária nenhuma chave de API. A autenticação é feita via GitHub n
 
 ---
 
-## Executando o servidor
+## Executando o servidor (dentro da pasta adk/)
 
 ```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Acesse a interface em:
-```
+
+```hyperlink
 http://localhost:8000/dev-ui
 ```
 

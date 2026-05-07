@@ -1,0 +1,174 @@
+{
+    "sistema": "Sistema de Catalogação de Livros",
+    "requisitos_funcionais": [
+        {
+            "id": "RF01",
+            "descricao": "O sistema deve permitir que o usuário cadastre um livro, informando título, autor, editora e status de leitura."
+        },
+        {
+            "id": "RF02",
+            "descricao": "O sistema deve permitir que o usuário edite os dados de um livro cadastrado."
+        },
+        {
+            "id": "RF03",
+            "descricao": "O sistema deve permitir que o usuário remova um livro do acervo."
+        },
+        {
+            "id": "RF04",
+            "descricao": "O sistema deve oferecer três opções de status de leitura: não lido, lendo e concluído."
+        },
+        {
+            "id": "RF05",
+            "descricao": "O sistema deve permitir que o usuário atualize o status de leitura de um livro a qualquer momento."
+        },
+        {
+            "id": "RF06",
+            "descricao": "O sistema deve permitir que o usuário crie, edite e remova gêneros literários."
+        },
+        {
+            "id": "RF07",
+            "descricao": "O sistema deve permitir que o usuário crie, edite e remova coleções personalizadas."
+        },
+        {
+            "id": "RF08",
+            "descricao": "O sistema deve permitir que o usuário associe um livro a um ou mais gêneros e a uma coleção."
+        },
+        {
+            "id": "RF09",
+            "descricao": "O sistema deve permitir filtrar o acervo por qualquer atributo cadastrado (título, autor, editora, status, gênero ou coleção)."
+        },
+        {
+            "id": "RF10",
+            "descricao": "O sistema deve exibir um resumo do acervo com o total de livros por status de leitura."
+        },
+        {
+            "id": "RF11",
+            "descricao": "O sistema deve exibir os gêneros mais frequentes no acervo do usuário."
+        },
+        {
+            "id": "RF12",
+            "descricao": "O sistema deve permitir que o usuário pesquise livros por título ou autor via campo de busca."
+        },
+        {
+            "id": "RF13",
+            "descricao": "O sistema deve diferenciar livros físicos de livros digitais no cadastro."
+        }
+    ],
+    "requisitos_nao_funcionais": [
+        {
+            "id": "RNF01",
+            "categoria": "Segurança",
+            "descricao": "O acesso à aplicação deve ser protegido por autenticação, garantindo que o acervo seja estritamente pessoal e isolado por usuário."
+        },
+        {
+            "id": "RNF02",
+            "categoria": "Usabilidade",
+            "descricao": "A interface deve ser responsiva e funcionar adequadamente em dispositivos móveis e desktops."
+        },
+        {
+            "id": "RNF03",
+            "categoria": "Desempenho",
+            "descricao": "A listagem e filtragem do acervo devem ser executadas em até 2 segundos, independentemente do volume de registros."
+        },
+        {
+            "id": "RNF04",
+            "categoria": "Persistência",
+            "descricao": "Os dados do acervo devem ser persistidos em banco de dados, sem risco de perda ao fechar ou recarregar a aplicação."
+        },
+        {
+            "id": "RNF05",
+            "categoria": "Usabilidade",
+            "descricao": "O resumo estatístico do acervo deve ser atualizado em tempo real conforme o usuário adiciona, edita ou remove livros."
+        },
+        {
+            "id": "RNF06",
+            "categoria": "Compatibilidade",
+            "descricao": "A aplicação deve funcionar nos principais navegadores modernos (Chrome, Firefox, Safari, Edge)."
+        },
+        {
+            "id": "RNF07",
+            "categoria": "Manutenibilidade",
+            "descricao": "O sistema deve permitir exportar o acervo completo em formato CSV ou JSON para fins de backup pessoal."
+        }
+    ],
+    "historias_de_usuario": [
+        {
+            "id": "HU01",
+            "titulo": "Cadastrar livro",
+            "historia": "Como usuário, quero cadastrar um livro com título, autor, editora, tipo (físico ou digital) e status de leitura, para registrá-lo no meu acervo pessoal.",
+            "criterios_de_aceite": [
+                "Título e autor são campos obrigatórios.",
+                "O status de leitura deve ser selecionado dentre as opções: não lido, lendo e concluído.",
+                "O livro deve aparecer no acervo imediatamente após o cadastro."
+            ]
+        },
+        {
+            "id": "HU02",
+            "titulo": "Atualizar status de leitura",
+            "historia": "Como usuário, quero atualizar o status de leitura de um livro, para registrar meu progresso ao longo do tempo.",
+            "criterios_de_aceite": [
+                "O status deve poder ser alterado entre não lido, lendo e concluído a qualquer momento.",
+                "A alteração deve ser refletida imediatamente nas estatísticas do resumo do acervo."
+            ]
+        },
+        {
+            "id": "HU03",
+            "titulo": "Organizar livros por gênero",
+            "historia": "Como usuário, quero criar gêneros literários e associar livros a eles, para categorizar meu acervo de forma organizada.",
+            "criterios_de_aceite": [
+                "O usuário deve poder criar, renomear e remover gêneros livremente.",
+                "Um livro pode ser associado a mais de um gênero.",
+                "Ao remover um gênero, os livros associados não devem ser excluídos, apenas desvinculados."
+            ]
+        },
+        {
+            "id": "HU04",
+            "titulo": "Organizar livros por coleção",
+            "historia": "Como usuário, quero criar coleções e agrupar livros dentro delas, para organizar séries, sagas ou agrupamentos temáticos pessoais.",
+            "criterios_de_aceite": [
+                "O usuário deve poder criar, renomear e remover coleções livremente.",
+                "Um livro pode pertencer a apenas uma coleção por vez.",
+                "Ao remover uma coleção, os livros associados não devem ser excluídos, apenas desvinculados."
+            ]
+        },
+        {
+            "id": "HU05",
+            "titulo": "Filtrar o acervo",
+            "historia": "Como usuário, quero filtrar meu acervo por qualquer atributo (título, autor, editora, status, gênero, coleção ou tipo), para localizar livros específicos com facilidade.",
+            "criterios_de_aceite": [
+                "Deve ser possível combinar múltiplos filtros simultaneamente.",
+                "Os resultados devem ser atualizados dinamicamente conforme os filtros são aplicados.",
+                "Deve haver uma opção para limpar todos os filtros ativos com um único clique."
+            ]
+        },
+        {
+            "id": "HU06",
+            "titulo": "Pesquisar livros por título ou autor",
+            "historia": "Como usuário, quero pesquisar livros digitando parte do título ou do nome do autor, para encontrar rapidamente um registro específico no acervo.",
+            "criterios_de_aceite": [
+                "A busca deve retornar resultados parciais (ex.: parte do título ou sobrenome do autor).",
+                "Os resultados devem aparecer de forma dinâmica enquanto o usuário digita."
+            ]
+        },
+        {
+            "id": "HU07",
+            "titulo": "Visualizar resumo do acervo",
+            "historia": "Como usuário, quero visualizar um resumo com estatísticas do meu acervo, para entender meu comportamento de leitura e a composição da minha biblioteca.",
+            "criterios_de_aceite": [
+                "O resumo deve exibir o total geral de livros e o total separado por status (não lido, lendo, concluído).",
+                "O resumo deve listar os gêneros mais frequentes no acervo.",
+                "As estatísticas devem ser atualizadas automaticamente a cada alteração no acervo."
+            ]
+        },
+        {
+            "id": "HU08",
+            "titulo": "Exportar o acervo",
+            "historia": "Como usuário, quero exportar todos os dados do meu acervo em CSV ou JSON, para fazer backup pessoal ou usar as informações em outras ferramentas.",
+            "criterios_de_aceite": [
+                "A exportação deve incluir todos os campos cadastrados para cada livro.",
+                "O usuário deve poder escolher o formato de exportação (CSV ou JSON).",
+                "O arquivo deve ser gerado e disponibilizado para download diretamente pelo navegador."
+            ]
+        }
+    ]
+}

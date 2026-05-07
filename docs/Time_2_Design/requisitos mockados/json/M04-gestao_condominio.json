@@ -1,0 +1,346 @@
+{
+    "sistema": "Sistema de Administração de Condomínio Residencial",
+    "requisitos_funcionais": [
+        {
+            "id": "RF01",
+            "descricao": "O sistema deve permitir o cadastro de usuários com perfis distintos: síndico, condômino, funcionário e administrador."
+        },
+        {
+            "id": "RF02",
+            "descricao": "O sistema deve restringir o acesso às funcionalidades conforme o perfil do usuário autenticado."
+        },
+        {
+            "id": "RF03",
+            "descricao": "O sistema deve permitir que todos os usuários se autentiquem e encerrem sessão na plataforma."
+        },
+        {
+            "id": "RF04",
+            "descricao": "O sistema deve permitir que o síndico cadastre, edite e remova unidades (apartamentos/casas), informando bloco, número e tipo."
+        },
+        {
+            "id": "RF05",
+            "descricao": "O sistema deve permitir que o síndico cadastre moradores e os vincule a uma unidade, informando nome, CPF, e-mail e telefone."
+        },
+        {
+            "id": "RF06",
+            "descricao": "O sistema deve permitir que o síndico registre se o morador é proprietário ou inquilino."
+        },
+        {
+            "id": "RF07",
+            "descricao": "O sistema deve permitir que o síndico desative um morador sem excluir seu histórico no sistema."
+        },
+        {
+            "id": "RF08",
+            "descricao": "O sistema deve permitir que o síndico registre veículos vinculados a uma unidade, informando placa, modelo e cor."
+        },
+        {
+            "id": "RF09",
+            "descricao": "O sistema deve permitir que o síndico configure o valor da taxa condominial por unidade ou por tipo de unidade."
+        },
+        {
+            "id": "RF10",
+            "descricao": "O sistema deve permitir a emissão de boletos de condomínio individuais por unidade, com vencimento configurável."
+        },
+        {
+            "id": "RF11",
+            "descricao": "O sistema deve integrar com gateway de pagamento para processar e confirmar o pagamento dos boletos."
+        },
+        {
+            "id": "RF12",
+            "descricao": "O sistema deve atualizar automaticamente o status do boleto para pago após a confirmação do gateway."
+        },
+        {
+            "id": "RF13",
+            "descricao": "O sistema deve permitir a emissão em lote de boletos para todas as unidades em um único mês de referência."
+        },
+        {
+            "id": "RF14",
+            "descricao": "O sistema deve permitir que o síndico registre pagamentos realizados fora da plataforma (ex.: depósito bancário)."
+        },
+        {
+            "id": "RF15",
+            "descricao": "O sistema deve exibir ao síndico um painel com inadimplências por unidade e período."
+        },
+        {
+            "id": "RF16",
+            "descricao": "O sistema deve permitir que o síndico publique comunicados visíveis a todos os condôminos no portal."
+        },
+        {
+            "id": "RF17",
+            "descricao": "O sistema deve notificar os condôminos por e-mail quando um novo comunicado for publicado."
+        },
+        {
+            "id": "RF18",
+            "descricao": "O sistema deve permitir que o síndico crie assembleias com data, horário, local e pauta."
+        },
+        {
+            "id": "RF19",
+            "descricao": "O sistema deve permitir o registro da ata de uma assembleia concluída, vinculada ao evento correspondente."
+        },
+        {
+            "id": "RF20",
+            "descricao": "O sistema deve permitir que condôminos acompanhem assembleias agendadas e acessem atas de assembleias passadas pelo portal."
+        },
+        {
+            "id": "RF21",
+            "descricao": "O sistema deve permitir que condôminos registrem ocorrências (reclamações, solicitações ou sugestões) pelo portal."
+        },
+        {
+            "id": "RF22",
+            "descricao": "O sistema deve permitir que funcionários registrem ocorrências internas do condomínio."
+        },
+        {
+            "id": "RF23",
+            "descricao": "O sistema deve permitir que o síndico visualize, categorize e atualize o status das ocorrências (aberta, em andamento, encerrada)."
+        },
+        {
+            "id": "RF24",
+            "descricao": "O sistema deve notificar o autor da ocorrência por e-mail quando o seu status for atualizado."
+        },
+        {
+            "id": "RF25",
+            "descricao": "O sistema deve permitir que o síndico cadastre as áreas comuns disponíveis para reserva, com nome, capacidade e regras de uso."
+        },
+        {
+            "id": "RF26",
+            "descricao": "O sistema deve permitir que condôminos realizem reservas de áreas comuns pelo portal, selecionando data e horário."
+        },
+        {
+            "id": "RF27",
+            "descricao": "O sistema deve impedir reservas sobrepostas para uma mesma área comum no mesmo horário."
+        },
+        {
+            "id": "RF28",
+            "descricao": "O sistema deve permitir que o condômino cancele uma reserva dentro do prazo configurado pelo síndico."
+        },
+        {
+            "id": "RF29",
+            "descricao": "O sistema deve exibir ao síndico o calendário de reservas de todas as áreas comuns."
+        },
+        {
+            "id": "RF30",
+            "descricao": "O sistema deve permitir que funcionários registrem a entrada e saída de visitantes, informando nome, documento, unidade visitada e horário."
+        },
+        {
+            "id": "RF31",
+            "descricao": "O sistema deve permitir que condôminos pré-autorizem a entrada de visitantes pelo portal, informando nome e data prevista."
+        },
+        {
+            "id": "RF32",
+            "descricao": "O sistema deve exibir ao funcionário as pré-autorizações registradas para facilitar a liberação de acesso."
+        },
+        {
+            "id": "RF33",
+            "descricao": "O sistema deve manter um histórico de acessos de visitantes por unidade, consultável pelo síndico."
+        }
+    ],
+    "requisitos_nao_funcionais": [
+        {
+            "id": "RNF01",
+            "categoria": "Segurança",
+            "descricao": "O acesso ao sistema deve exigir autenticação; sessões inativas por mais de 30 minutos devem ser encerradas automaticamente."
+        },
+        {
+            "id": "RNF02",
+            "categoria": "Segurança",
+            "descricao": "As senhas dos usuários devem ser armazenadas com hash seguro (ex.: bcrypt)."
+        },
+        {
+            "id": "RNF03",
+            "categoria": "Segurança",
+            "descricao": "A integração com o gateway de pagamento deve seguir as diretrizes PCI-DSS; dados de cartão não devem ser armazenados no sistema."
+        },
+        {
+            "id": "RNF04",
+            "categoria": "Conformidade",
+            "descricao": "O sistema deve estar em conformidade com a LGPD no tratamento de dados pessoais de moradores, funcionários e visitantes."
+        },
+        {
+            "id": "RNF05",
+            "categoria": "Rastreabilidade",
+            "descricao": "Toda operação financeira (emissão, pagamento, registro manual) deve gerar registro imutável com usuário, data e hora."
+        },
+        {
+            "id": "RNF06",
+            "categoria": "Rastreabilidade",
+            "descricao": "Todo acesso de visitante deve ser registrado com data, hora, funcionário responsável e unidade visitada."
+        },
+        {
+            "id": "RNF07",
+            "categoria": "Disponibilidade",
+            "descricao": "O sistema deve estar disponível 24/7 com uptime mínimo de 99,5% ao mês, dado que condôminos acessam o portal a qualquer hora."
+        },
+        {
+            "id": "RNF08",
+            "categoria": "Desempenho",
+            "descricao": "O painel de inadimplências e o calendário de reservas devem ser carregados em até 3 segundos."
+        },
+        {
+            "id": "RNF09",
+            "categoria": "Usabilidade",
+            "descricao": "A interface deve ser responsiva e funcionar adequadamente em dispositivos móveis e desktops."
+        },
+        {
+            "id": "RNF10",
+            "categoria": "Compatibilidade",
+            "descricao": "O sistema deve funcionar nos principais navegadores modernos (Chrome, Firefox, Safari, Edge)."
+        },
+        {
+            "id": "RNF11",
+            "categoria": "Confiabilidade",
+            "descricao": "A emissão de boletos em lote deve ser transacional: em caso de falha parcial, o sistema deve registrar quais unidades foram afetadas sem corromper as demais."
+        },
+        {
+            "id": "RNF12",
+            "categoria": "Backup",
+            "descricao": "O sistema deve realizar backup automático diário dos dados, com retenção mínima de 90 dias."
+        },
+        {
+            "id": "RNF13",
+            "categoria": "Manutenibilidade",
+            "descricao": "O sistema deve registrar logs de eventos críticos: emissão e pagamento de boletos, publicação de comunicados, atualizações de ocorrências e registros de acesso."
+        }
+    ],
+    "historias_de_usuario": [
+        {
+            "id": "HU01",
+            "titulo": "Cadastrar unidades e moradores",
+            "historia": "Como síndico, quero cadastrar as unidades do condomínio e vincular moradores a cada uma delas, para manter o cadastro do condomínio atualizado e organizado.",
+            "criterios_de_aceite": [
+                "Bloco e número são campos obrigatórios para o cadastro de unidade.",
+                "Nome, CPF e e-mail são obrigatórios para o cadastro de morador; o CPF deve ser único no sistema.",
+                "Deve ser possível vincular mais de um morador à mesma unidade (ex.: proprietário e inquilino)."
+            ]
+        },
+        {
+            "id": "HU02",
+            "titulo": "Emitir boletos em lote",
+            "historia": "Como síndico, quero emitir boletos de condomínio para todas as unidades de uma vez referentes a um mês, para agilizar o processo de cobrança mensal.",
+            "criterios_de_aceite": [
+                "O síndico deve informar o mês de referência e a data de vencimento antes de confirmar a emissão.",
+                "O sistema deve gerar um boleto individual para cada unidade ativa.",
+                "Após a emissão, cada condômino deve receber o boleto por e-mail.",
+                "O sistema deve indicar quais unidades falharam na emissão, se houver."
+            ]
+        },
+        {
+            "id": "HU03",
+            "titulo": "Acompanhar inadimplências",
+            "historia": "Como síndico, quero visualizar um painel com as unidades inadimplentes por período, para tomar as providências cabíveis de cobrança.",
+            "criterios_de_aceite": [
+                "O painel deve listar unidades com boletos em aberto após o vencimento, exibindo unidade, morador, valor e dias em atraso.",
+                "Deve ser possível filtrar por bloco, período e faixa de atraso.",
+                "O síndico deve poder exportar a lista de inadimplentes em CSV."
+            ]
+        },
+        {
+            "id": "HU04",
+            "titulo": "Publicar comunicados",
+            "historia": "Como síndico, quero publicar comunicados no portal do condomínio, para informar os moradores sobre decisões, eventos e avisos importantes.",
+            "criterios_de_aceite": [
+                "O comunicado deve ter título, corpo de texto e data de publicação.",
+                "Todos os condôminos devem receber notificação por e-mail imediatamente após a publicação.",
+                "O síndico deve poder fixar comunicados importantes no topo do portal."
+            ]
+        },
+        {
+            "id": "HU05",
+            "titulo": "Gerenciar ocorrências",
+            "historia": "Como síndico, quero visualizar todas as ocorrências registradas, categorizá-las e atualizar seus status, para garantir que solicitações e reclamações dos moradores sejam tratadas.",
+            "criterios_de_aceite": [
+                "As ocorrências devem ser listadas com data, unidade de origem, categoria, descrição e status atual.",
+                "Deve ser possível filtrar por status, categoria e período.",
+                "O autor da ocorrência deve ser notificado por e-mail a cada mudança de status."
+            ]
+        },
+        {
+            "id": "HU06",
+            "titulo": "Criar e registrar assembleias",
+            "historia": "Como síndico, quero criar assembleias com data, horário, local e pauta, e registrar a ata após a realização, para manter o histórico de decisões do condomínio.",
+            "criterios_de_aceite": [
+                "A criação da assembleia deve notificar todos os condôminos por e-mail.",
+                "A ata deve ser associada à assembleia correspondente e disponibilizada no portal após o registro.",
+                "Deve ser possível anexar documentos à ata (ex.: listas de presença em PDF)."
+            ]
+        },
+        {
+            "id": "HU07",
+            "titulo": "Gerenciar áreas comuns e reservas",
+            "historia": "Como síndico, quero cadastrar as áreas comuns, configurar regras de reserva e acompanhar o calendário de reservas, para controlar o uso dos espaços compartilhados.",
+            "criterios_de_aceite": [
+                "Deve ser possível configurar horários permitidos para reserva e antecedência mínima e máxima por área.",
+                "O calendário deve exibir todas as reservas confirmadas por área e período.",
+                "O síndico deve poder cancelar qualquer reserva, com notificação ao condômino."
+            ]
+        },
+        {
+            "id": "HU08",
+            "titulo": "Visualizar e pagar boleto pelo portal",
+            "historia": "Como condômino, quero acessar meus boletos em aberto e pagos pelo portal, para acompanhar minha situação financeira com o condomínio.",
+            "criterios_de_aceite": [
+                "O portal deve listar boletos com mês de referência, vencimento, valor e status (em aberto, pago, vencido).",
+                "Deve ser possível visualizar e baixar o boleto em aberto para pagamento.",
+                "O status do boleto deve ser atualizado automaticamente após a confirmação do pagamento."
+            ]
+        },
+        {
+            "id": "HU09",
+            "titulo": "Reservar área comum",
+            "historia": "Como condômino, quero reservar uma área comum pelo portal para uma data e horário específicos, para planejar meu uso dos espaços do condomínio.",
+            "criterios_de_aceite": [
+                "O portal deve exibir a disponibilidade da área para o período selecionado em tempo real.",
+                "A reserva deve ser confirmada imediatamente se o horário estiver disponível.",
+                "O condômino deve receber confirmação por e-mail com os detalhes da reserva."
+            ]
+        },
+        {
+            "id": "HU10",
+            "titulo": "Registrar e acompanhar ocorrência",
+            "historia": "Como condômino, quero registrar uma ocorrência pelo portal e acompanhar sua evolução, para reportar problemas e saber quando foram resolvidos.",
+            "criterios_de_aceite": [
+                "O condômino deve informar categoria, descrição e, opcionalmente, anexar fotos.",
+                "O sistema deve exibir o status atual e o histórico de atualizações da ocorrência.",
+                "O condômino deve ser notificado por e-mail a cada atualização de status."
+            ]
+        },
+        {
+            "id": "HU11",
+            "titulo": "Pré-autorizar entrada de visitante",
+            "historia": "Como condômino, quero registrar antecipadamente a visita de alguém, para agilizar a liberação de acesso pelo funcionário na portaria.",
+            "criterios_de_aceite": [
+                "O condômino deve informar nome do visitante e data prevista da visita.",
+                "A pré-autorização deve ficar visível para o funcionário na portaria no dia indicado.",
+                "O condômino deve poder cancelar a pré-autorização enquanto a visita não tiver sido registrada."
+            ]
+        },
+        {
+            "id": "HU12",
+            "titulo": "Acompanhar assembleias e consultar atas",
+            "historia": "Como condômino, quero visualizar as assembleias agendadas e consultar as atas das assembleias passadas, para me manter informado sobre as decisões do condomínio.",
+            "criterios_de_aceite": [
+                "As assembleias futuras devem exibir data, horário, local e pauta.",
+                "As atas disponíveis devem poder ser visualizadas e baixadas em PDF diretamente pelo portal."
+            ]
+        },
+        {
+            "id": "HU13",
+            "titulo": "Registrar entrada e saída de visitantes",
+            "historia": "Como funcionário, quero registrar a entrada e saída de visitantes na portaria, para manter o controle de acesso ao condomínio.",
+            "criterios_de_aceite": [
+                "O registro de entrada deve exigir nome, documento, unidade visitada e horário.",
+                "O sistema deve destacar se o visitante possui pré-autorização registrada pelo condômino.",
+                "A saída deve ser registrada com horário, encerrando o registro de visita em aberto."
+            ]
+        },
+        {
+            "id": "HU14",
+            "titulo": "Consultar pré-autorizações de acesso",
+            "historia": "Como funcionário, quero consultar as pré-autorizações registradas pelos condôminos para o dia, para agilizar a liberação de visitantes esperados.",
+            "criterios_de_aceite": [
+                "A listagem deve exibir nome do visitante, unidade destino e condômino autorizador.",
+                "Deve ser possível filtrar por unidade ou por nome do visitante.",
+                "Após confirmar a entrada do visitante pré-autorizado, o registro deve ser vinculado à pré-autorização correspondente."
+            ]
+        }
+    ]
+}
