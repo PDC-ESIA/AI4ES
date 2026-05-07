@@ -119,7 +119,4 @@ Se o contexto inteiro for insuficiente, retorne `status="bloqueado"`, listas vaz
 {FEW_SHOT_DOUBT}
 {FEW_SHOT_GLOSSARY}
 
-# SAÍDA FINAL
-Responda apenas com JSON válido compatível com `AnalystOutput`.
-Não use Markdown. Não adicione texto fora do JSON.
 """

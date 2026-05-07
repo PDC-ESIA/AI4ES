@@ -39,8 +39,6 @@ agent = LlmAgent(
     name="requirements_agent",
     description=prompt.description,
     instruction=prompt.instruction,
-    output_schema=schemas.AnalystOutput,
-    output_key="analysis_result",
     tools=[
         FunctionTool(extract_text),
         FunctionTool(run_slicer),
