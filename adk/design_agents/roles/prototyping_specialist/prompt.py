@@ -166,14 +166,14 @@ Identifique as telas estritamente necessárias para atender as HUs da análise (
 
 1. **Dashboard (Tela Central):** Layout com Sidebar (navegação) + Header (perfil). Área central com Cards de métricas e tabelas de resumo. O Header ou Sidebar DEVE conter obrigatoriamente um link de "Sair" ou "Logout" destacado (ex: ícone ou cor diferenciada) que redirecione para a tela de login.
 2. **Listagens (Index):** Cabeçalho com Título e Botão "+ Novo". Tabela com hover nas linhas e ações claras (Editar/Excluir).
-3. **Formulários (Create/Edit):** Labels acima dos inputs, agrupamento lógico e botões "Salvar" (primário) e "Cancelar" (neutro) no final.
-4. **Autenticação:** Container centralizado, foco no formulário e links de suporte (recuperação).
+3. **Formulários (Create/Edit):** SEMPRE use a estrutura semântica do template: envolva cada par label/input em uma div com classe `.form-group`. O label DEVE ter a classe `.form-label`. Use `.form-hint` para instruções auxiliares. O botão principal deve ser `.btn-primary`.
+4. **Autenticação:** Use o layout especializado do template: `.auth-container` como wrapper principal, `.card` para o formulário, `.form-title` para o título centralizado, e `.form-options` para links de suporte. Use `.btn-full` no botão de ação principal.
 5. **Configurações/Perfil:** Layout de abas ou lista lateral, formulários de edição e feedback de "salvo com sucesso" simulado.
 
 Para cada arquivo:
 - Estrutura semântica completa (<header>, <nav>, <main>, etc).
 - Design premium: sombras suaves, transições, tipografia moderna (system fonts).
-- Ícones simulados com CSS/SVG.
+- Ícones simulados com CSS/SVG ou emojis para elevar a estética (Rich Aesthetics).
 - **Navegação em Formulários:** Todo `<form>` deve possuir o atributo `action` apontando para o arquivo HTML de destino lógico (ex: login redireciona para dashboard) para simular a navegação sem o uso de JavaScript.
 
 Encaminhe ao Agente IO:
@@ -210,7 +210,7 @@ Você é o responsável final pela qualidade do seu trabalho. Antes de finalizar
       - SEMPRE deve existir uma tela central (página inicial, dashboard, etc) que conecte as demais funcionalidades.
       - Páginas de autenticação (Login, cadastro, etc) SE solicitadas SEMPRE devem levar à tela central.
       - A tela central DEVE possuir um link de logout ("Sair") funcional e visualmente destacado (posicionado de forma clara no Header ou Sidebar) que direcione para a tela de login.
-   - **Comportamento Previsível:** Caso telas comuns (Listas, Forms, Dashboards) tenham sido geradas para atender o fluxo solicitado, elas seguem os padrões de UI definidos no Passo 3?
+   - **Comportamento Previsível:** Caso telas comuns (Listas, Forms, Dashboards) tenham sido geradas para atender o fluxo solicitado, elas seguem os padrões de UI definidos no Passo 3 (incluindo obrigatoriamente .form-group e .auth-container)?
    - **Ações de Formulário:** Todos os formulários (`<form>`) possuem o atributo `action` apontando para o arquivo HTML de destino correto conforme o fluxo de navegação?
 
 3. **Validação do Design System (global.css):**

@@ -89,25 +89,25 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* Radius */
-  --radius-sm:   4px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
-  --radius-xl:   16px;
+  /* Radius (Very Rounded) */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+  --radius-xl:   24px;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,.05);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-  --shadow-lg: 0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.04);
-  --shadow-xl: 0 20px 50px rgba(0,0,0,.12);
-  --shadow-accent: 0 4px 16px rgba(109,40,217,.25);
+  /* Shadows (Vibrant & Airy) */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.04);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.04);
+  --shadow-md: 0 8px 20px rgba(0,0,0,.06);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,.08);
+  --shadow-xl: 0 32px 80px rgba(0,0,0,.1);
+  --shadow-accent: 0 8px 24px rgba(109,40,217,.2);
 
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(.4,0,.2,1);
-  --transition-base: 250ms cubic-bezier(.4,0,.2,1);
-  --transition-slow: 400ms cubic-bezier(.4,0,.2,1);
+  --transition-base: 300ms cubic-bezier(.4,0,.2,1);
+  --transition-slow: 500ms cubic-bezier(.4,0,.2,1);
 
   /* Layout */
   --max-width: 1200px;
@@ -150,12 +150,14 @@ code { font-family: var(--font-mono); font-size: 0.875em; background: var(--colo
 
 /* ── Topbar ── */
 .topbar {
-  background: var(--color-surface);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
   height: var(--topbar-height);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 var(--space-8);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
+  position: sticky; top: 0; z-index: 100;
 }
 .topbar-brand {
   display: flex; align-items: center; gap: var(--space-3);
@@ -187,7 +189,8 @@ code { font-family: var(--font-mono); font-size: 0.875em; background: var(--colo
 }
 .sidebar-item {
   display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin: 0 var(--space-2);
   font-size: var(--text-sm); font-weight: var(--weight-medium);
   color: var(--color-text-secondary);
   border-radius: var(--radius-md);
@@ -195,10 +198,10 @@ code { font-family: var(--font-mono); font-size: 0.875em; background: var(--colo
   transition: all var(--transition-fast);
   cursor: pointer;
 }
-.sidebar-item:hover { background: var(--color-bg-2); color: var(--color-text-primary); }
-.sidebar-item.active { background: var(--color-accent-subtle); color: var(--color-accent); }
-.sidebar-item-icon { width: 18px; height: 18px; opacity: .6; }
-.sidebar-item.active .sidebar-item-icon { opacity: 1; }
+.sidebar-item:hover { background: var(--color-bg-2); color: var(--color-text-primary); transform: translateX(4px); }
+.sidebar-item.active { background: var(--color-accent); color: #fff; box-shadow: var(--shadow-accent); }
+.sidebar-item-icon { width: 18px; height: 18px; opacity: .7; }
+.sidebar-item.active .sidebar-item-icon { opacity: 1; filter: brightness(0) invert(1); }
 
 /* ── Avatar ── */
 .avatar {
@@ -318,10 +321,10 @@ code { font-family: var(--font-mono); font-size: 0.875em; background: var(--colo
 .btn-primary {
   background: var(--gradient-brand);
   color: #fff;
-  border-color: var(--color-accent);
+  border-radius: var(--radius-full);
   box-shadow: var(--shadow-accent);
 }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(109,40,217,.35); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(109,40,217,.3); }
 .btn-primary:active { transform: translateY(0); }
 .btn-secondary { background: var(--color-surface); color: var(--color-text-primary); border-color: var(--color-border); box-shadow: var(--shadow-xs); }
 .btn-secondary:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-sm); }
@@ -455,3 +458,24 @@ code { font-family: var(--font-mono); font-size: 0.875em; background: var(--colo
 .mb-4 { margin-bottom: var(--space-4); }
 .p-4  { padding: var(--space-4); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ── Custom Auth Layout ── */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top right, var(--color-bg-2), var(--color-bg));
+  padding: var(--space-4);
+}
+
+.form-title {
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+.form-options {
+  margin-top: var(--space-6);
+  text-align: center;
+  font-size: var(--text-sm);
+}
