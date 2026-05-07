@@ -1,6 +1,7 @@
 # Pastas do design
 adk/temp/
 adk/artifacts
+.idea/
 
 # Environment variables
 .env
