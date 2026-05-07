@@ -2,6 +2,7 @@
 
 ---
 
+<<<<<<< HEAD
 ## 1. O que é o Sistema Agêntico (Visão Geral)
 
 O **Agente de Design** é um sistema multi-agente construído sobre o **Google ADK (Agent Development Kit)** que automatiza a fase de design de software a partir de **Histórias de Usuário (HUs)**. O sistema recebe um lote de HUs em linguagem natural, analisa as decisões arquiteturais adequadas, gera diagramas Mermaid (`.mmd`) e produz um relatório técnico estruturado em Markdown.
@@ -193,12 +194,40 @@ pip install -r requirements.txt
 ```
 
 ### Comando de Execução
+=======
+## Primeira execução (dentro da pasta adk/)
+
+### 1. Instalar dependências e preparar o ambiente
+
+O projeto utiliza o **uv** para gerenciar dependências. Este comando criará o ambiente virtual e instalará todas as ferramentas necessárias, incluindo o **uvicorn**:
+
+```bash
+uv sync
+```
+
+### 2. Autenticação — GitHub Copilot (OAuth)
+
+Não é necessária nenhuma chave de API. A autenticação é feita via GitHub na primeira execução:
+
+1. Inicie o servidor normalmente (próxima seção)
+2. Nos logs do uvicorn, aparecerá uma mensagem solicitando autenticação com um **link e um código de ativação**
+3. Acesse o link indicado nos logs
+4. Insira o código exibido e autorize o acesso via GitHub
+5. Após autorização, o servidor continuará normalmente
+
+> A autenticação é via OAuth — nenhuma chave precisa ser configurada manualmente.  
+
+---
+
+## Executando o servidor (dentro da pasta adk/)
+>>>>>>> ab97cf61c1ac5a60dfaf8a0f97c33880093cd70d
 
 ```bash
 # Iniciar o servidor de desenvolvimento
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+<<<<<<< HEAD
 **Primeira execução — Autenticação GitHub Copilot:**
 1. Nos logs do terminal, aparecerá um link e um código de ativação
 2. Acesse o link e insira o código para autorizar via GitHub
@@ -206,6 +235,11 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 **Acessar a interface:**
 ```
+=======
+Acesse a interface em:
+
+```hyperlink
+>>>>>>> ab97cf61c1ac5a60dfaf8a0f97c33880093cd70d
 http://localhost:8000/dev-ui
 ```
 - Selecione o agente **orchestrator** na interface

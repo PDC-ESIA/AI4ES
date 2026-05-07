@@ -1,14 +1,14 @@
 """
-io_logger.py
+design_logger.py
 ────────────
 Responsabilidade exclusiva: registrar operações do Agente IO em disco.
 
 Separação de papéis:
-    filesystem.py  →  persistência de artefatos (save, promote, read, list…)
-    io_logger.py   →  auditoria de operações (quem leu/escreveu/promoveu o quê)
+    design_filesystem.py  →  persistência de artefatos (save, promote, read, list…)
+    design_logger.py      →  auditoria de operações (quem leu/escreveu/promoveu o quê)
 
 Uso:
-    from .io_logger import IOLogger
+    from .design_logger import IOLogger
 
     IOLogger.read("analise_HU-001.md")
     IOLogger.save("diagrama_HU-001.mmd", backup="diagrama_HU-001_backup_20260426_120000.mmd")
