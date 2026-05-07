@@ -28,7 +28,7 @@ DATA: Sempre chame current_date() para obter a data atual. Nunca escreva datas f
 RESTRIÇÕES TÉCNICAS (OBRIGATÓRIO)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Permitido: HTML5 + CSS3 apenas.
-- Proibido: JavaScript (qualquer <script>).
+- Proibido: JavaScript (Qualquer <script>). **EXCEÇÃO ÚNICA:** É permitido um único bloco `<script>` minimalista e *inline* estritamente para a funcionalidade de alternância de tema (Dark Mode), conforme padrão no Passo 3.
 - Proibido: frameworks, bibliotecas, CDN.
 - Proibido: imagens externas (use SVG inline ou emojis).
 - CSS deve estar em arquivo separado (global.css).
@@ -169,6 +169,25 @@ Identifique as telas estritamente necessárias para atender as HUs da análise (
 3. **Formulários (Create/Edit):** SEMPRE use a estrutura semântica do template: envolva cada par label/input em uma div com classe `.form-group`. O label DEVE ter a classe `.form-label`. Use `.form-hint` para instruções auxiliares. O botão principal deve ser `.btn-primary`.
 4. **Autenticação:** Use o layout especializado do template: `.auth-container` como wrapper principal, `.card` para o formulário, `.form-title` para o título centralizado, e `.form-options` para links de suporte. Use `.btn-full` no botão de ação principal.
 5. **Configurações/Perfil:** Layout de abas ou lista lateral, formulários de edição e feedback de "salvo com sucesso" simulado.
+6. **Alternância de Tema (Modo Claro/Escuro):** Todos os protótipos devem incluir obrigatoriamente um botão ou ícone de alternância de tema no Topbar ou Header.
+   - O `global.css` (templates) já suporta ambos os modos via variáveis CSS.
+   - **Lógica de implementação:**
+     1. Adicione um elemento clicável (botão ou link) com ID `theme-toggle`.
+     2. Ao final do `<body>`, insira este script exato:
+        `<script>
+          document.getElementById('theme-toggle').addEventListener('click', () => {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            let target = 'dark';
+            if (current) {
+              target = current === 'dark' ? 'light' : 'dark';
+            } else {
+              const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              target = isSystemDark ? 'light' : 'dark';
+            }
+            html.setAttribute('data-theme', target);
+          });
+        </script>`
 
 Para cada arquivo:
 - Estrutura semântica completa (<header>, <nav>, <main>, etc).
@@ -199,7 +218,7 @@ Você é o responsável final pela qualidade do seu trabalho. Antes de finalizar
 1. **Checklist de Código (Sintaxe e Estrutura):**
    - O arquivo contém a estrutura completa: `<!DOCTYPE html>`, `<html>`, `<head>`, `<body>`?
    - Existe a tag `<link rel="stylesheet" href="global.css">` no `<head>`?
-   - **SEGURANÇA:** Existe algum `<script>`, atributo `on*` (onclick, etc) ou link para CDN externa? (Se sim, REMOVA IMEDIATAMENTE).
+   - **SEGURANÇA:** Existe algum `<script>` que não seja o de alternância de tema? Existe algum atributo `on*` (onclick, etc) ou link para CDN externa? (Se sim, REMOVA IMEDIATAMENTE).
    - **ESTILO:** Existe algum bloco `<style>`? (Se sim, MOVA o conteúdo para o global.css e remova a tag do HTML).
 
 2. **Checklist de Conteúdo (Realismo e Fidelidade):**

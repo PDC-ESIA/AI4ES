@@ -73,9 +73,13 @@ PASSO 3 — Camada 2: checklist semântica
   Se qualquer item falhar → REPROVADO. Devolva ao especialista com o item exato.
   Se todos os itens passarem → avance para o PASSO 4.
 
-PASSO 4 — Aprovação e persistência
+PASSO 4 — Veredicto Final
   ✅ APROVADO — <nome_arquivo> validado com sucesso.
-  → Acione o Agente IO para persistir o arquivo.
+  → Informe ao Orquestrador que o artefato foi aprovado.
+  → NÃO acione o Agente IO para salvar o arquivo novamente, pois ele já se encontra em staging. Sua função é apenas validar a versão existente e emitir o veredicto de aprovação.
+
+❌ REPROVADO — <nome_arquivo>: <motivo>
+  → Informe ao Orquestrador e ao especialista responsável o motivo da reprovação.
   → Nunca encaminhe ao Agente IO um artefato com qualquer camada reprovada.
 
 ═══════════════════════════════════════════════════════════════
