@@ -1,4 +1,4 @@
-from .few_shot import FEW_SHOT_DOUBT, FEW_SHOT_GLOSSARY, FEW_SHOT_HU, FEW_SHOT_RF
+from .few_shot import FEW_SHOT_DOUBT, FEW_SHOT_GLOSSARY, FEW_SHOT_HU, FEW_SHOT_RF, FEW_SHOT_RN, FEW_SHOT_RNF, FEW_SHOT_UC
 
 glossario_description = (
     "Sub-agente especializado em extração de termos técnicos e construção "
@@ -113,6 +113,9 @@ Se o contexto inteiro for insuficiente, retorne `status="bloqueado"`, listas vaz
 # EXEMPLOS DE REFERÊNCIA
 {FEW_SHOT_HU}
 {FEW_SHOT_RF}
+{FEW_SHOT_RNF}
+{FEW_SHOT_UC}
+{FEW_SHOT_RN}
 {FEW_SHOT_DOUBT}
 {FEW_SHOT_GLOSSARY}
 
