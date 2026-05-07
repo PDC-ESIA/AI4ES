@@ -10,7 +10,7 @@ Execute com:
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -71,7 +71,6 @@ def _make_fake_agent(events=None, *, raises=None, sleep_seconds=0.0):
 
 
 class TestStageIndex:
-
     def test_stage_index_por_name(self):
         """stage_index('requirements_agent') retorna 0."""
         assert stage_index("requirements_agent") == 0
@@ -102,7 +101,6 @@ class TestStageIndex:
 
 
 class TestValidateState:
-
     def test_validate_state_completo(self):
         """Todas as 6 chaves presentes → (True, [])."""
         ok, missing = validate_state(_full_state())
@@ -146,7 +144,6 @@ class TestValidateState:
 
 
 class TestSequencerError:
-
     def test_sequencer_error_atributos(self):
         """SequencerError('timeout', 'msg', 'agente') carrega os 3 atributos."""
         err = SequencerError("timeout", "excedeu 300s", "requirements_agent")
@@ -171,7 +168,6 @@ class TestSequencerError:
 
 
 class TestRecordFailure:
-
     def test_record_failure_escreve_state(self):
         """_record_failure escreve sequencer_error, error_detail, failed_at."""
         state: dict = {}
@@ -194,7 +190,6 @@ class TestRecordFailure:
 
 
 class TestRunWithResilience:
-
     @pytest.mark.asyncio
     async def test_run_with_resilience_sucesso(self):
         """Agente mock que retorna eventos → lista de eventos."""
@@ -261,7 +256,6 @@ class TestRunWithResilience:
 
 
 class TestPipelineStagesOrdem:
-
     def test_pipeline_stages_ordem(self):
         """Ordem: requirements → architecture → test_plan → implementation → review → finalization."""
         expected_keys = [
@@ -277,7 +271,6 @@ class TestPipelineStagesOrdem:
 
 
 class TestResilientSequencerInstancia:
-
     def test_resilient_sequencer_instancia(self):
         """root_agent instancia sem erro, wrapped_pipeline.name == 'sdlc_pipeline'."""
         from runners.sequencer.agent import root_agent

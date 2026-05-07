@@ -2,13 +2,12 @@
 test_tool_criar_arquivo.py
 ==========================
 Testes unitários para a tool_criar_arquivo.
- 
+
 Execute com:
     pytest test_tool_criar_arquivo.py -v
 """
 
 import sys
-import types
 from pathlib import Path
 
 import pytest
@@ -35,7 +34,6 @@ def diretorio(tmp_path, monkeypatch):
 
 
 class TestCriarArquivoSucesso:
-
     def test_cria_arquivo_python(self, diretorio):
         """Cria um arquivo .py com conteúdo correto."""
         result = tool_criar_arquivo("modulo.py", "def hello(): pass\n")
@@ -100,7 +98,6 @@ class TestCriarArquivoSucesso:
 
 
 class TestCriarArquivoSeguranca:
-
     def test_extensao_nao_permitida_falha(self, diretorio):
         """Extensão fora da whitelist deve ser rejeitada."""
         result = tool_criar_arquivo("script.sh", "rm -rf /\n")
