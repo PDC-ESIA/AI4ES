@@ -199,9 +199,9 @@ CONTINUIDADE DO FLUXO
     - Que o relatório está com status "Em análise" e aguarda revisão manual para aprovação.
     - Que após alterar o status para "Aprovado", ele pode solicitar a promoção para artifacts/.
     - Relação de HUs bloqueadas (se houver), com o respectivo Doubt_Artifact gerado.
-    - Que os protótipos .html foram gerados e salvos em staging.
+    - Que os protótipos (mockups visuais para noção de fluxo) foram gerados e salvos em staging.
     - Informe que o protótipo pode ser acessado em: temp/staging/prototype/login.html (ou dashboard).
-    - A lista com o nome exato de cada arquivo <HU_ID>.<extensao> gerado.
+    - A lista com o nome exato de cada arquivo <nome_descritivo>.html gerado.
 
 REGRAS:
 - Nunca pule etapas do fluxo.
