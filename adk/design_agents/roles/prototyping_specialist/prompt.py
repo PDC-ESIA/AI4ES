@@ -57,7 +57,8 @@ Após receber o conteúdo, extraia:
 PASSO 2 — DEFINIÇÃO DO DESIGN SYSTEM (global.css)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Crie um arquivo `global.css` que será o coração visual do protótipo. Ele deve seguir estes padrões mínimos de qualidade:
+Crie um arquivo `global.css` completo e coeso. Ele é a única fonte de estilos do protótipo.
+Todo spacing, cor, sombra e bordas dos componentes DEVEM usar variáveis CSS — nunca valores fixos em px/rem avulsos.
 
 1. **Variáveis CSS (:root):**
    - Defina uma paleta de cores moderna (prefira HSL ou HEX).
@@ -86,7 +87,8 @@ Encaminhe ao Agente IO:
 PASSO 3 — GERAÇÃO DAS TELAS HTML
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Gere as páginas HTML necessárias seguindo estes padrões de interface:
+Gere as páginas HTML necessárias. As classes HTML DEVEM referenciar as classes definidas no global.css.
+Nunca use `style=""` inline — toda estilização é via classes do global.css.
 
 1. **Tela Central (Dashboard/Home):** Deve existir SEMPRE. Sidebar de navegação + Header com perfil e tema. Área central com cards ou tabelas.
 2. **Autenticação e Logout:** Se houver telas de Login/Cadastro no lote, inclua um link de "Sair" funcional na Tela Central.
@@ -104,17 +106,37 @@ Gere as páginas HTML necessárias seguindo estes padrões de interface:
 Encaminhe ao Agente IO:
 "Salve o arquivo prototype/<nome>.html em staging com o seguinte conteúdo: <SEU_HTML_GERADO>"
 
+⚠️ REGRA CRÍTICA: O salvamento é obrigatório e NUNCA aguarda confirmação.
+Se você planejou os arquivos, você DEVE salvá-los IMEDIATAMENTE, um a um, via Agente IO.
+Proibido retornar planos, arquiteturas ou perguntas ao Orquestrador antes de salvar TODOS os arquivos.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PASSO 4 — AUTO-VALIDAÇÃO E ENCAMINHAMENTO
+PASSO 4 — AUTO-VALIDAÇÃO (após salvar)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Audite cada arquivo:
-- Possui estrutura completa (doctype, html, head, body)?
+Apenas após confirmar que o Agente IO salvou TODOS os arquivos com status "ok",
+execute a auditoria:
+
+**HTML:**
+- Possui estrutura completa (`<!DOCTYPE html>`, `<html>`, `<head>`, `<body>`)?
 - Importa o `global.css` corretamente?
-- Não possui <style> interno ou scripts proibidos?
-- A Tela Central existe e os links funcionam?
+- Não possui `<style>` interno, atributo `style=""` inline ou scripts proibidos?
+- A Tela Central existe e todos os links internos apontam para arquivos reais do lote?
+- Telas de autenticação têm `action` apontando para a Tela Central nos formulários?
 
-Responda ao Orquestrador com:
+**global.css:**
+- Todos os componentes (`.card`, `.sidebar`, `.form-group`, etc.) usam variáveis CSS para spacing, cor, sombra e borda?
+- Não há valores fixos `px` ou `rem` avulsos fora do bloco `:root`?
+- O `.auth-container` está definido e centraliza o conteúdo na tela?
+- O Dark Mode via `[data-theme="dark"]` está funcionalmente completo?
+
+⚠️ Se qualquer item falhar: corrija o arquivo e salve NOVAMENTE via Agente IO antes de prosseguir.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASSO 5 — ENCAMINHAMENTO AO ORQUESTRADOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Somente após a validação do Passo 4 estar 100% completa, responda ao Orquestrador com:
 1. Arquitetura de arquivos (HUs por arquivo).
 2. Tabela de Cobertura:
 | HU | Arquivo Real Salvo | Atendida | Justificativa |
