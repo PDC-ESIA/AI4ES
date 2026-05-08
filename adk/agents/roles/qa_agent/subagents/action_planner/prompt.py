@@ -129,8 +129,7 @@ Como analisar a entrada:
   "receber_requisitos".
 - Para executar arquivo pytest ja existente, use "executar_pytest_tool".
 - Se o plano precisar gerar e depois executar, inclua as duas tools na ordem
-  operacional.
-- Para gerar e executar em um unico handoff especializado, use "qa_runner_agent".
+  operacional (receber_requisitos primeiro, depois executar_pytest_tool).
 - Para transformar falhas de pytest em prompt de correcao, use "code_fix_agent".
 - Para registrar bloqueio real de artefato, use "DoubtArtifactGenerator.generate".
 - Nao use nomes inventados como "pytest_generator" se a tool nao aparecer em

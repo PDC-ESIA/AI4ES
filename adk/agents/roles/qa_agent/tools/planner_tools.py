@@ -65,28 +65,7 @@ QA_AGENT_TOOLS = [
             "A duvida e apenas falta de requisito explicito para codigo legivel.",
         ],
     },
-    {
-        "name": "qa_runner_agent",
-        "agent": "qa_agent",
-        "category": "test_generation_and_execution",
-        "summary": "Subagente que gera teste a partir de HU/requisito e audita via pytest.",
-        "input_contract": (
-            "Pacote de handoff com requisito/HU, criterios verificaveis, artefatos "
-            "relevantes e objetivo de cobertura."
-        ),
-        "output_contract": (
-            "Payload com arquivo gerado, status de execucao, erros e proxima acao "
-            "quando houver falha corrigivel."
-        ),
-        "use_when": [
-            "O fluxo precisa gerar teste e executar pytest em sequencia.",
-            "O plano exige evidencias de sucesso, falha ou cobertura.",
-        ],
-        "avoid_when": [
-            "Ja existe apenas um arquivo pytest para executar diretamente.",
-            "A entrada ainda precisa de triagem ou esta bloqueada por duvida real.",
-        ],
-    },
+
     {
         "name": "code_fix_agent",
         "agent": "qa_agent",
