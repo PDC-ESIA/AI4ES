@@ -5,6 +5,7 @@ from .filesystem import (
     tool_ler_arquivo,
     tool_substituir_trecho,
 )
+from .clarification import tool_ask_clarification_adk
 
 __all__ = [
     "tool_git_add",
@@ -15,4 +16,5 @@ __all__ = [
     "tool_salvar_relatorio",
     "tool_ler_arquivo",
     "tool_substituir_trecho",
+    "tool_ask_clarification_adk",
 ]

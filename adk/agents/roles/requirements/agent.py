@@ -1,7 +1,4 @@
-import os
-
-from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
+from shared.agent_factory import create_se_agent
 
 from . import prompt, schemas
 from .tools_requirements import (
@@ -9,10 +6,7 @@ from .tools_requirements import (
     tool_gerar_doubt_artifact_adk,
 )
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
-
-agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+agent = create_se_agent(
     name="requirements_agent",
     description=prompt.description,
     instruction=prompt.instruction,
