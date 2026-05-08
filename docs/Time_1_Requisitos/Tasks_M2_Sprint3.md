@@ -8,24 +8,29 @@
 
 ### ✔️ Refinamentos imediatos (MVP)
 
-* [ ] Definir critério simples de chunk:
+* [x] Definir critério simples de chunk:
 
-  * [ ] Por parágrafo
+  * [x] Por parágrafo
+  > Cada parágrafo tende a tratar de assunto coeso, fatiar desta forma preserva a organização, embora não garanta que tudo seja reunido no mesmo lugar. O overlap recupera o parágrafo anterior e adiciona ao atual, sendo uma tentativa de não perder o contexto.
   * [ ] Por tamanho de tokens (limite fixo)
-* [ ] Garantir que cada chunk seja semanticamente minimamente completo
+* [x] Garantir que cada chunk seja semanticamente minimamente completo
+> Não existem mecanismos que verifiquem isso, mas a abordagem por parágrafo tende a garantir, a não ser que o parágrafo do documento esteja incompleto. Existem os casos onde terão pouca informação, como por exemplo no título do documento.
 * [ ] Padronizar estrutura do chunk:
 
-  * [ ] ID do chunk
-  * [ ] Texto
+  * [x] ID do chunk
+  * [x] Texto
   * [ ] Documento origem
-* [ ] Implementar função única e reutilizável de slicing (padronizar uso)
-* [ ] Garantir leitura sequencial dos chunks pelo agente
+  > Para o momento atual, considero que não é ideal salvar o documento de origem, pois não existem chunks de diferentes documentos ao mesmo tempo. Então, em casos onde o documento foi modificado mas possui o mesmo nome, o rastreamento ficaria incoerente.
+* [x] Implementar função única e reutilizável de slicing (padronizar uso)
+* [x] Garantir leitura sequencial dos chunks pelo agente
 
 ### ⚠️ Ajustes importantes identificados
 
-* [ ] Evitar perda de contexto entre chunks
+* [x] Evitar perda de contexto entre chunks
+> Mecanismo simples, fazendo o uso de overlap de um parágrafo.
 * [ ] Validar se chunking é necessário para documentos pequenos
-* [ ] Permitir execução sem chunking (modo direto)
+> Não implementado.
+* [x] Permitir execução sem chunking (modo direto)
 
 ### 🔮 Refinamentos futuros (não prioritários)
 
@@ -39,55 +44,62 @@
 
 ### ✔️ Estrutura básica (MVP)
 
-* [ ] Definir estrutura do glossário:
+* [x] Definir estrutura do glossário:
 
-  * [ ] termo
-  * [ ] definição
-  * [ ] referências (chunks)
+  * [x] termo
+  * [x] definição
+  * [x] referências (chunks)
   * [ ] versão/timestamp
+  > A estrutura de glossário possui: termo, definição, referências e status. O status serve para indicar qual definição do termo é a válida, pois podem existir várias definições de um mesmo termo.
 
 ### ✔️ Operações essenciais
 
-* [ ] Implementar:
+* [x] Implementar:
 
-  * [ ] buscar_termo_glossario
-  * [ ] adicionar_termo_glossario
-  * [ ] atualizar_termo_glossario
+  * [x] buscar_termo_glossario
+  * [x] adicionar_termo_glossario
+  * [x] atualizar_termo_glossario
 
 ### ✔️ Estratégia de atualização
 
-* [ ] NÃO editar no meio do documento
-* [ ] Sempre:
+* [x] NÃO editar no meio do documento
+* [x] Sempre:
 
-  * [ ] Criar nova versão do termo no final
-  * [ ] Marcar versão mais recente como válida
+  * [x] Criar nova versão do termo no final
+  * [x] Marcar versão mais recente como válida
+  > Versão anterior é marcada como "Substituído".
 * [ ] (Opcional) manter histórico de versões
+> As versões do glossário não ficam salvas, apenas mostra os termos antigos com status de substituído.
 
 ### ✔️ Comportamento do agente
 
-* [ ] Antes de criar termo:
+* [x] Antes de criar termo:
 
-  * [ ] Verificar se já existe no glossário
-* [ ] Se existir:
+  * [x] Verificar se já existe no glossário
+* [x] Se existir:
 
   * [ ] Ignorar OU
-  * [ ] Atualizar (preferível)
-* [ ] Se novo documento:
+  * [x] Atualizar (preferível)
+* [x] Se novo documento:
 
-  * [ ] Permitir sobrescrita lógica do termo
+  * [x] Permitir sobrescrita lógica do termo
+  > No momento, não existe distinção entre o glossário de diferentes arquivos, todas as informações ficam no mesmo lugar.
 
 ### ⚠️ Simplificações importantes
 
-* [ ] NÃO implementar:
+* [x] NÃO implementar:
 
-  * [ ] rastreabilidade complexa
-  * [ ] encadeamento tipo árvore
-  * [ ] dependência entre documentos
+  * [x] rastreabilidade complexa
+  * [x] encadeamento tipo árvore
+  * [x] dependência entre documentos
+  > Nenhum dos tópicos foram adicionados.
 
 ### 🔧 Refatoração arquitetural
 
-* [ ] Transformar glossário em tool (não sub-agent)
+* [x] Transformar glossário em tool (não sub-agent)
+> O agente de glossário passou a ser um agentTool para o agente de requirements.
 * [ ] Remover dependência entre agentes
+> Parcial. O agente de requirements ainda delega ao agente de glossário.
 
 ---
 
