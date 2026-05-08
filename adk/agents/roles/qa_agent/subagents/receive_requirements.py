@@ -66,6 +66,84 @@ Texto bruto: {raw_input}
         conteudo = conteudo.replace("```json\n", "").replace("```", "")
     return json.loads(conteudo)
 
+def _extrair_de_parts(parts: list) -> tuple[list[dict], list[str]]:
+    arquivos_apoio: list[dict] = []
+    textos: list[str] = []
+
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+
+        texto = part.get("text")
+        if isinstance(texto, str) and texto.strip():
+            textos.append(texto.strip())
+
+        inline = part.get("inlineData")
+        if not isinstance(inline, dict):
+            continue
+
+        nome = inline.get("displayName") or inline.get("name") or "arquivo_anexo"
+        mime = inline.get("mimeType") or "application/octet-stream"
+        conteudo_b64 = inline.get("data")
+        if not isinstance(conteudo_b64, str) or not conteudo_b64.strip():
+            continue
+
+        entrada_arquivo = {"nome": nome}
+        try:
+            bruto = base64.b64decode(conteudo_b64)
+            texto_decodificado = bruto.decode("utf-8")
+            entrada_arquivo["conteudo"] = texto_decodificado
+            if texto_decodificado.strip():
+                textos.append(texto_decodificado.strip())
+        except Exception:
+            entrada_arquivo["conteudo_base64"] = conteudo_b64
+
+        entrada_arquivo["mime_type"] = mime
+        arquivos_apoio.append(entrada_arquivo)
+
+    return arquivos_apoio, textos
+
+def _normalizar_anexos_inline(lista_artefatos: list) -> list:
+    normalizados = []
+    for artefato in lista_artefatos:
+        if not isinstance(artefato, dict):
+            continue
+
+        arquivos_existentes = artefato.get("arquivos_apoio", [])
+        if not isinstance(arquivos_existentes, list):
+            arquivos_existentes = []
+
+        parts = artefato.get("parts")
+        if not isinstance(parts, list):
+            content = artefato.get("content", {})
+            if isinstance(content, dict):
+                parts = content.get("parts")
+
+        textos_extraidos: list[str] = []
+        if isinstance(parts, list):
+            arquivos_extraidos, textos_extraidos = _extrair_de_parts(parts)
+            arquivos_existentes.extend(arquivos_extraidos)
+
+        if arquivos_existentes:
+            artefato["arquivos_apoio"] = arquivos_existentes
+
+        conteudo_atual = artefato.get("conteudo", "")
+        if not isinstance(conteudo_atual, str):
+            conteudo_atual = str(conteudo_atual)
+
+        if textos_extraidos:
+            bloco_extra = "\n\n".join(textos_extraidos).strip()
+            if bloco_extra and bloco_extra not in conteudo_atual:
+                artefato["conteudo"] = (
+                    f"{conteudo_atual}\n\n{bloco_extra}".strip()
+                    if conteudo_atual.strip()
+                    else bloco_extra
+                )
+
+        normalizados.append(artefato)
+
+    return normalizados
+
 def receber_requisitos(artefatos_json: str) -> dict:
     """
     Recebe uma lista de artefatos de requisito em JSON e gera testes pytest
@@ -108,6 +186,7 @@ def receber_requisitos(artefatos_json: str) -> dict:
                 "arquivo_duvida": caminho,
             }
 
+    lista = _normalizar_anexos_inline(lista)
     lista = _ordenar_por_criticidade(lista)
     resultados = _run_async(_processar_todos_em_paralelo(lista))
 
@@ -187,8 +266,16 @@ async def _processar_artefato(artefato: dict) -> dict:
         slug = _slugify(id_artefato)
         artefato_dir = TESTS_DIR / slug
         artefato_dir.mkdir(parents=True, exist_ok=True)
+        (artefato_dir / "__init__.py").touch(exist_ok=True)
 
         anexos_salvos = _salvar_arquivos_apoio(artefato, artefato_dir)
+        tem_codigo = any(p.suffix in ['.py', '.java', '.js', '.c'] for p in anexos_salvos)
+        
+        nomes_anexos = [p.name for p in anexos_salvos]
+        if nomes_anexos:
+            logger.info(f"[QA] Arquivos anexados detectados para {id_artefato}: {nomes_anexos}")
+        else:
+            logger.info(f"[QA] Nenhum arquivo anexado detectado para {id_artefato}.")
 
         nome_teste = f"test_{slug}.py"
         caminho = artefato_dir / nome_teste
@@ -203,10 +290,11 @@ async def _processar_artefato(artefato: dict) -> dict:
         )
         caminho.write_text(codigo, encoding="utf-8")
 
-        logger.info(f"[QA] Concluído: {id_artefato} → {caminho}")
+        logger.info(f"[QA] Concluído (Fluxo {'A' if tem_codigo else 'B'}): {id_artefato} → {caminho}")
         return {
             "id_artefato": id_artefato,
             "status": "sucesso",
+            "fluxo": "A" if tem_codigo else "B",
             "pasta_gerada": str(artefato_dir),
             "arquivo_gerado": str(caminho),
             "arquivos_apoio": [str(p) for p in anexos_salvos],
@@ -394,12 +482,20 @@ def _gerar_pytest_via_llm(
         ValueError: Se o modelo retornar conteúdo vazio.
     """
     model_name = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
-    arquivos_desc = "\n".join([f"- {p.name}" for p in arquivos_apoio])
+    arquivos_textos = []
+    for p in arquivos_apoio:
+        try:
+            texto = p.read_text(encoding="utf-8")
+            arquivos_textos.append(f"--- {p.name} ---\n{texto}\n")
+        except Exception:
+            arquivos_textos.append(f"- {p.name} (Arquivo binário ou ilegível)")
+
+    arquivos_desc = "\n".join(arquivos_textos)
     contexto_arquivos = (
-        "Arquivos de apoio salvos na mesma pasta do teste:\n"
+        "Arquivos de apoio e CÓDIGO FONTE fornecidos para o teste:\n"
         f"{arquivos_desc}\n"
         if arquivos_desc
-        else "Nenhum arquivo de apoio foi fornecido.\n"
+        else "Nenhum arquivo de apoio ou código fonte foi fornecido.\n"
     )
     tem_codigo = any(p.suffix in ['.py', '.java', '.js', '.c'] for p in arquivos_apoio)
     
@@ -407,7 +503,9 @@ def _gerar_pytest_via_llm(
         instrucao_geracao = (
             "O usuário forneceu o código fonte junto aos requisitos. "
             "MAPEAMENTO: Mapeie os cenários de teste contra as funções e métodos reais presentes no código. "
-            "Gere os testes pytest COMPLETOS e integrados, importando as funções corretamente e utilizando asserts que validem as lógicas existentes."
+            "Gere os testes pytest COMPLETOS e integrados, utilizando asserts que validem as lógicas existentes. "
+            "REGRA DE IMPORTAÇÃO MANDATÓRIA: Faça a importação das funções/classes de forma RELATIVA e EXPLÍCITA a partir do arquivo fornecido. "
+            "Exemplo obrigatório: se o arquivo for 'calculadora.py' com a função 'somar', você DEVE usar: `from .calculadora import somar`."
         )
     else:
         instrucao_geracao = (
@@ -497,11 +595,12 @@ agent = LlmAgent(
     ),
     instruction=(
     "Ao receber uma mensagem do usuário, monte um JSON com os campos: "
-    "id_artefato (ex: 'HU-001'), tipo ('HU'), conteudo (texto completo do requisito ou "
-    "conteúdo dos arquivos anexados), modulo ('geral' se não informado), criticidade ('alta'). "
-    "Chame a tool receber_requisitos com esse JSON. "
-    "Se o usuário anexar arquivos, inclua o conteúdo deles no campo conteudo. "
-    "Retorne o resultado da tool ao final."
+    "id_artefato (ex: 'HU-001'), tipo ('HU'), conteudo, modulo ('geral' se não informado), criticidade ('alta'). "
+    "MUITO IMPORTANTE: Se a requisição contiver código-fonte (em anexo ou no texto), você DEVE criar uma propriedade chamada 'arquivos_apoio' "
+    "sendo uma lista de objetos com 'nome' (ex: arquivo.py) e 'conteudo' (o código completo). "
+    "Se você não preencher 'arquivos_apoio', o sistema NÃO reconhecerá o código-fonte! "
+    "No campo conteudo, inclua apenas o texto do requisito. "
+    "Chame a tool receber_requisitos com o JSON gerado e retorne o resultado."
 ),
     tools=[
         FunctionTool(receber_requisitos),

@@ -157,6 +157,8 @@ Como analisar a entrada:
 8. Defina o handoff inter-agentes:
 - Preencha handoff_context para preservar objetivo, contexto, artefatos,
   decisoes, riscos e evidencias esperadas entre subagentes.
+- Se a requisição contiver arquivos anexados (estruturas parts com inlineData),
+  repasse-os integralmente ao agente executor. Isso é mandatório.
 
 9. Defina o relatorio final de conformidade:
 - Todo plano executavel deve declarar relatorio_conformidade_esperado.
