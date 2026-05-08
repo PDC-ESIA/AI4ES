@@ -12,14 +12,14 @@ Lê arquivos PRD e extrai regras estruturadas. Levanta dúvidas críticas format
 - **Pré-requisitos:** `.env` configurado e PRD preenchido.
 - **Instalação:** `uv sync`.
 - **Execução:** Como sub-agente acionado pelo workflow SDLC.
-- **Testes:** `pytest adk/tests/`.
+- **Suíte de Testes:** *Não implementada.* Testes unitários das tools específicas e do comportamento do LLM ainda não foram desenvolvidos.
 
 ## 4. Entradas e Saídas
 - **Entrada:** Escopo textual recebido do orquestrador e leitura do arquivo PRD.
 - **Saída:** JSON validado pelo esquema `RequirementsOutput`.
 
 ## 5. Cenário de Teste Específico
-Submeter um PRD sem especificação de banco de dados. O agente deve usar a tool para gerar o Doubt Artifact perguntando sobre qual banco de dados utilizar.
+Submeter um PRD sem especificação de banco de dados. O agente deve usar a tool para gerar o Doubt Artifact perguntando sobre qual banco de dados utilizar. *(Status: Cenário E2E Não Implementado)*
 
 ## 6. Lista de Erros Identificados
 - *Pydantic ValidationError:* Ocorre se o LLM fugir do esquema esperado de saída. Solução: Instruções estritas no `prompt.py`.
