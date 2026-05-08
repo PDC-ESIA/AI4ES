@@ -9,12 +9,14 @@ Execute com:
 
 import sys
 import types
+import asyncio
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 from shared.tools.filesystem import tool_criar_arquivo, tool_salvar_artefato_requisito
+from shared.tools.doubt_generator_analista import gerar_doubt_artifact
 
 
 # ===========================================================================
@@ -146,22 +148,82 @@ class TestCriarArquivoSeguranca:
 class TestSalvarArtefatoRequisitoSeguranca:
 
     def test_salva_artefato_com_id_valido(self, diretorio):
-        result = tool_salvar_artefato_requisito("HU", "HU-001", "# HU\n")
+        result = asyncio.run(tool_salvar_artefato_requisito("HU", "HU-001", "# HU\n"))
         assert result.startswith("SUCESSO:")
         assert Path("docs/Time_1_Requisitos/HUs/HU-001.md").exists()
 
     def test_salva_glossario_com_nome_fixo(self, diretorio):
-        result = tool_salvar_artefato_requisito("GLOSSARIO", "IGNORADO", "# Glossário\n")
+        result = asyncio.run(
+            tool_salvar_artefato_requisito("GLOSSARIO", "IGNORADO", "# Glossário\n")
+        )
         assert result.startswith("SUCESSO:")
         assert Path("docs/Time_1_Requisitos/Glossario.md").exists()
 
+    def test_registra_artifact_adk_quando_tool_context_disponivel(self, diretorio):
+        class ToolContextFake:
+            def __init__(self):
+                self.chamadas = []
+
+            async def save_artifact(self, filename, artifact):
+                self.chamadas.append((filename, artifact))
+                return 0
+
+        tool_context = ToolContextFake()
+        result = asyncio.run(
+            tool_salvar_artefato_requisito(
+                "RF",
+                "RF-001",
+                "# RF\n",
+                tool_context=tool_context,
+            )
+        )
+
+        assert "Artifact ADK registrado" in result
+        assert tool_context.chamadas[0][0] == "docs/Time_1_Requisitos/RFs/RF-001.md"
+        assert tool_context.chamadas[0][1].inline_data.mime_type == "text/markdown"
+        assert tool_context.chamadas[0][1].inline_data.data == b"# RF\n"
+
     def test_bloqueia_id_req_com_path_traversal(self, diretorio):
-        result = tool_salvar_artefato_requisito("HU", "../../.env", "x")
+        result = asyncio.run(tool_salvar_artefato_requisito("HU", "../../.env", "x"))
         assert result.startswith("ERRO ao salvar artefato:")
         assert not Path(".env.md").exists()
 
     @pytest.mark.parametrize("id_malicioso", ["/etc/passwd", "..\\..\\file", "subdir/HU-001"])
     def test_bloqueia_outros_padroes_maliciosos(self, diretorio, id_malicioso):
-        result = tool_salvar_artefato_requisito("HU", id_malicioso, "x")
+        result = asyncio.run(tool_salvar_artefato_requisito("HU", id_malicioso, "x"))
         assert result.startswith("ERRO ao salvar artefato:")
+
+
+class TestGerarDoubtArtifact:
+
+    def test_registra_artifact_adk_quando_tool_context_disponivel(self, diretorio):
+        class ToolContextFake:
+            def __init__(self):
+                self.chamadas = []
+
+            async def save_artifact(self, filename, artifact):
+                self.chamadas.append((filename, artifact))
+                return 1
+
+        tool_context = ToolContextFake()
+        result = asyncio.run(
+            gerar_doubt_artifact(
+                "D-001",
+                "RF-001",
+                "trecho original",
+                "Qual é a regra?",
+                "Regra ausente",
+                "Gerar requisito parcial",
+                caminho_base="docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/",
+                tool_context=tool_context,
+            )
+        )
+
+        assert "Artifact ADK:" in result
+        assert Path(result.split(" (Artifact ADK:", 1)[0]).exists()
+        assert tool_context.chamadas[0][0].startswith(
+            "docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/Doubt_Artifact_D-001_"
+        )
+        assert tool_context.chamadas[0][0].endswith(".md")
+        assert tool_context.chamadas[0][1].inline_data.mime_type == "text/markdown"
 

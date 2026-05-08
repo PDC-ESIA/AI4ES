@@ -3,6 +3,8 @@
 import re
 from pathlib import Path
 
+from .artifacts import registrar_markdown_artifact
+
 EXTENSOES_PERMITIDAS = {
     ".py",
     ".js",
@@ -134,7 +136,12 @@ def tool_substituir_trecho(caminho: str, trecho_antigo: str, trecho_novo: str) -
         return f"Erro inesperado ao editar o arquivo '{caminho}': {str(e)}"
 
 
-def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> str:
+async def tool_salvar_artefato_requisito(
+    tipo: str,
+    id_req: str,
+    conteudo_md: str,
+    tool_context=None,
+) -> str:
     """Salva artefatos de requisito em Markdown com validação de ID."""
     mapa_pastas = {
         "HU": "docs/Time_1_Requisitos/HUs",
@@ -166,6 +173,20 @@ def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> 
 
         pasta_base_path.mkdir(parents=True, exist_ok=True)
         caminho_completo.write_text(conteudo_md, encoding="utf-8")
-        return f"SUCESSO: {tipo_normalizado} {id_req_normalizado} salvo em {caminho_completo}"
+        artifact = await registrar_markdown_artifact(
+            tool_context,
+            Path(pasta_base) / nome_arquivo,
+            conteudo_md,
+        )
+        if artifact["registrado"]:
+            return (
+                f"SUCESSO: {tipo_normalizado} {id_req_normalizado} salvo em {caminho_completo}. "
+                f"Artifact ADK registrado como {artifact['filename']} v{artifact['versao']}."
+            )
+
+        return (
+            f"SUCESSO: {tipo_normalizado} {id_req_normalizado} salvo em {caminho_completo}. "
+            f"Artifact ADK não registrado: {artifact['erro']}"
+        )
     except Exception as e:
         return f"ERRO ao salvar artefato: {str(e)}"

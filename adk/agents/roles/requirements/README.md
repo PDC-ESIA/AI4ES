@@ -104,6 +104,8 @@ Tools usadas pelo agente:
 | `add_to_glossary` | Adicionar ou atualizar termos no glossário. |
 | `glossario_agent` | Delegar extração e validação de termos técnicos. |
 
+As tools que geram Markdown (`tool_salvar_artefato_requisito` e `gerar_doubt_artifact`) persistem os arquivos no repositório e, quando executadas pelo ADK Web, também registram o mesmo conteúdo no ArtifactService da sessão para aparecer na aba **Artifacts**.
+
 ## Configuração
 
 No ambiente `adk/`, configure:

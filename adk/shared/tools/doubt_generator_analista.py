@@ -3,7 +3,10 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
 
-def gerar_doubt_artifact(
+from .artifacts import registrar_markdown_artifact
+
+
+async def gerar_doubt_artifact(
     id_duvida: str,
     id_artefato_afetado: str,
     trecho_contexto: str,
@@ -14,7 +17,8 @@ def gerar_doubt_artifact(
     sugestao: Optional[str] = None,
     sessao: str = "001",
     contexto_geral: str = "Documentação de Requisitos",
-    caminho_base: str = "docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/"
+    caminho_base: str = "docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/",
+    tool_context=None,
 ) -> str:
     """
     Gera um arquivo versionado Doubt_Artifact_<ID>_<TS>.md baseado no template oficial do Agente Analista.
@@ -85,7 +89,15 @@ def gerar_doubt_artifact(
 ---
 """
 
+    conteudo_md = cabecalho + secao_duvida
     with open(arquivo_path, "w", encoding="utf-8") as f:
-        f.write(cabecalho + secao_duvida)
+        f.write(conteudo_md)
 
-    return str(arquivo_path.absolute())
+    artifact = await registrar_markdown_artifact(tool_context, arquivo_path, conteudo_md)
+    if artifact["registrado"]:
+        return (
+            f"{arquivo_path.absolute()} "
+            f"(Artifact ADK: {artifact['filename']} v{artifact['versao']})"
+        )
+
+    return f"{arquivo_path.absolute()} (Artifact ADK não registrado: {artifact['erro']})"
