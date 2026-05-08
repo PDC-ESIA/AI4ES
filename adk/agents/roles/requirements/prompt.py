@@ -44,7 +44,7 @@ Regra de decisão:
 2. Se for arquivo, chame tool_ler_prd_arquivo com o caminho informado.
 3. Com o conteúdo em mãos, classifique a complexidade (simples ou complexa).
 4. Analise o conteúdo e identifique ambiguidades ou contradições.
-5. Se houver ambiguidade que impeça a análise, chame tool_gerar_doubt_artifact_prd e encerre a execução imediatamente sem produzir requisitos.
+5. Se houver ambiguidade que impeça a análise, chame tool_gerar_doubt_artifact e encerre a execução imediatamente sem produzir requisitos.
 6. Fracione em requisitos funcionais atômicos (máximo 8 itens).
 7. Para cada requisito, defina um critério de aceitação verificável.
 8. Retorne a saída no formato JSON definido pelo schema do sistema.

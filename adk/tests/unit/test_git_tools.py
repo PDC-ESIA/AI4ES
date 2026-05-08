@@ -15,7 +15,6 @@ Execute com:
 """
 
 import subprocess
-from pathlib import Path
 import pytest
 import sys
 import types
@@ -28,9 +27,9 @@ for _mod in ["google", "google.adk", "google.adk.tools", "pydantic", "requests"]
 sys.modules["google.adk.tools"].ToolContext = object
 sys.modules["pydantic"].BaseModel = object
 sys.modules["pydantic"].Field = lambda *a, **k: None
-sys.modules["pydantic"].field_validator = lambda *a, **k: (lambda f: f)
+sys.modules["pydantic"].field_validator = lambda *a, **k: lambda f: f
 
-from shared.tools.git import (
+from shared.tools.git import (  # noqa: E402
     tool_git_add,
     trava_seguranca_git_commit,
     tool_git_commit,
@@ -41,6 +40,7 @@ from shared.tools.git import (
 # ===========================================================================
 # Fixtures
 # ===========================================================================
+
 
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
@@ -69,6 +69,7 @@ def repo_com_arquivo_staged(repo):
 # Helpers internos
 # ---------------------------------------------------------------------------
 
+
 def _git(args, cwd):
     subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, check=False)
 
@@ -76,7 +77,9 @@ def _git(args, cwd):
 def _branch_atual(cwd):
     r = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=str(cwd), capture_output=True, text=True,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
     )
     return r.stdout.strip()
 
@@ -84,7 +87,9 @@ def _branch_atual(cwd):
 def _commit_count(cwd):
     r = subprocess.run(
         ["git", "rev-list", "--count", "HEAD"],
-        cwd=str(cwd), capture_output=True, text=True,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
     )
     return int(r.stdout.strip()) if r.returncode == 0 else 0
 
@@ -93,8 +98,8 @@ def _commit_count(cwd):
 # tool_git_add
 # ===========================================================================
 
-class TestToolGitAdd:
 
+class TestToolGitAdd:
     def test_add_arquivo_unico(self, repo):
         """Adiciona um arquivo existente — deve retornar sucesso."""
         (repo / "novo.py").write_text("pass\n")
@@ -132,8 +137,8 @@ class TestToolGitAdd:
 # trava_seguranca_git_commit
 # ===========================================================================
 
-class TestTrava:
 
+class TestTrava:
     def test_trava_com_staged_retorna_sucesso_true(self, repo_com_arquivo_staged):
         """Com arquivos staged, a trava deve liberar (sucesso=True)."""
         result = trava_seguranca_git_commit("feat: algo")
@@ -163,8 +168,8 @@ class TestTrava:
 # tool_git_commit
 # ===========================================================================
 
-class TestToolGitCommit:
 
+class TestToolGitCommit:
     def test_commit_com_staged_sucesso(self, repo_com_arquivo_staged):
         """Fluxo completo: com staged, commit deve funcionar."""
         commits_antes = _commit_count(repo_com_arquivo_staged)
@@ -183,7 +188,9 @@ class TestToolGitCommit:
         tool_git_commit("feat: add feature")
         r = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
-            cwd=str(repo_com_arquivo_staged), capture_output=True, text=True,
+            cwd=str(repo_com_arquivo_staged),
+            capture_output=True,
+            text=True,
         )
         assert r.stdout.strip() == ""
 
@@ -211,8 +218,8 @@ class TestToolGitCommit:
 # tool_git_checkout
 # ===========================================================================
 
-class TestToolGitCheckout:
 
+class TestToolGitCheckout:
     def test_checkout_branch_existente(self, repo):
         """Troca para uma branch existente — deve retornar sucesso."""
         _git(["checkout", "-b", "dev"], repo)

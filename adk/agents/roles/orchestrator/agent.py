@@ -9,6 +9,7 @@ from google.adk.tools.agent_tool import AgentTool
 from agents.roles.coder.agent import agent as coder_specialist
 from agents.roles.reviewer.agent import agent as reviewer_specialist
 from agents.workflows.coding.agent import agent as sdlc_pipeline
+from agents.workflows.coding_review.agent import agent as coding_review_pipeline
 
 from . import prompt
 
@@ -21,6 +22,7 @@ root_agent = LlmAgent(
     instruction=prompt.instruction,
     tools=[
         AgentTool(agent=sdlc_pipeline),
+        AgentTool(agent=coding_review_pipeline),
         AgentTool(agent=coder_specialist),
         AgentTool(agent=reviewer_specialist),
     ],

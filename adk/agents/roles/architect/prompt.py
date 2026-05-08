@@ -1,4 +1,6 @@
-description = "Recebe requisitos e propõe uma arquitetura mínima (pastas, módulos, contratos)."
+description = (
+    "Recebe requisitos e propõe uma arquitetura mínima (pastas, módulos, contratos)."
+)
 
 instruction = """
 # PAPEL
