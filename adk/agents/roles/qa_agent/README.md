@@ -1,24 +1,44 @@
 # QA Agent
 
-## Descrição
-O `qa_agent` transforma requisitos funcionais em testes automatizados utilizando `pytest`. A partir de artefatos de entrada, o agente interpreta requisitos, gera o código de teste e segue um padrão consistente de estrutura de QA.
+## 1. O que é o Agente (Visão Geral)
 
-## Estrutura de Teste Atual (caso base)
-Os seguintes arquivos devem ser utilizados como **entrada (INPUT)**:
+### Identificação
+**Nome:** QA Agent (Time 3 — PDC-AI4SE)  
+**Domínio:** Engenharia de Requisitos e Testes de Software  
 
-- `hu_autenticacao.md` (História de Usuário)
-- `prompt_qa_testing.md` (Diretrizes de geração)
-- `test_scenario.py` (Código-fonte de referência)
+### Propósito
+O **QA Agent** resolve o problema de criar suítes de testes baseadas em especificações funcionais. Ele transforma requisitos (RF, HU, UC, RNF, RN) e o código-fonte correspondente em testes automatizados completos. Seu propósito no ciclo de Engenharia de Software (ES) é garantir que o código desenvolvido atenda exatamente aos critérios de aceitação estipulados, reduzindo o esforço manual da equipe de QA e garantindo padronização e cobertura.
 
-> Recomendação: mantenha esses arquivos em `adk/agents/roles/qa_agent/testesLocal/` apenas como organização do repositório (não como “fonte automática” para o agente).
+### Stacks, Tecnologias, Frameworks utilizados
+- **Linguagem:** Python 3.12+
+- **Gerenciamento de Pacotes:** `uv`
+- **Frameworks de Agente:** Google ADK Framework (LlmAgent, LiteLlm)
+- **Testes:** `pytest`
+- **Servidor Web / Interface:** `uvicorn`, Dev UI (ADK)
 
-## Pré-requisitos
+---
+
+## 2. Funcionalidades
+
+O QA Agent possui responsabilidades bem definidas focadas na automação de testes de qualidade:
+
+- **Análise de Requisitos e Código:** Interpreta vários tipos de artefatos de requisitos (HU, RF, UC, RNF, RN), regras de negócio e código-fonte, mapeando os critérios de aceitação para testes.
+- **Geração Automática de Testes:** Cria de forma autônoma scripts de testes utilizando `pytest`, abrangendo testes unitários, de integração e validações de segurança.
+- **Execução e Validação:** Executa os testes gerados diretamente contra o ambiente local através da ferramenta `pytest_runner`.
+- **Autocorreção (Code Fix):** Através de seus subagentes (`action_planner`, `code_fix_agent`), ele planeja ações e tenta corrigir os códigos de teste gerados caso haja falhas na execução.
+- **Limites de Atuação:** O agente não implementa funcionalidades no código-fonte principal; sua atuação é estritamente limitada à criação, correção e execução do código de **testes**.
+
+---
+
+## 3. Como executar ou testar o Agente
+
+### Pré-requisitos
 - Python 3.12+
-- `uv` instalado
-- Ambiente configurado na pasta `adk/`
+- Ferramenta `uv` instalada.
+- Chaves de API necessárias para o modelo LLM (`ADK_LLM_MODEL`) configuradas no arquivo `.env`.
 
-## Setup do Ambiente
-Na raiz `adk/`, execute:
+### Instalação
+Na raiz do projeto (`adk/`), execute os seguintes comandos para criar e ativar o ambiente:
 
 ```bash
 uv sync
@@ -26,32 +46,57 @@ source .venv/bin/activate
 cp .env.example .env
 ```
 
-**⚠️ IMPORTANTE:** No arquivo `.env`, a variável abaixo deve estar configurada:
-`ADK_AGENTS_DIR=agents/roles`
+**⚠️ IMPORTANTE:** No arquivo `.env`, certifique-se de configurar o diretório dos agentes:
+```env
+ADK_AGENTS_DIR=agents/roles
+```
 
-## Executando o QA Agent
+### Comando de Execução
+Para rodar o ambiente de desenvolvimento e acessar a interface do agente:
 
-### 1) Subir o servidor
 ```bash
 export ADK_AGENTS_DIR=agents/roles
 uvicorn app.main:app --reload --port 8081
 ```
 
-### 2) Abrir a interface
-Acesse: [http://127.0.0.1:8081/dev-ui/?app=qa_agent](http://127.0.0.1:8081/dev-ui/?app=qa_agent)
+Acesse pelo navegador: [http://127.0.0.1:8081/dev-ui/?app=qa_agent](http://127.0.0.1:8081/dev-ui/?app=qa_agent)
 
-## Como testar o agente (fluxo oficial para professores)
+### Suíte de Testes
+O agente é validado fornecendo-se casos de uso reais com códigos fontes prontos e documentação de requisitos (conforme exemplo no passo 5, e presente no seguinte diretório: `adk/agents/roles/qa_agent/testesLocal/`). A validação ocorre quando o agente consegue escrever e passar o código no `pytest` sem intervenção humana.
 
-### Passo 1 — Saudação (handshake)
-Cole na Dev UI:
+---
 
+## 4. Possíveis Entradas e Saídas
+
+**Entradas:**
+- Arquivos de requisitos, como HU, RF, UC, RNF, RN, em Markdown (`.md`) ou formato equivalente.
+- Arquivos de código-fonte em Python (`.py`) correspondentes à funcionalidade a ser testada OU não para gerar casos de teste.
+- Prompt de instruções especificando quais níveis de teste e coberturas são desejadas.
+
+**Saídas:**
+- Arquivo de testes gerado automaticamente (ex: `test_autenticacao_auto.py`).
+- Logs de execução do `pytest` exibindo se os testes passaram ou falharam (relatório de cobertura).
+- Artefatos de dúvida (`DoubtArtifact`) caso o agente identifique falta de contexto ou ausência de arquivos anexados.
+
+---
+
+## 5. Cenário de Teste Específico
+
+### Validando a Autenticação
+Este cenário valida se o agente opera conforme o esperado ao criar testes para um sistema de login.
+
+**Passo 1 — Saudação:**
+Cole na interface da Dev UI:
 ```text
 Olá, tudo bem? Está funcionando corretamente?
 ```
 
-### Passo 2 — Colar o prompt de execução
-Cole **exatamente** o bloco abaixo na Dev UI (logo após a saudação):
+**Passo 2 — Anexar os arquivos:**
+Usando o botão de **upload** (ícone de clipe), anexe os arquivos locais de teste (use de preferência o que está em `adk/agents/roles/qa_agent/testesLocal/`):
+1. `main_scenario.py` (Código fonte de referência)
+2. `hu_autenticacao.md` (Requisitos de negócio)
 
+**Passo 3 — Colar o prompt de execução:**
 ````markdown
 # OBJETIVO
 Gerar testes pytest automatizados completos para a classe `SistemaAutenticacao` baseado no código fonte e nos requisitos da HU.
@@ -158,29 +203,18 @@ def sistema_com_dados(sistema):
 O resultado deve ser voce gerar os testes, testar e trazer o resultado.
 ````
 
-### Passo 3 — Anexar os arquivos (obrigatório)
-Depois de colar o prompt, **anexe os arquivos** usando o botão de upload (**ícone de clipe / “upload local file”**):
+O sucesso do caso de uso ocorre se o arquivo de teste for criado pelo agente e a ferramenta `pytest_runner` validar com sucesso todos os cenários.
 
-1. `adk/agents/roles/qa_agent/testesLocal/main_scenario.py`
-2. `adk/agents/roles/qa_agent/testesLocal/hu_autenticacao.md`
+---
 
+## 6. Lista de Erros Identificados
 
-## Nota técnica importante (sobre “caminho de arquivo”)
-- O agente **não possui uma tool para localizar/abrir arquivos locais apenas pelo caminho informado em texto** (ex.: `adk/agents/.../hu_autenticacao.md`).
-- Porém, a tool de execução de `pytest` **consegue rodar arquivos locais** porque existe lógica interna para **normalizar o caminho do arquivo** ao executar testes.
-
-**Consequência prática:** para o agente gerar testes com base no conteúdo real, **deve-se anexar os arquivos** (Passo 3). Informar “paths” no texto **não substitui** o upload.
-
-## O que validar no resultado
-- ✅ **Geração:** se o arquivo `test_autenticacao_auto.py` foi criado.
-- ✅ **Execução:** se os testes rodam com de falha ou não contra o `main_scenario.py`.
-
-## Troubleshooting e boas práticas
-- **Erro de módulo / agente não aparece:** confirme `ADK_AGENTS_DIR=agents/roles` no `.env` e no `export`.
-- **Doubt Artifact “conteúdo vazio”:** isso normalmente indica que os arquivos **não foram anexados**.
-- **Menos alucinação:** prefira anexar os artefatos completos (HU + código) em vez de resumir.
-
-## Conclusão
-O fluxo de teste do QA Agent garante que a transição entre requisito e código ocorra de forma padronizada. Ao anexar os artefatos de `testesLocal`, a validação mede não só se o agente “gera código”, mas se ele mantém rigor ao cobrir exceções e regras de segurança descritas na HU.
-
-**OBSERVAÇÃO**: É normal demorar um pouco, arquitetura não está adequada por isso lavaram muito tempo para rodar.
+| Problema / Erro | Causa Comum | Como Resolver |
+| --- | --- | --- |
+| **Erro de módulo / agente não aparece na Dev UI** | A variável de ambiente não foi configurada corretamente. | Confirme que `ADK_AGENTS_DIR=agents/roles` está no seu `.env` e faça o `export` no terminal antes de rodar o `uvicorn`. |
+| **Agente responde com "Doubt Artifact" e "conteúdo vazio"** | O agente não tem acesso local de leitura direta ao texto. | Isso indica que os arquivos não foram anexados. Anexe explicitamente os arquivos através da Dev UI (botão de upload local file). |
+| **Testes gerados falham por importação incorreta (ModuleNotFoundError)** | O agente gerou caminhos relativos incompatíveis ou faltam arquivos `__init__.py` na estrutura de pacotes. | Confirme que o código gerado faz importações coerentes com o arquivo anexado. Assegure-se de que as pastas locais de teste possuem os arquivos `__init__.py` para que o Python reconheça como pacote. |
+| **Lentidão na Resposta** | O uso dos subagentes gera encadeamento demorado de chamadas de LLM. | É esperado. A arquitetura de múltiplos agentes (recepção, planejamento, correção e pytest) pode levar alguns minutos para finalizar. |
+| **Agente gerou um código de teste esqueleto (vazio ou comentado)** | Falha na propagação do contexto dos arquivos ou limite de tokens da janela de contexto atingido. | Certifique-se de anexar novamente os arquivos. Se os arquivos forem muito longos, tente reduzir ou dividi-los. Se o problema persistir, pode ser um erro de propagação de contexto no subagente `receive_requirements`. |
+| **Pytest falha dizendo "arquivo de teste não encontrado"** | O agente gerou o conteúdo do código em texto, mas não escreveu o arquivo `.py` fisicamente no diretório antes de chamar o `pytest_runner`. | Peça ao agente explicitamente no prompt: "Certifique-se de salvar o código no arquivo antes de rodar os testes" ou envie o diretório para o agente.|
+| **Erro de Timeout ou Limite de Taxa (Rate Limit)** | O excesso de subagentes comunicando-se simultaneamente (Code Fix + Action Planner) estourou o limite de quota da API do modelo configurado. | Aguarde alguns minutos antes de enviar a mensagem novamente ou altere a variável de ambiente `ADK_LLM_MODEL` para um modelo com cota maior. |
