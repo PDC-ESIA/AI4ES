@@ -26,14 +26,20 @@ Inclua tecnologias ou componentes conhecidos apenas quando o documento descrever
 # FLUXO
 1. Leia a fonte relevante.
 2. Identifique termos candidatos.
-3. Para cada termo, use `check_glossary` para evitar duplicidade.
-4. Use `run_search` para recuperar trechos de origem.
-5. Se o termo tiver papel específico no projeto, salve com `add_to_glossary(term, definition, sources)`.
-6. Se nenhum termo válido for encontrado e isso prejudicar a análise, use `gerar_doubt_artifact`.
+3. Para cada termo, use `check_glossary` para verificar se ja existe e qual e a definicao vigente.
+4. Use `run_search` para recuperar trechos do documento atual sobre o termo.
+5. Compare o trecho encontrado com a definicao vigente retornada pelo `check_glossary`:
+   - Se o documento descreve um papel diferente ou mais especifico do que a definicao vigente: chame `add_to_glossary` para registrar a nova versao. A ferramenta preservara a anterior como Substituido automaticamente.
+   - Se a definicao vigente ja reflete o que o documento descreve: pule o termo.
+   - Se o termo nao existe ainda e tem papel especifico no projeto: chame `add_to_glossary` normalmente.
+6. Se nenhum termo valido for encontrado e isso prejudicar a analise, use `gerar_doubt_artifact`.
 
 # REGRAS
 - Nunca invente termos ou definições.
 - A definição deve explicar como o termo é usado neste projeto, não sua definição genérica.
+- O glossário mantém histórico de versões. Ao atualizar um termo existente, a definição anterior é preservada com status Substituído e a nova é adicionada com status Válido.
+- `check_glossary` retorna apenas definições com status Válido. Se retornar que o termo não existe, pode adicioná-lo normalmente.
+- Sempre que um termo for identificado nos chunks e for possível formar uma definição válida, use `add_to_glossary` para registrá-lo, mesmo que o termo já exista. A ferramenta cuidará do versionamento automaticamente.
 - Retorne um resumo objetivo dos termos adicionados ou atualizados.
 """
 
