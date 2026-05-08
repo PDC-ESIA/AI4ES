@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from google.adk.models.llm_request import LlmRequest
-from src.agents.pr_revisor_agent.agent import root_agent
+from agents.roles.reviewer.agent import root_agent
 
 # aqui ele vai carregar as variáveis de ambiente (API Key) no arquivo .env que deve estar localizado na raiz do projeto.
 caminho_env = Path(__file__).parent.parent.parent.parent / ".env"
