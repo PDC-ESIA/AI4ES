@@ -126,7 +126,9 @@ _PRESET_CODER_NAMES = [
 ]
 
 _PRESET_REVIEWER_NAMES = [
-    "tool_ler_diff",
+    "tool_ler_arquivo",
+    "tool_ler_workspace",
+    "tool_listar_workspace",
     "tool_salvar_relatorio",
 ]
 

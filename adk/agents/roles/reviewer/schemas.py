@@ -7,6 +7,7 @@ class ReviewIssue(BaseModel):
     severity: str = Field(description="critical | warning | info")
     description: str
     file: Optional[str] = Field(default=None, description="Arquivo afetado")
+    layer: str = Field(description="completude | arquitetura | corretude | testes")
 
 
 class ReviewOutput(BaseModel):
