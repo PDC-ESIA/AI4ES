@@ -35,8 +35,9 @@ def tool_git_add(arquivos: str, cwd: str | None = None) -> dict:
     }
 
 
-def trava_seguranca_git_commit(mensagem: str, cwd: str | None = None) -> dict:
-    """Ferramenta usada para validar se há alterações prontas para commit e retornar o diff para análise
+def tool_preparar_commit(mensagem: str, cwd: str | None = None) -> dict:
+    """Ferramenta usada para validar se há alterações prontas para commit e retornar o diff para análise.
+    NÃO executa o commit, apenas prepara o resumo. Apresente o resumo retornado ao usuário e aguarde autorização.
 
     Args:
         mensagem (str): Mensagem de commit sugerida pelo agente
@@ -58,7 +59,7 @@ def trava_seguranca_git_commit(mensagem: str, cwd: str | None = None) -> dict:
     if not diff.strip():
         return {
             "sucesso": False,
-            "mensagem": "Nada para commitar"
+            "mensagem": "Nada para commitar (working tree clean ou alterações não adicionadas com git add)"
         }
 
     return {
@@ -68,31 +69,29 @@ def trava_seguranca_git_commit(mensagem: str, cwd: str | None = None) -> dict:
     }
 
 
-def tool_git_commit(mensagem: str, cwd: str | None = None) -> dict:
-    """Ferramenta usada para executar git commit no terminal
+def tool_confirmar_commit(mensagem: str, cwd: str | None = None) -> dict:
+    """Ferramenta usada para efetivar o git commit no terminal após aprovação do usuário.
+    SÓ DEVE ser chamada após o usuário aprovar o resumo gerado por tool_preparar_commit.
 
     Args:
-        mensagem (str): Parâmetro da mensagem que o agente designa para o commit
+        mensagem (str): Mensagem do commit
         cwd (str): Diretório de trabalho para execução do comando (injetado pela factory)
 
     Returns:
         dict: Contém status da operação, saída do comando e possíveis erros
     """
 
-    trava = trava_seguranca_git_commit(mensagem, cwd=cwd)
-
-    if not trava["sucesso"]:
+    # Verificação final para evitar commits vazios
+    diff_res = run(
+        ["git", "diff", "--staged"],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+    )
+    if not diff_res.stdout.strip():
         return {
             "sucesso": False,
-            "mensagem": trava["mensagem"]
-        }
-
-    aprovado = True
-
-    if not aprovado:
-        return {
-            "sucesso": False,
-            "mensagem": "Commit não autorizado"
+            "mensagem": "Nada para commitar no momento da confirmação"
         }
 
     resposta = run(

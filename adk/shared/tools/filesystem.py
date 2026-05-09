@@ -250,3 +250,52 @@ def tool_substituir_trecho(
 
     except Exception as e:
         return f"Erro inesperado ao editar o arquivo '{caminho}': {str(e)}"
+
+
+def tool_ler_workspace(caminho: str, base_dir: str | None = None) -> str:
+    """Lê qualquer arquivo dentro do workspace (read-only).
+    Use para consultar tasks, arquitetura, planos de teste e outros artefatos.
+
+    Args:
+        caminho: Caminho relativo à raiz do workspace (ex: 'tasks/TASK-001.json')
+        base_dir: Raiz do workspace (injetado pela factory)
+    """
+    try:
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return f"Erro: {e}"
+
+    try:
+        if not path.is_file():
+            return f"Erro: O caminho '{caminho}' não é um arquivo válido."
+        return path.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"Erro inesperado ao ler o arquivo '{caminho}': {str(e)}"
+
+
+def tool_listar_workspace(caminho: str = ".", base_dir: str | None = None) -> str | list[str]:
+    """Lista o conteúdo de um diretório dentro do workspace.
+    Retorna uma lista de nomes (arquivos e pastas). Pastas terão um sufixo '/'.
+
+    Args:
+        caminho: Caminho relativo à raiz do workspace (ex: 'tasks/'). Padrão: '.'
+        base_dir: Raiz do workspace (injetado pela factory)
+    """
+    try:
+        if not caminho:
+            caminho = "."
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return f"Erro: {e}"
+
+    try:
+        if not path.is_dir():
+            return f"Erro: O caminho '{caminho}' não é um diretório válido."
+        
+        itens = []
+        for p in path.iterdir():
+            nome = f"{p.name}/" if p.is_dir() else p.name
+            itens.append(nome)
+        return sorted(itens)
+    except Exception as e:
+        return f"Erro inesperado ao listar o diretório '{caminho}': {str(e)}"

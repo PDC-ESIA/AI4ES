@@ -25,11 +25,14 @@ from shared.tools import (
     tool_criar_arquivo,
     tool_git_add,
     tool_git_checkout,
-    tool_git_commit,
+    tool_preparar_commit,
+    tool_confirmar_commit,
     tool_ler_arquivo,
     tool_ler_diff,
     tool_salvar_relatorio,
     tool_substituir_trecho,
+    tool_ler_workspace,
+    tool_listar_workspace,
 )
 
 
@@ -45,28 +48,36 @@ _FILESYSTEM_TOOLS = {
     "tool_salvar_relatorio": tool_salvar_relatorio,
 }
 
+_WORKSPACE_READ_TOOLS = {
+    "tool_ler_workspace": tool_ler_workspace,
+    "tool_listar_workspace": tool_listar_workspace,
+}
+
 _GIT_TOOLS = {
     "tool_git_add": tool_git_add,
-    "tool_git_commit": tool_git_commit,
+    "tool_preparar_commit": tool_preparar_commit,
+    "tool_confirmar_commit": tool_confirmar_commit,
     "tool_git_checkout": tool_git_checkout,
     "tool_ler_diff": tool_ler_diff,
 }
 
 # Configurações especiais por tool
 _TOOL_CONFIG = {
-    "tool_git_commit": {"require_confirmation": True},
+    "tool_confirmar_commit": {"require_confirmation": True},
 }
 
 
 def _build_bound_tools(
     tool_names: list[str],
     agent_workspace: str,
+    workspace_root: str,
 ) -> list[FunctionTool]:
     """Constrói FunctionTools com base_dir/cwd injetados via partial.
 
     Args:
         tool_names: Nomes das tools a construir.
         agent_workspace: Caminho absoluto da subpasta do agente.
+        workspace_root: Caminho absoluto da raiz do workspace.
 
     Returns:
         Lista de FunctionTools com workspace binding.
@@ -81,6 +92,12 @@ def _build_bound_tools(
             # Preservar metadata da função original para o ADK
             bound_fn.__name__ = _FILESYSTEM_TOOLS[name].__name__
             bound_fn.__doc__ = _FILESYSTEM_TOOLS[name].__doc__
+            tools.append(FunctionTool(bound_fn, **extra_kwargs))
+
+        elif name in _WORKSPACE_READ_TOOLS:
+            bound_fn = partial(_WORKSPACE_READ_TOOLS[name], base_dir=workspace_root)
+            bound_fn.__name__ = _WORKSPACE_READ_TOOLS[name].__name__
+            bound_fn.__doc__ = _WORKSPACE_READ_TOOLS[name].__doc__
             tools.append(FunctionTool(bound_fn, **extra_kwargs))
 
         elif name in _GIT_TOOLS:
@@ -100,8 +117,11 @@ _PRESET_CODER_NAMES = [
     "tool_criar_arquivo",
     "tool_ler_arquivo",
     "tool_substituir_trecho",
+    "tool_ler_workspace",
+    "tool_listar_workspace",
     "tool_git_add",
-    "tool_git_commit",
+    "tool_preparar_commit",
+    "tool_confirmar_commit",
     "tool_git_checkout",
 ]
 
@@ -128,7 +148,7 @@ _WORKSPACE_INSTRUCTION = """
 # DIRETÓRIO DE TRABALHO
 - Seu diretório de trabalho exclusivo é: {agent_workspace}
 - Todos os arquivos que você criar ou modificar DEVEM estar dentro deste diretório.
-- Ao usar tools de arquivo, informe APENAS caminhos relativos (ex: "main.py", "src/utils.py").
+- Ao usar tools de arquivo de escrita, informe APENAS caminhos relativos (ex: "main.py", "src/utils.py").
 - NÃO use caminhos absolutos. NÃO use ".." para navegar para fora do seu diretório.
 """
 
@@ -150,7 +170,8 @@ def create_se_agent(
     """Cria um agente de Engenharia de Software com tools do domínio SE.
 
     As tools de filesystem recebem base_dir e as de git recebem cwd,
-    ambos apontando para a subpasta do agente no workspace.
+    ambos apontando para a subpasta do agente no workspace. As tools de
+    read workspace recebem base_dir apontando para a raiz do workspace.
 
     Args:
         name: Nome único do agente (ex: 'coder_agent').
@@ -184,11 +205,12 @@ def create_se_agent(
             f"Informe agent_subdir ou adicione '{name}' ao AGENT_DIRS."
         )
 
+    workspace_root = str(get_workspace_root())
     agent_workspace = str(get_workspace_root() / subdir)
 
     # Construir tools com workspace binding
     tool_names = TOOL_PRESET_NAMES[preset]
-    tools = _build_bound_tools(tool_names, agent_workspace)
+    tools = _build_bound_tools(tool_names, agent_workspace, workspace_root)
 
     if extra_tools:
         tools.extend(extra_tools)
