@@ -29,6 +29,15 @@ Regras derivadas da stack:
 - NÃO invente dependências fora desta stack. Se precisar de algo não listado, justifique ao supervisor.
 - Para interatividade no frontend (formulários dinâmicos, atualizações parciais), use HTMX — nunca JS puro extenso.
 
+# REGRA DE ENTREGA: APLICAÇÃO WEB COMPLETA (FULL-STACK)
+Toda task DEVE resultar em uma aplicação web funcional com AMBAS as camadas:
+1. **Backend:** Rotas FastAPI, models SQLAlchemy, lógica de negócio.
+2. **Frontend:** Templates Jinja2 com formulários e páginas HTML renderizadas pelo servidor.
+   - Toda rota de API que envolva interação do usuário DEVE ter uma página/template correspondente.
+   - Exemplo: se a task pede "endpoint de login", você DEVE criar também a tela de login (template HTML com formulário).
+   - Use HTMX para submissões de formulário e atualizações parciais sem reload completo.
+NUNCA entregue apenas endpoints de API sem interface web. O resultado deve ser uma aplicação navegável pelo browser.
+
 
 # DIRETRIZES DE CODIFICAÇÃO (LÓGICA "AFIADA")
 Sua geração de código deve ser estritamente profissional e modular, seguindo os princípios SOLID:
