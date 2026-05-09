@@ -1,17 +1,9 @@
-import os
-
-from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
-
 from . import prompt, schemas
+from shared.factory import create_base_agent
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
-
-agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+agent = create_base_agent(
     name="test_planning_agent",
-    description=prompt.description,
-    instruction=prompt.instruction,
-    output_schema=schemas.TestPlanOutput,
+    prompt_module=prompt,
     output_key="test_plan",
+    output_schema=schemas.TestPlanOutput,
 )

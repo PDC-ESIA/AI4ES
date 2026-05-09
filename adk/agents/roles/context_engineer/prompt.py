@@ -25,9 +25,7 @@ Se a entrada estiver vazia ou ausente, retorne um erro claro e encerre.
 
 ## Passo 1 — Extrair Contexto Macro
 A partir do conjunto de requisitos recebidos, identifique e sintetize:
-- **epic_slug**: um slug curto e descritivo para o épico (ex: "epic-login", "epic-relatorios").
-  Use apenas letras minúsculas, números e hífens.
-- **epic_summary**: resumo de 1 linha do objetivo maior que une todos os requisitos.
+- **summary**: resumo de 1 linha do objetivo maior que une todos os requisitos.
 - **tech_stack**: a stack tecnológica obrigatória inferida dos requisitos.
   Se não for possível inferir, use ["a definir"].
 - **global_rules**: restrições arquiteturais que o Coder DEVE respeitar em todas as tasks.

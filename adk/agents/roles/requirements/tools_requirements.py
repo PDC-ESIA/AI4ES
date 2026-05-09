@@ -4,14 +4,19 @@ Tools do Agente Requirements
 Responsabilidades:
 - Ler PRDs brutos de arquivo quando necessário
 - Gerar Doubt Artifact ao detectar inconsistencias ou ambiguidades
+- Persistir requisitos como JSON no workspace
 """
  
+import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
  
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
+
+from shared.factory.workspace import get_workspace_root, AGENT_DIRS
  
 logger = logging.getLogger(__name__)
  
@@ -194,9 +199,77 @@ Status: Pendente
         }
  
  
+class SalvarRequisitoSchema(BaseModel):
+    req_id: str = Field(..., description="ID do requisito (ex: 'REQ-001')")
+    req_json: str = Field(..., description="Conteúdo JSON serializado do requisito")
+
+    @field_validator("req_id")
+    def validar_req_id(cls, v):
+        if not v.startswith("REQ-"):
+            raise ValueError(f"req_id deve iniciar com 'REQ-'. Recebido: '{v}'")
+        return v
+
+
+# -------------------------------------------------------------------
+# TOOL 3: Salvar Requisito no Workspace
+# -------------------------------------------------------------------
+
+def tool_salvar_requisito(req_id: str, req_json: str) -> dict:
+    """Salva um requisito como arquivo JSON no workspace do projeto.
+
+    Persiste o arquivo em: $WORKSPACE_OUTPUT_DIR/requirements/<req_id>.json
+    Cria os diretórios automaticamente se não existirem.
+
+    Args:
+        req_id (str): Identificador do requisito (ex: 'REQ-001').
+        req_json (str): Conteúdo JSON serializado do requisito completo.
+
+    Returns:
+        dict: Status da operação, caminho do arquivo gerado e erros.
+    """
+    try:
+        dados = SalvarRequisitoSchema(req_id=req_id, req_json=req_json)
+    except ValidationError as e:
+        return {"sucesso": False, "erro": str(e), "caminho": None}
+
+    try:
+        req_data = json.loads(dados.req_json)
+    except json.JSONDecodeError as e:
+        return {
+            "sucesso": False,
+            "erro": f"JSON inválido no requisito: {e}",
+            "caminho": None,
+        }
+
+    workspace_root = get_workspace_root()
+    output_dir = workspace_root / AGENT_DIRS["requirements_agent"]
+    output_file = output_dir / f"{dados.req_id}.json"
+
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(
+            json.dumps(req_data, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        logger.info(f"[REQUIREMENTS] Requisito salvo: {output_file.resolve()}")
+        return {
+            "sucesso": True,
+            "erro": None,
+            "caminho": str(output_file.resolve()),
+            "req_id": dados.req_id,
+        }
+    except Exception as e:
+        return {
+            "sucesso": False,
+            "erro": f"Erro ao salvar requisito: {e}",
+            "caminho": None,
+        }
+
+
 # -------------------------------------------------------------------
 # EXPORTANDO TOOLS PARA O ADK
 # -------------------------------------------------------------------
  
 tool_ler_prd_arquivo_adk = FunctionTool(tool_ler_prd_arquivo)
 tool_gerar_doubt_artifact_adk = FunctionTool(tool_gerar_doubt_artifact)
+tool_salvar_requisito_adk = FunctionTool(tool_salvar_requisito)

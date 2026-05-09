@@ -3,21 +3,19 @@ Tools do Agente Context Engineer
 
 Responsabilidades:
 - Persistir tasks contextualizadas (Context Windows) como arquivos JSON
-  no workspace do projeto, organizadas por épico.
+  no workspace do projeto.
 """
 
 import json
 import logging
-import os
 from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
 
-logger = logging.getLogger(__name__)
+from shared.factory.workspace import get_workspace_root, AGENT_DIRS
 
-_ENV_WORKSPACE = "WORKSPACE_OUTPUT_DIR"
-_DEFAULT_WORKSPACE = "./workspace_output"
+logger = logging.getLogger(__name__)
 
 
 # -------------------------------------------------------------------
@@ -25,19 +23,8 @@ _DEFAULT_WORKSPACE = "./workspace_output"
 # -------------------------------------------------------------------
 
 class SalvarTaskSchema(BaseModel):
-    epic_slug: str = Field(..., description="Slug do épico (ex: 'epic-login')")
     task_id: str = Field(..., description="ID da task (ex: 'TASK-001')")
     task_json: str = Field(..., description="Conteúdo JSON serializado da task")
-
-    @field_validator("epic_slug")
-    def validar_epic_slug(cls, v):
-        import re
-        if not re.match(r"^[a-z0-9][a-z0-9\-]*$", v):
-            raise ValueError(
-                "epic_slug deve conter apenas letras minúsculas, números e hífens. "
-                f"Recebido: '{v}'"
-            )
-        return v
 
     @field_validator("task_id")
     def validar_task_id(cls, v):
@@ -52,14 +39,13 @@ class SalvarTaskSchema(BaseModel):
 # TOOL: Salvar Task no Workspace
 # -------------------------------------------------------------------
 
-def tool_salvar_task(epic_slug: str, task_id: str, task_json: str) -> dict:
+def tool_salvar_task(task_id: str, task_json: str) -> dict:
     """Salva uma task contextualizada como arquivo JSON no workspace do projeto.
 
-    Persiste o arquivo em: $WORKSPACE_OUTPUT_DIR/<epic_slug>/tasks/<task_id>.json
+    Persiste o arquivo em: $WORKSPACE_OUTPUT_DIR/tasks/<task_id>.json
     Cria os diretórios automaticamente se não existirem.
 
     Args:
-        epic_slug (str): Slug do épico para organização (ex: 'epic-login').
         task_id (str): Identificador da task (ex: 'TASK-001').
         task_json (str): Conteúdo JSON serializado da task completa.
 
@@ -68,7 +54,6 @@ def tool_salvar_task(epic_slug: str, task_id: str, task_json: str) -> dict:
     """
     try:
         dados = SalvarTaskSchema(
-            epic_slug=epic_slug,
             task_id=task_id,
             task_json=task_json,
         )
@@ -85,8 +70,8 @@ def tool_salvar_task(epic_slug: str, task_id: str, task_json: str) -> dict:
             "caminho": None,
         }
 
-    workspace_root = os.environ.get(_ENV_WORKSPACE, _DEFAULT_WORKSPACE)
-    output_dir = Path(workspace_root) / dados.epic_slug / "tasks"
+    workspace_root = get_workspace_root()
+    output_dir = workspace_root / AGENT_DIRS["context_engineer"]
     output_file = output_dir / f"{dados.task_id}.json"
 
     try:
@@ -103,7 +88,6 @@ def tool_salvar_task(epic_slug: str, task_id: str, task_json: str) -> dict:
             "erro": None,
             "caminho": str(output_file.resolve()),
             "task_id": dados.task_id,
-            "epic_slug": dados.epic_slug,
         }
     except Exception as e:
         return {

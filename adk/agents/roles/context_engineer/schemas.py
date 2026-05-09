@@ -3,13 +3,10 @@ from typing import Optional
 
 
 class MacroContext(BaseModel):
-    """Contexto global do épico — compartilhado por todas as tasks."""
+    """Contexto global — compartilhado por todas as tasks da sessão."""
 
-    epic_slug: str = Field(
-        description="Slug do épico para organização no workspace (ex: 'epic-login')"
-    )
-    epic_summary: str = Field(
-        description="Resumo de 1 linha do épico/objetivo maior"
+    summary: str = Field(
+        description="Resumo de 1 linha do objetivo maior"
     )
     tech_stack: list[str] = Field(
         description="Stack obrigatória (ex: ['Python', 'FastAPI', 'PostgreSQL'])"
