@@ -33,6 +33,7 @@ venv/
 env/
 ENV/
 adk/.venv-docker/
+adk/workspace_output/
 
 # Google ADK
 .adk/
