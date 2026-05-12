@@ -13,9 +13,9 @@ sequenceDiagram
 
     U->>O: Inicia processo (Contexto do Projeto)
     O->>A: Delega análise de requisitos
-
+    
     Note over A: Processamento via System Prompt & CoT
-
+    
     loop Elicitação e Análise
         A->>T: run_slicer() / ler_chunk()
         T-->>A: Retorna trechos do contexto
@@ -36,7 +36,7 @@ sequenceDiagram
     end
 
     A-->>O: Finaliza tarefa (analysis_result)
-
+    
     Note over O, A: [Artefatos Gerados]
     Note over O, A: • User Stories (HU) <br/> • Requisitos Funcionais (RF) <br/> • Requisitos Não-Funcionais (RNF) <br/> • Glossário / Regras de Negócio
 
@@ -48,7 +48,7 @@ sequenceDiagram
 *   **Usuário (Cliente):** Fornece o contexto inicial e resolve impedimentos documentados.
 *   **Orquestrador (SDLC Pipeline):** Gerencia a sequência de agentes (Requirements -> Architect -> ...).
 *   **Agente Analista (requirements_analyst):** Especialista que utiliza CoT (Chain of Thought) para elicitar e classificar requisitos.
-*   **Tools (shared/tools):**
+*   **Tools (shared/tools):** 
     *   `run_slicer` / `ler_chunk`: Para navegação granular no contexto.
     *   `gerar_doubt_artifact`: Criação formal de pedidos de esclarecimento.
     *   `tool_salvar_artefato_requisito`: Persistência dos requisitos validados.

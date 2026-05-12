@@ -20,7 +20,3 @@ agent = LlmAgent(
         FunctionTool(tool_salvar_relatorio),
     ],
 )
-
-
-# ADK CLI busca por `root_agent` ao carregar um app diretamente.
-root_agent = agent

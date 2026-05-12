@@ -12,7 +12,6 @@ services:
       - .env
     volumes:
       - .:/app:ro
-      - ../docs:/app/docs:rw
       - adk-venv-docker:/venv
       - copilot-tokens:/root/.config/litellm/github_copilot
     restart: unless-stopped
