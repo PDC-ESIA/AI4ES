@@ -109,20 +109,22 @@
 
 ### ✔️ Refinamentos necessários
 
-* [ ] Separar claramente:
+* [x] Separar claramente:
+> Atendido em parte pela separação entre prompt e exemplos, e por seções no texto do prompt. Ainda existe mistura operacional no mesmo bloco principal.
 
-  * [ ] instruções gerais
-  * [ ] few-shots
-  * [ ] comportamento esperado
-* [ ] Garantir que o prompt:
-
-  * [ ] define papel do agente
-  * [ ] define formato de saída
-  * [ ] define quando gerar dúvidas
+  * [x] instruções gerais
+  * [x] few-shots
+  * [x] comportamento esperado
+* [x] Garantir que o prompt:
+> Atendido. O prompt define papel, formato de saída e critério de geração de dúvidas.
+  * [x] define papel do agente
+  * [x] define formato de saída
+  * [x] define quando gerar dúvidas
 
 ### ⚠️ Problemas identificados
 
 * [ ] Reduzir tamanho do prompt (controle de contexto)
+> Não necessário no momento. O prompt atual atende bem aos critérios de qualidade, mantém consistência e não apresenta sinais de alucinação nas execuções observadas.
 * [ ] Evitar múltiplos few-shots simultâneos
 
 ---
@@ -150,11 +152,13 @@
 ### ✔️ Alternativa simplificada (MVP)
 
 * [ ] Usar template único genérico
+> Não aplicável. Cada tipo de artefato possui estrutura, campos e critérios distintos; unificar em um template genérico reduziria precisão e rastreabilidade.
 * [ ] Evoluir depois para múltiplos
 
 ---
 
 ## 🔹 2.3 Skills do agente
+> A definição das skills foi desenvolvida, porém a funcionalidade skill_toolset está disponível somente a partir da versão google-adk >= 1.26. Como o projeto utiliza google-adk 1.20, a tentativa de importação desse recurso resulta em erro. Também foi avaliada a atualização da versão do ADK, mas surgiram conflitos com outras dependências do projeto, especialmente relacionadas ao FastAPI.
 
 ### ✔️ Refinamentos
 
@@ -176,19 +180,21 @@
 
 ### ✔️ Refinamentos
 
-* [ ] Permitir geração sob demanda:
-
-  * [ ] histórias de usuário
-  * [ ] requisitos funcionais
-* [ ] Evitar geração automática de tudo
+* [x] Permitir geração sob demanda:
+> Atendido. Nos testes, ao informar explicitamente quais artefatos eram desejados, o agente gerou apenas o solicitado.
+  * [x] histórias de usuário
+  * [x] requisitos funcionais
+* [x] Evitar geração automática de tudo
+> Atendido em cenário orientado por instrução do usuário (quando o pedido delimita escopo).
 
 ### ✔️ Padronização de saída
 
-* [ ] Garantir formato consistente:
+* [x] Garantir formato consistente:
+> A consistência existe dentro de cada tipo de artefato, mas os campos mudam entre tipos.
 
-  * [ ] título
-  * [ ] descrição
-  * [ ] critérios de aceitação
+  * [x] título
+  * [x] descrição
+  * [x] critérios de aceitação
 
 ---
 
