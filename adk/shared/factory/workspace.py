@@ -29,8 +29,27 @@ AGENT_DIRS: dict[str, str] = {
 
 
 def get_workspace_root() -> Path:
-    """Resolve o diretório raiz do workspace via variável de ambiente."""
-    return Path(os.environ.get(_ENV_WORKSPACE, _DEFAULT_WORKSPACE)).resolve()
+    """Resolve o diretório raiz do workspace via variável de ambiente.
+
+    - Caminhos com ``~`` são expandidos para o home do usuário.
+    - Caminhos absolutos (ex: ``/opt/workspace``) são usados diretamente.
+    - Caminhos relativos (ex: ``workspace_output``) são resolvidos a partir
+      do diretório de trabalho corrente (``cwd``).
+    """
+    raw = os.environ.get(_ENV_WORKSPACE, _DEFAULT_WORKSPACE)
+    path = Path(raw).expanduser()
+
+    if path.is_absolute():
+        resolved = path
+    else:
+        resolved = Path.cwd() / path
+
+    resolved = resolved.resolve()
+
+    logger.debug(
+        f"[WORKSPACE] {_ENV_WORKSPACE}='{raw}' → resolvido para: {resolved}"
+    )
+    return resolved
 
 
 def init_workspace() -> Path:
