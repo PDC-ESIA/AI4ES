@@ -1,4 +1,5 @@
 import os
+
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
@@ -9,7 +10,6 @@ from shared.tools import (
     ler_chunk,
     extract_text,
     gerar_doubt_artifact,
-    listar_duvidas_pendentes,
     tool_salvar_artefato_requisito,
     run_search,
     check_glossary,
@@ -17,9 +17,7 @@ from shared.tools import (
 )
 from . import prompt, schemas
 
-_DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
-
-# ── Sub-Agente de Glossário ──────────────────────────────────────────────────
+_DEFAULT_MODEL = "github_copilot/gpt-4"
 
 glossario_agent = LlmAgent(
     name="glossario_agent",
@@ -93,6 +91,9 @@ glossario_agent = LlmAgent(
         - Se um mesmo termo aparece em múltiplos chunks, liste todos na coluna Fontes.
         - Seja criterioso: qualidade > quantidade.
     """,
+    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+    description=prompt.glossario_description,
+    instruction=prompt.glossario_instruction,
     tools=[
         FunctionTool(extract_text),
         FunctionTool(run_slicer),
@@ -103,19 +104,20 @@ glossario_agent = LlmAgent(
     ],
 )
 
-# ── Agente Principal de Requisitos ───────────────────────────────────────────
-
 agent = LlmAgent(
-    model=LiteLlm(_DEFAULT_MODEL),
+    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
     name="requirements_agent",
     description=prompt.description,
     instruction=prompt.instruction,
-    output_key="analysis_result",
     tools=[
+        FunctionTool(extract_text),
         FunctionTool(run_slicer),
         FunctionTool(ler_chunk),
+        FunctionTool(run_search),
         FunctionTool(gerar_doubt_artifact),
         FunctionTool(tool_salvar_artefato_requisito),
         AgentTool(agent=glossario_agent),
     ],
 )
+
+root_agent = agent
