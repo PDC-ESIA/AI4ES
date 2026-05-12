@@ -6,7 +6,6 @@ services:
     env_file:
       - .env
     volumes:
-      - ../docs:/app/docs:rw
       - copilot-tokens:/root/.config/litellm/github_copilot
     restart: unless-stopped
 
