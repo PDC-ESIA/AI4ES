@@ -42,7 +42,9 @@ def _caller_tag(caller: str | None) -> str:
     return f" | caller={caller}" if caller else ""
 
 def _make_string(operation: str, filename: str, *, caller: str , backup: str = "", detail: str = "") -> str:
-    return f"[{_now()}] {operation:<12} {_caller_tag(caller):<32} | {detail} {filename} backup: {backup}\n"
+    if backup:
+        backup = "\tbackup: " + backup
+    return f"[{_now()}] {operation:<12} {_caller_tag(caller):<32} | {detail} {filename}{backup}\n"
 
 
 # ──────────────────────────────────────────────────────────────────────────────

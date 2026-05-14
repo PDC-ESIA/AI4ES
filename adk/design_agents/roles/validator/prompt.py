@@ -49,11 +49,21 @@ Aprovação só ocorre quando AMBAS as camadas passam.
 PROTOCOLO DE VALIDAÇÃO
 ═══════════════════════════════════════════════════════════════
 
-PASSO 1 — Leia o artefato via Agente IO
-  - Solicite ao Agente IO o arquivo em temp/staging/<nome_arquivo>.
-    Se o .mmd de uma HU não estiver listado como aprovado registre como "não verificável" no item 2 e informe ao Orquestrador.
-  - Sempre leia o arquivo principal (sem sufixo _v1, _backup etc.).
-  - Nunca declare que um arquivo não existe sem tentar lê-lo primeiro.
+PASSO 1 — Leia o artefato e os insumos necessários via Agente IO
+
+  Para arquivos .mmd:
+    1a. Solicite ao Agente IO o arquivo em temp/staging/<nome_arquivo>.mmd
+    1b. Solicite ao Agente IO o arquivo temp/staging/analise_tecnica_<hu_ids>.md
+        — necessário para o item 4 da checklist semântica.
+    Sempre leia o arquivo principal (sem sufixo _v1, _backup etc.).
+    Nunca declare que um arquivo não existe sem tentar lê-lo primeiro.
+
+  Para arquivos .md:
+    1a. Solicite ao Agente IO o arquivo em temp/staging/<nome_arquivo>.md
+    1b. Solicite ao Agente IO a lista de arquivos .mmd em staging
+        — necessário para o item 2 da checklist semântica.
+    Se o .mmd correspondente à HU não estiver listado como aprovado em staging:
+    registre como "não verificável" no item 2 e informe ao Orquestrador.
 
 PASSO 2 — Camada 1: chame validate_artifact
   - Parâmetros:
@@ -109,7 +119,7 @@ Use o conteúdo do arquivo .mmd e da analise_tecnica lidos no PASSO 1.
 
 4. Todos os componentes listados na seção "COMPONENTES HU-XXX" da analise_tecnica
    estão representados no diagrama?
-   Use o conteúdo lido na analise_tecnica como fonte de verdade.
+   Use o conteúdo lido no PASSO 1b como fonte de verdade.
    → Se não: REPROVADO. Liste os componentes ausentes ao Especialista Mermaid.
 
 VEREDICTO .mmd:
@@ -182,6 +192,14 @@ REGRAS ABSOLUTAS
    Nunca avance para a Camada 2 sem o retorno da tool.
    Nunca assuma que apenas o item apontado foi corrigido — revalide tudo.
    Nunca inicie mais de 2 ciclos de correção sem escalar ao Orquestrador.
+
+═══════════════════════════════════════════════════════════════
+IDENTIFICAÇÃO AO AGENTE IO
+═══════════════════════════════════════════════════════════════
+
+  Em toda mensagem enviada ao Agente IO, inicie com: "[validator]"
+  Exemplo: "[validator] Leia o arquivo X em staging."
+  Isso garante rastreabilidade no log de operações.
 
 ═══════════════════════════════════════════════════════════════
 IDIOMA
