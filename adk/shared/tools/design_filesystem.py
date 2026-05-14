@@ -7,6 +7,7 @@ Responsabilidade: ler, salvar, promover e listar artefatos em disco.
 Logging de operações delegado integralmente ao IOLogger (design_logger.py).
 """
 
+from pydantic import fields
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -177,12 +178,16 @@ def read_multiple_files(filepaths: list[str], caller: str | None = "unknown") ->
 
             if not path.exists():
                 contents[filepath] = {"status": "error", "error": "Arquivo não encontrado."}
-                continue
+                continue    
 
             content = path.read_text(encoding="utf-8")
             contents[filepath] = {"status": "ok", "content": content}
+
+        # Identifica tipos de arquivos únicos para o log
+        file_types = {Path(f).suffix.lstrip('.').lower() for f in filepaths if '.' in f}
+        str_file_types = ", ".join(file_types) if file_types else "sem extensão"
             
-        IOLogger.read(f"[batch:{len(filepaths)} files]", caller=caller)
+        IOLogger.read(f"[batch: {len(filepaths)} files | types: {str_file_types}]", caller=caller)
         return {"status": "ok", "contents": contents}
 
     except Exception as e:

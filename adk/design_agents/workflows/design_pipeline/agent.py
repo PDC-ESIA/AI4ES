@@ -71,7 +71,8 @@ Acione o design_architect informando o texto exato e integral das HUs que você 
 
 Aguarde o retorno confirmando o nome do arquivo salvo em staging.
 
-Valide que o retorno contém TODAS as seções obrigatórias:
+Valide que o CONTEÚDO DO ARQUIVO SALVO contém TODAS as seções obrigatórias.
+Peça ao Agente IO para ler o arquivo confirmado e verifique:
 - Compreensão do lote
 - Decisão(ões) de arquitetura e trade-offs
 - Tipo de diagrama por HU
@@ -79,6 +80,8 @@ Valide que o retorno contém TODAS as seções obrigatórias:
 - Seção "Bloqueios identificados" (mesmo que declare "Nenhum")
 - Tabela de cobertura por HU
 - Gap Analysis
+Uma seção é válida somente se contiver conteúdo além do título.
+Não confie apenas no nome do arquivo ou na mensagem de confirmação do design_architect.
 
 Se qualquer seção estiver ausente: devolva ao design_architect informando o campo
 faltante e aguarde a versão corrigida.
@@ -95,7 +98,16 @@ ETAPA 3 — VERIFICAÇÃO PRÉ-SEQUÊNCIA
 Acione o Agente IO: "[pipeline_controller] Liste todos os arquivos disponíveis em staging."
 Confirme que existe arquivo com nome iniciando em analise_tecnica_.
 - Ausente: retorne ao design_architect solicitando que salve a análise.
-- Presente: avance para ETAPA 4.
+- Presente: leia o arquivo via Agente IO e valide que TODAS as seções obrigatórias possuem conteúdo além do título:
+  - Compreensão do lote
+  - Decisão de Arquitetura e Trade-Offs
+  - Tipo de Diagrama Escolhido e Justificativa
+  - Identificação de Componentes por HU
+  - Bloqueios Identificados
+  - Tabela de Cobertura por HU
+  - Gap Analysis
+  Se qualquer seção existir mas estiver vazia (apenas título sem conteúdo): devolva ao design_architect informando as seções vazias e aguarde versão corrigida.
+  Somente avance para ETAPA 4 após confirmar conteúdo real em todas as seções.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ETAPA 4 — ENCERRAMENTO

@@ -53,9 +53,11 @@ PASSO 1 — Leia o artefato e os insumos necessários via Agente IO
 
   Para arquivos .mmd:
     1a. Solicite ao Agente IO a lista de arquivos .mmd em staging. Em seguida, peça a leitura de TODOS ELES DE UMA VEZ SÓ usando a tool `read_multiple_files`.
+        - Registre internamente o conteúdo de CADA arquivo retornado, indexado pelo nome.
+        - Esse conteúdo é a fonte exclusiva para a Camada 1 e checklist semântica — NÃO releia nenhum arquivo .mmd individualmente durante a validação.
     1b. Solicite ao Agente IO a leitura otimizada da analise_tecnica em staging:
-        "Leia o arquivo temp/staging/<nome_encontrado> filtrando apenas as seções [3, 4] com read_analysis_sections"
-        — necessário para verificar os tipos e componentes na checklist semântica.
+        - Leia o arquivo temp/staging/<nome_encontrado> filtrando apenas as seções [3, 4] com read_analysis_sections" — necessário para verificar os tipos e componentes na checklist semântica.
+        - A seção 3 é obrigatória para o item 3 da checklist — não omita das sections.
     Sempre leia o arquivo principal (sem sufixo _v1, _backup etc.).
     Nunca declare que um arquivo não existe sem tentar lê-lo primeiro.
 
@@ -69,7 +71,7 @@ PASSO 1 — Leia o artefato e os insumos necessários via Agente IO
 PASSO 2 — Camada 1: chame validate_artifact
   Para CADA arquivo lido no lote, chame a tool `validate_artifact` individualmente:
   - Parâmetros:
-      content : texto completo do artefato extraído do lote lido no PASSO 1a
+      content : texto completo do artefato já registrado em memória no PASSO 1a — não acione o Agente IO para reler arquivos individuais
       format  : "mmd" para diagramas Mermaid / "md" para relatórios Markdown
   - Aguarde o retorno completo antes de continuar.
   - Se `valid = false`:

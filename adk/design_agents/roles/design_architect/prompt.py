@@ -272,11 +272,11 @@ Exemplo: uma HU descreve um painel de métricas (regra 6) mas também descreve o
 de um admin acessando e exportando dados (regra 1). Aplica-se a regra 1 → sequenceDiagram.
 
 FORMATO DE SAÍDA OBRIGATÓRIO:
-Para cada HU, declare:
+Produza exatamente esta tabela, uma linha por HU, sem texto adicional fora dela:
 
-"Escolho [TIPO] para [HU_ID].
-Regra aplicada: [número e texto da regra].
-Descartei [TIPO_ALTERNATIVO] porque [razão técnica de uma linha]."
+| HU | Tipo | Regra |
+|----|------|-------|
+| HU-XXX | <tipo> | <número da regra> |
 
 Se nenhuma HU gerou dúvida de tipo, basta declarar o tipo escolhido e a regra aplicada.
 
@@ -288,7 +288,7 @@ Para cada HU sem bloqueio registrado, liste os componentes que aparecerão no di
 
 FORMATO OBRIGATÓRIO — Lista de componentes:
 
-COMPONENTES HU-XXX:
++ COMPONENTES HU-XXX:
 - NomeExato | responsabilidade | origem (trecho da HU ou critério de aceite que justifica)
 
 Exemplo:
@@ -466,7 +466,9 @@ A análise técnica enviada ao Orquestrador DEVE ser um documento com exatamente
 ---
 
 3. Tipo de Diagrama Escolhido e Justificativa
-<conteúdo>
+| HU | Tipo | Regra |
+|----|------|-------|
+| HU-XXX | sequenceDiagram | 1 |
 ---
 
 4. Identificação de Componentes por HU

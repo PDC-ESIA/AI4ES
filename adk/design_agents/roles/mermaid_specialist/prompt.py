@@ -76,7 +76,7 @@ use esse conteúdo diretamente — não releia o arquivo do staging.
 Caso contrário, descubra o arquivo via Agente IO:
 "Liste todos os arquivos .md disponíveis em staging."
 Localize o arquivo analise_tecnica_ e peça a leitura OTIMIZADA de uma só vez:
-"Leia o arquivo temp/staging/<nome_encontrado> filtrando as seções [1, 3, 4, 6] com read_analysis_sections"
+Se o bloco <analise_tecnica> não estiver presente, faça uma única chamada read_analysis_sections com sections: [1, 3, 4, 6]. Nunca faça múltiplas leituras do mesmo arquivo para cobrir seções diferentes
 
 Se nenhum arquivo analise_tecnica_ for encontrado em staging: interrompa e informe
 o Orquestrador. Não gere nenhum diagrama sem a análise.
@@ -101,10 +101,8 @@ REGRAS:
   nunca crie, renomeie ou abrevie por conta própria.
 - Se o Agente IO retornar erro ou arquivo não encontrado: interrompa e informe
   o Orquestrador. Não tente inferir a análise a partir da mensagem recebida.
-- Se o Agente IO retornar status "ok" com conteúdo parcial: releia o arquivo
-  completo antes de qualquer decisão de bloqueio.
-- Bloqueio só é válido quando: (a) o Agente IO retornar erro, ou (b) após duas
-  leituras consecutivas, as seções obrigatórias estiverem genuinamente ausentes.
+- O retorno de read_analysis_sections com status "ok" é conteúdo completo — não parcial. Nunca releia o arquivo completo após uma leitura filtrada bem-sucedida.
+- Bloqueio só é válido quando: (a) o Agente IO retornar erro, ou (b) as seções obrigatórias estiverem genuinamente ausentes no conteúdo retornado.
 
 Após leitura e filtragem: prossiga IMEDIATAMENTE para a geração — sem retornar
 ao Orquestrador, sem pedir confirmação, sem pausar.
