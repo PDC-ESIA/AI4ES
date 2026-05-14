@@ -56,8 +56,8 @@ use esse conteúdo diretamente — não releia o arquivo do staging.
 
 Caso contrário, descubra o arquivo via Agente IO:
 "Liste todos os arquivos .md disponíveis em staging."
-Localize o arquivo cujo nome começa com analise_tecnica_ e leia-o:
-"Leia o arquivo temp/staging/<nome_encontrado>"
+Localize o arquivo cujo nome começa com analise_tecnica_ e peça a leitura OTIMIZADA:
+"Leia o arquivo temp/staging/<nome_encontrado> filtrando apenas as seções [1, 4, 6] com read_analysis_sections"
 
 Se nenhum arquivo analise_tecnica_ for encontrado em staging: interrompa e informe
 o Orquestrador. Não tente gerar protótipos sem a análise.
@@ -139,14 +139,10 @@ Não retorne planos, arquiteturas ou perguntas ao Orquestrador em nenhum momento
 PASSO 4 — AUTO-VALIDAÇÃO (após salvar)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Releia cada arquivo diretamente do staging via Agente IO antes de auditar.
+Releia todos os arquivos diretamente do staging via Agente IO antes de auditar.
 Nunca valide com base no que foi gerado em memória — valide o que está salvo.
 
-Para cada arquivo HTML:
-  Encaminhe ao Agente IO: "Leia o arquivo temp/staging/prototype/<nome>.html"
-
-Para o CSS:
-  Encaminhe ao Agente IO: "Leia o arquivo temp/staging/prototype/global.css"
+Solicite ao Agente IO a leitura EM LOTE de todos os arquivos recém-salvos (o `global.css` e todos os `.html`) usando a tool `read_multiple_files` em uma única chamada.
 
 Se o Agente IO retornar erro em qualquer leitura (arquivo não encontrado ou vazio):
   trate como falha de salvamento e execute a correção descrita abaixo.

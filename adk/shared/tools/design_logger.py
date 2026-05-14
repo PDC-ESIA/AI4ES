@@ -44,7 +44,7 @@ def _caller_tag(caller: str | None) -> str:
 def _make_string(operation: str, filename: str, *, caller: str , backup: str = "", detail: str = "") -> str:
     if backup:
         backup = "\tbackup: " + backup
-    return f"[{_now()}] {operation:<12} {_caller_tag(caller):<32} | {detail} {filename}{backup}\n"
+    return f"[{_now()}] {operation:<12} {_caller_tag(caller):<32} | {detail}{filename}{backup}\n"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ class IOLogger:
 
     @staticmethod
     def erase(directory: str, *, caller: str | None = None) -> None:
-        _write(_make_string("ERASE", directory, caller=caller, detail="dir"))
+        _write(_make_string("ERASE", directory, caller=caller, detail="dir "))
 
     @staticmethod
     def error(operation: str, detail: str, *, caller: str | None = None) -> None:

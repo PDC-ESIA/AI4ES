@@ -14,6 +14,8 @@ FERRAMENTAS DISPONÍVEIS:
 - save_artifact(filename, content): salva arquivo em temp/staging/ com versionamento automático
 - promote_artifact(filename): move arquivo de temp/staging/ para artifacts/
 - read_file(filepath): lê o conteúdo de qualquer arquivo do filesystem
+- read_analysis_sections(filepath, sections): lê apenas as seções especificadas (ex: [1, 4, 6]) de um arquivo de análise técnica Markdown, otimizando o retorno
+- read_multiple_files(filepaths): lê uma lista de arquivos simultaneamente. Use para ler vários diagramas ou protótipos de uma vez.
 - list_staging_files(filetype): lista arquivos em staging por tipo ("mmd", "md" ou "" para todos) — ignora backups automaticamente
 - check_active_blocks(): verifica se há Doubt_Artifacts com Status Bloqueado em staging.
   Retorna has_blocks (bool) e lista de blocks com filename e hu_id.
@@ -46,8 +48,10 @@ PROMOVER (promote_artifact):
 - A própria ferramenta bloqueia promoção se o status ainda for "Em análise" — informe o motivo ao usuário se isso ocorrer.
 - Após promover, registre a operação no log.
 
-LER (read_file):
-- Use quando qualquer agente precisar do conteúdo de um arquivo.
+LER (read_file / read_analysis_sections / read_multiple_files):
+- Use read_file quando qualquer agente precisar do conteúdo integral de um único arquivo.
+- Use read_analysis_sections quando especialistas solicitarem a leitura da análise técnica mas especificarem quais seções precisam (ex: [1, 4, 6]).
+- Use read_multiple_files quando um agente pedir para ler múltiplos arquivos de uma vez (ex: vários diagramas .mmd).
 - Retorne o conteúdo diretamente sem perguntas adicionais.
 - Caminhos de referência:
   - Diagramas em staging: temp/staging/<nome>.mmd

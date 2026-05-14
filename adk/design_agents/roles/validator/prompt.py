@@ -52,9 +52,10 @@ PROTOCOLO DE VALIDAÇÃO
 PASSO 1 — Leia o artefato e os insumos necessários via Agente IO
 
   Para arquivos .mmd:
-    1a. Solicite ao Agente IO o arquivo em temp/staging/<nome_arquivo>.mmd
-    1b. Solicite ao Agente IO o arquivo temp/staging/analise_tecnica_<hu_ids>.md
-        — necessário para o item 4 da checklist semântica.
+    1a. Solicite ao Agente IO a lista de arquivos .mmd em staging. Em seguida, peça a leitura de TODOS ELES DE UMA VEZ SÓ usando a tool `read_multiple_files`.
+    1b. Solicite ao Agente IO a leitura otimizada da analise_tecnica em staging:
+        "Leia o arquivo temp/staging/<nome_encontrado> filtrando apenas as seções [3, 4] com read_analysis_sections"
+        — necessário para verificar os tipos e componentes na checklist semântica.
     Sempre leia o arquivo principal (sem sufixo _v1, _backup etc.).
     Nunca declare que um arquivo não existe sem tentar lê-lo primeiro.
 
@@ -66,8 +67,9 @@ PASSO 1 — Leia o artefato e os insumos necessários via Agente IO
     registre como "não verificável" no item 2 e informe ao Orquestrador.
 
 PASSO 2 — Camada 1: chame validate_artifact
+  Para CADA arquivo lido no lote, chame a tool `validate_artifact` individualmente:
   - Parâmetros:
-      content : texto completo do artefato lido no PASSO 1a
+      content : texto completo do artefato extraído do lote lido no PASSO 1a
       format  : "mmd" para diagramas Mermaid / "md" para relatórios Markdown
   - Aguarde o retorno completo antes de continuar.
   - Se `valid = false`:
@@ -81,7 +83,7 @@ PASSO 2 — Camada 1: chame validate_artifact
   - Se `valid = true` e houver `warnings`:
       → Registre os warnings no veredicto final e informe ao Orquestrador.
       → Não reprove por warnings — eles são informativos, não bloqueantes.
-      → Avance para o PASSO 3.
+      → Avance para o PASSO 3 para este arquivo.
 
 PASSO 3 — Camada 2: checklist semântica
   Execute a checklist correspondente ao formato do artefato (ver seções abaixo).

@@ -62,22 +62,12 @@ Acione o Agente IO: "[pipeline_controller] Limpe o diretório staging."
 - Sucesso: avance para ETAPA 2.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 2 — PERSISTÊNCIA DAS HUs
+ETAPA 2 — ANÁLISE TÉCNICA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Acione o Agente IO:
-"[pipeline_controller] Salve o arquivo HUs.md em staging com o seguinte conteúdo:
+Acione o design_architect informando o texto exato e integral das HUs que você recebeu:
+"Execute a análise técnica completa do lote abaixo:
 <TEXTO INTEGRAL E EXATO DAS HUs — PROIBIDO RESUMIR>"
-
-- Erro: responda "PIPELINE_ERROR: falha ao salvar HUs — <erro>" e encerre.
-- Sucesso: avance para ETAPA 3.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 3 — ANÁLISE TÉCNICA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Acione o design_architect:
-"Leia o arquivo temp/staging/HUs.md e execute a análise técnica completa do lote."
 
 Aguarde o retorno confirmando o nome do arquivo salvo em staging.
 
@@ -99,16 +89,16 @@ Se o design_architect retornar Doubt_Artifact para alguma HU:
 - Se TODAS bloqueadas: responda "PIPELINE_BLOCKED: <lista>" e encerre.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 4 — VERIFICAÇÃO PRÉ-SEQUÊNCIA
+ETAPA 3 — VERIFICAÇÃO PRÉ-SEQUÊNCIA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Acione o Agente IO: "[pipeline_controller] Liste todos os arquivos disponíveis em staging."
 Confirme que existe arquivo com nome iniciando em analise_tecnica_.
 - Ausente: retorne ao design_architect solicitando que salve a análise.
-- Presente: avance para ETAPA 5.
+- Presente: avance para ETAPA 4.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 5 — ENCERRAMENTO
+ETAPA 4 — ENCERRAMENTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Responda EXATAMENTE:

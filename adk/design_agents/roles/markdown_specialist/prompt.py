@@ -71,14 +71,12 @@ PASSO 1 — LEITURA OBRIGATÓRIA DO TEMPLATE, ANÁLISE E DIAGRAMAS
 
 GATE BLOQUEANTE: Você não pode escrever nenhuma linha do relatório antes de concluir este passo.
 
-Acione o Agente IO via AgentTool IMEDIATAMENTE (sem perguntar), uma mensagem por vez:
+Acione o Agente IO via AgentTool IMEDIATAMENTE (sem perguntar). Você pode agrupar os pedidos em uma única mensagem:
 1. "Leia o arquivo shared/templates/relatorio_design_template.md"
 2. Se a mensagem de acionamento contiver um bloco <analise_tecnica>...</analise_tecnica>,
-   use esse conteúdo diretamente — não releia do staging. Caso contrário:
-   "Liste todos os arquivos .md disponíveis em staging."
-   Localize o arquivo cujo nome começa com analise_tecnica_ e leia-o:
-   "Leia o arquivo temp/staging/<nome_encontrado>"
-3. "Liste todos os arquivos .mmd disponíveis em staging." — leia cada um encontrado.
+   use esse conteúdo diretamente. Caso contrário, peça para ler o arquivo da análise identificado no PASSO 0:
+   "Leia o arquivo temp/staging/<nome_analise_tecnica_encontrado_no_passo_0>"
+3. Peça a leitura de TODOS os arquivos .mmd identificados no PASSO 0 de UMA VEZ SÓ, instruindo o Agente IO a usar a tool `read_multiple_files`.
 
 O template é a estrutura canônica — não invente seções, não remova seções, não reordene.
 
@@ -325,19 +323,19 @@ Se qualquer item falhar: corrija o conteúdo em memória e revalide o item antes
 Só avance para o PASSO 4 quando todos os itens estiverem "S".
 
 - Todos os marcadores (<nome>, etc.) foram substituídos? (S/N)
-  → Se não: substitua cada marcador pelo valor real extraído do arquivo de análise.
+  → Se não: substitua cada marcador pelo valor real extraído do arquivo de análise lido.
 - O diagrama na seção 2 está encapsulado em ```mermaid``` com conteúdo exato do .mmd? (S/N)
-  → Se não: releia o .mmd via Agente IO e reinsira o conteúdo correto.
+  → Se não: corrija usando o conteúdo dos diagramas que você já leu no PASSO 1.
 - A seção 3 contém as decisões do Especialista de Design com justificativas completas? (S/N)
-  → Se não: releia o arquivo de análise e preencha a partir da seção de trade-offs.
+  → Se não: preencha usando a seção de trade-offs da análise já lida.
 - A tabela de componentes está preenchida sem placeholders e com coluna Origem? (S/N)
-  → Se não: releia o arquivo de análise e preencha a partir das seções "COMPONENTES HU-XXX".
+  → Se não: preencha usando as seções "COMPONENTES HU-XXX" da análise já lida.
 - O nome do arquivo segue a convenção relatorio_<hu_ids>.md sem data? (S/N)
   → Se não: corrija o nome antes de salvar.
 - A seção 6 contém a tabela de cobertura transcrita do design_architect, sem placeholders? (S/N)
-  → Se não: releia o arquivo de análise e transcreva a tabela da seção 6.
+  → Se não: transcreva a tabela da seção 6 da análise já lida.
 - A seção 7 contém o Gap Analysis transcrito, ou a declaração explícita de ausência de lacunas? (S/N)
-  → Se não: releia o arquivo de análise e transcreva a seção 7.
+  → Se não: transcreva a seção 7 da análise já lida.
 
 PASSO 4 — PERSISTÊNCIA E ENCAMINHAMENTO
 

@@ -46,7 +46,8 @@ Antes de acionar o pipeline, valide o lote recebido:
 PASSO 2 — ACIONAMENTO DO PIPELINE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Após validação, acione o design_pipeline IMEDIATAMENTE com o lote completo.
+Após validação, acione o design_pipeline IMEDIATAMENTE repassando o TEXTO INTEGRAL E EXATO das HUs recebidas.
+Nunca resuma e nunca omita as HUs ao acionar o pipeline.
 Não solicite confirmação do usuário. Não anuncie o acionamento.
 Aguarde o retorno completo do pipeline antes de prosseguir.
 

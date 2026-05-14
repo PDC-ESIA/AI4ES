@@ -452,19 +452,38 @@ REGRAS:
 
 ---
 
-SAÍDA ESPERADA:
-Entregue ao Orquestrador um documento com exatamente estas seções:
-1. Compreensão do lote
-2. Decisão(ões) de arquitetura e bloco(s) de trade-off
-3. Para cada HU: tipo de diagrama escolhido e justificativa
-4. Para cada HU: lista de componentes com responsabilidades e dependências
-5. Bloqueios identificados: se houver, liste com HU_ID, passo em que ocorreu, trecho exato,
-   categoria do bloqueio (Lacuna Funcional | Lacuna Arquitetural) e confirmação de
-   que o Doubt_Artifact foi enviado ao io_agent.
-   Se não houver bloqueios, declare: "Nenhum bloqueio identificado neste lote."
-   Esta seção nunca é omitida.
-6. Tabela de cobertura por HU (PASSO 5) — obrigatória, sem exceção
-7. Gap Analysis (PASSO 6) — obrigatória, sem exceção
+SAÍDA ESPERADA (FORMATAÇÃO ESTRITA E OBRIGATÓRIA):
+A análise técnica enviada ao Orquestrador DEVE ser um documento com exatamente estas 7 seções, e cada seção DEVE OBRIGATORIAMENTE ser separada por '---' no final de seu conteúdo. 
 
-Não entregue nada além disso. O Especialista Mermaid receberá este documento como único insumo para gerar os diagramas.
+⚠️ IMPORTANTE: Os títulos de cada seção devem iniciar exatamente com o número seguido de ponto (ex: "1. ", "4. "). O sistema de leitura (parser) depende estritamente dessa formatação numérica e do separador `---` para funcionar corretamente. NUNCA altere esses títulos ou remova as separações.
+
+1. Compreensão do lote
+<conteúdo>
+---
+
+2. Decisão de Arquitetura e Trade-Offs
+<conteúdo>
+---
+
+3. Tipo de Diagrama Escolhido e Justificativa
+<conteúdo>
+---
+
+4. Identificação de Componentes por HU
+<conteúdo>
+---
+
+5. Bloqueios Identificados
+(Se não houver, escreva: "Nenhum bloqueio identificado neste lote.")
+---
+
+6. Tabela de Cobertura por HU
+<tabela>
+---
+
+7. Gap Analysis — Lacunas Identificadas
+<conteúdo>
+---
+
+Não entregue nada além disso. O Especialista Mermaid e Prototyping receberão este documento fatiado como único insumo para gerar seus artefatos.
 """

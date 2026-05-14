@@ -89,6 +89,105 @@ def read_file(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
         IOLogger.error("read_file", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
+def read_analysis_sections(filepath: str, sections: list[int], caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Lê apenas seções específicas de um arquivo de análise técnica (Markdown).
+    Isso reduz a quantidade de tokens processados pelo LLM ao filtrar seções irrelevantes.
+
+    Args:
+        filepath: caminho do arquivo a ser lido.
+        sections: lista de inteiros das seções desejadas (ex: [1, 4, 6]).
+        caller:   nome do agente solicitante (para rastreabilidade no log).
+
+    Returns:
+        dict com keys: status, content | error
+    """
+    try:
+        import re
+        path = Path(filepath).resolve()
+
+        if not path.exists():
+            if filepath.endswith(".html") or filepath.endswith(".css"):
+                alt_path = (PROTOTYPE_DIR / Path(filepath).name).resolve()
+                if alt_path.exists():
+                    path = alt_path
+
+        if not _is_safe_path(path):
+            return {"status": "error", "error": "Acesso negado: o caminho solicitado está fora do diretório do projeto."}
+
+        if not path.exists():
+            return {"status": "error", "error": f"Arquivo {filepath} não encontrado."}
+
+        content = path.read_text(encoding="utf-8")
+        
+        # O arquivo de análise usa '---' para separar seções primárias
+        parts = re.split(r'\n---\n', content)
+        
+        extracted = []
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+                
+            first_line = part.split('\n')[0].strip()
+            match = re.match(r'^(\d+)\.', first_line)
+            
+            if match:
+                sec_num = int(match.group(1))
+                if sec_num in sections:
+                    extracted.append(part)
+                
+        IOLogger.read(path.name + f" [sections:{sections}]", caller=caller)
+
+        if not extracted:
+            return {"status": "warning", "content": content, "msg": "Não foi possível extrair as seções solicitadas. Retornando arquivo completo."}
+            
+        return {"status": "ok", "content": "\n\n---\n\n".join(extracted)}
+
+    except Exception as e:
+        IOLogger.error("read_analysis_sections", str(e), caller=caller)
+        return {"status": "error", "error": str(e)}
+
+def read_multiple_files(filepaths: list[str], caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Lê o conteúdo de múltiplos arquivos simultaneamente em batch.
+    Isso otimiza o LLM evitando múltiplas chamadas consecutivas para a mesma ação.
+
+    Args:
+        filepaths: lista de caminhos dos arquivos a serem lidos (ex: ["file1.mmd", "file2.mmd"]).
+        caller:   nome do agente solicitante (para rastreabilidade no log).
+
+    Returns:
+        dict com keys: status, contents (dict mapeando filepath -> {status, content | error})
+    """
+    try:
+        contents = {}
+        for filepath in filepaths:
+            path = Path(filepath).resolve()
+
+            if not path.exists():
+                if filepath.endswith(".html") or filepath.endswith(".css"):
+                    alt_path = (PROTOTYPE_DIR / Path(filepath).name).resolve()
+                    if alt_path.exists():
+                        path = alt_path
+
+            if not _is_safe_path(path):
+                contents[filepath] = {"status": "error", "error": "Acesso negado fora do diretório."}
+                continue
+
+            if not path.exists():
+                contents[filepath] = {"status": "error", "error": "Arquivo não encontrado."}
+                continue
+
+            content = path.read_text(encoding="utf-8")
+            contents[filepath] = {"status": "ok", "content": content}
+            
+        IOLogger.read(f"[batch:{len(filepaths)} files]", caller=caller)
+        return {"status": "ok", "contents": contents}
+
+    except Exception as e:
+        IOLogger.error("read_multiple_files", str(e), caller=caller)
+        return {"status": "error", "error": str(e)}
 
 def save_artifact(filename: str, content: str, caller: str | None = "unknown") -> dict:
     """
@@ -140,7 +239,6 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown") -
     except Exception as e:
         IOLogger.error("save_artifact", str(e), caller=caller)
         return {"status": "error", "error": str(e), "filename": filename}
-
 
 def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
@@ -203,7 +301,6 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
         IOLogger.error("promote_artifact", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
-
 def list_staging_files(filetype: str = "", caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Lista arquivos em staging, ignorando backups e o log de operações.
@@ -243,7 +340,6 @@ def list_staging_files(filetype: str = "", caller: str | None = "unknown") -> Di
     except Exception as e:
         IOLogger.error("list_staging_files", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
-
 
 def copy_file(source_path: str, destination_filename: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
@@ -287,7 +383,6 @@ def copy_file(source_path: str, destination_filename: str, caller: str | None = 
         IOLogger.error("copy_file", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
-
 def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.
@@ -315,7 +410,6 @@ def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
     except Exception as e:
         IOLogger.error("check_active_blocks", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
-
 
 def clear_staging_folder(caller: str | None = "unknown") -> bool:
     """
