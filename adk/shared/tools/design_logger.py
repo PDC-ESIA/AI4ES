@@ -10,10 +10,10 @@ Separação de papéis:
 Uso:
     from .design_logger import IOLogger
 
-    IOLogger.read("analise_HU-001.md")
-    IOLogger.save("diagrama_HU-001.mmd", backup="diagrama_HU-001_backup_20260426_120000.mmd")
-    IOLogger.promote("relatorio_HU-001.md")
-    IOLogger.error("save_artifact", "Permissão negada ao gravar em staging/")
+    IOLogger.read("analise_HU-001.md", caller="mermaid_specialist")
+    IOLogger.save("diagrama_HU-001.mmd", caller="mermaid_specialist", backup="..._backup_.mmd")
+    IOLogger.promote("relatorio_HU-001.md", caller="orchestrator")
+    IOLogger.error("save_artifact", "Permissão negada ao gravar em staging/", caller="design_architect")
 """
 
 from __future__ import annotations
@@ -38,6 +38,13 @@ def _now() -> str:
     return datetime.now().isoformat()
 
 
+def _caller_tag(caller: str | None) -> str:
+    return f" | caller={caller}" if caller else ""
+
+def _make_string(operation: str, filename: str, *, caller: str , backup: str = "", detail: str = "") -> str:
+    return f"[{_now()}] {operation:<12} {_caller_tag(caller):<32} | {detail} {filename} backup: {backup}\n"
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # API pública
 # ──────────────────────────────────────────────────────────────────────────────
@@ -46,31 +53,28 @@ class IOLogger:
     """Métodos estáticos, um por tipo de operação do Agente IO."""
 
     @staticmethod
-    def read(filename: str) -> None:
+    def read(filename: str, *, caller: str | None = None) -> None:
         """Registrado apenas quando LOG_DETAIL == 'HIGH'."""
         if LOG_DETAIL == "HIGH":
-            _write(f"[{_now()}] READ    | file={filename}\n")
+            _write(_make_string("READ", filename, caller=caller))
 
     @staticmethod
-    def save(filename: str, *, backup: str | None = None) -> None:
-        entry = f"[{_now()}] SAVE    | file={filename}"
-        if backup:
-            entry += f" | backup={backup}"
-        _write(entry + "\n")
+    def save(filename: str, *, caller: str | None = None, backup: str | None = "") -> None:
+        _write(_make_string("SAVE", filename, caller=caller, backup=backup))
 
     @staticmethod
-    def promote(filename: str) -> None:
-        _write(f"[{_now()}] PROMOTE | file={filename} | from=staging | to=artifacts\n")
+    def promote(filename: str, *, caller: str | None = None) -> None:
+        _write(_make_string("PROMOTE", filename, caller=caller))
 
     @staticmethod
-    def erase(directory: str) -> None:
-        _write(f"[{_now()}] ERASE   | dir={directory}\n")
+    def erase(directory: str, *, caller: str | None = None) -> None:
+        _write(_make_string("ERASE", directory, caller=caller, detail="dir"))
 
     @staticmethod
-    def error(operation: str, detail: str) -> None:
+    def error(operation: str, detail: str, *, caller: str | None = None) -> None:
         """Erros são sempre registrados, independente de LOG_DETAIL."""
-        _write(f"[{_now()}] ERROR   | op={operation} | detail={detail}\n")
-    
+        _write(_make_string("ERROR", operation, caller=caller, detail=detail))
+
     @staticmethod
-    def copy(source_path: str, destination_filename: str) -> None:
-        _write(f"[{_now()}] COPY    | source={source_path} | destination={destination_filename}\n") 
+    def copy(source_path: str, destination_filename: str, *, caller: str | None = None) -> None:
+        _write(_make_string("COPY", source_path, caller=caller, detail=destination_filename))

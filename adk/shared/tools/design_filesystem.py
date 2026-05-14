@@ -34,17 +34,12 @@ BACKUP_PREFIX = "_backup_"
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _ensure_dirs() -> None:
-    """Garante que a estrutura de diretórios necessária exista."""
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
     PROTOTYPE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _is_safe_path(path: Path) -> bool:
-    """
-    Proteção contra Path Traversal.
-    Verifica se o caminho resolvido permanece dentro da raiz do projeto.
-    """
     try:
         resolved_path = path.resolve()
         return resolved_path.is_relative_to(CURRENT_DIR.resolve())
@@ -53,7 +48,6 @@ def _is_safe_path(path: Path) -> bool:
 
 
 def _next_version(path: Path) -> Path:
-    """Gera um caminho para backup com timestamp único."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return path.parent / f"{path.stem}{BACKUP_PREFIX}{timestamp}{path.suffix}"
 
@@ -61,20 +55,20 @@ def _next_version(path: Path) -> Path:
 # Funções Públicas (Ferramentas do Agente)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def read_file(filepath: str) -> Dict[str, Any]:
+def read_file(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Lê o conteúdo de um arquivo do filesystem.
 
     Args:
         filepath: caminho do arquivo a ser lido.
+        caller:   nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
         dict com keys: status, content | error
     """
     try:
         path = Path(filepath).resolve()
-        
-        # Se o arquivo não existir no caminho direto, tenta procurar no subdiretório prototype
+
         if not path.exists():
             if filepath.endswith(".html") or filepath.endswith(".css"):
                 alt_path = (PROTOTYPE_DIR / Path(filepath).name).resolve()
@@ -88,47 +82,43 @@ def read_file(filepath: str) -> Dict[str, Any]:
             return {"status": "error", "error": f"Arquivo {filepath} não encontrado."}
 
         content = path.read_text(encoding="utf-8")
-        IOLogger.read(path.name)
+        IOLogger.read(path.name, caller=caller)
         return {"status": "ok", "content": content}
 
     except Exception as e:
-        IOLogger.error("read_file", str(e))
+        IOLogger.error("read_file", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
-def save_artifact(filename: str, content: str) -> dict:
+
+def save_artifact(filename: str, content: str, caller: str | None = "unknown") -> dict:
     """
     Salva o artefato em staging com versionamento automático.
 
-    - Se já existir um arquivo com o mesmo nome: renomeia o atual para _backup_ antes de salvar.
-
     Args:
-        filename: Nome do arquivo (ex: diagrama_HU-042_processo_compra.mmd)
+        filename: Nome do arquivo.
         content:  Conteúdo textual do artefato.
+        caller:   nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
         dict com keys: status, path, versioned_backup (se houve), timestamp
     """
     try:
         _ensure_dirs()
-        
-        # Limpa o nome do arquivo se o agente enviou com o prefixo do diretório
+
         clean_filename = filename.replace("prototype/", "").replace("staging/", "")
-        
-        # Define o diretório de destino (staging ou prototype)
+
         target_dir = STAGING_DIR
         if clean_filename.endswith(".html") or clean_filename == "global.css":
             target_dir = PROTOTYPE_DIR
-            
+
         destination = (target_dir / clean_filename).resolve()
-        
+
         if not _is_safe_path(destination):
             raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
 
-        # Garante que o diretório de destino existe (caso o agente tenha passado subpastas)
         destination.parent.mkdir(parents=True, exist_ok=True)
 
         versioned_backup = None
-
         if destination.exists():
             backup_path = _next_version(destination)
             shutil.move(str(destination), str(backup_path))
@@ -136,8 +126,10 @@ def save_artifact(filename: str, content: str) -> dict:
 
         destination.write_text(content, encoding="utf-8")
         timestamp = datetime.now().isoformat()
+        if not versioned_backup:
+            versioned_backup = ""
 
-        IOLogger.save(filename, backup=versioned_backup)
+        IOLogger.save(filename, caller=caller, backup=versioned_backup)
 
         return {
             "status": "ok",
@@ -146,21 +138,17 @@ def save_artifact(filename: str, content: str) -> dict:
             "timestamp": timestamp,
         }
     except Exception as e:
-        IOLogger.error("save_artifact", str(e))
+        IOLogger.error("save_artifact", str(e), caller=caller)
         return {"status": "error", "error": str(e), "filename": filename}
 
 
-def promote_artifact(filename: str) -> Dict[str, Any]:
+def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Move um artefato de staging para artifacts/.
 
-    Regras:
-        - Apenas arquivos .md são aceitos.
-        - O nome deve conter 'relatorio'.
-        - O conteúdo não pode ter status 'Em análise'.
-
     Args:
-        filename: Nome do arquivo a ser promovido
+        filename: Nome do arquivo a ser promovido.
+        caller:   nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
         dict com keys: status, source, destination, timestamp | reason | error
@@ -202,7 +190,7 @@ def promote_artifact(filename: str) -> Dict[str, Any]:
         shutil.copy2(str(source), str(destination))
         timestamp = datetime.now().isoformat()
 
-        IOLogger.promote(filename)
+        IOLogger.promote(filename, caller=caller)
 
         return {
             "status": "ok",
@@ -212,34 +200,33 @@ def promote_artifact(filename: str) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        IOLogger.error("promote_artifact", str(e))
+        IOLogger.error("promote_artifact", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
 
-def list_staging_files(filetype: str = "") -> Dict[str, Any]:
+def list_staging_files(filetype: str = "", caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Lista arquivos em staging, ignorando backups e o log de operações.
 
     Args:
         filetype: extensão para filtrar (ex: "mmd", "md"). Se vazio, lista todos.
+        caller:   nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
         dict com keys: status, files, staging_dir | error
     """
     try:
         _ensure_dirs()
-        
-        # Lista arquivos da raiz de staging
+
         files = [
             f.name
             for f in sorted(STAGING_DIR.iterdir())
-            if f.is_file() 
+            if f.is_file()
             and f.name != LOG_FILENAME
             and BACKUP_PREFIX not in f.name
             and (not filetype or f.suffix == f".{filetype}")
         ]
-        
-        # Lista arquivos da pasta prototype (se aplicável)
+
         if not filetype or filetype in ["html", "css"]:
             proto_files = [
                 f.name
@@ -250,21 +237,22 @@ def list_staging_files(filetype: str = "") -> Dict[str, Any]:
             ]
             files.extend(proto_files)
 
+        IOLogger.read(f"[list:{filetype or 'all'}]", caller=caller)
         return {"status": "ok", "files": sorted(list(set(files))), "staging_dir": str(STAGING_DIR)}
 
     except Exception as e:
-        IOLogger.error("list_staging_files", str(e))
+        IOLogger.error("list_staging_files", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
 
-def copy_file(source_path: str, destination_filename: str) -> Dict[str, Any]:
+def copy_file(source_path: str, destination_filename: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Copia um arquivo existente para um novo local em staging/prototype.
-    Útil para aplicar templates sem carregar todo o conteúdo no contexto do LLM.
 
     Args:
-        source_path: Caminho completo do arquivo de origem (ex: shared/templates/style.css)
-        destination_filename: Nome do arquivo de destino (será salvo em staging ou prototype/)
+        source_path:          Caminho completo do arquivo de origem.
+        destination_filename: Nome do arquivo de destino.
+        caller:               nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
         dict com status e detalhes da operação.
@@ -272,23 +260,22 @@ def copy_file(source_path: str, destination_filename: str) -> Dict[str, Any]:
     try:
         _ensure_dirs()
         src = (CURRENT_DIR / source_path).resolve()
-        
+
         if not src.exists():
             return {"status": "error", "error": f"Arquivo de origem {source_path} não encontrado."}
-            
-        # Define o diretório de destino
+
         clean_filename = destination_filename.replace("prototype/", "").replace("staging/", "")
         target_dir = STAGING_DIR
         if clean_filename.endswith(".html") or clean_filename == "global.css":
             target_dir = PROTOTYPE_DIR
-            
+
         dest = (target_dir / clean_filename).resolve()
-        
+
         if not _is_safe_path(dest):
             raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
 
         shutil.copy2(str(src), str(dest))
-        IOLogger.copy(source_path, dest)
+        IOLogger.copy(source_path, dest, caller=caller)
 
         return {
             "status": "ok",
@@ -297,13 +284,16 @@ def copy_file(source_path: str, destination_filename: str) -> Dict[str, Any]:
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        IOLogger.error("copy_file", str(e))
+        IOLogger.error("copy_file", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
 
-def check_active_blocks() -> Dict[str, Any]:
+def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.
+
+    Args:
+        caller: nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
         dict com keys: status, has_blocks (bool), blocks (lista de dicts)
@@ -318,25 +308,29 @@ def check_active_blocks() -> Dict[str, Any]:
                     parts = f.stem.split("_")
                     hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
                     blocks.append({"filename": f.name, "hu_id": hu_id})
-        
+
+        IOLogger.read("[check_active_blocks]", caller=caller)
         return {"status": "ok", "has_blocks": len(blocks) > 0, "blocks": blocks}
 
     except Exception as e:
-        IOLogger.error("check_active_blocks", str(e))
+        IOLogger.error("check_active_blocks", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
-def clear_staging_folder() -> bool:
+
+def clear_staging_folder(caller: str | None = "unknown") -> bool:
     """
-    Remove todos os arquivos do diretório de staging e seus subdiretórios (como prototype),
+    Remove todos os arquivos do diretório de staging e seus subdiretórios,
     preservando a estrutura de pastas.
-    Segurança: só apaga se o diretório estiver dentro de CURRENT_DIR.
+
+    Args:
+        caller: nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
-        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário
+        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário.
     """
     try:
         _ensure_dirs()
-        
+
         def _clear_recursive(directory: Path):
             if not _is_safe_path(directory):
                 return
@@ -347,12 +341,12 @@ def clear_staging_folder() -> bool:
                     _clear_recursive(item)
 
         _clear_recursive(STAGING_DIR)
-
-        IOLogger.erase(str(STAGING_DIR))
+        IOLogger.erase(str(STAGING_DIR), caller=caller)
         return True
     except Exception as e:
-        IOLogger.error("ERASE", f"dir={STAGING_DIR} | error={str(e)}")
+        IOLogger.error("ERASE", f"dir={STAGING_DIR} | error={str(e)}", caller=caller)
         return False
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Mocks

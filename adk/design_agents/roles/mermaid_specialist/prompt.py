@@ -176,19 +176,28 @@ DIREÇÃO: sempre TD salvo instrução explícita em contrário.
 ATOR HUMANO — REGRA OBRIGATÓRIA:
 O ator principal da HU (seção "Compreensão do lote") deve aparecer como nó de
 entrada e/ou saída no flowchart, mesmo que não esteja listado em "COMPONENTES HU-XXX".
+Se o nome do ator contiver espaços (ex: "Administrador do sistema"), você DEVE declarar um ID sem espaços e colocar o nome entre colchetes e aspas.
+NUNCA coloque espaços diretamente no ID do nó.
 
-❌ Errado — ator humano ausente:
+❌ Errado — ator humano ausente ou ID com espaços:
 flowchart TD
-    AuthMetricsDashboard-->AuthMetricsService
+    Administrador do sistema-->AuthMetricsDashboard
 
 ✅ Correto:
 flowchart TD
-    Administrador-->AuthMetricsDashboard
+    admin["Administrador do sistema"]-->AuthMetricsDashboard
     AuthMetricsDashboard-->AuthMetricsService
-    CsvExportService-->|CSV|Administrador
+    CsvExportService-->|CSV|admin
 
 NOMES DE NÓS:
-Use exatamente os nomes da seção "COMPONENTES HU-XXX" — sem espaços.
+- Use exatamente os nomes da seção "COMPONENTES HU-XXX".
+- REGRA DE OURO: IDs de nós NUNCA podem conter espaços.
+- Se o componente ou ator possuir espaços, você DEVE declarar um ID sem espaços e colocar o nome com espaços como rótulo: `id["Nome com espaços"]`.
+- NUNCA use espaços soltos no identificador do nó (ex: `A B --> C` é inválido).
+- ✅ `user["Usuário Final"] --> Frontend`
+- ✅ `AuthService --> db[("Banco de Dados")]`
+- ❌ `Usuário Final --> Frontend` (ERRO: espaço no ID)
+- ❌ `Auth Service --> DB` (ERRO: espaço no ID)
 
 BANCOS DE DADOS:
 Use notação cilíndrica para stores e bancos.
