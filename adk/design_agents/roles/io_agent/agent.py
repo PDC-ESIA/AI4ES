@@ -19,7 +19,7 @@ from shared.tools.design_filesystem import (
     copy_file,
 )
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
+_DEFAULT_MODEL = "github_copilot/gpt-4o-mini"
 
 agent = LlmAgent(
     model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),

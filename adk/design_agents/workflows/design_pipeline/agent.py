@@ -1,24 +1,18 @@
 """
 pipeline_agent.py
 ─────────────────
-Engine interna do pipeline de design (SEQUENCIAL APENAS).
+Engine interna do pipeline de design.
 
 Estrutura:
     SequentialAgent (raiz)
-      ├── pipeline_controller       (prepara staging, roda design_architect e verifica)
-      ├── prototyping_specialist    (lê analise_tecnica e gera HTML/CSS)
-      ├── mermaid_specialist        (lê analise_tecnica e gera .mmd)
-      ├── validator                 (valida .mmd gerados)
-      └── markdown_specialist       (gera relatório final)
-
-Por que funciona:
-    - pipeline_controller encerra após confirmar analise_tecnica em staging.
-    - O SequentialAgent raiz passa aos próximos especialistas automaticamente e de forma sequencial.
-    - Os especialistas subsequentes têm instrução explícita de descoberta via list_staging_files.
+      ├── pipeline_controller  LlmAgent — limpeza + design_architect + verificação
+      └── parallel_branch      ParallelAgent DIRETO (não AgentTool)
+           ├── prototyping_specialist  autodescobre analise_tecnica via list_staging_files
+           └── diagram_flow           SequentialAgent: mermaid → validator → markdown
 """
 
 import os
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.agent_tool import AgentTool
 
@@ -41,7 +35,7 @@ _DEFAULT_MODEL = "github_copilot/gpt-4"
 pipeline_controller = LlmAgent(
     model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
     name="pipeline_controller",
-    description="Prepara o pipeline: limpa staging, persiste HUs, aciona design_architect e verifica staging.",
+    description="PASSO_OBRIGATORIO_1: Único agente que gera a 'analise_tecnica.md'. O pipeline INTEIRO para aqui até que este arquivo seja confirmado.",
     instruction="""
 Você é o controlador de preparação do pipeline de design de software.
 Sua responsabilidade TERMINA quando analise_tecnica estiver confirmada em staging.
@@ -54,6 +48,14 @@ Em toda mensagem enviada ao Agente IO, inicie com: "[pipeline_controller]"
 Exemplo: "[pipeline_controller] Limpe o diretório staging."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGRA DE OURO DE SEQUENCIAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Você é o detentor do token de execução.
+1. Enquanto o design_architect não entregar o arquivo 'analise_tecnica_*.md', você NÃO PODE emitir nenhuma mensagem final.
+2. Se o design_architect demorar, você deve continuar monitorando o staging.
+3. Somente quando o arquivo estiver validado (conforme ETAPA 3), responda: "PIPELINE_CONTROLLER_FINALIZADO. PODE INICIAR ESPECIALISTAS."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ETAPA 1 — LIMPEZA DO STAGING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -62,14 +64,15 @@ Acione o Agente IO: "[pipeline_controller] Limpe o diretório staging."
 - Sucesso: avance para ETAPA 2.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 2 — ANÁLISE TÉCNICA
+ETAPA 2 — ANÁLISE TÉCNICA (BLOQUEANTE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Acione o design_architect informando o texto exato e integral das HUs que você recebeu:
-"Execute a análise técnica completa do lote abaixo:
-<TEXTO INTEGRAL E EXATO DAS HUs — PROIBIDO RESUMIR>"
+1. Acione o design_architect com o comando: 'Analise o seguinte conteúdo de HUs e gere a análise técnica em staging: '. Deixe claro que não há arquivo de origem e que ele deve usar este texto como fonte única.
+2. APÓS o retorno do design_architect, você DEVE obrigatoriamente executar a ferramenta list_staging_files do Agente IO.
+3. Se o arquivo 'analise_tecnica_*.md' NÃO aparecer na lista, você deve perguntar ao design_architect: "Onde está o arquivo de análise técnica? Confirme o salvamento."
+4. Repita a verificação de listagem até que o arquivo esteja presente. 
 
-Aguarde o retorno confirmando o nome do arquivo salvo em staging.
+⚠️ VOCÊ SÓ PODE AVANÇAR PARA A ETAPA 3 APÓS VER O ARQUIVO NA LISTA DO AGENTE IO.
 
 Valide que o CONTEÚDO DO ARQUIVO SALVO contém TODAS as seções obrigatórias.
 Peça ao Agente IO para ler o arquivo confirmado e verifique:
@@ -110,14 +113,16 @@ Confirme que existe arquivo com nome iniciando em analise_tecnica_.
   Somente avance para ETAPA 4 após confirmar conteúdo real em todas as seções.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 4 — ENCERRAMENTO
+ETAPA 4 — ENCERRAMENTO OBRIGATÓRIO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Responda EXATAMENTE:
-"CONTROLLER_DONE: analise_tecnica confirmada em staging.
-HUs bloqueadas: <lista ou 'nenhuma'>."
+Você é o porteiro do pipeline. Enquanto o design_architect trabalha (mesmo que demore minutos), você deve manter o foco na resposta dele. 
+NÃO finalize sua execução e não responda ao orquestrador até que você tenha lido o conteúdo do arquivo gerado e confirmado que ele não está vazio. 
+Sua última frase deve ser exatamente: 'TRANSICAO_AUTORIZADA: Analise técnica validada.' para que o orquestrador saiba que pode chamar os outros.
 
-Não acione mais nenhuma ferramenta após este ponto.
+Responda EXATAMENTE e NADA MAIS:
+"PIPELINE_STAGE_1_COMPLETE: A análise técnica foi gerada com sucesso. 
+O controle de execução pode agora ser transferido para os especialistas."
 """,
     tools=[
         AgentTool(agent=io_agent),
@@ -125,19 +130,30 @@ Não acione mais nenhuma ferramenta após este ponto.
     ],
 )
 
-# ──────────────────────────────────────────────────────────────────────────────
-# PIPELINE COMPLETO
-# SequentialAgent garante: controller → prototipação → diagramas → validação → relatórios
-# ──────────────────────────────────────────────────────────────────────────────
-
-agent = SequentialAgent(
-    name="design_pipeline",
-    description="Pipeline sequencial completo: preparação → protótipo → diagramas → validação → relatório.",
+diagram_flow = SequentialAgent(
+    name="diagram_flow",
+    description="FASE_FINAL: Processamento de diagramas e relatório. SÓ PODE RODAR APÓS A ANALISE_TECNICA ESTAR PRONTA.",
     sub_agents=[
-        pipeline_controller,
-        prototyping_specialist,
         mermaid_specialist,
         validator,
         markdown_specialist,
+    ],
+)
+
+parallel_branch = ParallelAgent(
+    name="parallel_branch",
+    description="ERRO_SE_ACESSADO_AGORA: Este bloco contém especialistas que dependem CRITICAMENTE da saída do PASSO_OBRIGATORIO_1. Não ativar enquanto o status não for PIPELINE_STAGE_1_COMPLETE.",
+    sub_agents=[
+        prototyping_specialist,
+        diagram_flow,
+    ],
+)
+
+agent = SequentialAgent(
+    name="design_pipeline",
+    description="PIPELINE_MESTRE: 1. Controller (OBRIGATÓRIO) -> 2. Execução (SÓ APÓS O 1).",
+    sub_agents=[
+        pipeline_controller,
+        parallel_branch,
     ],
 )
