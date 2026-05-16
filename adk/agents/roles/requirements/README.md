@@ -1,147 +1,108 @@
-# Agente Requirements
-**Time:** Codificação   
-**Branch:** feature/140-optimizer-requirements  
-**Modelo:** github_copilot/gpt-4 (padrão) — sobrescreva com `ADK_LLM_MODEL`
+# Requirements Agent (Analista de Requisitos)
+
+Este diretório contém a implementação do **Requirements Agent**, um agente especializado em análise e estruturação de requisitos de software utilizando o Google ADK (Agent Development Kit).
+
+## 📌 Objetivo
+
+O Agente de Requisitos tem como função principal transformar descrições em linguagem natural, documentos de requisitos (PRDs) ou visões de projeto em artefatos técnicos estruturados, atômicos e verificáveis. Ele serve como a ponte inicial entre a visão de negócio e a implementação técnica.
+
+## 📂 Estrutura de Arquivos
+
+- `agent.py`: Definição principal do agente (`requirements_agent`) e do seu sub-agente (`glossario_agent`).
+- `prompt.py`: Contém a `instruction` (System Prompt) e a `description` do agente.
+- `schemas.py`: Define as estruturas de dados (Pydantic) para a saída do agente (`AnalystOutput`).
+- `few_shot.py`: Exemplos de referência para guiar o comportamento do modelo.
+- `knowledge/`: Pasta contendo base de conhecimento local, como o `glossario.md` gerado.
+- `data/`: Diretório para armazenamento temporário de documentos (`matrix/`) e fatiamento (`chunks/`).
+
+## 🤖 Funcionamento
+
+O agente opera em duas camadas:
+
+1.  **Requirements Agent (Principal):** Coordena a análise global, gera Histórias de Usuário (HUs), Requisitos Funcionais (RFs), Casos de Uso (UCs) e Regras de Negócio (RNs).
+2.  **Glossário Agent (Sub-agente):** Focado exclusivamente em ler o documento-matriz, identificar termos técnicos e construir um glossário formal.
+
+### Fluxo de Pensamento (Chain of Thought)
+
+O agente segue obrigatoriamente 6 passos:
+1.  **Elicitação:** Identificação de atores e processos.
+2.  **Análise Crítica:** Detecção de ambiguidades ou contradições.
+3.  **Classificação:** Separação entre RF, HU, RNF e RN.
+4.  **Especificação:** Redação atômica dos itens.
+5.  **Glossário:** Delegação ao sub-agente para definição de termos.
+6.  **Validação:** Garantia de requisitos SMART.
+
+## 🌐 Testando via Interface Web (Docker)
+
+A forma mais simples de testar o agente visualmente é através da interface web do ADK.
+
+### 1. Subir o ambiente
+Navegue até a pasta `adk/` na raiz do projeto e utilize o Docker Compose para subir os serviços:
+
+```bash
+docker compose -f docker-compose.build.yml up --build
+```
+
+### 2. Acessar a Interface
+Abra o seu navegador e acesse:
+`http://localhost:8081` (ou a porta configurada no seu arquivo `.env`)
+
+### 3. Selecionar o Agente
+Na interface de chat:
+1. Localize o seletor de **Agentes/**.
+2. Escolha o agente `requirements`
+3. Envie uma descrição de projeto em texto paraniciar a análise.
 
 ---
 
-## O que este agente faz
+## 🛠 Ferramentas (Tools)
 
-Recebe pedidos de desenvolvimento ou PRDs brutos e os transforma em requisitos
-funcionais atômicos, verificáveis e estruturados para consumo pelo agente de
-codificção do pipeline.
+O agente possui acesso a diversas ferramentas utilitárias:
 
-O agente NÃO implementa código. NÃO sugere arquitetura. Apenas analisa e estrutura requisitos.
+- `run_slicer`: Fragmenta documentos grandes em chunks processáveis.
+- `ler_chunk`: Lê partes específicas do contexto fatiado.
+- `extract_text`: Extrai o texto integral de documentos na pasta `data/matrix/`.
+- `add_to_glossary` / `check_glossary`: Gerenciamento do arquivo de glossário.
+- `gerar_doubt_artifact`: Documenta incertezas que impedem a conclusão de um requisito.
+- `tool_salvar_artefato_requisito`: Persiste os requisitos gerados em arquivos Markdown.
 
----
+## 🚀 Como Executar
 
-## Estrutura de arquivos
+### Pré-requisitos
 
-```
-agents/roles/requirements/
-├── __init__.py
-├── agent.py                  
-├── prompt.py                 
-├── schemas.py                
-├── tools_requirements.py     — tools: leitura de PRD e Doubt Artifact
-└── README.md
-```
+1.  Ambiente Python 3.10+ configurado.
+2.  Dependências do ADK instaladas (`google-adk`).
+3.  Variável de ambiente `ADK_LLM_MODEL` configurada (ex: `github_copilot/gpt-4o`).
 
----
+### Exemplo de execução via código
 
-## Tipos de entrada suportados
+```python
+from adk.agents.roles.requirements.agent import agent
 
-**Tipo 1 — Pedido direto no terminal do ADK:**
-```
-crie uma página HTML com o conteúdo Hello World
-altere o conteúdo da página para Hello Brasil
-implemente uma função Python que ordena uma lista
-```
+# Exemplo de entrada: um texto descrevendo um sistema
+input_text = "Preciso de um sistema de login que suporte OAuth2 e tenha recuperação de senha via e-mail."
 
-**Tipo 2 — PRD bruto como texto no prompt:**
-```
-Módulo: Autenticação
-O sistema deve suportar login via e-mail e senha.
-Deve gerar token JWT com expiração de 8 horas.
-...
+# Executando o agente
+response = agent.run(input_text)
+
+print(response.analysis_result)
 ```
 
-**Tipo 3 — PRD bruto como arquivo:**
-```
-Analise o PRD em: /caminho/absoluto/para/arquivo.md
-```
-IMPORTANTE: Para enviar um PRD como arquivo, informe o caminho
-absoluto diretamente no texto. O upload pela Dev UI
-não aciona a tool de leitura de arquivo.
+## 🧪 Como Testar
 
-Exemplo correto:
-Analise o PRD em: C:\caminho\absoluto\para\arquivo.md
+Para testar o agente de forma isolada:
 
-Não use o botao de upload da Dev UI para PRDs.
----
+1.  **Teste de Glossário:** Forneça um documento técnico na pasta `data/matrix/` e peça ao agente para "gerar o glossário do documento". Verifique se o arquivo `knowledge/glossario.md` é criado/atualizado.
+2.  **Teste de Ambiguidade:** Envie um prompt vago como "Faça um sistema pra mim". O agente deve utilizar a tool `gerar_doubt_artifact` e retornar um status `bloqueado` ou solicitar mais informações.
+3.  **Teste de Requisitos:** Envie um PRD completo e valide se o JSON de saída (`AnalystOutput`) contém as HUs e RFs mapeados corretamente com IDs (ex: HU-001, RF-001).
 
-## Saída esperada
+## 📝 Saída Esperada
 
-O agente sempre retorna JSON estruturado no seguinte formato:
-
-```json
-{
-  "requirements": [
-    {
-      "id": "REQ-001",
-      "description": "Criar arquivo index.html com conteúdo Hello World",
-      "acceptance_criteria": "Arquivo existe e exibe Hello World no navegador"
-    },
-    {
-      "id": "REQ-002",
-      "description": "...",
-      "acceptance_criteria": "..."
-    }
-  ]
-}
-```
-
----
-
-## Tools disponíveis
-
-| Tool | Quando é chamada |
-|------|-----------------|
-| `tool_ler_prd_arquivo` | A entrada é um caminho de arquivo .md ou .txt |
-| `tool_gerar_doubt_artifact` | A entrada é ambígua ou contraditória |
-
----
-
-## Protocolo de Doubt Artifact
-
-Quando o agente detecta ambiguidade ou contradição na entrada, ele gera
-automaticamente o arquivo `Doubt_Artifact_requirements.md` e pausa a execução.
-
-Exemplo de entrada que dispara o Doubt Artifact:
-```
-altere o sistema para funcionar melhor e ser mais rápido
-```
-
-O arquivo gerado fica na raiz de `adk/` para análise.
-
----
-
-## Como testar localmente
-
-### 1. Cenários de teste sugeridos
-
-**Cenário 1 — Pedido simples (deve retornar JSON com requisitos):**
-```
-crie uma página HTML com o conteúdo Hello World
-```
-
-**Cenário 2 — Entrada ambígua (deve gerar Doubt Artifact):**
-```
-altere o sistema para funcionar melhor e ser mais rápido
-```
-
-**Cenario 3 — PRD com multiplos requisitos:**
-```
-Módulo: Autenticação de Usuários
-O sistema deve suportar dois perfis: Aluno e Professor.
-Login via e-mail e senha com token JWT de 8 horas.
-Bloqueio após 5 tentativas falhas consecutivas por 15 minutos.
-Professores podem criar turmas e visualizar relatórios.
-```
-
----
-
-## Decisões técnicas
-
-**Por que output_schema + tools juntos?**
-As tools deste agente (`tool_ler_prd_arquivo` e `tool_gerar_doubt_artifact`) são de suporte ao
-processamento — não de geração de saída — portanto não conflitam com o schema.
-
-**Por que apenas 2 tools?**
-As tools de salvar Context Windows em JSON e Markdown foram removidas pois
-a saída estruturada agora é entregue diretamente via `output_schema`,
-consumida pelo próximo agente no pipeline sem necessidade de arquivos intermediários.
-
-**Schema adotado:**
-O schema segue exatamente o padrao definido garantindo compatibilidade com os demais agentes do pipeline.
-
+A saída final é um objeto estruturado seguindo o schema `AnalystOutput`, contendo listas de:
+- `user_stories`
+- `functional_requirements`
+- `non_functional_requirements`
+- `use_cases`
+- `business_rules`
+- `glossary`
+- `status` (concluido/bloqueado)

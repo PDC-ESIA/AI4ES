@@ -8,24 +8,29 @@
 
 ### ✔️ Refinamentos imediatos (MVP)
 
-* [ ] Definir critério simples de chunk:
+* [x] Definir critério simples de chunk:
 
-  * [ ] Por parágrafo
+  * [x] Por parágrafo
+  > Cada parágrafo tende a tratar de assunto coeso, fatiar desta forma preserva a organização, embora não garanta que tudo seja reunido no mesmo lugar. O overlap recupera o parágrafo anterior e adiciona ao atual, sendo uma tentativa de não perder o contexto.
   * [ ] Por tamanho de tokens (limite fixo)
-* [ ] Garantir que cada chunk seja semanticamente minimamente completo
+* [x] Garantir que cada chunk seja semanticamente minimamente completo
+> Não existem mecanismos que verifiquem isso, mas a abordagem por parágrafo tende a garantir, a não ser que o parágrafo do documento esteja incompleto. Existem os casos onde terão pouca informação, como por exemplo no título do documento.
 * [ ] Padronizar estrutura do chunk:
 
-  * [ ] ID do chunk
-  * [ ] Texto
+  * [x] ID do chunk
+  * [x] Texto
   * [ ] Documento origem
-* [ ] Implementar função única e reutilizável de slicing (padronizar uso)
-* [ ] Garantir leitura sequencial dos chunks pelo agente
+  > Para o momento atual, considero que não é ideal salvar o documento de origem, pois não existem chunks de diferentes documentos ao mesmo tempo. Então, em casos onde o documento foi modificado mas possui o mesmo nome, o rastreamento ficaria incoerente.
+* [x] Implementar função única e reutilizável de slicing (padronizar uso)
+* [x] Garantir leitura sequencial dos chunks pelo agente
 
 ### ⚠️ Ajustes importantes identificados
 
-* [ ] Evitar perda de contexto entre chunks
+* [x] Evitar perda de contexto entre chunks
+> Mecanismo simples, fazendo o uso de overlap de um parágrafo.
 * [ ] Validar se chunking é necessário para documentos pequenos
-* [ ] Permitir execução sem chunking (modo direto)
+> Não implementado.
+* [x] Permitir execução sem chunking (modo direto)
 
 ### 🔮 Refinamentos futuros (não prioritários)
 
@@ -39,55 +44,62 @@
 
 ### ✔️ Estrutura básica (MVP)
 
-* [ ] Definir estrutura do glossário:
+* [x] Definir estrutura do glossário:
 
-  * [ ] termo
-  * [ ] definição
-  * [ ] referências (chunks)
+  * [x] termo
+  * [x] definição
+  * [x] referências (chunks)
   * [ ] versão/timestamp
+  > A estrutura de glossário possui: termo, definição, referências e status. O status serve para indicar qual definição do termo é a válida, pois podem existir várias definições de um mesmo termo.
 
 ### ✔️ Operações essenciais
 
-* [ ] Implementar:
+* [x] Implementar:
 
-  * [ ] buscar_termo_glossario
-  * [ ] adicionar_termo_glossario
-  * [ ] atualizar_termo_glossario
+  * [x] buscar_termo_glossario
+  * [x] adicionar_termo_glossario
+  * [x] atualizar_termo_glossario
 
 ### ✔️ Estratégia de atualização
 
-* [ ] NÃO editar no meio do documento
-* [ ] Sempre:
+* [x] NÃO editar no meio do documento
+* [x] Sempre:
 
-  * [ ] Criar nova versão do termo no final
-  * [ ] Marcar versão mais recente como válida
+  * [x] Criar nova versão do termo no final
+  * [x] Marcar versão mais recente como válida
+  > Versão anterior é marcada como "Substituído".
 * [ ] (Opcional) manter histórico de versões
+> As versões do glossário não ficam salvas, apenas mostra os termos antigos com status de substituído.
 
 ### ✔️ Comportamento do agente
 
-* [ ] Antes de criar termo:
+* [x] Antes de criar termo:
 
-  * [ ] Verificar se já existe no glossário
-* [ ] Se existir:
+  * [x] Verificar se já existe no glossário
+* [x] Se existir:
 
   * [ ] Ignorar OU
-  * [ ] Atualizar (preferível)
-* [ ] Se novo documento:
+  * [x] Atualizar (preferível)
+* [x] Se novo documento:
 
-  * [ ] Permitir sobrescrita lógica do termo
+  * [x] Permitir sobrescrita lógica do termo
+  > No momento, não existe distinção entre o glossário de diferentes arquivos, todas as informações ficam no mesmo lugar.
 
 ### ⚠️ Simplificações importantes
 
-* [ ] NÃO implementar:
+* [x] NÃO implementar:
 
-  * [ ] rastreabilidade complexa
-  * [ ] encadeamento tipo árvore
-  * [ ] dependência entre documentos
+  * [x] rastreabilidade complexa
+  * [x] encadeamento tipo árvore
+  * [x] dependência entre documentos
+  > Nenhum dos tópicos foram adicionados.
 
 ### 🔧 Refatoração arquitetural
 
-* [ ] Transformar glossário em tool (não sub-agent)
+* [x] Transformar glossário em tool (não sub-agent)
+> O agente de glossário passou a ser um agentTool para o agente de requirements.
 * [ ] Remover dependência entre agentes
+> Parcial. O agente de requirements ainda delega ao agente de glossário.
 
 ---
 
@@ -97,20 +109,22 @@
 
 ### ✔️ Refinamentos necessários
 
-* [ ] Separar claramente:
+* [x] Separar claramente:
+> Atendido em parte pela separação entre prompt e exemplos, e por seções no texto do prompt. Ainda existe mistura operacional no mesmo bloco principal.
 
-  * [ ] instruções gerais
-  * [ ] few-shots
-  * [ ] comportamento esperado
-* [ ] Garantir que o prompt:
-
-  * [ ] define papel do agente
-  * [ ] define formato de saída
-  * [ ] define quando gerar dúvidas
+  * [x] instruções gerais
+  * [x] few-shots
+  * [x] comportamento esperado
+* [x] Garantir que o prompt:
+> Atendido. O prompt define papel, formato de saída e critério de geração de dúvidas.
+  * [x] define papel do agente
+  * [x] define formato de saída
+  * [x] define quando gerar dúvidas
 
 ### ⚠️ Problemas identificados
 
 * [ ] Reduzir tamanho do prompt (controle de contexto)
+> Não necessário no momento. O prompt atual atende bem aos critérios de qualidade, mantém consistência e não apresenta sinais de alucinação nas execuções observadas.
 * [ ] Evitar múltiplos few-shots simultâneos
 
 ---
@@ -138,11 +152,13 @@
 ### ✔️ Alternativa simplificada (MVP)
 
 * [ ] Usar template único genérico
+> Não aplicável. Cada tipo de artefato possui estrutura, campos e critérios distintos; unificar em um template genérico reduziria precisão e rastreabilidade.
 * [ ] Evoluir depois para múltiplos
 
 ---
 
 ## 🔹 2.3 Skills do agente
+> A definição das skills foi desenvolvida, porém a funcionalidade skill_toolset está disponível somente a partir da versão google-adk >= 1.26. Como o projeto utiliza google-adk 1.20, a tentativa de importação desse recurso resulta em erro. Também foi avaliada a atualização da versão do ADK, mas surgiram conflitos com outras dependências do projeto, especialmente relacionadas ao FastAPI.
 
 ### ✔️ Refinamentos
 
@@ -164,19 +180,21 @@
 
 ### ✔️ Refinamentos
 
-* [ ] Permitir geração sob demanda:
-
-  * [ ] histórias de usuário
-  * [ ] requisitos funcionais
-* [ ] Evitar geração automática de tudo
+* [x] Permitir geração sob demanda:
+> Atendido. Nos testes, ao informar explicitamente quais artefatos eram desejados, o agente gerou apenas o solicitado.
+  * [x] histórias de usuário
+  * [x] requisitos funcionais
+* [x] Evitar geração automática de tudo
+> Atendido em cenário orientado por instrução do usuário (quando o pedido delimita escopo).
 
 ### ✔️ Padronização de saída
 
-* [ ] Garantir formato consistente:
+* [x] Garantir formato consistente:
+> A consistência existe dentro de cada tipo de artefato, mas os campos mudam entre tipos.
 
-  * [ ] título
-  * [ ] descrição
-  * [ ] critérios de aceitação
+  * [x] título
+  * [x] descrição
+  * [x] critérios de aceitação
 
 ---
 
