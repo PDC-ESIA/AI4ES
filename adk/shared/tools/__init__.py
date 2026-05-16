@@ -12,6 +12,7 @@ from .doubt_generator_analista import gerar_doubt_artifact
 from .search_tool import run_search
 from .glossary_tool import check_glossary, add_to_glossary
 from .clarification import tool_ask_clarification_adk
+from .doubt_inbox import coletar_doubts_pendentes, responder_doubt
 
 __all__ = [
     "tool_git_add",
@@ -33,4 +34,6 @@ __all__ = [
     "check_glossary",
     "add_to_glossary",
     "tool_ask_clarification_adk",
+    "coletar_doubts_pendentes",
+    "responder_doubt",
 ]
