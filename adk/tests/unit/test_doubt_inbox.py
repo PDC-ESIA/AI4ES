@@ -258,3 +258,47 @@ def test_qa_aprovado_ignorado(tmp_path: Path):
     arq = tmp_path / "Doubt_Artifact_HU-005.md"
     arq.write_text(conteudo, encoding="utf-8")
     assert coletar_doubts_pendentes(str(tmp_path)) == []
+
+
+# ---------- Tests: aggregator ----------
+
+def test_aggregator_projeto_vazio(projeto_vazio: Path):
+    assert coletar_doubts_pendentes(str(projeto_vazio)) == []
+
+
+def test_aggregator_ignora_diretorios_protegidos(tmp_path: Path):
+    # Doubt dentro de .venv não deve ser coletado
+    arq = tmp_path / ".venv" / "Doubt_Artifact_X.md"
+    arq.parent.mkdir(parents=True, exist_ok=True)
+    arq.write_text(FIXTURE_TIME1, encoding="utf-8")
+    assert coletar_doubts_pendentes(str(tmp_path)) == []
+
+
+def test_aggregator_ordena_bloqueante_primeiro(tmp_path: Path):
+    # 1 não-bloqueante (severidade Média) + 1 bloqueante (severidade Crítica)
+    naoBloq = FIXTURE_TIME1.replace("**Bloqueante:** Sim", "**Bloqueante:** Não")
+    (tmp_path / "Doubt_Artifact_D-A.md").write_text(naoBloq, encoding="utf-8")
+    (tmp_path / "Doubt_Artifact_D-B.md").write_text(FIXTURE_TIME1.replace("D-001", "D-002"), encoding="utf-8")
+    duvidas = coletar_doubts_pendentes(str(tmp_path))
+    assert len(duvidas) == 2
+    assert duvidas[0]["bloqueante"] is True
+    assert duvidas[1]["bloqueante"] is False
+
+
+def test_aggregator_mistura_formatos(tmp_path: Path):
+    (tmp_path / "Doubt_Artifact_T1.md").write_text(FIXTURE_TIME1, encoding="utf-8")
+    (tmp_path / "Doubt_Artifact.md").write_text(FIXTURE_DOUBT_HANDLER, encoding="utf-8")
+    (tmp_path / "Doubt_Artifact_Clarification.md").write_text(FIXTURE_CLARIFICATION, encoding="utf-8")
+    duvidas = coletar_doubts_pendentes(str(tmp_path))
+    # Time 1: 1 pendente. doubt_handler: 1 pendente (out of 2). clarification: 1.
+    assert len(duvidas) == 3
+
+
+def test_aggregator_arquivo_malformado_nao_explode(tmp_path: Path):
+    (tmp_path / "Doubt_Artifact_quebrado.md").write_text("texto qualquer sem header conhecido", encoding="utf-8")
+    duvidas = coletar_doubts_pendentes(str(tmp_path))
+    assert duvidas == []  # ignora silenciosamente
+
+
+def test_aggregator_diretorio_inexistente(tmp_path: Path):
+    assert coletar_doubts_pendentes(str(tmp_path / "nao_existe")) == []

@@ -188,7 +188,53 @@ def _parse_qa(conteudo: str, path: Path) -> List[Dict]:
 
 # Funções principais — implementadas nas tasks 2-7
 def coletar_doubts_pendentes(caminho_projeto: str = ".") -> List[Dict]:
-    raise NotImplementedError("Implementado em Task 6")
+    """Coleta todos os doubt artifacts ainda em aberto no projeto.
+
+    Faz varredura recursiva por `Doubt_Artifact*.md`, identifica o formato
+    de cada arquivo e extrai metadados. Retorna lista ordenada por
+    (bloqueante DESC, severidade ASC, id ASC).
+
+    Args:
+        caminho_projeto: diretório raiz da busca.
+
+    Returns:
+        Lista de dicts com chaves: path, id, status, categoria, severidade,
+        origem_agente, pergunta, sugestao, bloqueante.
+    """
+    base = Path(caminho_projeto).resolve()
+    if not base.is_dir():
+        return []
+
+    parsers = [
+        (_eh_formato_time1, _parse_time1),
+        (_eh_formato_doubt_handler, _parse_doubt_handler),
+        (_eh_formato_clarification, _parse_clarification),
+        (_eh_formato_qa, _parse_qa),
+    ]
+
+    duvidas: List[Dict] = []
+    for arquivo in base.rglob("Doubt_Artifact*.md"):
+        if any(parte in DIRETORIOS_IGNORADOS for parte in arquivo.parts):
+            continue
+        try:
+            conteudo = arquivo.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for detector, parser in parsers:
+            if detector(conteudo):
+                try:
+                    duvidas.extend(parser(conteudo, arquivo))
+                except Exception:
+                    # Parser falhou — ignora silenciosamente (best-effort)
+                    pass
+                break
+
+    duvidas.sort(key=lambda d: (
+        not d.get("bloqueante", False),
+        SEVERIDADE_ORDEM.get(d.get("severidade", "Desconhecida"), 4),
+        d.get("id", ""),
+    ))
+    return duvidas
 
 
 def responder_doubt(caminho_arquivo: str, resposta: str, autor: str = "humano") -> bool:
