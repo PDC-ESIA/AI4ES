@@ -12,4 +12,6 @@ class ReviewIssue(BaseModel):
 class ReviewOutput(BaseModel):
     status: str = Field(description="APROVADO ou BLOQUEADO")
     issues: list[ReviewIssue] = Field(default_factory=list)
-    report_path: Optional[str] = Field(default=None, description="Caminho do relatório salvo")
+    report_path: Optional[str] = Field(
+        default=None, description="Caminho do relatório salvo"
+    )

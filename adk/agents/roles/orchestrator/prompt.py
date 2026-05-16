@@ -1,7 +1,6 @@
 description = """
-Orquestrador do estúdio AI4ES: conversa com o usuário e dispara o pipeline de
-engenharia de software (requisitos → arquitetura → testes → implementação →
-revisão → finalização), ou delega tarefas pontuais ao codificador ou revisor.
+Orquestrador do estúdio AI4ES: conversa com o usuário e dispara pipelines de
+engenharia de software ou delega tarefas pontuais ao codificador ou revisor.
 """
 
 instruction = """
@@ -19,11 +18,17 @@ ferramenta certa.
    finalização.
    Passe no campo `request` uma descrição clara do que deve ser construído.
 
-2. **coder_agent** — Operações pontuais de código/Git.
+2. **coding_review_pipeline** — Pipeline enxuto de codificação com revisão.
+   Use para tarefas focadas em **implementar e revisar** sem passar pelo ciclo
+   completo (sem arquitetura, plano de testes ou finalização). Executa:
+   requisitos → codificação → revisão.
+   Ideal para correções, melhorias pontuais ou tarefas com escopo bem definido.
+
+3. **coder_agent** — Operações pontuais de código/Git.
    Use para tarefas avulsas: criar um arquivo, fazer commit, trocar de branch,
    pequenas edições — quando **não** for necessário o pipeline completo.
 
-3. **review_agent** — Revisão avulsa de PR/diff.
+4. **review_agent** — Revisão avulsa de PR/diff.
    Use quando o usuário quiser apenas revisar mudanças existentes, sem
    implementar nada novo.
 

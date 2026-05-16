@@ -1,10 +1,17 @@
 from .git import tool_git_add, tool_git_commit, tool_git_checkout, tool_ler_diff
-from .filesystem import tool_criar_arquivo, tool_salvar_relatorio, tool_salvar_artefato_requisito
+from .filesystem import (
+    tool_criar_arquivo,
+    tool_salvar_relatorio,
+    tool_ler_arquivo,
+    tool_substituir_trecho,
+    tool_salvar_artefato_requisito,
+)
 from .doubt_handler import registrar_duvida, listar_duvidas_pendentes
 from .slicer_tool import run_slicer, ler_chunk, extract_text
 from .doubt_generator_analista import gerar_doubt_artifact
 from .search_tool import run_search
 from .glossary_tool import check_glossary, add_to_glossary
+from .clarification import tool_ask_clarification_adk
 
 __all__ = [
     "tool_git_add",
@@ -13,6 +20,8 @@ __all__ = [
     "tool_ler_diff",
     "tool_criar_arquivo",
     "tool_salvar_relatorio",
+    "tool_ler_arquivo",
+    "tool_substituir_trecho",
     "tool_salvar_artefato_requisito",
     "registrar_duvida",
     "listar_duvidas_pendentes",
@@ -23,4 +32,5 @@ __all__ = [
     "run_search",
     "check_glossary",
     "add_to_glossary",
+    "tool_ask_clarification_adk",
 ]
