@@ -15,12 +15,11 @@ litellm.drop_params = True
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-_DEFAULT_AGENTS_DIR = "runners"
+_DEFAULT_AGENTS_DIR = "src/agents"
 
 app = get_fast_api_app(
-    # Profissional: configura por ambiente, com default seguro (produção).
-    # - runners: expõe somente apps em adk/runners/ (ex.: orchestrator)
-    # - agents/roles: expõe roles diretamente (útil em desenvolvimento)
+    # Diretório padrao: adk/src/agents/ — cada subpasta é um agente runnável
+    # cujo __init__.py exporta root_agent. Override via ADK_AGENTS_DIR.
     agents_dir=os.environ.get("ADK_AGENTS_DIR", _DEFAULT_AGENTS_DIR),
     web=True,
     allow_origins=["*"],
