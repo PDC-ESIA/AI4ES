@@ -1,6 +1,6 @@
 # Design — Orquestrador SDLC com Doubt Inbox Unificado
 
-> **Status:** Em revisão
+> **Status:** Aprovado (escopo MVP — ver Seção 12)
 > **Data:** 2026-05-16
 > **Branch alvo:** `consolidacao/agentes-times-1-2-3-4`
 > **Idioma:** Português brasileiro (artefatos, código, comentários)
@@ -419,6 +419,51 @@ Após implementação, validar via `uvicorn app.main:app --reload --port 8081` e
 6. Escrever `adk/tests/unit/test_orchestrator_discovery.py`.
 7. Validação manual via `dev-ui`.
 8. Commits atômicos seguindo convenção PT-BR (`add:`, `update:`, `refactor:`).
+
+---
+
+## 12. Escopo MVP (v1)
+
+Para validar a hipótese central — *"agregar doubt artifacts em um inbox unificado + escalá-los ao usuário em um ponto central reduz fricção do ciclo SDLC?"* — a v1 entrega um subconjunto deste design:
+
+### v1 — INCLUI
+
+- `doubt_inbox` com **2 das 3** funções: `coletar_doubts_pendentes` e `responder_doubt`. Parser dos 4 formatos completo.
+- Orchestrator reescrito com os 5 workflows como tools.
+- Protocolo de fases completo (Fase 0 → Fase 4).
+- **Doubts sempre escalam para o usuário.** O orchestrator não tenta rotear automaticamente entre workflows.
+
+### v1 — EXCLUI (fica para v2)
+
+- `classificar_doubt` (Seção 3.3.3) — heurística de roteamento por origem_agente/categoria.
+- Loop de roteamento automático com cap de 2 tentativas (Seção 5, `enquanto tentativas < 2`).
+- Snapshot comparison (`coletar_doubts_pendentes` antes/depois para detectar novos doubts).
+- Marcadores de falha (`"bloqueado"`, `"não foi possível"`, etc).
+
+### Loop de resolução simplificado (v1)
+
+A Seção 5 vira:
+
+```
+para cada doubt em duvidas_pendentes (ordenadas por bloqueante+severidade):
+    apresenta_ao_usuario(
+        f"🚧 [{doubt.origem_agente}] precisa de esclarecimento sobre {doubt.id}:\n"
+        f"Pergunta: {doubt.pergunta}\n"
+        f"Sugestão do agente: {doubt.sugestao}\n"
+        f"Como deseja proceder?"
+    )
+    aguarda resposta do usuário
+    responder_doubt(doubt.path, resposta_usuario, autor="humano")
+```
+
+### Por que essa fatia
+
+1. Valida a peça nova (inbox + parser + escalation) sem acoplar a outro experimento (auto-routing).
+2. Comportamento determinístico — usuário consegue prever o que o orchestrator vai fazer.
+3. Plano de implementação menor → ciclo de feedback mais rápido.
+4. Se v1 não funcionar, sabemos que o problema é no inbox/escalation. Se v2 não funcionar com auto-routing, sabemos que o problema é no roteamento.
+
+A v2 (auto-routing) será adicionada após v1 ser validada no `dev-ui` com um caso real do AI4ES.
 
 ---
 
