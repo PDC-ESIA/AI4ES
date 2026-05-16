@@ -302,3 +302,54 @@ def test_aggregator_arquivo_malformado_nao_explode(tmp_path: Path):
 
 def test_aggregator_diretorio_inexistente(tmp_path: Path):
     assert coletar_doubts_pendentes(str(tmp_path / "nao_existe")) == []
+
+
+# ---------- Tests: responder_doubt ----------
+
+def test_responder_time1_atualiza_status_e_resposta(projeto_com_time1: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_time1))
+    assert len(duvidas) == 1
+    path = duvidas[0]["path"]
+    ok = responder_doubt(path, "Editáveis: nome, email, telefone, foto.", autor="humano")
+    assert ok is True
+    conteudo = Path(path).read_text(encoding="utf-8")
+    assert "**Status:** Resolvido" in conteudo
+    assert "nome, email, telefone, foto" in conteudo
+    assert "**Resolvido por:** humano" in conteudo
+    # Recoleta — deve estar vazio
+    assert coletar_doubts_pendentes(str(projeto_com_time1)) == []
+
+
+def test_responder_doubt_handler_atualiza_status(projeto_com_doubt_handler: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_doubt_handler))
+    path = duvidas[0]["path"]
+    ok = responder_doubt(path, "Confirmado: email, nome, telefone.", autor="humano")
+    assert ok is True
+    conteudo = Path(path).read_text(encoding="utf-8")
+    assert "✅ Resolvida" in conteudo
+    assert "email, nome, telefone" in conteudo
+
+
+def test_responder_clarification(projeto_com_clarification: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_clarification))
+    path = duvidas[0]["path"]
+    ok = responder_doubt(path, "Lista: email, nome, telefone.", autor="humano")
+    assert ok is True
+    conteudo = Path(path).read_text(encoding="utf-8")
+    assert "Status: Resolvido" in conteudo
+    assert "Lista: email, nome, telefone" in conteudo
+
+
+def test_responder_qa(projeto_com_qa: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_qa))
+    path = duvidas[0]["path"]
+    ok = responder_doubt(path, "Definir campos via UC-005.", autor="humano")
+    assert ok is True
+    conteudo = Path(path).read_text(encoding="utf-8")
+    assert "[x] Aprovado" in conteudo
+    assert "Definir campos via UC-005" in conteudo
+
+
+def test_responder_doubt_arquivo_inexistente(tmp_path: Path):
+    ok = responder_doubt(str(tmp_path / "nao_existe.md"), "resposta", autor="humano")
+    assert ok is False

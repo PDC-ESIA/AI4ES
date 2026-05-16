@@ -238,4 +238,68 @@ def coletar_doubts_pendentes(caminho_projeto: str = ".") -> List[Dict]:
 
 
 def responder_doubt(caminho_arquivo: str, resposta: str, autor: str = "humano") -> bool:
-    raise NotImplementedError("Implementado em Task 7")
+    """Marca um doubt artifact como Resolvido e grava a resposta.
+
+    Suporta os 4 formatos: tenta cada substituição; se alguma der match,
+    considera o arquivo atualizado. Anexa metadado de autoria e data.
+
+    Args:
+        caminho_arquivo: caminho do .md
+        resposta: texto da resposta humana ou de outro workflow
+        autor: identificador de quem respondeu (default "humano")
+
+    Returns:
+        True se atualizou; False se arquivo não existe ou não havia
+        nada pendente para atualizar.
+    """
+    path = Path(caminho_arquivo)
+    if not path.is_file():
+        return False
+
+    try:
+        conteudo = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+
+    novo = conteudo
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Status: Aberta → Resolvido (Time 1)
+    novo = re.sub(r"\*\*Status:\*\*\s*Aberta\b", "**Status:** Resolvido", novo)
+    # Status: 🔴 Aberta → ✅ Resolvida (doubt_handler)
+    novo = re.sub(r"\*\*Status:\*\*\s*🔴\s*Aberta\b", "**Status:** ✅ Resolvida", novo)
+    # Status: Pendente → Resolvido (clarification)
+    novo = re.sub(r"^Status:\s*Pendente\s*$", "Status: Resolvido", novo, flags=re.MULTILINE)
+    # QA: [ ] Aprovado → [x] Aprovado (apenas o primeiro)
+    if "DOUBT ARTEFACT" in conteudo:
+        novo = re.sub(r"\[\s\]\s*Aprovado", "[x] Aprovado", novo, count=1)
+
+    # Substitui campo Resposta (variantes)
+    novo = re.sub(
+        r"\*\*Resposta Humana:\*\*\s*.+?$",
+        f"**Resposta Humana:** {resposta}",
+        novo,
+        flags=re.MULTILINE,
+    )
+    novo = re.sub(
+        r"\*\*Resposta:\*\*\s*.+?$",
+        f"**Resposta:** {resposta}",
+        novo,
+        flags=re.MULTILINE,
+    )
+
+    # Para QA e clarification (sem campo "Resposta" estruturado), anexa no rodapé
+    if conteudo == novo:
+        # Nenhum status mudou — provavelmente já estava resolvido
+        return False
+
+    # Anexa metadado de resolução (apenas uma vez por arquivo)
+    if "**Resolvido por:**" not in novo:
+        marcador = f"\n\n---\n\n**Resposta registrada por {autor}:** {resposta}\n\n- **Resolvido por:** {autor}\n- **Data resolução:** {timestamp}\n"
+        novo = novo + marcador
+
+    try:
+        path.write_text(novo, encoding="utf-8")
+        return True
+    except OSError:
+        return False
