@@ -220,3 +220,22 @@ def test_doubt_handler_arquivo_sem_pendencias(tmp_path: Path):
     arq = tmp_path / "Doubt_Artifact.md"
     arq.write_text(conteudo, encoding="utf-8")
     assert coletar_doubts_pendentes(str(tmp_path)) == []
+
+
+# ---------- Tests: parser clarification ----------
+
+def test_clarification_pendente(projeto_com_clarification: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_clarification))
+    assert len(duvidas) == 1
+    d = duvidas[0]
+    assert "Campos editáveis" in d["id"] or "Campos editáveis" in d["pergunta"]
+    assert d["status"] == "Pendente"
+    assert d["bloqueante"] is True  # clarification sempre é bloqueante
+    assert "Campos editáveis não definidos" in d["pergunta"]
+    assert "Definir lista de campos" in d["sugestao"]
+
+
+def test_clarification_resolvida_ignorada(tmp_path: Path):
+    arq = tmp_path / "Doubt_Artifact_Clarification.md"
+    arq.write_text(FIXTURE_CLARIFICATION.replace("Status: Pendente", "Status: Resolvido"), encoding="utf-8")
+    assert coletar_doubts_pendentes(str(tmp_path)) == []

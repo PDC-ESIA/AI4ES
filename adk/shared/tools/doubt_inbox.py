@@ -116,6 +116,41 @@ def _parse_doubt_handler(conteudo: str, path: Path) -> List[Dict]:
     return resultados
 
 
+def _eh_formato_clarification(conteudo: str) -> bool:
+    """Detecta se conteúdo é formato clarification (tool_ask_clarification)."""
+    return "EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA" in conteudo
+
+
+def _parse_clarification(conteudo: str, path: Path) -> List[Dict]:
+    """Parse formato `tool_ask_clarification` — pergunta única por arquivo."""
+    # Status: campo "Status:" linha solta no final do arquivo
+    status_match = re.search(r"^Status:\s*(.+?)\s*$", conteudo, re.MULTILINE)
+    status = status_match.group(1).strip() if status_match else "Pendente"
+    if "Resolvido" in status or "Resolvida" in status:
+        return []
+
+    titulo_match = re.search(r"^# Doubt Artifact — (.+?)$", conteudo, re.MULTILINE)
+    titulo = titulo_match.group(1).strip() if titulo_match else path.stem
+
+    def _secao(nome: str) -> str:
+        """Captura conteúdo entre `## <nome>` e próxima seção (## ou ---)."""
+        pattern = rf"^## {re.escape(nome)}.*?\n(.*?)(?=\n## |\n---|\Z)"
+        m = re.search(pattern, conteudo, re.MULTILINE | re.DOTALL)
+        return m.group(1).strip() if m else ""
+
+    return [{
+        "path": str(path),
+        "id": titulo[:60],
+        "status": status,
+        "categoria": "Clarification",
+        "severidade": "Alta",
+        "origem_agente": _inferir_origem(path),
+        "pergunta": _secao("Descrição do Problema / Dúvida"),
+        "sugestao": _secao("Pergunta / Sugestão de Resolução"),
+        "bloqueante": True,
+    }]
+
+
 # Funções principais — implementadas nas tasks 2-7
 def coletar_doubts_pendentes(caminho_projeto: str = ".") -> List[Dict]:
     raise NotImplementedError("Implementado em Task 6")
