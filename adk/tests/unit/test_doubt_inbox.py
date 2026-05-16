@@ -239,3 +239,22 @@ def test_clarification_resolvida_ignorada(tmp_path: Path):
     arq = tmp_path / "Doubt_Artifact_Clarification.md"
     arq.write_text(FIXTURE_CLARIFICATION.replace("Status: Pendente", "Status: Resolvido"), encoding="utf-8")
     assert coletar_doubts_pendentes(str(tmp_path)) == []
+
+
+# ---------- Tests: parser QA ----------
+
+def test_qa_pendente(projeto_com_qa: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_qa))
+    assert len(duvidas) == 1
+    d = duvidas[0]
+    assert d["id"] == "HU-005"
+    assert d["origem_agente"] == "qa_agent"
+    assert "campos editáveis" in d["pergunta"].lower()
+    assert d["bloqueante"] is True
+
+
+def test_qa_aprovado_ignorado(tmp_path: Path):
+    conteudo = FIXTURE_QA.replace("[ ] Aprovado", "[x] Aprovado")
+    arq = tmp_path / "Doubt_Artifact_HU-005.md"
+    arq.write_text(conteudo, encoding="utf-8")
+    assert coletar_doubts_pendentes(str(tmp_path)) == []

@@ -121,6 +121,11 @@ def _eh_formato_clarification(conteudo: str) -> bool:
     return "EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA" in conteudo
 
 
+def _eh_formato_qa(conteudo: str) -> bool:
+    """Detecta se conteúdo é formato QA (DoubtArtifactGenerator)."""
+    return "DOUBT ARTEFACT |" in conteudo or "DOUBT ARTEFACT|" in conteudo
+
+
 def _parse_clarification(conteudo: str, path: Path) -> List[Dict]:
     """Parse formato `tool_ask_clarification` — pergunta única por arquivo."""
     # Status: campo "Status:" linha solta no final do arquivo
@@ -147,6 +152,36 @@ def _parse_clarification(conteudo: str, path: Path) -> List[Dict]:
         "origem_agente": _inferir_origem(path),
         "pergunta": _secao("Descrição do Problema / Dúvida"),
         "sugestao": _secao("Pergunta / Sugestão de Resolução"),
+        "bloqueante": True,
+    }]
+
+
+def _parse_qa(conteudo: str, path: Path) -> List[Dict]:
+    """Parse formato `DoubtArtifactGenerator` (Time 3)."""
+    # Status: rodapé com "[x] Aprovado" ou "[x] Reprovado" → resolvido
+    if re.search(r"\[x\]\s*Aprovado", conteudo) or re.search(r"\[x\]\s*Reprovado", conteudo):
+        return []
+
+    id_match = re.search(r"\*\*ID do Artefato:\*\*\s*`([^`]+)`", conteudo)
+    if not id_match:
+        return []
+    duvida_id = id_match.group(1)
+
+    motivo_match = re.search(
+        r"\*\*Análise / Motivo da Interrupção:\*\*\s*\n?>\s*`([^`]+)`",
+        conteudo,
+    )
+    pergunta = motivo_match.group(1).strip() if motivo_match else ""
+
+    return [{
+        "path": str(path),
+        "id": duvida_id,
+        "status": "Aberta",
+        "categoria": "QA",
+        "severidade": "Alta",
+        "origem_agente": "qa_agent",
+        "pergunta": pergunta,
+        "sugestao": "",
         "bloqueante": True,
     }]
 
