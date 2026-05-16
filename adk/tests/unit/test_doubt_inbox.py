@@ -201,3 +201,22 @@ def test_time1_status_resolvido_e_ignorado(tmp_path: Path):
     arq.write_text(FIXTURE_TIME1.replace("**Status:** Aberta", "**Status:** Resolvido"), encoding="utf-8")
     duvidas = coletar_doubts_pendentes(str(tmp_path))
     assert duvidas == []
+
+
+# ---------- Tests: parser doubt_handler ----------
+
+def test_doubt_handler_filtra_apenas_abertas(projeto_com_doubt_handler: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_doubt_handler))
+    assert len(duvidas) == 1  # FIXTURE tem 2 entradas, 1 resolvida
+    assert duvidas[0]["id"] == "D-260516143000"
+    assert duvidas[0]["status"] == "🔴 Aberta"
+    assert duvidas[0]["categoria"] == "Falta de Contexto"
+    assert duvidas[0]["severidade"] == "Alta"
+    assert duvidas[0]["pergunta"] == "Campos editáveis do perfil não estão definidos"
+
+
+def test_doubt_handler_arquivo_sem_pendencias(tmp_path: Path):
+    conteudo = FIXTURE_DOUBT_HANDLER.replace("🔴 Aberta", "✅ Resolvida")
+    arq = tmp_path / "Doubt_Artifact.md"
+    arq.write_text(conteudo, encoding="utf-8")
+    assert coletar_doubts_pendentes(str(tmp_path)) == []

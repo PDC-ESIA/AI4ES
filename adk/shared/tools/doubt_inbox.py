@@ -75,6 +75,47 @@ def _parse_time1(conteudo: str, path: Path) -> List[Dict]:
     }]
 
 
+def _eh_formato_doubt_handler(conteudo: str) -> bool:
+    """Detecta se conteúdo é formato doubt_handler (arquivo centralizado)."""
+    return "## Histórico de Dúvidas" in conteudo
+
+
+def _parse_doubt_handler(conteudo: str, path: Path) -> List[Dict]:
+    """Parse formato `doubt_handler.registrar_duvida` (arquivo único, múltiplos doubts)."""
+    resultados = []
+    # Divide em seções por header "### [D-"
+    secoes = conteudo.split("### [D-")[1:]
+    for secao in secoes:
+        # Status aberto: emoji 🔴 + "Aberta" no campo Status
+        if "🔴 Aberta" not in secao and "Status:** Aberta" not in secao:
+            continue
+
+        id_match = re.match(r"([\w-]+)\]", secao)
+        if not id_match:
+            continue
+        duvida_id = f"D-{id_match.group(1)}"
+
+        def _campo(pattern: str, default: str = "") -> str:
+            m = re.search(pattern, secao, re.MULTILINE)
+            return m.group(1).strip() if m else default
+
+        severidade = _campo(r"\*\*Severidade:\*\*\s*(.+?)\s*$", "Desconhecida")
+        bloqueante = severidade in {"Crítica", "Alta"}
+
+        resultados.append({
+            "path": str(path),
+            "id": duvida_id,
+            "status": _campo(r"\*\*Status:\*\*\s*(.+?)\s*$", "Aberta"),
+            "categoria": _campo(r"\*\*Categoria:\*\*\s*(.+?)\s*$"),
+            "severidade": severidade,
+            "origem_agente": _inferir_origem(path),
+            "pergunta": _campo(r"\*\*Descrição:\*\*\s*(.+?)\s*$"),
+            "sugestao": _campo(r"\*\*Sugestão do Agente:\*\*\s*(.+?)\s*$"),
+            "bloqueante": bloqueante,
+        })
+    return resultados
+
+
 # Funções principais — implementadas nas tasks 2-7
 def coletar_doubts_pendentes(caminho_projeto: str = ".") -> List[Dict]:
     raise NotImplementedError("Implementado em Task 6")
