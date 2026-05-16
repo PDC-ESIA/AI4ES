@@ -168,7 +168,7 @@ HUs (input)
 | uv | Qualquer | [Guia de instalação](https://docs.astral.sh/uv/getting-started/installation/) |
 | Conta GitHub | — | Necessária para autenticação OAuth (GitHub Copilot) |
 
-> **Variáveis de Ambiente:** Não é necessário o uso do .env, pois nenhuma chave é necessária — a autenticação é feita via OAuth (Github).
+> **Variáveis de Ambiente:** Não é necessário o uso do .env, pois nenhuma chave é necessária — a autenticação é feita via OAuth (GitHub).
 
 ### Instalação
 
