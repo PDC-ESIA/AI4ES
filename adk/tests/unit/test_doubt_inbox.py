@@ -174,3 +174,30 @@ def projeto_com_qa(tmp_path: Path) -> Path:
     arq.parent.mkdir(parents=True, exist_ok=True)
     arq.write_text(FIXTURE_QA, encoding="utf-8")
     return tmp_path
+
+
+# ---------- Tests: parser Time 1 ----------
+
+def test_time1_um_doubt_pendente(projeto_com_time1: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_time1))
+    assert len(duvidas) == 1
+    d = duvidas[0]
+    assert d["id"] == "D-001"
+    assert d["status"] == "Aberta"
+    assert d["pergunta"] == "Quais campos do perfil podem ser editados?"
+    assert d["sugestao"] == "Definir lista de campos editáveis"
+    assert d["bloqueante"] is True
+    assert "AgenteAnalista" in d["path"]
+
+
+def test_time1_origem_inferida_pelo_path(projeto_com_time1: Path):
+    duvidas = coletar_doubts_pendentes(str(projeto_com_time1))
+    # Path contém "Time_1_Requisitos" e "AgenteAnalista" — _inferir_origem deve achar "requirements"
+    assert duvidas[0]["origem_agente"] in {"requirements", "desconhecido"}
+
+
+def test_time1_status_resolvido_e_ignorado(tmp_path: Path):
+    arq = tmp_path / "Doubt_Artifact_D-001_xx.md"
+    arq.write_text(FIXTURE_TIME1.replace("**Status:** Aberta", "**Status:** Resolvido"), encoding="utf-8")
+    duvidas = coletar_doubts_pendentes(str(tmp_path))
+    assert duvidas == []

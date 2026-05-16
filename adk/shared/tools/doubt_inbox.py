@@ -40,6 +40,41 @@ def _inferir_origem(path: Path) -> str:
     return "desconhecido"
 
 
+def _eh_formato_time1(conteudo: str) -> bool:
+    """Detecta se conteúdo é formato Time 1 (gerar_doubt_artifact)."""
+    return "## Metadados da Sessão" in conteudo and "## Dúvida Registrada" in conteudo
+
+
+def _parse_time1(conteudo: str, path: Path) -> List[Dict]:
+    """Parse formato `gerar_doubt_artifact` (Time 1). Um doubt por arquivo."""
+    id_match = re.search(r"### (D-[\w-]+)", conteudo)
+    if not id_match:
+        return []
+
+    def _campo(pattern: str) -> str:
+        m = re.search(pattern, conteudo, re.MULTILINE)
+        return m.group(1).strip() if m else ""
+
+    status = _campo(r"\*\*Status:\*\*\s*(.+?)\s*$")
+    if "Resolvido" in status or "✅" in status:
+        return []
+
+    bloq_raw = _campo(r"\*\*Bloqueante:\*\*\s*(.+?)\s*$")
+    bloqueante = "Sim" in bloq_raw
+
+    return [{
+        "path": str(path),
+        "id": id_match.group(1),
+        "status": status or "Aberta",
+        "categoria": "Falta de Contexto",
+        "severidade": "Crítica" if bloqueante else "Média",
+        "origem_agente": _inferir_origem(path),
+        "pergunta": _campo(r"\*\*Dúvida:\*\*\s*(.+?)\s*$"),
+        "sugestao": _campo(r"\*\*Sugestão do Agente:\*\*\s*(.+?)\s*$"),
+        "bloqueante": bloqueante,
+    }]
+
+
 # Funções principais — implementadas nas tasks 2-7
 def coletar_doubts_pendentes(caminho_projeto: str = ".") -> List[Dict]:
     raise NotImplementedError("Implementado em Task 6")
