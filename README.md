@@ -33,7 +33,7 @@ O projeto investiga, de forma sistemática e aplicada, o uso de IA Generativa (L
 
 ## 🧩 **Estrutura do Repositório**
 
-```
+```text
 /
 ├── adk/                        # Aplicação de agentes (Google ADK)
 │   ├── app/
