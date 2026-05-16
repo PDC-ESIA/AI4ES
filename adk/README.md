@@ -2,7 +2,6 @@
 
 ---
 
-<<<<<<< HEAD
 ## 1. O que é o Sistema Agêntico (Visão Geral)
 
 O **Agente de Design** é um sistema multi-agente construído sobre o **Google ADK (Agent Development Kit)** que automatiza a fase de design de software a partir de **Histórias de Usuário (HUs)**. O sistema recebe um lote de HUs em linguagem natural, analisa as decisões arquiteturais adequadas, gera diagramas Mermaid (`.mmd`) e produz um relatório técnico estruturado em Markdown.
