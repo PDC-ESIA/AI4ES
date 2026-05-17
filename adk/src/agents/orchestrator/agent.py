@@ -15,8 +15,8 @@ Solução (v3):
     pipeline). Sem LLM no topo → sem MALFORMED. Sem session compartilhada
     → sem overflow.
 
-Sequência fixa (sem design — o design_pipeline tem bug interno conhecido):
-    requirements_pipeline → coding_review_pipeline → qa_pipeline
+Sequência fixa:
+    requirements_pipeline → design_pipeline → coding_review_pipeline → qa_pipeline
 
 Cada pipeline recebe como input o prompt original + um sumário curto
 dos outputs anteriores (último texto de cada sub-pipeline).
@@ -34,6 +34,7 @@ from google.genai import types
 from pydantic import ConfigDict
 
 from src.agents.workflow_requirements.agent import agent as requirements_pipeline
+from src.agents.workflow_design_pipeline.agent import agent as design_pipeline
 from src.agents.workflow_coding_review.agent import agent as coding_review_pipeline
 from src.agents.workflow_qa.agent import agent as qa_pipeline
 
@@ -47,6 +48,7 @@ class _PipelineOrchestrator(BaseAgent):
     # validator de sub_agents que clama parent ownership.
     _pipelines: ClassVar[List[BaseAgent]] = [
         requirements_pipeline,
+        design_pipeline,
         coding_review_pipeline,
         qa_pipeline,
     ]
