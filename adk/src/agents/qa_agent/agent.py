@@ -1,6 +1,5 @@
 import os
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 from .subagents.action_planner.agent import agent as action_planner_agent
@@ -14,7 +13,7 @@ from .qa_prompt import QA_PROMPT
 
 agent = LlmAgent(
     name="qa_agent",
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")),
+    model=os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash"),
     description=(
         "Agente QA do Time 3 — PDC-AI4SE. "
         "Recebe artefatos de requisito (RF, HU, UC, RNF, RN), "

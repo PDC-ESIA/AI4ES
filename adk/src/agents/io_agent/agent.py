@@ -1,6 +1,5 @@
 import os
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from shared.tools.design_date import current_date
 from . import prompt
 
@@ -16,10 +15,10 @@ from shared.tools.design_filesystem import (
     check_active_blocks,
 )
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+    model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
     name="io_agent",
     description=prompt.description,
     instruction=prompt.instruction,

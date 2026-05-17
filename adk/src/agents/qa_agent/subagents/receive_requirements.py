@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 from litellm import completion
 
@@ -53,7 +52,7 @@ def _parse_fragmented_requirements(raw_input: str) -> list:
 Identifique os tipos (RF, RNF, HU, UC, RN). Se não houver ID claro, gere um sequencial.
 Texto bruto: {raw_input}
 """
-    model_name = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
+    model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
     response = completion(
         model=model_name, 
         messages=[{"role": "user", "content": prompt}], 
@@ -481,7 +480,7 @@ def _gerar_pytest_via_llm(
     Raises:
         ValueError: Se o modelo retornar conteúdo vazio.
     """
-    model_name = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
+    model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
     arquivos_textos = []
     for p in arquivos_apoio:
         try:
@@ -588,7 +587,7 @@ def _ordenar_por_criticidade(lista: list) -> list:
 
 agent = LlmAgent(
     name="receber_requisitos",
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")),
+    model=os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash"),
     description=(
         "Subagente que recebe artefatos de requisito em JSON e gera arquivos pytest "
         "funcionais em artefactsTests."

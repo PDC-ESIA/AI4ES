@@ -7,7 +7,6 @@ ao usuario (sem auto-routing — fica para v2).
 import os
 
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
@@ -26,10 +25,10 @@ from shared.tools import (
 
 from . import prompt
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 root_agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+    model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
     name="orchestrator",
     description=prompt.description,
     instruction=prompt.instruction,

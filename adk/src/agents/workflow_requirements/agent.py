@@ -8,12 +8,11 @@ estruturados (HUs, RFs, RNFs, UCs, RNs e Glossário).
 import os
 
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.requirements.agent import agent as requirements_agent
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 _INSTRUCTION = """
 Você é o pipeline de Engenharia de Requisitos.
@@ -60,7 +59,7 @@ ENTREGA FINAL AO SOLICITANTE:
 """
 
 agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+    model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
     name="requirements_pipeline",
     description=(
         "Pipeline completo de Engenharia de Requisitos: transforma documentos "

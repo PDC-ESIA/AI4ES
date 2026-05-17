@@ -1,6 +1,5 @@
 import os
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
@@ -17,13 +16,13 @@ from shared.tools import (
 )
 from . import prompt, schemas
 
-_DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
+_DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
 
 # ── Sub-Agente de Glossário ──────────────────────────────────────────────────
 
 glossario_agent = LlmAgent(
     name="glossario_agent",
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4o")),
+    model=os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash"),
     description=(
         "Sub-agente especializado em extração de termos técnicos e "
         "construção de glossário a partir do documento-matriz. "
@@ -106,7 +105,7 @@ glossario_agent = LlmAgent(
 # ── Agente Principal de Requisitos ───────────────────────────────────────────
 
 agent = LlmAgent(
-    model=LiteLlm(_DEFAULT_MODEL),
+    model=_DEFAULT_MODEL,
     name="requirements_agent",
     description=prompt.description,
     instruction=prompt.instruction,

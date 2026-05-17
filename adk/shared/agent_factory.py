@@ -12,7 +12,6 @@ from functools import partial
 from typing import Any
 
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 
 from shared.tools.clarification import tool_ask_clarification_adk
@@ -21,7 +20,7 @@ from shared.tools.clarification import tool_ask_clarification_adk
 # importar shared.tools (não o faz hoje, mas defensivo)
 from shared.workspace import get_agent_workspace, get_workspace_root, AGENT_DIRS
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 _SE_AGENT_POLICY = """
 
@@ -135,7 +134,7 @@ def create_se_agent(
     Returns:
         LlmAgent configurado.
     """
-    model = LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL))
+    model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
     base_tools = [tool_ask_clarification_adk]
     if tools:

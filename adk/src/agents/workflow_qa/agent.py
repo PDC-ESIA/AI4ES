@@ -8,7 +8,6 @@ Composto sobre os sub-agentes especialistas do qa_agent.
 import os
 
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
@@ -18,7 +17,7 @@ from src.agents.qa_agent.subagents.receive_requirements import agent as receber_
 from src.agents.qa_agent.tools.pytest_runner import executar_pytest_tool
 from src.agents.qa_agent.tools.doubt_tool import DoubtArtifactGenerator
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 _INSTRUCTION = """
 Você é o pipeline de QA / Testes do Time 3.
@@ -83,7 +82,7 @@ ENTREGA FINAL AO SOLICITANTE:
 """
 
 agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+    model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
     name="qa_pipeline",
     description=(
         "Pipeline completo de QA: planejamento, geração pytest a partir de "

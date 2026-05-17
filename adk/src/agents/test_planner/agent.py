@@ -1,14 +1,13 @@
 import os
 
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 
 from . import prompt, schemas
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
+_DEFAULT_MODEL = "gemini-2.5-flash"
 
 agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+    model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
     name="test_planning_agent",
     description=prompt.description,
     instruction=prompt.instruction,

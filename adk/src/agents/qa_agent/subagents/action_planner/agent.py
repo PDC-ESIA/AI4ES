@@ -1,7 +1,6 @@
 import os
 import logging
 from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 
 from .prompt import SYSTEM_PROMPT
@@ -18,7 +17,7 @@ logger = logging.getLogger("action_planner")
 
 agent = LlmAgent(
     name="action_planner",
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")),
+    model=os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash"),
     description=(
         "Planeja tarefas complexas de QA, decompoe passos e decide o fluxo "
         "antes da geracao ou execucao de testes."

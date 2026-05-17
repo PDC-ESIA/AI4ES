@@ -7,7 +7,6 @@ conflito de parent com o sdlc_pipeline.
 import os
 
 from google.adk.agents import LlmAgent, SequentialAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 
 from src.agents.requirements import prompt as req_prompt
@@ -32,8 +31,8 @@ from shared.tools import (
 # Substituicao funcional: tool_ler_arquivo (leitura generica) + gerar_doubt_artifact
 # (geracao de doubt artifact via shared.tools). Donos podem refinar se preciso.
 
-_DEFAULT_MODEL = "github_copilot/gpt-4"
-_model = LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL))
+_DEFAULT_MODEL = "gemini-2.5-flash"
+_model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
 _requirements = LlmAgent(
     model=_model,
