@@ -41,7 +41,7 @@ def tool_git_add(arquivos: str, *, cwd: Optional[str] = None) -> dict:
     }
 
 
-def trava_seguranca_git_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
+def trava_seguranca_git_commit(mensagem: str, *, cwd: str | None = None) -> dict:
     """Ferramenta usada para validar se há alterações prontas para commit e retornar o diff para análise
 
     Args:
