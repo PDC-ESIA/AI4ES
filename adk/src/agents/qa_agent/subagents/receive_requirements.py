@@ -330,7 +330,8 @@ async def _processar_artefato(artefato: dict) -> dict:
             arquivos_apoio=anexos_salvos,
             nome_teste=nome_teste,
         )
-        caminho.write_text(codigo, encoding="utf-8")
+        codigo_valido = _validar_e_sanitizar_codigo(codigo, id_artefato)
+        caminho.write_text(codigo_valido, encoding="utf-8")
 
         logger.info(f"[QA] Concluído (Fluxo {'A' if tem_codigo else 'B'}): {id_artefato} → {caminho}")
         return {
@@ -553,10 +554,11 @@ def _gerar_pytest_via_llm(
         )
     else:
         instrucao_geracao = (
-            "Nenhum código fonte foi fornecido, apenas o requisito. "
-            "Geração em MODO ESQUELETO (Skeleton): Crie as assinaturas de teste pytest baseadas nos cenários inferidos, "
-            "mas marque-os utilizando o decorator @pytest.mark.skip(reason='Aguardando implementação do código fonte') "
-            "ou utilize 'pass' contendo docstrings claras sobre o comportamento que deverá ser validado."
+            "Nenhum código fonte foi fornecido — gere em MODO ESQUELETO. "
+            "Use @pytest.mark.skip(reason='Aguardando implementação do código fonte') "
+            "antes de cada função de teste. O corpo deve ter apenas uma docstring "
+            "descrevendo o comportamento esperado. NÃO use 'pass' — a docstring é "
+            "o corpo válido da função em Python."
         )
 
     prompt = f"""Gere SOMENTE código Python válido para {nome_teste}.
@@ -578,7 +580,9 @@ Regras obrigatórias:
 - Se não houver código-fonte importável, gere testes de contrato (validações e comportamentos inferíveis) sem import quebrado.
 - Cubra cenários feliz, inválido e borda.
 - Inclua asserts objetivos.
-- Não use placeholders TODO, não use pass vazio, não deixe testes sem lógica.
+- Cada função de teste deve ter corpo NÃO-VAZIO: ou uma docstring (modo
+  esqueleto), ou asserts objetivos (modo completo). Nunca emita 'pass'
+  isolado, 'TODO', placeholders entre <>, ou caracteres fora da gramática Python.
 """
 
     response = completion(
