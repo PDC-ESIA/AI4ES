@@ -14,7 +14,7 @@ async def aguardar_aprovacao_humana(
     checkpoint_id: str,
     approval_question: str,
     allowed_decisions: list[str],
-    pause_reason: "Optional[str]" = None,
+    pause_reason: Optional[str] = None,
 ) -> dict[str, Any]:
     """Pausa o agente até receber decisão humana explícita.
 

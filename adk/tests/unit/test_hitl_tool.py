@@ -36,16 +36,29 @@ async def test_aguardar_aprovacao_humana_retorna_dict_com_chaves_contratuais():
     assert resultado["allowed_decisions"] == ["aprovar", "rejeitar"]
 
 
-def test_aguardar_aprovacao_humana_assinatura_sem_union_pipe():
-    """Gemini API rejeita anyOf gerado por `str | None`. Use Optional[str]."""
+def test_aguardar_aprovacao_humana_schema_compativel_com_gemini():
+    """Gemini API rejeita anyOf no schema. ADK gera anyOf p/ Union types
+    quando empacotados como FunctionTool, e isso bate na Gemini.
+
+    Este teste embrulha a função em LongRunningFunctionTool (mesma classe
+    usada em workflow_qa/agent.py) e inspeciona o JSON do
+    FunctionDeclaration. O teste falha se o schema gerado contiver
+    "any_of" — sinal de que algum parâmetro virou Union no schema.
+
+    Reference: gotcha registrada em CLAUDE.md "Schemas de tool incompatíveis
+    com Gemini API".
+    """
+    from google.adk.tools import LongRunningFunctionTool
+
     from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
 
-    sig = inspect.signature(aguardar_aprovacao_humana)
-    ann = sig.parameters["pause_reason"].annotation
-    import types as _types
-    assert not isinstance(ann, _types.UnionType), (
-        f"pause_reason usa `str | None` (UnionType), rejeitado pelo Gemini. "
-        f"Troque por Optional[str]. Got: {ann}"
+    tool = LongRunningFunctionTool(aguardar_aprovacao_humana)
+    decl_json = tool._get_declaration().model_dump_json(
+        exclude_none=True, by_alias=True
+    )
+    assert "any_of" not in decl_json, (
+        f"FunctionDeclaration contém any_of (Gemini API rejeita). "
+        f"Confira annotations da função. Schema: {decl_json}"
     )
 
 
