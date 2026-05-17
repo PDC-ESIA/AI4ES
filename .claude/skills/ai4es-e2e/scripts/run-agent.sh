@@ -70,17 +70,25 @@ if target not in apps:
 fi
 
 echo "==> Sessão: ${APP}/${USER_ID}/${SESSION_ID}" >&2
-curl -sf -X POST "${BASE}/apps/${APP}/users/${USER_ID}/sessions/${SESSION_ID}" \
-  -H "Content-Type: application/json" -d '{}' > /dev/null
+SESSION_HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  "${BASE}/apps/${APP}/users/${USER_ID}/sessions/${SESSION_ID}" \
+  -H "Content-Type: application/json" -d '{}')
+if [ "${SESSION_HTTP}" != "200" ] && [ "${SESSION_HTTP}" != "201" ] && [ "${SESSION_HTTP}" != "409" ]; then
+  echo "ERRO: criação de sessão retornou HTTP ${SESSION_HTTP}." >&2
+  exit 1
+fi
+if [ "${SESSION_HTTP}" = "409" ]; then
+  echo "    (sessão já existia, reutilizando)" >&2
+fi
 
 echo "==> Invocando ${APP} (pode levar segundos a minutos)..." >&2
 
-PAYLOAD=$(APP="${APP}" UID="${USER_ID}" SID="${SESSION_ID}" PROMPT="${PROMPT}" \
+PAYLOAD=$(APP="${APP}" USERID="${USER_ID}" SID="${SESSION_ID}" PROMPT="${PROMPT}" \
   "${PYTHON}" -c "
 import json, os
 print(json.dumps({
     'app_name': os.environ['APP'],
-    'user_id': os.environ['UID'],
+    'user_id': os.environ['USERID'],
     'session_id': os.environ['SID'],
     'new_message': {'role': 'user', 'parts': [{'text': os.environ['PROMPT']}]}
 }))
