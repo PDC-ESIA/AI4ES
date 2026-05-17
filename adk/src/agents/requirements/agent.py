@@ -3,6 +3,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
+from shared.agent_factory import _bind_tool_to_workspace
 from shared.tools import (
     run_slicer,
     ler_chunk,
@@ -14,9 +15,19 @@ from shared.tools import (
     check_glossary,
     add_to_glossary,
 )
+from shared.workspace import get_agent_workspace, get_workspace_root
 from . import prompt, schemas
 
 _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
+
+# Workspace binding (resolvido no import-time, igual ao workflow_coding_review).
+_WS_ROOT = str(get_workspace_root())
+_REQ_WS = str(get_agent_workspace("requirements_agent"))
+_GLOS_WS = str(get_agent_workspace("glossario_agent"))
+
+
+def _bind(tool, agent_ws):
+    return _bind_tool_to_workspace(tool, agent_ws, _WS_ROOT)
 
 # ── Sub-Agente de Glossário ──────────────────────────────────────────────────
 
@@ -98,7 +109,7 @@ glossario_agent = LlmAgent(
         FunctionTool(run_search),
         FunctionTool(add_to_glossary),
         FunctionTool(check_glossary),
-        FunctionTool(gerar_doubt_artifact),
+        _bind(FunctionTool(gerar_doubt_artifact), _GLOS_WS),
     ],
 )
 
@@ -113,8 +124,8 @@ agent = LlmAgent(
     tools=[
         FunctionTool(run_slicer),
         FunctionTool(ler_chunk),
-        FunctionTool(gerar_doubt_artifact),
-        FunctionTool(tool_salvar_artefato_requisito),
+        _bind(FunctionTool(gerar_doubt_artifact), _REQ_WS),
+        _bind(FunctionTool(tool_salvar_artefato_requisito), _REQ_WS),
         AgentTool(agent=glossario_agent),
     ],
 )
