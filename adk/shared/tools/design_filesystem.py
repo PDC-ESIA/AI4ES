@@ -60,14 +60,22 @@ def _next_version(path: Path) -> Path:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def read_file(filepath: str) -> Dict[str, Any]:
-    """
-    Lê o conteúdo de um arquivo do filesystem.
+    """Lê o conteúdo de um arquivo qualquer do filesystem do projeto.
+
+    Use quando o IO Agent precisa devolver o conteúdo de um artefato
+    salvo em staging ou artifacts a outro agente que solicita. Tem
+    proteção contra path traversal: rejeita caminhos fora da raiz do
+    projeto.
 
     Args:
-        filepath: caminho do arquivo a ser lido.
+        filepath: Caminho do arquivo a ser lido. Pode ser relativo ou
+            absoluto, mas o caminho resolvido deve estar dentro da raiz
+            do projeto.
 
     Returns:
-        dict com keys: status, content | error
+        dict com chaves: `status` ("ok" | "error"), `content` (str
+        UTF-8 em sucesso), `error` (str descritivo em falha — acesso
+        negado, arquivo inexistente, erro de I/O).
     """
     try:
         path = Path(filepath).resolve()
@@ -87,17 +95,29 @@ def read_file(filepath: str) -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 def save_artifact(filename: str, content: str) -> dict:
-    """
-    Salva o artefato em staging com versionamento automático.
+    """Persiste um artefato em staging com versionamento automático por backup.
 
-    - Se já existir um arquivo com o mesmo nome: renomeia o atual para _backup_ antes de salvar.
+    Use sempre que qualquer agente solicitar gravação de um artefato
+    em staging (.mmd, .md, Doubt_Artifacts). Se já existir um arquivo
+    com o mesmo nome em staging, o atual é renomeado para
+    `<nome>_backup_<timestamp>.<ext>` antes da nova gravação — nunca
+    sobrescreve sem backup.
+
+    Doubt_Artifacts (nome iniciando com `Doubt_Artifact_`) são
+    bloqueantes e devem ser gravados imediatamente, antes de qualquer
+    outra operação pendente.
 
     Args:
-        filename: Nome do arquivo (ex: diagrama_HU-042_processo_compra.mmd)
-        content:  Conteúdo textual do artefato.
+        filename: Nome do arquivo (ex:
+            `diagrama_HU-042_processo_compra.mmd`). Será gravado em
+            `temp/staging/<filename>`.
+        content: Conteúdo textual completo do artefato.
 
     Returns:
-        dict com keys: status, path, versioned_backup (se houve), timestamp
+        dict com chaves: `status` ("ok" | "error"), `path` (str do
+        path final em sucesso), `versioned_backup` (str do path do
+        backup criado, se houve; None caso contrário), `timestamp`
+        (ISO 8601). Em erro: `status="error"`, `error`, `filename`.
     """
     try:
         _ensure_dirs()
@@ -130,19 +150,24 @@ def save_artifact(filename: str, content: str) -> dict:
 
 
 def promote_artifact(filename: str) -> Dict[str, Any]:
-    """
-    Move um artefato de staging para artifacts/.
+    """Promove um relatório de staging para artifacts/ (versão oficial).
 
-    Regras:
-        - Apenas arquivos .md são aceitos.
-        - O nome deve conter 'relatorio'.
-        - O conteúdo não pode ter status 'Em análise'.
+    Use somente sob confirmação explícita do supervisor. Apenas
+    arquivos `.md` cujo nome contém "relatorio" e que NÃO contêm o
+    marcador "**Status:** Em análise" são aceitos. Diagramas `.mmd`
+    e relatórios em análise permanecem em staging.
+
+    Se já existir uma versão oficial com o mesmo nome em artifacts/,
+    a antiga é renomeada para backup com timestamp antes da nova
+    cópia.
 
     Args:
-        filename: Nome do arquivo a ser promovido
+        filename: Nome do arquivo em staging a promover.
 
     Returns:
-        dict com keys: status, source, destination, timestamp | reason | error
+        dict com chaves: `status` ("ok" | "blocked" | "error"),
+        `source`, `destination`, `timestamp` em sucesso; `reason` e
+        `file` em "blocked"; `error` em "error".
     """
     try:
         source = (STAGING_DIR / filename).resolve()
@@ -196,14 +221,21 @@ def promote_artifact(filename: str) -> Dict[str, Any]:
 
 
 def list_staging_files(filetype: str = "") -> Dict[str, Any]:
-    """
-    Lista arquivos em staging, ignorando backups e o log de operações.
+    """Lista os arquivos atualmente em staging, ignorando backups e logs.
+
+    Use para inventariar artefatos disponíveis em staging antes de
+    decidir leituras, promoções ou alertas de bloqueio. Backups
+    (arquivos contendo `_backup_`) e o `io_operations.log` são
+    sempre filtrados.
 
     Args:
-        filetype: extensão para filtrar (ex: "mmd", "md"). Se vazio, lista todos.
+        filetype: Extensão para filtrar sem o ponto (ex: "mmd", "md").
+            Vazio retorna todos os arquivos visíveis.
 
     Returns:
-        dict com keys: status, files, staging_dir | error
+        dict com chaves: `status` ("ok" | "error"), `files` (list[str]
+        com nomes ordenados alfabeticamente em sucesso), `staging_dir`
+        (path absoluto da pasta), `error` em falha.
     """
     try:
         _ensure_dirs()
@@ -222,11 +254,18 @@ def list_staging_files(filetype: str = "") -> Dict[str, Any]:
 
 
 def check_active_blocks() -> Dict[str, Any]:
-    """
-    Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.
+    """Verifica se há Doubt_Artifacts com Status Bloqueado em staging.
+
+    Use sempre que o orquestrador precisar decidir se pode avançar
+    para a próxima etapa do pipeline. Cada Doubt_Artifact em staging
+    é inspecionado pelo marcador "**Status:** Bloqueado"; o HU ID é
+    extraído do nome (terceiro segmento separado por `_`).
 
     Returns:
-        dict com keys: status, has_blocks (bool), blocks (lista de dicts)
+        dict com chaves: `status` ("ok" | "error"), `has_blocks`
+        (bool — True se algum artefato está bloqueado), `blocks`
+        (list[dict] com `filename` e `hu_id` para cada bloqueio).
+        Em falha: `status="error"`, `error`.
     """
     try:
         _ensure_dirs()
@@ -246,12 +285,18 @@ def check_active_blocks() -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 def clear_staging_folder() -> bool:
-    """
-    Remove todos os arquivos do diretório de staging, preservando subdiretórios.
-    Segurança: só apaga se o diretório estiver dentro de CURRENT_DIR.
+    """Remove todos os arquivos do diretório de staging, preservando subdiretórios.
+
+    ATENÇÃO: operação destrutiva. Use APENAS no início de uma nova
+    sessão, quando explicitamente solicitado pelo orquestrador. Nunca
+    execute por iniciativa própria ou durante o fluxo normal de
+    operações. A proteção interna verifica que o diretório está sob
+    a raiz do projeto antes de apagar.
 
     Returns:
-        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário
+        bool: True se todos os arquivos foram removidos com sucesso,
+        False em caso de erro (ex: tentativa fora do diretório seguro,
+        falha de I/O). Erros são registrados via IOLogger.
     """
     path: Path = STAGING_DIR
     try:
