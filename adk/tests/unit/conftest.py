@@ -25,6 +25,8 @@ collect_ignore = [
 # popular sys.modules antes que test_git_tools.py substitua pydantic.BaseModel.
 
 from src.agents.requirements import schemas as _req_schemas  # noqa: F401
+from src.agents.context_engineer import schemas as _ce_schemas  # noqa: F401
+from src.agents.context_engineer.tools import tool_salvar_task  # noqa: F401
 from src.agents.workflow_coding_review.agent import agent as _cr  # noqa: F401
 from src.agents.workflow_coding.agent import agent as _sdlc  # noqa: F401
 from src.agents.workflow_requirements.agent import agent as _req  # noqa: F401
