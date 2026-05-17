@@ -40,3 +40,53 @@ def test_pytest_runner_resolve_dynamic_base(monkeypatch, tmp_path):
 
     resultado = _normalizar_caminho_arquivo("hu_001/test_hu_001.py")
     assert resultado == arquivo.resolve()
+
+
+def test_doubt_tool_resolve_via_workspace(monkeypatch, tmp_path):
+    """DoubtArtifactGenerator escreve em workspace, não em path hardcoded."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
+
+    import importlib
+    from src.agents.qa_agent.tools import doubt_tool as dt
+    importlib.reload(dt)
+
+    result = dt.DoubtArtifactGenerator.generate(
+        trigger_type="test",
+        trecho_suspeito="x",
+        caminho_base=Path("doubt_artifacts"),
+        id_artefato="TEST-001",
+        motivo="teste de binding",
+    )
+
+    # extrai path do "SUCESSO: Artefato salvo em ..."
+    import re
+    match = re.search(r"Artefato salvo em (\S+)", result)
+    assert match, f"Mensagem inesperada: {result}"
+    saved_path = match.group(1).rstrip(".")
+
+    # path deve estar sob tmp_path/tests/inputs/
+    assert str(tmp_path) in saved_path, (
+        f"Doubt artifact não foi para workspace: {saved_path}"
+    )
+
+
+def test_doubt_artifact_resolve_via_workspace(monkeypatch, tmp_path):
+    """gerar_doubt_artifact (doubt_artifact.py) escreve em workspace, não em path hardcoded."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
+
+    import importlib
+    from src.agents.qa_agent.tools import doubt_artifact as da
+    importlib.reload(da)
+
+    result = da.gerar_doubt_artifact(
+        reason_for_invalidation="teste de binding",
+        artifact_id="DA-TEST-001",
+    )
+
+    assert result["status"] == "ok"
+    saved_path = result["path"]
+
+    # path deve estar sob tmp_path
+    assert str(tmp_path) in saved_path, (
+        f"Doubt artifact não foi para workspace: {saved_path}"
+    )

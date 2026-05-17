@@ -2,6 +2,19 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+
+def _resolve_doubt_dir() -> Path:
+    """Resolve o diretório de doubt artifacts via workspace em runtime.
+
+    Quando WORKSPACE_OUTPUT_DIR está definido, escreve em
+    workspace_output/tests/inputs/doubt_artifacts/.
+    Caso contrário (fallback de desenvolvimento), usa o diretório legado
+    qa_agent/doubt_artifacts/.
+    """
+    from shared.workspace import get_agent_workspace  # lazy — evita import circular
+    return get_agent_workspace("receive_requirements") / "doubt_artifacts"
+
+
 class DoubtArtifactGenerator:
     
     # Template 
@@ -73,9 +86,8 @@ class DoubtArtifactGenerator:
         Raises:
             KeyError: Se faltar chave no template de dados.
         """
-        # 1. Lógica de Caminho 
-        qa_agent_dir = Path(__file__).resolve().parent.parent 
-        doubt_dir = qa_agent_dir / "doubt_artifacts"
+        # 1. Lógica de Caminho — resolve via workspace em runtime
+        doubt_dir = _resolve_doubt_dir()
         doubt_dir.mkdir(parents=True, exist_ok=True)
         
         # 2. Timestamps e Nome do Arquivo

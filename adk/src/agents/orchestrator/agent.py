@@ -130,7 +130,7 @@ class _PipelineOrchestrator(BaseAgent):
 root_agent = _PipelineOrchestrator(
     name="orchestrator",
     description=(
-        "Orchestrator SDLC v3 — executa requirements → coding+review → qa "
+        "Orchestrator SDLC v4 — executa requirements → design → coding+review → qa "
         "em sessões isoladas. Sem MALFORMED_FUNCTION_CALL (sem LLM no topo) "
         "e sem token overflow (sessões dedicadas por pipeline)."
     ),

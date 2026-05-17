@@ -3,7 +3,16 @@ from pathlib import Path
 import re
 
 
-DOUBT_DIR = Path(__file__).resolve().parent.parent / "doubt_artifacts"
+def _resolve_doubt_dir() -> Path:
+    """Resolve o diretório de doubt artifacts via workspace em runtime.
+
+    Quando WORKSPACE_OUTPUT_DIR está definido, escreve em
+    workspace_output/tests/inputs/doubt_artifacts/.
+    Caso contrário (fallback de desenvolvimento), usa o diretório legado
+    qa_agent/doubt_artifacts/.
+    """
+    from shared.workspace import get_agent_workspace  # lazy — evita import circular
+    return get_agent_workspace("receive_requirements") / "doubt_artifacts"
 
 DOUBT_ARTEFACT_TEMPLATE = """# DOUBT ARTEFACT | [ID-DA-000]
 
@@ -106,7 +115,8 @@ def gerar_doubt_artifact(
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     safe_artifact_id = _safe_file_part(artifact_id)
-    DOUBT_DIR.mkdir(parents=True, exist_ok=True)
+    doubt_dir = _resolve_doubt_dir()
+    doubt_dir.mkdir(parents=True, exist_ok=True)
 
     content = (
         DOUBT_ARTEFACT_TEMPLATE.replace("{{artifact_id}}", _text(artifact_id))
@@ -120,7 +130,7 @@ def gerar_doubt_artifact(
         .replace("{{system_raw_response}}", _text(system_raw_response))
     )
 
-    path = DOUBT_DIR / f"Doubt_Artefact_{safe_artifact_id}_{timestamp}.md"
+    path = doubt_dir / f"Doubt_Artefact_{safe_artifact_id}_{timestamp}.md"
     path.write_text(content, encoding="utf-8")
 
     return {

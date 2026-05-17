@@ -651,7 +651,7 @@ agent = LlmAgent(
     model=os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash"),
     description=(
         "Subagente que recebe artefatos de requisito em JSON e gera arquivos pytest "
-        "funcionais em artefactsTests."
+        "funcionais em workspace_output/tests/inputs/."
     ),
     instruction=(
     "Ao receber uma mensagem do usuário, monte um JSON com os campos: "
