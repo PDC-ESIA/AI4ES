@@ -44,3 +44,26 @@ def _parse_decision(text: str, allowed: list[str]) -> tuple[str, str]:
     raise ValueError(
         f"'{first}' não casa com nenhuma das decisões permitidas: {allowed}"
     )
+
+
+def _is_pending_long_running_call(part, event) -> bool:
+    """True quando o part contém function_call long-running pendente no event.
+
+    Detecção: `event.long_running_tool_ids` (set[str] | None) contém o
+    `part.function_call.id`. ADK popula esse set quando emite um
+    function_call de uma LongRunningFunctionTool sem auto-resposta.
+
+    Args:
+        part: `google.genai.types.Part` candidato.
+        event: `google.adk.events.Event` que contém o part.
+
+    Returns:
+        True se part.function_call é um long-running pendente.
+    """
+    fc = getattr(part, "function_call", None)
+    if fc is None:
+        return False
+    ids = getattr(event, "long_running_tool_ids", None)
+    if not ids:
+        return False
+    return fc.id in ids
