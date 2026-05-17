@@ -21,7 +21,26 @@ def _resolve(path: str) -> str:
 
 
 def extract_text(file_path: str) -> str:
-    """Extrai texto de um arquivo PDF, TXT ou MD. Se file_path for um diretório, lê o primeiro arquivo encontrado."""
+    """Extrai texto de um documento PDF, TXT ou MD.
+
+    Use quando precisar do conteúdo bruto de um documento de
+    requisitos ou referência para análise textual. Suporta PDF (via
+    PyMuPDF), TXT e Markdown. Se `file_path` for um diretório,
+    automaticamente lê o primeiro arquivo suportado encontrado em
+    ordem alfabética.
+
+    Args:
+        file_path: Caminho de arquivo (.pdf, .txt, .md) ou diretório
+            contendo um arquivo suportado. Caminhos relativos são
+            resolvidos contra ADK_AGENT_DATA_DIR (se definido) ou
+            CWD.
+
+    Returns:
+        str com o conteúdo textual extraído, ou string iniciada por
+        "Erro:" descrevendo extensão não suportada, diretório vazio
+        ou falha de leitura. Pode levantar ImportError se PDF for
+        solicitado sem PyMuPDF instalado.
+    """
     file_path = _resolve(file_path)
     if os.path.isdir(file_path):
         supported = ('.pdf', '.txt', '.md')
@@ -43,13 +62,36 @@ def extract_text(file_path: str) -> str:
         with open(file_path, 'r', encoding='utf-8') as f:
             return f.read()
     else:
-        raise ValueError(f"Extensão '{ext}' não suportada.")
+        return f"Erro: extensão '{ext}' não suportada (esperado .pdf, .txt ou .md) — file_path='{file_path}'."
 
 
 def run_slicer(filename: str = "", paragraphs_per_chunk: int = 2, overlap_count: int = 1) -> str:
-    """
-    Fatia o documento matriz por parágrafos com overlap.
-    Se filename não for informado, usa o primeiro arquivo encontrado em data/matrix/.
+    """Fragmenta um documento extenso em partes processáveis com overlap.
+
+    Use quando precisar analisar um documento de requisitos cujo
+    tamanho excede uma janela de leitura razoável. O documento é
+    quebrado em chunks de N parágrafos com sobreposição configurável,
+    salvos em `data/chunks/chunk_NNN.txt`. Chunks antigos do diretório
+    são limpos antes de gerar os novos.
+
+    Após fatiar, use a capacidade de leitura de chunk individual para
+    consumir cada parte por demanda, e a capacidade de busca para
+    localizar termos.
+
+    Args:
+        filename: Nome do arquivo na pasta `data/matrix/` (ou caminho
+            absoluto). Se vazio, usa o primeiro arquivo encontrado em
+            `data/matrix/`.
+        paragraphs_per_chunk: Tamanho do chunk em parágrafos. Default
+            2. Deve ser > 0.
+        overlap_count: Número de parágrafos compartilhados entre
+            chunks consecutivos. Default 1. Deve ser >= 0 e estritamente
+            menor que `paragraphs_per_chunk`.
+
+    Returns:
+        str com mensagem "Sucesso: <filename> fatiado em N arquivos
+        ..." ou "Erro: ..." em caso de validação inválida, diretório
+        inexistente ou falha de extração.
     """
     if paragraphs_per_chunk <= 0:
         return "Erro: paragraphs_per_chunk deve ser maior que 0."
@@ -59,6 +101,8 @@ def run_slicer(filename: str = "", paragraphs_per_chunk: int = 2, overlap_count:
     matrix_dir = str(_base_dir() / "data" / "matrix")
 
     if not filename:
+        if not os.path.isdir(matrix_dir):
+            return f"Erro: diretório '{matrix_dir}' não existe — informe explicitamente um filename ou crie o diretório com o documento matriz."
         supported = ('.pdf', '.txt', '.md')
         files = [f for f in sorted(os.listdir(matrix_dir)) if f.endswith(supported)]
         if not files:
@@ -99,7 +143,21 @@ def run_slicer(filename: str = "", paragraphs_per_chunk: int = 2, overlap_count:
 
 
 def ler_chunk(index: int):
-    """Lê um chunk específico já gerado."""
+    """Lê um chunk individual previamente gerado pela fragmentação.
+
+    Use depois de fragmentar um documento para acessar uma parte
+    específica por índice. Os chunks são arquivos `chunk_NNN.txt` em
+    `data/chunks/`, gerados pela capacidade de fragmentação.
+
+    Args:
+        index: Índice numérico do chunk (0-based). Equivale ao número
+            no nome do arquivo (chunk_000.txt -> index=0).
+
+    Returns:
+        str com o conteúdo do chunk, ou string "Erro: Chunk N não
+        encontrado." se o índice for inválido ou os chunks não tiverem
+        sido gerados ainda.
+    """
     chunk_path = str(_base_dir() / "data" / "chunks" / f"chunk_{index:03d}.txt")
     if not os.path.exists(chunk_path):
         return f"Erro: Chunk {index} não encontrado."
