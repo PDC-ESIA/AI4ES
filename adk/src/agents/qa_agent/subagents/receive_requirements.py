@@ -12,12 +12,23 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from litellm import completion
 
+from shared.workspace import get_agent_workspace
+
 logger = logging.getLogger("qa_agent")
 
-# Caminhos base — relativos à raiz do agente
-_BASE_DIR = Path(__file__).parent.parent
-TESTS_DIR = _BASE_DIR / "artefactsTests"
-DOUBT_DIR = _BASE_DIR / "doubt_artifacts"
+
+def _tests_dir() -> Path:
+    """workspace_output/tests/inputs/ resolvido em runtime.
+
+    Centraliza o destino dos arquivos pytest gerados pelo subagente.
+    Resolvido em runtime para respeitar WORKSPACE_OUTPUT_DIR env var.
+    """
+    return get_agent_workspace("receive_requirements")
+
+
+def _doubt_dir() -> Path:
+    """Sibling 'doubt_artifacts' dentro do diretório de testes."""
+    return _tests_dir() / "doubt_artifacts"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Ponto de entrada público (registrado como FunctionTool no agent.py)
@@ -306,7 +317,7 @@ async def _processar_artefato(artefato: dict) -> dict:
 
     try:
         slug = _slugify(id_artefato)
-        artefato_dir = TESTS_DIR / slug
+        artefato_dir = _tests_dir() / slug
         artefato_dir.mkdir(parents=True, exist_ok=True)
         (artefato_dir / "__init__.py").touch(exist_ok=True)
 
@@ -394,10 +405,10 @@ async def _gerar_doubt_artifact(id_artefato: str, motivo: str) -> str:
         str: Caminho do arquivo gerado.
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    DOUBT_DIR.mkdir(parents=True, exist_ok=True)
+    _doubt_dir().mkdir(parents=True, exist_ok=True)
 
     nome = f"Doubt_Artifact_{id_artefato}_{timestamp}.md"
-    caminho = DOUBT_DIR / nome
+    caminho = _doubt_dir() / nome
 
     conteudo = f"""# Doubt Artifact — QA Agent
 
