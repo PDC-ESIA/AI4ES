@@ -66,6 +66,22 @@ def _nivel_nginx(status: str) -> str:
 
 
 def parse_padrao(raw: str) -> Optional[LogEntry]:
+    """Analisar linha de log no formato padrão (timestamp ISO + level + [module] + mensagem).
+
+    Use quando o log segue o padrão genérico adotado por frameworks Python como
+    structlog ou loguru com saída em texto simples. No fluxo do QA agent, este
+    parser é tentado após json, log4j e antes de nginx/syslog/python na cadeia
+    de `parse_line` — cobre a maioria dos logs gerados pelas aplicações alvo dos
+    testes de autocorrect (2 ciclos máximos conforme contrato do workflow_qa).
+
+    Args:
+        raw: Linha bruta de log no formato
+             ``YYYY-MM-DDThh:mm:ss LEVEL [module] mensagem`` (colchetes opcionais).
+
+    Returns:
+        LogEntry com format="padrao" e os campos extraídos, ou None se a linha
+        não corresponder ao padrão esperado.
+    """
     m = PATTERN_PADRAO.match(raw.strip())
     if not m:
         return None
@@ -80,6 +96,23 @@ def parse_padrao(raw: str) -> Optional[LogEntry]:
 
 
 def parse_log4j(raw: str) -> Optional[LogEntry]:
+    """Analisar linha de log no formato Log4j/Log4j2 (timestamp com milissegundos, módulo sem colchetes).
+
+    Use quando os logs provêm de aplicações Java/Kotlin que usam Log4j, Log4j2
+    ou Logback, ou de qualquer biblioteca que emita o padrão
+    ``YYYY-MM-DD hh:mm:ss,mmm LEVEL com.pacote.Classe - mensagem``. No ciclo de
+    autocorrect do QA agent o code_fix_agent pode receber stack traces Java; este
+    parser é o primeiro a tentar reconhecer o formato estruturado antes de
+    recorrer ao fallback raw.
+
+    Args:
+        raw: Linha bruta de log com separador ``,`` após os segundos e módulo
+             sem espaços separado da mensagem por `` - ``.
+
+    Returns:
+        LogEntry com format="log4j" e os campos extraídos, ou None se a linha
+        não corresponder ao padrão Log4j esperado.
+    """
     m = PATTERN_LOG4J.match(raw.strip())
     if not m:
         return None
@@ -94,6 +127,23 @@ def parse_log4j(raw: str) -> Optional[LogEntry]:
 
 
 def parse_syslog(raw: str) -> Optional[LogEntry]:
+    """Analisar linha de log no formato syslog BSD/RFC 3164 (mês abreviado + hostname + daemon).
+
+    Use quando os logs chegam diretamente do sistema operacional Linux/Unix —
+    por exemplo, saída de ``/var/log/syslog``, ``journalctl`` ou contêineres que
+    redirecionam stderr para o syslog do host. O QA agent pode receber esses logs
+    ao inspecionar o ambiente de execução dos testes de integração. Como o syslog
+    BSD não carrega nível de severidade na linha, o campo ``level`` é fixado em
+    ``"INFO"`` — diferenciando-o de todos os demais parsers da cadeia.
+
+    Args:
+        raw: Linha bruta no formato ``Mon DD hh:mm:ss hostname daemon[pid]: mensagem``
+             (PID entre colchetes é opcional).
+
+    Returns:
+        LogEntry com format="syslog", level="INFO" fixo e os campos extraídos,
+        ou None se a linha não corresponder ao padrão syslog.
+    """
     m = PATTERN_SYSLOG.match(raw.strip())
     if not m:
         return None
@@ -108,6 +158,24 @@ def parse_syslog(raw: str) -> Optional[LogEntry]:
 
 
 def parse_python(raw: str) -> Optional[LogEntry]:
+    """Analisar linha de log no formato padrão do módulo ``logging`` do Python (sem timestamp).
+
+    Use quando a aplicação testada não configurou um ``Formatter`` customizado e
+    usa a saída padrão ``LEVEL:logger_name:mensagem`` produzida por
+    ``logging.basicConfig()``. Diferente de ``parse_padrao``, este parser não
+    exige timestamp — campo que fica como ``"unknown"`` no LogEntry resultante.
+    É acionado depois de padrao/nginx/syslog na cadeia de ``parse_line`` por ser
+    menos específico; captura logs de testes unitários que imprimem diretamente
+    via ``logging.debug/info/error``.
+
+    Args:
+        raw: Linha bruta no formato ``LEVEL:nome_do_logger:mensagem`` sem
+             timestamp nem separadores adicionais.
+
+    Returns:
+        LogEntry com format="python", timestamp="unknown" e campos extraídos,
+        ou None se a linha não corresponder ao padrão do ``logging`` Python.
+    """
     m = PATTERN_PYTHON.match(raw.strip())
     if not m:
         return None
@@ -122,6 +190,23 @@ def parse_python(raw: str) -> Optional[LogEntry]:
 
 
 def parse_nginx(raw: str) -> Optional[LogEntry]:
+    """Analisar linha de log no formato Combined Log Format do Nginx/Apache (access log).
+
+    Use quando os testes de integração ou de carga geram logs de acesso HTTP
+    que precisam ser inspecionados pelo QA agent — por exemplo, ao validar que
+    endpoints retornam os status codes corretos. O nível de severidade é derivado
+    do código HTTP via ``_nivel_nginx``: 4xx vira ERROR, 5xx vira CRITICAL e
+    demais ficam INFO. O campo ``module`` recebe o IP do cliente (primeiro token
+    da linha), e ``message`` contém a requisição HTTP bruta entre aspas.
+
+    Args:
+        raw: Linha bruta no formato Nginx Combined:
+             ``ip - - [timestamp] "METHOD /path HTTP/x" status bytes``.
+
+    Returns:
+        LogEntry com format="nginx" e level derivado do status HTTP,
+        ou None se a linha não corresponder ao Combined Log Format.
+    """
     m = PATTERN_NGINX.match(raw.strip())
     if not m:
         return None
@@ -137,6 +222,25 @@ def parse_nginx(raw: str) -> Optional[LogEntry]:
 
 
 def parse_json_log(raw: str) -> Optional[LogEntry]:
+    """Analisar linha de log em formato JSON estruturado (structured logging).
+
+    Use quando a aplicação emite logs como objetos JSON por linha — padrão
+    adotado por frameworks como structlog (com ``JSONRenderer``), python-json-logger,
+    Bunyan (Node.js) ou qualquer serviço que escreva em stdout para coleta por
+    fluentd/loki. Este parser é o **primeiro** da cadeia em ``PARSERS`` por ser
+    o mais específico e não ambíguo: rejeita linhas que não comecem com ``{`` e
+    tolera variações de campo (``message``/``msg``/``text``, ``level``/``severity``/
+    ``lvl``, ``module``/``logger``/``service``, ``timestamp``/``time``/``ts``).
+
+    Args:
+        raw: Linha bruta contendo um objeto JSON completo em uma única linha;
+             linhas que não iniciem com ``{`` são recusadas sem tentativa de parse.
+
+    Returns:
+        LogEntry com format="json" e campos normalizados para o schema padrão,
+        ou None se a linha não for JSON válido, não começar com ``{`` ou não
+        possuir campo de mensagem reconhecível.
+    """
     stripped = raw.strip()
     if not stripped.startswith("{"):
         return None
@@ -164,6 +268,24 @@ def parse_json_log(raw: str) -> Optional[LogEntry]:
 
 
 def parse_raw(raw: str) -> Optional[LogEntry]:
+    """Encapsular linha de log sem formato reconhecido como entrada bruta de fallback.
+
+    Use como último recurso na cadeia de ``parse_line``: qualquer linha não-vazia
+    que não tenha sido capturada pelos parsers específicos (json, log4j, padrao,
+    nginx, syslog, python) chega aqui. O QA agent precisa registrar mesmo linhas
+    malformatadas para dar ao code_fix_agent contexto completo durante o ciclo de
+    autocorrect — descartar silenciosamente poderia esconder a causa raiz do erro.
+    Todos os campos de metadados (timestamp, level, module) são fixados em
+    ``"unknown"``/``"UNKNOWN"`` para sinalizar explicitamente a ausência de estrutura.
+
+    Args:
+        raw: Linha bruta de qualquer conteúdo textual; linhas em branco ou
+             compostas apenas de espaços retornam None.
+
+    Returns:
+        LogEntry com format="raw", level="UNKNOWN" e todos os campos de metadados
+        como ``"unknown"``, ou None se a linha estiver vazia após strip.
+    """
     stripped = raw.strip()
     if not stripped:
         return None
@@ -240,6 +362,23 @@ PARSERS = [
 
 
 def parse_line(raw: str) -> Optional[LogEntry]:
+    """Selecionar e aplicar o parser mais adequado para uma linha de log individual.
+
+    Use como ponto de entrada único quando o formato da linha não é conhecido
+    antecipadamente. Itera sobre a lista ordenada ``PARSERS`` (json → log4j →
+    padrao → nginx → syslog → python → raw → parse_pytest_log) e retorna o
+    resultado do primeiro parser bem-sucedido. A ordem garante que formatos mais
+    específicos são tentados antes do fallback ``raw``, evitando que linhas JSON
+    ou Log4j sejam tratadas como texto livre. É a função chamada internamente por
+    ``parse_log_line``, que converte o LogEntry para dict consumível pelo agente.
+
+    Args:
+        raw: Linha bruta de log em qualquer formato suportado pela tool.
+
+    Returns:
+        LogEntry preenchido pelo primeiro parser que reconheceu a linha, ou None
+        se a linha estiver vazia e nem mesmo ``parse_raw`` conseguir processá-la.
+    """
     for parser in PARSERS:
         entry = parser(raw)
         if entry is not None:
