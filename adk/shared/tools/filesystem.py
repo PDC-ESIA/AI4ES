@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import Optional
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
@@ -48,7 +49,7 @@ class RelatorioSchema(BaseModel):
         return v
 
 
-def _resolver_caminho(caminho: str, base_dir: str | None = None) -> Path:
+def _resolver_caminho(caminho: str, base_dir: Optional[str] = None) -> Path:
     """Resolve caminho relativo ao base_dir (se informado) com proteção anti-traversal.
 
     Args:
@@ -82,7 +83,7 @@ def _resolver_caminho(caminho: str, base_dir: str | None = None) -> Path:
     return base / rel
 
 
-def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: str | None = None) -> dict:
+def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: Optional[str] = None) -> dict:
     """Cria/sobrescreve arquivo no disco com o conteúdo fornecido.
 
     Use esta ferramenta SEMPRE que precisar escrever um arquivo completo do zero.
@@ -147,7 +148,7 @@ def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: str | None = None)
 
 
 def tool_salvar_relatorio(
-    conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md", base_dir: str | None = None
+    conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md", base_dir: Optional[str] = None
 ) -> dict:
     """Salva relatório de revisão em Markdown no disco.
 
@@ -196,7 +197,7 @@ def tool_salvar_relatorio(
         }
 
 
-def tool_ler_arquivo(caminho: str, base_dir: str | None = None) -> str:
+def tool_ler_arquivo(caminho: str, base_dir: Optional[str] = None) -> str:
     """Lê o conteúdo completo de um arquivo no disco.
 
     Args:
@@ -220,7 +221,7 @@ def tool_ler_arquivo(caminho: str, base_dir: str | None = None) -> str:
 
 
 def tool_substituir_trecho(
-    caminho: str, trecho_antigo: str, trecho_novo: str, base_dir: str | None = None
+    caminho: str, trecho_antigo: str, trecho_novo: str, base_dir: Optional[str] = None
 ) -> str:
     """Use esta ferramenta para editar arquivos JÁ EXISTENTES, evitando reescrever o arquivo inteiro.
     Substitui um trecho de código existente (trecho_antigo) por um novo trecho (trecho_novo) em um arquivo.
@@ -262,51 +263,86 @@ def tool_substituir_trecho(
         return f"Erro inesperado ao substituir trecho no arquivo '{caminho}': {str(e)}"
 
 
-def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> str:
+# Layout legado: paths absolutos baseados no CWD.
+_PASTAS_LEGADO = {
+    "HU": "docs/Time_1_Requisitos/HUs",
+    "RF": "docs/Time_1_Requisitos/RFs",
+    "RNF": "docs/Time_1_Requisitos/RNFs",
+    "RN": "docs/Time_1_Requisitos/RNs",
+    "GLOSSARIO": "docs/Time_1_Requisitos",
+}
+
+# Layout relativo a base_dir (workspace-bound): apenas o subdir.
+_SUBPASTAS_BASE_DIR = {
+    "HU": "HUs",
+    "RF": "RFs",
+    "RNF": "RNFs",
+    "RN": "RNs",
+    "GLOSSARIO": "",  # vai direto na raiz do base_dir
+}
+
+
+def tool_salvar_artefato_requisito(
+    tipo: str,
+    id_req: str,
+    conteudo_md: str,
+    base_dir: Optional[str] = None,
+) -> str:
     """Salva um artefato de requisito (HU, RF, RNF, RN, Glossario).
 
     Args:
-        tipo: Tipo do artefato (HU, RF, RNF, RN, Glossario)
-        id_req: Identificador único do requisito (ex: HU-001, RF-002)
-        conteudo_md: Conteúdo do artefato em formato Markdown
+        tipo: Tipo do artefato (HU, RF, RNF, RN, Glossario).
+        id_req: Identificador único do requisito (ex: HU-001, RF-002).
+        conteudo_md: Conteúdo do artefato em formato Markdown.
+        base_dir: Diretório base do agente. Quando informado, escreve em
+            ``<base_dir>/<subdir>/<id_req>.md`` (subdir varia por tipo).
+            Quando None, mantém comportamento legado (escreve relativo ao
+            CWD em ``docs/Time_1_Requisitos/...``).
     """
-    mapa_pastas = {
-        "HU": "docs/Time_1_Requisitos/HUs",
-        "RF": "docs/Time_1_Requisitos/RFs",
-        "RNF": "docs/Time_1_Requisitos/RNFs",
-        "RN": "docs/Time_1_Requisitos/RNs",
-        "GLOSSARIO": "docs/Time_1_Requisitos",
-    }
-
     tipo_normalizado = (tipo or "").strip().upper()
     id_req_normalizado = (id_req or "").strip()
-    pasta_base = mapa_pastas.get(tipo_normalizado, "docs/Time_1_Requisitos/Outros")
+
+    if tipo_normalizado != "GLOSSARIO":
+        if not ID_REQ_PATTERN.fullmatch(id_req_normalizado):
+            return "ERRO ao salvar artefato: id_req inválido. Use o padrão AAAA-999."
+
+    nome_arquivo = (
+        f"{id_req_normalizado}.md"
+        if tipo_normalizado != "GLOSSARIO"
+        else "Glossario.md"
+    )
 
     try:
-        if tipo_normalizado != "GLOSSARIO":
-            if not ID_REQ_PATTERN.fullmatch(id_req_normalizado):
-                return "ERRO ao salvar artefato: id_req inválido. Use o padrão AAAA-999."
+        if base_dir is None:
+            # Caminho legado (CWD-relativo)
+            pasta_base = _PASTAS_LEGADO.get(
+                tipo_normalizado, "docs/Time_1_Requisitos/Outros"
+            )
+            pasta_base_path = Path(pasta_base).resolve()
+            pasta_base_path.mkdir(parents=True, exist_ok=True)
+            caminho_completo = (pasta_base_path / nome_arquivo).resolve()
 
-        nome_arquivo = f"{id_req_normalizado}.md" if tipo_normalizado != "GLOSSARIO" else "Glossario.md"
-
-        pasta_base_path = Path(pasta_base).resolve()
-        pasta_base_path.mkdir(parents=True, exist_ok=True)
-        caminho_completo = (pasta_base_path / nome_arquivo).resolve()
-
-        if (
-            caminho_completo.parent != pasta_base_path
-            and pasta_base_path not in caminho_completo.parents
-        ):
-            return "ERRO ao salvar artefato: caminho de saída inválido."
+            if (
+                caminho_completo.parent != pasta_base_path
+                and pasta_base_path not in caminho_completo.parents
+            ):
+                return "ERRO ao salvar artefato: caminho de saída inválido."
+        else:
+            # Caminho workspace-bound
+            subdir = _SUBPASTAS_BASE_DIR.get(tipo_normalizado, "Outros")
+            caminho_rel = f"{subdir}/{nome_arquivo}" if subdir else nome_arquivo
+            caminho_completo = _resolver_caminho(caminho_rel, base_dir)
+            caminho_completo.parent.mkdir(parents=True, exist_ok=True)
 
         caminho_completo.write_text(conteudo_md, encoding="utf-8")
-
         return f"SUCESSO: {tipo} {id_req} salvo em {caminho_completo}"
+    except ValueError as e:
+        return f"ERRO ao salvar artefato: {str(e)}"
     except Exception as e:
         return f"ERRO ao salvar artefato: {str(e)}"
 
 
-def tool_ler_workspace(caminho: str, base_dir: str | None = None) -> str:
+def tool_ler_workspace(caminho: str, base_dir: Optional[str] = None) -> str:
     """Lê o conteúdo de um arquivo do workspace global (read-only cross-workspace).
 
     Diferente de tool_ler_arquivo (escopo do agente), permite ler arquivos de
@@ -337,7 +373,7 @@ def tool_ler_workspace(caminho: str, base_dir: str | None = None) -> str:
         return f"Erro ao ler '{caminho}': {e}"
 
 
-def tool_listar_workspace(caminho: str = ".", base_dir: str | None = None) -> str | list[str]:
+def tool_listar_workspace(caminho: str = ".", base_dir: Optional[str] = None) -> str | list[str]:
     """Lista o conteúdo de um diretório do workspace global.
 
     Args:

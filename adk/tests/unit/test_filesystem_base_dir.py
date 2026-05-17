@@ -120,3 +120,77 @@ def test_resolver_caminho_com_base_dir(tmp_path):
     base.mkdir()
     p = _resolver_caminho("file.txt", str(base))
     assert p == (base / "file.txt").resolve() or p == base / "file.txt"
+
+
+# ============================================================================
+# tool_salvar_artefato_requisito — base_dir opcional
+# ============================================================================
+
+from shared.tools.filesystem import tool_salvar_artefato_requisito
+
+
+def test_salvar_artefato_sem_base_dir_mantem_path_legado(tmp_path, monkeypatch):
+    """Retro-compat: sem base_dir, escreve em docs/Time_1_Requisitos/HUs/."""
+    monkeypatch.chdir(tmp_path)
+    result = tool_salvar_artefato_requisito("HU", "HU-001", "# HU-001\n")
+    assert result.startswith("SUCESSO:")
+    assert (tmp_path / "docs/Time_1_Requisitos/HUs/HU-001.md").is_file()
+
+
+def test_salvar_artefato_com_base_dir_escreve_em_subpasta_HUs(tmp_path):
+    """Com base_dir, HU vai em <base_dir>/HUs/<id>.md."""
+    base = tmp_path / "ws_req"
+    base.mkdir()
+    result = tool_salvar_artefato_requisito(
+        "HU", "HU-001", "# HU-001\n", base_dir=str(base)
+    )
+    assert result.startswith("SUCESSO:")
+    assert (base / "HUs" / "HU-001.md").is_file()
+    # NÃO escreveu em docs/Time_1_Requisitos
+    assert not (tmp_path / "docs").exists()
+
+
+def test_salvar_artefato_com_base_dir_para_RF_RNF_RN(tmp_path):
+    """Cada tipo vai em sua subpasta dentro de base_dir."""
+    base = tmp_path / "ws_req"
+    base.mkdir()
+    tool_salvar_artefato_requisito("RF", "RF-001", "x", base_dir=str(base))
+    tool_salvar_artefato_requisito("RNF", "RNF-001", "x", base_dir=str(base))
+    tool_salvar_artefato_requisito("RN", "RN-001", "x", base_dir=str(base))
+    assert (base / "RFs" / "RF-001.md").is_file()
+    assert (base / "RNFs" / "RNF-001.md").is_file()
+    assert (base / "RNs" / "RN-001.md").is_file()
+
+
+def test_salvar_glossario_com_base_dir_escreve_na_raiz(tmp_path):
+    """GLOSSARIO vai direto em <base_dir>/Glossario.md, sem subdir."""
+    base = tmp_path / "ws_glos"
+    base.mkdir()
+    result = tool_salvar_artefato_requisito(
+        "GLOSSARIO", "IGNORADO", "# Glossário\n", base_dir=str(base)
+    )
+    assert result.startswith("SUCESSO:")
+    assert (base / "Glossario.md").is_file()
+
+
+def test_salvar_artefato_tipo_desconhecido_com_base_dir(tmp_path):
+    """Tipo fora do mapa cai em <base_dir>/Outros/."""
+    base = tmp_path / "ws"
+    base.mkdir()
+    result = tool_salvar_artefato_requisito(
+        "DESCONHECIDO", "XX-001", "x", base_dir=str(base)
+    )
+    assert result.startswith("SUCESSO:")
+    assert (base / "Outros" / "XX-001.md").is_file()
+
+
+def test_salvar_artefato_com_base_dir_rejeita_id_traversal(tmp_path):
+    """id_req com '..' continua bloqueado pelo ID_REQ_PATTERN."""
+    base = tmp_path / "ws"
+    base.mkdir()
+    result = tool_salvar_artefato_requisito(
+        "HU", "../../escape", "x", base_dir=str(base)
+    )
+    assert result.startswith("ERRO ao salvar artefato:")
+    # Nada escapou
+    assert not (tmp_path.parent / "escape.md").exists()
