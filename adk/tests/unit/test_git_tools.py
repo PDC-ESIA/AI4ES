@@ -359,3 +359,50 @@ class TestToolConfirmarCommit:
 
         assert confirm_result["sucesso"] is True
         assert commits_depois == commits_antes + 1
+
+
+# ===========================================================================
+# Propagação de cwd
+# ===========================================================================
+
+
+class TestCwdPropagation:
+    def test_tool_git_add_propaga_cwd(self, monkeypatch):
+        """tool_git_add passa cwd para subprocess.run quando informado."""
+        captured = []
+
+        def fake_run(cmd, **kwargs):
+            captured.append(kwargs.get("cwd"))
+
+            class R:
+                stdout = ""
+                stderr = ""
+                returncode = 0
+
+            return R()
+
+        monkeypatch.setattr("shared.tools.git.run", fake_run)
+        from shared.tools.git import tool_git_add
+
+        tool_git_add("file.py", cwd="/tmp/algum_dir")
+        assert captured[0] == "/tmp/algum_dir"
+
+    def test_tool_preparar_commit_propaga_cwd(self, monkeypatch):
+        """tool_preparar_commit passa cwd para subprocess.run."""
+        captured = []
+
+        def fake_run(cmd, **kwargs):
+            captured.append(kwargs.get("cwd"))
+
+            class R:
+                stdout = "diff --git a b"
+                stderr = ""
+                returncode = 0
+
+            return R()
+
+        monkeypatch.setattr("shared.tools.git.run", fake_run)
+        from shared.tools.git import tool_preparar_commit
+
+        tool_preparar_commit("feat: x", cwd="/tmp/outro_dir")
+        assert "/tmp/outro_dir" in captured
