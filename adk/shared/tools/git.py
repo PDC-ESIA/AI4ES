@@ -2,17 +2,27 @@
 
 import subprocess
 from subprocess import run
+from typing import Optional
 
 
-def tool_git_add(arquivos: str, *, cwd: str | None = None) -> dict:
-    """Ferramenta usada para executar git add no terminal e adicionar arquivos
+def tool_git_add(arquivos: str, *, cwd: Optional[str] = None) -> dict:
+    """Adiciona arquivos ao stage do Git (git add).
+
+    Use depois de criar ou editar arquivos, quando estiver pronto para
+    preparar a mudança para versionamento. Recebe nomes de arquivo
+    separados por espaço; quando string vazia, equivale a `git add .`
+    (use com cautela — preferir listar arquivos explicitamente).
 
     Args:
-        arquivos (str): Parâmetro de inserção dos arquivos a serem adicionados
-        cwd (str | None): Diretório de execução (injetado pela factory quando aplicável).
+        arquivos: Lista de paths separados por espaço (ex:
+            "src/app.py tests/test_app.py"). Vazio = `git add .`
+            (todos os modificados).
+        cwd: Diretório de execução do comando git. Injetado pela
+            factory quando aplicável.
 
     Returns:
-        dict: Contém status da operação, saída e erros
+        dict com chaves: `sucesso` (bool), `stdout` (str), `stderr`
+        (str), `returncode` (int). `sucesso=True` quando returncode==0.
     """
 
     if arquivos:
@@ -31,7 +41,7 @@ def tool_git_add(arquivos: str, *, cwd: str | None = None) -> dict:
     }
 
 
-def trava_seguranca_git_commit(mensagem: str, *, cwd: str | None = None) -> dict:
+def trava_seguranca_git_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
     """Ferramenta usada para validar se há alterações prontas para commit e retornar o diff para análise
 
     Args:
@@ -52,15 +62,29 @@ def trava_seguranca_git_commit(mensagem: str, *, cwd: str | None = None) -> dict
     return {"sucesso": True, "mensagem": mensagem, "diff": diff}
 
 
-def tool_git_commit(mensagem: str, *, cwd: str | None = None) -> dict:
-    """Ferramenta usada para executar git commit no terminal
+def tool_git_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
+    """Registra um commit no Git com a mensagem fornecida.
+
+    Use somente após ter preparado a mudança para versionamento (stage)
+    e, em fluxos com supervisão humana, após receber autorização
+    explícita do supervisor. A tool valida internamente que há
+    alterações staged antes de commitar; sem stage, retorna falha
+    sem efeito.
+
+    Convenção de mensagem do projeto (Conventional Commits):
+    `<tipo>(<escopo>): #<issue> <descrição>`. Tipos permitidos:
+    feat, fix, docs, refactor, test, chore, ci, style, perf.
 
     Args:
-        mensagem (str): Parâmetro da mensagem que o agente designa para o commit
-        cwd (str | None): Diretório de execução (injetado pela factory quando aplicável).
+        mensagem: Mensagem completa do commit, já formatada conforme
+            Conventional Commits.
+        cwd: Diretório de execução do comando git. Injetado pela
+            factory.
 
     Returns:
-        dict: Contém status da operação, saída do comando e possíveis erros
+        dict com chaves: `sucesso` (bool), `stdout`, `stderr`,
+        `returncode` em caso de execução. Quando não há nada para
+        commitar: `{sucesso: False, mensagem: "Nada para commitar"}`.
     """
 
     trava = trava_seguranca_git_commit(mensagem, cwd=cwd)
@@ -83,16 +107,25 @@ def tool_git_commit(mensagem: str, *, cwd: str | None = None) -> dict:
     }
 
 
-def tool_git_checkout(branch: str, criar: bool = False, *, cwd: str | None = None) -> dict:
-    """Ferramenta para trocar/criar uma branch
+def tool_git_checkout(branch: str, criar: bool = False, *, cwd: Optional[str] = None) -> dict:
+    """Troca ou cria uma branch de trabalho no Git.
+
+    Use no início de uma tarefa para isolar a mudança em sua própria
+    branch (recomendado o padrão do projeto:
+    `feature/code/<issue>-descricao-curta` ou
+    `hotfix/code/<issue>-descricao-curta`). Para alternar entre branches
+    já existentes, use `criar=False`; para inicializar nova branch,
+    `criar=True`.
 
     Args:
-        branch (str): Nome da branch
-        criar (bool): Informar se vai ser criada a branch, se True cria a branch antes de trocar
-        cwd (str | None): Diretório de execução (injetado pela factory quando aplicável).
+        branch: Nome da branch alvo.
+        criar: Se True, executa `git checkout -b` criando a branch
+            antes de trocar. Default False.
+        cwd: Diretório de execução. Injetado pela factory.
 
     Returns:
-        dict: Retorna o resultado da execução do comando de checkout
+        dict com chaves: `sucesso` (bool), `comando` (lista do shell
+        executado), `stdout`, `stderr`, `returncode`.
     """
 
     if criar:
@@ -111,15 +144,22 @@ def tool_git_checkout(branch: str, criar: bool = False, *, cwd: str | None = Non
     }
 
 
-def tool_ler_diff(branch_alvo: str = "main", *, cwd: str | None = None) -> dict:
-    """Extrai diferenças de código (diff) via Git.
+def tool_ler_diff(branch_alvo: str = "main", *, cwd: Optional[str] = None) -> dict:
+    """Lê o diff acumulado da branch atual em relação a outra branch.
+
+    Use durante uma revisão de código para inspecionar TODAS as
+    alterações pendentes — arquivos criados, modificados, deletados —
+    em formato unified diff. Tipicamente compara contra `main`, mas
+    aceita qualquer branch como alvo.
 
     Args:
-        branch_alvo: Branch contra a qual comparar.
-        cwd (str | None): Diretório de execução (injetado pela factory quando aplicável).
+        branch_alvo: Branch contra a qual comparar. Default "main".
+        cwd: Diretório de execução. Injetado pela factory.
 
     Returns:
-        dict com sucesso, erro e diff.
+        dict com chaves: `sucesso` (bool), `erro` (str ou None),
+        `diff` (str unified diff em sucesso, None em falha). Quando
+        não há diferenças, retorna `sucesso=False` com erro explicando.
     """
     resposta = subprocess.run(
         ["git", "diff", branch_alvo],
@@ -146,17 +186,27 @@ def tool_ler_diff(branch_alvo: str = "main", *, cwd: str | None = None) -> dict:
     return {"sucesso": True, "erro": None, "diff": resposta.stdout}
 
 
-def tool_preparar_commit(mensagem: str, *, cwd: str | None = None) -> dict:
-    """Valida se há alterações staged e retorna o diff para análise.
-    NÃO executa o commit. Apresente o resumo retornado ao usuário e aguarde autorização.
-    Apenas após a aprovação chame tool_confirmar_commit com a mesma mensagem.
+def tool_preparar_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
+    """Valida o stage e retorna o diff para o agente apresentar ao supervisor.
+
+    Esta é a primeira metade do protocolo human-in-the-loop de commit:
+    primeiro o agente prepara o commit (esta tool), apresenta o resumo
+    do diff ao supervisor, aguarda autorização explícita, e só então
+    chama a tool de confirmação para efetivar.
+
+    NÃO executa o commit — apenas valida que há algo staged e devolve
+    o diff. Use sempre antes de propor uma versão para aprovação.
 
     Args:
-        mensagem (str): Mensagem de commit sugerida pelo agente.
-        cwd (str | None): Diretório de execução (injetado pela factory quando aplicável).
+        mensagem: Mensagem de commit sugerida pelo agente, já formatada
+            em Conventional Commits.
+        cwd: Diretório de execução. Injetado pela factory.
 
     Returns:
-        dict: {sucesso, mensagem, diff} ou {sucesso=False, mensagem=motivo}.
+        dict com chaves: `sucesso` (bool), `mensagem` (echo da
+        mensagem em sucesso, motivo em falha), `diff` (str unified
+        diff staged em sucesso). `sucesso=False` quando working tree
+        clean ou nada em stage.
     """
     diff_res = run(
         ["git", "diff", "--staged"],
@@ -173,17 +223,26 @@ def tool_preparar_commit(mensagem: str, *, cwd: str | None = None) -> dict:
     return {"sucesso": True, "mensagem": mensagem, "diff": diff}
 
 
-def tool_confirmar_commit(mensagem: str, *, cwd: str | None = None) -> dict:
-    """Efetiva o git commit. SÓ DEVE ser chamada após o usuário aprovar o resumo
-    gerado por tool_preparar_commit. Esta tool deve ser registrada no agente com
-    require_confirmation=True como dupla trava.
+def tool_confirmar_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
+    """Efetiva o commit Git após autorização do supervisor — segunda metade do gate.
+
+    SÓ DEVE ser chamada após o supervisor ter respondido autorização
+    explícita ao resumo apresentado via tool_preparar_commit. Esta tool
+    é tipicamente registrada com require_confirmation=True como dupla
+    trava de segurança.
+
+    Re-valida o stage (defensivamente) antes de commitar — se nada
+    estiver staged no momento da confirmação, retorna falha.
 
     Args:
-        mensagem (str): Mensagem do commit (idealmente a mesma de tool_preparar_commit).
-        cwd (str | None): Diretório de execução (injetado pela factory quando aplicável).
+        mensagem: Mensagem de commit. Idealmente a mesma apresentada
+            via tool_preparar_commit para garantir consistência.
+        cwd: Diretório de execução. Injetado pela factory.
 
     Returns:
-        dict: {sucesso, stdout, stderr, returncode} ou {sucesso=False, mensagem=motivo}.
+        dict com chaves: `sucesso` (bool), `stdout`, `stderr`,
+        `returncode` em execução. Em ausência de stage no momento da
+        confirmação: `{sucesso: False, mensagem: "..."}`.
     """
     diff_res = run(
         ["git", "diff", "--staged"],
