@@ -12,7 +12,10 @@ agent = LlmAgent(
                 "Seu papel é receber logs de funcionamento de programas, entender o que ele significa, e, se ver algum erro, fazer um prompt de correção para um outro agente que irá realizar a codificação."
                 "Para isso, você tem as ferramentas de parsing de logs, que irão resumir o log para você, e as ferramentas de construir o prompt"
                 ),
-    description="",
+    description=(
+        "Recebe logs e relatórios de falha de testes (pytest) e gera prompts de correção "
+        "focados na causa raiz, alimentando o ciclo de autocorrect do agente QA."
+    ),
     tools=[
         FunctionTool(
             func=build_fix_prompt_from_error
