@@ -84,22 +84,34 @@ def _resolver_caminho(caminho: str, base_dir: Optional[str] = None) -> Path:
 
 
 def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: Optional[str] = None) -> dict:
-    """Cria/sobrescreve arquivo no disco com o conteúdo fornecido.
+    """Cria ou sobrescreve um arquivo no disco com o conteúdo fornecido.
 
-    Use esta ferramenta SEMPRE que precisar escrever um arquivo completo do zero.
+    Use esta capacidade sempre que precisar materializar um arquivo do zero —
+    código novo, documento, configuração. Se o arquivo já existir, o conteúdo
+    é integralmente substituído (não é append). Diretórios intermediários são
+    criados automaticamente.
 
-    Possui validações de segurança:
-    - Só permite extensões conhecidas e seguras
-    - Impede escrita em diretórios protegidos (.git, .venv, etc.)
-    - Cria diretórios intermediários automaticamente se necessário
+    Não use para edição parcial de arquivos existentes; para isso há uma
+    capacidade dedicada de substituição de trecho.
+
+    Validações automáticas:
+    - Só permite extensões: .py, .js, .ts, .html, .css, .json, .md, .txt,
+      .yaml, .yml, .toml, .csv, .env.example.
+    - Bloqueia escrita em .git, .venv, venv, node_modules, __pycache__, .env.
 
     Args:
-        caminho: Caminho do arquivo (relativo a base_dir se fornecido, ou ao CWD).
-        conteudo: Conteúdo a escrever.
-        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
+        caminho: Caminho do arquivo. Quando há base_dir, é relativo a ele
+            (não pode ser absoluto nem conter ".."). Sem base_dir, é relativo
+            ao CWD do processo.
+        conteudo: Texto completo a escrever (UTF-8).
+        base_dir: Diretório base do agente injetado pela factory. Permite
+            isolamento workspace-bound. Quando None, comportamento legado.
 
     Returns:
-        dict com sucesso, caminho, bytes_escritos, erro.
+        dict com chaves: `sucesso` (bool), `caminho` (str do path resolvido
+        ou input em caso de erro), `bytes_escritos` (int, só em sucesso),
+        `erro` (str ou None). Em falha, `sucesso=False` e `erro` traz a
+        mensagem.
     """
     if not caminho or not caminho.strip():
         return {
@@ -150,15 +162,23 @@ def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: Optional[str] = No
 def tool_salvar_relatorio(
     conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md", base_dir: Optional[str] = None
 ) -> dict:
-    """Salva relatório de revisão em Markdown no disco.
+    """Persiste um relatório de revisão em Markdown no disco.
+
+    Use ao final de uma análise/revisão para deixar um artefato durável
+    consumível por humanos ou por outros agentes (ex: reviewer salva o
+    parecer técnico em verificacao_revisao.md). O nome do arquivo deve
+    sempre terminar em .md.
 
     Args:
-        conteudo: Texto do relatório.
-        nome_arquivo: Nome do arquivo (padrão: doubt_artifact_revisao.md).
-        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
+        conteudo: Texto Markdown completo do relatório.
+        nome_arquivo: Nome do arquivo de saída. Default
+            "doubt_artifact_revisao.md". Obrigatório terminar em .md.
+        base_dir: Diretório base do agente (injetado pela factory).
 
     Returns:
-        dict com sucesso, caminho, bytes_escritos e erro.
+        dict com chaves: `sucesso` (bool), `caminho` (str do path
+        resolvido), `bytes_escritos` (int em sucesso), `erro` (str ou
+        None). Em validação inválida ou I/O falho, `sucesso=False`.
     """
     try:
         dados = RelatorioSchema(conteudo=conteudo, nome_arquivo=nome_arquivo)
@@ -198,14 +218,22 @@ def tool_salvar_relatorio(
 
 
 def tool_ler_arquivo(caminho: str, base_dir: Optional[str] = None) -> str:
-    """Lê o conteúdo completo de um arquivo no disco.
+    """Lê o conteúdo completo de um arquivo do disco como texto UTF-8.
+
+    Use sempre que precisar do conteúdo atual de um arquivo antes de
+    editá-lo, validar uma estrutura ou copiar trechos para outro local.
+    Não use para arquivos binários (PDF, imagens) — esta capacidade lê
+    como texto puro.
 
     Args:
-        caminho: Caminho do arquivo (relativo a base_dir se fornecido, ou ao CWD).
-        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
+        caminho: Caminho do arquivo. Relativo a base_dir se fornecido,
+            senão ao CWD.
+        base_dir: Diretório base do agente (injetado pela factory).
 
     Returns:
-        str: Conteúdo do arquivo, ou mensagem de erro.
+        str com o conteúdo do arquivo em UTF-8, ou string iniciada por
+        "Erro:" descrevendo o problema (arquivo inexistente, path
+        traversal, falha de leitura).
     """
     try:
         path = _resolver_caminho(caminho, base_dir)
@@ -223,19 +251,29 @@ def tool_ler_arquivo(caminho: str, base_dir: Optional[str] = None) -> str:
 def tool_substituir_trecho(
     caminho: str, trecho_antigo: str, trecho_novo: str, base_dir: Optional[str] = None
 ) -> str:
-    """Use esta ferramenta para editar arquivos JÁ EXISTENTES, evitando reescrever o arquivo inteiro.
-    Substitui um trecho de código existente (trecho_antigo) por um novo trecho (trecho_novo) em um arquivo.
-    Regra CRÍTICA: O 'trecho_antigo' deve ser uma cópia EXATA do trecho atual do arquivo,
-    incluindo qualquer espaço, indentação e quebra de linha.
+    """Substitui um trecho exato de um arquivo já existente por novo conteúdo.
+
+    Use para editar arquivos preservando o restante intocado — refator
+    cirúrgico, ajuste de assinatura, correção pontual. O 'trecho_antigo'
+    DEVE ser uma cópia byte-a-byte do texto que está hoje no arquivo,
+    incluindo indentação e quebras de linha; o casamento é exato, não
+    fuzzy.
+
+    Não use para criar arquivos novos (use a capacidade de criação de
+    arquivo) nem para substituir conteúdo inteiro do arquivo.
 
     Args:
-        caminho: Caminho do arquivo (relativo a base_dir se fornecido, ou ao CWD).
-        trecho_antigo: Trecho exato a ser substituído.
-        trecho_novo: Novo trecho.
-        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
+        caminho: Caminho do arquivo a editar. Relativo a base_dir se
+            fornecido.
+        trecho_antigo: Texto exato que está no arquivo hoje. Se não
+            casar exatamente, a tool retorna erro sem alterar nada.
+        trecho_novo: Texto que substituirá `trecho_antigo`.
+        base_dir: Diretório base do agente (injetado pela factory).
 
     Returns:
-        str: Mensagem de sucesso ou erro.
+        str com mensagem de sucesso indicando o arquivo alterado, ou
+        string "Erro:" se: arquivo inexistente, trecho_antigo não
+        encontrado, ou falha de I/O.
     """
     try:
         path = _resolver_caminho(caminho, base_dir)
@@ -288,16 +326,27 @@ def tool_salvar_artefato_requisito(
     conteudo_md: str,
     base_dir: Optional[str] = None,
 ) -> str:
-    """Salva um artefato de requisito (HU, RF, RNF, RN, Glossario).
+    """Persiste um artefato estruturado de requisito (HU, RF, RNF, RN, Glossário).
+
+    Use ao final da análise de cada requisito atômico para gravar o
+    artefato em Markdown no subdiretório canônico do tipo. O subdiretório
+    é escolhido automaticamente pelo `tipo`. IDs (exceto Glossário)
+    seguem o padrão AAAA-999 (ex: HU-001, RF-002).
 
     Args:
-        tipo: Tipo do artefato (HU, RF, RNF, RN, Glossario).
-        id_req: Identificador único do requisito (ex: HU-001, RF-002).
-        conteudo_md: Conteúdo do artefato em formato Markdown.
-        base_dir: Diretório base do agente. Quando informado, escreve em
-            ``<base_dir>/<subdir>/<id_req>.md`` (subdir varia por tipo).
-            Quando None, mantém comportamento legado (escreve relativo ao
-            CWD em ``docs/Time_1_Requisitos/...``).
+        tipo: Tipo do artefato. Valores aceitos (case-insensitive): HU,
+            RF, RNF, RN, GLOSSARIO. Outros tipos vão para "Outros".
+        id_req: Identificador do requisito no formato AAAA-999 (não se
+            aplica a GLOSSARIO, cujo arquivo é fixo "Glossario.md").
+        conteudo_md: Texto Markdown completo do artefato.
+        base_dir: Diretório base do agente. Quando informado, escreve
+            em `<base_dir>/<subdir>/<id_req>.md`. Quando None, usa o
+            caminho legado relativo ao CWD.
+
+    Returns:
+        str com mensagem "SUCESSO: <tipo> <id> salvo em <caminho>" em
+        sucesso, ou "ERRO ao salvar artefato: <motivo>" em falha
+        (id_req fora do padrão, path inválido, I/O).
     """
     tipo_normalizado = (tipo or "").strip().upper()
     id_req_normalizado = (id_req or "").strip()
@@ -343,18 +392,22 @@ def tool_salvar_artefato_requisito(
 
 
 def tool_ler_workspace(caminho: str, base_dir: Optional[str] = None) -> str:
-    """Lê o conteúdo de um arquivo do workspace global (read-only cross-workspace).
+    """Lê arquivo de qualquer subpasta do workspace global (cross-agent, read-only).
 
-    Diferente de tool_ler_arquivo (escopo do agente), permite ler arquivos de
-    qualquer subpasta do workspace centralizado — útil para o reviewer/qa
-    consultarem outputs de outros agentes.
+    Diferente da capacidade de leitura escopada ao agente, esta permite
+    que um agente consulte outputs gerados por outros agentes — ex:
+    reviewer/qa consultam o que o coder produziu. Não permite escrita
+    em workspace de outro agente.
 
     Args:
-        caminho: Caminho relativo à raiz do workspace (ex: 'coder/main.py').
-        base_dir: Raiz do workspace (injetada pela factory como workspace_root).
+        caminho: Caminho relativo à raiz do workspace global
+            (ex: 'coder/main.py').
+        base_dir: Raiz do workspace (injetada pela factory como
+            workspace_root). Obrigatório — sem ele a tool retorna erro.
 
     Returns:
-        Conteúdo do arquivo ou mensagem de erro.
+        str com o conteúdo do arquivo, ou string "Erro:" descrevendo
+        path traversal, arquivo inexistente ou base_dir ausente.
     """
     if base_dir is None:
         return "Erro: tool_ler_workspace requer base_dir (raiz do workspace)."
@@ -374,14 +427,21 @@ def tool_ler_workspace(caminho: str, base_dir: Optional[str] = None) -> str:
 
 
 def tool_listar_workspace(caminho: str = ".", base_dir: Optional[str] = None) -> str | list[str]:
-    """Lista o conteúdo de um diretório do workspace global.
+    """Lista os arquivos e diretórios de um caminho do workspace global.
+
+    Use para descobrir o que outros agentes produziram antes de
+    consultar arquivos individuais com a capacidade de leitura.
+    Retorna nomes ordenados alfabeticamente.
 
     Args:
-        caminho: Caminho relativo à raiz do workspace. Default: "." (raiz).
+        caminho: Caminho relativo à raiz do workspace (default ".",
+            que lista a raiz).
         base_dir: Raiz do workspace (injetada pela factory).
+            Obrigatório.
 
     Returns:
-        Lista de nomes (arquivos+diretórios) ou string de erro.
+        list[str] com nomes em ordem alfabética, ou str "Erro:" se
+        diretório inexistente, path traversal ou base_dir ausente.
     """
     if base_dir is None:
         return "Erro: tool_listar_workspace requer base_dir (raiz do workspace)."
