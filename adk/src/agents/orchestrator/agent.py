@@ -24,6 +24,7 @@ from typing import Any, AsyncGenerator, ClassVar, Dict, List, Tuple
 from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
+from google.adk.events.event_actions import EventActions
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
@@ -97,7 +98,12 @@ class _PipelineOrchestrator(BaseAgent):
                 paused,
                 "Sessão HITL expirada (servidor foi reiniciado entre a pausa "
                 "e a resposta). Por favor reenvie o prompt original para "
-                "iniciar uma nova sessão."
+                "iniciar uma nova sessão.",
+                state_delta={
+                    "paused_pipeline": None,
+                    "paused_inner_session_id": None,
+                    "paused_function_call": None,
+                },
             )
             return
 
@@ -158,6 +164,11 @@ class _PipelineOrchestrator(BaseAgent):
                 function_call_name=new_pause.name,
                 function_call_args=dict(new_pause.args or {}),
             )
+            yield self._make_state_event({
+                "paused_pipeline": state["paused_pipeline"],
+                "paused_inner_session_id": state["paused_inner_session_id"],
+                "paused_function_call": state["paused_function_call"],
+            })
             return
 
         # Conclusão: cleanup.
@@ -167,6 +178,12 @@ class _PipelineOrchestrator(BaseAgent):
         state["accumulated_outputs"] = accumulated
         await runner.close()
         self._live_runners.pop(outer_sid, None)
+        yield self._make_state_event({
+            "paused_pipeline": None,
+            "paused_inner_session_id": None,
+            "paused_function_call": None,
+            "accumulated_outputs": accumulated,
+        })
 
     async def _handle_fresh_run(
         self, ctx: InvocationContext, outer_sid: str, user_text: str
@@ -228,6 +245,12 @@ class _PipelineOrchestrator(BaseAgent):
                     function_call_args=dict(pending_pause.args or {}),
                 )
                 state["accumulated_outputs"] = accumulated
+                yield self._make_state_event({
+                    "paused_pipeline": state["paused_pipeline"],
+                    "paused_inner_session_id": state["paused_inner_session_id"],
+                    "paused_function_call": state["paused_function_call"],
+                    "accumulated_outputs": accumulated,
+                })
                 return  # NÃO roda pipelines subsequentes
 
             # Pipeline concluiu sem pausa.
@@ -235,13 +258,35 @@ class _PipelineOrchestrator(BaseAgent):
             await runner.close()
 
         state["accumulated_outputs"] = accumulated
+        yield self._make_state_event({
+            "accumulated_outputs": accumulated,
+            "paused_pipeline": None,
+            "paused_inner_session_id": None,
+            "paused_function_call": None,
+        })
 
     @staticmethod
-    def _make_text_event(author: str, text: str) -> Event:
+    def _make_text_event(
+        author: str,
+        text: str,
+        state_delta: dict[str, Any] | None = None,
+    ) -> Event:
+        actions = (
+            EventActions(state_delta=state_delta) if state_delta else EventActions()
+        )
         return Event(
             author=author,
             invocation_id="orchestrator-error",
             content=types.Content(role="model", parts=[types.Part(text=text)]),
+            actions=actions,
+        )
+
+    def _make_state_event(self, state_delta: dict[str, Any]) -> Event:
+        """Evento sem conteúdo, carrega apenas state_delta para persistência."""
+        return Event(
+            author=self.name,
+            invocation_id="orchestrator-state",
+            actions=EventActions(state_delta=state_delta),
         )
 
 
