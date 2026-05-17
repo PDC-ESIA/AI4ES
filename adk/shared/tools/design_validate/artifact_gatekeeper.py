@@ -66,7 +66,19 @@ class GatekeeperResult:
     format_detected:   Optional[str]       = None
  
     def to_dict(self) -> dict:
-        """Serialização da resposta, padrão para envio entre agentes."""
+        """Serializa o resultado da validação para um dicionário JSON-friendly.
+
+        Use quando precisar transportar o resultado do gatekeeper para um
+        payload de resposta A2A, log ou relatório agregado. Retorna apenas os
+        campos do contrato público — `warnings` e `format_detected` são
+        omitidos intencionalmente (uso interno / logging).
+
+        Returns:
+            dict com exatamente cinco chaves:
+            ``valid`` (bool), ``error_type`` (str | None — valor do Enum),
+            ``error_message`` (str | None), ``line_number`` (int | None),
+            ``suggested_fix`` (str | None).
+        """
         return {
             "valid":         self.valid,
             "error_type":    self.error_type.value if self.error_type else None,
