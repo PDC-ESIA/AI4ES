@@ -9,31 +9,24 @@ def test_orchestrator_root_agent_importavel():
     assert root_agent.name == "orchestrator"
 
 
-def test_orchestrator_tem_5_workflows_e_4_tools():
+def test_orchestrator_tem_3_pipelines():
+    """v3: orchestrator é BaseAgent custom que invoca 3 sub-pipelines em sessão isolada."""
     from src.agents.orchestrator import root_agent
-    # 5 workflows (AgentTool) + 4 FunctionTools = 9 tools
-    assert len(root_agent.tools) == 9
+    pipelines = type(root_agent)._pipelines
+    assert len(pipelines) == 3
 
 
-def test_orchestrator_nomes_dos_workflows_presentes():
-    """Cada AgentTool deve apontar para um workflow esperado."""
+def test_orchestrator_pipelines_esperados():
+    """v3: pipelines fixos são requirements → coding_review → qa (nesta ordem)."""
     from src.agents.orchestrator import root_agent
-    from google.adk.tools.agent_tool import AgentTool
 
-    nomes_esperados = {
+    pipelines = type(root_agent)._pipelines
+    nomes = [p.name for p in pipelines]
+    assert nomes == [
         "requirements_pipeline",
-        "design_pipeline",
         "coding_review_pipeline",
-        "sdlc_pipeline",
         "qa_pipeline",
-    }
-    nomes_encontrados = set()
-    for t in root_agent.tools:
-        if isinstance(t, AgentTool):
-            nomes_encontrados.add(t.agent.name)
-    assert nomes_esperados.issubset(nomes_encontrados), (
-        f"Faltam workflows: {nomes_esperados - nomes_encontrados}"
-    )
+    ], f"Pipelines em ordem inesperada: {nomes}"
 
 
 def test_workflow_coding_inclui_context_engineer():
