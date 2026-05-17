@@ -35,11 +35,35 @@ def tool_ask_clarification(
     sugestao: str = "Aguardando esclarecimento e intervenção do usuário.",
     nome_arquivo: str = "Doubt_Artifact_Clarification.md",
 ) -> dict:
-    """Gera um Doubt Artifact ao detectar inconsistencias, ambiguidades ou falta de contexto.
+    """Gera um Doubt Artifact e pausa a execução solicitando esclarecimento ao supervisor.
 
-    ATENÇÃO: use esta tool SEMPRE que encontrar requisitos contraditórios,
-    ambiguidades, falta de código ou qualquer impeditivo para continuar seu trabalho.
-    A execução deve ser PAUSADA após gerar este arquivo.
+    Use sempre que encontrar requisitos contraditórios, ambiguidades
+    graves, falta de contexto crítico ou qualquer impeditivo objetivo
+    para continuar a tarefa. A tool grava um arquivo Markdown estruturado
+    documentando o problema, com cabeçalho "EXECUÇÃO PAUSADA — INTERVENÇÃO
+    NECESSÁRIA" e checklist para o supervisor responder.
+
+    Após chamar esta capacidade, o agente DEVE interromper o trabalho
+    e devolver controle ao supervisor — não tente "adivinhar" uma
+    resolução para a dúvida registrada.
+
+    Args:
+        titulo: Título curto da inconsistência ou dúvida encontrada.
+        secao: Seção, módulo ou componente onde a dúvida foi detectada.
+        descricao: Descrição detalhada do problema ou da falta de
+            contexto.
+        impacto: O impacto da dúvida no andamento da tarefa.
+        sugestao: Pergunta direta ou sugestão de resolução ao supervisor.
+            Default "Aguardando esclarecimento e intervenção do usuário."
+        nome_arquivo: Nome do arquivo de saída. Default
+            "Doubt_Artifact_Clarification.md". Obrigatório terminar em
+            .md.
+
+    Returns:
+        dict com chaves: `sucesso` (bool), `erro` (str ou None),
+        `caminho` (path absoluto do artefato em sucesso, None em falha),
+        `título` (str em sucesso), `status` (str descritivo, em sucesso
+        contém "EXECUÇÃO INTERROMPIDA").
     """
     try:
         dados = ClarificationSchema(
