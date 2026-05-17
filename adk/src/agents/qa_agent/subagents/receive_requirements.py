@@ -53,10 +53,13 @@ Identifique os tipos (RF, RNF, HU, UC, RN). Se não houver ID claro, gere um seq
 Texto bruto: {raw_input}
 """
     model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
+    if "/" not in model_name:
+        model_name = f"gemini/{model_name}"
     response = completion(
-        model=model_name, 
-        messages=[{"role": "user", "content": prompt}], 
-        temperature=0
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,
+        api_key=os.environ.get("GOOGLE_API_KEY"),
     )
     
     conteudo = response.choices[0].message.content.strip()
@@ -481,6 +484,8 @@ def _gerar_pytest_via_llm(
         ValueError: Se o modelo retornar conteúdo vazio.
     """
     model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
+    if "/" not in model_name:
+        model_name = f"gemini/{model_name}"
     arquivos_textos = []
     for p in arquivos_apoio:
         try:
@@ -549,6 +554,7 @@ Regras obrigatórias:
             },
         ],
         temperature=0,
+        api_key=os.environ.get("GOOGLE_API_KEY"),
     )
 
     codigo = ""
