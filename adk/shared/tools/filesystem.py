@@ -271,7 +271,10 @@ def tool_substituir_trecho(
         base_dir: Diretório base do agente (injetado pela factory).
 
     Returns:
-        str com mensagem de sucesso indicando o arquivo alterado, ou
+        str com mensagem de sucesso indicando o arquivo alterado. Em
+        caso de múltiplas ocorrências de `trecho_antigo`, apenas a
+        PRIMEIRA é substituída — para substituir várias, chame a tool
+        múltiplas vezes ou edite o trecho para ser único. Retorna
         string "Erro:" se: arquivo inexistente, trecho_antigo não
         encontrado, ou falha de I/O.
     """
@@ -336,8 +339,9 @@ def tool_salvar_artefato_requisito(
     Args:
         tipo: Tipo do artefato. Valores aceitos (case-insensitive): HU,
             RF, RNF, RN, GLOSSARIO. Outros tipos vão para "Outros".
-        id_req: Identificador do requisito no formato AAAA-999 (não se
-            aplica a GLOSSARIO, cujo arquivo é fixo "Glossario.md").
+        id_req: Identificador do requisito (regex `^[A-Z]{1,4}-\\d{3}$`,
+            ex: HU-001, RF-002, RNF-003). Não se aplica a GLOSSARIO,
+            cujo arquivo é fixo "Glossario.md".
         conteudo_md: Texto Markdown completo do artefato.
         base_dir: Diretório base do agente. Quando informado, escreve
             em `<base_dir>/<subdir>/<id_req>.md`. Quando None, usa o
