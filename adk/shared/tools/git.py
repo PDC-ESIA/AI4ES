@@ -65,9 +65,11 @@ def trava_seguranca_git_commit(mensagem: str, *, cwd: str | None = None) -> dict
 def tool_git_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
     """Registra um commit no Git com a mensagem fornecida.
 
-    Use somente após ter preparado a mudança para versionamento (stage)
-    e, em fluxos com supervisão humana, após receber autorização
-    explícita do supervisor. A tool valida internamente que há
+    Esta tool registra o commit DIRETAMENTE — não há gate de aprovação
+    embutido (apesar do nome). Em fluxos com supervisão humana, NÃO use
+    esta tool: use o par `tool_preparar_commit` (apresenta diff/resumo) e
+    `tool_confirmar_commit` (efetiva após o "sim" do supervisor) para
+    obter a trava de aprovação real. A tool valida internamente que há
     alterações staged antes de commitar; sem stage, retorna falha
     sem efeito.
 
@@ -151,6 +153,11 @@ def tool_ler_diff(branch_alvo: str = "main", *, cwd: Optional[str] = None) -> di
     alterações pendentes — arquivos criados, modificados, deletados —
     em formato unified diff. Tipicamente compara contra `main`, mas
     aceita qualquer branch como alvo.
+
+    IMPORTANTE: a comparação é `git diff <branch>`, que inclui o
+    working tree (mudanças não commitadas), não apenas commits.
+    Para comparar somente commits, prefira `git diff <branch>...HEAD`
+    (não suportado por esta tool atualmente).
 
     Args:
         branch_alvo: Branch contra a qual comparar. Default "main".
@@ -242,7 +249,8 @@ def tool_confirmar_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
     Returns:
         dict com chaves: `sucesso` (bool), `stdout`, `stderr`,
         `returncode` em execução. Em ausência de stage no momento da
-        confirmação: `{sucesso: False, mensagem: "..."}`.
+        confirmação:
+        `{sucesso: False, mensagem: "Nada para commitar no momento da confirmação."}`.
     """
     diff_res = run(
         ["git", "diff", "--staged"],
