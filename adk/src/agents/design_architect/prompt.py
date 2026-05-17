@@ -67,7 +67,7 @@ AÇÃO 1 — Registre o bloqueio na sua saída com o seguinte formato:
   Trecho exato: "<trecho copiado literalmente da HU>"
   Motivo: <por que esse trecho impede a análise técnica>
 
-AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
+AÇÃO 2 — Persista o Doubt_Artifact diretamente:
 
   SEMPRE chame current_date() para obter a data atual.
 
@@ -75,9 +75,10 @@ AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
   - Lacuna Funcional: o que o sistema deve fazer não está claro na HU.
   - Lacuna Arquitetural: informação ausente que bloqueia uma decisão técnica específica.
 
-  Encaminhe ao io_agent via AgentTool com a mensagem:
-  "Salve o arquivo Doubt_Artifact_<HU_ID>_<resultado de current_date()>.md em staging
-  com o seguinte conteúdo:
+  Persista via `save_artifact` diretamente (NÃO encaminhe ao io_agent):
+
+  - filename: Doubt_Artifact_<HU_ID>_<resultado de current_date()>.md
+  - content: o seguinte template preenchido
 
   # Doubt Artifact — <HU_ID>
 
@@ -95,14 +96,14 @@ AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
 
   ## Informação Necessária
   <pergunta direta e específica para o humano resolver o bloqueio>
-  "
 
   REGRAS DE NOMENCLATURA DO DOUBT_ARTIFACT:
   - O nome do arquivo é SEMPRE: Doubt_Artifact_<HU_ID>_<resultado de current_date()>.md
   - Nunca use datas fixas, nunca escreva a data manualmente.
   - Nunca crie variações do nome (_v1, _v2, _novo, etc).
-  - Se já existir um Doubt_Artifact para a mesma HU em staging, o io_agent criará
-    backup automaticamente — você não precisa gerenciar isso.
+  - Se já existir um Doubt_Artifact para a mesma HU em staging, o backup é criado
+    automaticamente pela própria capacidade de persistência — você não precisa
+    gerenciar isso.
 
 AÇÃO 3 — Exclua a HU da entrega e avance para a próxima.
 
@@ -117,7 +118,7 @@ PROTOCOLO DE RETOMADA (executar quando Doubt_Artifact estiver com Status: Resolv
 Quando o Orquestrador indicar que um Doubt_Artifact foi resolvido:
 
 AÇÃO 1 — Leia o Doubt_Artifact via io_agent:
-  Encaminhe ao io_agent: "Leia o arquivo temp/staging/Doubt_Artifact_<HU_ID>_<data>.md"
+  Delegue ao especialista de I/O: "Leia o arquivo Doubt_Artifact_<HU_ID>_<data>.md em staging"
 
 AÇÃO 2 — Extraia as respostas:
   Localize a seção "## Resposta do Solicitante" no conteúdo retornado.
@@ -153,14 +154,15 @@ COMO EXECUTAR:
   Monte o nome do arquivo: analise_tecnica_<HU_IDs do lote separados por _>.md
   Exemplo: analise_tecnica_HU-004_HU-005_HU-006.md
 
-  Encaminhe ao io_agent via AgentTool:
-  "Salve o arquivo analise_tecnica_<hu_ids>.md em staging com o seguinte conteúdo:
-  <conteúdo completo da análise, incluindo todas as seções dos PASSOS 1 a 6>"
+  Persista via `save_artifact` diretamente (NÃO encaminhe ao io_agent):
+  - filename: analise_tecnica_<hu_ids>.md
+  - content: o conteúdo completo da análise, incluindo todas as seções dos PASSOS 1 a 6.
 
 REGRAS:
 - O nome NÃO inclui data — o lote é identificado pelos HU_IDs.
-  Se já existir uma análise para o mesmo lote, o io_agent criará backup automaticamente.
-- Aguarde confirmação de status "ok" do io_agent antes de encaminhar ao Orquestrador.
+  Se já existir uma análise para o mesmo lote, o backup é criado automaticamente
+  pela própria capacidade de persistência.
+- Aguarde o retorno de `save_artifact` com status "ok" antes de encaminhar ao Orquestrador.
 - Se o status retornado for "error": informe o erro ao Orquestrador e interrompa.
   Não encaminhe a análise sem confirmar a persistência.
 - Encaminhe ao Orquestrador APENAS o nome do arquivo salvo, não o conteúdo.
@@ -430,7 +432,8 @@ Categorias:
 - Arquitetural: informação ausente que impede uma decisão técnica de design ou dimensionamento.
 
 Ações possíveis:
-- Doubt_Artifact: gere o arquivo via io_agent se a lacuna bloquear uma decisão imediata.
+- Doubt_Artifact: persista o arquivo via `save_artifact` diretamente se a lacuna bloquear
+  uma decisão imediata (siga as regras de nomenclatura do PROTOCOLO DE BLOQUEIO).
 - Assumir padrão: registre explicitamente qual padrão foi assumido — sem mencionar tecnologia.
 - Escalar para Time 1: sinalize ao Orquestrador que o Time de Requisitos deve complementar a HU.
 
@@ -448,7 +451,7 @@ Entregue ao Orquestrador um documento com exatamente estas seções:
 4. Para cada HU: lista de componentes com responsabilidades e dependências
 5. Bloqueios identificados (se houver): HU_ID, passo em que ocorreu, trecho exato,
    categoria do bloqueio (Lacuna Funcional | Lacuna Arquitetural) e confirmação de
-   que o Doubt_Artifact foi enviado ao io_agent
+   que o Doubt_Artifact foi persistido em staging
 6. Tabela de cobertura por HU (PASSO 5) — obrigatória, sem exceção
 7. Gap Analysis (PASSO 6) — obrigatória, sem exceção
 

@@ -1,8 +1,5 @@
-import os
-from google.adk.agents import LlmAgent
+from shared.agent_factory import create_se_agent
 from shared.tools.design_date import current_date
-from . import prompt
-
 from shared.tools.design_filesystem import (
     save_artifact,
     check_lock,
@@ -14,11 +11,9 @@ from shared.tools.design_filesystem import (
     clear_staging_folder,
     check_active_blocks,
 )
+from . import prompt
 
-_DEFAULT_MODEL = "gemini-2.5-flash"
-
-agent = LlmAgent(
-    model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
+agent = create_se_agent(
     name="io_agent",
     description=prompt.description,
     instruction=prompt.instruction,
@@ -34,6 +29,7 @@ agent = LlmAgent(
         clear_staging_folder,
         check_active_blocks,
     ],
+    agent_subdir="io_agent",
 )
 
 root_agent = agent
