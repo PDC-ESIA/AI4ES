@@ -14,7 +14,17 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_aguardar_aprovacao_humana_retorna_dict_com_chaves_contratuais():
+async def test_aguardar_aprovacao_humana_retorna_none_para_pausar_adk():
+    """LongRunningFunctionTool só pausa o agente se a função retornar None.
+
+    Referência: google/adk/flows/llm_flows/functions.py:579-583
+        if tool.is_long_running:
+            if not function_response:
+                return None  # não emite function_response → agente pendura
+
+    Retorno truthy (dict, str, etc.) faria ADK emitir function_response
+    imediatamente e o LLM continuaria sem aguardar decisão humana.
+    """
     from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
 
     resultado = await aguardar_aprovacao_humana(
@@ -24,16 +34,10 @@ async def test_aguardar_aprovacao_humana_retorna_dict_com_chaves_contratuais():
         pause_reason="motivo",
     )
 
-    assert isinstance(resultado, dict)
-    for key in (
-        "decision", "comments", "reviewer", "validated_at",
-        "checkpoint_id", "approval_question",
-        "allowed_decisions", "pause_reason",
-    ):
-        assert key in resultado, f"chave ausente: {key}"
-
-    assert resultado["checkpoint_id"] == "abc"
-    assert resultado["allowed_decisions"] == ["aprovar", "rejeitar"]
+    assert resultado is None, (
+        "Stub deve retornar None para que ADK pause o agente. "
+        f"Got: {resultado!r}"
+    )
 
 
 def test_aguardar_aprovacao_humana_schema_compativel_com_gemini():
@@ -64,6 +68,7 @@ def test_aguardar_aprovacao_humana_schema_compativel_com_gemini():
 
 @pytest.mark.asyncio
 async def test_pause_reason_pode_ser_omitido():
+    """pause_reason é Optional — função aceita chamada sem ele."""
     from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
 
     resultado = await aguardar_aprovacao_humana(
@@ -71,7 +76,7 @@ async def test_pause_reason_pode_ser_omitido():
         approval_question="?",
         allowed_decisions=["aprovar"],
     )
-    assert resultado["pause_reason"] is None
+    assert resultado is None
 
 
 def test_aguardar_aprovacao_humana_reexportada_no_init():

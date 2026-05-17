@@ -15,7 +15,7 @@ async def aguardar_aprovacao_humana(
     approval_question: str,
     allowed_decisions: list[str],
     pause_reason: Optional[str] = None,
-) -> dict[str, Any]:
+) -> Optional[dict[str, Any]]:
     """Pausa o agente até receber decisão humana explícita.
 
     Quando usar:
@@ -33,19 +33,18 @@ async def aguardar_aprovacao_humana(
         pause_reason: Motivo opcional da pausa (mostrado ao humano).
 
     Returns:
-        dict com chaves: decision, comments, reviewer, validated_at,
-        checkpoint_id, approval_question, allowed_decisions, pause_reason.
-        `decision` é uma das opções de `allowed_decisions` quando a
-        execução real acontece (via ADK + orchestrator); em chamada direta
-        retorna "pending".
+        None — quando registrada como LongRunningFunctionTool, ADK
+        interpreta retorno None como "função pendente, aguardando resposta
+        externa". O orchestrator detecta o function_call via
+        Event.long_running_tool_ids e provê a decisão humana real depois
+        via function_response.
+
+        Ver google.adk.flows.llm_flows.functions:579-583: long-running
+        tools podem retornar None para não emitir function_response,
+        deixando o agente pendurado até resposta externa.
     """
-    return {
-        "decision": "pending",
-        "comments": "",
-        "reviewer": "usuario",
-        "validated_at": None,
-        "checkpoint_id": checkpoint_id,
-        "approval_question": approval_question,
-        "allowed_decisions": allowed_decisions,
-        "pause_reason": pause_reason,
-    }
+    # Args nomeados intencionalmente não-usados — servem como contrato
+    # para o LLM (que vê o schema) e para o orchestrator (que lê
+    # function_call.args para extrair checkpoint_id/allowed_decisions).
+    _ = (checkpoint_id, approval_question, allowed_decisions, pause_reason)
+    return None
