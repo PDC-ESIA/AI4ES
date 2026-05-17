@@ -72,3 +72,10 @@ async def test_pause_reason_pode_ser_omitido():
         allowed_decisions=["aprovar"],
     )
     assert resultado["pause_reason"] is None
+
+
+def test_aguardar_aprovacao_humana_reexportada_no_init():
+    """Tools do qa_agent devem ser importáveis do pacote tools/."""
+    from src.agents.qa_agent.tools import aguardar_aprovacao_humana as exported
+    from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana as direct
+    assert exported is direct

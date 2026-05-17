@@ -1,4 +1,5 @@
 from .doubt_artifact import gerar_doubt_artifact
+from .hitl_tool import aguardar_aprovacao_humana
 from .planner_tools import (
     create_hitl_checkpoint,
     describe_tools,
@@ -9,6 +10,7 @@ from .planner_tools import (
 )
 
 __all__ = [
+    "aguardar_aprovacao_humana",
     "create_hitl_checkpoint",
     "describe_tools",
     "generate_compliance_report",
