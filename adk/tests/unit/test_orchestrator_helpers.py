@@ -127,3 +127,138 @@ def test_is_pending_long_running_call_id_diferente():
     part = event.content.parts[0]
 
     assert _is_pending_long_running_call(part, event) is False
+
+
+# --- _set_pause_state / _clear_pause_state ---
+
+
+def test_set_pause_state_grava_tres_chaves():
+    from src.agents.orchestrator._helpers import _set_pause_state
+
+    state = {}
+    _set_pause_state(
+        state,
+        pipeline_name="qa_pipeline",
+        inner_session_id="sid-abc",
+        function_call_id="call-1",
+        function_call_name="aguardar_aprovacao_humana",
+        function_call_args={"checkpoint_id": "ck-1", "allowed_decisions": ["aprovar"]},
+    )
+
+    assert state["paused_pipeline"] == "qa_pipeline"
+    assert state["paused_inner_session_id"] == "sid-abc"
+    assert state["paused_function_call"] == {
+        "id": "call-1",
+        "name": "aguardar_aprovacao_humana",
+        "args": {"checkpoint_id": "ck-1", "allowed_decisions": ["aprovar"]},
+    }
+
+
+def test_clear_pause_state_zera_tres_chaves():
+    from src.agents.orchestrator._helpers import _clear_pause_state
+
+    state = {
+        "paused_pipeline": "qa_pipeline",
+        "paused_inner_session_id": "sid",
+        "paused_function_call": {"id": "x"},
+        "accumulated_outputs": [("req", "...")],  # NÃO deve ser limpo
+    }
+    _clear_pause_state(state)
+
+    assert state["paused_pipeline"] is None
+    assert state["paused_inner_session_id"] is None
+    assert state["paused_function_call"] is None
+    # accumulated_outputs preservado
+    assert state["accumulated_outputs"] == [("req", "...")]
+
+
+# --- _extract_user_text ---
+
+
+class _FakePart:
+    def __init__(self, text):
+        self.text = text
+
+
+class _FakeUserContent:
+    def __init__(self, parts):
+        self.parts = parts
+
+
+class _FakeCtx:
+    def __init__(self, user_content):
+        self.user_content = user_content
+
+
+def test_extract_user_text_concatena_parts():
+    from src.agents.orchestrator._helpers import _extract_user_text
+
+    ctx = _FakeCtx(_FakeUserContent([_FakePart("foo"), _FakePart("bar")]))
+    assert _extract_user_text(ctx) == "foo\nbar"
+
+
+def test_extract_user_text_sem_content():
+    from src.agents.orchestrator._helpers import _extract_user_text
+    ctx = _FakeCtx(None)
+    assert _extract_user_text(ctx) == ""
+
+
+def test_extract_user_text_part_sem_text():
+    from src.agents.orchestrator._helpers import _extract_user_text
+
+    class P:
+        text = None
+    ctx = _FakeCtx(_FakeUserContent([P(), _FakePart("hello")]))
+    assert _extract_user_text(ctx) == "hello"
+
+
+# --- _build_input ---
+
+
+def test_build_input_sem_accumulated():
+    from src.agents.orchestrator._helpers import _build_input
+    assert _build_input("prompt original", []) == "prompt original"
+
+
+def test_build_input_com_accumulated():
+    from src.agents.orchestrator._helpers import _build_input
+    result = _build_input(
+        "prompt",
+        [("requirements_pipeline", "RF-001: criar ensaio"), ("design_pipeline", "diag.md")],
+    )
+    assert "prompt" in result
+    assert "CONTEXTO DAS FASES ANTERIORES" in result
+    assert "### Output de requirements_pipeline" in result
+    assert "RF-001: criar ensaio" in result
+    assert "### Output de design_pipeline" in result
+    assert "diag.md" in result
+
+
+def test_build_input_trunca_output_em_8000_chars():
+    from src.agents.orchestrator._helpers import _build_input
+    huge = "x" * 20000
+    result = _build_input("prompt", [("req", huge)])
+    # 8000 chars do output devem aparecer; o resto não
+    assert "x" * 8000 in result
+    # Tolerância: pode ter sufixo de truncagem; verifica que não tem 20000 x's seguidos
+    assert "x" * 20000 not in result
+
+
+# --- _build_function_response_payload ---
+
+
+def test_build_function_response_payload_estrutura():
+    from src.agents.orchestrator._helpers import _build_function_response_payload
+
+    p = _build_function_response_payload(
+        decision="aprovar",
+        comments="cuidado em X",
+        checkpoint_id="ck-1",
+    )
+    assert p["decision"] == "aprovar"
+    assert p["comments"] == "cuidado em X"
+    assert p["checkpoint_id"] == "ck-1"
+    assert p["reviewer"] == "usuario"
+    # validated_at é ISO-8601 UTC com sufixo Z
+    assert p["validated_at"].endswith("Z")
+    assert "T" in p["validated_at"]

@@ -67,3 +67,85 @@ def _is_pending_long_running_call(part, event) -> bool:
     if not ids:
         return False
     return fc.id in ids
+
+
+def _extract_user_text(ctx) -> str:
+    """Concatena os textos dos parts de `ctx.user_content`.
+
+    Retorna string vazia quando user_content é None ou todos os parts
+    são não-texto (function_response, function_call, etc.).
+    """
+    user_content = getattr(ctx, "user_content", None)
+    if user_content is None:
+        return ""
+    parts = getattr(user_content, "parts", None) or []
+    chunks = []
+    for part in parts:
+        text = getattr(part, "text", None)
+        if text:
+            chunks.append(text)
+    return "\n".join(chunks).strip()
+
+
+def _build_input(user_text: str, accumulated: list[tuple[str, str]]) -> str:
+    """Monta input para um pipeline interno.
+
+    Sem accumulated: retorna `user_text` sem modificações (FRESH RUN do
+    primeiro pipeline). Com accumulated: anexa "CONTEXTO DAS FASES
+    ANTERIORES" com cada output truncado em 8000 caracteres.
+    """
+    if not accumulated:
+        return user_text
+
+    prior = "\n\n".join(
+        f"### Output de {nome}:\n{texto[:8000]}"
+        for nome, texto in accumulated
+    )
+    return (
+        f"{user_text}\n\n"
+        f"---\n"
+        f"CONTEXTO DAS FASES ANTERIORES:\n{prior}\n"
+        f"---\n"
+    )
+
+
+def _set_pause_state(
+    state: dict[str, Any],
+    *,
+    pipeline_name: str,
+    inner_session_id: str,
+    function_call_id: str,
+    function_call_name: str,
+    function_call_args: dict[str, Any],
+) -> None:
+    """Grava as 3 chaves de pausa em state. Invariante: ou todas ou nenhuma."""
+    state["paused_pipeline"] = pipeline_name
+    state["paused_inner_session_id"] = inner_session_id
+    state["paused_function_call"] = {
+        "id": function_call_id,
+        "name": function_call_name,
+        "args": function_call_args,
+    }
+
+
+def _clear_pause_state(state: dict[str, Any]) -> None:
+    """Zera as 3 chaves de pausa. Preserva `accumulated_outputs`."""
+    state["paused_pipeline"] = None
+    state["paused_inner_session_id"] = None
+    state["paused_function_call"] = None
+
+
+def _build_function_response_payload(
+    decision: str,
+    comments: str,
+    checkpoint_id: str,
+) -> dict[str, Any]:
+    """Payload do function_response enviado ao runner pausado."""
+    return {
+        "decision": decision,
+        "comments": comments,
+        "reviewer": "usuario",
+        "validated_at": datetime.now(timezone.utc)
+            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "checkpoint_id": checkpoint_id,
+    }
