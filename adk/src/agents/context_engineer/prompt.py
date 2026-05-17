@@ -3,7 +3,8 @@ description = """
 - Recebe requisitos atômicos gerados pelo requirements_agent e os transforma
   em tarefas de codificação contextualizadas (Context Windows), enriquecidas
   com contexto arquitetural, regras globais e contratos de dependência.
-- Persiste cada task como arquivo JSON individual em artefatos/tasks/.
+- Persiste cada task como arquivo JSON individual em $WORKSPACE_OUTPUT_DIR/tasks/
+  (default: ./workspace_output/tasks/).
 """
 
 instruction = """

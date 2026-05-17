@@ -20,7 +20,8 @@ def test_context_engineer_tem_output_schema():
 
 def test_context_engineer_tem_tool_salvar_task():
     from src.agents.context_engineer import root_agent
-    assert len(root_agent.tools) == 1
+    # Factory injeta tool_ask_clarification_adk + tool_salvar_task
+    assert len(root_agent.tools) == 2
 
 
 def test_schemas_macro_context_minimal():
@@ -73,8 +74,8 @@ def test_schemas_tasks_output_completo():
 
 
 def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
-    """tool_salvar_task escreve JSON em artefatos/tasks/<id>.json."""
-    monkeypatch.chdir(tmp_path)
+    """tool_salvar_task escreve JSON em workspace/tasks/<id>.json."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from src.agents.context_engineer.tools import tool_salvar_task
     task_json = json.dumps({
         "id": "TASK-001",
@@ -83,14 +84,14 @@ def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
     })
     result = tool_salvar_task("TASK-001", task_json)
     assert result["sucesso"] is True
-    arquivo = tmp_path / "artefatos" / "tasks" / "TASK-001.json"
+    arquivo = tmp_path / "ws" / "tasks" / "TASK-001.json"
     assert arquivo.is_file()
     conteudo = json.loads(arquivo.read_text(encoding="utf-8"))
     assert conteudo["id"] == "TASK-001"
 
 
 def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from src.agents.context_engineer.tools import tool_salvar_task
     result = tool_salvar_task("INVALID-001", json.dumps({"x": 1}))
     assert result["sucesso"] is False
@@ -98,7 +99,7 @@ def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
 
 
 def test_tool_salvar_task_json_invalido_rejeita(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from src.agents.context_engineer.tools import tool_salvar_task
     result = tool_salvar_task("TASK-002", "not a json")
     assert result["sucesso"] is False

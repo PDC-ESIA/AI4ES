@@ -1,21 +1,20 @@
 """Tools do Agente Context Engineer.
 
-Persistência de tasks contextualizadas como JSON.
+Persistência de tasks contextualizadas como JSON no workspace centralizado.
 
-Adaptado de feat/me2/coding_squad (Time 4): sem dependência da factory.
-Caminho hardcoded para artefatos/tasks/ relativo ao CWD do uvicorn.
+Phase 2.E: migrado para usar get_agent_workspace() — escreve em workspace/tasks/
+em vez do antigo artefatos/tasks/ hardcoded.
 """
 
 import json
 import logging
-from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
 
-logger = logging.getLogger(__name__)
+from shared.workspace import get_agent_workspace
 
-_TASKS_DIR = Path("artefatos") / "tasks"
+logger = logging.getLogger(__name__)
 
 
 class SalvarTaskSchema(BaseModel):
@@ -30,7 +29,10 @@ class SalvarTaskSchema(BaseModel):
 
 
 def tool_salvar_task(task_id: str, task_json: str) -> dict:
-    """Salva uma task contextualizada como arquivo JSON em artefatos/tasks/.
+    """Salva uma task contextualizada como JSON em workspace/tasks/.
+
+    Usa get_agent_workspace("context_engineer") — o workspace é resolvido via
+    a variável de ambiente WORKSPACE_OUTPUT_DIR (default: ./workspace_output).
 
     Args:
         task_id (str): Identificador da task (ex: 'TASK-001').
@@ -49,9 +51,10 @@ def tool_salvar_task(task_id: str, task_json: str) -> dict:
     except json.JSONDecodeError as e:
         return {"sucesso": False, "erro": f"JSON inválido: {e}", "caminho": None}
 
-    output_file = _TASKS_DIR / f"{dados.task_id}.json"
+    output_dir = get_agent_workspace("context_engineer")
+    output_file = output_dir / f"{dados.task_id}.json"
     try:
-        _TASKS_DIR.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         output_file.write_text(
             json.dumps(task_data, indent=2, ensure_ascii=False),
             encoding="utf-8",

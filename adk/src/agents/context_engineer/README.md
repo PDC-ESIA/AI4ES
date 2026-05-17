@@ -11,7 +11,8 @@ Recebe requisitos atômicos gerados pelo `requirements_agent` e os transforma em
 **tarefas de codificação contextualizadas** (Context Windows), enriquecidas com
 contexto arquitetural, regras globais e contratos de dependência.
 
-Persiste cada task como arquivo JSON individual em `artefatos/tasks/`.
+Persiste cada task como arquivo JSON individual em `$WORKSPACE_OUTPUT_DIR/tasks/`
+(default: `./workspace_output/tasks/`).
 
 O agente NÃO implementa código. NÃO define requisitos. Apenas contextualiza e empacota.
 
@@ -30,4 +31,4 @@ JSON com `macro_context` (summary, tech_stack, global_rules) e `tasks` (lista de
 
 ## Origem
 
-Portado de `feat/me2/coding_squad` (Time 4). Adaptado para usar `LlmAgent` direto e caminho `artefatos/tasks/` hardcoded (sem dependência da factory que será adicionada na Phase 2).
+Phase 1.D: criado com `LlmAgent` direto e caminho `artefatos/tasks/`. Phase 2.E: migrado para `create_se_agent(agent_subdir='context_engineer')` com workspace binding — escreve em `$WORKSPACE_OUTPUT_DIR/tasks/`.
