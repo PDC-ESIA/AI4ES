@@ -139,3 +139,63 @@ def tool_ler_diff(branch_alvo: str = "main") -> dict:
         }
 
     return {"sucesso": True, "erro": None, "diff": resposta.stdout}
+
+
+def tool_preparar_commit(mensagem: str) -> dict:
+    """Valida se há alterações staged e retorna o diff para análise.
+    NÃO executa o commit. Apresente o resumo retornado ao usuário e aguarde autorização.
+    Apenas após a aprovação chame tool_confirmar_commit com a mesma mensagem.
+
+    Args:
+        mensagem (str): Mensagem de commit sugerida pelo agente.
+
+    Returns:
+        dict: {sucesso, mensagem, diff} ou {sucesso=False, mensagem=motivo}.
+    """
+    diff_res = run(
+        ["git", "diff", "--staged"],
+        capture_output=True,
+        text=True,
+    )
+    diff = diff_res.stdout
+    if not diff.strip():
+        return {
+            "sucesso": False,
+            "mensagem": "Nada para commitar (working tree clean ou alterações não foram adicionadas com git add).",
+        }
+    return {"sucesso": True, "mensagem": mensagem, "diff": diff}
+
+
+def tool_confirmar_commit(mensagem: str) -> dict:
+    """Efetiva o git commit. SÓ DEVE ser chamada após o usuário aprovar o resumo
+    gerado por tool_preparar_commit. Esta tool deve ser registrada no agente com
+    require_confirmation=True como dupla trava.
+
+    Args:
+        mensagem (str): Mensagem do commit (idealmente a mesma de tool_preparar_commit).
+
+    Returns:
+        dict: {sucesso, stdout, stderr, returncode} ou {sucesso=False, mensagem=motivo}.
+    """
+    diff_res = run(
+        ["git", "diff", "--staged"],
+        capture_output=True,
+        text=True,
+    )
+    if not diff_res.stdout.strip():
+        return {
+            "sucesso": False,
+            "mensagem": "Nada para commitar no momento da confirmação.",
+        }
+
+    resposta = run(
+        ["git", "commit", "-m", mensagem],
+        capture_output=True,
+        text=True,
+    )
+    return {
+        "sucesso": resposta.returncode == 0,
+        "stdout": resposta.stdout,
+        "stderr": resposta.stderr,
+        "returncode": resposta.returncode,
+    }

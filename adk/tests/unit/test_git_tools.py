@@ -37,6 +37,8 @@ from shared.tools.git import (  # noqa: E402
     trava_seguranca_git_commit,
     tool_git_commit,
     tool_git_checkout,
+    tool_preparar_commit,
+    tool_confirmar_commit,
 )
 
 
@@ -267,3 +269,93 @@ class TestToolGitCheckout:
         result = tool_git_checkout("main")
         assert "git" in result["comando"]
         assert "checkout" in result["comando"]
+
+
+# ===========================================================================
+# tool_preparar_commit
+# ===========================================================================
+
+
+class TestToolPrepararCommit:
+    def test_prepara_com_staged_retorna_diff(self, repo_com_arquivo_staged):
+        """Quando há staged, retorna sucesso=True com diff e mensagem."""
+        result = tool_preparar_commit("feat: add feature")
+        assert result["sucesso"] is True
+        assert result["mensagem"] == "feat: add feature"
+        assert "feature.py" in result["diff"]
+
+    def test_prepara_sem_staged_retorna_falha(self, repo):
+        """Quando não há staged, retorna sucesso=False."""
+        result = tool_preparar_commit("feat: nada para commitar")
+        assert result["sucesso"] is False
+        assert "nada para commitar" in result["mensagem"].lower()
+
+    def test_prepara_nao_executa_commit(self, repo_com_arquivo_staged):
+        """tool_preparar_commit NÃO deve invocar 'git commit'."""
+        commits_antes = _commit_count(repo_com_arquivo_staged)
+        tool_preparar_commit("feat: preparar")
+        commits_depois = _commit_count(repo_com_arquivo_staged)
+        assert commits_antes == commits_depois, "preparar_commit não deve executar commit"
+
+    def test_prepara_retorna_chaves_corretas(self, repo_com_arquivo_staged):
+        """Verifica que as chaves esperadas estão presentes no retorno."""
+        result = tool_preparar_commit("feat: teste")
+        assert {"sucesso", "mensagem", "diff"}.issubset(result)
+
+    def test_prepara_diff_contem_conteudo(self, repo_com_arquivo_staged):
+        """O diff deve conter conteúdo real das alterações."""
+        result = tool_preparar_commit("feat: feature")
+        assert result["sucesso"] is True
+        assert "diff --git" in result["diff"] or "feature.py" in result["diff"]
+
+
+# ===========================================================================
+# tool_confirmar_commit
+# ===========================================================================
+
+
+class TestToolConfirmarCommit:
+    def test_confirma_com_staged_sucesso(self, repo_com_arquivo_staged):
+        """Confirma commit quando há staged — deve invocar 'git commit -m'."""
+        commits_antes = _commit_count(repo_com_arquivo_staged)
+        result = tool_confirmar_commit("feat: add feature")
+        commits_depois = _commit_count(repo_com_arquivo_staged)
+        assert result["sucesso"] is True
+        assert commits_depois == commits_antes + 1
+
+    def test_confirma_sem_staged_falha(self, repo):
+        """Sem staged, confirmar deve retornar sucesso=False."""
+        result = tool_confirmar_commit("feat: nada para commitar")
+        assert result["sucesso"] is False
+        assert "nada para commitar" in result["mensagem"].lower()
+
+    def test_confirma_retorna_chaves_corretas(self, repo_com_arquivo_staged):
+        """Verifica que as chaves esperadas estão presentes no retorno."""
+        result = tool_confirmar_commit("feat: teste")
+        assert {"sucesso", "stdout", "stderr", "returncode"}.issubset(result)
+
+    def test_confirma_limpa_stage(self, repo_com_arquivo_staged):
+        """Após confirmar com sucesso, o stage deve estar limpo."""
+        tool_confirmar_commit("feat: add feature")
+        r = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=str(repo_com_arquivo_staged),
+            capture_output=True,
+            text=True,
+        )
+        assert r.stdout.strip() == ""
+
+    def test_fluxo_preparar_confirmar(self, repo_com_arquivo_staged):
+        """Fluxo completo: preparar → validar → confirmar."""
+        # Etapa 1: preparar
+        prep_result = tool_preparar_commit("feat: two-stage commit")
+        assert prep_result["sucesso"] is True
+        assert "feature.py" in prep_result["diff"]
+
+        # Etapa 2: confirmar
+        commits_antes = _commit_count(repo_com_arquivo_staged)
+        confirm_result = tool_confirmar_commit("feat: two-stage commit")
+        commits_depois = _commit_count(repo_com_arquivo_staged)
+
+        assert confirm_result["sucesso"] is True
+        assert commits_depois == commits_antes + 1
