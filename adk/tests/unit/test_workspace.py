@@ -1,0 +1,86 @@
+"""Tests para shared/workspace.py — workspace centralizado dos agentes."""
+
+import os
+from pathlib import Path
+
+import pytest
+
+
+def test_get_workspace_root_default(monkeypatch, tmp_path):
+    """Sem env var, usa ./workspace_output relativo ao cwd."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("WORKSPACE_OUTPUT_DIR", raising=False)
+    from shared.workspace import get_workspace_root
+    root = get_workspace_root()
+    assert root == (tmp_path / "workspace_output").resolve()
+
+
+def test_get_workspace_root_absoluto(monkeypatch, tmp_path):
+    """Caminho absoluto é usado diretamente."""
+    target = tmp_path / "custom_ws"
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(target))
+    from shared.workspace import get_workspace_root
+    root = get_workspace_root()
+    assert root == target.resolve()
+
+
+def test_get_workspace_root_til_expandido(monkeypatch, tmp_path):
+    """~ é expandido para home (usamos um fake HOME via tmp_path)."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", "~/meu_ws")
+    from shared.workspace import get_workspace_root
+    root = get_workspace_root()
+    assert root == (tmp_path / "meu_ws").resolve()
+
+
+def test_init_workspace_cria_subpastas(monkeypatch, tmp_path):
+    """init_workspace cria a raiz + todas as subpastas únicas de AGENT_DIRS."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import init_workspace, AGENT_DIRS
+    root = init_workspace()
+    assert root.is_dir()
+    # Cada subpasta única em AGENT_DIRS deve existir
+    for subdir in set(AGENT_DIRS.values()):
+        assert (root / subdir).is_dir(), f"Subpasta ausente: {subdir}"
+
+
+def test_init_workspace_limpa_existente(monkeypatch, tmp_path):
+    """init_workspace remove o workspace antigo (idempotência por prompt)."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import init_workspace
+    root = init_workspace()
+    # Cria um arquivo de poluição
+    (root / "lixo.txt").write_text("dados antigos")
+    assert (root / "lixo.txt").is_file()
+    # Reinit — deve apagar
+    root = init_workspace()
+    assert not (root / "lixo.txt").exists()
+
+
+def test_get_agent_workspace_agente_conhecido(monkeypatch, tmp_path):
+    """Retorna path correto para agente mapeado em AGENT_DIRS."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import get_agent_workspace, AGENT_DIRS
+    path = get_agent_workspace("context_engineer")
+    assert path == (tmp_path / "ws" / AGENT_DIRS["context_engineer"]).resolve()
+
+
+def test_get_agent_workspace_agente_desconhecido(monkeypatch, tmp_path):
+    """Levanta ValueError para agente não mapeado."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import get_agent_workspace
+    with pytest.raises(ValueError, match="não possui subpasta mapeada"):
+        get_agent_workspace("agente_inexistente_xyz")
+
+
+def test_agent_dirs_cobre_agentes_principais():
+    """Smoke test: AGENT_DIRS tem entradas pros agentes principais dos 4 Times."""
+    from shared.workspace import AGENT_DIRS
+    esperados = [
+        "requirements_agent", "context_engineer",
+        "design_architect", "qa_agent",
+        "coder_agent", "review_agent",
+        "orchestrator",
+    ]
+    for agente in esperados:
+        assert agente in AGENT_DIRS, f"Agente {agente} ausente em AGENT_DIRS"
