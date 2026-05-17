@@ -53,8 +53,9 @@ Para CADA requisito atômico recebido, gere uma Task contendo:
     Se não houver, use null.
 
 ## Passo 3 — Persistir no Workspace
-Após gerar todas as tasks, chame a tool `tool_salvar_task` para CADA task gerada.
-Passe o task_id e o JSON serializado da task.
+Após gerar todas as tasks, persista cada uma individualmente no repositório
+de tasks do workspace (uma operação de persistência por task). Forneça o
+task_id e o JSON serializado da task em cada persistência.
 
 ## Passo 4 — Retornar Saída Estruturada
 Retorne o JSON completo conforme o schema do sistema, contendo:
