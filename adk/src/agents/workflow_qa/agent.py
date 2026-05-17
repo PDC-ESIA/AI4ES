@@ -8,12 +8,13 @@ Composto sobre os sub-agentes especialistas do qa_agent.
 import os
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool
+from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.qa_agent.subagents.action_planner.agent import agent as action_planner_agent
 from src.agents.qa_agent.subagents.code_fix_agent.agent import agent as code_fix_agent
 from src.agents.qa_agent.subagents.receive_requirements import agent as receber_requisitos_agent
+from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
 from src.agents.qa_agent.tools.pytest_runner import executar_pytest_tool
 from src.agents.qa_agent.tools.doubt_tool import DoubtArtifactGenerator
 
@@ -33,8 +34,18 @@ FLUXO OBRIGATÓRIO:
    Encaminhe a entrada ao action_planner_agent.
    Aguarde o plano de ação: tipos de teste, dependências, pontos de
    validação humana (HITL) e relatório de compliance preliminar.
-   → Se o plano sinalizar bloqueio HITL: pause, devolva ao solicitante
-     e aguarde confirmação explícita.
+
+   → Se o plano retornar com `hitl_checkpoint.required=true`:
+        CHAME OBRIGATORIAMENTE a tool `aguardar_aprovacao_humana`
+        passando checkpoint_id, approval_question, allowed_decisions e
+        pause_reason extraídos do plano. NÃO emita texto pedindo
+        aprovação — a tool faz a pausa real.
+        Quando a tool retornar, leia o campo `decision`:
+          - "aprovar"           → prossiga para a etapa 2 (geração).
+          - "rejeitar"          → encerre com Doubt_Artifact citando
+                                  `comments`; não gere testes.
+          - "solicitar_ajustes" → encerre devolvendo `comments` ao
+                                  solicitante; não gere testes.
 
 2. GERAÇÃO DE TESTES
    Encaminhe o(s) artefato(s) ao receber_requisitos_agent.
@@ -96,5 +107,6 @@ agent = LlmAgent(
         AgentTool(agent=code_fix_agent),
         FunctionTool(executar_pytest_tool),
         FunctionTool(DoubtArtifactGenerator.generate),
+        LongRunningFunctionTool(aguardar_aprovacao_humana),
     ],
 )
