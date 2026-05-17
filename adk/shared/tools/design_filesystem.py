@@ -10,7 +10,7 @@ Logging de operações delegado integralmente ao IOLogger (design_logger.py).
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from .design_logger import IOLogger
 
@@ -94,7 +94,7 @@ def read_file(filepath: str) -> Dict[str, Any]:
         IOLogger.error("read_file", str(e))
         return {"status": "error", "error": str(e)}
 
-def save_artifact(filename: str, content: str) -> dict:
+def save_artifact(filename: str, content: str, base_dir: Optional[str] = None) -> dict:
     """Persiste um artefato em staging com versionamento automático por backup.
 
     Use sempre que qualquer agente solicitar gravação de um artefato
@@ -110,8 +110,12 @@ def save_artifact(filename: str, content: str) -> dict:
     Args:
         filename: Nome do arquivo (ex:
             `diagrama_HU-042_processo_compra.mmd`). Será gravado em
-            `temp/staging/<filename>`.
+            `<base_dir>/<filename>` ou `temp/staging/<filename>` quando
+            base_dir não for fornecido.
         content: Conteúdo textual completo do artefato.
+        base_dir: Diretório base de staging. Quando fornecido (ex: via
+            binding de workspace), substitui o STAGING_DIR padrão do
+            módulo. Quando None, usa o padrão `adk/temp/staging/`.
 
     Returns:
         dict com chaves: `status` ("ok" | "error"), `path` (str do
@@ -120,9 +124,10 @@ def save_artifact(filename: str, content: str) -> dict:
         (ISO 8601). Em erro: `status="error"`, `error`, `filename`.
     """
     try:
-        _ensure_dirs()
-        destination = (STAGING_DIR / filename).resolve()
-        
+        staging_dir = Path(base_dir) if base_dir else STAGING_DIR
+        staging_dir.mkdir(parents=True, exist_ok=True)
+        destination = (staging_dir / filename).resolve()
+
         if not _is_safe_path(destination):
             raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
 
@@ -220,7 +225,7 @@ def promote_artifact(filename: str) -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-def list_staging_files(filetype: str = "") -> Dict[str, Any]:
+def list_staging_files(filetype: str = "", base_dir: Optional[str] = None) -> Dict[str, Any]:
     """Lista os arquivos atualmente em staging, ignorando backups e logs.
 
     Use para inventariar artefatos disponíveis em staging antes de
@@ -231,6 +236,9 @@ def list_staging_files(filetype: str = "") -> Dict[str, Any]:
     Args:
         filetype: Extensão para filtrar sem o ponto (ex: "mmd", "md").
             Vazio retorna todos os arquivos visíveis.
+        base_dir: Diretório base de staging. Quando fornecido (ex: via
+            binding de workspace), substitui o STAGING_DIR padrão do
+            módulo. Quando None, usa o padrão `adk/temp/staging/`.
 
     Returns:
         dict com chaves: `status` ("ok" | "error"), `files` (list[str]
@@ -238,15 +246,16 @@ def list_staging_files(filetype: str = "") -> Dict[str, Any]:
         (path absoluto da pasta), `error` em falha.
     """
     try:
-        _ensure_dirs()
+        staging_dir = Path(base_dir) if base_dir else STAGING_DIR
+        staging_dir.mkdir(parents=True, exist_ok=True)
         files = [
             f.name
-            for f in sorted(STAGING_DIR.iterdir())
+            for f in sorted(staging_dir.iterdir())
             if f.name != LOG_FILENAME
             and BACKUP_PREFIX not in f.name
             and (not filetype or f.suffix == f".{filetype}")
         ]
-        return {"status": "ok", "files": files, "staging_dir": str(STAGING_DIR)}
+        return {"status": "ok", "files": files, "staging_dir": str(staging_dir)}
 
     except Exception as e:
         IOLogger.error("list_staging_files", str(e))

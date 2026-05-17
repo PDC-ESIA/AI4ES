@@ -40,6 +40,9 @@ _FILESYSTEM_TOOL_NAMES = {
     "tool_salvar_relatorio",
     "tool_salvar_artefato_requisito",
     "gerar_doubt_artifact",
+    # Time 2 (Design) — design_filesystem.py
+    "save_artifact",
+    "list_staging_files",
 }
 
 # Tools de workspace read (aceitam base_dir como workspace_root)
