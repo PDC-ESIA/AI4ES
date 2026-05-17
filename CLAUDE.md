@@ -166,6 +166,26 @@ Defined in `CONTRIBUTING.md`:
 
 Esta seção consolida aprendizados de rodar o `orchestrator` em ponta-a-ponta via REST. Aplica-se a quem for tocar nos workflows, em `shared/tools/` ou na infra de workspace.
 
+### HITL real no qa_pipeline (orchestrator v5)
+
+Desde o spec `docs/superpowers/specs/2026-05-17-hitl-orchestrator-design.md`, o `qa_pipeline` pausa nativamente via `LongRunningFunctionTool` (`adk/src/agents/qa_agent/tools/hitl_tool.py`). Quando `action_planner` retorna plano com `hitl_checkpoint.required=true`, o LLM do qa chama `aguardar_aprovacao_humana(...)` — ADK emite `function_call` com `long_running_tool_ids` e devolve controle ao runner.
+
+O `_PipelineOrchestrator` (v5) detecta o evento, persiste `paused_pipeline`, `paused_inner_session_id`, `paused_function_call` e `accumulated_outputs` em `ctx.session.state` (via `EventActions.state_delta` — mutação direta em `state` não persiste no ADK), e mantém o `Runner` do qa_pipeline vivo em `self._live_runners[outer_sid]`. Na próxima mensagem do usuário ("aprovar" / "rejeitar" / "solicitar_ajustes <comentários>"), o orchestrator parseia o texto via `_parse_decision`, embala em `function_response` com o `call_id` salvo, e envia ao runner pausado — `qa_pipeline` retoma de onde parou.
+
+**Limitações conhecidas (documentadas como follow-up):**
+- `_live_runners` é in-process memory. Reinício do servidor entre T0 (pausa) e T1 (resposta) perde o runner. O orchestrator detecta e devolve "Sessão HITL expirada — reenvie o prompt original" em vez de quebrar.
+- Outros pipelines (`requirements_pipeline`, `design_pipeline`, `coding_review_pipeline`) ainda usam o padrão one-shot sem pausa. Quando algum deles bloqueia (ex: design por Doubt_Artifacts), apenas produz output incompleto e segue. Generalizar HITL fica para spec futuro.
+- As tools antigas `create_hitl_checkpoint` e `register_human_validation` (em `qa_agent/tools/planner_tools.py`) ficam como audit trail. `aguardar_aprovacao_humana` é quem dirige o controle agora.
+
+**Detecção em código:** `event.long_running_tool_ids: set[str] | None` contém o `function_call.id`. Helper `_is_pending_long_running_call(part, event)` em `orchestrator/_helpers.py`.
+
+**Persistência de state:** mutações em `ctx.session.state` no `_run_async_impl` só persistem se forem emitidas via `Event(actions=EventActions(state_delta={...}))`. O `_PipelineOrchestrator.v5` faz isso nos pontos de inflexão (pausa, resume, erro, conclusão). Padrão obrigatório para qualquer BaseAgent que mantenha estado entre invocações.
+
+**Validação rápida do registro da tool:**
+```bash
+cd adk && .venv/bin/pytest tests/unit/test_workflow_qa_hitl.py tests/integration/test_hitl_e2e.py -v
+```
+
 ### Schemas de tool incompatíveis com Gemini API
 
 Tools cuja assinatura usa `str | None` (PEP 604) ou `str | dict` (Union) geram `anyOf` no FunctionDeclaration que o **Gemini API rejeita com `400 INVALID_ARGUMENT` mencionando `additional_properties`**. Use `Optional[str]` (do `typing`) — o ADK serializa como `{nullable: true, type: STRING}` que o Gemini aceita. Para `str | dict`, escolha um tipo e normalize internamente. Vale o mesmo para todo parâmetro de função registrada como `FunctionTool`.
