@@ -136,3 +136,55 @@ def test_constantes_categorias_corretas():
     assert "tool_ler_workspace" in _WORKSPACE_READ_TOOL_NAMES
     assert "tool_git_commit" in _GIT_TOOL_NAMES
     assert "tool_preparar_commit" in _GIT_TOOL_NAMES
+
+
+def test_filesystem_tool_names_inclui_artefato_requisito_e_doubt():
+    """Garante que as duas tools de Time 1 são reconhecidas pelo factory binding."""
+    from shared.agent_factory import _FILESYSTEM_TOOL_NAMES
+    assert "tool_salvar_artefato_requisito" in _FILESYSTEM_TOOL_NAMES
+    assert "gerar_doubt_artifact" in _FILESYSTEM_TOOL_NAMES
+
+
+def test_bind_tool_salvar_artefato_requisito_injeta_base_dir(tmp_path):
+    """_bind_tool_to_workspace deve aplicar partial(base_dir=...) em tool_salvar_artefato_requisito."""
+    from google.adk.tools import FunctionTool
+    from shared.agent_factory import _bind_tool_to_workspace
+    from shared.tools import tool_salvar_artefato_requisito
+
+    base = tmp_path / "agente"
+    base.mkdir()
+    bound = _bind_tool_to_workspace(
+        FunctionTool(tool_salvar_artefato_requisito),
+        agent_workspace=str(base),
+        workspace_root=str(tmp_path),
+    )
+    # Chama via func subjacente
+    result = bound.func("HU", "HU-007", "# bound\n")
+    assert result.startswith("SUCESSO:")
+    assert (base / "HUs" / "HU-007.md").is_file()
+
+
+def test_bind_gerar_doubt_artifact_injeta_base_dir(tmp_path):
+    """_bind_tool_to_workspace deve aplicar partial(base_dir=...) em gerar_doubt_artifact."""
+    from google.adk.tools import FunctionTool
+    from shared.agent_factory import _bind_tool_to_workspace
+    from shared.tools import gerar_doubt_artifact
+
+    base = tmp_path / "agente"
+    base.mkdir()
+    bound = _bind_tool_to_workspace(
+        FunctionTool(gerar_doubt_artifact),
+        agent_workspace=str(base),
+        workspace_root=str(tmp_path),
+    )
+    caminho = bound.func(
+        id_duvida="D-001",
+        id_artefato_afetado="HU-001",
+        trecho_contexto="x",
+        duvida_descricao="x",
+        motivo="x",
+        impacto="x",
+    )
+    p = Path(caminho)
+    assert p.is_file()
+    assert p.parent == base

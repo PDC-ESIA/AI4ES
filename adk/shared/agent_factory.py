@@ -38,6 +38,8 @@ _FILESYSTEM_TOOL_NAMES = {
     "tool_ler_arquivo",
     "tool_substituir_trecho",
     "tool_salvar_relatorio",
+    "tool_salvar_artefato_requisito",
+    "gerar_doubt_artifact",
 }
 
 # Tools de workspace read (aceitam base_dir como workspace_root)
