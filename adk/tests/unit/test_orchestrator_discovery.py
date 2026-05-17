@@ -34,3 +34,31 @@ def test_orchestrator_nomes_dos_workflows_presentes():
     assert nomes_esperados.issubset(nomes_encontrados), (
         f"Faltam workflows: {nomes_esperados - nomes_encontrados}"
     )
+
+
+def test_workflow_coding_inclui_context_engineer():
+    """workflow_coding deve ter context_engineer entre requirements e architect."""
+    from src.agents.workflow_coding.agent import agent as workflow_coding
+
+    nomes_subagents = [sa.name for sa in workflow_coding.sub_agents]
+
+    assert "context_engineer" in nomes_subagents, (
+        f"context_engineer ausente. Sub_agents: {nomes_subagents}"
+    )
+
+    # Verifica que vem APÓS requirements e ANTES de architect
+    idx_requirements = next(
+        (i for i, sa in enumerate(workflow_coding.sub_agents) if "requirements" in sa.name.lower()),
+        None
+    )
+    idx_context = nomes_subagents.index("context_engineer")
+    idx_architect = next(
+        (i for i, sa in enumerate(workflow_coding.sub_agents) if "architect" in sa.name.lower()),
+        None
+    )
+
+    assert idx_requirements is not None, "requirements_agent não encontrado no pipeline"
+    assert idx_architect is not None, "architect_agent não encontrado no pipeline"
+    assert idx_requirements < idx_context < idx_architect, (
+        f"Ordem errada: requirements={idx_requirements}, context_engineer={idx_context}, architect={idx_architect}"
+    )
