@@ -142,7 +142,6 @@ class TestCriarArquivoSeguranca:
         result = tool_criar_arquivo("script.sh", "conteudo")
         assert {"sucesso", "erro", "caminho"}.issubset(result)
         assert result["sucesso"] is False
-<<<<<<< HEAD
 
 
 class TestSalvarArtefatoRequisitoSeguranca:
