@@ -48,8 +48,43 @@ class RelatorioSchema(BaseModel):
         return v
 
 
-def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
-    """Ferramenta para criar ou sobrescrever um arquivo no disco com o conteúdo fornecido.
+def _resolver_caminho(caminho: str, base_dir: str | None = None) -> Path:
+    """Resolve caminho relativo ao base_dir (se informado) com proteção anti-traversal.
+
+    Args:
+        caminho: Caminho informado pelo agente.
+        base_dir: Diretório base do agente no workspace (opcional).
+
+    Returns:
+        Path resolvido e validado.
+
+    Raises:
+        ValueError: Se o caminho tenta escapar do base_dir (absolute ou ..).
+    """
+    if base_dir is None:
+        return Path(caminho)
+
+    base = Path(base_dir).resolve()
+    rel = Path(caminho)
+
+    if rel.is_absolute():
+        raise ValueError(
+            f"Caminho absoluto não permitido com base_dir: '{caminho}'. "
+            f"Use caminhos relativos ao seu diretório de trabalho."
+        )
+
+    if ".." in rel.parts:
+        raise ValueError(
+            f"Path traversal não permitido: '{caminho}'. "
+            f"Não use '..' no caminho."
+        )
+
+    return base / rel
+
+
+def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: str | None = None) -> dict:
+    """Cria/sobrescreve arquivo no disco com o conteúdo fornecido.
+
     Use esta ferramenta SEMPRE que precisar escrever um arquivo completo do zero.
 
     Possui validações de segurança:
@@ -58,13 +93,13 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
     - Cria diretórios intermediários automaticamente se necessário
 
     Args:
-        caminho (str): Caminho relativo ao diretório de trabalho atual
-        conteudo (str): Conteúdo completo a ser escrito no arquivo
+        caminho: Caminho do arquivo (relativo a base_dir se fornecido, ou ao CWD).
+        conteudo: Conteúdo a escrever.
+        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
 
     Returns:
-        dict: Contém status da operação, caminho absoluto criado e possíveis erros
+        dict com sucesso, caminho, bytes_escritos, erro.
     """
-
     if not caminho or not caminho.strip():
         return {
             "sucesso": False,
@@ -72,7 +107,10 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
             "caminho": None,
         }
 
-    path = Path(caminho)
+    try:
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return {"sucesso": False, "erro": str(e), "caminho": caminho}
 
     partes = set(path.parts[:-1])
     bloqueados = partes & DIRETORIOS_PROIBIDOS
@@ -109,13 +147,14 @@ def tool_criar_arquivo(caminho: str, conteudo: str) -> dict:
 
 
 def tool_salvar_relatorio(
-    conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md"
+    conteudo: str, nome_arquivo: str = "doubt_artifact_revisao.md", base_dir: str | None = None
 ) -> dict:
     """Salva relatório de revisão em Markdown no disco.
 
     Args:
         conteudo: Texto do relatório.
         nome_arquivo: Nome do arquivo (padrão: doubt_artifact_revisao.md).
+        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
 
     Returns:
         dict com sucesso, caminho, bytes_escritos e erro.
@@ -125,14 +164,20 @@ def tool_salvar_relatorio(
     except ValidationError as e:
         return {"sucesso": False, "erro": f"Parâmetros inválidos: {e}", "caminho": None}
 
-    path = Path(dados.nome_arquivo)
-
-    if path.is_absolute() or ".." in path.parts:
-        return {
-            "sucesso": False,
-            "erro": "Caminho deve ser relativo e sem '..'.",
-            "caminho": str(path),
-        }
+    if base_dir is None:
+        # Comportamento original: validação manual de segurança
+        path = Path(dados.nome_arquivo)
+        if path.is_absolute() or ".." in path.parts:
+            return {
+                "sucesso": False,
+                "erro": "Caminho deve ser relativo e sem '..'.",
+                "caminho": str(path),
+            }
+    else:
+        try:
+            path = _resolver_caminho(dados.nome_arquivo, base_dir)
+        except ValueError as e:
+            return {"sucesso": False, "erro": str(e), "caminho": dados.nome_arquivo}
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,17 +196,22 @@ def tool_salvar_relatorio(
         }
 
 
-def tool_ler_arquivo(caminho: str) -> str:
+def tool_ler_arquivo(caminho: str, base_dir: str | None = None) -> str:
     """Lê o conteúdo completo de um arquivo no disco.
 
     Args:
-        caminho (str): Caminho relativo do arquivo a ser lido.
+        caminho: Caminho do arquivo (relativo a base_dir se fornecido, ou ao CWD).
+        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
 
     Returns:
         str: Conteúdo do arquivo, ou mensagem de erro.
     """
     try:
-        path = Path(caminho)
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return f"Erro: {e}"
+
+    try:
         if not path.is_file():
             return f"Erro: O arquivo '{caminho}' não existe ou não é um arquivo válido."
         return path.read_text(encoding="utf-8")
@@ -169,14 +219,29 @@ def tool_ler_arquivo(caminho: str) -> str:
         return f"Erro inesperado ao ler o arquivo '{caminho}': {str(e)}"
 
 
-def tool_substituir_trecho(caminho: str, trecho_antigo: str, trecho_novo: str) -> str:
+def tool_substituir_trecho(
+    caminho: str, trecho_antigo: str, trecho_novo: str, base_dir: str | None = None
+) -> str:
     """Use esta ferramenta para editar arquivos JÁ EXISTENTES, evitando reescrever o arquivo inteiro.
     Substitui um trecho de código existente (trecho_antigo) por um novo trecho (trecho_novo) em um arquivo.
     Regra CRÍTICA: O 'trecho_antigo' deve ser uma cópia EXATA do trecho atual do arquivo,
     incluindo qualquer espaço, indentação e quebra de linha.
+
+    Args:
+        caminho: Caminho do arquivo (relativo a base_dir se fornecido, ou ao CWD).
+        trecho_antigo: Trecho exato a ser substituído.
+        trecho_novo: Novo trecho.
+        base_dir: Diretório base do agente (injetado pela factory quando aplicável).
+
+    Returns:
+        str: Mensagem de sucesso ou erro.
     """
     try:
-        path = Path(caminho)
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return f"Erro: {e}"
+
+    try:
         if not path.is_file():
             return f"Erro: O arquivo '{caminho}' não existe. Use tool_criar_arquivo para criar arquivos novos."
 
@@ -239,3 +304,61 @@ def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> 
         return f"SUCESSO: {tipo} {id_req} salvo em {caminho_completo}"
     except Exception as e:
         return f"ERRO ao salvar artefato: {str(e)}"
+
+
+def tool_ler_workspace(caminho: str, base_dir: str | None = None) -> str:
+    """Lê o conteúdo de um arquivo do workspace global (read-only cross-workspace).
+
+    Diferente de tool_ler_arquivo (escopo do agente), permite ler arquivos de
+    qualquer subpasta do workspace centralizado — útil para o reviewer/qa
+    consultarem outputs de outros agentes.
+
+    Args:
+        caminho: Caminho relativo à raiz do workspace (ex: 'coder/main.py').
+        base_dir: Raiz do workspace (injetada pela factory como workspace_root).
+
+    Returns:
+        Conteúdo do arquivo ou mensagem de erro.
+    """
+    if base_dir is None:
+        return "Erro: tool_ler_workspace requer base_dir (raiz do workspace)."
+
+    try:
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return f"Erro: {e}"
+
+    if not path.is_file():
+        return f"Erro: arquivo '{caminho}' não existe em {base_dir}."
+
+    try:
+        return path.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"Erro ao ler '{caminho}': {e}"
+
+
+def tool_listar_workspace(caminho: str = ".", base_dir: str | None = None) -> str | list[str]:
+    """Lista o conteúdo de um diretório do workspace global.
+
+    Args:
+        caminho: Caminho relativo à raiz do workspace. Default: "." (raiz).
+        base_dir: Raiz do workspace (injetada pela factory).
+
+    Returns:
+        Lista de nomes (arquivos+diretórios) ou string de erro.
+    """
+    if base_dir is None:
+        return "Erro: tool_listar_workspace requer base_dir (raiz do workspace)."
+
+    try:
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return f"Erro: {e}"
+
+    if not path.is_dir():
+        return f"Erro: diretório '{caminho}' não existe em {base_dir}."
+
+    try:
+        return sorted(p.name for p in path.iterdir())
+    except Exception as e:
+        return f"Erro ao listar '{caminho}': {e}"

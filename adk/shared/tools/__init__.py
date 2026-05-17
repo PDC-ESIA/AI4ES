@@ -5,6 +5,8 @@ from .filesystem import (
     tool_ler_arquivo,
     tool_substituir_trecho,
     tool_salvar_artefato_requisito,
+    tool_ler_workspace,
+    tool_listar_workspace,
 )
 from .doubt_handler import registrar_duvida, listar_duvidas_pendentes
 from .slicer_tool import run_slicer, ler_chunk, extract_text
@@ -26,6 +28,8 @@ __all__ = [
     "tool_ler_arquivo",
     "tool_substituir_trecho",
     "tool_salvar_artefato_requisito",
+    "tool_ler_workspace",
+    "tool_listar_workspace",
     "registrar_duvida",
     "listar_duvidas_pendentes",
     "run_slicer",
