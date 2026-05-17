@@ -79,8 +79,9 @@ def _normalizar_caminho_arquivo(caminho_arquivo: str | dict) -> Path:
     
     p = Path(caminho_arquivo)
     if not p.is_absolute():
-        base_dir = Path(__file__).parent.parent
-        # Se o LLM encurtar o caminho, tentamos resolver a partir do root do qa_agent
+        from shared.workspace import get_agent_workspace
+        base_dir = get_agent_workspace("receive_requirements")
+        # Se o LLM encurtar o caminho, tentamos resolver a partir do workspace de inputs
         if p.parts and p.parts[0] == "artefactsTests":
             p = base_dir / p
         elif "artefactsTests" in p.parts:
@@ -91,11 +92,11 @@ def _normalizar_caminho_arquivo(caminho_arquivo: str | dict) -> Path:
             
     return p
 
-def executar_pytest_tool(caminho_arquivo: str | dict) -> dict:
+def executar_pytest_tool(caminho_arquivo: str) -> dict:
     """Executa testes pytest em um arquivo específico com análise de cobertura.
 
     Args:
-        caminho_arquivo: Path do arquivo de teste ou dicionário com o caminho.
+        caminho_arquivo: Path do arquivo de teste (string).
 
     Returns:
         dict: Resultado estruturado com status, cobertura e erros (se houver).
