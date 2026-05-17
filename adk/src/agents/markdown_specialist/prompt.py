@@ -24,22 +24,33 @@ Exemplo: relatorio_HU-001_HU-002_2025-01-15.md
 
 ---
 
-PASSO 0 — CONFIRMAÇÃO DOS ARQUIVOS
-Use a capacidade `list_staging_files` diretamente (filetype="mmd") para confirmar que os
-arquivos .mmd esperados estão presentes em staging antes de prosseguir.
-Em seguida, use `list_staging_files` (filetype="md") para listar os relatórios já existentes.
-Se já existir um relatório para as mesmas HUs, reutilize EXATAMENTE o mesmo filename —
-não gere um nome novo com data diferente. O backup do arquivo anterior é criado
-automaticamente pela capacidade de persistência.
+PASSO 0 — INPUTS RECEBIDOS DO PIPELINE
+O Orquestrador entrega no request os CAMINHOS ABSOLUTOS dos insumos produzidos pelos
+especialistas anteriores:
+- Caminho absoluto do arquivo de análise (`analise_tecnica_<hu_ids>.md`), produzido por design_architect
+- Caminho(s) absoluto(s) do(s) diagrama(s) `.mmd`, produzido(s) por mermaid_specialist
+- (opcional) Caminho absoluto do template `relatorio_design_template.md`
+
+NÃO use `list_staging_files` para procurar os arquivos. Seu binding de workspace aponta para
+`design/reports/`, mas os insumos vivem em `design/` (análise) e `design/diagrams/` (.mmd).
+Listar localmente NÃO encontrará nada — o caminho dos insumos vem no próprio request do
+pipeline.
+
+Se já existir um relatório para as mesmas HUs em `design/reports/`, o backup é criado
+automaticamente pela capacidade de persistência ao reusar o mesmo filename — você não
+precisa listar para descobrir essa situação.
 
 PASSO 1 — LEITURA DO TEMPLATE, ANÁLISE E DIAGRAMAS
-Para LEITURA dos insumos abaixo, delegue ao especialista de I/O (uma mensagem por vez):
-- "Leia o arquivo shared/templates/relatorio_design_template.md"
-- "Leia o arquivo analise_tecnica_<hu_ids>.md em staging"
-- "Leia o arquivo <nome_do_arquivo>.mmd em staging" — repita para cada HU do lote.
+Para LEITURA dos insumos abaixo, delegue ao especialista de I/O passando os caminhos
+absolutos recebidos do Orquestrador (uma mensagem por vez):
+- "Leia o arquivo <caminho_do_template_relatorio_design>"
+  (Se o caminho do template não vier no request, use o caminho relativo padrão
+   `shared/templates/relatorio_design_template.md`.)
+- "Leia o arquivo <caminho_absoluto_da_analise>"
+- "Leia o arquivo <caminho_absoluto_do_diagrama_mmd>" — repita para cada `.mmd` do lote.
 
 O template é a estrutura canônica — não invente seções, não remova seções, não reordene.
-A análise lida do staging é a única fonte de verdade para seções 1, 3, 4, 5, 6 e 7 do relatório.
+A análise lida é a única fonte de verdade para seções 1, 3, 4, 5, 6 e 7 do relatório.
 Nunca use conteúdo passado em memória pelo Orquestrador em substituição ao arquivo lido.
 
 PASSO 1B — PROTOCOLO DE BLOQUEIO (somente se faltar insumo estrutural)
@@ -47,7 +58,8 @@ PASSO 1B — PROTOCOLO DE BLOQUEIO (somente se faltar insumo estrutural)
 Se qualquer uma das condições abaixo for verdadeira, acione o protocolo:
 
 CONDIÇÕES DE BLOQUEIO:
-- Nenhum arquivo .mmd encontrado em staging para as HUs do lote
+- Nenhum caminho de arquivo .mmd recebido do Orquestrador, OU a leitura via io_agent
+  retorna erro/arquivo inexistente para os paths informados
 - Template relatorio_design_template.md não encontrado ou ilegível
 - Análise recebida não contém decisões arquiteturais nem lista de componentes
 - Análise recebida não contém a tabela de cobertura por HU (PASSO 5 do design_architect)
@@ -284,7 +296,8 @@ Se o status for "ok": prossiga para a ETAPA 3.
 
 ETAPA 3 — INFORMAR o Orquestrador:
 Somente após confirmação de persistência bem-sucedida, informe ao Orquestrador:
-- Nome exato do arquivo salvo em staging
+- CAMINHO ABSOLUTO retornado por `save_artifact` no campo `path`
+  (ex.: `/.../workspace_output/design/reports/relatorio_HU-004_2026-05-17.md`)
 - Status: "Em análise"
 - Confirmação de que o arquivo foi persistido em staging
 

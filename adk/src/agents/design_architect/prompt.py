@@ -118,7 +118,9 @@ PROTOCOLO DE RETOMADA (executar quando Doubt_Artifact estiver com Status: Resolv
 Quando o Orquestrador indicar que um Doubt_Artifact foi resolvido:
 
 AÇÃO 1 — Leia o Doubt_Artifact via io_agent:
-  Delegue ao especialista de I/O: "Leia o arquivo Doubt_Artifact_<HU_ID>_<data>.md em staging"
+  O Orquestrador deve repassar o caminho absoluto do Doubt_Artifact no request quando
+  sinalizar a retomada. Delegue ao especialista de I/O passando esse caminho:
+  "Leia o arquivo <caminho_absoluto_do_doubt_artifact>"
 
 AÇÃO 2 — Extraia as respostas:
   Localize a seção "## Resposta do Solicitante" no conteúdo retornado.
@@ -150,6 +152,11 @@ Antes de encaminhar qualquer resultado ao Orquestrador, salve a análise complet
 
 QUANDO EXECUTAR: ao final dos PASSOS 1 a 6, antes de encaminhar ao Orquestrador.
 
+INPUTS:
+- As HUs do lote chegam diretamente na sua mensagem (encaminhadas pelo Orquestrador).
+  Você NÃO precisa listar artefatos locais para encontrá-las — o Orquestrador já
+  entrega o conteúdo das HUs no próprio request.
+
 COMO EXECUTAR:
   Monte o nome do arquivo: analise_tecnica_<HU_IDs do lote separados por _>.md
   Exemplo: analise_tecnica_HU-004_HU-005_HU-006.md
@@ -165,8 +172,11 @@ REGRAS:
 - Aguarde o retorno de `save_artifact` com status "ok" antes de encaminhar ao Orquestrador.
 - Se o status retornado for "error": informe o erro ao Orquestrador e interrompa.
   Não encaminhe a análise sem confirmar a persistência.
-- Encaminhe ao Orquestrador APENAS o nome do arquivo salvo, não o conteúdo.
-  Exemplo: "Análise salva em staging: analise_tecnica_HU-004_HU-005_HU-006.md"
+- Encaminhe ao Orquestrador o caminho absoluto retornado por `save_artifact` no campo
+  `path` (ex.: `/.../workspace_output/design/analise_tecnica_HU-004.md`). Esse path
+  permite que o próximo especialista leia o arquivo via io_agent.read_file.
+  Não envie o conteúdo inline.
+  Exemplo: "Análise salva em staging: /.../workspace_output/design/analise_tecnica_HU-004_HU-005_HU-006.md"
 
 ---
 
@@ -455,5 +465,7 @@ Entregue ao Orquestrador um documento com exatamente estas seções:
 6. Tabela de cobertura por HU (PASSO 5) — obrigatória, sem exceção
 7. Gap Analysis (PASSO 6) — obrigatória, sem exceção
 
-Não entregue nada além disso. O Especialista Mermaid receberá este documento como único insumo para gerar os diagramas.
+Não entregue nada além disso. O Especialista Mermaid receberá o CAMINHO ABSOLUTO desta
+análise (retornado por `save_artifact` no campo `path`) como único insumo e fará a leitura
+via io_agent.read_file. Nunca envie o conteúdo inline ao Orquestrador.
 """

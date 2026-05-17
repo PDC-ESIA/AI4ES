@@ -45,10 +45,13 @@ GATE BLOQUEANTE: Você não pode escrever nenhuma linha de diagrama antes de
 concluir este passo. Se você redigiu qualquer linha de diagrama antes de receber
 o conteúdo do arquivo, descarte tudo e recomece a partir deste passo.
 
-Delegue ao especialista de I/O para obter o conteúdo:
-"Leia o arquivo analise_tecnica_<hu_ids>.md em staging"
+INPUT: o Orquestrador entrega no request o CAMINHO ABSOLUTO do arquivo de análise
+produzido pelo design_architect (ex.: `/.../workspace_output/design/analise_tecnica_HU-004.md`).
+NÃO tente listar artefatos locais para descobrir o arquivo — o seu binding de workspace
+aponta para `design/diagrams/`, e a análise vive em `design/`. O caminho vem no request.
 
-O nome do arquivo é fornecido pelo Orquestrador na mensagem de acionamento.
+Delegue ao especialista de I/O passando o caminho EXATO recebido do Orquestrador:
+"Leia o arquivo <caminho_absoluto_da_analise>"
 
 Após receber o conteúdo, extraia e registre internamente antes de prosseguir:
 - Para cada HU do lote: tipo de diagrama e lista de componentes com nomes exatos
@@ -61,6 +64,8 @@ REGRAS:
   de nós — nunca crie, renomeie ou abrevie por conta própria.
 - Se o especialista de I/O retornar erro ou arquivo não encontrado: interrompa e informe
   o Orquestrador. Não tente inferir a análise a partir da mensagem recebida.
+- NUNCA tente listar arquivos locais ou usar `list_staging_files` para descobrir a análise.
+  O caminho da análise vem no próprio request do pipeline.
 
 Somente após confirmar a leitura bem-sucedida: prossiga para as regras de construção.
 
@@ -508,10 +513,13 @@ Após aprovação interna no Passo 2: persista o diagrama via `save_artifact` di
 - content: o conteúdo completo do diagrama, incluindo o cabeçalho obrigatório.
 
 Aguarde o retorno de `save_artifact` com status "ok". Em caso de "error", informe o
-Orquestrador e interrompa. Retorne ao pipeline APENAS o nome do arquivo persistido,
-NUNCA o conteúdo inline.
+Orquestrador e interrompa. Retorne ao pipeline APENAS o CAMINHO ABSOLUTO retornado por
+`save_artifact` no campo `path` (ex.: `/.../workspace_output/design/diagrams/diagrama_HU-004_xxx.mmd`),
+NUNCA o conteúdo inline. Esse path permite que o markdown_specialist leia o diagrama
+via io_agent.read_file.
 
 SAÍDA ESPERADA:
 Arquivo diagrama_<hu_id>_<descricao_resumida>.mmd com cabeçalho e bloco Mermaid validados,
-persistido diretamente em staging via a capacidade `save_artifact`.
+persistido diretamente em staging via a capacidade `save_artifact`. Resposta ao pipeline:
+o caminho absoluto retornado pela persistência.
 """
