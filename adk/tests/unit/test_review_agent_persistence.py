@@ -64,3 +64,81 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     assert "main.py" in result
     assert "__pycache__" not in result
     assert ".pyc" not in result
+
+
+def test_reviewer_instruction_provider_inclui_arquivos_descobertos(tmp_path, monkeypatch):
+    """O instruction provider do _reviewer chama _discover_coder_files e injeta no template."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import agent as wcr
+    importlib.reload(wcr)
+
+    # Cria arquivos APÓS o reload (init_workspace pode resetar o diretório)
+    coder_ws = Path(wcr._CODER_WS)
+    coder_ws.mkdir(parents=True, exist_ok=True)
+    (coder_ws / "app").mkdir(exist_ok=True)
+    (coder_ws / "app" / "main.py").write_text("# main")
+
+    # _reviewer.instruction deve ser callable (InstructionProvider) ou string já contendo o glob
+    instr = wcr._reviewer.instruction
+    if callable(instr):
+        # Stub mínimo de ReadonlyContext — o provider só precisa do callable
+        class _FakeCtx:
+            pass
+        rendered = instr(_FakeCtx())
+        # Provider pode retornar str ou Awaitable[str]
+        if hasattr(rendered, "__await__"):
+            import asyncio
+            rendered = asyncio.get_event_loop().run_until_complete(rendered)
+    else:
+        rendered = instr
+
+    assert "- app/main.py" in rendered
+
+
+def test_reviewer_instruction_contem_save_obrigatorio(tmp_path, monkeypatch):
+    """Instruction final do reviewer DEVE conter a frase que torna o save mandatório."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import agent as wcr
+    importlib.reload(wcr)
+
+    instr = wcr._reviewer.instruction
+    if callable(instr):
+        class _FakeCtx:
+            pass
+        rendered = instr(_FakeCtx())
+        if hasattr(rendered, "__await__"):
+            import asyncio
+            rendered = asyncio.get_event_loop().run_until_complete(rendered)
+    else:
+        rendered = instr
+
+    assert "tool_salvar_relatorio" in rendered
+    assert "OBRIGATÓRIO" in rendered
+
+
+def test_reviewer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monkeypatch):
+    """tool_ler_arquivo do reviewer resolve paths relativos contra _CODER_WS."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import agent as wcr
+    importlib.reload(wcr)
+
+    # Cria arquivos APÓS o reload
+    coder_ws = Path(wcr._CODER_WS)
+    coder_ws.mkdir(parents=True, exist_ok=True)
+    target_file = coder_ws / "test_file.py"
+    target_file.write_text("CONTEUDO_ESPERADO")
+
+    # tool_ler_arquivo deve ser o primeiro tool do _reviewer
+    tools = wcr._reviewer.tools
+    ler_tool = next(t for t in tools if "ler_arquivo" in t.func.__name__)
+    # tool_ler_arquivo retorna str (não dict) — bound ao _CODER_WS via functools.partial
+    result = ler_tool.func(caminho="test_file.py")
+    assert isinstance(result, str)
+    assert "CONTEUDO_ESPERADO" in result
+    assert not result.startswith("Erro:")

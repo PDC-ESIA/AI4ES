@@ -158,20 +158,68 @@ _coder = LlmAgent(
     ],
 )
 
+_REVIEWER_INSTRUCTION_TEMPLATE = """
+# PERFIL
+Você é um Engenheiro de Software Sênior responsável por revisar código produzido por outro agente.
+Não há ambiente git neste pipeline. Você revisa arquivos diretamente no workspace.
+
+# WORKSPACE
+Os arquivos a revisar estão em `__CODER_WS__/` (caminho absoluto do disco).
+Para você, use caminhos RELATIVOS — tool_ler_arquivo resolve automaticamente.
+
+# ARQUIVOS A REVISAR
+__FILES__
+
+# FERRAMENTAS DISPONÍVEIS
+- tool_ler_arquivo(caminho): lê arquivo do workspace do coder (path relativo).
+- tool_salvar_relatorio(nome_arquivo, conteudo): salva o relatório no workspace de review.
+
+# FLUXO OBRIGATÓRIO
+1. Para cada arquivo da lista acima, chame tool_ler_arquivo(caminho).
+2. Avalie em 4 dimensões: COMPLETUDE, ARQUITETURA, CORRETUDE, TESTES.
+   - Completude: arquivos esperados foram criados? tests/ existe? requirements.txt?
+   - Arquitetura: SRP, separação de concerns, acoplamento.
+   - Corretude: bugs visíveis, edge cases, segurança.
+   - Testes: existem? cobrem cenários relevantes? assertions significativas?
+3. **OBRIGATÓRIO ao fim**: chame tool_salvar_relatorio(nome_arquivo='verificacao_revisao.md', conteudo=<markdown>).
+   Sem essa chamada, sua revisão NÃO é entregue — o pipeline falha mesmo que você produza texto.
+
+# REGRAS DE DECISÃO
+- Qualquer issue critical → status="BLOQUEADO"
+- Apenas warning/info → status="APROVADO" com ressalvas
+- Sem issues → status="APROVADO"
+
+# SAÍDA FINAL (texto retornado pelo agente, depois de salvar)
+JSON único:
+{
+  "status": "APROVADO" | "BLOQUEADO",
+  "issues": [{"severity": "critical|warning|info", "description": "...", "file": "...", "layer": "completude|arquitetura|corretude|testes"}],
+  "report_path": "verificacao_revisao.md"
+}
+"""
+
+
+def _reviewer_instruction_provider(_ctx) -> str:
+    """InstructionProvider do ADK: resolve no momento da invocação.
+
+    Garante que a lista de arquivos do coder esteja atualizada quando o
+    reviewer é chamado (após o coder rodar, não no import do módulo).
+    """
+    return (
+        _REVIEWER_INSTRUCTION_TEMPLATE
+        .replace("__CODER_WS__", _CODER_WS)
+        .replace("__FILES__", _discover_coder_files())
+    )
+
+
 _reviewer = LlmAgent(
     model=_model,
     name="cr_review_agent",
     description=reviewer_prompt.description,
-    instruction=(
-        reviewer_prompt.instruction
-        + f"\n\n# WORKSPACE\n"
-        + f"Os arquivos a revisar estão em `{_CODER_WS}/`. "
-        + f"Como o ambiente não é git, use tool_ler_arquivo (apontando para `{_CODER_WS}/<file>`) "
-        + f"para ler cada arquivo. Salve o relatório em `{_REVIEW_WS}/` via tool_salvar_relatorio."
-    ),
+    instruction=_reviewer_instruction_provider,
     output_key="review",
     tools=[
-        FunctionTool(tool_ler_arquivo),
+        _bind(FunctionTool(tool_ler_arquivo), _CODER_WS),
         _bind(FunctionTool(tool_salvar_relatorio), _REVIEW_WS),
     ],
 )
