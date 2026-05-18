@@ -9,6 +9,7 @@ workspace — o coder NÃO escreve no repo principal.
 """
 
 import os
+from pathlib import Path
 
 from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.tools import FunctionTool
@@ -48,6 +49,26 @@ _REVIEW_WS = str(get_agent_workspace("reviewer"))
 
 def _bind(tool, agent_ws):
     return _bind_tool_to_workspace(tool, agent_ws, _WORKSPACE_ROOT)
+
+
+def _discover_coder_files() -> str:
+    """Lista arquivos no _CODER_WS (relativo), formato bullet, pra injetar no prompt do reviewer.
+
+    Executado no momento da invocação do agente (via InstructionProvider) — não no import.
+    Quando o coder ainda não rodou, retorna marker informativo.
+    """
+    coder_dir = Path(_CODER_WS)
+    if not coder_dir.exists():
+        return "- (nenhum arquivo ainda — coder será executado antes de você)"
+    files = sorted(
+        str(p.relative_to(coder_dir))
+        for p in coder_dir.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
+    )
+    if not files:
+        return "- (workspace vazio)"
+    return "\n".join(f"- {f}" for f in files)
+
 
 # NOTA: as tools originais `tool_ler_prd_arquivo_adk` e `tool_gerar_doubt_artifact_adk`
 # viviam em adk/agents/roles/requirements/tools_requirements.py e foram removidas na
