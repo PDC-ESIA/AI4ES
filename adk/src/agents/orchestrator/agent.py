@@ -41,9 +41,11 @@ from src.agents.orchestrator._helpers import (
     _build_input,
     _clear_pause_state,
     _extract_user_text,
+    _is_empty_response,
     _is_pending_long_running_call,
     _parse_decision,
     _set_pause_state,
+    EMPTY_RETRY_PROMPT,
 )
 
 
@@ -232,6 +234,32 @@ class _PipelineOrchestrator(BaseAgent):
                             last_text = part.text
                         elif _is_pending_long_running_call(part, event):
                             pending_pause = part.function_call
+
+            # RETRY: empty sem pausa = LLM falhou silenciosamente. Reinvoca 1x.
+            if pending_pause is None and _is_empty_response(last_text):
+                retry_content = types.Content(
+                    role="user",
+                    parts=[types.Part.from_text(text=EMPTY_RETRY_PROMPT)],
+                )
+                last_text = ""
+                async for event in runner.run_async(
+                    user_id=inner_session.user_id,
+                    session_id=inner_session.id,
+                    new_message=retry_content,
+                ):
+                    yield event
+                    if event.content and event.content.parts:
+                        for part in event.content.parts:
+                            if part.text:
+                                last_text = part.text
+                            elif _is_pending_long_running_call(part, event):
+                                pending_pause = part.function_call
+
+                if _is_empty_response(last_text) and pending_pause is None:
+                    last_text = (
+                        f"[orchestrator] pipeline {pipeline.name} "
+                        "retornou empty após retry"
+                    )
 
             if pending_pause is not None:
                 # Salva estado, MANTÉM runner vivo (não fecha).
