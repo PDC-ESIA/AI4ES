@@ -40,6 +40,7 @@ _FILESYSTEM_TOOL_NAMES = {
     "tool_salvar_relatorio",
     "tool_salvar_artefato_requisito",
     "gerar_doubt_artifact",
+    "tool_ask_clarification",
     # Time 2 (Design) — design_filesystem.py
     "save_artifact",
     "list_staging_files",

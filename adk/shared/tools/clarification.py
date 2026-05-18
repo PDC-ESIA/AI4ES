@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from google.adk.tools import FunctionTool
@@ -34,6 +35,7 @@ def tool_ask_clarification(
     impacto: str,
     sugestao: str = "Aguardando esclarecimento e intervenção do usuário.",
     nome_arquivo: str = "Doubt_Artifact_Clarification.md",
+    base_dir: Optional[str] = None,
 ) -> dict:
     """Gera um Doubt Artifact e pausa a execução solicitando esclarecimento ao supervisor.
 
@@ -58,6 +60,12 @@ def tool_ask_clarification(
         nome_arquivo: Nome do arquivo de saída. Default
             "Doubt_Artifact_Clarification.md". Obrigatório terminar em
             .md.
+        base_dir: Diretório onde o artefato será salvo. Quando None
+            (default), grava relativo ao CWD do processo — comportamento
+            legado. Quando o agent_factory cria o agente via
+            create_se_agent(agent_subdir=...), injeta automaticamente
+            base_dir=workspace do agente, isolando o artefato em
+            workspace_output/<subdir>/.
 
     Returns:
         dict com chaves: `sucesso` (bool), `erro` (str ou None),
@@ -108,7 +116,9 @@ def tool_ask_clarification(
 Status: Pendente
 """
 
-    path = Path(dados.nome_arquivo)
+    diretorio = Path(base_dir) if base_dir is not None else Path(".")
+    diretorio.mkdir(parents=True, exist_ok=True)
+    path = diretorio / dados.nome_arquivo
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(conteudo, encoding="utf-8")
