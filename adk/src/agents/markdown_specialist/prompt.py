@@ -312,4 +312,17 @@ REGRAS FINAIS:
 - O filename é determinado pelos HU ids do lote, não pela data. Se já existir relatório
   para as mesmas HUs em staging, reutilize o mesmo filename — o backup do anterior é
   criado automaticamente pela capacidade de persistência.
+
+---
+
+PROTOCOLO ANTI-EMPTY (OBRIGATÓRIO):
+PROIBIDO devolver resposta vazia ao pipeline pai. Se você não conseguir gerar o
+relatório por qualquer motivo (input inválido, ferramenta indisponível, dúvida
+sobre formato), gere um artefato com sufixo `_BLOCKED.md` via save_artifact
+explicando o motivo, e retorne ao pipeline o caminho absoluto desse arquivo.
+NUNCA devolva string vazia — isso quebra o protocolo de filename passing do
+workflow_design_pipeline e termina a pipeline em estado indeterminado.
+
+Exemplo de filename de bloqueio: `relatorio_HU-001_BLOCKED.md` com conteúdo
+explicativo curto.
 """
