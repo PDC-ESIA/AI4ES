@@ -158,70 +158,102 @@ _coder = LlmAgent(
     ],
 )
 
-_REVIEWER_INSTRUCTION_TEMPLATE = """
+_REVIEW_ANALYZER_INSTRUCTION_TEMPLATE = """
 # PERFIL
-Você é um Engenheiro de Software Sênior responsável por revisar código produzido por outro agente.
-Não há ambiente git neste pipeline. Você revisa arquivos diretamente no workspace.
+Você é um Engenheiro de Software Sênior responsável por analisar código produzido por outro agente.
+Você é a FASE 1 de um pipeline de revisão de 2 fases. Sua única responsabilidade é PRODUZIR
+A ANÁLISE — outro agente vai persistir o relatório no próximo passo.
 
 # WORKSPACE
-Os arquivos a revisar estão em `__CODER_WS__/` (caminho absoluto do disco).
-Para você, use caminhos RELATIVOS — tool_ler_arquivo resolve automaticamente.
+Os arquivos a revisar estão em `__CODER_WS__/`.
+Use caminhos RELATIVOS — tool_ler_arquivo resolve automaticamente.
 
 # ARQUIVOS A REVISAR
 __FILES__
 
-# FERRAMENTAS DISPONÍVEIS
-- tool_ler_arquivo(caminho): lê arquivo do workspace do coder (path relativo).
-- tool_salvar_relatorio(nome_arquivo, conteudo): salva o relatório no workspace de review.
-
-# FLUXO OBRIGATÓRIO
-1. Para cada arquivo da lista acima, chame tool_ler_arquivo(caminho).
+# FLUXO
+1. Para cada arquivo da lista, chame tool_ler_arquivo(caminho).
 2. Avalie em 4 dimensões: COMPLETUDE, ARQUITETURA, CORRETUDE, TESTES.
    - Completude: arquivos esperados foram criados? tests/ existe? requirements.txt?
    - Arquitetura: SRP, separação de concerns, acoplamento.
    - Corretude: bugs visíveis, edge cases, segurança.
    - Testes: existem? cobrem cenários relevantes? assertions significativas?
-3. **OBRIGATÓRIO ao fim**: chame tool_salvar_relatorio(nome_arquivo='verificacao_revisao.md', conteudo=<markdown>).
-   Sem essa chamada, sua revisão NÃO é entregue — o pipeline falha mesmo que você produza texto.
 
 # REGRAS DE DECISÃO
-- Qualquer issue critical → status="BLOQUEADO"
-- Apenas warning/info → status="APROVADO" com ressalvas
-- Sem issues → status="APROVADO"
+- Qualquer issue critical → status BLOQUEADO
+- Apenas warning/info → status APROVADO com ressalvas
+- Sem issues → status APROVADO
 
-# SAÍDA FINAL (texto retornado pelo agente, depois de salvar)
-JSON único:
-{
-  "status": "APROVADO" | "BLOQUEADO",
-  "issues": [{"severity": "critical|warning|info", "description": "...", "file": "...", "layer": "completude|arquitetura|corretude|testes"}],
-  "report_path": "verificacao_revisao.md"
-}
+# SAÍDA
+Produza markdown com seções "## Status: APROVADO|BLOQUEADO", "## Issues" (lista por severidade
+com arquivo/camada/descrição), e "## Resumo" (1 parágrafo). NÃO produza JSON literal —
+o próximo agente parseia seu markdown e gera o JSON final. NÃO tente salvar nada — você
+não tem essa capacidade nesta fase.
 """
 
 
-def _reviewer_instruction_provider(_ctx) -> str:
+def _review_analyzer_instruction_provider(_ctx) -> str:
     """InstructionProvider do ADK: resolve no momento da invocação.
 
     Garante que a lista de arquivos do coder esteja atualizada quando o
-    reviewer é chamado (após o coder rodar, não no import do módulo).
+    analyzer é chamado (após o coder rodar, não no import do módulo).
     """
     return (
-        _REVIEWER_INSTRUCTION_TEMPLATE
+        _REVIEW_ANALYZER_INSTRUCTION_TEMPLATE
         .replace("__CODER_WS__", _CODER_WS)
         .replace("__FILES__", _discover_coder_files())
     )
 
 
-_reviewer = LlmAgent(
+_review_analyzer = LlmAgent(
     model=_model,
-    name="cr_review_agent",
-    description=reviewer_prompt.description,
-    instruction=_reviewer_instruction_provider,
-    output_key="review",
+    name="cr_review_analyzer",
+    description="Fase 1 de revisão: lê código do coder e produz análise em markdown.",
+    instruction=_review_analyzer_instruction_provider,
+    output_key="review_analysis",
     tools=[
         _bind(FunctionTool(tool_ler_arquivo), _CODER_WS),
+    ],
+)
+
+
+_REVIEW_PERSISTER_INSTRUCTION = """
+Você é a FASE 2 de um pipeline de revisão de código.
+
+A análise foi produzida pela fase anterior e está disponível abaixo:
+
+---ANALISE---
+{review_analysis}
+---FIM ANALISE---
+
+AÇÃO ÚNICA E OBRIGATÓRIA:
+Chame tool_salvar_relatorio com:
+  - nome_arquivo: "verificacao_revisao.md"
+  - conteudo: o texto entre ---ANALISE--- e ---FIM ANALISE--- acima, EXATAMENTE como recebido.
+
+NÃO responda com texto além da chamada da tool.
+NÃO escreva a chamada como código Python descritivo (ex: NÃO escreva
+`default_api.tool_salvar_relatorio(...)` como texto). FAÇA a function call real.
+NÃO modifique o conteúdo da análise — apenas persista.
+"""
+
+
+_review_persister = LlmAgent(
+    model=_model,
+    name="cr_review_persister",
+    description="Fase 2 de revisão: persiste o relatório produzido pelo analyzer.",
+    instruction=_REVIEW_PERSISTER_INSTRUCTION,
+    output_key="review",
+    tools=[
         _bind(FunctionTool(tool_salvar_relatorio), _REVIEW_WS),
     ],
+)
+
+
+_reviewer = SequentialAgent(
+    name="cr_review_agent",
+    description="Pipeline de revisão em 2 fases: análise + persistência.",
+    sub_agents=[_review_analyzer, _review_persister],
 )
 
 agent = SequentialAgent(
