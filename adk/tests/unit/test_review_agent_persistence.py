@@ -66,8 +66,8 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     assert ".pyc" not in result
 
 
-def test_reviewer_instruction_provider_inclui_arquivos_descobertos(tmp_path, monkeypatch):
-    """O instruction provider do _reviewer chama _discover_coder_files e injeta no template."""
+def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_path, monkeypatch):
+    """O instruction provider do _review_analyzer chama _discover_coder_files e injeta no template."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
@@ -80,14 +80,11 @@ def test_reviewer_instruction_provider_inclui_arquivos_descobertos(tmp_path, mon
     (coder_ws / "app").mkdir(exist_ok=True)
     (coder_ws / "app" / "main.py").write_text("# main")
 
-    # _reviewer.instruction deve ser callable (InstructionProvider) ou string já contendo o glob
-    instr = wcr._reviewer.instruction
+    instr = wcr._review_analyzer.instruction
     if callable(instr):
-        # Stub mínimo de ReadonlyContext — o provider só precisa do callable
         class _FakeCtx:
             pass
         rendered = instr(_FakeCtx())
-        # Provider pode retornar str ou Awaitable[str]
         if hasattr(rendered, "__await__"):
             import asyncio
             rendered = asyncio.get_event_loop().run_until_complete(rendered)
@@ -97,48 +94,69 @@ def test_reviewer_instruction_provider_inclui_arquivos_descobertos(tmp_path, mon
     assert "- app/main.py" in rendered
 
 
-def test_reviewer_instruction_contem_save_obrigatorio(tmp_path, monkeypatch):
-    """Instruction final do reviewer DEVE conter a frase que torna o save mandatório."""
+def test_review_persister_instruction_referencia_analysis_e_anti_narracao(tmp_path, monkeypatch):
+    """Persister.instruction referencia {review_analysis} e tem texto anti-narração."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
     from src.agents.workflow_coding_review import agent as wcr
     importlib.reload(wcr)
 
-    instr = wcr._reviewer.instruction
-    if callable(instr):
-        class _FakeCtx:
-            pass
-        rendered = instr(_FakeCtx())
-        if hasattr(rendered, "__await__"):
-            import asyncio
-            rendered = asyncio.get_event_loop().run_until_complete(rendered)
-    else:
-        rendered = instr
-
-    assert "tool_salvar_relatorio" in rendered
-    assert "OBRIGATÓRIO" in rendered
+    instr = wcr._review_persister.instruction
+    # Persister.instruction é string estática com placeholder {review_analysis}
+    assert isinstance(instr, str)
+    assert "{review_analysis}" in instr
+    # Anti-narração explícita
+    assert "FAÇA a function call real" in instr or "FAÇA a function call" in instr
+    assert "tool_salvar_relatorio" in instr
 
 
-def test_reviewer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monkeypatch):
-    """tool_ler_arquivo do reviewer resolve paths relativos contra _CODER_WS."""
+def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monkeypatch):
+    """tool_ler_arquivo do analyzer resolve paths relativos contra _CODER_WS."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
     from src.agents.workflow_coding_review import agent as wcr
     importlib.reload(wcr)
 
-    # Cria arquivos APÓS o reload
     coder_ws = Path(wcr._CODER_WS)
     coder_ws.mkdir(parents=True, exist_ok=True)
     target_file = coder_ws / "test_file.py"
     target_file.write_text("CONTEUDO_ESPERADO")
 
-    # tool_ler_arquivo deve ser o primeiro tool do _reviewer
-    tools = wcr._reviewer.tools
+    tools = wcr._review_analyzer.tools
     ler_tool = next(t for t in tools if "ler_arquivo" in t.func.__name__)
-    # tool_ler_arquivo retorna str (não dict) — bound ao _CODER_WS via functools.partial
     result = ler_tool.func(caminho="test_file.py")
     assert isinstance(result, str)
     assert "CONTEUDO_ESPERADO" in result
     assert not result.startswith("Erro:")
+
+
+def test_reviewer_e_sequential_com_2_subagentes(tmp_path, monkeypatch):
+    """_reviewer é SequentialAgent com 2 sub_agents: analyzer primeiro, persister depois."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from google.adk.agents import SequentialAgent
+    from src.agents.workflow_coding_review import agent as wcr
+    importlib.reload(wcr)
+
+    assert isinstance(wcr._reviewer, SequentialAgent)
+    assert wcr._reviewer.name == "cr_review_agent"
+    assert len(wcr._reviewer.sub_agents) == 2
+    assert wcr._reviewer.sub_agents[0] is wcr._review_analyzer
+    assert wcr._reviewer.sub_agents[1] is wcr._review_persister
+
+
+def test_review_persister_so_tem_tool_salvar_relatorio(tmp_path, monkeypatch):
+    """Persister tem exatamente 1 tool e ela é tool_salvar_relatorio."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import agent as wcr
+    importlib.reload(wcr)
+
+    tools = wcr._review_persister.tools
+    assert len(tools) == 1
+    tool_name = tools[0].func.__name__
+    assert "salvar_relatorio" in tool_name
