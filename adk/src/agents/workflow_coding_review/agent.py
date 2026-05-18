@@ -17,7 +17,6 @@ from google.adk.tools import FunctionTool
 from src.agents.requirements import prompt as req_prompt
 from src.agents.requirements import schemas as req_schemas
 from src.agents.coder import prompt as coder_prompt
-from src.agents.reviewer import prompt as reviewer_prompt
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.workspace import (
     get_agent_workspace,
