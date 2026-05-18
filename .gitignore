@@ -240,9 +240,9 @@ adk/.venv-docker/
 .vscode/*
 .src/*
 #  code-assintant
-.claude/*
-!.claude/skills/
-!.claude/skills/**
+.claude/
+CLAUDE.md
+docs/superpowers/
 
 .abacusai/
 .abacusai/*
