@@ -9,6 +9,31 @@ from datetime import datetime, timezone
 from typing import Any
 
 
+EMPTY_RETRY_PROMPT = (
+    "Sua resposta anterior veio vazia. Por favor, reprocesse o pedido. "
+    "Se não conseguir gerar um output útil, devolva um JSON ou texto curto "
+    "explicando o bloqueio — NUNCA devolva string vazia."
+)
+
+
+def _is_empty_response(last_text) -> bool:
+    """True quando o texto do LLM é vazio (None, "", ou só whitespace).
+
+    Usado pelo orchestrator para detectar pipelines que devolveram nada
+    e disparar retry uma vez antes de propagar falha.
+
+    Args:
+        last_text: Último texto acumulado do pipeline. Pode ser None,
+            string vazia, whitespace, ou texto real.
+
+    Returns:
+        True se vazio (não-utilizável), False caso contrário.
+    """
+    if last_text is None:
+        return True
+    return not last_text.strip()
+
+
 def _parse_decision(text: str, allowed: list[str]) -> tuple[str, str]:
     """Parseia texto livre humano em (decision, comments).
 
