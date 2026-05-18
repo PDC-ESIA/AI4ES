@@ -89,3 +89,70 @@ async def test_invoke_once_exception_retorna_marker_de_erro():
     # Documenta que 'ERROR: ...' tem mais de 8 chars úteis, então não é
     # considerado empty pelo _is_empty — quem decide o retry é invocar_planejamento_qa
     assert planner_wrapper._is_empty(result) is False
+
+
+@pytest.mark.asyncio
+async def test_invocar_retorna_first_quando_valido():
+    """Primeira chamada retorna JSON válido → não tenta segunda."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
+
+    with patch.object(planner_wrapper, "_invoke_once", AsyncMock(return_value=valid_json)) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert result == valid_json
+    assert mock_invoke.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_invocar_tenta_segunda_quando_first_empty():
+    """Primeira call empty + segunda call JSON válido → retorna o JSON da segunda."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
+
+    with patch.object(
+        planner_wrapper, "_invoke_once",
+        AsyncMock(side_effect=["", valid_json]),
+    ) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert result == valid_json
+    assert mock_invoke.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_invocar_fallback_quando_ambas_empty():
+    """Ambas as calls empty → devolve _FALLBACK_BLOCKED_JSON."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    with patch.object(
+        planner_wrapper, "_invoke_once",
+        AsyncMock(side_effect=["", "   "]),
+    ) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert result == planner_wrapper._FALLBACK_BLOCKED_JSON
+    assert mock_invoke.await_count == 2
+    parsed = json.loads(result)
+    assert parsed["lifecycle"]["status"] == "bloqueado"
+
+
+@pytest.mark.asyncio
+async def test_invocar_retry_suffix_adicionado_na_segunda_call():
+    """Segunda call recebe request + retry suffix com aviso ANTI-EMPTY."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
+    mock_invoke = AsyncMock(side_effect=["", valid_json])
+
+    with patch.object(planner_wrapper, "_invoke_once", mock_invoke):
+        await planner_wrapper.invocar_planejamento_qa("requisito original")
+
+    # Segunda chamada (índice 1) deve incluir o request + suffix de retry
+    second_call_args = mock_invoke.await_args_list[1]
+    second_request = second_call_args[0][0]  # primeiro arg posicional
+    assert "requisito original" in second_request
+    assert "ATENÇÃO" in second_request
+    assert "PROTOCOLO ANTI-EMPTY" in second_request

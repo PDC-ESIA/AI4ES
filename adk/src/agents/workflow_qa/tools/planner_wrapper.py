@@ -26,6 +26,17 @@ _FALLBACK_BLOCKED_JSON = (
     '"erro":"action_planner não respondeu após 2 tentativas — falha de modelo"}'
 )
 
+_RETRY_PROMPT_SUFFIX = (
+    "\n\nATENÇÃO: sua resposta anterior foi vazia ou inválida. "
+    "Responda OBRIGATORIAMENTE com JSON válido seguindo o schema do PROTOCOLO ANTI-EMPTY. "
+    "Se você não conseguir planejar (input incompleto, ambíguo, contraditório), "
+    "devolva o JSON de bloqueio: "
+    '{"tipo_entrada":"indefinido","modo":"indefinido","tools":[],'
+    '"casos_de_teste_propostos":[],"lifecycle":{"status":"bloqueado",'
+    '"execution_allowed":false,"next_step":"aguardar_resolucao_humana"},'
+    '"erro":"<motivo curto>"}'
+)
+
 
 def _is_empty(text: Optional[str]) -> bool:
     """True quando o texto é vazio, None, só whitespace ou só backticks.
@@ -71,3 +82,27 @@ async def _invoke_once(request: str, user_id: str = "qa-pipeline") -> str:
         return last_text
     except Exception as exc:
         return f"ERROR: {type(exc).__name__}: {exc}"
+
+
+async def invocar_planejamento_qa(request: str) -> str:
+    """Invoca action_planner com retry programático.
+
+    Garantia: sempre devolve string não-vazia com JSON estruturado.
+    Caller (qa_pipeline) pode parsear sem se preocupar com empty.
+
+    Args:
+        request: texto do request original (requisitos + código se houver).
+
+    Returns:
+        JSON string com plano (válido) ou _FALLBACK_BLOCKED_JSON quando
+        action_planner falhar duas vezes seguidas.
+    """
+    first = await _invoke_once(request)
+    if not _is_empty(first):
+        return first
+
+    second = await _invoke_once(request + _RETRY_PROMPT_SUFFIX)
+    if not _is_empty(second):
+        return second
+
+    return _FALLBACK_BLOCKED_JSON
