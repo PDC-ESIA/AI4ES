@@ -226,3 +226,52 @@ async def test_pending_pause_no_retry(monkeypatch):
     # qa runner foi chamado APENAS 1x (sem retry, porque pausa é sucesso)
     assert len(qa_calls) == 1
     assert ctx.session.state["paused_pipeline"] == "qa_pipeline"
+
+
+# --- R5: branch RESUME não dispara retry mesmo com empty ---
+
+
+@pytest.mark.asyncio
+async def test_resume_path_no_retry():
+    """_handle_resume não tem retry logic: runner retorna empty e é chamado 1x."""
+    from src.agents.orchestrator.agent import _PipelineOrchestrator
+
+    # Runner que retorna apenas um evento de texto vazio (simula empty response)
+    resume_runner, resume_calls = _make_recording_runner([
+        [_make_text_event("qa_pipeline", "")],   # empty — nunca dispara retry no RESUME
+    ])
+
+    orch = _PipelineOrchestrator(name="orchestrator", description="test")
+    orch._live_runners["outer-sid"] = (resume_runner, "inner-qa-sid")
+
+    ctx = _FakeCtx(
+        "aprovar",
+        session_id="outer-sid",
+        state={
+            "paused_pipeline": "qa_pipeline",
+            "paused_inner_session_id": "inner-qa-sid",
+            "paused_function_call": {
+                "id": "call-1",
+                "name": "aguardar_aprovacao_humana",
+                "args": {
+                    "checkpoint_id": "ck-1",
+                    "allowed_decisions": ["aprovar", "rejeitar", "solicitar_ajustes"],
+                },
+            },
+            "accumulated_outputs": [
+                ("requirements_pipeline", "req"),
+                ("design_pipeline", "design"),
+                ("coding_review_pipeline", "cr"),
+            ],
+        },
+    )
+
+    _ = [e async for e in orch._run_async_impl(ctx)]
+
+    # Runner chamado EXATAMENTE 1 vez: sem retry no caminho RESUME
+    assert len(resume_calls) == 1
+
+    # Pausa foi limpa (run concluiu mesmo com output vazio)
+    assert ctx.session.state["paused_pipeline"] is None
+    assert ctx.session.state["paused_inner_session_id"] is None
+    assert ctx.session.state["paused_function_call"] is None
