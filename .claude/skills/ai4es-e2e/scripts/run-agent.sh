@@ -44,8 +44,15 @@ if [ -z "${PROMPT}" ]; then
   exit 1
 fi
 
+SESSION_FILE="${SESSION_FILE:-/tmp/ai4es-current-session.env}"
+if [ -f "${SESSION_FILE}" ]; then
+  # shellcheck disable=SC1090
+  source "${SESSION_FILE}"
+fi
 USER_ID="${USER_ID:-u_$(date +%s)}"
 SESSION_ID="${SESSION_ID:-s_$(date +%s%N)}"
+printf 'SESSION_ID=%s\nUSER_ID=%s\n' "${SESSION_ID}" "${USER_ID}" > "${SESSION_FILE}"
+export SESSION_ID USER_ID
 BASE="http://127.0.0.1:${PORT}"
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 PYTHON="${ROOT}/adk/.venv/bin/python"
