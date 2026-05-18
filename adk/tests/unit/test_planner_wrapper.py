@@ -1,6 +1,7 @@
 """Tests para workflow_qa/tools/planner_wrapper.py — retry de action_planner."""
 
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -46,9 +47,6 @@ def test_fallback_blocked_json_e_parseavel():
     assert parsed["lifecycle"]["status"] == "bloqueado"
     assert parsed["lifecycle"]["execution_allowed"] is False
     assert "erro" in parsed
-
-
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.mark.asyncio
