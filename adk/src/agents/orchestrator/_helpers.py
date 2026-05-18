@@ -16,7 +16,7 @@ EMPTY_RETRY_PROMPT = (
 )
 
 
-def _is_empty_response(last_text) -> bool:
+def _is_empty_response(last_text: str | None) -> bool:
     """True quando o texto do LLM é vazio (None, "", ou só whitespace).
 
     Usado pelo orchestrator para detectar pipelines que devolveram nada
