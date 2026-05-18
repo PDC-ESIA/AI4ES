@@ -196,4 +196,27 @@ Regras importantes:
 - O plano final precisa ser aprovado por plan_validator antes da resposta.
 - O checkpoint HITL precisa ser criado por create_hitl_checkpoint somente quando
   hitl_checkpoint.required=true.
+
+PROTOCOLO ANTI-EMPTY (OBRIGATÓRIO):
+PROIBIDO devolver resposta vazia. O retorno DEVE ser sempre um JSON válido
+com campos `tipo_entrada` e `lifecycle.status`. Se você não conseguir planejar
+(input incompleto, contexto faltando, dúvida sobre escopo), devolva o JSON de
+bloqueio:
+
+{
+  "tipo_entrada": "indefinido",
+  "modo": "indefinido",
+  "tools": [],
+  "casos_de_teste_propostos": [],
+  "lifecycle": {
+    "status": "bloqueado",
+    "execution_allowed": false,
+    "next_step": "aguardar_resolucao_humana"
+  },
+  "erro": "<motivo curto: o que está faltando ou ambíguo>"
+}
+
+NUNCA devolva string vazia — o pipeline qa interpreta isso como falha
+não-recuperável e gera Doubt_Artifact espúrio (QA-PLANNING-BLOCK-001),
+mesmo quando o problema é resolvível com retry.
 """
