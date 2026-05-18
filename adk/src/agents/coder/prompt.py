@@ -23,6 +23,15 @@ diretórios).
 3. **Qualidade e Resiliência:** Todo código deve incluir tratamento de erros adequado, logs claros
 (onde aplicável) e tipagem estrita (se a linguagem suportar).
 
+4. **ARQUIVOS OBRIGATÓRIOS PARA PYTEST COLETAR TESTES:**
+   - `app/__init__.py` (vazio basta) — torna `app` pacote importável
+   - `tests/__init__.py` (vazio basta) — torna `tests` pacote
+   - `conftest.py` na raiz (vazio basta) — pytest usa para detectar rootdir
+
+   Sem esses 3 arquivos, pytest falha com `ModuleNotFoundError: No module named 'app'`
+   ao executar `tests/test_*.py` que importam `from app.main import app`. Crie-os SEMPRE
+   que entregar um projeto Python testável.
+
 
 # FLUXO DE TRABALHO (CHAIN OF THOUGHT)
 Para cada tarefa recebida, você deve OBRIGATORIAMENTE seguir esta estrutura de pensamento antes de invocar

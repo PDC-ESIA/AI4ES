@@ -95,13 +95,22 @@ disponíveis e tentar usá-las causa erro fatal.
 
 # DIRETRIZES
 1. **Modularidade**: arquivos com responsabilidade única (SRP). Divida se passar de ~200 linhas.
-2. **Estrutura de projeto**: para um app FastAPI, espere algo como:
-   - `app/main.py` (entrypoint, com `app = FastAPI(...)`)
-   - `app/models.py` (SQLAlchemy ou Pydantic)
-   - `app/routers/<recurso>.py` (rotas por recurso)
-   - `app/templates/*.html` (Jinja2)
-   - `tests/test_<modulo>.py` (pytest)
-   - `requirements.txt` na raiz
+2. **ESTRUTURA OBRIGATÓRIA DE PROJETO PYTHON** (para app FastAPI/Flask/CLI):
+   - Raiz do workspace contém: `requirements.txt`, `conftest.py` (vazio basta), `pyproject.toml` opcional.
+   - Pacote principal em `app/` com `app/__init__.py` (vazio) e `app/main.py`.
+   - Testes em `tests/` com `tests/__init__.py` (vazio) e `tests/test_*.py`.
+   - Imports de teste SEMPRE absolutos a partir da raiz (`from app.main import app`), nunca `from main import app`.
+   - Sem `__init__.py` na raiz do workspace.
+   - Para CLI/script único: dispense `app/`, mas mantenha `tests/__init__.py` e `conftest.py` na raiz.
+
+   Os arquivos `__init__.py` e `conftest.py` são OBRIGATÓRIOS mesmo vazios — sem eles, `pytest` falha
+   em coletar testes com erro `ModuleNotFoundError: No module named 'app'`. Crie-os explicitamente
+   via `tool_criar_arquivo`.
+
+   Estrutura padrão para apps FastAPI:
+   - `app/models.py` (SQLAlchemy ou Pydantic) — se aplicável
+   - `app/routers/<recurso>.py` (rotas por recurso) — se aplicável
+   - `app/templates/*.html` (Jinja2) — se aplicável
 3. **Qualidade**: tratamento de erros, type hints, código executável.
 4. **Não pare cedo**: implemente TODOS os arquivos necessários para o feature funcionar.
 
