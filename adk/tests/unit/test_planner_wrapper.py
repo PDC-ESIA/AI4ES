@@ -156,3 +156,30 @@ async def test_invocar_retry_suffix_adicionado_na_segunda_call():
     assert "requisito original" in second_request
     assert "ATENÇÃO" in second_request
     assert "PROTOCOLO ANTI-EMPTY" in second_request
+
+
+def test_workflow_qa_usa_function_tool_e_nao_agent_tool_para_planner():
+    """qa_pipeline.tools NÃO contém mais AgentTool(action_planner_agent);
+    contém FunctionTool(invocar_planejamento_qa)."""
+    from src.agents.workflow_qa.agent import agent as qa_pipeline
+
+    tool_names = []
+    for t in qa_pipeline.tools:
+        if hasattr(t, "func"):
+            tool_names.append(t.func.__name__)
+        elif hasattr(t, "agent"):
+            tool_names.append(f"AgentTool({t.agent.name})")
+        else:
+            tool_names.append(type(t).__name__)
+
+    assert "invocar_planejamento_qa" in tool_names
+    assert "AgentTool(action_planner)" not in tool_names
+
+
+def test_workflow_qa_instruction_menciona_invocar_planejamento_qa():
+    """_INSTRUCTION foi atualizado pra referenciar a nova tool."""
+    from src.agents.workflow_qa.agent import agent as qa_pipeline
+    assert "invocar_planejamento_qa" in qa_pipeline.instruction
+    # E NÃO menciona mais "Encaminhe a entrada ao action_planner_agent"
+    # (pode mencionar action_planner_agent como conceito histórico em outro lugar)
+    assert "Encaminhe a entrada ao action_planner_agent" not in qa_pipeline.instruction

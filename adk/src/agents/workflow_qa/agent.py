@@ -11,12 +11,12 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
-from src.agents.qa_agent.subagents.action_planner.agent import agent as action_planner_agent
 from src.agents.qa_agent.subagents.code_fix_agent.agent import agent as code_fix_agent
 from src.agents.qa_agent.subagents.receive_requirements import agent as receber_requisitos_agent
 from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
 from src.agents.qa_agent.tools.pytest_runner import executar_pytest_tool
 from src.agents.qa_agent.tools.doubt_tool import DoubtArtifactGenerator
+from src.agents.workflow_qa.tools.planner_wrapper import invocar_planejamento_qa
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -31,9 +31,16 @@ corrigindo automaticamente as falhas detectadas.
 FLUXO OBRIGATÓRIO:
 
 1. PLANEJAMENTO
-   Encaminhe a entrada ao action_planner_agent.
-   Aguarde o plano de ação: tipos de teste, dependências, pontos de
-   validação humana (HITL) e relatório de compliance preliminar.
+   Chame `invocar_planejamento_qa(request=<entrada original>)`.
+   Essa função roda o planner com retry automático e GARANTE retorno
+   de JSON estruturado (nunca empty). O JSON contém: tipos de teste,
+   dependências, pontos de validação humana (HITL) e relatório de
+   compliance preliminar.
+
+   → Se `lifecycle.status == "bloqueado"` no JSON retornado:
+        Encerre com Doubt_Artifact citando `erro` do JSON.
+        Esse caminho só é acionado quando o action_planner não
+        conseguiu produzir plano nem com retry — bloqueio legítimo.
 
    → Se o plano retornar com `hitl_checkpoint.required=true`:
         CHAME OBRIGATORIAMENTE a tool `aguardar_aprovacao_humana`
@@ -102,7 +109,7 @@ agent = LlmAgent(
     ),
     instruction=_INSTRUCTION,
     tools=[
-        AgentTool(agent=action_planner_agent),
+        FunctionTool(invocar_planejamento_qa),
         AgentTool(agent=receber_requisitos_agent),
         AgentTool(agent=code_fix_agent),
         FunctionTool(executar_pytest_tool),
