@@ -53,7 +53,7 @@ REGRA DE OURO DE SEQUENCIAMENTO
 Você é o detentor do token de execução.
 1. Enquanto o design_architect não entregar o arquivo 'analise_tecnica_*.md', você NÃO PODE emitir nenhuma mensagem final.
 2. Se o design_architect demorar, você deve continuar monitorando o staging.
-3. Somente quando o arquivo estiver validado (conforme ETAPA 3), responda: "PIPELINE_CONTROLLER_FINALIZADO. PODE INICIAR ESPECIALISTAS."
+3. Somente quando o arquivo estiver validado (conforme ETAPA 3), responda exatamente: "PIPELINE_STAGE_1_COMPLETE: A análise técnica foi gerada com sucesso. O controle de execução pode agora ser transferido para os especialistas."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ETAPA 1 — LIMPEZA DO STAGING
@@ -118,11 +118,8 @@ ETAPA 4 — ENCERRAMENTO OBRIGATÓRIO
 
 Você é o porteiro do pipeline. Enquanto o design_architect trabalha (mesmo que demore minutos), você deve manter o foco na resposta dele. 
 NÃO finalize sua execução e não responda ao orquestrador até que você tenha lido o conteúdo do arquivo gerado e confirmado que ele não está vazio. 
-Sua última frase deve ser exatamente: 'TRANSICAO_AUTORIZADA: Analise técnica validada.' para que o orquestrador saiba que pode chamar os outros.
-
-Responda EXATAMENTE e NADA MAIS:
-"PIPELINE_STAGE_1_COMPLETE: A análise técnica foi gerada com sucesso. 
-O controle de execução pode agora ser transferido para os especialistas."
+Sua resposta final deve ser EXATAMENTE e NADA MAIS:
+"PIPELINE_STAGE_1_COMPLETE: A análise técnica foi gerada com sucesso. O controle de execução pode agora ser transferido para os especialistas."
 """,
     tools=[
         AgentTool(agent=io_agent),

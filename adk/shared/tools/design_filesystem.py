@@ -7,7 +7,6 @@ Responsabilidade: ler, salvar, promover e listar artefatos em disco.
 Logging de operações delegado integralmente ao IOLogger (design_logger.py).
 """
 
-from pydantic import fields
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -257,7 +256,13 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
         dict com keys: status, source, destination, timestamp | reason | error
     """
     try:
-        source = (STAGING_DIR / filename).resolve()
+        raw_filename = Path(filename)
+        if raw_filename.is_absolute() or ".." in raw_filename.parts:
+            raise PermissionError("Segurança: Caminho inválido.")
+
+        source = (STAGING_DIR / raw_filename).resolve()
+        if not _is_safe_path(source):
+            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
 
         if not source.exists():
             return {"status": "error", "error": f"Arquivo {filename} não encontrado em staging."}
@@ -285,7 +290,9 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
             }
 
         _ensure_dirs()
-        destination = (OFFICIAL_DIR / filename).resolve()
+        destination = (OFFICIAL_DIR / raw_filename).resolve()
+        if not _is_safe_path(destination):
+            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
 
         if destination.exists():
             shutil.move(str(destination), str(_next_version(destination)))
@@ -360,7 +367,12 @@ def copy_file(source_path: str, destination_filename: str, caller: str | None = 
     """
     try:
         _ensure_dirs()
-        src = (CURRENT_DIR / source_path).resolve()
+        raw_source = Path(source_path)
+        if raw_source.is_absolute() or ".." in raw_source.parts:
+            raise PermissionError("Segurança: Caminho de origem inválido.")
+        src = (CURRENT_DIR / raw_source).resolve()
+        if not _is_safe_path(src):
+            raise PermissionError("Segurança: Tentativa de leitura fora da área permitida.")
 
         if not src.exists():
             return {"status": "error", "error": f"Arquivo de origem {source_path} não encontrado."}

@@ -38,13 +38,13 @@ def _now() -> str:
     return datetime.now().isoformat()
 
 
-def _caller_tag(caller: str | None) -> str:
-    return f" | caller={caller}" if caller else ""
-
-def _make_string(operation: str, filename: str, *, caller: str , backup: str = "", detail: str = "") -> str:
+def _make_string(operation: str, filename: str, *, caller: str | None, backup: str | None = "", detail: str = "") -> str:
+    caller = caller or ""
+    backup = backup or ""
+    caller_tag = f" | caller={caller}" if caller else ""
     if backup:
         backup = "\tbackup: " + backup
-    return f"[{_now()}] {operation:<6} {_caller_tag(caller):<32} | {detail}{filename}{backup}\n"
+    return f"[{_now()}] {operation:<6} {caller_tag:<32} | {detail}{filename}{backup}\n"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -75,8 +75,8 @@ class IOLogger:
     @staticmethod
     def error(operation: str, detail: str, *, caller: str | None = None) -> None:
         """Erros são sempre registrados, independente de LOG_DETAIL."""
-        _write(_make_string("ERROR", operation, caller=caller, detail=detail))
+        _write(_make_string("ERROR", "", caller=caller, detail=f"op={operation} | error={detail}"))
 
     @staticmethod
     def copy(source_path: str, destination_filename: str, *, caller: str | None = None) -> None:
-        _write(_make_string("COPY", source_path, caller=caller, detail=destination_filename))
+        _write(_make_string("COPY", "", caller=caller, detail=f"src={source_path} -> dest={destination_filename}"))
