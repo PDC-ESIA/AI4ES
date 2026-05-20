@@ -3,11 +3,9 @@
 > **Data de consolidação:** 2026-05-20
 > **PR alvo:** #267 — `feature/code/1-initial-project-setup` → `develop`
 > **Público:** Tech leads dos Times 1 (Requisitos), 2 (Design), 3 (Testes) e 4 (Codificação)
-> **Convenção:** PT-BR (`CLAUDE.md`)
 
-Este documento descreve, **por Time SWEBOK**, as melhorias entregues no orquestrador (`adk/src/agents/orchestrator/`) durante o trabalho desta PR. Cada seção é independente — o tech lead do seu Time pode ler apenas o bloco correspondente.
+Este documento descreve, **por Time SWEBOK**, as melhorias entregues no orquestrador (`adk/src/agents/orchestrator/`) durante o trabalho desta PR. Cada seção é independente cada tech lead pode ler apenas o bloco correspondente.
 
-A documentação detalhada (specs, planos, pesquisas) está em `docs/superpowers/` mas **não vai para a PR** — fica como histórico local. Este arquivo é o entregável.
 
 ---
 
@@ -19,8 +17,6 @@ O `orchestrator` é o **ponto único de entrada do SDLC**. Hoje compõe **4 pipe
 requirements_pipeline → design_pipeline → coding_review_pipeline → qa_pipeline
        (Time 1)             (Time 2)             (Time 4)              (Time 3)
 ```
-
-Resultado de uma run E2E completa (verificado com `bash .claude/skills/ai4es-e2e/scripts/e2e.sh`):
 
 | Subpasta de `workspace_output/` | Time responsável | Status |
 |---|---|---|
@@ -48,7 +44,7 @@ O `requirements_pipeline` (workflow `workflow_requirements`) processa o pedido d
    - Ambas adicionadas a `_FILESYSTEM_TOOL_NAMES` em `adk/shared/agent_factory.py` → `_bind_tool_to_workspace` aplica `functools.partial(..., base_dir=...)` automaticamente.
    - Bind manual em `adk/src/agents/requirements/agent.py` e `adk/src/agents/workflow_coding_review/agent.py` (que não usam `create_se_agent`).
 
-2. **Prompts limpos de identificadores de tool** (`requirements/prompt.py` e `glossario_agent`). O LLM agora orienta-se por **verbos de capacidade** (ex.: "persistir o artefato no repositório de requisitos") e a fonte de verdade sobre cada tool é a docstring (`FunctionDeclaration.description`). Convenção formalizada em `CLAUDE.md` ("Convenção: prompts não citam tools").
+2. **Prompts limpos de identificadores de tool** (`requirements/prompt.py` e `glossario_agent`). O LLM agora orienta-se por **verbos de capacidade** (ex.: "persistir o artefato no repositório de requisitos") e a fonte de verdade sobre cada tool é a docstring (`FunctionDeclaration.description`). 
 
 3. **Tratamento de `accumulated_outputs` como read-only** no `cr_requirements_agent`. Antes ele lia o output das fases anteriores ("Output de design_pipeline: ...falhou") e gerava `Doubt_Artifact_D-001` (bloqueante) achando que precisava re-analisar. Agora o prompt instrui: "histórico read-only — NÃO trate como pedido para re-analisar nem gere Doubt_Artifact por falhas de outras fases".
 
@@ -247,13 +243,13 @@ Mudanças que não pertencem a um Time específico — são da plumbing que faz 
 
 3. **HITL real (v5) com state persistido via `EventActions.state_delta`.**
    - Chaves novas em `ctx.session.state`: `accumulated_outputs`, `paused_pipeline`, `paused_inner_session_id`, `paused_function_call`.
-   - **Descoberta crítica**: mutação direta em `ctx.session.state` no `_run_async_impl` **não persiste** no ADK. Precisa ser emitida via `Event(actions=EventActions(state_delta={...}))`. Padrão obrigatório para qualquer `BaseAgent` que mantenha estado entre invocações — documentado em `CLAUDE.md`.
+   - **Descoberta crítica**: mutação direta em `ctx.session.state` no `_run_async_impl` **não persiste** no ADK. Precisa ser emitida via `Event(actions=EventActions(state_delta={...}))`. Padrão obrigatório para qualquer `BaseAgent` que mantenha estado entre invocações.
    - `_live_runners: dict[str, tuple[Runner, str]]` — atributo de instância (não persistido) que mantém o runner do pipeline pausado vivo entre T0 e T1.
    - Helpers em `adk/src/agents/orchestrator/_helpers.py`: `_extract_user_text`, `_build_input`, `_is_pending_long_running_call`, `_parse_decision` (texto livre → tupla `(decision, comments)`), `_clear_pause_state`, `_set_pause_state`.
 
 4. **Empty-response retry no `_handle_fresh_run`.** Helper `_is_empty_response` + `EMPTY_RETRY_PROMPT`. Se um pipeline devolve empty (e não é pausa HITL), faz 1 retry com prompt suffix. Após 2 empties, anexa string sintética em `accumulated_outputs` para o próximo pipeline ter sinal claro de falha em vez de string fantasma.
 
-5. **Convenção "prompts não citam tools"** formalizada em `CLAUDE.md`. Verificação:
+5. **Convenção "prompts não citam tools"**. Verificação:
    ```bash
    cd adk && rg -nP '\b(tool_[a-z_]+|run_slicer|ler_chunk|extract_text|run_search)\b' src/agents/*/prompt.py
    ```
@@ -261,7 +257,7 @@ Mudanças que não pertencem a um Time específico — são da plumbing que faz 
 
 6. **Docstrings GOOD para ~22 tools.** Padrão canônico: propósito + Quando usar + Args + Returns ≥ 80 chars. Fonte de verdade sobre cada tool é a docstring (`FunctionDeclaration.description`).
 
-7. **HITL lifecycle no `e2e.sh`** (`.claude/skills/ai4es-e2e/scripts/`).
+7. **HITL lifecycle** .
    - `KEEP_UP=1` default — antes matava uvicorn e `_live_runners` morria junto.
    - Detecção automática de pausa pós-run via parsing de `state_delta.paused_pipeline`. Mensagem `🔶 [HITL]` instrui como retomar.
    - `SESSION_ID`/`USER_ID` persistidos em `/tmp/ai4es-current-session.env` entre invocações de `run-agent.sh` (a segunda invocação precisa do mesmo `outer_session_id` que está em `_live_runners`).
@@ -294,29 +290,6 @@ Mudanças que não pertencem a um Time específico — são da plumbing que faz 
 - **`architect`, `test_planner`, `finalizer`** continuam fora do orquestrador. São schema-only (`LlmAgent` com `output_schema`, sem tools) — não persistem arquivos por design. Criar pipelines wrapper que persistam o JSON da saída fica para próximo ciclo.
 
 ---
-
-## Apêndice — Como reproduzir uma run E2E
-
-```bash
-# Pré-flight
-bash .claude/skills/ai4es-e2e/scripts/diagnose.sh
-
-# Run completa (orchestrator → 4 pipelines → HITL no qa)
-bash .claude/skills/ai4es-e2e/scripts/e2e.sh .claude/skills/ai4es-e2e/examples/healthcheck-prompt.md
-
-# Inspeção do que populou em workspace_output/
-bash .claude/skills/ai4es-e2e/scripts/inspect-run.sh
-
-# Após HITL pausar (mensagem 🔶), responder:
-echo "aprovar" | bash .claude/skills/ai4es-e2e/scripts/run-agent.sh orchestrator
-
-# Snapshot do app gerado + validação pytest + curl
-bash .claude/skills/ai4es-e2e/scripts/snapshot.sh /tmp/<dest>
-bash .claude/skills/ai4es-e2e/scripts/verify-coder-output.sh /tmp/<dest>/coder
-
-# Quando terminar
-bash .claude/skills/ai4es-e2e/scripts/stop-server.sh
-```
 
 ## Apêndice — Mapeamento melhoria ↔ planos (referência interna)
 
