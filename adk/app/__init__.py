@@ -1,0 +1,1 @@
+# Pacote de inicialização para o app FastAPI

@@ -24,6 +24,7 @@ AGENT_DIRS: dict[str, str] = {
     "context_engineer": "tasks",
     "coder_agent": "coder",
     "review_agent": "review",
+    "cicd_agent": "pipeline",
     "pipeline": "pipeline",
 }
 

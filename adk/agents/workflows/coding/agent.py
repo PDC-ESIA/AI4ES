@@ -8,13 +8,14 @@ from agents.roles.architect.agent import agent as architecture_agent
 from agents.roles.test_planner.agent import agent as test_planning_agent
 from agents.roles.coder.agent import agent as implementation_agent
 from agents.roles.reviewer.agent import agent as review_agent
+from agents.roles.cicd_agent.agent import agent as cicd_agent
 from agents.roles.finalizer.agent import agent as finalization_agent
 
 agent = SequentialAgent(
     name="sdlc_pipeline",
     description=(
         "Pipeline completo de engenharia de software: requisitos → engenharia de contexto "
-        "→ arquitetura → plano de testes → implementação → revisão → finalização."
+        "→ arquitetura → plano de testes → implementação → revisão → CI/CD → finalização."
     ),
     sub_agents=[
         requirements_agent,
@@ -23,6 +24,8 @@ agent = SequentialAgent(
         test_planning_agent,
         implementation_agent,
         review_agent,
+        cicd_agent,
         finalization_agent,
     ],
 )
+

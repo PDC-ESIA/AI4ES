@@ -132,11 +132,19 @@ _PRESET_REVIEWER_NAMES = [
     "tool_salvar_relatorio",
 ]
 
+_PRESET_PIPELINE_NAMES = [
+    "tool_criar_arquivo",
+    "tool_ler_arquivo",
+    "tool_ler_workspace",
+    "tool_listar_workspace",
+]
+
 _PRESET_FULL_NAMES = _PRESET_CODER_NAMES + _PRESET_REVIEWER_NAMES
 
 TOOL_PRESET_NAMES: dict[str, list[str]] = {
     "coder": _PRESET_CODER_NAMES,
     "reviewer": _PRESET_REVIEWER_NAMES,
+    "pipeline": _PRESET_PIPELINE_NAMES,
     "full": _PRESET_FULL_NAMES,
 }
 

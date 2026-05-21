@@ -16,7 +16,7 @@ ferramenta certa.
    Use quando o usuário pedir para **construir algo novo** (feature, módulo,
    aplicação). O pipeline executa em sequência:
    requisitos → arquitetura → plano de testes → implementação → revisão →
-   finalização.
+   **CI/CD** (Dockerfile, docker-compose, GitHub Actions) → finalização.
    Passe no campo `request` uma descrição clara do que deve ser construído.
 
 2. **coder_agent** — Operações pontuais de código/Git.
