@@ -1,5 +1,5 @@
 import os
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
@@ -14,6 +14,7 @@ from shared.tools import (
     run_search,
     check_glossary,
     add_to_glossary,
+    ler_artefatos_gerados,
 )
 from . import prompt, schemas
 
@@ -103,9 +104,28 @@ glossario_agent = LlmAgent(
     ],
 )
 
+# ── Sub-Agente de Validação ──────────────────────────────────────────────────
+
+validacao_agent = LlmAgent(
+    name="validacao_agent",
+    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4o")),
+    description=(
+        "Sub-agente especializado em validação de requisitos. "
+        "Analisa os artefatos gerados (HUs, RFs, RNFs, RNs, UCs) em busca de "
+        "ambiguidades, contradições, inconsistências e violações dos critérios SMART."
+    ),
+    instruction=prompt.validacao_instruction,
+    output_key="validation_result",
+    tools=[
+        FunctionTool(ler_artefatos_gerados),
+        FunctionTool(check_glossary),
+        FunctionTool(gerar_doubt_artifact),
+    ],
+)
+
 # ── Agente Principal de Requisitos ───────────────────────────────────────────
 
-agent = LlmAgent(
+_requirements_llm = LlmAgent(
     model=LiteLlm(_DEFAULT_MODEL),
     name="requirements_agent",
     description=prompt.description,
@@ -118,4 +138,10 @@ agent = LlmAgent(
         FunctionTool(tool_salvar_artefato_requisito),
         AgentTool(agent=glossario_agent),
     ],
+)
+
+agent = SequentialAgent(
+    name="requirements_pipeline",
+    description=prompt.description,
+    sub_agents=[_requirements_llm, validacao_agent],
 )

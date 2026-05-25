@@ -3,6 +3,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
 
+def _docs_dir() -> Path:
+    env = os.environ.get("ADK_DOCS_DIR")
+    return (Path.cwd() / env).resolve() if env else (Path.cwd() / "docs").resolve()
+
+
 def gerar_doubt_artifact(
     id_duvida: str,
     id_artefato_afetado: str,
@@ -14,7 +19,7 @@ def gerar_doubt_artifact(
     sugestao: Optional[str] = None,
     sessao: str = "001",
     contexto_geral: str = "Documentação de Requisitos",
-    caminho_base: str = "docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/"
+    caminho_base: str = ""
 ) -> str:
     """
     Gera um arquivo versionado Doubt_Artifact_<ID>_<TS>.md baseado no template oficial do Agente Analista.
@@ -35,7 +40,8 @@ def gerar_doubt_artifact(
     Returns:
         Caminho completo do arquivo gerado.
     """
-    diretorio = Path(caminho_base)
+    base = caminho_base if caminho_base else str(_docs_dir() / "Time_1_Requisitos" / "setup-ADK" / "AgenteAnalista")
+    diretorio = Path(base)
     diretorio.mkdir(parents=True, exist_ok=True)
     data_hora_obj = datetime.now()
     data_hora = data_hora_obj.strftime("%d-%m-%Y %H:%M")

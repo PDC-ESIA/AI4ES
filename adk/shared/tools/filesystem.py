@@ -1,5 +1,11 @@
+import os
 import re
 from pathlib import Path
+
+
+def _docs_dir() -> Path:
+    env = os.environ.get("ADK_DOCS_DIR")
+    return (Path.cwd() / env).resolve() if env else (Path.cwd() / "docs").resolve()
 
 ID_REQ_PATTERN = re.compile(r"^[A-Z]{1,4}-\d{3}$")
 
@@ -67,17 +73,18 @@ def tool_salvar_artefato_requisito(tipo: str, id_req: str, conteudo_md: str) -> 
     """
     # Mapeamento de pastas relativo à raiz do projeto
     # Em ambiente Docker do ADK, a raiz costuma ser o diretório pai ou o CWD
+    raiz_docs = _docs_dir() / "Time_1_Requisitos"
     mapa_pastas = {
-        "HU": "docs/Time_1_Requisitos/HUs",
-        "RF": "docs/Time_1_Requisitos/RFs",
-        "RNF": "docs/Time_1_Requisitos/RNFs",
-        "RN": "docs/Time_1_Requisitos/RNs",
-        "GLOSSARIO": "docs/Time_1_Requisitos"
+        "HU": raiz_docs / "HUs",
+        "RF": raiz_docs / "RFs",
+        "RNF": raiz_docs / "RNFs",
+        "RN": raiz_docs / "RNs",
+        "GLOSSARIO": raiz_docs,
     }
 
     tipo_normalizado = (tipo or "").strip().upper()
     id_req_normalizado = (id_req or "").strip()
-    pasta_base = mapa_pastas.get(tipo_normalizado, "docs/Time_1_Requisitos/Outros")
+    pasta_base = mapa_pastas.get(tipo_normalizado, raiz_docs / "Outros")
 
     try:
         if tipo_normalizado != "GLOSSARIO":
