@@ -3,7 +3,7 @@ from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.agent_tool import AgentTool
 
-from design_agents.roles.io_agent.agent import agent as io_agent
+from agents.roles.io_agent.agent import agent as io_agent
 from shared.tools.design_date import current_date
 from . import prompt
 
