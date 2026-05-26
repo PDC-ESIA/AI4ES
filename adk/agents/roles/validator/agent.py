@@ -4,9 +4,9 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool
 
-from design_agents.roles.mermaid_specialist.agent import agent as mermaid_specialist
-from design_agents.roles.markdown_specialist.agent import agent as markdown_specialist
-from design_agents.roles.io_agent.agent import agent as io_agent
+from agents.roles.mermaid_specialist.agent import agent as mermaid_specialist
+from agents.roles.markdown_specialist.agent import agent as markdown_specialist
+from agents.roles.io_agent.agent import agent as io_agent
 
 from shared.tools.design_validate.gatekeeper_tool import validate_artifact
 from . import prompt

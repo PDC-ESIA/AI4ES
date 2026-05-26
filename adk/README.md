@@ -1,85 +1,112 @@
-# AI4ES — Pipeline de Análise de HUs
+# ADK — agentes e orquestração
 
-## Pré-requisitos
+## Estrutura
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- Conta GitHub
+```text
+adk/
+├── app/
+│   └── main.py                  # Entry point FastAPI + ADK
+├── runners/                     # Diretório escaneado pelo ADK (agents_dir)
+│   └── orchestrator/            # Único app exposto — re-exporta root_agent
+│       └── agent.py
+├── agents/
+│   ├── roles/                   # Agentes especialistas reutilizáveis
+│   │   ├── orchestrator/        # root_agent (LlmAgent + AgentTools)
+│   │   ├── coder/
+│   │   ├── requirements/
+│   │   ├── architect/
+│   │   ├── test_planner/
+│   │   ├── reviewer/
+│   │   └── finalizer/
+│   └── workflows/               # Composições (SequentialAgent, etc.)
+│       ├── coding/              # Pipeline SDLC completo
+│       └── pr_review/           # Revisão avulsa de PR
+├── shared/
+│   └── tools/
+│       ├── git.py               # git add, commit, checkout, diff
+│       └── filesystem.py        # criar arquivo, salvar relatório
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── evals/
+├── .env
+├── .env.example
+└── pyproject.toml
+```
 
----
+## Execução local
 
-## Primeira execução (dentro da pasta adk/)
-
-### 1. Instalar dependências e preparar o ambiente
-
-O projeto utiliza o **uv** para gerenciar dependências. Este comando criará o ambiente virtual e instalará todas as ferramentas necessárias, incluindo o **uvicorn**:
+Na raiz do diretório `adk/`:
 
 ```bash
 uv sync
 ```
 
-### 2. Autenticação — GitHub Copilot (OAuth)
-
-Não é necessária nenhuma chave de API. A autenticação é feita via GitHub na primeira execução:
-
-1. Inicie o servidor normalmente (próxima seção)
-2. Nos logs do uvicorn, aparecerá uma mensagem solicitando autenticação com um **link e um código de ativação**
-3. Acesse o link indicado nos logs
-4. Insira o código exibido e autorize o acesso via GitHub
-5. Após autorização, o servidor continuará normalmente
-
-> A autenticação é via OAuth — nenhuma chave precisa ser configurada manualmente.  
-
----
-
-## Executando o servidor (dentro da pasta adk/)
+Copie `.env.example` para `.env` e preencha. Modelo padrão: **`github_copilot/gpt-4`** (sobrescreva com `ADK_LLM_MODEL`).
 
 ```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+source .venv/bin/activate
+uvicorn app.main:app --reload --port 8081
 ```
 
-Acesse a interface em:
+### Expor roles diretamente (somente dev)
 
-```hyperlink
-http://localhost:8000/dev-ui
+Por padrão, o servidor expõe apenas os apps em `runners/` (produção). Para expor **roles** diretamente na Dev UI (útil para depurar/agir em um role específico), ajuste:
+
+```bash
+export ADK_AGENTS_DIR=agents/roles
 ```
 
-Selecione o agente **orchestrator** na interface.
+Para voltar ao padrão:
 
----
+```bash
+export ADK_AGENTS_DIR=runners
+```
 
-## Como usar
+## Execução com Docker
 
-Envie um lote de HUs no chat. O pipeline executa automaticamente:
+Pré-requisito: **Docker** (e Docker Compose) instalados. Copie `.env.example` para `.env` e preencha.
 
-1. Valida e padroniza as HUs
-2. Gera decisões de arquitetura e diagramas `.mmd`
-3. Valida os artefatos gerados
-4. Salva os resultados em `temp/staging/`
+**Opção A — sem build** (monta o código como volume, instala deps a cada start):
 
-### Resultado sem dúvidas — promover para entrega
+```bash
+docker compose up
+```
 
-Quando o agente não identificar lacunas, um relatório `.md` será gerado em `temp/staging/`. Para promover para entrega final:
+**Opção B — com build** (dependências embutidas na imagem, starts mais rápidos):
 
-1. Abra o relatório em `temp/staging/`
-2. Altere `**Status:** Em análise` para `**Status:** Aprovado`
-3. Solicite no chat: `promova os artefatos para artifacts`
+```bash
+docker compose -f docker-compose.build.yml up --build
+```
 
-### Resultado com dúvidas — `Doubt Artifact`
+Acesse `http://localhost:8081/dev-ui/?app=orchestrator`.
 
-Quando o agente identificar ambiguidades ou lacunas nas HUs, um arquivo `Doubt_Artifact_*.md` será gerado em `temp/staging/` no lugar do relatório.
+### Primeira execução — autenticação obrigatória
 
-O arquivo contém:
+Na **primeira vez** que o container subir, o LiteLLM iniciará o fluxo de autenticação OAuth do GitHub Copilot. Para completá-lo:
 
-- O problema identificado
-- A informação necessária para prosseguir
+1. Abra os logs do container em um terminal:
 
-Corrija a HU com a informação faltante e reenvie o lote.
+```bash
+docker compose logs -f
+```
 
----
+1. Procure por uma linha contendo um **código** e a URL `https://github.com/login/device`.
+1. Abra a URL no navegador, cole o código e autorize.
+1. Após a autorização, os tokens são salvos no volume `copilot-tokens` e **não será necessário repetir** este passo em execuções futuras.
 
-## Dicas
+> **Sem Docker:** o mesmo fluxo ocorre no terminal onde o `uvicorn` está rodando.
 
-- Exemplos de HUs testadas estão em `prompt-test.md`, com exemplos de resultados esperados presentes.
-- HUs vagas ou sem critérios de aceite detalhados **geram Doubt Artifacts**
-- O agente não inventa informações — lacunas bloqueiam o pipeline
+## GitHub Copilot (LiteLLM)
+
+Os agentes usam o provedor **`github_copilot/`** via [LiteLLM](https://docs.litellm.ai/docs/providers/github_copilot).
+
+1. **Requisito** — Conta com **GitHub Copilot** ativo.
+2. **Primeira autenticação** — Na primeira chamada, siga o device flow no **terminal do uvicorn** (`https://github.com/login/device`).
+3. **Tokens** — Salvos em `~/.config/litellm/github_copilot/` (configurável via `GITHUB_COPILOT_TOKEN_DIR`).
+
+## Dev UI
+
+- **Orquestrador:** `http://127.0.0.1:8081/dev-ui/?app=orchestrator`
+
+O orquestrador decide entre o pipeline SDLC completo ou delegação pontual (coder / reviewer).
