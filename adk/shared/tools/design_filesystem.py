@@ -140,7 +140,7 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
         IOLogger.read(path.name + f" [sections:{sections}]", caller=caller)
 
         if not extracted:
-            return {"status": "warning", "content": content, "msg": "Não foi possível extrair as seções solicitadas. Retornando arquivo completo."}
+            return {"status": "error", "error": f"Seções {sections} não encontradas em {filepath}. Use read_file para ler o arquivo completo ou list_staging_files para verificar os IDs disponíveis."}
             
         return {"status": "ok", "content": "\n\n---\n\n".join(extracted)}
 
@@ -353,53 +353,6 @@ def list_staging_files(filetype: str = "", caller: str | None = "unknown") -> Di
         IOLogger.error("list_staging_files", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
-def copy_file(source_path: str, destination_filename: str, caller: str | None = "unknown") -> Dict[str, Any]:
-    """
-    Copia um arquivo existente para um novo local em staging/prototype.
-
-    Args:
-        source_path:          Caminho completo do arquivo de origem.
-        destination_filename: Nome do arquivo de destino.
-        caller:               nome do agente solicitante (para rastreabilidade no log).
-
-    Returns:
-        dict com status e detalhes da operação.
-    """
-    try:
-        _ensure_dirs()
-        raw_source = Path(source_path)
-        if raw_source.is_absolute() or ".." in raw_source.parts:
-            raise PermissionError("Segurança: Caminho de origem inválido.")
-        src = (CURRENT_DIR / raw_source).resolve()
-        if not _is_safe_path(src):
-            raise PermissionError("Segurança: Tentativa de leitura fora da área permitida.")
-
-        if not src.exists():
-            return {"status": "error", "error": f"Arquivo de origem {source_path} não encontrado."}
-
-        clean_filename = destination_filename.replace("prototype/", "").replace("staging/", "")
-        target_dir = STAGING_DIR
-        if clean_filename.endswith(".html") or clean_filename == "global.css":
-            target_dir = PROTOTYPE_DIR
-
-        dest = (target_dir / clean_filename).resolve()
-
-        if not _is_safe_path(dest):
-            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
-
-        shutil.copy2(str(src), str(dest))
-        IOLogger.copy(source_path, dest, caller=caller)
-
-        return {
-            "status": "ok",
-            "source": str(src),
-            "destination": str(dest),
-            "timestamp": datetime.now().isoformat()
-        }
-    except Exception as e:
-        IOLogger.error("copy_file", str(e), caller=caller)
-        return {"status": "error", "error": str(e)}
-
 def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.
@@ -428,7 +381,7 @@ def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
         IOLogger.error("check_active_blocks", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
-def clear_staging_folder(caller: str | None = "unknown") -> bool:
+def clear_staging_folder(caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Remove todos os arquivos do diretório de staging e seus subdiretórios,
     preservando a estrutura de pastas.
@@ -437,7 +390,7 @@ def clear_staging_folder(caller: str | None = "unknown") -> bool:
         caller: nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
-        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário.
+        dict com keys: status, staging_dir, timestamp | error
     """
     try:
         _ensure_dirs()
@@ -453,10 +406,159 @@ def clear_staging_folder(caller: str | None = "unknown") -> bool:
 
         _clear_recursive(STAGING_DIR)
         IOLogger.erase(str(STAGING_DIR), caller=caller)
-        return True
+        return {"status": "ok", "staging_dir": str(STAGING_DIR), "timestamp": datetime.now().isoformat()}
     except Exception as e:
         IOLogger.error("ERASE", f"dir={STAGING_DIR} | error={str(e)}", caller=caller)
-        return False
+        return {"status": "error", "error": str(e), "staging_dir": str(STAGING_DIR)}
+
+
+def append_artifact(filename: str, content: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Acrescenta conteúdo ao fim de um artefato já existente em staging, sem reescrevê-lo.
+    Cria o arquivo se ainda não existir (comportamento idêntico ao save_artifact inicial).
+
+    Uso típico: geração incremental de relatórios longos — cada seção é appendada
+    separadamente, eliminando a necessidade de o LLM reprocessar o documento inteiro
+    a cada atualização.
+
+    Args:
+        filename: Nome do arquivo em staging (ex: "relatorio_HU-001.md").
+        content:  Trecho a ser adicionado ao fim do arquivo.
+        caller:   Nome do agente solicitante (para rastreabilidade no log).
+
+    Returns:
+        dict com keys: status, path, bytes_total, timestamp | error
+    """
+    try:
+        _ensure_dirs()
+
+        clean_filename = filename.replace("prototype/", "").replace("staging/", "")
+        target_dir = STAGING_DIR
+        if clean_filename.endswith(".html") or clean_filename == "global.css":
+            target_dir = PROTOTYPE_DIR
+
+        destination = (target_dir / clean_filename).resolve()
+
+        if not _is_safe_path(destination):
+            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+
+        with destination.open("a", encoding="utf-8") as f:
+            f.write(content)
+
+        bytes_total = destination.stat().st_size
+        timestamp = datetime.now().isoformat()
+
+        IOLogger.save(filename, caller=caller, backup=f"[append +{len(content.encode())}B → {bytes_total}B total]")
+
+        return {
+            "status": "ok",
+            "path": str(destination),
+            "bytes_total": bytes_total,
+            "timestamp": timestamp,
+        }
+
+    except Exception as e:
+        IOLogger.error("append_artifact", str(e), caller=caller)
+        return {"status": "error", "error": str(e), "filename": filename}
+
+
+def patch_section(filename: str, section_id: str, new_content: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Substitui uma seção específica de um artefato Markdown em staging,
+    sem reescrever o documento inteiro.
+
+    Identifica a seção pelo delimitador '---' combinado com o prefixo numérico
+    (ex: "3." no início da linha) OU por um título de heading Markdown
+    (ex: "## Nome da Seção"). O primeiro match wins.
+
+    Args:
+        filename:    Nome do arquivo em staging (ex: "analise_HU-001.md").
+        section_id:  Número da seção ("3") OU título exato do heading ("## Fluxo de Dados").
+        new_content: Novo conteúdo completo da seção (substitui tudo até o próximo '---' ou EOF).
+        caller:      Nome do agente solicitante (para rastreabilidade no log).
+
+    Returns:
+        dict com keys: status, path, section_found, timestamp | error
+    """
+    try:
+        import re
+
+        _ensure_dirs()
+
+        clean_filename = filename.replace("prototype/", "").replace("staging/", "")
+        target_dir = STAGING_DIR
+        if clean_filename.endswith(".html") or clean_filename == "global.css":
+            target_dir = PROTOTYPE_DIR
+
+        destination = (target_dir / clean_filename).resolve()
+
+        if not _is_safe_path(destination):
+            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
+
+        if not destination.exists():
+            return {"status": "error", "error": f"Arquivo {filename} não encontrado em staging. Use save_artifact para criar."}
+
+        original = destination.read_text(encoding="utf-8")
+
+        # Backup automático antes de qualquer patch
+        backup_path = _next_version(destination)
+        shutil.copy2(str(destination), str(backup_path))
+
+        # Divide por separador '---' (padrão do design_architect)
+        separator = "\n---\n"
+        parts = re.split(r'(?<=\n)---\n', original)
+
+        section_found = False
+        patched_parts = []
+
+        for part in parts:
+            stripped = part.strip()
+            if not stripped:
+                patched_parts.append(part)
+                continue
+
+            first_line = stripped.split("\n")[0].strip()
+
+            # Match por número: "3." ou "3 —" no início
+            matched_by_number = bool(section_id.isdigit() and re.match(rf'^{re.escape(section_id)}[.\s]', first_line))
+            # Match por heading Markdown: "## Título"
+            matched_by_heading = (first_line == section_id.strip())
+
+            if not section_found and (matched_by_number or matched_by_heading):
+                # Preserva a quebra de linha final do separador se existia
+                patched_parts.append(new_content.rstrip("\n") + "\n")
+                section_found = True
+            else:
+                patched_parts.append(part)
+
+        if not section_found:
+            # Seção não encontrada: não altera o arquivo, retorna aviso
+            return {
+                "status": "warning",
+                "section_found": False,
+                "error": f"Seção '{section_id}' não encontrada em {filename}. Arquivo não alterado.",
+                "hint": "Use read_analysis_sections para inspecionar os IDs disponíveis.",
+            }
+
+        new_text = "---\n".join(patched_parts)
+        destination.write_text(new_text, encoding="utf-8")
+        timestamp = datetime.now().isoformat()
+
+        IOLogger.save(filename, caller=caller, backup=str(backup_path))
+
+        return {
+            "status": "ok",
+            "path": str(destination),
+            "section_found": True,
+            "backup": str(backup_path),
+            "timestamp": timestamp,
+        }
+
+    except Exception as e:
+        IOLogger.error("patch_section", str(e), caller=caller)
+        return {"status": "error", "error": str(e), "filename": filename}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
