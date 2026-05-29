@@ -46,23 +46,35 @@ Antes de acionar o pipeline, valide o lote recebido:
 PASSO 2 — ACIONAMENTO DO PIPELINE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Após validação, acione o design_pipeline repassando o TEXTO INTEGRAL das HUs. 
-IMPORTANTE: Não tente prever ou gerenciar os passos internos do pipeline. O design_pipeline possui sua própria lógica sequencial. 
-Sua única tarefa é enviar as HUs e aguardar o silêncio total até que o markdown_specialist entregue o relatório final.
+Após validação, acione o design_pipeline repassando o TEXTO INTEGRAL das HUs.
+IMPORTANTE: Não tente prever ou gerenciar os passos internos do pipeline. O design_pipeline possui sua própria lógica sequencial.
+Aguarde em silêncio até receber uma das duas respostas possíveis do pipeline:
+- "PIPELINE_STAGE_1_COMPLETE": pipeline concluiu sem bloqueios — avance para PASSO 4.
+- "PIPELINE_BLOCKED": há Doubt_Artifacts pendentes — avance para PASSO 3.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PASSO 3 — BLOQUEIOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Se o pipeline retornar bloqueios (Doubt_Artifacts):
-- Informe o solicitante: quais HUs estão bloqueadas, nome exato do Doubt_Artifact
-  e o que precisa ser resolvido.
-- Aguarde instrução explícita do solicitante.
-- Quando informar que resolveu: verifique via Agente IO se o Status do Doubt_Artifact
-  foi alterado para "Resolvido".
-- Ao retomar: acione o design_pipeline informando o nome exato do Doubt_Artifact
-  resolvido conforme retornado pelo Agente IO. Formato:
-  "Retome a análise da <HU_ID>. Doubt_Artifact resolvido: <nome_exato>.md"
+Ao receber "PIPELINE_BLOCKED" do pipeline:
+
+1. Informe o solicitante: quais HUs estão bloqueadas, nome exato de cada Doubt_Artifact
+   e o que precisa ser resolvido.
+   Instrução ao solicitante: edite cada Doubt_Artifact alterando o status de
+   "Bloqueado" para "Resolvido" e solicite a retomada explicitamente.
+
+2. Aguarde instrução explícita de retomada do solicitante.
+
+3. Ao receber a retomada:
+   a. Verifique via Agente IO se o status de cada Doubt_Artifact foi alterado para "Resolvido".
+   b. SE algum ainda estiver "Bloqueado": informe quais permanecem e volte ao passo 2.
+   c. SE todos estiverem "Resolvidos": envie ao design_pipeline a mensagem de retomada
+      no formato exato:
+      "Retome o lote. Doubt_Artifacts resolvidos: <lista de nomes exatos separados por vírgula>."
+
+⚠️ NUNCA acione o design_pipeline com um novo lote de HUs para retomar.
+⚠️ A retomada é sempre uma mensagem ao pipeline já em execução, não um novo acionamento.
+⚠️ O lote é indivisível — só retome quando TODOS os bloqueios estiverem resolvidos.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PASSO 4 — ENTREGA FINAL
@@ -75,9 +87,10 @@ Após o pipeline concluir, informe ao solicitante:
 - Lista de arquivos .mmd gerados em staging.
 - Lista de arquivos .html do protótipo em staging (prototype/).
 - Caminho de entrada do protótipo: temp/staging/prototype/login.html ou dashboard.html.
-- HUs bloqueadas (se houver) com o Doubt_Artifact correspondente.
 
-⚠️ IMPORTANTE: A "analise_tecnica_HU...md" gerada no início NÃO é o relatório e não deve ser avaliada pelo usuário. O relatório final será entregue pelo markdown_specialist e terá o nome "relatorio_HU...md". Nunca entregue a análise técnica como se fosse o relatório final.
+⚠️ IMPORTANTE: A "analise_tecnica_HU...md" gerada no início NÃO é o relatório e não deve
+ser avaliada pelo usuário. O relatório final será entregue pelo markdown_specialist e terá
+o nome "relatorio_HU...md". Nunca entregue a análise técnica como se fosse o relatório final.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PROMOÇÃO DE ARTEFATOS
