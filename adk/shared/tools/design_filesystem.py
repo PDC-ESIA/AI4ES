@@ -140,7 +140,7 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
         IOLogger.read(path.name + f" [sections:{sections}]", caller=caller)
 
         if not extracted:
-            return {"status": "error", "error": f"Seções {sections} não encontradas em {filepath}. Use read_file para ler o arquivo completo ou list_staging_files para verificar os IDs disponíveis."}
+            return {"status": "warning", "content": content, "msg": "Não foi possível extrair as seções solicitadas. Retornando arquivo completo."}
             
         return {"status": "ok", "content": "\n\n---\n\n".join(extracted)}
 
@@ -381,7 +381,7 @@ def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
         IOLogger.error("check_active_blocks", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
-def clear_staging_folder(caller: str | None = "unknown") -> Dict[str, Any]:
+def clear_staging_folder(caller: str | None = "unknown") -> bool:
     """
     Remove todos os arquivos do diretório de staging e seus subdiretórios,
     preservando a estrutura de pastas.
@@ -390,7 +390,7 @@ def clear_staging_folder(caller: str | None = "unknown") -> Dict[str, Any]:
         caller: nome do agente solicitante (para rastreabilidade no log).
 
     Returns:
-        dict com keys: status, staging_dir, timestamp | error
+        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário.
     """
     try:
         _ensure_dirs()
@@ -406,10 +406,10 @@ def clear_staging_folder(caller: str | None = "unknown") -> Dict[str, Any]:
 
         _clear_recursive(STAGING_DIR)
         IOLogger.erase(str(STAGING_DIR), caller=caller)
-        return {"status": "ok", "staging_dir": str(STAGING_DIR), "timestamp": datetime.now().isoformat()}
+        return True
     except Exception as e:
         IOLogger.error("ERASE", f"dir={STAGING_DIR} | error={str(e)}", caller=caller)
-        return {"status": "error", "error": str(e), "staging_dir": str(STAGING_DIR)}
+        return False
 
 
 def append_artifact(filename: str, content: str, caller: str | None = "unknown") -> Dict[str, Any]:
@@ -450,7 +450,7 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown")
         bytes_total = destination.stat().st_size
         timestamp = datetime.now().isoformat()
 
-        IOLogger.save(filename, caller=caller, backup=f"[append +{len(content.encode())}B → {bytes_total}B total]")
+        IOLogger.append(filename, caller=caller, bytes_added=len(content.encode()), bytes_total=bytes_total)
 
         return {
             "status": "ok",

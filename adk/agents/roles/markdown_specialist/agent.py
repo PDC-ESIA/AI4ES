@@ -1,10 +1,17 @@
 import os
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools.agent_tool import AgentTool
 
-from agents.roles.io_agent.agent import agent as io_agent
 from shared.tools.design_date import current_date
+from shared.tools.design_filesystem import (
+    read_file,
+    read_multiple_files,
+    save_artifact,
+    append_artifact,
+    patch_section,
+    list_staging_files,
+    check_active_blocks,
+)
 from . import prompt
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
@@ -15,7 +22,13 @@ agent = LlmAgent(
     description=prompt.description,
     instruction=prompt.instruction,
     tools=[
-        AgentTool(agent=io_agent),
         current_date,
+        read_file,
+        read_multiple_files,
+        save_artifact,
+        append_artifact,
+        patch_section,
+        list_staging_files,
+        check_active_blocks,
     ],
 )

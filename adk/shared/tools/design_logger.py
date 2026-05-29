@@ -65,6 +65,11 @@ class IOLogger:
         _write(_make_string("SAVE", filename, caller=caller, backup=backup))
 
     @staticmethod
+    def append(filename: str, *, caller: str | None = None, bytes_added: int = 0, bytes_total: int = 0) -> None:
+        detail = f"+{bytes_added}B → {bytes_total}B total\t" if bytes_added or bytes_total else ""
+        _write(_make_string("APND", filename, caller=caller, detail=detail))
+
+    @staticmethod
     def promote(filename: str, *, caller: str | None = None) -> None:
         _write(_make_string("PRMT", filename, caller=caller))
 
