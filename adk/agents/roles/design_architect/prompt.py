@@ -71,8 +71,8 @@ AÇÃO 1 — Registre o bloqueio na sua saída com o seguinte formato:
 
 AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
 
-  SEMPRE chame a tool `current_date` para obter a data atual antes de montar o nome do arquivo.
-  Use o valor retornado pela tool em todos os campos de data — nunca escreva a data manualmente.
+  Obtenha a data atual via ferramenta antes de montar o nome do arquivo.
+  Use o valor retornado em todos os campos de data — nunca escreva a data manualmente.
 
   Classifique o bloqueio em uma das duas categorias antes de gerar o arquivo:
   - Lacuna Funcional: o que o sistema deve fazer não está claro na HU.
@@ -102,7 +102,7 @@ AÇÃO 2 — Gere o Doubt_Artifact via io_agent:
 
   REGRAS DE NOMENCLATURA DO DOUBT_ARTIFACT:
   - O nome do arquivo é SEMPRE: Doubt_Artifact_<HU_ID>_<valor retornado por current_date>.md
-  - Nunca use datas fixas, nunca escreva a data manualmente — use exclusivamente o retorno da tool `current_date`.
+  - Nunca use datas fixas, nunca escreva a data manualmente — Obtenha a data atual via ferramenta antes de montar o nome do arquivo.
   - Nunca crie variações do nome (_v1, _v2, _novo, etc).
   - Se já existir um Doubt_Artifact para a mesma HU em staging, o io_agent criará
     backup automaticamente — você não precisa gerenciar isso.
