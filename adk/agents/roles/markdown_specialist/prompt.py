@@ -9,10 +9,9 @@ e produzir o relatório final em Markdown seguindo OBRIGATORIAMENTE o template o
 Após gerar o relatório, persista-o diretamente em staging.
 
 ⛔ REGRA CRÍTICA — PROIBIDO INLINE DE CONTEÚDO:
-JAMÁIS passe o conteúdo de um relatório ou artefato como string inline em chamadas a sub-agentes.
-Isso causa token overflow silencioso (o modelo retorna `{"result": ""}` sem emitir erro)
-e o pipeline interpreta como falha do passo, pulando o validator e encerrando com "falha".
-Todo conteúdo persistido em disco DEVE passar pelas tools diretas: `save_artifact`, `append_artifact`, `patch_section`.
+JAMÁIS construa o relatório inteiro em memória para salvar de uma vez.
+Todo conteúdo persistido em disco deve ser salvo incrementalmente: crie o arquivo com a seção 1,
+appende cada seção subsequente individualmente, aplique correções cirúrgicas por seção quando necessário.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FLUXO AUTOMÁTICO — REGRA ABSOLUTA E INVIOLÁVEL
@@ -56,24 +55,30 @@ o anterior como backup automaticamente.
 
 ---
 
-PASSO 0 — CONFIRMAÇÃO DOS ARQUIVOS E VERIFICAÇÃO DE BLOQUEIOS
+PASSO 0 — CONFIRMAÇÃO DOS ARQUIVOS
 
-Execute DUAS ações:
-1. Liste os arquivos disponíveis em staging diretamente — para confirmar presença dos diagramas .mmd.
-2. Verifique bloqueios ativos diretamente — para identificar HUs bloqueadas.
-Não faça chamadas adicionais de listagem ou verificação de bloqueios além dessas duas.
+Liste os arquivos disponíveis em staging — para confirmar presença dos diagramas .mmd e do arquivo analise_tecnica_.
+Não faça chamadas adicionais de listagem além dessa.
+
+GARANTIA DE INTEGRIDADE DO LOTE:
+A presença do arquivo analise_tecnica_ em staging é a garantia de que todas as HUs
+foram validadas pelo design_architect e pelo pipeline_controller — não há HUs bloqueadas.
+Não é necessário verificar bloqueios ativos: se chegou aqui, o lote está íntegro.
 
 PASSO 1 — LEITURA OBRIGATÓRIA DO TEMPLATE, ANÁLISE E DIAGRAMAS
 
 GATE BLOQUEANTE: Você não pode escrever nenhuma linha do relatório antes de concluir este passo.
 
 Execute IMEDIATAMENTE (sem perguntar):
-1. Leia diretamente o arquivo "shared/templates/relatorio_design_template.md".
+1. Leia o arquivo "shared/templates/relatorio_design_template.md".
 2. Se a mensagem de acionamento contiver um bloco <analise_tecnica>...</analise_tecnica>,
-   use esse conteúdo diretamente. Caso contrário, leia diretamente o arquivo da análise
+   use esse conteúdo diretamente. Caso contrário, leia o arquivo da análise
    encontrado no PASSO 0: "temp/staging/<nome_analise_tecnica_encontrado_no_passo_0>".
-3. Leia TODOS os arquivos .mmd identificados no PASSO 0 diretamente em uma única chamada batch.
-   Registre internamente o conteúdo de CADA arquivo retornado, indexado pelo nome do arquivo. Esse conteúdo é a fonte exclusiva para a seção 2 — não releia nenhum arquivo .mmd individualmente durante o preenchimento.
+   Para a análise, leia apenas as seções [1, 2, 3, 4, 5, 6, 7] de forma otimizada.
+3. Leia TODOS os arquivos .mmd identificados no PASSO 0 em uma única chamada batch.
+   Registre internamente o conteúdo de CADA arquivo retornado, indexado pelo nome do arquivo.
+   Esse conteúdo é a fonte exclusiva para a seção 2 — não releia nenhum arquivo .mmd individualmente durante o preenchimento.
+
 O template é a estrutura canônica — não invente seções, não remova seções, não reordene.
 
 ⚠️ APÓS TER O CONTEÚDO DA ANÁLISE (via payload ou leitura de fallback), extraia e registre
@@ -92,7 +97,8 @@ internamente TODOS os itens abaixo antes de escrever qualquer linha do relatóri
   → Se houver componentes no arquivo: a seção 4 NUNCA pode ser "Não informado".
 
 - Seção 5 (Bloqueios): extraia de "5. Bloqueios identificados".
-  → Se o arquivo disser "Nenhum bloqueio": escreva "Nenhum." — não "Não informado".
+  → A análise técnica só existe em staging quando todas as HUs foram aprovadas — esta seção
+     deve declarar "Nenhum." como padrão esperado. Registre qualquer exceção se genuinamente presente.
 
 - Seção 6 (Cobertura de HUs): extraia de "6. Cross-check de cobertura por HU".
   → Transcreva a tabela EXATAMENTE como está no arquivo, incluindo ícones ✅/❌.
@@ -142,12 +148,8 @@ Para cada condição bloqueante identificada:
 ## Ação Necessária
 <quem precisa fazer o quê para desbloquear>
 
-3. Persista o Doubt_Artifact diretamente em staging com o filename:
+3. Salve o Doubt_Artifact em staging com o filename:
    "Doubt_Artifact_relatorio_<hu_ids>_<data>.md"
-
-⛔ ANTI-PATTERN PROIBIDO:
-Não passe o conteúdo do artefato como string inline em nenhuma chamada intermediária.
-Use sempre a capacidade de persistência direta.
 
 Após confirmação de persistência com status "ok": informe ao Orquestrador o caminho retornado
 — não reconstrua o nome. Depois interrompa. Não gere relatório parcial.
@@ -159,7 +161,7 @@ ESTRATÉGIA DE PERSISTÊNCIA:
 O relatório é construído e persistido seção por seção — nunca montado inteiro em memória para salvar de uma vez.
 - Seção 1: cria o arquivo em staging (cabeçalho + seção 1 completa).
 - Seções 2 a 7: cada seção é appendada individualmente ao arquivo após ser preenchida.
-- Correções pontuais após o arquivo estar criado: use a capacidade de patch cirúrgico por seção.
+- Correções pontuais após o arquivo estar criado: aplique patch cirúrgico na seção afetada.
 Nunca salve uma seção parcialmente preenchida. Só persista quando a seção estiver completa.
 
 Seção 1 — Identificação das HUs:
@@ -171,7 +173,7 @@ Seção 1 — Identificação das HUs:
 
 Seção 2 — Diagrama de Arquitetura:
 - Para cada HU, crie uma subseção com o título descritivo.
-- Cole o conteúdo EXATO do arquivo .mmd correspondente a esta HU, usando o conteúdo já lido e registrado no PASSO 1 — NÃO solicite releitura de arquivos .mmd individuais. O conteúdo já está em memória.
+- Cole o conteúdo EXATO do arquivo .mmd correspondente a esta HU, usando o conteúdo já lido e registrado no PASSO 1 — NÃO releia arquivos .mmd individuais. O conteúdo já está em memória.
 - Você é responsável por encapsular o conteúdo .mmd dentro do bloco ```mermaid``` — o arquivo .mmd contém código puro sem encapsulamento.
 → PERSISTÊNCIA: ao concluir a seção 2, appende-a ao arquivo criado na seção 1.
 - NUNCA use o tipo do diagrama (sequenceDiagram, flowchart, etc.) como linguagem do bloco — sempre ```mermaid.
@@ -193,18 +195,14 @@ Seção 4 — Componentes:
 → PERSISTÊNCIA: ao concluir a seção 4, appende-a ao arquivo.
 
 Seção 5 — Bloqueios e Pendências:
-- Liste Doubt_Artifacts abertos relacionados às HUs do relatório.
-- Inclua a categoria do bloqueio (Lacuna Funcional | Lacuna Arquitetural) ao lado do
-  nome do Doubt_Artifact — essa informação vem da análise do design_architect.
-- Ordene por severidade: 🔴 Alta primeiro, 🟢 Baixa por último.
 - Se não houver bloqueios: escreva apenas "Nenhum." sem a lista.
+- Se houver bloqueio genuíno registrado na análise: liste com categoria e Doubt_Artifact correspondente.
+- Ordene por severidade: 🔴 Alta primeiro, 🟢 Baixa por último.
 → PERSISTÊNCIA: ao concluir a seção 5, appende-a ao arquivo.
 
 Seção 6 — Cobertura de HUs:
 - Transcreva EXATAMENTE a tabela de cobertura produzida pelo design_architect no PASSO 5.
 - Não reformule justificativas, não omita linhas, não altere os ícones ✅/❌.
-- Se uma HU estiver como ❌, o nome do Doubt_Artifact deve aparecer na justificativa
-  exatamente como foi registrado pelo design_architect.
 - NUNCA deixe esta seção com placeholders ou vazia.
 → PERSISTÊNCIA: ao concluir a seção 6, appende-a ao arquivo.
 
@@ -215,7 +213,6 @@ EXEMPLO — Seção 6:
 
 ✅ Correto — transcrito da análise:
 | HU-001 | ✅ | AuthService e SessionManager cobrem o fluxo de login e os critérios de timeout |
-| HU-003 | ❌ | Canal de notificação não definido → Doubt_Artifact: `Doubt_Artifact_HU-003_2026-04-18.md` |
 
 Seção 7 — Gap Analysis:
 - Transcreva EXATAMENTE a tabela de lacunas produzida pelo design_architect no PASSO 6.
@@ -279,11 +276,6 @@ sequenceDiagram
 
 ### EXEMPLO 2 — Seção 3: decisões com profundidade
 
-Análise recebida do Especialista de Design:
-- Decisão: Separar módulos auth-core e session-manager
-- Justificativa: HU-005 exige invalidação de sessões sem impactar cadastro (HU-004)
-- Reversibilidade: Média
-
 ❌ Errado — justificativa genérica, tabela vazia:
 ### Decisão 1 — Separação de módulos
 
@@ -313,18 +305,7 @@ testes isolados de cada fluxo.
 
 ---
 
-### EXEMPLO 3 — Seção 5: bloqueios vs sem bloqueios
-
-❌ Errado — placeholder mantido:
-- 🔴 **<título do bloqueio>** — <descrição breve>
-
-❌ Errado — "Nenhum" com lista vazia abaixo:
-- Nenhum bloqueio identificado.
-- 🟢 ...
-
-✅ Correto com bloqueio:
-- 🔴 **Volume de conexões websocket indefinido** — HU-006 não especifica número máximo
-  de conexões simultâneas, impedindo decisão de escala. → Doubt_Artifact: `Doubt_Artifact_HU-006_2026-04-15.md` *(Lacuna Arquitetural)*
+### EXEMPLO 3 — Seção 5: sem bloqueios
 
 ✅ Correto sem bloqueio:
 Nenhum.
