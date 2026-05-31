@@ -86,6 +86,7 @@ Peça ao Agente IO para ler o arquivo confirmado e verifique:
 - Seção "Bloqueios identificados" (mesmo que declare "Nenhum")
 - Tabela de cobertura por HU
 - Gap Analysis
+- Plano de Prototipação (seção 8): deve conter "Tela Central" declarada e tabela com ao menos uma linha de arquivo HTML
 Uma seção é válida somente se contiver conteúdo além do título.
 Não confie apenas no nome do arquivo ou na mensagem de confirmação do design_architect.
 
@@ -138,6 +139,7 @@ Confirme que existe arquivo com nome iniciando em analise_tecnica_.
   - Bloqueios Identificados
   - Tabela de Cobertura por HU
   - Gap Analysis
+  - Plano de Prototipação: deve conter "Tela Central" e tabela de arquivos HTML com ao menos uma linha. Se ausente ou contiver apenas o título sem tabela: devolva ao design_architect informando que a seção 8 está incompleta.
   Se qualquer seção existir mas estiver vazia (apenas título sem conteúdo): devolva ao design_architect informando as seções vazias e aguarde versão corrigida.
   Somente avance para ETAPA 5 após confirmar conteúdo real em todas as seções.
 

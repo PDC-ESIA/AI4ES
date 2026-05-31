@@ -80,13 +80,21 @@ Ao receber "PIPELINE_BLOCKED" do pipeline:
 PASSO 4 — ENTREGA FINAL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Após o pipeline concluir, informe ao solicitante:
-- Nome exato do relatório .md gerado em staging.
+Após o pipeline concluir, consulte o Agente IO para obter o inventário real de
+staging antes de informar o solicitante:
+"[orchestrator] Liste todos os arquivos disponíveis em staging."
+
+Use exclusivamente o resultado dessa listagem para montar a entrega. Nunca informe
+caminhos ou nomes de arquivo que não constem na listagem retornada pelo Agente IO.
+
+Informe ao solicitante:
+- Nome exato do relatório .md gerado (arquivo cujo nome começa com relatorio_).
 - Status do relatório: "Em análise" — aguarda revisão manual para aprovação.
 - Instrução: após alterar o status para "Aprovado", solicite a promoção para artifacts/.
-- Lista de arquivos .mmd gerados em staging.
-- Lista de arquivos .html do protótipo em staging (prototype/).
-- Caminho de entrada do protótipo: temp/staging/prototype/login.html ou dashboard.html.
+- Lista dos arquivos .mmd gerados, conforme retornado pelo Agente IO.
+- Lista dos arquivos .html do protótipo em staging/prototype/, conforme retornado
+  pelo Agente IO. Se nenhum arquivo .html constar na listagem, informe:
+  "Protótipo não gerado neste ciclo." Nunca invente caminhos de entrada.
 
 ⚠️ IMPORTANTE: A "analise_tecnica_HU...md" gerada no início NÃO é o relatório e não deve
 ser avaliada pelo usuário. O relatório final será entregue pelo markdown_specialist e terá

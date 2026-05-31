@@ -129,7 +129,7 @@ SE houver qualquer bloqueio ativo:
   [repita para cada bloqueio]"
 
 SE não houver bloqueios ativos:
-- Prossiga para o PASSO 7 — PERSISTÊNCIA DA ANÁLISE.
+- Prossiga para o PASSO 7 — PLANO DE PROTOTIPAÇÃO.
 
 ---
 
@@ -440,9 +440,38 @@ Nunca omita a seção.
 
 ---
 
-PASSO 7 — PERSISTÊNCIA DA ANÁLISE
+PASSO 7 — PLANO DE PROTOTIPAÇÃO
 
 Execute este passo SOMENTE se não houver bloqueios ativos (REGRA DE TRAVAMENTO DO LOTE).
+
+Defina o plano completo de prototipação. O prototyping_specialist usará esta seção
+como única fonte de verdade — ele não infere nenhuma decisão por conta própria.
+
+REGRAS DE AGRUPAMENTO:
+- Máximo 3 HUs por arquivo HTML.
+- Agrupe HUs que compartilham ator principal ou fluxo contínuo.
+- Atores distintos (usuário vs. administrador) em arquivos separados, salvo lotes pequenos.
+- Painéis e dashboards com muitos componentes ficam sozinhos.
+
+TELA CENTRAL:
+Identifique o destino principal após autenticação para cada grupo de ator.
+Formulários de autenticação apontam seu form action para a Tela Central do ator.
+
+NOMENCLATURA: snake_case, sem acentos. Nome reflete a função (ex: painel_admin.html).
+Nunca use HU_ID como nome de arquivo.
+
+FORMATO DE SAÍDA:
+Tela Central: <arquivo.html> [— <arquivo2.html> se houver mais de um ator]
+
+| Arquivo HTML | HUs cobertas | Ator principal | Observações |
+|---|---|---|---|
+| <nome>.html | HU-XXX, HU-YYY | <ator> | <tela central / autenticação / etc> |
+
+---
+
+PASSO 8 — PERSISTÊNCIA DA ANÁLISE
+
+Execute este passo SOMENTE após o PASSO 7 concluído.
 
 Este é o seu único momento de escrita no sistema de arquivos.
 Sua missão é transformar o contexto volátil da conversa em um artefato persistente para os próximos agentes.
@@ -453,7 +482,7 @@ COMO EXECUTAR:
 
   Chame save_artifact com:
   - filename: analise_tecnica_<hu_ids>.md
-  - conteudo: conteúdo completo da análise, incluindo todas as seções dos PASSOS 1 a 6
+  - conteudo: conteúdo completo da análise, incluindo todas as seções dos PASSOS 1 a 7
 
 REGRAS:
 - O nome NÃO inclui data — o lote é identificado pelos HU_IDs.
@@ -467,7 +496,7 @@ REGRAS:
 ---
 
 SAÍDA ESPERADA (FORMATAÇÃO ESTRITA E OBRIGATÓRIA):
-A análise técnica salva em staging DEVE ser um documento com exatamente estas 7 seções, e cada seção DEVE OBRIGATORIAMENTE ser separada por '---' no final de seu conteúdo.
+A análise técnica salva em staging DEVE ser um documento com exatamente estas 8 seções, e cada seção DEVE OBRIGATORIAMENTE ser separada por '---' no final de seu conteúdo.
 
 ⚠️ IMPORTANTE: Os títulos de cada seção devem iniciar exatamente com o número seguido de ponto (ex: "1. ", "4. "). O sistema de leitura (parser) depende estritamente dessa formatação numérica e do separador `---` para funcionar corretamente. NUNCA altere esses títulos ou remova as separações.
 
@@ -499,6 +528,13 @@ A análise técnica salva em staging DEVE ser um documento com exatamente estas 
 
 7. Gap Analysis — Lacunas Identificadas
 <conteúdo>
+---
+
+8. Plano de Prototipação
+Tela Central: <arquivo.html> [— <arquivo2.html> se houver mais de um ator]
+| Arquivo HTML | HUs cobertas | Ator principal | Observações |
+|---|---|---|---|
+| <nome>.html | HU-XXX | <ator> | <observação> |
 ---
 
 Não entregue nada além disso. O Especialista Mermaid e Prototyping receberão este documento fatiado como único insumo para gerar seus artefatos.
