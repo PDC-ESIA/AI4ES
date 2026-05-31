@@ -6,6 +6,15 @@ A validação semântica (cabeçalho, convenção de nome, seções) é responsa
 """
 description = "INSPETOR DE QUALIDADE (PASSO 3). Valida de forma determinística os arquivos .mmd e .md gerados pelos especialistas. Garante a integridade técnica antes da consolidação do relatório final."
 
+# EXCEÇÕES DE CONVENÇÃO — Pendência 1 (2026-05-29):
+# 1. `validate_artifact` é citado por nome (CAMADA 1 e PASSO 2) porque o Validator é
+#    um agente de execução determinística — sua identidade de papel depende de saber
+#    que delega a decisão sintática a uma ferramenta, não que faz julgamento próprio.
+#    Análogo ao io_agent, que também lista suas ferramentas por nome no próprio prompt.
+# 2. `read_multiple_files` e `read_analysis_sections` são citados por nome nas
+#    instruções ao Agente IO (PASSO 1) para forçar leitura em lote e parcial.
+#    Sem esses nomes, o io_agent pode usar read_file e causar token overflow.
+# Referência: pendencias.md — Pendência 1, exceção formal aprovada.
 instruction = """
 Você é o Agente Validador do sistema multi-agente de design de software.
 

@@ -57,14 +57,25 @@ def _next_version(path: Path) -> Path:
 
 def read_file(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Lê o conteúdo de um arquivo do filesystem.
-
+    Lê e retorna o conteúdo completo de um arquivo em staging ou no sistema de arquivos do projeto.
+ 
+    Use quando precisar do conteúdo de um arquivo específico cujo caminho você já conhece —
+    por exemplo, ler um Doubt_Artifact para verificar se foi resolvido, ou ler um HTML
+    já salvo para validação.
+ 
+    Para ler vários arquivos de uma vez, prefira read_multiple_files.
+    Para ler só algumas seções de uma analise_tecnica_, prefira read_analysis_sections.
+ 
     Args:
-        filepath: caminho do arquivo a ser lido.
-        caller:   nome do agente solicitante (para rastreabilidade no log).
-
+        filepath: Caminho do arquivo. Pode ser absoluto ou relativo ao projeto.
+                  Exemplos: "temp/staging/relatorio_HU-001.md"
+                            "temp/staging/prototype/login.html"
+        caller:   Nome do agente que está fazendo a leitura (ex: "prototyping_specialist").
+                  Usado apenas para rastreabilidade no log — não afeta o resultado.
+ 
     Returns:
-        dict com keys: status, content | error
+        Sucesso:  {"status": "ok",    "content": "<conteúdo do arquivo>"}
+        Falha:    {"status": "error", "error":   "<motivo>"}
     """
     try:
         path = Path(filepath).resolve()
@@ -91,16 +102,29 @@ def read_file(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
 
 def read_analysis_sections(filepath: str, sections: list[int], caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Lê apenas seções específicas de um arquivo de análise técnica (Markdown).
-    Isso reduz a quantidade de tokens processados pelo LLM ao filtrar seções irrelevantes.
-
+    Lê seções específicas de um arquivo analise_tecnica_.md, ignorando o restante.
+ 
+    Use quando precisar de apenas uma parte da análise técnica — por exemplo, só
+    a seção 8 (Plano de Prototipação) ou as seções 4 e 8 (Componentes + Plano).
+    Isso reduz o volume de texto retornado e evita carregar o arquivo inteiro.
+ 
+    O arquivo deve seguir o formato padrão do design_architect: cada seção começa
+    com "<número>. <Título>" e termina com "---".
+    Se as seções solicitadas não forem encontradas, retorna o arquivo completo com aviso.
+ 
     Args:
-        filepath: caminho do arquivo a ser lido.
-        sections: lista de inteiros das seções desejadas (ex: [1, 4, 6]).
-        caller:   nome do agente solicitante (para rastreabilidade no log).
-
+        filepath: Caminho do arquivo analise_tecnica_ em staging.
+                  Exemplo: "temp/staging/analise_tecnica_HU-001_HU-002.md"
+        sections: Lista de números inteiros das seções desejadas.
+                  Exemplo: [4, 8] retorna apenas as seções 4 e 8.
+                  Exemplo: [1, 3, 4] retorna as seções 1, 3 e 4.
+        caller:   Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, content | error
+        Sucesso:  {"status": "ok",      "content": "<seções solicitadas concatenadas>"}
+        Aviso:    {"status": "warning", "content": "<arquivo completo>",
+                   "msg": "Não foi possível extrair as seções. Retornando arquivo completo."}
+        Falha:    {"status": "error",   "error":   "<motivo>"}
     """
     try:
         import re
@@ -150,15 +174,29 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
 
 def read_multiple_files(filepaths: list[str], caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Lê o conteúdo de múltiplos arquivos simultaneamente em batch.
-    Isso otimiza o LLM evitando múltiplas chamadas consecutivas para a mesma ação.
-
+    Lê o conteúdo de vários arquivos em uma única chamada e os retorna juntos.
+ 
+    Use quando precisar validar ou processar um conjunto de arquivos de uma vez —
+    por exemplo, auditar todos os HTMLs e o global.css após geração do protótipo,
+    ou ler todos os diagramas .mmd de um lote para validação.
+    Mais eficiente do que chamar read_file repetidamente.
+ 
+    Arquivos não encontrados ou inacessíveis são retornados individualmente com erro,
+    sem impedir a leitura dos demais.
+ 
     Args:
-        filepaths: lista de caminhos dos arquivos a serem lidos (ex: ["file1.mmd", "file2.mmd"]).
-        caller:   nome do agente solicitante (para rastreabilidade no log).
-
+        filepaths: Lista de caminhos dos arquivos a serem lidos.
+                   Exemplo: ["temp/staging/prototype/login.html",
+                             "temp/staging/prototype/global.css"]
+        caller:    Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, contents (dict mapeando filepath -> {status, content | error})
+        Sucesso:  {"status": "ok", "contents": {
+                      "<filepath>": {"status": "ok",    "content": "<conteúdo>"},
+                      "<filepath>": {"status": "error", "error":   "<motivo>"},
+                      ...
+                  }}
+        Falha:    {"status": "error", "error": "<motivo>"}
     """
     try:
         contents = {}
@@ -195,15 +233,33 @@ def read_multiple_files(filepaths: list[str], caller: str | None = "unknown") ->
 
 def save_artifact(filename: str, content: str, caller: str | None = "unknown") -> dict:
     """
-    Salva o artefato em staging com versionamento automático.
-
+    Salva um arquivo em staging. Se o arquivo já existir, cria backup automático antes de sobrescrever.
+ 
+    Use para criar um arquivo novo ou substituir completamente um existente.
+    Arquivos .html e global.css são salvos automaticamente em staging/prototype/.
+    Todos os outros arquivos são salvos em staging/.
+ 
+    ⚠️  Esta função SOBRESCREVE o arquivo inteiro. Para adicionar conteúdo ao fim
+        de um arquivo existente sem apagar o que já está lá, use append_artifact.
+    ⚠️  Para corrigir apenas uma seção de um arquivo Markdown, use patch_section.
+ 
     Args:
-        filename: Nome do arquivo.
-        content:  Conteúdo textual do artefato.
-        caller:   nome do agente solicitante (para rastreabilidade no log).
-
+        filename: Nome do arquivo a ser salvo. Não inclua caminhos como "staging/" ou "prototype/" —
+                  o sistema resolve o destino automaticamente pelo tipo de arquivo.
+                  Exemplos: "analise_tecnica_HU-001_HU-002.md"
+                            "relatorio_HU-001.md"
+                            "diagrama_HU-001_login.mmd"
+                            "login.html"          → salvo em staging/prototype/
+                            "global.css"          → salvo em staging/prototype/
+                            "prototype/login.html"→ equivalente a "login.html"
+        content:  Conteúdo completo do arquivo como string.
+        caller:   Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, path, versioned_backup (se houve), timestamp
+        Sucesso:  {"status": "ok", "path": "<caminho completo>",
+                   "versioned_backup": "<caminho do backup ou vazio se não havia arquivo>",
+                   "timestamp": "<ISO 8601>"}
+        Falha:    {"status": "error", "error": "<motivo>", "filename": "<nome>"}
     """
     try:
         _ensure_dirs()
@@ -246,14 +302,27 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown") -
 
 def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Move um artefato de staging para artifacts/.
-
+    Copia um relatório aprovado de staging para artifacts/ (diretório oficial permanente).
+ 
+    Use somente quando o solicitante tiver alterado o status do relatório para "Aprovado"
+    e pedir explicitamente a promoção. Nunca promova sem verificar o status antes.
+ 
+    Restrições aplicadas automaticamente pela função:
+    - Apenas arquivos .md cujo nome contenha "relatorio" podem ser promovidos.
+    - O arquivo deve conter "**Status:** Aprovado" — se ainda contiver "**Status:** Em análise",
+      a promoção é bloqueada e retorna status "blocked".
+    - Diagramas .mmd, HTMLs, CSS e a analise_tecnica_ nunca são promovidos — permanecem em staging.
+ 
     Args:
-        filename: Nome do arquivo a ser promovido.
-        caller:   nome do agente solicitante (para rastreabilidade no log).
-
+        filename: Nome exato do relatório em staging.
+                  Exemplo: "relatorio_HU-001_HU-002_HU-003.md"
+        caller:   Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, source, destination, timestamp | reason | error
+        Sucesso:  {"status": "ok",      "source": "<origem>", "destination": "<destino>",
+                   "timestamp": "<ISO 8601>"}
+        Bloqueio: {"status": "blocked", "reason": "<motivo>", "file": "<nome>"}
+        Falha:    {"status": "error",   "error":  "<motivo>"}
     """
     try:
         raw_filename = Path(filename)
@@ -315,14 +384,26 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
 
 def list_staging_files(filetype: str = "", caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Lista arquivos em staging, ignorando backups e o log de operações.
-
+    Lista os arquivos presentes em staging (e em staging/prototype/ para .html e .css).
+ 
+    Use como primeira ação ao iniciar qualquer agente, para descobrir o que já existe
+    em staging antes de gerar ou sobrescrever qualquer coisa. Também útil para verificar
+    se um arquivo específico foi salvo com sucesso.
+ 
+    Backups (nomes com "_backup_") e o arquivo de log são excluídos automaticamente da listagem.
+ 
     Args:
-        filetype: extensão para filtrar (ex: "mmd", "md"). Se vazio, lista todos.
-        caller:   nome do agente solicitante (para rastreabilidade no log).
-
+        filetype: Extensão para filtrar a listagem, sem o ponto.
+                  Exemplos: "md"  → lista apenas arquivos .md
+                            "mmd" → lista apenas arquivos .mmd
+                            "html"→ lista apenas arquivos .html em staging/prototype/
+                            ""    → lista todos os arquivos (padrão)
+        caller:   Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, files, staging_dir | error
+        Sucesso:  {"status": "ok", "files": ["arquivo1.md", "arquivo2.mmd", ...],
+                   "staging_dir": "<caminho absoluto do staging>"}
+        Falha:    {"status": "error", "error": "<motivo>"}
     """
     try:
         _ensure_dirs()
@@ -355,13 +436,25 @@ def list_staging_files(filetype: str = "", caller: str | None = "unknown") -> Di
 
 def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Verifica se há Doubt_Artifacts com Status: Bloqueado em staging.
-
+    Verifica se há Doubt_Artifacts com status "Bloqueado" em staging.
+ 
+    Use após receber retomada de um bloqueio, para confirmar que todos os
+    Doubt_Artifacts foram realmente resolvidos antes de prosseguir o pipeline.
+    Também usado pelo pipeline_controller como gate antes de emitir PIPELINE_STAGE_1_COMPLETE.
+ 
+    Um Doubt_Artifact é considerado bloqueado se seu conteúdo contiver a linha:
+    "**Status:** Bloqueado"
+    Após resolução, o solicitante deve alterar essa linha para "**Status:** Resolvido"
+    para que este check retorne has_blocks: false.
+ 
     Args:
-        caller: nome do agente solicitante (para rastreabilidade no log).
-
+        caller: Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, has_blocks (bool), blocks (lista de dicts)
+        Sucesso sem bloqueios: {"status": "ok", "has_blocks": false, "blocks": []}
+        Sucesso com bloqueios: {"status": "ok", "has_blocks": true,
+                                "blocks": [{"filename": "<nome>", "hu_id": "<HU_ID>"}, ...]}
+        Falha:                 {"status": "error", "error": "<motivo>"}
     """
     try:
         _ensure_dirs()
@@ -383,14 +476,21 @@ def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
 
 def clear_staging_folder(caller: str | None = "unknown") -> bool:
     """
-    Remove todos os arquivos do diretório de staging e seus subdiretórios,
-    preservando a estrutura de pastas.
-
+    Remove todos os arquivos de staging e seus subdiretórios (incluindo staging/prototype/).
+    A estrutura de pastas é preservada — apenas os arquivos são deletados.
+ 
+    Use exclusivamente no início de um novo ciclo do pipeline, para garantir que
+    artefatos de execuções anteriores não contaminem o lote atual.
+    Esta operação é irreversível — não há backup dos arquivos removidos.
+ 
+    ⚠️  Nunca chame esta função no meio de uma execução ativa do pipeline.
+ 
     Args:
-        caller: nome do agente solicitante (para rastreabilidade no log).
-
+        caller: Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        bool: True se todos os arquivos foram removidos com sucesso, False caso contrário.
+        True  → todos os arquivos foram removidos com sucesso.
+        False → ocorreu um erro durante a limpeza (detalhes no log de operações).
     """
     try:
         _ensure_dirs()
@@ -411,23 +511,35 @@ def clear_staging_folder(caller: str | None = "unknown") -> bool:
         IOLogger.error("ERASE", f"dir={STAGING_DIR} | error={str(e)}", caller=caller)
         return False
 
-
 def append_artifact(filename: str, content: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Acrescenta conteúdo ao fim de um artefato já existente em staging, sem reescrevê-lo.
-    Cria o arquivo se ainda não existir (comportamento idêntico ao save_artifact inicial).
-
-    Uso típico: geração incremental de relatórios longos — cada seção é appendada
-    separadamente, eliminando a necessidade de o LLM reprocessar o documento inteiro
-    a cada atualização.
-
+    Adiciona conteúdo ao fim de um arquivo existente em staging, sem apagar o que já está lá.
+    Se o arquivo não existir, cria-o (comportamento idêntico ao save_artifact).
+ 
+    Use para construir arquivos longos de forma incremental — por exemplo, adicionar
+    seções a um relatório ou à analise_tecnica_ uma a uma, sem precisar reescrever
+    o arquivo inteiro a cada vez.
+ 
+    ⚠️  Diferente de save_artifact, esta função NÃO cria backup. O conteúdo é apenas
+        acrescentado ao fim. Para substituir o arquivo inteiro, use save_artifact.
+    ⚠️  Para corrigir apenas uma seção já escrita, use patch_section.
+ 
     Args:
-        filename: Nome do arquivo em staging (ex: "relatorio_HU-001.md").
+        filename: Nome do arquivo em staging. O sistema resolve o destino automaticamente:
+                  .html e global.css → staging/prototype/
+                  demais             → staging/
+                  Exemplo: "analise_tecnica_HU-001.md"
+                           "relatorio_HU-001.md"
+                           "global.css"
         content:  Trecho a ser adicionado ao fim do arquivo.
-        caller:   Nome do agente solicitante (para rastreabilidade no log).
-
+                  Inclua o separador "---" ao final se for uma seção de analise_tecnica_.
+        caller:   Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, path, bytes_total, timestamp | error
+        Sucesso:  {"status": "ok", "path": "<caminho>",
+                   "bytes_total": <tamanho total do arquivo após append>,
+                   "timestamp": "<ISO 8601>"}
+        Falha:    {"status": "error", "error": "<motivo>", "filename": "<nome>"}
     """
     try:
         _ensure_dirs()
@@ -463,24 +575,40 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown")
         IOLogger.error("append_artifact", str(e), caller=caller)
         return {"status": "error", "error": str(e), "filename": filename}
 
-
 def patch_section(filename: str, section_id: str, new_content: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Substitui uma seção específica de um artefato Markdown em staging,
-    sem reescrever o documento inteiro.
-
-    Identifica a seção pelo delimitador '---' combinado com o prefixo numérico
-    (ex: "3." no início da linha) OU por um título de heading Markdown
-    (ex: "## Nome da Seção"). O primeiro match wins.
-
+    Substitui uma seção específica de um arquivo Markdown em staging, sem alterar as demais.
+ 
+    Use quando precisar corrigir o conteúdo de uma seção já escrita — por exemplo,
+    atualizar a seção 5 (Bloqueios) após resolução de um Doubt_Artifact, ou corrigir
+    a seção 8 (Plano de Prototipação) sem reescrever o arquivo inteiro.
+ 
+    A seção é identificada de duas formas (o primeiro match encontrado vence):
+    - Por número: section_id="4" encontra a seção cuja primeira linha começa com "4." ou "4 ".
+    - Por heading Markdown exato: section_id="## Título" encontra a seção com esse heading.
+ 
+    ⚠️  section_id deve ser APENAS o número isolado ("4", "5", "8") ou o heading exato.
+        Nunca passe o título junto com o número ("4. Identificação...") — não será encontrado.
+    ⚠️  new_content deve incluir o título da seção na primeira linha e terminar com "---".
+        Exemplo: "4. Identificação de Componentes por HU\n<conteúdo>\n---\n"
+    ⚠️  Para seções escritas em múltiplos appends (ex: seção 4 em lotes grandes),
+        new_content deve conter o conteúdo completo e consolidado da seção inteira.
+    ⚠️  Um backup automático é criado antes de qualquer alteração.
+ 
     Args:
-        filename:    Nome do arquivo em staging (ex: "analise_HU-001.md").
-        section_id:  Número da seção ("3") OU título exato do heading ("## Fluxo de Dados").
-        new_content: Novo conteúdo completo da seção (substitui tudo até o próximo '---' ou EOF).
-        caller:      Nome do agente solicitante (para rastreabilidade no log).
-
+        filename:    Nome do arquivo em staging.
+                     Exemplo: "analise_tecnica_HU-001_HU-002.md"
+        section_id:  Número isolado ("4") ou heading Markdown exato ("## Título").
+        new_content: Conteúdo completo da seção corrigida, incluindo título e "---" final.
+        caller:      Nome do agente solicitante. Usado apenas para rastreabilidade no log.
+ 
     Returns:
-        dict com keys: status, path, section_found, timestamp | error
+        Sucesso:       {"status": "ok",      "path": "<caminho>", "section_found": true,
+                        "backup": "<caminho do backup>", "timestamp": "<ISO 8601>"}
+        Não encontrou: {"status": "warning", "section_found": false,
+                        "error": "Seção '<id>' não encontrada. Arquivo não alterado.",
+                        "hint": "Use read_analysis_sections para inspecionar os IDs disponíveis."}
+        Falha:         {"status": "error",   "error": "<motivo>", "filename": "<nome>"}
     """
     try:
         import re
@@ -559,7 +687,6 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
     except Exception as e:
         IOLogger.error("patch_section", str(e), caller=caller)
         return {"status": "error", "error": str(e), "filename": filename}
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Mocks

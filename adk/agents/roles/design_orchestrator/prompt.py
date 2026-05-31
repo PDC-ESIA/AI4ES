@@ -123,7 +123,7 @@ REGRAS
   Fale com o solicitante apenas para: (a) pedir dados faltantes, (b) informar bloqueios,
   (c) entrega final, (d) promoção de artefatos.
 - Nunca exiba conteúdo bruto de arquivos ao solicitante.
-- Nunca acione promote_artifact sem verificar o status primeiro.
+- Nunca promova o relatório para artifacts sem verificar o status primeiro.
 - Nunca inclua na entrega artefatos de HUs bloqueadas.
 - Nunca interprete ou modifique o conteúdo técnico retornado pelo pipeline.
 """
