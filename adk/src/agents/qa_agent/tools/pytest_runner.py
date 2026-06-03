@@ -6,6 +6,7 @@ import sys
 from datetime import datetime, timezone
 import re
 
+from shared.workspace import get_agent_workspace
 
 # Variáveis de controle de estado do agente
 _contador_execucoes = {}
@@ -13,9 +14,13 @@ MAX_TENTATIVAS = 5
 
 logger = logging.getLogger("qa_agent_tool")
 
-def _gerar_doubt_artifact_sincrono(id_artefato: str, motivo: str, caminho_base: Path) -> str:
+def _gerar_doubt_artifact_sincrono(id_artefato: str, motivo: str) -> str:
+    """Gera o doubt artifact estritamente dentro do workspace do agente de QA."""
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    doubt_dir = caminho_base.parent / "doubt_artifacts"
+
+    # Garantia de Workspace
+    base_dir = get_agent_workspace("qa_agent")
+    doubt_dir = base_dir / "doubt_artifacts"
     doubt_dir.mkdir(parents=True, exist_ok=True)
 
     nome_arquivo = f"Doubt_Artifact_{id_artefato}_{timestamp}.md"
