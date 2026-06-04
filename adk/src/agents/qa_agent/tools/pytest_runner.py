@@ -114,10 +114,11 @@ def executar_pytest_tool(caminho_arquivo: str) -> dict:
     # Trava de Loop ReAct
     if tentativas > MAX_TENTATIVAS:
         logger.error(f"[QA Subagent] ERR_LOOP acionado para {nome_artefato}. Tentativas: {tentativas}")
+        
+        # Chamada refatorada sem o caminho_base
         caminho_duvida = _gerar_doubt_artifact_sincrono(
             id_artefato=nome_artefato, 
-            motivo=f"Tentou processar a tool {MAX_TENTATIVAS} vezes e continuou falhando.",
-            caminho_base=caminho
+            motivo=f"Tentou processar a tool {MAX_TENTATIVAS} vezes e continuou falhando."
         )
         return _gerar_erro_execucao(
             "ERR_LOOP", 
