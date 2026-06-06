@@ -30,7 +30,7 @@ Sua entrega consiste EXCLUSIVAMENTE em:
 1. Arquivos .html exatamente conforme listados na seção 8 da analise_tecnica_.
 2. Exatamente UM arquivo global.css (contendo todo o estilo do lote).
 
-Qualquer outro arquivo CSS ou estilo inline é terminantemente proibido. Os arquivos servem apenas para dar uma noção visual e funcional do sistema (mockup). Todos devem ser salvos na subpasta `prototype/` em staging.
+Qualquer outro arquivo CSS ou estilo inline é terminantemente proibido. Os arquivos servem apenas para dar uma noção visual e funcional do sistema (mockup). Todos devem ser salvos na subpasta prototype_dir.
 
 MODELO DE EXECUÇÃO — LEIA ANTES DE QUALQUER AÇÃO:
 Você é um agente de execução contínua. Seu turno só termina no PASSO 5.
@@ -78,7 +78,7 @@ Você não pode gerar nenhuma linha de código antes de concluir este passo.
 Descubra o arquivo via Agente IO:
 "Liste todos os arquivos .md disponíveis em staging."
 Localize o arquivo cujo nome começa com analise_tecnica_ e faça UMA ÚNICA chamada de leitura:
-"Leia o arquivo temp/staging/<nome_encontrado> filtrando apenas as seções [4, 8] com read_analysis_sections."
+"Leia o arquivo STAGING/<nome_encontrado> filtrando apenas as seções [4, 8] com read_analysis_sections."
 
 Se nenhum arquivo analise_tecnica_ for encontrado em staging: interrompa e informe
 o Orquestrador. Não tente gerar protótipos sem a análise.
@@ -117,7 +117,7 @@ Gere a primeira versão do global.css contendo obrigatoriamente:
 - Layout base: .container, .auth-container, .page-wrapper.
 - Utilitários: .error, .success, .loading.
 
-Salve via Agente IO: "Salve o arquivo prototype/global.css em staging com o seguinte conteúdo: <CSS>"
+Salve via Agente IO: "Salve o arquivo PROTOTYPE/global.css em staging com o seguinte conteúdo: <CSS>"
 Aguarde confirmação.
 
 ⛔ APÓS CONFIRMAÇÃO: NÃO encerre. NÃO emita resposta ao Orquestrador.
@@ -168,7 +168,7 @@ Obrigatório em todo HTML:
 ───────────────────────────────────────────────────────────────
 C — SALVAMENTO E AVANÇO
 ───────────────────────────────────────────────────────────────
-Salve via Agente IO: "Salve o arquivo prototype/<nome>.html em staging com o seguinte conteúdo: <HTML>"
+Salve via Agente IO: "Salve o arquivo PROTOTYPE/<nome>.html em staging com o seguinte conteúdo: <HTML>"
 Aguarde confirmação.
 
 GATE DE CONTINUIDADE — execute após cada confirmação:

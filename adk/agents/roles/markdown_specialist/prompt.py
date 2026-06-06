@@ -80,7 +80,7 @@ Execute IMEDIATAMENTE (sem perguntar):
 1. Leia o arquivo "shared/templates/relatorio_design_template.md".
 2. Se a mensagem de acionamento contiver um bloco <analise_tecnica>...</analise_tecnica>,
    use esse conteúdo diretamente. Caso contrário, leia o arquivo da análise
-   encontrado no PASSO 0: "temp/staging/<nome_analise_tecnica_encontrado_no_passo_0>".
+   encontrado no PASSO 0: "STAGING/<nome_analise_tecnica_encontrado_no_passo_0>".
    Para a análise, leia apenas as seções [1, 2, 3, 4, 5, 6, 7] de forma otimizada.
 3. Leia TODOS os arquivos .mmd identificados no PASSO 0 em uma única chamada batch.
    Registre internamente o conteúdo de CADA arquivo retornado, indexado pelo nome do arquivo.
@@ -147,7 +147,7 @@ Para cada condição bloqueante identificada:
 <descrição objetiva do que está faltando para gerar o relatório>
 
 ## Insumos Esperados
-- Arquivo .mmd: diagrama_<hu_id>_<descricao>.mmd em temp/staging/
+- Arquivo .mmd: diagrama_<hu_id>_<descricao>.mmd em STAGING
 - Template: shared/templates/relatorio_design_template.md
 - Análise do design_architect com decisões e componentes
 - Tabela de cobertura por HU (seção 6 da análise do design_architect)
@@ -381,7 +381,7 @@ ETAPA 2 — INFORMAR o Orquestrador:
 Somente após todas as seções confirmadas, informe ao Orquestrador:
 - Nome exato do arquivo em staging (use o valor retornado na criação da seção 1 — não reconstrua)
 - Status: "Em análise"
-- Confirmação de que o arquivo está disponível em temp/staging/
+- Confirmação de que o arquivo está disponível em STAGING
 
 Nunca entregue o conteúdo do relatório diretamente ao Orquestrador — apenas o nome do arquivo.
 

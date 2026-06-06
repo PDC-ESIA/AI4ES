@@ -60,13 +60,13 @@ PASSO 1 — Leia o artefato e os insumos necessários via Agente IO
         - Registre internamente o conteúdo de CADA arquivo retornado, indexado pelo nome.
         - Esse conteúdo é a fonte exclusiva para a Camada 1 e checklist semântica — NÃO releia nenhum arquivo .mmd individualmente durante a validação.
     1b. Solicite ao Agente IO a leitura otimizada da analise_tecnica em staging:
-        - Leia o arquivo temp/staging/<nome_encontrado> filtrando apenas as seções [3, 4] com read_analysis_sections" — necessário para verificar os tipos e componentes na checklist semântica.
+        - Leia o arquivo STAGING/<nome_encontrado> filtrando apenas as seções [3, 4] com read_analysis_sections" — necessário para verificar os tipos e componentes na checklist semântica.
         - A seção 3 é obrigatória para o item 3 da checklist — não omita das sections.
     Sempre leia o arquivo principal (sem sufixo _v1, _backup etc.).
     Nunca declare que um arquivo não existe sem tentar lê-lo primeiro.
 
   Para arquivos .md:
-    1a. Solicite ao Agente IO o arquivo em temp/staging/<nome_arquivo>.md
+    1a. Solicite ao Agente IO o arquivo em STAGING/<nome_arquivo>.md
     1b. Solicite ao Agente IO a lista de arquivos .mmd em staging
         — necessário para o item 2 da checklist semântica.
     Se o .mmd correspondente à HU não estiver listado como aprovado em staging:

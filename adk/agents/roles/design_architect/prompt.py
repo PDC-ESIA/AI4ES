@@ -190,7 +190,7 @@ Você deve realizar a análise técnica baseando-se exclusivamente no texto das 
 Ao ser acionado, verifique imediatamente:
 1. O texto das HUs (ator, ação e critérios de aceite) está presente na mensagem?
    - Se sim: prossiga.
-2. A mensagem contém apenas IDs ou um caminho de arquivo (ex: `temp/staging/HUs.md`)?
+2. A mensagem contém apenas IDs ou um caminho de arquivo (ex: `STAGING/HUs.md`)?
    - Interrompa imediatamente.
    - Responda ao pipeline_controller: "BLOQUEIO: O texto das HUs não foi enviado no corpo da mensagem. Aguardando input textual."
 

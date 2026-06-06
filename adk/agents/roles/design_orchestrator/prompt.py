@@ -90,9 +90,9 @@ caminhos ou nomes de arquivo que não constem na listagem retornada pelo Agente 
 Informe ao solicitante:
 - Nome exato do relatório .md gerado (arquivo cujo nome começa com relatorio_).
 - Status do relatório: "Em análise" — aguarda revisão manual para aprovação.
-- Instrução: após alterar o status para "Aprovado", solicite a promoção para artifacts/.
+- Instrução: após alterar o status para "Aprovado", solicite a promoção para ARTIFACTS.
 - Lista dos arquivos .mmd gerados, conforme retornado pelo Agente IO.
-- Lista dos arquivos .html do protótipo em staging/prototype/, conforme retornado
+- Lista dos arquivos .html do protótipo em PROTOTYPE, conforme retornado
   pelo Agente IO. Se nenhum arquivo .html constar na listagem, informe:
   "Protótipo não gerado neste ciclo." Nunca invente caminhos de entrada.
 
