@@ -50,3 +50,6 @@ class AnalystOutput(BaseModel):
     glossary: List[GlossaryTerm] = Field(default_factory=list)
     doubt_generated: bool = Field(False, description="Indica se houve geração de Doubt Artifact")
     summary: str = Field(..., description="Resumo executivo do processamento")
+
+class ValidationInput(BaseModel):
+    ids: str = Field(..., description="Lista de IDs dos artefatos a validar, separados por vírgula (ex: 'HU-001,RF-001,RF-002,RNF-001')")

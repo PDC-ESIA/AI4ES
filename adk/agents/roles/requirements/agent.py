@@ -1,5 +1,5 @@
 import os
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
@@ -16,7 +16,7 @@ from shared.tools import (
     add_to_glossary,
     ler_artefatos_gerados,
 )
-from . import prompt, schemas
+from . import prompt
 
 _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
 
@@ -125,7 +125,7 @@ validacao_agent = LlmAgent(
 
 # ── Agente Principal de Requisitos ───────────────────────────────────────────
 
-_requirements_llm = LlmAgent(
+agent = LlmAgent(
     model=LiteLlm(_DEFAULT_MODEL),
     name="requirements_agent",
     description=prompt.description,
@@ -136,12 +136,8 @@ _requirements_llm = LlmAgent(
         FunctionTool(ler_chunk),
         FunctionTool(gerar_doubt_artifact),
         FunctionTool(tool_salvar_artefato_requisito),
+        FunctionTool(check_glossary),
         AgentTool(agent=glossario_agent),
+        AgentTool(agent=validacao_agent),
     ],
-)
-
-agent = SequentialAgent(
-    name="requirements_pipeline",
-    description=prompt.description,
-    sub_agents=[_requirements_llm, validacao_agent],
 )
