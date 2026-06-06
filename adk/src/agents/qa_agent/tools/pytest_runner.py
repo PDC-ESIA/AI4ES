@@ -71,30 +71,23 @@ def gerar_teste_via_hu(hu_conteudo: str, caminho_destino: Path) -> dict:
     }
 
 def _normalizar_caminho_arquivo(caminho_arquivo: str | dict) -> Path:
-    """Normaliza caminho de arquivo aceitando string ou dicionário.
-
-    Args:
-        caminho_arquivo: String com o path ou dicionário contendo chaves como 'arquivo_gerado', 'arquivo', 'caminho_arquivo'.
-
-    Returns:
-        Path: Objeto Path normalizado.
-    """
+    """Normaliza o caminho do arquivo garantindo o enclausuramento no workspace."""
     if isinstance(caminho_arquivo, dict):
         caminho_arquivo = caminho_arquivo.get("arquivo_gerado") or caminho_arquivo.get("arquivo") or caminho_arquivo.get("caminho_arquivo")
     
+    base_dir = get_agent_workspace("qa_agent")
     p = Path(caminho_arquivo)
-    if not p.is_absolute():
-        from shared.workspace import get_agent_workspace
-        base_dir = get_agent_workspace("receive_requirements")
-        # Se o LLM encurtar o caminho, tentamos resolver a partir do workspace de inputs
-        if p.parts and p.parts[0] == "artefactsTests":
-            p = base_dir / p
-        elif "artefactsTests" in p.parts:
-            idx = p.parts.index("artefactsTests")
-            p = base_dir / Path(*p.parts[idx:])
-        else:
-            p = base_dir / p
+
+    if p.is_absolute():
+        # Se o caminho absoluto tentar escapar do workspace ele é reescrito para ficar dentro da raiz do qa_agent.
+        if base_dir not in p.parents and p != base_dir:
+            logger.warning(f"[QA Subagent] Caminho absoluto externo detectado e bloqueado: {p}. Forçando para o workspace.")
+            p = base_dir / p.name
+    else:
+        p = base_dir / p
             
+    # Garante que o diretório pai do arquivo exista dentro do workspace
+    p.parent.mkdir(parents=True, exist_ok=True)
     return p
 
 def executar_pytest_tool(caminho_arquivo: str) -> dict:
@@ -122,10 +115,11 @@ def executar_pytest_tool(caminho_arquivo: str) -> dict:
     # Trava de Loop ReAct
     if tentativas > MAX_TENTATIVAS:
         logger.error(f"[QA Subagent] ERR_LOOP acionado para {nome_artefato}. Tentativas: {tentativas}")
+        
+        # Chamada refatorada sem o caminho_base
         caminho_duvida = _gerar_doubt_artifact_sincrono(
             id_artefato=nome_artefato, 
-            motivo=f"Tentou processar a tool {MAX_TENTATIVAS} vezes e continuou falhando.",
-            caminho_base=caminho
+            motivo=f"Tentou processar a tool {MAX_TENTATIVAS} vezes e continuou falhando."
         )
         return _gerar_erro_execucao(
             "ERR_LOOP", 
