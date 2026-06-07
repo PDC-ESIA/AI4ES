@@ -24,6 +24,7 @@ CURRENT_DIR = _find_root(Path(__file__).resolve())
 STAGING_DIR = CURRENT_DIR / "temp" / "staging"
 OFFICIAL_DIR = CURRENT_DIR / "artifacts"
 PROTOTYPE_DIR = STAGING_DIR / "prototype"
+TEMPLATE_DIR = CURRENT_DIR / "shared" / "templates"
 LOG_FILENAME = "io_operations.log"
 STATUS_IN_REVIEW = "**Status:** Em análise"
 STATUS_BLOCKED = "**Status:** Bloqueado"
@@ -73,6 +74,10 @@ _FOLDER_ALIASES: Dict[str, Path] = {
     "artifacts_folder": OFFICIAL_DIR,
     "official":         OFFICIAL_DIR,
     "official_dir":     OFFICIAL_DIR,
+    # templates
+    "template":         TEMPLATE_DIR,
+    "template_dir":     TEMPLATE_DIR,
+    "template_folder":  TEMPLATE_DIR,
 }
 
 # Nomes exibidos nas mensagens de erro — apenas os canônicos, legível para o agente.
@@ -80,7 +85,8 @@ _FOLDER_ALIAS_DISPLAY = (
     "STAGING, STAGING_DIR, STAGING_FOLDER, "
     "PROTOTYPE, PROTOTYPE_DIR, PROTOTYPE_FOLDER, "
     "ARTIFACTS, ARTIFACTS_DIR, ARTIFACTS_FOLDER, "
-    "OFFICIAL, OFFICIAL_DIR"
+    "OFFICIAL, OFFICIAL_DIR, "
+    "TEMPLATE_DIR, TEMPLATE_FOLDER"
 )
 
 

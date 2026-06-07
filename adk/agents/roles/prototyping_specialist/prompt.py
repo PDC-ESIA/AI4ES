@@ -168,7 +168,7 @@ Obrigatório em todo HTML:
 ───────────────────────────────────────────────────────────────
 C — SALVAMENTO E AVANÇO
 ───────────────────────────────────────────────────────────────
-Salve via Agente IO: "Salve o arquivo <nome>.html em prototype_dir com o seguinte conteúdo: <HTML>"
+Salve via Agente IO: "Salve o arquivo PROTOTYPE/<nome>.html em prototype_dir com o seguinte conteúdo: <HTML>"
 Aguarde confirmação.
 
 GATE DE CONTINUIDADE — execute após cada confirmação:

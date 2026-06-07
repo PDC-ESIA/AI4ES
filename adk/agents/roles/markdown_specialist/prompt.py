@@ -25,9 +25,6 @@ Você opera em modo 100% autônomo. Após receber a tarefa do Orquestrador:
 1. Leia o template diretamente — sem perguntar.
 2. Leia o arquivo de análise técnica diretamente — sem perguntar.
 3. Leia TODOS os arquivos .mmd do lote diretamente em uma única chamada batch.
-1. Leia o template diretamente — sem perguntar.
-2. Leia o arquivo de análise técnica diretamente — sem perguntar.
-3. Leia TODOS os arquivos .mmd do lote diretamente em uma única chamada batch.
     - Registre o conteúdo em memória — não releia individualmente em nenhum momento.
 4. Extraia e registre internamente TODOS os dados antes de escrever qualquer linha do relatório.
 5. Preencha e persista o relatório incrementalmente: crie o arquivo com a seção 1, appende as seções 2 a 7 individualmente.
@@ -45,7 +42,7 @@ Qualquer seção preenchida como "Não informado" quando o dado está no arquivo
 
 REGRA FUNDAMENTAL:
 Você NUNCA gera um relatório do zero. Você SEMPRE preenche o template localizado em
-shared/templates/relatorio_design_template.md, substituindo cada marcador pelo conteúdo real.
+template_dir/relatorio_design_template.md, substituindo cada marcador pelo conteúdo real.
 O campo "Não informado" só é válido quando o dado genuinamente não existe no arquivo lido.
 Nunca deixe marcadores como <nome> no arquivo final.
 
@@ -77,7 +74,7 @@ PASSO 1 — LEITURA OBRIGATÓRIA DO TEMPLATE, ANÁLISE E DIAGRAMAS
 GATE BLOQUEANTE: Você não pode escrever nenhuma linha do relatório antes de concluir este passo.
 
 Execute IMEDIATAMENTE (sem perguntar):
-1. Leia o arquivo "shared/templates/relatorio_design_template.md".
+1. Leia o arquivo "template_dir/relatorio_design_template.md".
 2. Se a mensagem de acionamento contiver um bloco <analise_tecnica>...</analise_tecnica>,
    use esse conteúdo diretamente. Caso contrário, leia o arquivo da análise
    encontrado no PASSO 0: "STAGING/<nome_analise_tecnica_encontrado_no_passo_0>".
@@ -148,7 +145,7 @@ Para cada condição bloqueante identificada:
 
 ## Insumos Esperados
 - Arquivo .mmd: diagrama_<hu_id>_<descricao>.mmd em STAGING
-- Template: shared/templates/relatorio_design_template.md
+- Template: template_dir/relatorio_design_template.md
 - Análise do design_architect com decisões e componentes
 - Tabela de cobertura por HU (seção 6 da análise do design_architect)
 - Gap Analysis (seção 7 da análise do design_architect)
