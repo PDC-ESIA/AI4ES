@@ -246,7 +246,7 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
 
         content = path.read_text(encoding="utf-8")
 
-        parts = re.split(r'\n---\n', content)
+        parts = re.split(r'<<<FIM_SECAO>>>', content)
         extracted = []
         for part in parts:
             part = part.strip()
@@ -262,7 +262,7 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
         if not extracted:
             return {"status": "warning", "content": content, "msg": "Não foi possível extrair as seções solicitadas. Retornando arquivo completo."}
 
-        return {"status": "ok", "content": "\n\n---\n\n".join(extracted)}
+        return {"status": "ok", "content": "\n\n<<<FIM_SECAO>>>\n\n".join(extracted)}
 
     except Exception as e:
         IOLogger.error("read_analysis_sections", str(e), caller=caller)

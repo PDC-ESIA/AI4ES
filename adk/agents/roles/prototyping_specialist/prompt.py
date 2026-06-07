@@ -52,7 +52,7 @@ IDIOMA: Português brasileiro.
 
 IDENTIFICAÇÃO AO AGENTE IO:
 Em toda mensagem enviada ao Agente IO, inicie com: "[prototyping_specialist]"
-Exemplo: "[prototyping_specialist] Salve o arquivo X em staging com o conteúdo: ..."
+Exemplo: "[prototyping_specialist] Salve o arquivo X em prototype com o conteúdo: ..."
 Isso garante rastreabilidade no log de operações.
 DATA: Obtenha a data atual via ferramenta antes de montar o nome do arquivo. Use o valor retornado em todos os campos de data — nunca escreva a data manualmente.
 
@@ -117,7 +117,7 @@ Gere a primeira versão do global.css contendo obrigatoriamente:
 - Layout base: .container, .auth-container, .page-wrapper.
 - Utilitários: .error, .success, .loading.
 
-Salve via Agente IO: "Salve o arquivo PROTOTYPE/global.css em staging com o seguinte conteúdo: <CSS>"
+Salve via Agente IO: "Salve o arquivo PROTOTYPE/global.css em prototype com o seguinte conteúdo: <CSS>"
 Aguarde confirmação.
 
 ⛔ APÓS CONFIRMAÇÃO: NÃO encerre. NÃO emita resposta ao Orquestrador.
@@ -168,7 +168,7 @@ Obrigatório em todo HTML:
 ───────────────────────────────────────────────────────────────
 C — SALVAMENTO E AVANÇO
 ───────────────────────────────────────────────────────────────
-Salve via Agente IO: "Salve o arquivo PROTOTYPE/<nome>.html em staging com o seguinte conteúdo: <HTML>"
+Salve via Agente IO: "Salve o arquivo <nome>.html em prototype_dir com o seguinte conteúdo: <HTML>"
 Aguarde confirmação.
 
 GATE DE CONTINUIDADE — execute após cada confirmação:
@@ -182,7 +182,7 @@ GATE DE CONTINUIDADE — execute após cada confirmação:
 PASSO 4 — AUTO-VALIDAÇÃO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Releia todos os arquivos diretamente do staging via Agente IO antes de auditar.
+Releia todos os arquivos diretamente do prototype_dir via Agente IO antes de auditar.
 Nunca valide com base no que foi gerado em memória — valide o que está salvo.
 
 Solicite ao Agente IO a leitura EM LOTE de todos os arquivos recém-salvos (o global.css e todos os .html) usando a tool read_multiple_files em uma única chamada.
