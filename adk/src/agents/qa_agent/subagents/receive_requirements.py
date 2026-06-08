@@ -10,7 +10,12 @@ from pathlib import Path
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
+import litellm
 from litellm import completion
+
+# Garante compatibilidade com providers que não suportam response_format
+# (ex.: github_copilot). Precisa estar antes de qualquer chamada a completion().
+litellm.drop_params = True
 
 from shared.workspace import get_agent_workspace
 
@@ -65,13 +70,15 @@ Identifique os tipos (RF, RNF, HU, UC, RN). Se não houver ID claro, gere um seq
 Texto bruto: {raw_input}
 """
     model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
+    llm_kwargs = {}
     if "/" not in model_name:
         model_name = f"gemini/{model_name}"
+        llm_kwargs["api_key"] = os.environ.get("GOOGLE_API_KEY")
     response = completion(
         model=model_name,
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
-        api_key=os.environ.get("GOOGLE_API_KEY"),
+        **llm_kwargs,
     )
     
     conteudo = response.choices[0].message.content.strip()
@@ -536,8 +543,10 @@ def _gerar_pytest_via_llm(
         ValueError: Se o modelo retornar conteúdo vazio.
     """
     model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
+    llm_kwargs = {}
     if "/" not in model_name:
         model_name = f"gemini/{model_name}"
+        llm_kwargs["api_key"] = os.environ.get("GOOGLE_API_KEY")
     arquivos_textos = []
     for p in arquivos_apoio:
         try:
@@ -609,7 +618,7 @@ Regras obrigatórias:
             },
         ],
         temperature=0,
-        api_key=os.environ.get("GOOGLE_API_KEY"),
+        **llm_kwargs,
     )
 
     codigo = ""
