@@ -5,6 +5,11 @@ from subprocess import run
 from typing import Optional
 
 
+def _resolve_cwd(cwd: Optional[str]) -> Optional[str]:
+    """Normaliza cwd: string vazia ou None → None (usa dir corrente)."""
+    return cwd if cwd else None
+
+
 def tool_git_add(arquivos: str, *, cwd: Optional[str] = None) -> dict:
     """Adiciona arquivos ao stage do Git (git add).
 
@@ -31,7 +36,7 @@ def tool_git_add(arquivos: str, *, cwd: Optional[str] = None) -> dict:
     else:
         comando = ["git", "add", "."]
 
-    resposta = run(comando, capture_output=True, text=True, cwd=cwd)
+    resposta = run(comando, capture_output=True, text=True, cwd=_resolve_cwd(cwd))
 
     return {
         "sucesso": resposta.returncode == 0,
@@ -52,7 +57,7 @@ def trava_seguranca_git_commit(mensagem: str, *, cwd: str | None = None) -> dict
         dict: Contém status da validação, mensagem e diff das alterações staged
     """
 
-    diff_res = run(["git", "diff", "--staged"], capture_output=True, text=True, cwd=cwd)
+    diff_res = run(["git", "diff", "--staged"], capture_output=True, text=True, cwd=_resolve_cwd(cwd))
 
     diff = diff_res.stdout
 
@@ -89,7 +94,7 @@ def tool_git_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
         commitar: `{sucesso: False, mensagem: "Nada para commitar"}`.
     """
 
-    trava = trava_seguranca_git_commit(mensagem, cwd=cwd)
+    trava = trava_seguranca_git_commit(mensagem, cwd=_resolve_cwd(cwd))
 
     if not trava["sucesso"]:
         return {"sucesso": False, "mensagem": trava["mensagem"]}
@@ -99,7 +104,7 @@ def tool_git_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
     if not aprovado:
         return {"sucesso": False, "mensagem": "Commit não autorizado"}
 
-    resposta = run(["git", "commit", "-m", mensagem], capture_output=True, text=True, cwd=cwd)
+    resposta = run(["git", "commit", "-m", mensagem], capture_output=True, text=True, cwd=_resolve_cwd(cwd))
 
     return {
         "sucesso": resposta.returncode == 0,
@@ -135,7 +140,7 @@ def tool_git_checkout(branch: str, criar: bool = False, *, cwd: Optional[str] = 
     else:
         comando = ["git", "checkout"] + branch.split()
 
-    resposta_checkout = run(comando, capture_output=True, text=True, cwd=cwd)
+    resposta_checkout = run(comando, capture_output=True, text=True, cwd=_resolve_cwd(cwd))
 
     return {
         "sucesso": resposta_checkout.returncode == 0,
@@ -173,7 +178,7 @@ def tool_ler_diff(branch_alvo: str = "main", *, cwd: Optional[str] = None) -> di
         capture_output=True,
         text=True,
         encoding="utf-8",
-        cwd=cwd,
+        cwd=_resolve_cwd(cwd),
     )
 
     if resposta.returncode != 0:
@@ -219,7 +224,7 @@ def tool_preparar_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
         ["git", "diff", "--staged"],
         capture_output=True,
         text=True,
-        cwd=cwd,
+        cwd=_resolve_cwd(cwd),
     )
     diff = diff_res.stdout
     if not diff.strip():
@@ -256,7 +261,7 @@ def tool_confirmar_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
         ["git", "diff", "--staged"],
         capture_output=True,
         text=True,
-        cwd=cwd,
+        cwd=_resolve_cwd(cwd),
     )
     if not diff_res.stdout.strip():
         return {
@@ -268,7 +273,7 @@ def tool_confirmar_commit(mensagem: str, *, cwd: Optional[str] = None) -> dict:
         ["git", "commit", "-m", mensagem],
         capture_output=True,
         text=True,
-        cwd=cwd,
+        cwd=_resolve_cwd(cwd),
     )
     return {
         "sucesso": resposta.returncode == 0,
