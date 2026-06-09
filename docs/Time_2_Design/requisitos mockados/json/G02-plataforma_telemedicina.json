@@ -1,0 +1,465 @@
+{
+    "sistema": "Plataforma Integrada de Saúde Digital",
+    "requisitos_funcionais": [
+        {
+            "id": "RF01",
+            "descricao": "O sistema deve permitir o cadastro de usuários com perfis distintos: paciente, médico, administrador de clínica/hospital, operador de plano de saúde e administrador da plataforma."
+        },
+        {
+            "id": "RF02",
+            "descricao": "O sistema deve validar o CRM do médico junto ao CFM durante o cadastro, bloqueando o acesso clínico em caso de registro inativo ou suspenso."
+        },
+        {
+            "id": "RF03",
+            "descricao": "O sistema deve exigir autenticação multifator (MFA) para todos os perfis, com suporte a OTP por aplicativo autenticador e biometria no mobile."
+        },
+        {
+            "id": "RF04",
+            "descricao": "O sistema deve restringir o acesso às funcionalidades estritamente conforme o perfil e as permissões do usuário autenticado."
+        },
+        {
+            "id": "RF05",
+            "descricao": "O sistema deve encerrar sessões inativas automaticamente após tempo configurável por perfil."
+        },
+        {
+            "id": "RF06",
+            "descricao": "O sistema deve registrar log de todos os acessos ao prontuário eletrônico, com identificação do usuário, data, hora e ação realizada."
+        },
+        {
+            "id": "RF07",
+            "descricao": "O sistema deve permitir que pacientes agendem consultas presenciais e por videochamada com médicos credenciados."
+        },
+        {
+            "id": "RF08",
+            "descricao": "O sistema deve exibir a disponibilidade de agenda de cada médico em tempo real."
+        },
+        {
+            "id": "RF09",
+            "descricao": "O sistema deve verificar automaticamente a cobertura do plano de saúde do paciente para o procedimento e especialidade selecionados antes de confirmar o agendamento."
+        },
+        {
+            "id": "RF10",
+            "descricao": "O sistema deve permitir que o paciente cancele ou remarcque uma consulta dentro do prazo configurado."
+        },
+        {
+            "id": "RF11",
+            "descricao": "O sistema deve enviar notificações de confirmação, lembrete e cancelamento por e-mail e push ao paciente e ao médico."
+        },
+        {
+            "id": "RF12",
+            "descricao": "O sistema deve permitir que médicos e administradores de clínica configurem a grade de horários e os tipos de atendimento disponíveis."
+        },
+        {
+            "id": "RF13",
+            "descricao": "O sistema deve suportar encaixe de consulta urgente, com notificação ao médico responsável."
+        },
+        {
+            "id": "RF14",
+            "descricao": "O sistema deve prover infraestrutura de videochamada integrada para consultas remotas, sem necessidade de aplicativo de terceiros."
+        },
+        {
+            "id": "RF15",
+            "descricao": "O sistema deve permitir que médico e paciente ingressem na videochamada diretamente pelo aplicativo ou portal web, mediante autenticação."
+        },
+        {
+            "id": "RF16",
+            "descricao": "O sistema deve registrar a duração da chamada para fins de faturamento e auditoria."
+        },
+        {
+            "id": "RF17",
+            "descricao": "O sistema deve permitir o compartilhamento de documentos e imagens durante a videochamada entre médico e paciente."
+        },
+        {
+            "id": "RF18",
+            "descricao": "O sistema deve alertar médico e paciente quando faltarem 5 minutos para o horário agendado da consulta."
+        },
+        {
+            "id": "RF19",
+            "descricao": "O sistema deve manter um prontuário eletrônico único por paciente, compartilhado entre especialidades e unidades de saúde parceiras autorizadas."
+        },
+        {
+            "id": "RF20",
+            "descricao": "O sistema deve permitir que o médico registre evoluções clínicas, diagnósticos (CID), anamnese, hipóteses diagnósticas e plano terapêutico em cada consulta."
+        },
+        {
+            "id": "RF21",
+            "descricao": "O sistema deve permitir o armazenamento e a consulta de documentos clínicos no prontuário (laudos, imagens diagnósticas, relatórios de exames)."
+        },
+        {
+            "id": "RF22",
+            "descricao": "O sistema deve exibir o histórico completo de consultas, procedimentos, medicamentos e resultados de exames no prontuário."
+        },
+        {
+            "id": "RF23",
+            "descricao": "O sistema deve exigir consentimento explícito do paciente para que médicos de outras especialidades ou unidades acessem seu prontuário."
+        },
+        {
+            "id": "RF24",
+            "descricao": "O sistema deve permitir que o paciente visualize seu próprio prontuário pelo aplicativo, com acesso controlado às informações conforme política de privacidade."
+        },
+        {
+            "id": "RF25",
+            "descricao": "O sistema deve tornar imutável cada entrada do prontuário após assinatura digital do médico responsável, permitindo apenas adendos identificados."
+        },
+        {
+            "id": "RF26",
+            "descricao": "O sistema deve permitir que o médico emita prescrições digitais de medicamentos, exames e procedimentos diretamente pela plataforma."
+        },
+        {
+            "id": "RF27",
+            "descricao": "O sistema deve aplicar assinatura digital com certificado ICP-Brasil às prescrições, conferindo-lhes validade jurídica conforme regulamentação do CFM."
+        },
+        {
+            "id": "RF28",
+            "descricao": "O sistema deve validar interações medicamentosas e alertar o médico antes da confirmação da prescrição."
+        },
+        {
+            "id": "RF29",
+            "descricao": "O sistema deve permitir que o paciente acesse e compartilhe a prescrição digital pelo aplicativo com farmácias e outros serviços."
+        },
+        {
+            "id": "RF30",
+            "descricao": "O sistema deve controlar prescrições de medicamentos sujeitos a controle especial, exigindo registro da via de receituário correspondente."
+        },
+        {
+            "id": "RF31",
+            "descricao": "O sistema deve integrar com laboratórios parceiros para receber resultados de exames eletronicamente e vinculá-los automaticamente ao prontuário do paciente."
+        },
+        {
+            "id": "RF32",
+            "descricao": "O sistema deve notificar o médico solicitante e o paciente quando os resultados de um exame forem disponibilizados."
+        },
+        {
+            "id": "RF33",
+            "descricao": "O sistema deve permitir que o paciente visualize e faça download dos seus resultados de exames pelo aplicativo."
+        },
+        {
+            "id": "RF34",
+            "descricao": "O sistema deve permitir que o médico solicite exames diretamente pela plataforma, com encaminhamento eletrônico para o laboratório parceiro."
+        },
+        {
+            "id": "RF35",
+            "descricao": "O sistema deve exibir alertas ao médico quando resultados de exames contiverem valores críticos fora dos parâmetros de referência."
+        },
+        {
+            "id": "RF36",
+            "descricao": "O sistema deve permitir o cadastro e a gestão de planos de saúde parceiros com suas tabelas de cobertura e procedimentos (TUSS)."
+        },
+        {
+            "id": "RF37",
+            "descricao": "O sistema deve verificar a elegibilidade do beneficiário em tempo real junto à operadora do plano de saúde antes de cada atendimento."
+        },
+        {
+            "id": "RF38",
+            "descricao": "O sistema deve gerar guias de atendimento e de solicitação de exames nos padrões TISS (Troca de Informações em Saúde Suplementar) da ANS."
+        },
+        {
+            "id": "RF39",
+            "descricao": "O sistema deve processar a autorização prévia de procedimentos junto à operadora do plano diretamente pela plataforma."
+        },
+        {
+            "id": "RF40",
+            "descricao": "O sistema deve gerar e transmitir faturamento eletrônico às operadoras conforme o padrão TISS."
+        },
+        {
+            "id": "RF41",
+            "descricao": "O sistema deve registrar o valor a ser cobrado do paciente (coparticipação ou particular) por atendimento."
+        },
+        {
+            "id": "RF42",
+            "descricao": "O sistema deve permitir o cadastro e a gestão de hospitais e clínicas parceiras, com seus médicos, especialidades e unidades."
+        },
+        {
+            "id": "RF43",
+            "descricao": "O sistema deve permitir que administradores de clínica gerenciem médicos vinculados, configurem agendas e acompanhem indicadores operacionais."
+        },
+        {
+            "id": "RF44",
+            "descricao": "O sistema deve gerar relatórios gerenciais de atendimentos, ocupação de agenda, faturamento por convênio e produtividade por médico."
+        },
+        {
+            "id": "RF45",
+            "descricao": "O sistema deve permitir o gerenciamento de equipamentos e salas por unidade de saúde."
+        },
+        {
+            "id": "RF46",
+            "descricao": "O sistema deve disponibilizar painel de indicadores de saúde operacional da plataforma para o administrador da plataforma."
+        }
+    ],
+    "requisitos_nao_funcionais": [
+        {
+            "id": "RNF01",
+            "categoria": "Segurança",
+            "descricao": "Toda comunicação entre cliente e servidor deve utilizar TLS 1.2 ou superior."
+        },
+        {
+            "id": "RNF02",
+            "categoria": "Segurança",
+            "descricao": "Dados de prontuário e documentos clínicos devem ser armazenados criptografados em repouso com AES-256."
+        },
+        {
+            "id": "RNF03",
+            "categoria": "Segurança",
+            "descricao": "As senhas dos usuários devem ser armazenadas com hash seguro (bcrypt ou Argon2)."
+        },
+        {
+            "id": "RNF04",
+            "categoria": "Segurança",
+            "descricao": "A videochamada deve ser transmitida com criptografia ponta a ponta (end-to-end encryption), sem gravação de conteúdo."
+        },
+        {
+            "id": "RNF05",
+            "categoria": "Segurança",
+            "descricao": "O sistema deve implementar rate limiting e detecção de acessos anômalos ao prontuário eletrônico."
+        },
+        {
+            "id": "RNF06",
+            "categoria": "Segurança",
+            "descricao": "A assinatura digital das prescrições deve utilizar certificado digital padrão ICP-Brasil (e-CPF médico ou certificado em nuvem homologado pelo CFM)."
+        },
+        {
+            "id": "RNF07",
+            "categoria": "Conformidade",
+            "descricao": "O sistema deve estar em conformidade com a LGPD, com base legal explícita para cada finalidade de tratamento de dados de saúde (dado sensível, art. 11)."
+        },
+        {
+            "id": "RNF08",
+            "categoria": "Conformidade",
+            "descricao": "O sistema deve observar as resoluções do CFM aplicáveis à telemedicina, ao prontuário eletrônico e à prescrição digital (em especial CFM nº 2.314/2022 e correlatas)."
+        },
+        {
+            "id": "RNF09",
+            "categoria": "Conformidade",
+            "descricao": "O sistema deve observar as normas da ANS relativas ao padrão TISS para troca de informações em saúde suplementar."
+        },
+        {
+            "id": "RNF10",
+            "categoria": "Conformidade",
+            "descricao": "O prontuário eletrônico deve estar em conformidade com a resolução CFM nº 1.821/2007 e normas SBIS para certificação de sistemas de registro eletrônico em saúde."
+        },
+        {
+            "id": "RNF11",
+            "categoria": "Conformidade",
+            "descricao": "O sistema deve manter trilha de auditoria imutável de todos os acessos e alterações em prontuários, com retenção mínima de 20 anos conforme resolução CFM."
+        },
+        {
+            "id": "RNF12",
+            "categoria": "Conformidade",
+            "descricao": "O sistema deve permitir a portabilidade e o acesso dos dados pelo titular conforme os direitos previstos na LGPD."
+        },
+        {
+            "id": "RNF13",
+            "categoria": "Disponibilidade",
+            "descricao": "O sistema deve ter disponibilidade mínima de 99,9% ao mês, com plano de contingência documentado para indisponibilidades."
+        },
+        {
+            "id": "RNF14",
+            "categoria": "Desempenho",
+            "descricao": "A verificação de elegibilidade do plano de saúde deve ser concluída em até 5 segundos."
+        },
+        {
+            "id": "RNF15",
+            "categoria": "Desempenho",
+            "descricao": "O carregamento do prontuário eletrônico completo deve ocorrer em até 3 segundos."
+        },
+        {
+            "id": "RNF16",
+            "categoria": "Desempenho",
+            "descricao": "A videochamada deve suportar resolução mínima de 720p com latência máxima de 150ms em condições de rede adequadas."
+        },
+        {
+            "id": "RNF17",
+            "categoria": "Escalabilidade",
+            "descricao": "A arquitetura deve suportar escalonamento horizontal para absorver picos de demanda sem degradação de desempenho."
+        },
+        {
+            "id": "RNF18",
+            "categoria": "Resiliência",
+            "descricao": "Documentos clínicos e imagens diagnósticas devem ser armazenados em serviço externo de object storage com redundância geográfica."
+        },
+        {
+            "id": "RNF19",
+            "categoria": "Compatibilidade",
+            "descricao": "O aplicativo mobile deve estar disponível para iOS e Android, com suporte às duas versões mais recentes de cada sistema operacional."
+        },
+        {
+            "id": "RNF20",
+            "categoria": "Compatibilidade",
+            "descricao": "O portal web deve ser responsivo e funcionar nos principais navegadores modernos (Chrome, Firefox, Safari, Edge)."
+        },
+        {
+            "id": "RNF21",
+            "categoria": "Acessibilidade",
+            "descricao": "A interface deve seguir as diretrizes WCAG 2.1 nível AA para garantir acessibilidade a usuários com deficiência."
+        },
+        {
+            "id": "RNF22",
+            "categoria": "Usabilidade",
+            "descricao": "O fluxo de ingresso na videochamada não deve exigir mais de dois cliques a partir da tela inicial do aplicativo."
+        },
+        {
+            "id": "RNF23",
+            "categoria": "Backup",
+            "descricao": "O sistema deve realizar backup contínuo dos dados clínicos com RPO máximo de 1 hora e RTO máximo de 4 horas."
+        },
+        {
+            "id": "RNF24",
+            "categoria": "Infraestrutura",
+            "descricao": "O ambiente de produção deve ser implantado em múltiplas zonas de disponibilidade para garantir redundância geográfica."
+        },
+        {
+            "id": "RNF25",
+            "categoria": "Manutenibilidade",
+            "descricao": "O sistema deve expor métricas operacionais (latência, taxa de erros, disponibilidade por módulo) em painel de monitoramento em tempo real."
+        },
+        {
+            "id": "RNF26",
+            "categoria": "Interoperabilidade",
+            "descricao": "As integrações com laboratórios e operadoras de planos de saúde devem seguir padrões abertos (HL7 FHIR e TISS) para facilitar a incorporação de novos parceiros."
+        }
+    ],
+    "historias_de_usuario": [
+        {
+            "id": "HU01",
+            "titulo": "Cadastrar-se e consentir com o tratamento de dados de saúde",
+            "historia": "Como paciente, quero me cadastrar na plataforma e consentir explicitamente com o tratamento dos meus dados de saúde, para utilizar os serviços de forma segura e em conformidade com meus direitos.",
+            "criterios_de_aceite": [
+                "O cadastro deve coletar dados pessoais e informações do plano de saúde do paciente.",
+                "O consentimento para tratamento de dados sensíveis de saúde deve ser explícito, registrado com data e hora.",
+                "O paciente deve poder rever e revogar consentimentos a qualquer momento pelas configurações do aplicativo."
+            ]
+        },
+        {
+            "id": "HU02",
+            "titulo": "Agendar consulta presencial ou por videochamada",
+            "historia": "Como paciente, quero agendar uma consulta presencial ou por videochamada com um médico, para ser atendido sem precisar ligar para a clínica.",
+            "criterios_de_aceite": [
+                "A disponibilidade do médico deve ser exibida em tempo real no calendário de agendamento.",
+                "O sistema deve verificar automaticamente a cobertura do meu plano de saúde para a especialidade selecionada antes de confirmar.",
+                "Após o agendamento, devo receber confirmação por e-mail e push com data, horário, tipo de consulta e link de acesso (para videochamada)."
+            ]
+        },
+        {
+            "id": "HU03",
+            "titulo": "Participar de consulta por videochamada",
+            "historia": "Como paciente, quero ingressar na videochamada com meu médico diretamente pelo aplicativo, para ser atendido remotamente com segurança e sem instalar outros programas.",
+            "criterios_de_aceite": [
+                "O botão de ingresso deve ser habilitado 5 minutos antes do horário agendado.",
+                "A chamada deve ser criptografada ponta a ponta, sem gravação de conteúdo.",
+                "Devo receber alerta push 5 minutos antes do início da consulta.",
+                "Deve ser possível compartilhar documentos e imagens com o médico durante a chamada."
+            ]
+        },
+        {
+            "id": "HU04",
+            "titulo": "Visualizar prontuário e resultados de exames",
+            "historia": "Como paciente, quero acessar meu prontuário e os resultados dos meus exames pelo aplicativo, para acompanhar meu histórico de saúde e compartilhar informações com outros profissionais.",
+            "criterios_de_aceite": [
+                "O prontuário deve exibir histórico de consultas, medicamentos prescritos, procedimentos realizados e resultados de exames.",
+                "Deve ser possível fazer download dos resultados de exames e documentos clínicos em PDF.",
+                "O acesso ao prontuário por médicos de outras especialidades deve exigir meu consentimento explícito."
+            ]
+        },
+        {
+            "id": "HU05",
+            "titulo": "Acessar e compartilhar prescrição digital",
+            "historia": "Como paciente, quero acessar minhas prescrições digitais pelo aplicativo e compartilhá-las com farmácias, para retirar medicamentos sem depender de papel.",
+            "criterios_de_aceite": [
+                "A prescrição deve ser exibida com assinatura digital do médico e QR Code de validação.",
+                "Deve ser possível compartilhar a prescrição por link ou exportá-la em PDF.",
+                "Prescrições de medicamentos de controle especial devem exibir o tipo de receituário correspondente."
+            ]
+        },
+        {
+            "id": "HU06",
+            "titulo": "Receber notificação de resultado de exame disponível",
+            "historia": "Como paciente, quero ser notificado quando o resultado de um exame solicitado pelo meu médico estiver disponível, para acessá-lo sem precisar verificar periodicamente.",
+            "criterios_de_aceite": [
+                "A notificação deve ser enviada por push e e-mail imediatamente após o recebimento do resultado pelo sistema.",
+                "A notificação deve identificar o tipo de exame e o laboratório responsável.",
+                "O resultado deve estar acessível no prontuário do paciente imediatamente após a notificação."
+            ]
+        },
+        {
+            "id": "HU07",
+            "titulo": "Validar cadastro com CRM ativo",
+            "historia": "Como médico, quero me cadastrar na plataforma com validação automática do meu CRM junto ao CFM, para iniciar minha atuação clínica de forma legalmente respaldada.",
+            "criterios_de_aceite": [
+                "O sistema deve consultar o status do CRM no CFM durante o cadastro e bloquear o acesso clínico para registros inativos ou suspensos.",
+                "O médico deve ser notificado sobre o resultado da validação em até 24 horas.",
+                "Revalidações periódicas do CRM devem ser realizadas automaticamente pelo sistema."
+            ]
+        },
+        {
+            "id": "HU08",
+            "titulo": "Registrar evolução clínica no prontuário",
+            "historia": "Como médico, quero registrar a evolução clínica do paciente no prontuário eletrônico durante ou após a consulta, para documentar o atendimento com validade legal e continuidade de cuidado.",
+            "criterios_de_aceite": [
+                "O registro deve incluir anamnese, diagnóstico (CID), plano terapêutico e observações clínicas.",
+                "Após a assinatura digital, o registro deve se tornar imutável; apenas adendos identificados devem ser permitidos.",
+                "O prontuário deve registrar automaticamente data, hora e identificação do médico responsável em cada entrada."
+            ]
+        },
+        {
+            "id": "HU09",
+            "titulo": "Emitir prescrição digital com validade jurídica",
+            "historia": "Como médico, quero emitir prescrições digitais assinadas com meu certificado ICP-Brasil diretamente pela plataforma, para garantir validade jurídica e eliminar o uso de papel.",
+            "criterios_de_aceite": [
+                "A prescrição deve ser assinada digitalmente com o certificado e-CPF ou certificado em nuvem homologado pelo CFM.",
+                "O sistema deve alertar sobre interações medicamentosas identificadas antes da confirmação.",
+                "Medicamentos de controle especial devem exigir seleção do tipo de receituário conforme legislação vigente.",
+                "A prescrição assinada deve ser vinculada automaticamente ao prontuário do paciente."
+            ]
+        },
+        {
+            "id": "HU10",
+            "titulo": "Solicitar exame e receber resultado com alerta de valor crítico",
+            "historia": "Como médico, quero solicitar exames para o paciente pela plataforma e receber os resultados com alerta quando houver valores críticos, para agilizar a conduta clínica.",
+            "criterios_de_aceite": [
+                "A solicitação deve ser encaminhada eletronicamente ao laboratório parceiro, com identificação do paciente e do médico solicitante.",
+                "O médico deve ser notificado por push e e-mail quando o resultado estiver disponível.",
+                "Valores fora dos parâmetros críticos de referência devem gerar alerta destacado na interface, com indicação do parâmetro alterado."
+            ]
+        },
+        {
+            "id": "HU11",
+            "titulo": "Acessar prontuário compartilhado entre especialidades",
+            "historia": "Como médico de uma especialidade, quero acessar o prontuário de um paciente que foi atendido por outro especialista na plataforma, para ter contexto clínico completo sem repetir exames ou anamnese.",
+            "criterios_de_aceite": [
+                "O acesso deve ser condicionado ao consentimento explícito do paciente registrado no sistema.",
+                "O prontuário compartilhado deve exibir todos os registros de consultas, prescrições e exames realizados por outros profissionais autorizados.",
+                "Todo acesso ao prontuário por médico externo deve ser registrado em log com data, hora e justificativa clínica."
+            ]
+        },
+        {
+            "id": "HU12",
+            "titulo": "Gerenciar médicos e agendas da unidade",
+            "historia": "Como administrador de clínica, quero cadastrar médicos vinculados à minha unidade, configurar suas grades de horários e acompanhar a ocupação das agendas, para garantir a eficiência operacional do estabelecimento.",
+            "criterios_de_aceite": [
+                "Deve ser possível configurar dias, horários e tipos de atendimento por médico.",
+                "O painel de ocupação deve exibir a taxa de utilização de cada agenda por período.",
+                "Alterações na grade devem notificar os médicos afetados e respeitar agendamentos já confirmados."
+            ]
+        },
+        {
+            "id": "HU13",
+            "titulo": "Acompanhar faturamento por convênio",
+            "historia": "Como administrador de clínica, quero visualizar relatórios de faturamento por convênio e período, para monitorar a receita e identificar pendências de autorização ou glosa.",
+            "criterios_de_aceite": [
+                "O relatório deve exibir atendimentos faturados, valores enviados, valores autorizados e glosas por operadora.",
+                "Deve ser possível filtrar por médico, especialidade, convênio e período.",
+                "O relatório deve ser exportável em CSV e PDF."
+            ]
+        },
+        {
+            "id": "HU14",
+            "titulo": "Processar autorização prévia de procedimentos",
+            "historia": "Como operador de plano de saúde, quero receber e processar solicitações de autorização prévia enviadas pela plataforma no padrão TISS, para agilizar a liberação de procedimentos e reduzir processos manuais.",
+            "criterios_de_aceite": [
+                "As guias recebidas devem seguir o padrão TISS vigente definido pela ANS.",
+                "A resposta de autorização ou negativa deve ser transmitida eletronicamente à plataforma em até 30 minutos para procedimentos eletivos.",
+                "Negativas devem incluir o código e a justificativa conforme tabela TISS."
+            ]
+        }
+    ]
+}

@@ -1,6 +1,4 @@
 """
-test_coder_agent.py  [v2 — atualizado para o código corrigido]
-===============================================================
 Testes unitários para as tools Git do coder_agent.py.
 
 Estado atual do coder_agent.py
@@ -12,10 +10,14 @@ Estado atual do coder_agent.py
 
 Execute com:
     pytest test_coder_agent.py -v
+test_git_tools.py
+Testes unitários para as tools Git do coder_agent.py.
+
+Execute com:
+    pytest tests/unit/test_git_tools.py -v
 """
 
 import subprocess
-from pathlib import Path
 import pytest
 import sys
 import types
@@ -28,19 +30,22 @@ for _mod in ["google", "google.adk", "google.adk.tools", "pydantic", "requests"]
 sys.modules["google.adk.tools"].ToolContext = object
 sys.modules["pydantic"].BaseModel = object
 sys.modules["pydantic"].Field = lambda *a, **k: None
-sys.modules["pydantic"].field_validator = lambda *a, **k: (lambda f: f)
+sys.modules["pydantic"].field_validator = lambda *a, **k: lambda f: f
 
-from shared.tools.git import (
+from shared.tools.git import (  # noqa: E402
     tool_git_add,
     trava_seguranca_git_commit,
     tool_git_commit,
     tool_git_checkout,
+    tool_preparar_commit,
+    tool_confirmar_commit,
 )
 
 
 # ===========================================================================
 # Fixtures
 # ===========================================================================
+
 
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
@@ -69,6 +74,7 @@ def repo_com_arquivo_staged(repo):
 # Helpers internos
 # ---------------------------------------------------------------------------
 
+
 def _git(args, cwd):
     subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, check=False)
 
@@ -76,7 +82,9 @@ def _git(args, cwd):
 def _branch_atual(cwd):
     r = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=str(cwd), capture_output=True, text=True,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
     )
     return r.stdout.strip()
 
@@ -84,7 +92,9 @@ def _branch_atual(cwd):
 def _commit_count(cwd):
     r = subprocess.run(
         ["git", "rev-list", "--count", "HEAD"],
-        cwd=str(cwd), capture_output=True, text=True,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
     )
     return int(r.stdout.strip()) if r.returncode == 0 else 0
 
@@ -93,8 +103,8 @@ def _commit_count(cwd):
 # tool_git_add
 # ===========================================================================
 
-class TestToolGitAdd:
 
+class TestToolGitAdd:
     def test_add_arquivo_unico(self, repo):
         """Adiciona um arquivo existente — deve retornar sucesso."""
         (repo / "novo.py").write_text("pass\n")
@@ -132,8 +142,8 @@ class TestToolGitAdd:
 # trava_seguranca_git_commit
 # ===========================================================================
 
-class TestTrava:
 
+class TestTrava:
     def test_trava_com_staged_retorna_sucesso_true(self, repo_com_arquivo_staged):
         """Com arquivos staged, a trava deve liberar (sucesso=True)."""
         result = trava_seguranca_git_commit("feat: algo")
@@ -163,8 +173,8 @@ class TestTrava:
 # tool_git_commit
 # ===========================================================================
 
-class TestToolGitCommit:
 
+class TestToolGitCommit:
     def test_commit_com_staged_sucesso(self, repo_com_arquivo_staged):
         """Fluxo completo: com staged, commit deve funcionar."""
         commits_antes = _commit_count(repo_com_arquivo_staged)
@@ -183,7 +193,9 @@ class TestToolGitCommit:
         tool_git_commit("feat: add feature")
         r = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
-            cwd=str(repo_com_arquivo_staged), capture_output=True, text=True,
+            cwd=str(repo_com_arquivo_staged),
+            capture_output=True,
+            text=True,
         )
         assert r.stdout.strip() == ""
 
@@ -211,8 +223,8 @@ class TestToolGitCommit:
 # tool_git_checkout
 # ===========================================================================
 
-class TestToolGitCheckout:
 
+class TestToolGitCheckout:
     def test_checkout_branch_existente(self, repo):
         """Troca para uma branch existente — deve retornar sucesso."""
         _git(["checkout", "-b", "dev"], repo)
@@ -257,3 +269,140 @@ class TestToolGitCheckout:
         result = tool_git_checkout("main")
         assert "git" in result["comando"]
         assert "checkout" in result["comando"]
+
+
+# ===========================================================================
+# tool_preparar_commit
+# ===========================================================================
+
+
+class TestToolPrepararCommit:
+    def test_prepara_com_staged_retorna_diff(self, repo_com_arquivo_staged):
+        """Quando há staged, retorna sucesso=True com diff e mensagem."""
+        result = tool_preparar_commit("feat: add feature")
+        assert result["sucesso"] is True
+        assert result["mensagem"] == "feat: add feature"
+        assert "feature.py" in result["diff"]
+
+    def test_prepara_sem_staged_retorna_falha(self, repo):
+        """Quando não há staged, retorna sucesso=False."""
+        result = tool_preparar_commit("feat: nada para commitar")
+        assert result["sucesso"] is False
+        assert "nada para commitar" in result["mensagem"].lower()
+
+    def test_prepara_nao_executa_commit(self, repo_com_arquivo_staged):
+        """tool_preparar_commit NÃO deve invocar 'git commit'."""
+        commits_antes = _commit_count(repo_com_arquivo_staged)
+        tool_preparar_commit("feat: preparar")
+        commits_depois = _commit_count(repo_com_arquivo_staged)
+        assert commits_antes == commits_depois, "preparar_commit não deve executar commit"
+
+    def test_prepara_retorna_chaves_corretas(self, repo_com_arquivo_staged):
+        """Verifica que as chaves esperadas estão presentes no retorno."""
+        result = tool_preparar_commit("feat: teste")
+        assert {"sucesso", "mensagem", "diff"}.issubset(result)
+
+    def test_prepara_diff_contem_conteudo(self, repo_com_arquivo_staged):
+        """O diff deve conter conteúdo real das alterações."""
+        result = tool_preparar_commit("feat: feature")
+        assert result["sucesso"] is True
+        assert "diff --git" in result["diff"] or "feature.py" in result["diff"]
+
+
+# ===========================================================================
+# tool_confirmar_commit
+# ===========================================================================
+
+
+class TestToolConfirmarCommit:
+    def test_confirma_com_staged_sucesso(self, repo_com_arquivo_staged):
+        """Confirma commit quando há staged — deve invocar 'git commit -m'."""
+        commits_antes = _commit_count(repo_com_arquivo_staged)
+        result = tool_confirmar_commit("feat: add feature")
+        commits_depois = _commit_count(repo_com_arquivo_staged)
+        assert result["sucesso"] is True
+        assert commits_depois == commits_antes + 1
+
+    def test_confirma_sem_staged_falha(self, repo):
+        """Sem staged, confirmar deve retornar sucesso=False."""
+        result = tool_confirmar_commit("feat: nada para commitar")
+        assert result["sucesso"] is False
+        assert "nada para commitar" in result["mensagem"].lower()
+
+    def test_confirma_retorna_chaves_corretas(self, repo_com_arquivo_staged):
+        """Verifica que as chaves esperadas estão presentes no retorno."""
+        result = tool_confirmar_commit("feat: teste")
+        assert {"sucesso", "stdout", "stderr", "returncode"}.issubset(result)
+
+    def test_confirma_limpa_stage(self, repo_com_arquivo_staged):
+        """Após confirmar com sucesso, o stage deve estar limpo."""
+        tool_confirmar_commit("feat: add feature")
+        r = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=str(repo_com_arquivo_staged),
+            capture_output=True,
+            text=True,
+        )
+        assert r.stdout.strip() == ""
+
+    def test_fluxo_preparar_confirmar(self, repo_com_arquivo_staged):
+        """Fluxo completo: preparar → validar → confirmar."""
+        # Etapa 1: preparar
+        prep_result = tool_preparar_commit("feat: two-stage commit")
+        assert prep_result["sucesso"] is True
+        assert "feature.py" in prep_result["diff"]
+
+        # Etapa 2: confirmar
+        commits_antes = _commit_count(repo_com_arquivo_staged)
+        confirm_result = tool_confirmar_commit("feat: two-stage commit")
+        commits_depois = _commit_count(repo_com_arquivo_staged)
+
+        assert confirm_result["sucesso"] is True
+        assert commits_depois == commits_antes + 1
+
+
+# ===========================================================================
+# Propagação de cwd
+# ===========================================================================
+
+
+class TestCwdPropagation:
+    def test_tool_git_add_propaga_cwd(self, monkeypatch):
+        """tool_git_add passa cwd para subprocess.run quando informado."""
+        captured = []
+
+        def fake_run(cmd, **kwargs):
+            captured.append(kwargs.get("cwd"))
+
+            class R:
+                stdout = ""
+                stderr = ""
+                returncode = 0
+
+            return R()
+
+        monkeypatch.setattr("shared.tools.git.run", fake_run)
+        from shared.tools.git import tool_git_add
+
+        tool_git_add("file.py", cwd="/tmp/algum_dir")
+        assert captured[0] == "/tmp/algum_dir"
+
+    def test_tool_preparar_commit_propaga_cwd(self, monkeypatch):
+        """tool_preparar_commit passa cwd para subprocess.run."""
+        captured = []
+
+        def fake_run(cmd, **kwargs):
+            captured.append(kwargs.get("cwd"))
+
+            class R:
+                stdout = "diff --git a b"
+                stderr = ""
+                returncode = 0
+
+            return R()
+
+        monkeypatch.setattr("shared.tools.git.run", fake_run)
+        from shared.tools.git import tool_preparar_commit
+
+        tool_preparar_commit("feat: x", cwd="/tmp/outro_dir")
+        assert "/tmp/outro_dir" in captured

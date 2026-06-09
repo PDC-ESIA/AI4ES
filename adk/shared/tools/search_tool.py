@@ -8,9 +8,28 @@ def _base_dir() -> Path:
 
 
 def run_search(term: str, context_lines: int = 3) -> str:
-    """
-    Busca o termo em todos os arquivos .txt dentro de data/chunks.
-    Retorna trechos com contexto ao redor do termo.
+    """Busca um termo nos chunks fragmentados de um documento.
+
+    Use após fragmentar o documento (capacidade de fragmentação) para
+    localizar referências a um termo específico ao longo das partes.
+    Faz match case-insensitive e devolve trechos com contexto antes e
+    depois de cada ocorrência, agrupados por arquivo de chunk.
+
+    Pré-requisito: o documento precisa ter sido fragmentado antes;
+    se `data/chunks/` não existir, esta tool retorna erro pedindo a
+    fragmentação primeiro.
+
+    Args:
+        term: Termo a buscar. Match é case-insensitive sobre o conteúdo
+            dos chunks.
+        context_lines: Quantas linhas de contexto antes e depois de
+            cada ocorrência. Default 3.
+
+    Returns:
+        str com os trechos casados, separados por marcador
+        "--- Fonte: chunk_NNN.txt ---" e "[...]" entre ocorrências
+        múltiplas no mesmo chunk. "Termo não encontrado nos documentos."
+        se zero matches. "Erro: ..." se chunks não existem.
     """
     chunk_dir = str(_base_dir() / "data" / "chunks")
     results = []

@@ -1,3 +1,11 @@
+# Pastas do design
+adk/temp/
+adk/artifacts
+
+# Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
+adk/workspace_output/
+workspace_output/
+
 # Environment variables
 .env
 .env.*
@@ -231,3 +239,10 @@ adk/.venv-docker/
 # ide
 .vscode/*
 .src/*
+#  code-assintant
+.claude/
+CLAUDE.md
+docs/superpowers/
+
+.abacusai/
+.abacusai/*

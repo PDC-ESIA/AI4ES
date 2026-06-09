@@ -3,6 +3,9 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, List
 
+_DOUBT_LEGADO_BASE = "docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/"
+
+
 def gerar_doubt_artifact(
     id_duvida: str,
     id_artefato_afetado: str,
@@ -14,11 +17,11 @@ def gerar_doubt_artifact(
     sugestao: Optional[str] = None,
     sessao: str = "001",
     contexto_geral: str = "Documentação de Requisitos",
-    caminho_base: str = "docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/"
+    base_dir: Optional[str] = None,
 ) -> str:
     """
     Gera um arquivo versionado Doubt_Artifact_<ID>_<TS>.md baseado no template oficial do Agente Analista.
-    
+
     Args:
         id_duvida: Identificador sequencial da dúvida (ex: D-001).
         id_artefato_afetado: ID do artefato impactado (ex: HU-001, RF-002).
@@ -30,12 +33,14 @@ def gerar_doubt_artifact(
         sugestao: Proposta do agente para resolução.
         sessao: Número da sessão/rodada atual.
         contexto_geral: Nome do arquivo ou resumo do contexto lido.
-        caminho_base: Diretório onde o arquivo Doubt_Artifact_<ID>_<TS>.md será salvo.
-        
+        base_dir: Diretório onde o arquivo Doubt_Artifact_<ID>_<TS>.md será salvo.
+            Quando None, fallback para o caminho legado
+            ``docs/Time_1_Requisitos/setup-ADK/AgenteAnalista/`` relativo ao CWD.
+
     Returns:
         Caminho completo do arquivo gerado.
     """
-    diretorio = Path(caminho_base)
+    diretorio = Path(base_dir) if base_dir is not None else Path(_DOUBT_LEGADO_BASE)
     diretorio.mkdir(parents=True, exist_ok=True)
     data_hora_obj = datetime.now()
     data_hora = data_hora_obj.strftime("%d-%m-%Y %H:%M")
