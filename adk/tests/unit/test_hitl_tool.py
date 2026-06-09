@@ -25,7 +25,7 @@ async def test_aguardar_aprovacao_humana_retorna_none_para_pausar_adk():
     Retorno truthy (dict, str, etc.) faria ADK emitir function_response
     imediatamente e o LLM continuaria sem aguardar decisão humana.
     """
-    from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
+    from adk.shared.tools.hitl_tool import aguardar_aprovacao_humana
 
     resultado = await aguardar_aprovacao_humana(
         checkpoint_id="abc",
@@ -54,7 +54,7 @@ def test_aguardar_aprovacao_humana_schema_compativel_com_gemini():
     """
     from google.adk.tools import LongRunningFunctionTool
 
-    from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
+    from adk.shared.tools.hitl_tool import aguardar_aprovacao_humana
 
     tool = LongRunningFunctionTool(aguardar_aprovacao_humana)
     decl_json = tool._get_declaration().model_dump_json(
@@ -69,7 +69,7 @@ def test_aguardar_aprovacao_humana_schema_compativel_com_gemini():
 @pytest.mark.asyncio
 async def test_pause_reason_pode_ser_omitido():
     """pause_reason é Optional — função aceita chamada sem ele."""
-    from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
+    from adk.shared.tools.hitl_tool import aguardar_aprovacao_humana
 
     resultado = await aguardar_aprovacao_humana(
         checkpoint_id="x",
@@ -82,5 +82,5 @@ async def test_pause_reason_pode_ser_omitido():
 def test_aguardar_aprovacao_humana_reexportada_no_init():
     """Tools do qa_agent devem ser importáveis do pacote tools/."""
     from src.agents.qa_agent.tools import aguardar_aprovacao_humana as exported
-    from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana as direct
+    from adk.shared.tools.hitl_tool import aguardar_aprovacao_humana as direct
     assert exported is direct
