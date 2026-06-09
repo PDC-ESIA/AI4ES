@@ -17,11 +17,11 @@ agent = SequentialAgent(
     sub_agents=[
         requirements_agent,
         context_engineer_agent,
-        architecture_agent,
-        test_planning_agent,
+        #architecture_agent,
+        #test_planning_agent,
         implementation_agent,
-        review_agent,
-        qa_agent,
+        #review_agent,
+        #qa_agent,
         finalization_agent,
     ],
 )
