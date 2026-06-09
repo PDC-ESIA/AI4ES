@@ -4,7 +4,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
 from .prompt import SYSTEM_PROMPT
-from ...tools import (
+from shared.tools import (
     create_hitl_checkpoint,
     describe_tools,
     generate_compliance_report,

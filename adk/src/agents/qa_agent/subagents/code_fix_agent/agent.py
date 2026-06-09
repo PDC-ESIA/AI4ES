@@ -2,7 +2,7 @@ import os
 from google.adk.agents import LlmAgent
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool
-from ......shared.tools.build_fix_prompt import build_fix_prompt_from_error, build_fix_prompt_from_pytest
+from shared.tools.build_fix_prompt import build_fix_prompt_from_error, build_fix_prompt_from_pytest
 
 agent = LlmAgent(
     name="code_fix_agent",
