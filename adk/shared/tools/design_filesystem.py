@@ -29,6 +29,7 @@ LOG_FILENAME = "io_operations.log"
 STATUS_IN_REVIEW = "**Status:** Em análise"
 STATUS_BLOCKED = "**Status:** Bloqueado"
 BACKUP_PREFIX = "_backup_"
+_SECTION_SEPARATOR = "\n<<<FIM_SECAO>>>\n"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Helpers Privados
@@ -683,6 +684,36 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown")
     except Exception as e:
         IOLogger.error("append_artifact", str(e), caller=caller)
         return {"status": "error", "error": str(e), "filename": filename}
+
+
+def append_architect_section(filename: str, content: str, caller: str | None = "design_architect") -> Dict[str, Any]:
+    # A ideia inicial era fazer isso via prompt, mas estava instável e isso é essencial demais para ter qualquer instabilidade
+    """
+    Append exclusivo do design_architect.
+    Adiciona conteúdo ao fim de um arquivo existente, sem apagar o que já está lá.
+    Se o arquivo não existir, cria-o (comportamento idêntico ao save_artifact).
+
+    O agente pode prefixar o nome com um alias de pasta. Sem alias, .html e
+    global.css vão para PROTOTYPE; os demais vão para STAGING.
+
+    ⚠️  Não cria backup. Para substituir o arquivo inteiro, use save_artifact.
+    ⚠️  Para corrigir uma seção já escrita, use patch_section.
+
+    Args:
+        filename: Nome do arquivo, com ou sem alias de pasta.
+                  Exemplos: "analise_tecnica_HU-001.md"
+                            "PROTOTYPE/login.html"
+        content:  Trecho a ser adicionado ao fim do arquivo.
+        caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
+
+    Returns:
+        Sucesso:  {"status": "ok", "path": "<caminho>",
+                   "bytes_total": <tamanho total após append>, "timestamp": "<ISO 8601>"}
+        Falha:    {"status": "error", "error": "<motivo>", "filename": "<nome>"}
+    """
+    # Remove token duplicado se o agente já incluiu (evita duplo marcador)
+    normalized = content.rstrip("\n").removesuffix("<<<FIM_SECAO>>>").rstrip("\n")
+    return append_artifact(filename, normalized + _SECTION_SEPARATOR, caller=caller)
 
 
 def patch_section(filename: str, section_id: str, new_content: str, caller: str | None = "unknown") -> Dict[str, Any]:

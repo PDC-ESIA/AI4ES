@@ -624,41 +624,10 @@ O arquivo é construído e persistido seção por seção. O ciclo para cada se�
 Você NÃO pode iniciar o preenchimento da próxima seção antes de receber o retorno "ok"
 da ferramenta para a seção atual. Esse gate é inviolável — não há exceção.
 
-SEPARADOR DE SEÇÃO — REGRA ÚNICA:
-O token <<<FIM_SECAO>>> marca o fim de cada seção no arquivo.
-  - Ele é sempre a ÚLTIMA linha do payload de cada chamada de persistência.
-  - Ele nunca aparece no meio do conteúdo de uma seção.
-  - Ele não é markdown, não é código, não é tabela — é um marcador estrutural puro.
-  - O parser usa exclusivamente este token para delimitar seções. Sem ele, a seção
-    fica colada à próxima e o arquivo fica corrompido.
-  - O token --- NÃO é usado como separador de seção neste arquivo. Reservado apenas
-    para uso interno do parser e não deve aparecer no conteúdo persistido.
-
-ESTRUTURA EXATA DE CADA PAYLOAD DE PERSISTÊNCIA:
-
-  <número>. <Título da Seção>
-  <conteúdo completo da seção>
-  <<<FIM_SECAO>>>
-
-Nada antes do título. Nada depois do token. Uma seção por chamada.
-
-- Seção 1: cria o arquivo com o payload da seção 1, a sua criação é essencial para toda a documentação.
-- Seções 2 a 8: cada uma é appendada ao MESMO arquivo criado no PASSO 1 — nunca em arquivo diferente.
-- Correções pontuais: patch cirúrgico na seção afetada — nunca no arquivo inteiro.
-
-⛔ TODAS as chamadas de persistência dos PASSOS 1 a 8 usam o MESMO filename:
-   analise_tecnica_<HU_IDs do lote>.md
-   Não crie um arquivo por seção. Não invente nomes alternativos. Um arquivo para TODAS as seções.
-
-⚠️ IMPORTANTE: Os títulos de cada seção devem iniciar exatamente com o número seguido de ponto
-(ex: "1. ", "4. "). O parser depende dessa formatação numérica para indexar seções.
-NUNCA altere os títulos nem omita o token <<<FIM_SECAO>>>.
-
 VERIFICAÇÃO ANTES DE CADA CHAMADA DE PERSISTÊNCIA:
 Antes de chamar a ferramenta, confirme mentalmente:
   ✔ O payload começa com o título numerado desta seção?
   ✔ O payload contém APENAS o conteúdo desta seção?
-  ✔ O payload termina com <<<FIM_SECAO>>> como última linha?
   ✔ O payload NÃO contém o título ou conteúdo de nenhuma outra seção?
 Se qualquer resposta for "não": reescreva o payload antes de chamar a ferramenta.
 
@@ -681,10 +650,10 @@ Use o conteúdo produzido na ANÁLISE A1.
 Payload desta chamada:
   1. Compreensão do lote
   <conteúdo completo da análise A1>
-  <<<FIM_SECAO>>>
 
 ⛔ GATE: garanta que essa seção é salva.
   Essa seção é essencial para toda a documentação, garanta que ela está salva antes de qualquer outra seção
+
 ---
 
 PASSO 2 — PERSISTÊNCIA: Decisão de Arquitetura e Trade-Offs
@@ -698,7 +667,6 @@ Use o conteúdo produzido na ANÁLISE A2.
 Payload desta chamada:
   2. Decisão de Arquitetura e Trade-Offs
   <conteúdo completo da análise A2>
-  <<<FIM_SECAO>>>
 
 ---
 
@@ -715,7 +683,6 @@ Payload desta chamada:
   | HU | Tipo | Regra |
   |----|------|-------|
   | HU-XXX | <tipo real> | <regra real> |
-  <<<FIM_SECAO>>>
 
 ---
 
@@ -732,7 +699,6 @@ Use o conteúdo produzido na ANÁLISE A4.
 Payload desta chamada:
   4. Identificação de Componentes por HU
   <conteúdo completo da análise A4 — todos os blocos COMPONENTES HU-XXX>
-  <<<FIM_SECAO>>>
 
 ---
 
@@ -749,7 +715,6 @@ Use o conteúdo produzido na ANÁLISE A5.
 Payload desta chamada:
   5. Bloqueios Identificados
   Nenhum bloqueio identificado neste lote.
-  <<<FIM_SECAO>>>
 
 ---
 
@@ -773,7 +738,6 @@ Payload desta chamada:
   | HU | Atendida | Justificativa |
   |----|----------|---------------|
   | HU-XXX | ✅ | <justificativa real — sem placeholder> |
-  <<<FIM_SECAO>>>
 
 ---
 
@@ -796,7 +760,6 @@ EXEMPLO:
 Payload desta chamada:
   7. Gap Analysis — Lacunas Identificadas
   <conteúdo real da análise A6 — tabela completa ou declaração de ausência>
-  <<<FIM_SECAO>>>
 
 ---
 
@@ -829,7 +792,6 @@ Payload desta chamada:
   | Arquivo de origem | Ação do usuário | Arquivo de destino |
   |-------------------|-----------------|--------------------|
   | <tela_a real>.html | <ação real> | <tela_b real>.html |
-  <<<FIM_SECAO>>>
 
 ---
 
@@ -839,8 +801,6 @@ O arquivo já está em staging com todas as seções appendadas.
 Se qualquer item falhar: aplique patch cirúrgico na seção afetada — não recrie o arquivo inteiro.
 
 - Todos os placeholders (<nome>, <HU_ID>, <ator>, <arquivo>, etc.) foram substituídos por valores reais? (S/N)
-  → Se não: corrija a seção afetada com patch cirúrgico.
-- Cada seção termina com o token <<<FIM_SECAO>>> como última linha? (S/N)
   → Se não: corrija a seção afetada com patch cirúrgico.
 - Cada título de seção inicia com o número seguido de ponto ("1. ", "2. ", etc.)? (S/N)
   → Se não: corrija a seção afetada com patch cirúrgico.
