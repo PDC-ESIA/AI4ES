@@ -12,7 +12,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
 
-from shared.factory.workspace import get_workspace_root, AGENT_DIRS
+from shared.workspace import get_workspace_root, AGENT_DIRS
 
 logger = logging.getLogger(__name__)
 

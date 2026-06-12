@@ -31,28 +31,31 @@ def test_orchestrator_pipelines_esperados():
 
 
 def test_workflow_coding_inclui_context_engineer():
-    """workflow_coding deve ter context_engineer entre requirements e architect."""
-    from src.agents.workflow_coding.agent import agent as workflow_coding
+    """workflow_coding deve ter context_engineer entre requirements e implementation."""
+    from src.agents.workflow_coding.agent import CodingOrchestrator
 
-    nomes_subagents = [sa.name for sa in workflow_coding.sub_agents]
+    stages = CodingOrchestrator._stages
+    nomes_stages = [sa.name for sa in stages]
 
-    assert "context_engineer" in nomes_subagents, (
-        f"context_engineer ausente. Sub_agents: {nomes_subagents}"
+    assert "context_engineer" in nomes_stages, (
+        f"context_engineer ausente. Stages: {nomes_stages}"
     )
 
-    # Verifica que vem APÓS requirements e ANTES de architect
+    # Verifica que vem APÓS requirements e ANTES de implementation
+    # (architecture_agent está desativado no pipeline atual)
     idx_requirements = next(
-        (i for i, sa in enumerate(workflow_coding.sub_agents) if "requirements" in sa.name.lower()),
+        (i for i, sa in enumerate(stages) if "requirements" in sa.name.lower()),
         None
     )
-    idx_context = nomes_subagents.index("context_engineer")
-    idx_architect = next(
-        (i for i, sa in enumerate(workflow_coding.sub_agents) if "architect" in sa.name.lower()),
+    idx_context = nomes_stages.index("context_engineer")
+    idx_implementation = next(
+        (i for i, sa in enumerate(stages) if "coder" in sa.name.lower()),
         None
     )
 
     assert idx_requirements is not None, "requirements_agent não encontrado no pipeline"
-    assert idx_architect is not None, "architect_agent não encontrado no pipeline"
-    assert idx_requirements < idx_context < idx_architect, (
-        f"Ordem errada: requirements={idx_requirements}, context_engineer={idx_context}, architect={idx_architect}"
+    assert idx_implementation is not None, "coder_agent não encontrado no pipeline"
+    assert idx_requirements < idx_context < idx_implementation, (
+        f"Ordem errada: requirements={idx_requirements}, context_engineer={idx_context}, implementation={idx_implementation}"
     )
+
