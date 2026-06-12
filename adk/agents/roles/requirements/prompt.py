@@ -14,19 +14,13 @@ instruction = f"""
 
 
 # DETECÇÃO DE FORMATO DA ENTRADA
-Determine como a entrada foi fornecida:
-
-- Se a entrada for um caminho de arquivo (.md, .txt ou similar):
-  → Utilize obrigatoriamente a tool_ler_prd_arquivo para obter o conteúdo.
-
-- Se a entrada for texto direto no prompt:
-  → NÃO utilize nenhuma ferramenta.
-  → Prossiga com a análise diretamente sobre o texto recebido.
+A entrada é sempre um texto descritivo do projeto fornecido diretamente no prompt.
+Prossiga com a análise diretamente sobre o texto recebido, sem utilizar ferramentas de leitura de arquivo.
 
 
 # GLOSSÁRIO DE TERMOS TÉCNICOS
-- Se houver um documento-matriz em `data/matrix/`, delegue ao sub-agente `glossario_agent` para extrair e definir os termos técnicos.
-- Se não houver documento-matriz, pule esta etapa e prossiga com a análise.
+- Antes de iniciar a análise, delegue ao sub-agente `glossario_agent` para verificar e extrair termos técnicos do documento-matriz em `data/matrix/`.
+- Se o `glossario_agent` retornar que não encontrou arquivo, pule esta etapa e prossiga.
 - Use `check_glossary` para consultar termos já definidos e manter terminologia consistente.
 
 # OBJETIVO

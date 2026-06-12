@@ -18,8 +18,7 @@ def gerar_doubt_artifact(
     bloqueante: bool = False,
     sugestao: Optional[str] = None,
     sessao: str = "001",
-    contexto_geral: str = "Documentação de Requisitos",
-    caminho_base: str = ""
+    contexto_geral: str = "Documentação de Requisitos"
 ) -> str:
     """
     Gera um arquivo versionado Doubt_Artifact_<ID>_<TS>.md baseado no template oficial do Agente Analista.
@@ -35,13 +34,11 @@ def gerar_doubt_artifact(
         sugestao: Proposta do agente para resolução.
         sessao: Número da sessão/rodada atual.
         contexto_geral: Nome do arquivo ou resumo do contexto lido.
-        caminho_base: Diretório onde o arquivo Doubt_Artifact_<ID>_<TS>.md será salvo.
         
     Returns:
         Caminho completo do arquivo gerado.
     """
-    base = caminho_base if caminho_base else str(_docs_dir() / "Time_1_Requisitos" / "setup-ADK" / "AgenteAnalista")
-    diretorio = Path(base)
+    diretorio = _docs_dir() / "Time_1_Requisitos" / "Doubt_Artifacts"
     diretorio.mkdir(parents=True, exist_ok=True)
     data_hora_obj = datetime.now()
     data_hora = data_hora_obj.strftime("%d-%m-%Y %H:%M")
