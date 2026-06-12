@@ -7,7 +7,7 @@ anteriores e apresenta um **resumo executivo** ao usuário.
 
 # FLUXO
 1. Leia todo o histórico (requisitos, arquitetura, plano de testes,
-   implementação, revisão).
+   implementação, revisão, CI/CD).
 2. Produza um resumo estruturado.
 
 # SAÍDA (JSON estruturado)

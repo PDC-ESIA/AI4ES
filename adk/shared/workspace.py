@@ -45,6 +45,7 @@ AGENT_DIRS: dict[str, str] = {
     "receive_requirements": "tests/inputs",
     # Time 4 — Codificação
     "context_engineer": "tasks",
+    "cicd_agent": "pipeline",
     "architect": "architecture",
     "test_planner": "test_plans",
     "coder_agent": "coder",

@@ -9,6 +9,7 @@ from src.agents.test_planner.agent import agent as test_planning_agent
 from src.agents.coder.agent import agent as implementation_agent
 from src.agents.reviewer.agent import agent as review_agent
 from src.agents.qa_agent.agent import agent as qa_agent
+from src.agents.cicd_agent.agent import agent as cicd_agent
 from src.agents.finalizer.agent import agent as finalization_agent
 
 agent = SequentialAgent(
@@ -20,6 +21,7 @@ agent = SequentialAgent(
         #architecture_agent,
         #test_planning_agent,
         implementation_agent,
+        cicd_agent,
         #review_agent,
         #qa_agent,
         finalization_agent,

@@ -62,6 +62,12 @@ _GIT_TOOL_NAMES = {
     "tool_confirmar_commit",
     "trava_seguranca_git_commit",
 }
+_PRESET_PIPELINE_NAMES = [
+    "tool_criar_arquivo",
+    "tool_ler_arquivo",
+    "tool_ler_workspace",
+    "tool_listar_workspace",
+]
 
 
 def _bind_tool_to_workspace(
@@ -111,6 +117,10 @@ def _bind_tool_to_workspace(
         bound.__name__ = fn_name
         bound.__doc__ = getattr(underlying, "__doc__", None)
         return FunctionTool(bound)
+    if fn_name in _PRESET_PIPELINE_NAMES:
+        bound = partial(underlying, cwd=agent_workspace)
+        bound.__name__ = fn_name
+        bound.__doc__ = getattr(underlying, "__doc__", None)
 
     return tool  # tool desconhecida, retorna intacta (ex.: tool_ask_clarification_adk)
 
