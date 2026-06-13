@@ -56,6 +56,10 @@ o anterior como backup automaticamente.
 ---
 
 PASSO 0 — CONFIRMAÇÃO DOS ARQUIVOS
+⛔ REGRAS DE PASTA:
+- ANALYSIS/ → somente leitura. NUNCA salve nada aqui.
+- REPORT/   → destino exclusivo do relatório.
+Qualquer persistência fora de REPORT/ é uma FALHA CRÍTICA.
 
 Liste os arquivos disponíveis nas pastas de trabalho — para confirmar presença dos diagramas .mmd e do arquivo analise_tecnica_.
 Não faça chamadas adicionais de listagem além dessa.
@@ -88,25 +92,38 @@ internamente TODOS os itens abaixo antes de escrever qualquer linha do relatóri
   → Critérios de aceite: extraia de cada HU individualmente se presentes; se ausentes, registre "Não informado".
   → NUNCA escreva "Não informado" se os dados de ação central e stakeholder existirem no arquivo.
 
+- Seção 2 (Diagrama de Arquitetura): extraia do conteúdo .mmd registrado no batch de leitura, indexado por HU.
+  → Para cada HU, localize o arquivo .mmd correspondente pelo nome e registre o conteúdo bruto integralmente.
+  → Encapsulamento: registre mentalmente que cada bloco será escrito como ```mermaid — nunca com o tipo do diagrama como linguagem.
+  → NUNCA substitua o conteúdo .mmd por texto descritivo, diagrama alternativo ou bloco vazio.
+  → NUNCA releia arquivos .mmd individualmente nesta etapa — o conteúdo já está registrado do batch.
+  → Se o conteúdo de um .mmd estiver ausente ou com erro de leitura: não registre como "Não informado" — acione o PASSO 1B imediatamente.
+  → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
+
 - Seção 3 (Decisões de Arquitetura): extraia de "2. Decisão(ões) de arquitetura e bloco(s) de trade-off".
   → Copie o título da decisão, HUs cobertas, contexto, alternativas, decisão final, justificativa técnica e reversibilidade.
   → Se houver decisões no arquivo: a seção 3 NUNCA pode ser "Não informado".
+  → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
 
 - Seção 4 (Componentes): extraia de "4. Componentes por HU" — seções "COMPONENTES HU-XXX".
   → Para cada componente: nome, responsabilidade e origem.
   → Se houver componentes no arquivo: a seção 4 NUNCA pode ser "Não informado".
+  → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
 
 - Seção 5 (Bloqueios): extraia de "5. Bloqueios identificados".
   → A análise técnica só existe nas pastas de trabalho quando todas as HUs foram aprovadas — esta seção
      deve declarar "Nenhum." como padrão esperado. Registre qualquer exceção se genuinamente presente.
+  → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
 
 - Seção 6 (Cobertura de HUs): extraia de "6. Cross-check de cobertura por HU".
   → Transcreva a tabela EXATAMENTE como está no arquivo, incluindo ícones ✅/❌.
   → Se houver tabela no arquivo: a seção 6 NUNCA pode ser "Não informado".
+  → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
 
 - Seção 7 (Gap Analysis): extraia de "7. Gap Analysis (Lacunas Implícitas)".
   → Se o arquivo declarar ausência de lacunas: escreva a declaração textual — não tabela vazia nem "Não informado".
   → Se houver análise no arquivo: a seção 7 NUNCA pode ser "Não informado".
+  → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
 
 Bloqueio só é válido quando a leitura retornar erro ou o arquivo genuinamente não contiver a seção.
 
@@ -331,8 +348,8 @@ Se qualquer item falhar: aplique patch cirúrgico na seção afetada — não re
   → Se não: corrija a seção 6 com patch cirúrgico.
 - A seção 7 contém o Gap Analysis transcrito, ou a declaração explícita de ausência de lacunas? (S/N)
   → Se não: corrija a seção 7 com patch cirúrgico.
-O arquivo foi salvo com o prefixo REPORT/? (S/N)
-  → Se não: mova o arquivo para REPORT/ usando save_artifact("REPORT/<filename>", ...).
+O arquivo foi salvo com o prefixo REPORT/?
+  → Esta condição NUNCA deve ser falsa. Se for, indica falha no PASSO 2 — acione alerta ao Orquestrador sem gerar relatório adicional.
 
 PASSO 4 — CONFIRMAÇÃO E ENCAMINHAMENTO
 
