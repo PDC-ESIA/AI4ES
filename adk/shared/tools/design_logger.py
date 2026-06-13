@@ -25,7 +25,7 @@ from pathlib import Path
 # "HIGH"    → READ também é registrado.
 LOG_DETAIL: str = "HIGH"
 
-_LOG_FILE = Path("temp/staging/io_operations.log")
+_LOG_FILE = Path("workspace_output/design/io_operations.log")
 
 def _write(entry: str) -> None:
     """Abre o log em modo append e escreve uma entrada já formatada."""

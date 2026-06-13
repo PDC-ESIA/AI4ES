@@ -1,7 +1,9 @@
 # Pastas do design
-adk/temp/
-adk/artifacts
-.idea/
+adk/artifacts/
+
+# Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
+adk/workspace_output/
+workspace_output/
 
 # Environment variables
 .env

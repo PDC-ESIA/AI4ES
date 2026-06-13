@@ -20,11 +20,16 @@ def _find_root(start_path: Path, target: str = "adk") -> Path:
             return parent
     return start_path.parents[4]  # Fallback seguro (Atualizar se necessário)
 
-CURRENT_DIR = _find_root(Path(__file__).resolve())
-STAGING_DIR = CURRENT_DIR / "temp" / "staging"
-OFFICIAL_DIR = CURRENT_DIR / "artifacts"
-PROTOTYPE_DIR = STAGING_DIR / "prototype"
-TEMPLATE_DIR = CURRENT_DIR / "shared" / "templates"
+ADK_DIR = _find_root(Path(__file__).resolve())
+DESIGN_DIR = ADK_DIR / "workspace_output" / "design"
+
+ANALYSIS_DIR = DESIGN_DIR / "analysis" # TODO
+DIAGRAMS_DIR = DESIGN_DIR / "diagrams" # TODO
+PROTOTYPE_DIR = DESIGN_DIR / "prototypes"
+REPORT_DIR = DESIGN_DIR / "reports" # TODO
+DOUBT_DIR = DESIGN_DIR / "doubts" # TODO
+
+TEMPLATE_DIR = ADK_DIR / "shared" / "templates"
 LOG_FILENAME = "io_operations.log"
 STATUS_IN_REVIEW = "**Status:** Em análise"
 STATUS_BLOCKED = "**Status:** Bloqueado"
@@ -36,15 +41,17 @@ _SECTION_SEPARATOR = "\n<<<FIM_SECAO>>>\n"
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _ensure_dirs() -> None:
-    STAGING_DIR.mkdir(parents=True, exist_ok=True)
-    OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
+    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    DIAGRAMS_DIR.mkdir(parents=True, exist_ok=True)
     PROTOTYPE_DIR.mkdir(parents=True, exist_ok=True)
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    DOUBT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _is_safe_path(path: Path) -> bool:
     try:
         resolved_path = path.resolve()
-        return resolved_path.is_relative_to(CURRENT_DIR.resolve())
+        return resolved_path.is_relative_to(ADK_DIR.resolve())
     except (ValueError, RuntimeError):
         return False
 
@@ -56,25 +63,31 @@ def _next_version(path: Path) -> Path:
 
 # Ordem de busca usada quando o agente não especifica uma pasta.
 # read_file e read_multiple_files percorrem essa lista e retornam o primeiro match.
-_SEARCH_ORDER: list[Path] = [STAGING_DIR, PROTOTYPE_DIR, OFFICIAL_DIR]
+_SEARCH_ORDER: list[Path] = [ANALYSIS_DIR, DIAGRAMS_DIR, PROTOTYPE_DIR]
 
 # Mapa de aliases simbólicos → diretório canônico.
 # Chaves sempre em minúsculas; a normalização é feita em _resolve_folder_alias.
 _FOLDER_ALIASES: Dict[str, Path] = {
-    # STAGING
-    "staging":          STAGING_DIR,
-    "staging_dir":      STAGING_DIR,
-    "staging_folder":   STAGING_DIR,
-    # PROTOTYPE (subpasta de staging)
+    # ANALYSIS
+    "analysis":         ANALYSIS_DIR,
+    "analysis_dir":     ANALYSIS_DIR,
+    "analysis_folder":  ANALYSIS_DIR,
+    # DIAGRAMS
+    "diagrams":         DIAGRAMS_DIR,
+    "diagrams_dir":     DIAGRAMS_DIR,
+    "diagrams_folder":  DIAGRAMS_DIR,
+    # PROTOTYPE
     "prototype":        PROTOTYPE_DIR,
     "prototype_dir":    PROTOTYPE_DIR,
     "prototype_folder": PROTOTYPE_DIR,
-    # ARTIFACTS / OFFICIAL
-    "artifacts":        OFFICIAL_DIR,
-    "artifacts_dir":    OFFICIAL_DIR,
-    "artifacts_folder": OFFICIAL_DIR,
-    "official":         OFFICIAL_DIR,
-    "official_dir":     OFFICIAL_DIR,
+    # REPORT
+    "report":           REPORT_DIR,
+    "report_dir":       REPORT_DIR,
+    "report_folder":    REPORT_DIR,
+    # DOUBT
+    "doubt":            DOUBT_DIR,
+    "doubt_dir":        DOUBT_DIR,
+    "doubt_folder":     DOUBT_DIR,
     # templates
     "template":         TEMPLATE_DIR,
     "template_dir":     TEMPLATE_DIR,
@@ -83,10 +96,11 @@ _FOLDER_ALIASES: Dict[str, Path] = {
 
 # Nomes exibidos nas mensagens de erro — apenas os canônicos, legível para o agente.
 _FOLDER_ALIAS_DISPLAY = (
-    "STAGING, STAGING_DIR, STAGING_FOLDER, "
+    "ANALYSIS, ANALYSIS_DIR, ANALYSIS_FOLDER, "
+    "DIAGRAMS, DIAGRAMS_DIR, DIAGRAMS_FOLDER, "
     "PROTOTYPE, PROTOTYPE_DIR, PROTOTYPE_FOLDER, "
-    "ARTIFACTS, ARTIFACTS_DIR, ARTIFACTS_FOLDER, "
-    "OFFICIAL, OFFICIAL_DIR, "
+    "REPORT, REPORT_DIR, REPORT_FOLDER, "
+    "DOUBT, DOUBT_DIR, DOUBT_FOLDER, "
     "TEMPLATE_DIR, TEMPLATE_FOLDER"
 )
 
@@ -116,10 +130,9 @@ def _split_folder_and_name(raw: str) -> "tuple[str, str]":
     Separa um token de pasta de um nome de arquivo em `raw`.
 
     Exemplos:
-        "STAGING/relatorio.md"   → ("STAGING",    "relatorio.md")
-        "relatorio.md"           → ("",            "relatorio.md")
-        "PROTOTYPE/"             → ("PROTOTYPE",   "")
-        "spec/algo.md"           → ("spec",        "algo.md")
+        "REPORT/relatorio.md"    → ("REPORT",    "relatorio.md")
+        "relatorio.md"           → ("",           "relatorio.md")
+        "PROTOTYPE/"             → ("PROTOTYPE",  "")
     """
     normalized = raw.strip().replace("\\", "/")
     if "/" not in normalized:
@@ -134,9 +147,8 @@ def _resolve_path_arg(raw: str) -> "tuple[Path | None, str, str | None]":
 
     Aceita:
         "relatorio.md"              → busca em _SEARCH_ORDER, ou STAGING_DIR como destino
-        "STAGING/relatorio.md"      → STAGING_DIR,   "relatorio.md",  sem erro
-        "STAGING_FOLDER/login.html" → STAGING_DIR,   "login.html",    sem erro
-        "PROTOTYPE/login.html"      → PROTOTYPE_DIR, "login.html",    sem erro
+        "ANALYSIS/relatorio.md"     → ANALYSIS_DIR,  "relatorio.md",   sem erro
+        "PROTOTYPE/login.html"      → PROTOTYPE_DIR, "login.html",     sem erro
         "spec/algo.md"              → None,           "algo.md",       mensagem de erro
 
     Retorna:
@@ -173,7 +185,7 @@ def read_file(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
 
     O agente pode informar apenas o nome do arquivo ou prefixá-lo com um alias
     de pasta. Quando nenhum alias é fornecido, o sistema busca automaticamente
-    em STAGING → PROTOTYPE → ARTIFACTS e retorna o primeiro arquivo encontrado.
+    em ANALYSIS → DIAGRAMS → PROTOTYPE e retorna o primeiro arquivo encontrado.
 
     Args:
         filepath: Nome do arquivo, com ou sem alias de pasta.
@@ -218,12 +230,12 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
     Lê seções específicas de um arquivo analise_tecnica_.md.
 
     O agente pode informar apenas o nome do arquivo ou prefixá-lo com um alias
-    de pasta. Sem alias, busca automaticamente em STAGING → PROTOTYPE → ARTIFACTS.
+    de pasta. Sem alias, busca automaticamente em ANALYSIS.
 
     Args:
         filepath: Nome do arquivo, com ou sem alias de pasta.
                   Exemplo: "analise_tecnica_HU-001.md"
-                           "STAGING/analise_tecnica_HU-001.md"
+                           "ANALYSIS/analise_tecnica_HU-001.md"
         sections: Lista de números das seções desejadas. Exemplo: [4, 8]
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
 
@@ -239,17 +251,8 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
         resolved_dir, filename, error = _resolve_path_arg(filepath)
         if error:
             return {"status": "error", "error": error}
-
-        if resolved_dir is not None:
-            path = (resolved_dir / filename).resolve()
-            if not _is_safe_path(path):
-                return {"status": "error", "error": "Acesso negado: caminho fora do projeto."}
-            if not path.exists():
-                return {"status": "error", "error": f"Arquivo '{filename}' não encontrado em {resolved_dir.name}."}
-        else:
-            path = _find_existing_file(filename)
-            if path is None:
-                return {"status": "error", "error": f"Arquivo '{filename}' não encontrado em nenhuma pasta conhecida ({_FOLDER_ALIAS_DISPLAY})."}
+        resolved_dir = ANALYSIS_DIR # Sempre vai estar salvo em analysis_dir
+        path = (resolved_dir / filename).resolve()
 
         content = path.read_text(encoding="utf-8")
 
@@ -281,7 +284,7 @@ def read_multiple_files(filepaths: list[str], caller: str | None = "unknown") ->
     Lê o conteúdo de vários arquivos em uma única chamada.
 
     Cada item da lista pode ser um nome simples ou conter um alias de pasta.
-    Arquivos sem alias são buscados automaticamente em STAGING → PROTOTYPE → ARTIFACTS.
+    Arquivos sem alias são buscados automaticamente em ANALYSIS → DIAGRAMS → PROTOTYPE.
     Arquivos não encontrados ou inacessíveis são reportados individualmente sem
     impedir a leitura dos demais.
 
@@ -340,7 +343,8 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown") -
     cria backup automático antes de sobrescrever.
 
     O agente pode prefixar o nome com um alias de pasta para controlar o destino.
-    Sem alias, .html e global.css vão para PROTOTYPE; os demais vão para STAGING.
+    Sem alias, .html e global.css vão para PROTOTYPE; .mmd vai para DIAGRAMS;
+    os demais vão para ANALYSIS.
 
     ⚠️  Sobrescreve o arquivo inteiro. Para acrescentar conteúdo, use append_artifact.
     ⚠️  Para corrigir uma seção específica de Markdown, use patch_section.
@@ -348,7 +352,7 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown") -
     Args:
         filename: Nome do arquivo, com ou sem alias de pasta.
                   Exemplos: "relatorio_HU-001.md"
-                            "STAGING/relatorio_HU-001.md"
+                            "ANALYSIS/relatorio_HU-001.md"
                             "PROTOTYPE/login.html"
         content:  Conteúdo completo do arquivo.
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
@@ -369,8 +373,10 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown") -
             target_dir = resolved_dir
         elif filename.endswith(".html") or filename == "global.css":
             target_dir = PROTOTYPE_DIR
+        elif filename.endswith(".mmd"):
+            target_dir = DIAGRAMS_DIR
         else:
-            target_dir = STAGING_DIR
+            target_dir = ANALYSIS_DIR
 
         destination = (target_dir / filename).resolve()
         if not _is_safe_path(destination):
@@ -403,7 +409,7 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown") -
 
 def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Copia um relatório aprovado de STAGING para ARTIFACTS (diretório oficial permanente).
+    Copia um relatório aprovado para REPORT_DIR (diretório oficial permanente).
 
     Use somente quando o solicitante tiver alterado o status do relatório para "Aprovado"
     e pedir explicitamente a promoção. Nunca promova sem verificar o status antes.
@@ -415,7 +421,7 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
     - Diagramas .mmd, HTMLs, CSS e analise_tecnica_ nunca são promovidos.
 
     Args:
-        filename: Nome do relatório em STAGING. Apenas o nome — sem alias de pasta.
+        filename: Nome do relatório. Apenas o nome — sem alias de pasta.
                   Exemplo: "relatorio_HU-001_HU-002.md"
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
 
@@ -430,24 +436,21 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
         if raw_filename.is_absolute() or ".." in raw_filename.parts:
             raise PermissionError("Segurança: Caminho inválido.")
 
-        source = (STAGING_DIR / raw_filename).resolve()
-        if not _is_safe_path(source):
-            raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
-
-        if not source.exists():
-            return {"status": "error", "error": f"Arquivo '{filename}' não encontrado em STAGING."}
+        source = _find_existing_file(raw_filename.name)
+        if source is None:
+            return {"status": "error", "error": f"Arquivo '{filename}' não encontrado em nenhuma pasta conhecida."}
 
         if source.suffix != ".md":
             return {
                 "status": "blocked",
-                "reason": "Apenas relatórios .md podem ser promovidos. Diagramas .mmd permanecem em STAGING.",
+                "reason": "Apenas relatórios .md podem ser promovidos. Diagramas .mmd permanecem em sua pasta de origem.",
                 "file": filename,
             }
 
         if "relatorio" not in filename:
             return {
                 "status": "blocked",
-                "reason": "Apenas relatórios .md podem ser promovidos. A analise_tecnica_ permanece em STAGING.",
+                "reason": "Apenas relatórios .md podem ser promovidos. A analise_tecnica_ permanece em sua pasta de origem.",
                 "file": filename,
             }
 
@@ -460,7 +463,7 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
             }
 
         _ensure_dirs()
-        destination = (OFFICIAL_DIR / raw_filename).resolve()
+        destination = (REPORT_DIR / raw_filename).resolve()
         if not _is_safe_path(destination):
             raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
 
@@ -484,20 +487,20 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
         return {"status": "error", "error": str(e)}
 
 
-def list_staging_files(filetype: str = "", folder: str = "", caller: str | None = "unknown") -> Dict[str, Any]:
+def list_design_files(filetype: str = "", folder: str = "", caller: str | None = "unknown") -> Dict[str, Any]:
     """
     Lista os arquivos presentes em uma pasta do projeto.
 
-    Sem `folder`, lista STAGING e PROTOTYPE juntos (comportamento original).
+    Sem `folder`, lista todas subpastas de design.
     Com `folder`, lista apenas a pasta indicada pelo alias.
 
-    Backups (nomes com "_backup_") e o arquivo de log são excluídos automaticamente.
+    Backups (nomes com "_backup_") e o arquivo de log são ignorados automaticamente.
 
     Args:
         filetype: Extensão para filtrar, sem o ponto. Exemplos: "md", "html", "mmd".
                   Vazio = todos os arquivos.
-        folder:   Alias da pasta a listar. Exemplos: "STAGING", "PROTOTYPE", "ARTIFACTS".
-                  Vazio = STAGING + PROTOTYPE (comportamento padrão).
+        folder:   Alias da pasta a listar. Exemplos: "ANALYSIS", "PROTOTYPE", "DIAGRAMS".
+                  Vazio = todas subpastas.
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
 
     Returns:
@@ -530,9 +533,9 @@ def list_staging_files(filetype: str = "", folder: str = "", caller: str | None 
             files = _list_dir(target_dir)
             folder_label = target_dir.name.upper()
         else:
-            # Comportamento padrão: STAGING + PROTOTYPE
-            files = _list_dir(STAGING_DIR) + _list_dir(PROTOTYPE_DIR)
-            folder_label = "STAGING+PROTOTYPE"
+            # Comportamento padrão: todas as subpastas de design
+            files = _list_dir(ANALYSIS_DIR) + _list_dir(DIAGRAMS_DIR) + _list_dir(PROTOTYPE_DIR) + _list_dir(REPORT_DIR)
+            folder_label = "ANALYSIS+DIAGRAMS+PROTOTYPE+REPORT"
 
         IOLogger.read(f"[list:{filetype or 'all'} folder:{folder_label}]", caller=caller)
         return {
@@ -542,13 +545,13 @@ def list_staging_files(filetype: str = "", folder: str = "", caller: str | None 
         }
 
     except Exception as e:
-        IOLogger.error("list_staging_files", str(e), caller=caller)
+        IOLogger.error("list_design_files", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
 
 def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
     """
-    Verifica se há Doubt_Artifacts com status "Bloqueado" em STAGING.
+    Verifica se há Doubt_Artifacts com status "Bloqueado" em DOUBT_DIR.
 
     Use após receber retomada de um bloqueio, para confirmar que todos os
     Doubt_Artifacts foram realmente resolvidos antes de prosseguir o pipeline.
@@ -569,7 +572,7 @@ def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
     try:
         _ensure_dirs()
         blocks = []
-        for f in sorted(STAGING_DIR.iterdir()):
+        for f in sorted(DOUBT_DIR.iterdir()):
             if f.name.startswith("Doubt_Artifact_") and BACKUP_PREFIX not in f.name:
                 content = f.read_text(encoding="utf-8")
                 if STATUS_BLOCKED in content:
@@ -585,9 +588,9 @@ def check_active_blocks(caller: str | None = "unknown") -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-def clear_staging_folder(caller: str | None = "unknown") -> bool:
+def clear_design_folder(caller: str | None = "unknown") -> bool:
     """
-    Remove todos os arquivos de STAGING e seus subdiretórios (incluindo PROTOTYPE).
+    Remove todos os arquivos de DESIGN e seus subdiretórios.
     A estrutura de pastas é preservada — apenas os arquivos são deletados.
 
     Use exclusivamente no início de um novo ciclo do pipeline.
@@ -614,12 +617,12 @@ def clear_staging_folder(caller: str | None = "unknown") -> bool:
                 elif item.is_dir():
                     _clear_recursive(item)
 
-        _clear_recursive(STAGING_DIR)
-        IOLogger.erase(str(STAGING_DIR), caller=caller)
+        _clear_recursive(DESIGN_DIR)
+        IOLogger.erase(str(DESIGN_DIR), caller=caller)
         return True
 
     except Exception as e:
-        IOLogger.error("ERASE", f"dir={STAGING_DIR} | error={str(e)}", caller=caller)
+        IOLogger.error("ERASE", f"dir={DESIGN_DIR} | error={str(e)}", caller=caller)
         return False
 
 
@@ -629,7 +632,7 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown")
     Se o arquivo não existir, cria-o (comportamento idêntico ao save_artifact).
 
     O agente pode prefixar o nome com um alias de pasta. Sem alias, .html e
-    global.css vão para PROTOTYPE; os demais vão para STAGING.
+    global.css vão para PROTOTYPE; .mmd vai para DIAGRAMS; os demais vão para ANALYSIS.
 
     ⚠️  Não cria backup. Para substituir o arquivo inteiro, use save_artifact.
     ⚠️  Para corrigir uma seção já escrita, use patch_section.
@@ -657,8 +660,12 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown")
             target_dir = resolved_dir
         elif filename.endswith(".html") or filename == "global.css":
             target_dir = PROTOTYPE_DIR
+        elif filename.endswith(".mmd"):
+            target_dir = DIAGRAMS_DIR
+        elif filename.startswith("relatorio_"):          # ← adicionar
+            target_dir = REPORT_DIR                      # ← adicionar
         else:
-            target_dir = STAGING_DIR
+            target_dir = ANALYSIS_DIR
 
         destination = (target_dir / filename).resolve()
         if not _is_safe_path(destination):
@@ -693,9 +700,6 @@ def append_architect_section(filename: str, content: str, caller: str | None = "
     Adiciona conteúdo ao fim de um arquivo existente, sem apagar o que já está lá.
     Se o arquivo não existir, cria-o (comportamento idêntico ao save_artifact).
 
-    O agente pode prefixar o nome com um alias de pasta. Sem alias, .html e
-    global.css vão para PROTOTYPE; os demais vão para STAGING.
-
     ⚠️  Não cria backup. Para substituir o arquivo inteiro, use save_artifact.
     ⚠️  Para corrigir uma seção já escrita, use patch_section.
 
@@ -721,7 +725,7 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
     Substitui uma seção específica de um arquivo Markdown, sem alterar as demais.
 
     O agente pode prefixar o nome com um alias de pasta. Sem alias, o sistema
-    busca o arquivo automaticamente em STAGING → PROTOTYPE → ARTIFACTS.
+    busca o arquivo automaticamente em ANALYSIS → DIAGRAMS → PROTOTYPE.
 
     A seção é identificada de duas formas (primeiro match vence):
     - Por número isolado: section_id="4" encontra a seção cuja primeira linha começa com "4." ou "4 ".
@@ -734,7 +738,7 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
     Args:
         filename:    Nome do arquivo, com ou sem alias de pasta.
                      Exemplos: "analise_tecnica_HU-001.md"
-                               "STAGING/analise_tecnica_HU-001.md"
+                               "ANALYSIS/analise_tecnica_HU-001.md"
         section_id:  Número isolado ("4") ou heading Markdown exato ("## Título").
         new_content: Conteúdo completo da seção corrigida, incluindo título e "---" final.
         caller:      Nome do agente solicitante (usado apenas para rastreabilidade).
