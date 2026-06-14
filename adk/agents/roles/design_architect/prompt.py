@@ -100,7 +100,7 @@ AÇÃO 2 — Gere o Doubt_Artifact usando a ferramenta de persistência de artef
   - Lacuna Funcional: o que o sistema deve fazer não está claro na HU.
   - Lacuna Arquitetural: informação ausente que bloqueia uma decisão técnica específica.
 
-  Persista o Doubt_Artifact com filename=Doubt_Artifact_<HU_ID>_<data atual obtida exclusivamente via tool>.md
+  Persista o Doubt_Artifact com filename=doubt_dir/Doubt_Artifact_<HU_ID>_<data atual obtida exclusivamente via tool>.md
   e o seguinte conteúdo:
 
   # Doubt Artifact — <HU_ID>
@@ -124,8 +124,6 @@ AÇÃO 2 — Gere o Doubt_Artifact usando a ferramenta de persistência de artef
   - O nome do arquivo é SEMPRE: Doubt_Artifact_<HU_ID>_<data atual obtida exclusivamente via tool>.md
   - Nunca use datas fixas, nunca escreva a data manualmente — Obtenha a data atual via ferramenta antes de montar o nome do arquivo.
   - Nunca crie variações do nome (_v1, _v2, _novo, etc).
-  - Se já existir um Doubt_Artifact para a mesma HU na pasta de dúvidas, o mecanismo de persistência criará
-    backup automaticamente — você não precisa gerenciar isso.
   - Guarde o nome exato do arquivo confirmado pelo mecanismo de persistência — use-o sempre que precisar
     referenciar este Doubt_Artifact (no PASSO 6 e na SAÍDA ESPERADA).
 
