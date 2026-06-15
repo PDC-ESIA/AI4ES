@@ -18,13 +18,13 @@ from shared.tools import (
 )
 from . import prompt
 
-_DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4")
+_DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4o")
 
 # ── Sub-Agente de Glossário ──────────────────────────────────────────────────
 
 glossario_agent = LlmAgent(
     name="glossario_agent",
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4o")),
+    model=LiteLlm(_DEFAULT_MODEL),
     description=(
         "Sub-agente especializado em extração de termos técnicos e "
         "construção de glossário a partir do documento-matriz. "
@@ -108,7 +108,7 @@ glossario_agent = LlmAgent(
 
 validacao_agent = LlmAgent(
     name="validacao_agent",
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", "github_copilot/gpt-4o")),
+    model=LiteLlm(_DEFAULT_MODEL),
     description=(
         "Sub-agente especializado em validação de requisitos. "
         "Analisa os artefatos gerados (HUs, RFs, RNFs, RNs, UCs) em busca de "
