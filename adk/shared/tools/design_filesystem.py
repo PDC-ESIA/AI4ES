@@ -23,11 +23,12 @@ def _find_root(start_path: Path, target: str = "adk") -> Path:
 ADK_DIR = _find_root(Path(__file__).resolve())
 DESIGN_DIR = ADK_DIR / "workspace_output" / "design"
 
-ANALYSIS_DIR = DESIGN_DIR / "analysis" # TODO
-DIAGRAMS_DIR = DESIGN_DIR / "diagrams" # TODO
+ANALYSIS_DIR = DESIGN_DIR / "analysis"
+DIAGRAMS_DIR = DESIGN_DIR / "diagrams"
 PROTOTYPE_DIR = DESIGN_DIR / "prototypes"
-REPORT_DIR = DESIGN_DIR / "reports" # TODO
-DOUBT_DIR = DESIGN_DIR / "doubts" # TODO
+REPORT_DIR = DESIGN_DIR / "reports"
+DOUBT_DIR = DESIGN_DIR / "doubts"
+OFFICIAL_DIR = DESIGN_DIR / "entrega_final" # Sujeito a mudanças
 
 TEMPLATE_DIR = ADK_DIR / "shared" / "templates"
 LOG_FILENAME = "io_operations.log"
@@ -46,6 +47,7 @@ def _ensure_dirs() -> None:
     PROTOTYPE_DIR.mkdir(parents=True, exist_ok=True)
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     DOUBT_DIR.mkdir(parents=True, exist_ok=True)
+    OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _is_safe_path(path: Path) -> bool:
@@ -463,7 +465,7 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
             }
 
         _ensure_dirs()
-        destination = (REPORT_DIR / raw_filename).resolve()
+        destination = (OFFICIAL_DIR / raw_filename).resolve()
         if not _is_safe_path(destination):
             raise PermissionError("Segurança: Tentativa de escrita fora da área permitida.")
 
