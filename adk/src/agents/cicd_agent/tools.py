@@ -72,13 +72,16 @@ class SalvarPipelineConfigSchema(BaseModel):
 
     @field_validator("subdir")
     def validar_subdir(cls, v: str) -> str:
-        """Impede path traversal no subdiretório."""
-        if ".." in v:
+        """Impede path traversal e paths absolutos no subdiretório."""
+        if not v:
+            return ""
+
+        p = Path(v)
+        if p.is_absolute() or ".." in p.parts:
             raise ValueError(
-                f"Path traversal não permitido no subdir: '{v}'. "
-                f"Não use '..' no caminho."
+                f"Subdir inválido: '{v}'. Use apenas caminhos relativos sem '..'."
             )
-        return v
+        return str(p)
 
 
 # -------------------------------------------------------------------
