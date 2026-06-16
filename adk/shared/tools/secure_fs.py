@@ -1,6 +1,5 @@
 #Ferramenta criada para navegacao segura e protecao anti-transversal
 
-import os
 import shutil
 from pathlib import Path
 
