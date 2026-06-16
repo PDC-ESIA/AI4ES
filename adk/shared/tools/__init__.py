@@ -56,7 +56,7 @@ __all__ = [
     "create_hitl_checkpoint",
     "describe_tools",
     "generate_compliance_report",
-    "gerar_doubt_artifact",
+    # "gerar_doubt_artifact",  # já listado acima
     "list_available_tools",
     "plan_validator",
     "register_human_validation",
