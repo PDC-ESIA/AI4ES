@@ -49,15 +49,20 @@ class SalvarPipelineConfigSchema(BaseModel):
 
     @field_validator("filename")
     def validar_filename(cls, v: str) -> str:
-        """Valida que o arquivo é de um tipo permitido para pipeline."""
-        name = Path(v).name
+        """Valida que o arquivo é de um tipo permitido para pipeline e bloqueia traversal."""
+        p = Path(v)
+        if p.is_absolute() or ".." in p.parts or len(p.parts) != 1:
+            raise ValueError(
+                f"Filename inválido: '{v}'. Use apenas o nome do arquivo (sem diretórios)."
+            )
 
+        name = p.name
         if name in _ALLOWED_FILENAMES:
-            return v
+            return name
 
-        suffix = Path(v).suffix.lower()
+        suffix = p.suffix.lower()
         if suffix in _ALLOWED_EXTENSIONS:
-            return v
+            return name
 
         raise ValueError(
             f"Arquivo '{v}' não é permitido. "
