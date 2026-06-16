@@ -42,8 +42,6 @@ def test_workflow_coding_inclui_context_engineer():
     )
 
     # Verifica que vem APÓS requirements e ANTES de implementation
-    # (architecture_agent está desativado no pipeline atual)
-    idx_requirements = next(
         (i for i, sa in enumerate(stages) if "requirements" in sa.name.lower()),
         None
     )
