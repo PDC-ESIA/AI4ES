@@ -70,8 +70,7 @@ class SecureFileSystemTool:
         check = self.base_workspace
         for part in Path(target_path).parts:
             check = check / part
-            # Só testa existência antes de chamar is_symlink()
-            if check.exists() and check.is_symlink():
+            if check.is_symlink():
                 raise PermissionError(
                     f"ACCESS_DENIED: Symlinks não são permitidos: '{target_path}'."
                 )
