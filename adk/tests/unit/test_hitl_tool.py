@@ -80,7 +80,7 @@ async def test_pause_reason_pode_ser_omitido():
 
 
 def test_aguardar_aprovacao_humana_reexportada_no_init():
-    """Tools do qa_agent devem ser importáveis do pacote tools/."""
-    from src.agents.qa_agent.tools import aguardar_aprovacao_humana as exported
+    """Tools devem ser importáveis do pacote adk/shared/tools/."""
+    from adk.shared.tools import aguardar_aprovacao_humana as exported
     from adk.shared.tools.hitl_tool import aguardar_aprovacao_humana as direct
     assert exported is direct
