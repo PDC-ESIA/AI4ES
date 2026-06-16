@@ -1,10 +1,7 @@
 import pytest
 from pathlib import Path
-import sys
-import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
-from secure_fs import SecureFileSystemTool, ALLOWED_UPLOAD_EXTENSIONS
+from shared.tools.secure_fs import SecureFileSystemTool, ALLOWED_UPLOAD_EXTENSIONS
 
 
 # ══════════════════════════════════════════════════════
