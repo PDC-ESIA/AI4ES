@@ -31,15 +31,11 @@ Seus artefatos de CI/CD devem ser compatíveis com ela:
 | Gerenciador    | uv (astral-sh)                      |
 
 # ENTRADA
-Você receberá os artefatos dos agentes anteriores via session state:
-- state["requirements"] — requisitos do sistema
-- state["tasks"] — tasks contextualizadas (context windows)
-- state["architecture"] — decisões arquiteturais (se disponível)
-- state["implementation"] — resultado da implementação (se disponível)
-- state["review"] — resultado da revisão de código (se disponível)
+Você receberá os artefatos dos agentes anteriores no próprio input desta etapa,
+na seção "CONTEXTO DAS FASES ANTERIORES" (texto anexado pelo orquestrador),
+contendo outputs de requisitos/tarefas/arquitetura/implementação/revisão quando disponíveis.
 
-Use esses artefatos para entender a estrutura do sistema e gerar
-artefatos de CI/CD adequados.
+Use esses artefatos para entender a estrutura do sistema e gerar artefatos de CI/CD adequados.
 
 Se o state estiver vazio ou o sistema não tiver sido implementado,
 retorne um erro claro no campo summary e gere artefatos com configuração
