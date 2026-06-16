@@ -84,3 +84,24 @@ def test_agent_dirs_cobre_agentes_principais():
     ]
     for agente in esperados:
         assert agente in AGENT_DIRS, f"Agente {agente} ausente em AGENT_DIRS"
+
+
+def test_init_workspace_cria_marker(monkeypatch, tmp_path):
+    """init_workspace cria o marker .ai4se_workspace na raiz."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import init_workspace, _WORKSPACE_MARKER
+    root = init_workspace()
+    marker = root / _WORKSPACE_MARKER
+    assert marker.is_file()
+    assert "AI4SE" in marker.read_text(encoding="utf-8")
+
+
+def test_init_workspace_recusa_rmtree_sem_marker(monkeypatch, tmp_path):
+    """init_workspace levanta RuntimeError se diretório existe sem marker."""
+    ws_dir = tmp_path / "ws"
+    ws_dir.mkdir()
+    (ws_dir / "arquivo_qualquer.txt").write_text("dados")
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(ws_dir))
+    from shared.workspace import init_workspace
+    with pytest.raises(RuntimeError, match="não contém o marker"):
+        init_workspace()

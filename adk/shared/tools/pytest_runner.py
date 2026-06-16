@@ -17,10 +17,8 @@ logger = logging.getLogger("qa_agent_tool")
 def _gerar_doubt_artifact_sincrono(id_artefato: str, motivo: str) -> str:
     """Gera o doubt artifact estritamente dentro do workspace do agente de QA."""
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-
-    # Garantia de Workspace
-    base_dir = get_agent_workspace("qa_agent")
-    doubt_dir = base_dir / "doubt_artifacts"
+    from shared.workspace import get_agent_workspace
+    doubt_dir = get_agent_workspace("receive_requirements") / "doubt_artifacts"
     doubt_dir.mkdir(parents=True, exist_ok=True)
 
     nome_arquivo = f"Doubt_Artifact_{id_artefato}_{timestamp}.md"

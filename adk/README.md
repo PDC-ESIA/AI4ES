@@ -69,6 +69,40 @@ Por padrão `app/main.py` escaneia `src/agents/`. Para apontar para outro diret�
 export ADK_AGENTS_DIR=outro/caminho
 ```
 
+### Workspace de saída dos agentes
+
+Todos os artefatos produzidos pelos agentes (requisitos, design, código, relatórios, testes) são gravados em um diretório de workspace configurável via variável de ambiente:
+
+```bash
+# .env
+WORKSPACE_OUTPUT_DIR=./workspace_output   # default
+```
+
+Aceita caminhos absolutos (`/opt/ai4se/output`), relativos ao CWD (`workspace_output`), e com `~` (`~/ai4se_output`).
+
+Estrutura criada automaticamente:
+
+```text
+$WORKSPACE_OUTPUT_DIR/
+├── .ai4se_workspace          # marker de segurança (não remova)
+├── requirements/             # Time 1 — HUs, RFs, RNFs, glossário
+├── design/                   # Time 2 — análises técnicas
+│   ├── diagrams/             #   diagramas Mermaid
+│   ├── reports/              #   relatórios Markdown
+│   ├── staging/              #   staging do io_agent
+│   └── validation/           #   validações
+├── tasks/                    # Time 4 — tasks contextualizadas (JSON)
+├── coder/                    # Time 4 — código gerado
+├── review/                   # Time 4 — relatórios de revisão
+├── tests/                    # Time 3 — testes e QA
+│   ├── inputs/               #   requisitos recebidos pelo QA
+│   ├── planning/             #   planejamento de testes
+│   └── fixes/                #   correções automáticas
+└── ...
+```
+
+O workspace e limpo e recriado pelo **orchestrator** no inicio de cada fresh run. Um marker `.ai4se_workspace` e gravado na raiz para evitar que `init_workspace()` apague acidentalmente um diretorio que nao seja workspace.
+
 ## Execução com Docker
 
 Pré-requisito: **Docker** (e Docker Compose) instalados. Copie `.env.example` para `.env` e preencha.
@@ -215,7 +249,7 @@ Esperado:
 | `workspace_output/review/` | `coding_review_pipeline` | `verificacao_revisao.md` (relatório do reviewer) |
 | `workspace_output/tests/` | `qa_pipeline` | **geralmente vazio** — `action_planner` trava em HITL antes de gerar |
 
-> **Importante**: `workspace_output/` é apagado no próximo run do `coding_review_pipeline`. Antes de qualquer reexecução, copie para fora se quiser preservar:
+> **Importante**: `workspace_output/` é apagado e recriado pelo `orchestrator` no início de cada fresh run. Antes de qualquer reexecução, copie para fora se quiser preservar:
 >
 > ```bash
 > cp -r workspace_output /tmp/fotografo-app
@@ -330,7 +364,7 @@ rm -rf adk/workspace_output/   # limpa artefatos da run anterior
 rm -rf /tmp/fotografo-app      # limpa o app gerado
 ```
 
-Reinicie o uvicorn do `adk/`, reabra o Dev UI e cole o prompt de novo. O `workflow_coding_review` faz `init_workspace()` no import e recria `workspace_output/` zerado.
+Reinicie o uvicorn do `adk/`, reabra o Dev UI e cole o prompt de novo. O `orchestrator` executa `init_workspace()` no início de cada fresh run e recria `workspace_output/` zerado.
 
 ## GitHub Copilot (LiteLLM)
 

@@ -36,6 +36,8 @@ from src.agents.workflow_design_pipeline.agent import agent as design_pipeline
 from src.agents.workflow_coding_review.agent import agent as coding_review_pipeline
 from src.agents.workflow_qa.agent import agent as qa_pipeline
 
+from shared.workspace import init_workspace
+
 from src.agents.orchestrator._helpers import (
     _build_function_response_payload,
     _build_input,
@@ -194,6 +196,9 @@ class _PipelineOrchestrator(BaseAgent):
         # Fresh run reseta accumulated (nova conversa SDLC).
         state["accumulated_outputs"] = []
         accumulated: list[tuple[str, str]] = []
+
+        # Inicializa (limpa e recria) o workspace de saída dos agentes.
+        init_workspace()
 
         # Se houver _live_runner legado em outer_sid (sessão zombie), fecha.
         legacy = self._live_runners.pop(outer_sid, None)
