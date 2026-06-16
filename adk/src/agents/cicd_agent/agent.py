@@ -15,3 +15,6 @@ agent = create_se_agent(
     agent_subdir="pipeline",
     tools=[tool_salvar_pipeline_config_adk],
 )
+
+# ADK CLI busca por `root_agent` ao carregar um app diretamente.
+root_agent = agent
