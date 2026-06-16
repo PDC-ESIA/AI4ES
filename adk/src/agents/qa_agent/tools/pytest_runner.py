@@ -15,7 +15,8 @@ logger = logging.getLogger("qa_agent_tool")
 
 def _gerar_doubt_artifact_sincrono(id_artefato: str, motivo: str, caminho_base: Path) -> str:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    doubt_dir = caminho_base.parent / "doubt_artifacts"
+    from shared.workspace import get_agent_workspace
+    doubt_dir = get_agent_workspace("receive_requirements") / "doubt_artifacts"
     doubt_dir.mkdir(parents=True, exist_ok=True)
 
     nome_arquivo = f"Doubt_Artifact_{id_artefato}_{timestamp}.md"

@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 _ENV_WORKSPACE = "WORKSPACE_OUTPUT_DIR"
 _DEFAULT_WORKSPACE = "./workspace_output"
 
+# Arquivo marker que identifica um diretório como workspace gerenciado.
+# Previne rmtree acidental em diretórios que não são workspace.
+_WORKSPACE_MARKER = ".ai4se_workspace"
+
 # Mapeamento agente → subpasta dentro do workspace.
 # Cobre os 14 agentes individuais + 5 workflows + o orchestrator.
 # Subpastas são logicamente agrupadas por Time.
@@ -92,16 +96,51 @@ def init_workspace() -> Path:
     Deve ser chamado no início de cada nova sessão/prompt para garantir
     um ambiente limpo.
 
+    Safety checks:
+    - Se o diretório já existe, só remove se contiver o marker
+      `.ai4se_workspace` (previne rmtree acidental em diretórios errados).
+    - Valida que o diretório pode ser criado (fail-fast em caso de
+      permissões insuficientes ou path inválido).
+
     Returns:
         Path: Caminho absoluto da raiz do workspace recriado.
+
+    Raises:
+        PermissionError: Se não houver permissão para criar/limpar o diretório.
+        RuntimeError: Se o diretório existente não for um workspace gerenciado
+            (ausência do marker `.ai4se_workspace`).
     """
     root = get_workspace_root()
 
     if root.exists():
+        marker = root / _WORKSPACE_MARKER
+        if not marker.exists():
+            raise RuntimeError(
+                f"[WORKSPACE] Recusa em limpar '{root}': diretório existe mas "
+                f"não contém o marker '{_WORKSPACE_MARKER}'. "
+                f"Se este é o diretório correto, crie o marker manualmente ou "
+                f"remova o diretório antes de executar."
+            )
         shutil.rmtree(root)
         logger.info(f"[WORKSPACE] Workspace anterior removido: {root}")
 
-    root.mkdir(parents=True, exist_ok=True)
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except PermissionError as exc:
+        raise PermissionError(
+            f"[WORKSPACE] Sem permissão para criar workspace em '{root}'. "
+            f"Verifique a variável {_ENV_WORKSPACE} e as permissões do diretório."
+        ) from exc
+    except OSError as exc:
+        raise OSError(
+            f"[WORKSPACE] Falha ao criar workspace em '{root}': {exc}"
+        ) from exc
+
+    # Cria marker para identificar este diretório como workspace gerenciado.
+    (root / _WORKSPACE_MARKER).write_text(
+        "Diretório gerenciado pelo sistema AI4SE. Não remova este arquivo.\n",
+        encoding="utf-8",
+    )
 
     # Cria todas as subpastas únicas (dedup via set)
     subdirs_unicos = set(AGENT_DIRS.values())

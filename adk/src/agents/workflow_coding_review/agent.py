@@ -21,7 +21,6 @@ from shared.agent_factory import _bind_tool_to_workspace
 from shared.workspace import (
     get_agent_workspace,
     get_workspace_root,
-    init_workspace,
 )
 from shared.tools import (
     tool_criar_arquivo,
@@ -38,9 +37,9 @@ from shared.tools import (
     ler_chunk,
 )
 
-# Inicializa o workspace na importação. O orchestrator cria sessões isoladas
-# por pipeline, mas todas compartilham o mesmo workspace_output em disco.
-_WORKSPACE_ROOT = str(init_workspace())
+# O workspace é inicializado pelo orchestrator no início de cada fresh run.
+# Aqui apenas resolvemos os caminhos para binding das tools.
+_WORKSPACE_ROOT = str(get_workspace_root())
 _REQ_WS = str(get_agent_workspace("requirements"))
 _CODER_WS = str(get_agent_workspace("coder"))
 _REVIEW_WS = str(get_agent_workspace("reviewer"))
