@@ -8,7 +8,7 @@ from .filesystem import (
     tool_ler_workspace,
     tool_listar_workspace,
 )
-from .doubt_artifact import gerar_doubt_artifact
+# NOTE: `gerar_doubt_artifact` é reexportado de `doubt_generator_analista` para manter compatibilidade.
 from .hitl_tool import aguardar_aprovacao_humana
 from .planner_tools import (
     create_hitl_checkpoint,
