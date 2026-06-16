@@ -150,7 +150,8 @@ agent = CodingOrchestrator(
     name="sdlc_pipeline",
     description=(
         "Pipeline SDLC completo com sessões isoladas e retry: "
-        "requisitos → contexto → implementação → CI/CD → finalização."
+        "requisitos → contexto → arquitetura → plano de testes → implementação → "
+        "CI/CD → revisão → QA → finalização."
     ),
 )
 
