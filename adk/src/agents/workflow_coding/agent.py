@@ -88,6 +88,8 @@ class CodingOrchestrator(BaseAgent):
                 artifact_service=ctx.artifact_service,
                 session_service=InMemorySessionService(),
                 memory_service=InMemoryMemoryService(),
+                credential_service=ctx.credential_service,
+                plugins=ctx.plugin_manager.plugins if ctx.plugin_manager else None,
             )
             inner_session = await runner.session_service.create_session(
                 app_name=stage.name, user_id=ctx.user_id, state={},
