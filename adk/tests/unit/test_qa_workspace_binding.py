@@ -36,7 +36,7 @@ def test_pytest_runner_resolve_dynamic_base(monkeypatch, tmp_path):
     arquivo = tests_inputs / "hu_001" / "test_hu_001.py"
     arquivo.write_text("def test_x(): assert True\n")
 
-    from src.agents.qa_agent.tools.pytest_runner import _normalizar_caminho_arquivo
+    from adk.shared.tools.pytest_runner import _normalizar_caminho_arquivo
 
     resultado = _normalizar_caminho_arquivo("hu_001/test_hu_001.py")
     assert resultado == arquivo.resolve()
@@ -47,7 +47,7 @@ def test_doubt_tool_resolve_via_workspace(monkeypatch, tmp_path):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
 
     import importlib
-    from src.agents.qa_agent.tools import doubt_tool as dt
+    from adk.shared.tools import doubt_tool as dt
     importlib.reload(dt)
 
     result = dt.DoubtArtifactGenerator.generate(
@@ -75,7 +75,7 @@ def test_doubt_artifact_resolve_via_workspace(monkeypatch, tmp_path):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
 
     import importlib
-    from src.agents.qa_agent.tools import doubt_artifact as da
+    from adk.shared.tools import doubt_artifact as da
     importlib.reload(da)
 
     result = da.gerar_doubt_artifact(

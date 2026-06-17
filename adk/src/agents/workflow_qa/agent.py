@@ -13,9 +13,9 @@ from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.qa_agent.subagents.code_fix_agent.agent import agent as code_fix_agent
 from src.agents.qa_agent.subagents.receive_requirements import agent as receber_requisitos_agent
-from src.agents.qa_agent.tools.hitl_tool import aguardar_aprovacao_humana
-from src.agents.qa_agent.tools.pytest_runner import executar_pytest_tool
-from src.agents.qa_agent.tools.doubt_tool import DoubtArtifactGenerator
+from shared.tools.hitl_tool import aguardar_aprovacao_humana
+from shared.tools.pytest_runner import executar_pytest_tool
+from shared.tools.doubt_tool import DoubtArtifactGenerator
 from src.agents.workflow_qa.tools.planner_wrapper import invocar_planejamento_qa
 
 _DEFAULT_MODEL = "gemini-2.5-flash"

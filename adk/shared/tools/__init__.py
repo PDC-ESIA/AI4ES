@@ -8,6 +8,16 @@ from .filesystem import (
     tool_ler_workspace,
     tool_listar_workspace,
 )
+# NOTE: `gerar_doubt_artifact` é reexportado de `doubt_generator_analista` para manter compatibilidade.
+from .hitl_tool import aguardar_aprovacao_humana
+from .planner_tools import (
+    create_hitl_checkpoint,
+    describe_tools,
+    generate_compliance_report,
+    list_available_tools,
+    plan_validator,
+    register_human_validation,
+)
 from .doubt_handler import registrar_duvida, listar_duvidas_pendentes
 from .slicer_tool import run_slicer, ler_chunk, extract_text
 from .doubt_generator_analista import gerar_doubt_artifact
@@ -42,4 +52,15 @@ __all__ = [
     "tool_ask_clarification_adk",
     "coletar_doubts_pendentes",
     "responder_doubt",
+    "aguardar_aprovacao_humana",
+    "create_hitl_checkpoint",
+    "describe_tools",
+    "generate_compliance_report",
+    # "gerar_doubt_artifact",  # já listado acima
+    "list_available_tools",
+    "plan_validator",
+    "register_human_validation",
 ]
+
+
+

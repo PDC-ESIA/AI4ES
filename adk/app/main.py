@@ -5,6 +5,12 @@ from pathlib import Path
 import litellm
 from dotenv import load_dotenv
 from google.adk.cli.fast_api import get_fast_api_app
+from google.adk.models.lite_llm import LiteLlm
+from google.adk.models.registry import LLMRegistry
+
+LLMRegistry._register(r"github_copilot/.*", LiteLlm)
+LLMRegistry._register(r"github/.*", LiteLlm)
+
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
