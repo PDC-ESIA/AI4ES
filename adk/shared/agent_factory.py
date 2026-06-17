@@ -3,12 +3,12 @@
 Mantém defensive prompting + tool_ask_clarification (versão original desta branch).
 Adiciona binding opcional ao workspace centralizado (porte Time 4):
 - Quando agent_subdir é informado, tools de filesystem recebem base_dir
-  injetado via functools.partial e tools de git recebem cwd injetado.
+  injetado via closure e tools de git recebem cwd injetado.
 - Quando agent_subdir é None (default), comportamento atual preservado.
 """
 
+import inspect
 import os
-from functools import partial
 from typing import Any
 
 from google.adk.agents import LlmAgent
@@ -64,12 +64,46 @@ _GIT_TOOL_NAMES = {
 }
 
 
+def _make_bound_closure(fn: Any, param_name: str, bound_value: str) -> Any:
+    """Cria closure que injeta param_name=bound_value sem expor ao LLM.
+
+    Ao contrário de functools.partial, a closure resultante NÃO inclui o
+    parâmetro injetado na signature/schema — o LLM nunca vê o param e
+    não pode sobrescrevê-lo com null.
+    """
+    sig = inspect.signature(fn)
+    visible_params = [p for p in sig.parameters.values() if p.name != param_name]
+    visible_names = [p.name for p in visible_params]
+    new_sig = sig.replace(parameters=visible_params)
+    new_annotations = {
+        name: p.annotation
+        for name, p in sig.parameters.items()
+        if name != param_name and p.annotation != inspect.Parameter.empty
+    }
+    if sig.return_annotation != inspect.Signature.empty:
+        new_annotations["return"] = sig.return_annotation
+
+    def wrapper(*args, **kwargs):
+        # Mapeia args posicionais para os nomes dos params visíveis
+        for i, val in enumerate(args):
+            if i < len(visible_names):
+                kwargs[visible_names[i]] = val
+        kwargs[param_name] = bound_value
+        return fn(**kwargs)
+
+    wrapper.__name__ = fn.__name__
+    wrapper.__doc__ = fn.__doc__
+    wrapper.__signature__ = new_sig
+    wrapper.__annotations__ = new_annotations
+    return wrapper
+
+
 def _bind_tool_to_workspace(
     tool: Any,
     agent_workspace: str,
     workspace_root: str,
 ) -> Any:
-    """Aplica functools.partial à tool injetando base_dir ou cwd quando aplicável.
+    """Cria nova FunctionTool com closure que injeta base_dir ou cwd.
 
     Identifica o tipo de tool pelo nome da função subjacente:
     - Filesystem tools: recebem base_dir=agent_workspace
@@ -77,8 +111,9 @@ def _bind_tool_to_workspace(
     - Git tools: recebem cwd=agent_workspace
     - Outras tools: retornadas sem binding.
 
-    Para tools dentro de FunctionTool: retorna nova FunctionTool com partial bound.
-    Para tools que já são callable diretas: aplica partial direto.
+    Usa closures (não functools.partial) para que o parâmetro injetado
+    fique INVISÍVEL no schema exposto ao LLM — evitando que o modelo
+    passe null e sobrescreva o binding.
     """
     # Extrai a função subjacente (suporta tanto FunctionTool quanto callable direto)
     if isinstance(tool, FunctionTool):
@@ -97,19 +132,13 @@ def _bind_tool_to_workspace(
         return tool
 
     if fn_name in _FILESYSTEM_TOOL_NAMES:
-        bound = partial(underlying, base_dir=agent_workspace)
-        bound.__name__ = fn_name
-        bound.__doc__ = getattr(underlying, "__doc__", None)
+        bound = _make_bound_closure(underlying, "base_dir", agent_workspace)
         return FunctionTool(bound)
     if fn_name in _WORKSPACE_READ_TOOL_NAMES:
-        bound = partial(underlying, base_dir=workspace_root)
-        bound.__name__ = fn_name
-        bound.__doc__ = getattr(underlying, "__doc__", None)
+        bound = _make_bound_closure(underlying, "base_dir", workspace_root)
         return FunctionTool(bound)
     if fn_name in _GIT_TOOL_NAMES:
-        bound = partial(underlying, cwd=agent_workspace)
-        bound.__name__ = fn_name
-        bound.__doc__ = getattr(underlying, "__doc__", None)
+        bound = _make_bound_closure(underlying, "cwd", agent_workspace)
         return FunctionTool(bound)
 
     return tool  # tool desconhecida, retorna intacta (ex.: tool_ask_clarification_adk)
@@ -131,7 +160,7 @@ def create_se_agent(
         instruction: Instrução completa (será apended com _SE_AGENT_POLICY).
         tools: Lista de tools (FunctionTool ou callable). Default: lista vazia.
         agent_subdir: Subpasta do agente no workspace (opcional). Se informado,
-            tools de filesystem/git/workspace_read são bound via functools.partial
+            tools de filesystem/git/workspace_read são bound via closure
             ao workspace centralizado. Pode ser:
             - Nome do agente em AGENT_DIRS (ex.: "context_engineer")
             - Caminho relativo direto (ex.: "tasks") — usado como subpasta

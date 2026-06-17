@@ -30,29 +30,24 @@ def test_orchestrator_pipelines_esperados():
     ], f"Pipelines em ordem inesperada: {nomes}"
 
 
-def test_workflow_coding_inclui_context_engineer():
-    """workflow_coding deve ter context_engineer entre requirements e architect."""
-    from src.agents.workflow_coding.agent import agent as workflow_coding
+def test_workflow_coding_review_inclui_context_engineer():
+    """workflow_coding_review deve ter context_engineer antes do coder."""
+    from src.agents.workflow_coding_review.agent import agent as coding_review
 
-    nomes_subagents = [sa.name for sa in workflow_coding.sub_agents]
+    nomes_subagents = [sa.name for sa in coding_review.sub_agents]
 
-    assert "context_engineer" in nomes_subagents, (
-        f"context_engineer ausente. Sub_agents: {nomes_subagents}"
+    assert "cr_context_engineer" in nomes_subagents, (
+        f"cr_context_engineer ausente. Sub_agents: {nomes_subagents}"
     )
 
-    # Verifica que vem APÓS requirements e ANTES de architect
-    idx_requirements = next(
-        (i for i, sa in enumerate(workflow_coding.sub_agents) if "requirements" in sa.name.lower()),
-        None
-    )
-    idx_context = nomes_subagents.index("context_engineer")
-    idx_architect = next(
-        (i for i, sa in enumerate(workflow_coding.sub_agents) if "architect" in sa.name.lower()),
+    # Verifica que vem ANTES do coder
+    idx_context = nomes_subagents.index("cr_context_engineer")
+    idx_coder = next(
+        (i for i, sa in enumerate(coding_review.sub_agents) if "coder" in sa.name.lower()),
         None
     )
 
-    assert idx_requirements is not None, "requirements_agent não encontrado no pipeline"
-    assert idx_architect is not None, "architect_agent não encontrado no pipeline"
-    assert idx_requirements < idx_context < idx_architect, (
-        f"Ordem errada: requirements={idx_requirements}, context_engineer={idx_context}, architect={idx_architect}"
+    assert idx_coder is not None, "cr_coder_agent não encontrado no pipeline"
+    assert idx_context < idx_coder, (
+        f"Ordem errada: context_engineer={idx_context}, coder={idx_coder}"
     )

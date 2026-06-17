@@ -29,7 +29,6 @@ from src.agents.reviewer import schemas as _rev_schemas  # noqa: F401
 from src.agents.context_engineer import schemas as _ce_schemas  # noqa: F401
 from src.agents.context_engineer.tools import tool_salvar_task  # noqa: F401
 from src.agents.workflow_coding_review.agent import agent as _cr  # noqa: F401
-from src.agents.workflow_coding.agent import agent as _sdlc  # noqa: F401
 from src.agents.workflow_requirements.agent import agent as _req  # noqa: F401
 from src.agents.workflow_design_pipeline.agent import agent as _design  # noqa: F401
 from src.agents.workflow_qa.agent import agent as _qa  # noqa: F401

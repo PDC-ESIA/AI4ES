@@ -56,6 +56,10 @@ AGENT_DIRS: dict[str, str] = {
     "review_agent": "review",
     "reviewer": "review",
     "finalizer": "finalizer",
+    # Workflow coding_review — artefatos consolidados em coder/
+    "cr_context_engineer": "coder/tasks",
+    "cr_coder": "coder/src",
+    "cr_reviewer": "coder/review",
     # Orquestração
     "orchestrator": "orchestrator",
     "pipeline": "pipeline",
@@ -90,7 +94,11 @@ def get_workspace_root() -> Path:
 
 
 def init_workspace() -> Path:
-    """Limpa e recria o workspace com todas as subpastas dos agentes.
+    """Limpa e recria o workspace (somente a raiz + marker).
+
+    As subpastas dos agentes são criadas sob demanda por
+    ``get_agent_workspace()``, evitando a criação de diretórios
+    que nunca serão utilizados na sessão corrente.
 
     Deve ser chamado no início de cada nova sessão/prompt para garantir
     um ambiente limpo.
@@ -141,15 +149,9 @@ def init_workspace() -> Path:
         encoding="utf-8",
     )
 
-    # Cria todas as subpastas únicas (dedup via set)
-    subdirs_unicos = set(AGENT_DIRS.values())
-    for subdir in subdirs_unicos:
-        agent_path = root / subdir
-        agent_path.mkdir(parents=True, exist_ok=True)
-
     logger.info(
         f"[WORKSPACE] Workspace inicializado: {root} "
-        f"({len(subdirs_unicos)} subpastas criadas)"
+        f"(subpastas serão criadas sob demanda)"
     )
     return root
 
@@ -157,11 +159,14 @@ def init_workspace() -> Path:
 def get_agent_workspace(agent_name: str) -> Path:
     """Retorna o caminho absoluto da subpasta do agente no workspace.
 
+    Cria o diretório sob demanda na primeira chamada (lazy init),
+    evitando a criação de pastas que nunca serão utilizadas.
+
     Args:
         agent_name: Nome do agente (deve existir em AGENT_DIRS).
 
     Returns:
-        Path absoluto da subpasta do agente.
+        Path absoluto da subpasta do agente (já existente no filesystem).
 
     Raises:
         ValueError: Se o agente não está mapeado em AGENT_DIRS.
@@ -171,4 +176,6 @@ def get_agent_workspace(agent_name: str) -> Path:
             f"Agente '{agent_name}' não possui subpasta mapeada. "
             f"Agentes válidos: {sorted(AGENT_DIRS.keys())}"
         )
-    return get_workspace_root() / AGENT_DIRS[agent_name]
+    agent_path = get_workspace_root() / AGENT_DIRS[agent_name]
+    agent_path.mkdir(parents=True, exist_ok=True)
+    return agent_path

@@ -16,12 +16,11 @@ def test_discover_coder_files_workspace_vazio(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     (tmp_path / "ws" / "coder").mkdir(parents=True)
 
-    # Re-import com env nova
     import importlib
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
-    result = wcr._discover_coder_files()
+    result = cr_reviewer._discover_coder_files()
     assert "workspace vazio" in result or "nenhum arquivo" in result
 
 
@@ -30,17 +29,17 @@ def test_discover_coder_files_lista_arquivos_relativos(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
     # Cria arquivos APÓS o reload (init_workspace limpa o diretório no reload)
-    coder_ws = Path(wcr._CODER_WS)
+    coder_ws = Path(cr_reviewer._CODER_WS)
     (coder_ws / "app").mkdir(parents=True, exist_ok=True)
     (coder_ws / "app" / "main.py").write_text("# main")
     (coder_ws / "app" / "models.py").write_text("# models")
     (coder_ws / "requirements.txt").write_text("fastapi")
 
-    result = wcr._discover_coder_files()
+    result = cr_reviewer._discover_coder_files()
     assert "- app/main.py" in result
     assert "- app/models.py" in result
     assert "- requirements.txt" in result
@@ -51,16 +50,16 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
     # Cria arquivos APÓS o reload (init_workspace limpa o diretório no reload)
-    coder_ws = Path(wcr._CODER_WS)
+    coder_ws = Path(cr_reviewer._CODER_WS)
     (coder_ws / "app" / "__pycache__").mkdir(parents=True, exist_ok=True)
     (coder_ws / "app" / "__pycache__" / "main.cpython-312.pyc").write_bytes(b"x")
     (coder_ws / "app" / "main.py").write_text("# main")
 
-    result = wcr._discover_coder_files()
+    result = cr_reviewer._discover_coder_files()
     assert "main.py" in result
     assert "__pycache__" not in result
     assert ".pyc" not in result
@@ -71,16 +70,16 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_pa
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
     # Cria arquivos APÓS o reload (init_workspace pode resetar o diretório)
-    coder_ws = Path(wcr._CODER_WS)
+    coder_ws = Path(cr_reviewer._CODER_WS)
     coder_ws.mkdir(parents=True, exist_ok=True)
     (coder_ws / "app").mkdir(exist_ok=True)
     (coder_ws / "app" / "main.py").write_text("# main")
 
-    instr = wcr._review_analyzer.instruction
+    instr = cr_reviewer._analyzer.instruction
     if callable(instr):
         class _FakeCtx:
             pass
@@ -99,10 +98,10 @@ def test_review_persister_instruction_referencia_analysis_e_anti_narracao(tmp_pa
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
-    instr = wcr._review_persister.instruction
+    instr = cr_reviewer._persister.instruction
     # Persister.instruction é string estática com placeholder {review_analysis}
     assert isinstance(instr, str)
     assert "{review_analysis}" in instr
@@ -116,15 +115,15 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
-    coder_ws = Path(wcr._CODER_WS)
+    coder_ws = Path(cr_reviewer._CODER_WS)
     coder_ws.mkdir(parents=True, exist_ok=True)
     target_file = coder_ws / "test_file.py"
     target_file.write_text("CONTEUDO_ESPERADO")
 
-    tools = wcr._review_analyzer.tools
+    tools = cr_reviewer._analyzer.tools
     ler_tool = next(t for t in tools if "ler_arquivo" in t.func.__name__)
     result = ler_tool.func(caminho="test_file.py")
     assert isinstance(result, str)
@@ -138,14 +137,14 @@ def test_reviewer_e_sequential_com_2_subagentes(tmp_path, monkeypatch):
 
     import importlib
     from google.adk.agents import SequentialAgent
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
-    assert isinstance(wcr._reviewer, SequentialAgent)
-    assert wcr._reviewer.name == "cr_review_agent"
-    assert len(wcr._reviewer.sub_agents) == 2
-    assert wcr._reviewer.sub_agents[0] is wcr._review_analyzer
-    assert wcr._reviewer.sub_agents[1] is wcr._review_persister
+    assert isinstance(cr_reviewer.agent, SequentialAgent)
+    assert cr_reviewer.agent.name == "cr_review_agent"
+    assert len(cr_reviewer.agent.sub_agents) == 2
+    assert cr_reviewer.agent.sub_agents[0] is cr_reviewer._analyzer
+    assert cr_reviewer.agent.sub_agents[1] is cr_reviewer._persister
 
 
 def test_review_persister_so_tem_tool_salvar_relatorio(tmp_path, monkeypatch):
@@ -153,10 +152,10 @@ def test_review_persister_so_tem_tool_salvar_relatorio(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
-    from src.agents.workflow_coding_review import agent as wcr
-    importlib.reload(wcr)
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
 
-    tools = wcr._review_persister.tools
+    tools = cr_reviewer._persister.tools
     assert len(tools) == 1
     tool_name = tools[0].func.__name__
     assert "salvar_relatorio" in tool_name

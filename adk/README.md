@@ -22,8 +22,7 @@ adk/
 │       ├── reviewer/
 │       ├── test_planner/
 │       ├── validator/
-│       ├── workflow_coding/             # pipeline SDLC completo
-│       ├── workflow_coding_review/      # pipeline enxuto requisitos→coder→review
+│       ├── workflow_coding_review/      # pipeline enxuto contexto→coder→review
 │       └── workflow_design_pipeline/    # pipeline de design
 ├── shared/
 │   └── tools/                  # tools compartilhadas (git, filesystem, slicer, etc)
@@ -57,7 +56,7 @@ Dev UI: `http://127.0.0.1:8081/dev-ui/?app=<nome_do_agente>`
 
 Exemplos:
 - `?app=orchestrator` — orquestrador completo
-- `?app=workflow_coding` — pipeline SDLC sequencial
+- `?app=workflow_coding_review` — pipeline contexto→coder→review
 - `?app=qa_agent` — agente de QA isolado
 - `?app=requirements` — agente de requisitos com glossário
 

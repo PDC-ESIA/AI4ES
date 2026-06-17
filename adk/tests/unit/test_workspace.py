@@ -33,15 +33,32 @@ def test_get_workspace_root_til_expandido(monkeypatch, tmp_path):
     assert root == (tmp_path / "meu_ws").resolve()
 
 
-def test_init_workspace_cria_subpastas(monkeypatch, tmp_path):
-    """init_workspace cria a raiz + todas as subpastas únicas de AGENT_DIRS."""
+def test_init_workspace_cria_somente_raiz(monkeypatch, tmp_path):
+    """init_workspace cria apenas a raiz + marker; subpastas são lazy."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from shared.workspace import init_workspace, AGENT_DIRS
     root = init_workspace()
     assert root.is_dir()
-    # Cada subpasta única em AGENT_DIRS deve existir
+    # Nenhuma subpasta de agente deve existir logo após init
     for subdir in set(AGENT_DIRS.values()):
-        assert (root / subdir).is_dir(), f"Subpasta ausente: {subdir}"
+        assert not (root / subdir).is_dir(), (
+            f"Subpasta '{subdir}' não deveria existir antes de get_agent_workspace()"
+        )
+
+
+def test_get_agent_workspace_cria_subpasta_sob_demanda(monkeypatch, tmp_path):
+    """get_agent_workspace() cria a subpasta na primeira chamada (lazy)."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import init_workspace, get_agent_workspace, AGENT_DIRS
+    root = init_workspace()
+    # Antes: subpasta não existe
+    agent = "context_engineer"
+    subdir = AGENT_DIRS[agent]
+    assert not (root / subdir).is_dir()
+    # Depois: get_agent_workspace cria sob demanda
+    path = get_agent_workspace(agent)
+    assert path.is_dir()
+    assert path == (root / subdir).resolve()
 
 
 def test_init_workspace_limpa_existente(monkeypatch, tmp_path):

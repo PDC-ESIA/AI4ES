@@ -1,4 +1,5 @@
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 from shared.agent_factory import create_se_agent
 from shared.tools.design_date import current_date
@@ -17,4 +18,7 @@ agent = create_se_agent(
         list_staging_files,
     ],
     agent_subdir="design_architect",
+    generate_content_config=types.GenerateContentConfig(
+        max_output_tokens=16384,
+    ),
 )
