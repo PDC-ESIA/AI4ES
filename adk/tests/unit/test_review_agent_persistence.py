@@ -1,9 +1,12 @@
-"""Tests para o cr_review_agent do workflow_coding_review.
+"""Testes para o cr_reviewer do workflow_coding_review.
 
 Cobertura:
 - _discover_coder_files lista arquivos do workspace do coder
-- O InstructionProvider injeta a lista + a substring obrigatória de save
-- As tools tool_ler_arquivo e tool_salvar_relatorio estão bound aos workspaces certos
+- O InstructionProvider injeta a lista de arquivos no momento da invocação
+- tool_ler_arquivo está bound ao workspace do coder
+- _analyzer tem after_agent_callback configurado (_persist_review)
+- agent é alias direto de _analyzer (sem LlmAgent intermediário para o save)
+- O callback _persist_review escreve verificacao_revisao.md no workspace do reviewer
 """
 
 from pathlib import Path
@@ -32,7 +35,6 @@ def test_discover_coder_files_lista_arquivos_relativos(tmp_path, monkeypatch):
     from src.agents.workflow_coding_review import cr_reviewer
     importlib.reload(cr_reviewer)
 
-    # Cria arquivos APÓS o reload (init_workspace limpa o diretório no reload)
     coder_ws = Path(cr_reviewer._CODER_WS)
     (coder_ws / "app").mkdir(parents=True, exist_ok=True)
     (coder_ws / "app" / "main.py").write_text("# main")
@@ -53,7 +55,6 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     from src.agents.workflow_coding_review import cr_reviewer
     importlib.reload(cr_reviewer)
 
-    # Cria arquivos APÓS o reload (init_workspace limpa o diretório no reload)
     coder_ws = Path(cr_reviewer._CODER_WS)
     (coder_ws / "app" / "__pycache__").mkdir(parents=True, exist_ok=True)
     (coder_ws / "app" / "__pycache__" / "main.cpython-312.pyc").write_bytes(b"x")
@@ -66,14 +67,13 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
 
 
 def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_path, monkeypatch):
-    """O instruction provider do _review_analyzer chama _discover_coder_files e injeta no template."""
+    """O instruction provider do _analyzer chama _discover_coder_files e injeta no template."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
     from src.agents.workflow_coding_review import cr_reviewer
     importlib.reload(cr_reviewer)
 
-    # Cria arquivos APÓS o reload (init_workspace pode resetar o diretório)
     coder_ws = Path(cr_reviewer._CODER_WS)
     coder_ws.mkdir(parents=True, exist_ok=True)
     (coder_ws / "app").mkdir(exist_ok=True)
@@ -91,23 +91,6 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_pa
         rendered = instr
 
     assert "- app/main.py" in rendered
-
-
-def test_review_persister_instruction_referencia_analysis_e_anti_narracao(tmp_path, monkeypatch):
-    """Persister.instruction referencia {review_analysis} e tem texto anti-narração."""
-    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-
-    import importlib
-    from src.agents.workflow_coding_review import cr_reviewer
-    importlib.reload(cr_reviewer)
-
-    instr = cr_reviewer._persister.instruction
-    # Persister.instruction é string estática com placeholder {review_analysis}
-    assert isinstance(instr, str)
-    assert "{review_analysis}" in instr
-    # Anti-narração explícita
-    assert "FAÇA a function call real" in instr or "FAÇA a function call" in instr
-    assert "tool_salvar_relatorio" in instr
 
 
 def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monkeypatch):
@@ -131,31 +114,65 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
     assert not result.startswith("Erro:")
 
 
-def test_reviewer_e_sequential_com_2_subagentes(tmp_path, monkeypatch):
-    """_reviewer é SequentialAgent com 2 sub_agents: analyzer primeiro, persister depois."""
-    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-
-    import importlib
-    from google.adk.agents import SequentialAgent
-    from src.agents.workflow_coding_review import cr_reviewer
-    importlib.reload(cr_reviewer)
-
-    assert isinstance(cr_reviewer.agent, SequentialAgent)
-    assert cr_reviewer.agent.name == "cr_review_agent"
-    assert len(cr_reviewer.agent.sub_agents) == 2
-    assert cr_reviewer.agent.sub_agents[0] is cr_reviewer._analyzer
-    assert cr_reviewer.agent.sub_agents[1] is cr_reviewer._persister
-
-
-def test_review_persister_so_tem_tool_salvar_relatorio(tmp_path, monkeypatch):
-    """Persister tem exatamente 1 tool e ela é tool_salvar_relatorio."""
+def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
+    """_analyzer.after_agent_callback está configurado com _persist_review."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
     from src.agents.workflow_coding_review import cr_reviewer
     importlib.reload(cr_reviewer)
 
-    tools = cr_reviewer._persister.tools
-    assert len(tools) == 1
-    tool_name = tools[0].func.__name__
-    assert "salvar_relatorio" in tool_name
+    assert cr_reviewer._analyzer.after_agent_callback is cr_reviewer._persist_review
+
+
+def test_agent_e_alias_do_analyzer(tmp_path, monkeypatch):
+    """agent é alias direto de _analyzer — sem LlmAgent intermediário para o save."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
+
+    assert cr_reviewer.agent is cr_reviewer._analyzer
+
+
+def test_persist_review_cria_arquivo_no_review_ws(tmp_path, monkeypatch):
+    """_persist_review escreve verificacao_revisao.md no workspace do reviewer."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
+
+    review_ws = Path(cr_reviewer._REVIEW_WS)
+    review_ws.mkdir(parents=True, exist_ok=True)
+
+    class _FakeCallbackContext:
+        state = {"review_analysis": "## Status: APROVADO\n\n## Resumo\nTudo ok."}
+
+    cr_reviewer._persist_review(_FakeCallbackContext())
+
+    relatorio = review_ws / "verificacao_revisao.md"
+    assert relatorio.exists(), "Relatório não foi criado no workspace do reviewer"
+    content = relatorio.read_text(encoding="utf-8")
+    assert "APROVADO" in content
+
+
+def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch):
+    """_persist_review não cria arquivo quando review_analysis está ausente ou vazio."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
+
+    review_ws = Path(cr_reviewer._REVIEW_WS)
+    review_ws.mkdir(parents=True, exist_ok=True)
+
+    class _FakeCallbackContext:
+        state = {}  # sem review_analysis
+
+    cr_reviewer._persist_review(_FakeCallbackContext())
+
+    relatorio = review_ws / "verificacao_revisao.md"
+    assert not relatorio.exists(), "Não deveria criar arquivo com analysis vazia"
