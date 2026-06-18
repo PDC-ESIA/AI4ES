@@ -159,7 +159,7 @@ def test_persist_review_cria_arquivo_no_review_ws(tmp_path, monkeypatch):
 
 
 def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch):
-    """_persist_review não cria arquivo quando review_analysis está ausente ou vazio."""
+    """_persist_review não cria arquivo quando review_analysis está ausente ou só whitespace."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
@@ -169,13 +169,18 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
     review_ws = Path(cr_reviewer._REVIEW_WS)
     review_ws.mkdir(parents=True, exist_ok=True)
 
-    class _FakeCallbackContext:
-        state = {}  # sem review_analysis
-
-    cr_reviewer._persist_review(_FakeCallbackContext())
-
     relatorio = review_ws / "verificacao_revisao.md"
-    assert not relatorio.exists(), "Não deveria criar arquivo com analysis vazia"
+
+    for state in [
+        {},           # key ausente
+        {"review_analysis": None},   # None explícito
+        {"review_analysis": "   \n"},  # só whitespace
+    ]:
+        class _FakeCtx:
+            pass
+        _FakeCtx.state = state
+        cr_reviewer._persist_review(_FakeCtx())
+        assert not relatorio.exists(), f"Não deveria criar arquivo para state={state}"
 
 
 def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
