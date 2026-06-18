@@ -201,7 +201,7 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
 
     from google.adk.models.llm_response import LlmResponse
     from google.adk.runners import Runner
-    from google.adk.sessions import InMemorySessionService
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
     from google.genai import types as genai_types
 
     fake_analysis = "## Status: APROVADO\n\n## Issues\nNenhum.\n\n## Resumo\nCodigo ok."
