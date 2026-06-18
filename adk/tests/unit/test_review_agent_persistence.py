@@ -215,6 +215,7 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
             )
         )
 
+    _original_cb = cr_reviewer._analyzer.before_model_callback
     cr_reviewer._analyzer.before_model_callback = _stub_llm
     try:
         session_svc = InMemorySessionService()
@@ -232,7 +233,7 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
             ),
         ))
     finally:
-        cr_reviewer._analyzer.before_model_callback = None
+        cr_reviewer._analyzer.before_model_callback = _original_cb
 
     relatorio = review_ws / "verificacao_revisao.md"
     assert relatorio.exists(), (
