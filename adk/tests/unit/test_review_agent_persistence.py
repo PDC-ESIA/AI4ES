@@ -176,3 +176,62 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
 
     relatorio = review_ws / "verificacao_revisao.md"
     assert not relatorio.exists(), "Não deveria criar arquivo com analysis vazia"
+
+
+def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
+    """Verifica que o ADK Runner dispara after_agent_callback após _analyzer completar.
+
+    Usa before_model_callback para bypassar a chamada real ao Gemini — o ADK
+    trata a resposta fake como output do agente, salva em state via output_key,
+    e então dispara after_agent_callback (_persist_review).
+    """
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
+
+    review_ws = Path(cr_reviewer._REVIEW_WS)
+    review_ws.mkdir(parents=True, exist_ok=True)
+
+    from google.adk.models.llm_response import LlmResponse
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+    from google.genai import types as genai_types
+
+    fake_analysis = "## Status: APROVADO\n\n## Issues\nNenhum.\n\n## Resumo\nCodigo ok."
+
+    def _stub_llm(_callback_ctx, _llm_request):
+        """Bypassa chamada real ao Gemini — retorna análise fake."""
+        return LlmResponse(
+            content=genai_types.Content(
+                role="model",
+                parts=[genai_types.Part(text=fake_analysis)],
+            )
+        )
+
+    cr_reviewer._analyzer.before_model_callback = _stub_llm
+    try:
+        session_svc = InMemorySessionService()
+        runner = Runner(
+            agent=cr_reviewer._analyzer,
+            app_name="test_persist",
+            session_service=session_svc,
+            auto_create_session=True,
+        )
+        list(runner.run(
+            user_id="test_user",
+            session_id="test_session",
+            new_message=genai_types.Content(
+                parts=[genai_types.Part(text="revisar")]
+            ),
+        ))
+    finally:
+        cr_reviewer._analyzer.before_model_callback = None
+
+    relatorio = review_ws / "verificacao_revisao.md"
+    assert relatorio.exists(), (
+        "after_agent_callback não foi disparado pelo ADK Runner — "
+        "verificacao_revisao.md não foi criado"
+    )
+    assert "APROVADO" in relatorio.read_text(encoding="utf-8")
