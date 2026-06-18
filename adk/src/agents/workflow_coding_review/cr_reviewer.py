@@ -146,8 +146,11 @@ def _persist_review(callback_context: CallbackContext) -> None:
         RuntimeError: se tool_salvar_relatorio retornar sucesso=False
             (cobre tanto falha de I/O quanto parametros invalidos).
     """
-    analysis = callback_context.state.get("review_analysis", "")
-    if not analysis:
+    analysis_raw = callback_context.state.get("review_analysis")
+    if analysis_raw is None:
+        return
+    analysis = str(analysis_raw)
+    if not analysis.strip():
         return
     result = tool_salvar_relatorio(
         conteudo=analysis,
