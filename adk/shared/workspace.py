@@ -59,6 +59,7 @@ AGENT_DIRS: dict[str, str] = {
     # Workflow coding_review — artefatos consolidados em coder/
     "cr_context_engineer": "coder/tasks",
     "cr_coder": "coder/src",
+    "cr_executor": "coder/execution",
     "cr_reviewer": "coder/review",
     # Orquestração
     "orchestrator": "orchestrator",

@@ -1,25 +1,52 @@
 """Workflow coding_review: pipeline enxuto de codificação com revisão.
 
-Pipeline: context_engineer -> coder -> reviewer
+Pipeline: context_engineer -> LoopAgent[coder ↔ executor] -> reviewer
   - context_engineer: fragmenta requisitos em tasks contextualizadas
   - coder: implementa código a partir das tasks (workspace isolado)
+            Em re-execução: corrige código baseado no erro do executor
+  - executor: builda e roda código em Docker
+              Se sucesso: exit_loop → pipeline segue para reviewer
+              Se falha: reporta erro → loop volta ao coder
   - reviewer: analisa (4 camadas) e persiste relatório de revisão
+
+O LoopAgent garante que o código produzido é EXECUTÁVEL antes de seguir
+para revisão. Máximo de 5 iterações (1 tentativa + 4 retries).
 
 Cada sub-agente é definido em seu próprio módulo (cr_*.py) para manter
 este arquivo slim e facilitar manutenção independente.
 """
 
-from google.adk.agents import SequentialAgent
+from google.adk.agents import LoopAgent, SequentialAgent
 
 from .cr_context_engineer import agent as _context_engineer
 from .cr_coder import agent as _coder
+from .cr_executor import agent as _executor
 from .cr_reviewer import agent as _reviewer
 
+# ---------------------------------------------------------------------------
+# Loop de codificação + execução: coder produz/corrige → executor testa
+# O loop encerra quando o executor chama exit_loop (sucesso) ou após
+# max_iterations (fallback — código segue para review mesmo com falha).
+# ---------------------------------------------------------------------------
+_code_execute_loop = LoopAgent(
+    name="code_execute_loop",
+    description=(
+        "Loop de codificação e execução: "
+        "coder produz/corrige código → executor testa em Docker → "
+        "repete até sucesso ou max_iterations."
+    ),
+    max_iterations=5,
+    sub_agents=[_coder, _executor],
+)
+
+# ---------------------------------------------------------------------------
+# Pipeline completo (SequentialAgent)
+# ---------------------------------------------------------------------------
 agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → codificação → revisão."
+        "contexto → [codificação ↔ execução Docker] → revisão."
     ),
-    sub_agents=[_context_engineer, _coder, _reviewer],
+    sub_agents=[_context_engineer, _code_execute_loop, _reviewer],
 )

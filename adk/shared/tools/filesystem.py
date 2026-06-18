@@ -22,6 +22,13 @@ EXTENSOES_PERMITIDAS = {
     ".env.example",
 }
 
+# Nomes de arquivo sem extensão (ou com extensão não-padrão) permitidos
+# por serem artefatos legítimos de infraestrutura/build.
+NOMES_PERMITIDOS = {
+    "Dockerfile",
+    ".dockerignore",
+}
+
 DIRETORIOS_PROIBIDOS = {
     ".git",
     ".venv",
@@ -134,12 +141,13 @@ def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: Optional[str] = No
             "caminho": caminho,
         }
 
-    if path.suffix not in EXTENSOES_PERMITIDAS:
+    if path.suffix not in EXTENSOES_PERMITIDAS and path.name not in NOMES_PERMITIDOS:
         return {
             "sucesso": False,
             "erro": (
                 f"Extensão '{path.suffix}' não permitida. "
-                f"Permitidas: {', '.join(sorted(EXTENSOES_PERMITIDAS))}"
+                f"Permitidas: {', '.join(sorted(EXTENSOES_PERMITIDAS))}. "
+                f"Nomes especiais: {', '.join(sorted(NOMES_PERMITIDOS))}"
             ),
             "caminho": caminho,
         }
