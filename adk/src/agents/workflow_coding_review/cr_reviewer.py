@@ -101,7 +101,7 @@ _ANALYZER_BASE = (
         "  \"report_path\": \"verificacao_revisao.md\"\n"
         "}\n"
         "\n"
-        "Use \"APROVADO\" ou \"BLOQUEADO\" no título \"## Status:\".",
+        "Use \"APROVADO\" ou \"BLOQUEADO\" no campo `status`.",
         "# SAÍDA\n"
         "Sua responsabilidade é PRODUZIR A ANÁLISE em markdown — a persistência em disco\n"
         "é feita automaticamente pelo pipeline após sua resposta.\n"
