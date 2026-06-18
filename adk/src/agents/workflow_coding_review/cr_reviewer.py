@@ -101,7 +101,7 @@ _ANALYZER_BASE = (
         "  \"report_path\": \"verificacao_revisao.md\"\n"
         "}\n"
         "\n"
-        "Use \"APROVADO\" ou \"BLOQUEADO\" no campo `status`.",
+        "Use \"APROVADO\" ou \"BLOQUEADO\" no título \"## Status:\".",
         "# SAÍDA\n"
         "Sua responsabilidade é PRODUZIR A ANÁLISE em markdown — a persistência em disco\n"
         "é feita automaticamente pelo pipeline após sua resposta.\n"
@@ -144,7 +144,7 @@ def _persist_review(callback_context: CallbackContext) -> None:
 
     Raises:
         RuntimeError: se tool_salvar_relatorio retornar sucesso=False
-            (cobre tanto falha de I/O quanto parametros invalidos).
+            (cobre tanto falha de I/O quanto parâmetros inválidos).
     """
     analysis_raw = callback_context.state.get("review_analysis")
     if analysis_raw is None:
