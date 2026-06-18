@@ -143,7 +143,8 @@ def _persist_review(callback_context: CallbackContext) -> None:
     diretamente em Python, eliminando o risco de modo narrador.
 
     Raises:
-        RuntimeError: se tool_salvar_relatorio reportar falha de I/O.
+        RuntimeError: se tool_salvar_relatorio retornar sucesso=False
+            (cobre tanto falha de I/O quanto parametros invalidos).
     """
     analysis = callback_context.state.get("review_analysis", "")
     if not analysis:
