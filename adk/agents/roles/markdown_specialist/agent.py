@@ -9,7 +9,7 @@ from shared.tools.design_filesystem import (
     save_artifact,
     append_artifact,
     patch_section,
-    list_staging_files,
+    list_design_files,
     check_active_blocks,
 )
 from . import prompt
@@ -28,7 +28,7 @@ agent = LlmAgent(
         save_artifact,
         append_artifact,
         patch_section,
-        list_staging_files,
+        list_design_files,
         check_active_blocks,
     ],
 )
