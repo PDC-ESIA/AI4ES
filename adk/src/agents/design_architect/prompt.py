@@ -67,22 +67,21 @@ AÇÃO 1 — Registre o bloqueio na sua saída com o seguinte formato:
   Trecho exato: "<trecho copiado literalmente da HU>"
   Motivo: <por que esse trecho impede a análise técnica>
 
-AÇÃO 2 — Persista o Doubt_Artifact diretamente:
+AÇÃO 2 — Gere o Doubt_Artifact usando a ferramenta de persistência de artefatos:
 
-  SEMPRE chame current_date() para obter a data atual.
+  Obtenha a data atual via ferramenta antes de montar o nome do arquivo.
+  Use o valor retornado em todos os campos de data — nunca escreva a data manualmente.
 
   Classifique o bloqueio em uma das duas categorias antes de gerar o arquivo:
   - Lacuna Funcional: o que o sistema deve fazer não está claro na HU.
   - Lacuna Arquitetural: informação ausente que bloqueia uma decisão técnica específica.
 
-  Persista via `save_artifact` diretamente (NÃO encaminhe ao io_agent):
-
-  - filename: Doubt_Artifact_<HU_ID>_<resultado de current_date()>.md
-  - content: o seguinte template preenchido
+  Persista o Doubt_Artifact com filename=doubt_dir/Doubt_Artifact_<HU_ID>_<data atual obtida exclusivamente via tool>.md
+  e o seguinte conteúdo:
 
   # Doubt Artifact — <HU_ID>
 
-  **Data:** <resultado de current_date()>
+  **Data:** <data atual obtida exclusivamente via tool>
   **Agente:** design_architect
   **Status:** Bloqueado
   **Categoria:** <Lacuna Funcional | Lacuna Arquitetural>
@@ -98,12 +97,11 @@ AÇÃO 2 — Persista o Doubt_Artifact diretamente:
   <pergunta direta e específica para o humano resolver o bloqueio>
 
   REGRAS DE NOMENCLATURA DO DOUBT_ARTIFACT:
-  - O nome do arquivo é SEMPRE: Doubt_Artifact_<HU_ID>_<resultado de current_date()>.md
-  - Nunca use datas fixas, nunca escreva a data manualmente.
+  - O nome do arquivo é SEMPRE: Doubt_Artifact_<HU_ID>_<data atual obtida exclusivamente via tool>.md
+  - Nunca use datas fixas, nunca escreva a data manualmente — Obtenha a data atual via ferramenta antes de montar o nome do arquivo.
   - Nunca crie variações do nome (_v1, _v2, _novo, etc).
-  - Se já existir um Doubt_Artifact para a mesma HU em staging, o backup é criado
-    automaticamente pela própria capacidade de persistência — você não precisa
-    gerenciar isso.
+  - Guarde o nome exato do arquivo confirmado pelo mecanismo de persistência — use-o sempre que precisar
+    referenciar este Doubt_Artifact (no PASSO 6 e na SAÍDA ESPERADA).
 
 AÇÃO 3 — Exclua a HU da entrega e avance para a próxima.
 

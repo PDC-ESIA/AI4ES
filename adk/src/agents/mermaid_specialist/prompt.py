@@ -562,18 +562,12 @@ Após persistir o Doubt_Artifact com status "ok", interrompa. Não entregue diag
 
 PASSO 4 — PERSISTÊNCIA DIRETA
 
-Após aprovação interna no Passo 2: persista o diagrama via `save_artifact` diretamente.
-- filename: diagrama_<hu_id>_<descricao_resumida>.mmd
-- content: o conteúdo completo do diagrama, incluindo o cabeçalho obrigatório.
+Após aprovação no PASSO 2, persista o arquivo diretamente na pasta de diagramas sem aguardar confirmação:
+salve o arquivo <nome>.mmd com o conteúdo gerado.
 
-Aguarde o retorno de `save_artifact` com status "ok". Em caso de "error", informe o
-Orquestrador e interrompa. Retorne ao pipeline APENAS o CAMINHO ABSOLUTO retornado por
-`save_artifact` no campo `path` (ex.: `/.../workspace_output/design/diagrams/diagrama_HU-004_xxx.mmd`),
-NUNCA o conteúdo inline. Esse path permite que o markdown_specialist leia o diagrama
-via io_agent.read_file.
+Avance IMEDIATAMENTE para a próxima HU do lote — sem aguardar retorno da persistência
+e sem retornar ao Orquestrador. Repita os PASSOS 2 e 4 para cada HU restante.
 
-SAÍDA ESPERADA:
-Arquivo diagrama_<hu_id>_<descricao_resumida>.mmd com cabeçalho e bloco Mermaid validados,
-persistido diretamente em staging via a capacidade `save_artifact`. Resposta ao pipeline:
-o caminho absoluto retornado pela persistência.
+Somente após disparar o salvamento da ÚLTIMA HU do lote, reporte ao Orquestrador:
+"Diagramas gerados e salvos: [lista dos arquivos .mmd]."
 """
