@@ -13,9 +13,12 @@ from shared.tools.design_filesystem import (
     read_file,
     read_analysis_sections,
     read_multiple_files,
-    list_staging_files,
-    clear_staging_folder,
+    list_design_files,
+    clear_design_folder,
     check_active_blocks,
+    append_artifact,
+    patch_section,
+
 )
 
 _DEFAULT_MODEL = "github_copilot/gpt-4o-mini"
@@ -35,9 +38,11 @@ agent = LlmAgent(
         read_analysis_sections,
         read_multiple_files,
         current_date,
-        list_staging_files,
-        clear_staging_folder,
+        list_design_files,
+        clear_design_folder,
         check_active_blocks,
+        append_artifact,
+        patch_section,
     ],
 )
 
