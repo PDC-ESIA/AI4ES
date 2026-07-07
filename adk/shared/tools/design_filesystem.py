@@ -10,7 +10,7 @@ Logging de operações delegado integralmente ao IOLogger (design_logger.py).
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from .design_logger import IOLogger
 
@@ -197,8 +197,9 @@ def read_file(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
 
     Returns:
-        Sucesso:  {"status": "ok",    "content": "<conteúdo do arquivo>"}
-        Falha:    {"status": "error", "error":   "<motivo>"}
+        dict com chaves: `status` ("ok" | "error"), `content` (str
+        UTF-8 em sucesso), `error` (str descritivo em falha — acesso
+        negado, arquivo inexistente, erro de I/O).
     """
     try:
         resolved_dir, filename, error = _resolve_path_arg(filepath)
@@ -360,9 +361,10 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown") -
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
 
     Returns:
-        Sucesso:  {"status": "ok", "path": "<caminho>",
-                   "versioned_backup": "<backup ou vazio>", "timestamp": "<ISO 8601>"}
-        Falha:    {"status": "error", "error": "<motivo>", "filename": "<nome>"}
+        dict com chaves: `status` ("ok" | "error"), `path` (str do
+        path final em sucesso), `versioned_backup` (str do path do
+        backup criado, se houve; None caso contrário), `timestamp`
+        (ISO 8601). Em erro: `status="error"`, `error`, `filename`.
     """
     try:
         _ensure_dirs()
@@ -428,10 +430,9 @@ def promote_artifact(filename: str, caller: str | None = "unknown") -> Dict[str,
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
 
     Returns:
-        Sucesso:  {"status": "ok",      "source": "<origem>", "destination": "<destino>",
-                   "timestamp": "<ISO 8601>"}
-        Bloqueio: {"status": "blocked", "reason": "<motivo>", "file": "<nome>"}
-        Falha:    {"status": "error",   "error":  "<motivo>"}
+        dict com chaves: `status` ("ok" | "blocked" | "error"),
+        `source`, `destination`, `timestamp` em sucesso; `reason` e
+        `file` em "blocked"; `error` em "error".
     """
     try:
         raw_filename = Path(filename)
@@ -604,8 +605,8 @@ def clear_design_folder(caller: str | None = "unknown") -> bool:
         caller: Nome do agente solicitante (usado apenas para rastreabilidade).
 
     Returns:
-        True  → todos os arquivos foram removidos com sucesso.
-        False → ocorreu um erro durante a limpeza (detalhes no log de operações).
+        bool: True se todos os arquivos foram removidos com sucesso,
+        False em caso de erro (ex: tentativa fora do diretório seguro, falha de I/O). Erros são registrados via IOLogger.
     """
     try:
         _ensure_dirs()

@@ -1,19 +1,5 @@
-"""
-pipeline_agent.py
-─────────────────
-Engine interna do pipeline de design.
-
-Estrutura:
-    SequentialAgent (raiz)
-      ├── pipeline_controller  LlmAgent — limpeza + design_architect + verificação
-      └── parallel_branch      ParallelAgent DIRETO (não AgentTool)
-           ├── prototyping_specialist  autodescobre analise_tecnica via list_design_files
-           └── diagram_flow           SequentialAgent: mermaid → validator → markdown
-"""
-
 import os
 from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
-from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.design_architect.agent import agent as design_architect
@@ -32,11 +18,7 @@ _DEFAULT_MODEL = "github_copilot/gpt-4"
 # NÃO aciona prototyping nem mermaid — isso é do fluxo sequencial principal.
 # ──────────────────────────────────────────────────────────────────────────────
 
-pipeline_controller = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
-    name="pipeline_controller",
-    description="PASSO_OBRIGATORIO_1: Único agente que gera a 'analise_tecnica.md'. O pipeline INTEIRO para aqui até que este arquivo seja confirmado.",
-    instruction="""
+_INSTRUCTION = """
 Você é o controlador de preparação do pipeline de design de software.
 Sua responsabilidade TERMINA quando analise_tecnica estiver confirmada em design_dir E não houver bloqueios ativos.
 Você NÃO aciona protótipos, diagramas nem relatórios.
@@ -151,7 +133,13 @@ Você é o porteiro do pipeline. Enquanto o design_architect trabalha (mesmo que
 NÃO finalize sua execução e não responda ao orquestrador até que você tenha lido o conteúdo do arquivo gerado e confirmado que ele não está vazio.
 Sua resposta final deve ser EXATAMENTE e NADA MAIS:
 "PIPELINE_STAGE_1_COMPLETE: A análise técnica foi gerada com sucesso. O controle de execução pode agora ser transferido para os especialistas."
-""",
+"""
+
+pipeline_controller = LlmAgent(
+    model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
+    name="pipeline_controller",
+    description="PASSO_OBRIGATORIO_1: Único agente que gera a 'analise_tecnica.md'. O pipeline INTEIRO para aqui até que este arquivo seja confirmado.",
+    instruction=_INSTRUCTION,
     tools=[
         AgentTool(agent=io_agent),
         AgentTool(agent=design_architect),
@@ -179,7 +167,7 @@ parallel_branch = ParallelAgent(
 
 agent = SequentialAgent(
     name="design_pipeline",
-    description="PIPELINE_MESTRE: 1. Controller (OBRIGATÓRIO) -> 2. Execução (SÓ APÓS O 1).",
+    description="Pipeline completo de design: transforma HUs em protótipos, diagramas Mermaid e relatórios Markdown validados e persistidos.",
     sub_agents=[
         pipeline_controller,
         parallel_branch,

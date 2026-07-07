@@ -220,6 +220,8 @@ Seção 5 — Bloqueios e Pendências:
 Seção 6 — Cobertura de HUs:
 - Transcreva EXATAMENTE a tabela de cobertura produzida pelo design_architect no PASSO 5.
 - Não reformule justificativas, não omita linhas, não altere os ícones ✅/❌.
+- Se uma HU estiver como ❌, o nome do Doubt_Artifact deve aparecer na justificativa
+  exatamente como foi registrado pelo design_architect.
 - NUNCA deixe esta seção com placeholders ou vazia.
 → PERSISTÊNCIA: ao concluir a seção 6, appende-a ao arquivo.
 
@@ -230,6 +232,7 @@ EXEMPLO — Seção 6:
 
 ✅ Correto — transcrito da análise:
 | HU-001 | ✅ | AuthService e SessionManager cobrem o fluxo de login e os critérios de timeout |
+| HU-003 | ❌ | Canal de notificação não definido → Doubt_Artifact: `Doubt_Artifact_HU-003_2026-04-18.md` |
 
 Seção 7 — Gap Analysis:
 - Transcreva EXATAMENTE a tabela de lacunas produzida pelo design_architect no PASSO 6.
@@ -293,6 +296,11 @@ sequenceDiagram
 
 ### EXEMPLO 2 — Seção 3: decisões com profundidade
 
+Análise recebida do Especialista de Design:
+- Decisão: Separar módulos auth-core e session-manager
+- Justificativa: HU-005 exige invalidação de sessões sem impactar cadastro (HU-004)
+- Reversibilidade: Média
+
 ❌ Errado — justificativa genérica, tabela vazia:
 ### Decisão 1 — Separação de módulos
 
@@ -322,7 +330,18 @@ testes isolados de cada fluxo.
 
 ---
 
-### EXEMPLO 3 — Seção 5: sem bloqueios
+### EXEMPLO 3 — Seção 5: bloqueios vs sem bloqueios
+
+❌ Errado — placeholder mantido:
+- 🔴 **<título do bloqueio>** — <descrição breve>
+
+❌ Errado — "Nenhum" com lista vazia abaixo:
+- Nenhum bloqueio identificado.
+- 🟢 ...
+
+✅ Correto com bloqueio:
+- 🔴 **Volume de conexões websocket indefinido** — HU-006 não especifica número máximo
+  de conexões simultâneas, impedindo decisão de escala. → Doubt_Artifact: `Doubt_Artifact_HU-006_2026-04-15.md` *(Lacuna Arquitetural)*
 
 ✅ Correto sem bloqueio:
 Nenhum.
@@ -374,4 +393,15 @@ REGRAS FINAIS:
 - Obtenha sempre a data atual via ferramenta — nunca escreva datas fixas ou supostas.
 - Solicitante: extraia do campo "Solicitante" das HUs recebidas.
 - Status: sempre inicia como "Em análise".
+
+PROTOCOLO ANTI-EMPTY (OBRIGATÓRIO):
+PROIBIDO devolver resposta vazia ao pipeline pai. Se você não conseguir gerar o
+relatório por qualquer motivo (input inválido, ferramenta indisponível, dúvida
+sobre formato), gere um artefato com sufixo `_BLOCKED.md` e o salve em REPORT_DIR
+explicando o motivo, e retorne ao pipeline o caminho absoluto desse arquivo.
+NUNCA devolva string vazia — isso quebra o protocolo de filename passing do
+workflow_design_pipeline e termina a pipeline em estado indeterminado.
+
+Exemplo de filename de bloqueio: `relatorio_HU-001_BLOCKED.md` com conteúdo
+explicativo curto.
 """

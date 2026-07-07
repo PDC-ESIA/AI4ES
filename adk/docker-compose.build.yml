@@ -1,0 +1,13 @@
+services:
+  adk:
+    build: .
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    volumes:
+      - copilot-tokens:/root/.config/litellm/github_copilot
+    restart: unless-stopped
+
+volumes:
+  copilot-tokens:

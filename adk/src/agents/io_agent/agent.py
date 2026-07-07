@@ -1,9 +1,5 @@
-import os
-from google.adk.agents import LlmAgent
-from google.adk.models.lite_llm import LiteLlm
+from shared.agent_factory import create_se_agent
 from shared.tools.design_date import current_date
-from . import prompt
-
 from shared.tools.design_filesystem import (
     save_artifact,
     check_lock,
@@ -20,11 +16,9 @@ from shared.tools.design_filesystem import (
     patch_section,
 
 )
+from . import prompt
 
-_DEFAULT_MODEL = "github_copilot/gpt-4o-mini"
-
-agent = LlmAgent(
-    model=LiteLlm(os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)),
+agent = create_se_agent(
     name="io_agent",
     description=prompt.description,
     instruction=prompt.instruction,
@@ -44,6 +38,7 @@ agent = LlmAgent(
         append_artifact,
         patch_section,
     ],
+    agent_subdir="io_agent",
 )
 
 root_agent = agent

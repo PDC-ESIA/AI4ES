@@ -5,6 +5,10 @@ adk/artifacts/
 adk/workspace_output/
 workspace_output/
 
+# Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
+adk/workspace_output/
+workspace_output/
+
 # Environment variables
 .env
 .env.*
@@ -39,6 +43,7 @@ MANIFEST
 venv/
 env/
 ENV/
+adk/.venv-docker/
 
 # Google ADK
 .adk/
@@ -233,3 +238,14 @@ ENV/
 
 # Langchain Text Splitters
 .langchain_text
+
+# ide
+.vscode/*
+.src/*
+#  code-assintant
+.claude/
+CLAUDE.md
+docs/superpowers/
+
+.abacusai/
+.abacusai/*

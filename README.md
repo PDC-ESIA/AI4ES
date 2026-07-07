@@ -35,6 +35,18 @@ O projeto investiga, de forma sistemática e aplicada, o uso de IA Generativa (L
 
 ```text
 /
+├── adk/                        # Aplicação de agentes (Google ADK)
+│   ├── app/
+│   │   └── main.py             # Entry point FastAPI + ADK
+│   ├── runners/                # Apps ADK expostos (discovery dir)
+│   │   └── orchestrator/       # Único ponto de entrada
+│   ├── agents/
+│   │   ├── roles/              # Agentes especialistas (coder, reviewer, …)
+│   │   └── workflows/          # Composições (SequentialAgent, …)
+│   ├── shared/
+│   │   └── tools/              # Ferramentas reutilizáveis (git, filesystem)
+│   └── tests/
+│
 ├── docs/
 │   ├── squad1/
 │   │   ├── revisao-sistematica/
