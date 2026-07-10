@@ -6,7 +6,7 @@ de cada task) e Task (Context Window completo para o coder).
 Portado de feat/me2/coding_squad (Time 4).
 """
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -37,9 +37,12 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: Optional[str] = Field(
+    interfaces: Optional[str | dict[str, Any]] = Field(
         default=None,
-        description="Assinatura de interface/contrato que deve ser respeitado",
+        description=(
+            "Assinatura de interface/contrato que deve ser respeitado. "
+            "Aceita texto livre ou objeto estruturado."
+        ),
     )
 
 
