@@ -1,0 +1,494 @@
+{
+  "id": "a2c45943-42f2-4cc9-8829-03779e9d15a3",
+  "appName": "orchestrator",
+  "userId": "user",
+  "state": {
+    "__session_metadata__": {
+      "displayName": "ola"
+    },
+    "requirements": "PASSO 1: ELICITAÇÃO  \nNão há informações sobre sistema, produto, funcionalidade ou qualquer contexto técnico específico enviado pelo usuário neste input. Trata-se apenas de uma saudação (\"ola\") e de blocos de contexto de fases anteriores do pipeline que são puramente informativos e não configuram demanda de análise.\n\nPASSO 2: ANÁLISE CRÍTICA  \nNão há informações suficientes para iniciar a elicitação, estruturação ou análise de requisitos. Não foram apresentados usuários, processos, intenções ou escopo para extração técnica.\n\nPASSO 3: CLASSIFICAÇÃO  \nNada a ser classificado — não há conteúdo de requisito, user stories, regras ou termos de domínio a serem extraídos.\n\nPASSO 4: ESPECIFICAÇÃO  \nImpossível redigir qualquer requisito ou artefato técnico relevante sem um contexto mínimo sobre o projeto, produto ou objetivo a ser atendido.\n\nPASSO 5: GLOSSÁRIO  \nNenhum termo técnico a ser definido — contexto ausente.\n\nPASSO 6: VALIDAÇÃO  \nRequisitos não podem ser produzidos — contexto inexistente.\n\n---\n\nPara que eu possa emitir requisitos, regras ou quaisquer artefatos técnicos, preciso de uma breve descrição do sistema, produto, processo ou desafio a ser analisado. Por favor, envie seu pedido de desenvolvimento, problema ou documento de referência com o máximo de clareza possível. Meu objetivo é transformar entradas informais em requisitos claros, atômicos e verificáveis.\n\n```json\n{\n  \"user_stories\": [],\n  \"functional_requirements\": [],\n  \"non_functional_requirements\": [],\n  \"business_rules\": [],\n  \"glossary_terms\": [],\n  \"doubt_artifacts\": []\n}\n```",
+    "implementation": "Nenhum arquivo criado. \n\nMotivo: Não há requisitos, descrição de sistema, nem demanda funcional a ser implementada. Apenas saudação e contexto de fases anteriores foram enviados, sem qualquer especificação técnica ou funcional. \n\nAssim que receber uma descrição do sistema ou funcionalidade desejada, prosseguirei com a implementação conforme as diretrizes estabelecidas.",
+    "review_analysis": "## Status: BLOQUEADO\n\n## Issues\n\n- **Critical** — (Workspace/global): Nenhum arquivo foi criado porque não há requisitos, descrição de sistema, ou qualquer demanda funcional a ser atendida. Não existe material de análise; o workspace está vazio.\n\n## Resumo\n\nA análise do workspace indica ausência total de arquivos ou artefatos a serem revisados. Isso se deve à falta de input técnico do usuário nas etapas anteriores — não foi fornecida nenhuma especificação, requisito, user story ou descrição funcional para orientar o desenvolvimento. Consequentemente, não há como avaliar completude, arquitetura, corretude ou testes. O status do pacote está BLOQUEADO até que requisitos mínimos sejam apresentados.",
+    "review": "O relatório de revisão foi salvo com sucesso como \"verificacao_revisao.md\", conforme a análise. O status permanece BLOQUEADO até o recebimento de requisitos ou descrição do sistema para análise ativa.",
+    "accumulated_outputs": [
+      [
+        "requirements_pipeline",
+        "Olá! Bem-vindo ao pipeline de Engenharia de Requisitos. \n\nPor favor, envie uma descrição do sistema, produto ou funcionalidade que você deseja desenvolver, ou ainda um documento de requisitos (PRD, briefing, etc.), para que eu possa analisar e estruturar todos os requisitos necessários.\n\nComo posso ajudá-lo hoje?"
+      ],
+      [
+        "design_pipeline",
+        "Olá! Você está prestes a iniciar a fase de Design/Arquitetura do seu sistema.\n\nPor favor, envie o lote de Histórias de Usuário (HUs), requisitos detalhados ou uma descrição estruturada das funcionalidades que deseja transformar em diagramação técnica (ex: diagramas Mermaid) e relatório de arquitetura (Markdown).\n\nAssim que receber as Histórias de Usuário ou uma especificação funcional, iniciarei a análise arquitetural e o processamento de artefatos de design conforme o pipeline.\n\nComo deseja prosseguir? Se já tiver suas HUs ou requisitos, basta colar aqui!"
+      ],
+      [
+        "coding_review_pipeline",
+        "O relatório de revisão foi salvo com sucesso como \"verificacao_revisao.md\", conforme a análise. O status permanece BLOQUEADO até o recebimento de requisitos ou descrição do sistema para análise ativa."
+      ],
+      [
+        "qa_pipeline",
+        "Pipeline de QA bloqueado: nenhum requisito, História de Usuário (HU) ou código foi fornecido.\nImpossível iniciar o planejamento de testes ou gerar qualquer suíte automatizada sem ao menos um artefato de requisito, especificação ou código do sistema a ser testado.\n\nO que você precisa fazer:\n- Envie uma descrição do sistema, produto, funcionalidade, HU ou documento de requisitos (pode ser um briefing simples).\n- Se desejar, anexe também o código-fonte já existente, caso queira que o QA atue sobre ele.\n\nSem esse contexto mínimo, todo o pipeline permanece parado, aguardando sua orientação.\n\nResumo técnico:\n- Nenhum teste gerado\n- Nenhuma execução realizada\n- Nenhuma validação possível\n- Dúvida formal registrada em: \n  workspace_output/tests/inputs/doubt_artifacts/Doubt_Artifact_bloqueio_inicial_sem_contexto_20260526T222335.md\n\nPor favor, envie os insumos do seu sistema para que possamos prosseguir!"
+      ]
+    ]
+  },
+  "events": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "ola"
+          }
+        ],
+        "role": "user"
+      },
+      "invocationId": "e-f28342cd-1267-4e77-b42a-ba0da51bb4a3",
+      "author": "user",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "56a403e3-bac8-4e77-a3d2-cef4769f4579",
+      "timestamp": 1779834188.8607755
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "text": "Olá! Bem-vindo ao pipeline de Engenharia de Requisitos. \n\nPor favor, envie uma descrição do sistema, produto ou funcionalidade que você deseja desenvolver, ou ainda um documento de requisitos (PRD, briefing, etc.), para que eu possa analisar e estruturar todos os requisitos necessários.\n\nComo posso ajudá-lo hoje?"
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 0,
+        "candidatesTokenCount": 67,
+        "promptTokenCount": 552,
+        "totalTokenCount": 619
+      },
+      "invocationId": "e-cea35e38-994e-4e5d-8d0f-15721475d122",
+      "author": "requirements_pipeline",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "c3c74e99-ba5d-42d7-bb03-d31d98112b4a",
+      "timestamp": 1779834188.8918738
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "text": "Olá! Você está prestes a iniciar a fase de Design/Arquitetura do seu sistema.\n\nPor favor, envie o lote de Histórias de Usuário (HUs), requisitos detalhados ou uma descrição estruturada das funcionalidades que deseja transformar em diagramação técnica (ex: diagramas Mermaid) e relatório de arquitetura (Markdown).\n\nAssim que receber as Histórias de Usuário ou uma especificação funcional, iniciarei a análise arquitetural e o processamento de artefatos de design conforme o pipeline.\n\nComo deseja prosseguir? Se já tiver suas HUs ou requisitos, basta colar aqui!"
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 1408,
+        "candidatesTokenCount": 122,
+        "promptTokenCount": 1498,
+        "totalTokenCount": 1620
+      },
+      "invocationId": "e-5a50e58c-a046-4c22-81b8-3fd37febe108",
+      "author": "design_pipeline",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "8e879271-5ca9-480d-914d-7231e3433ff6",
+      "timestamp": 1779834191.2597833
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "text": "PASSO 1: ELICITAÇÃO  \nNão há informações sobre sistema, produto, funcionalidade ou qualquer contexto técnico específico enviado pelo usuário neste input. Trata-se apenas de uma saudação (\"ola\") e de blocos de contexto de fases anteriores do pipeline que são puramente informativos e não configuram demanda de análise.\n\nPASSO 2: ANÁLISE CRÍTICA  \nNão há informações suficientes para iniciar a elicitação, estruturação ou análise de requisitos. Não foram apresentados usuários, processos, intenções ou escopo para extração técnica.\n\nPASSO 3: CLASSIFICAÇÃO  \nNada a ser classificado — não há conteúdo de requisito, user stories, regras ou termos de domínio a serem extraídos.\n\nPASSO 4: ESPECIFICAÇÃO  \nImpossível redigir qualquer requisito ou artefato técnico relevante sem um contexto mínimo sobre o projeto, produto ou objetivo a ser atendido.\n\nPASSO 5: GLOSSÁRIO  \nNenhum termo técnico a ser definido — contexto ausente.\n\nPASSO 6: VALIDAÇÃO  \nRequisitos não podem ser produzidos — contexto inexistente.\n\n---\n\nPara que eu possa emitir requisitos, regras ou quaisquer artefatos técnicos, preciso de uma breve descrição do sistema, produto, processo ou desafio a ser analisado. Por favor, envie seu pedido de desenvolvimento, problema ou documento de referência com o máximo de clareza possível. Meu objetivo é transformar entradas informais em requisitos claros, atômicos e verificáveis.\n\n```json\n{\n  \"user_stories\": [],\n  \"functional_requirements\": [],\n  \"non_functional_requirements\": [],\n  \"business_rules\": [],\n  \"glossary_terms\": [],\n  \"doubt_artifacts\": []\n}\n```"
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 0,
+        "candidatesTokenCount": 357,
+        "promptTokenCount": 3806,
+        "totalTokenCount": 4163
+      },
+      "invocationId": "e-8b20b55c-6453-487c-afda-2fdddce91b5b",
+      "author": "cr_requirements_agent",
+      "actions": {
+        "stateDelta": {
+          "requirements": "PASSO 1: ELICITAÇÃO  \nNão há informações sobre sistema, produto, funcionalidade ou qualquer contexto técnico específico enviado pelo usuário neste input. Trata-se apenas de uma saudação (\"ola\") e de blocos de contexto de fases anteriores do pipeline que são puramente informativos e não configuram demanda de análise.\n\nPASSO 2: ANÁLISE CRÍTICA  \nNão há informações suficientes para iniciar a elicitação, estruturação ou análise de requisitos. Não foram apresentados usuários, processos, intenções ou escopo para extração técnica.\n\nPASSO 3: CLASSIFICAÇÃO  \nNada a ser classificado — não há conteúdo de requisito, user stories, regras ou termos de domínio a serem extraídos.\n\nPASSO 4: ESPECIFICAÇÃO  \nImpossível redigir qualquer requisito ou artefato técnico relevante sem um contexto mínimo sobre o projeto, produto ou objetivo a ser atendido.\n\nPASSO 5: GLOSSÁRIO  \nNenhum termo técnico a ser definido — contexto ausente.\n\nPASSO 6: VALIDAÇÃO  \nRequisitos não podem ser produzidos — contexto inexistente.\n\n---\n\nPara que eu possa emitir requisitos, regras ou quaisquer artefatos técnicos, preciso de uma breve descrição do sistema, produto, processo ou desafio a ser analisado. Por favor, envie seu pedido de desenvolvimento, problema ou documento de referência com o máximo de clareza possível. Meu objetivo é transformar entradas informais em requisitos claros, atômicos e verificáveis.\n\n```json\n{\n  \"user_stories\": [],\n  \"functional_requirements\": [],\n  \"non_functional_requirements\": [],\n  \"business_rules\": [],\n  \"glossary_terms\": [],\n  \"doubt_artifacts\": []\n}\n```"
+        },
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "5cc59978-7494-41ed-8f6b-1648666b8cfd",
+      "timestamp": 1779834193.5027807
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "text": "Nenhum arquivo criado. \n\nMotivo: Não há requisitos, descrição de sistema, nem demanda funcional a ser implementada. Apenas saudação e contexto de fases anteriores foram enviados, sem qualquer especificação técnica ou funcional. \n\nAssim que receber uma descrição do sistema ou funcionalidade desejada, prosseguirei com a implementação conforme as diretrizes estabelecidas."
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 1664,
+        "candidatesTokenCount": 74,
+        "promptTokenCount": 2309,
+        "totalTokenCount": 2383
+      },
+      "invocationId": "e-8b20b55c-6453-487c-afda-2fdddce91b5b",
+      "author": "cr_coder_agent",
+      "actions": {
+        "stateDelta": {
+          "implementation": "Nenhum arquivo criado. \n\nMotivo: Não há requisitos, descrição de sistema, nem demanda funcional a ser implementada. Apenas saudação e contexto de fases anteriores foram enviados, sem qualquer especificação técnica ou funcional. \n\nAssim que receber uma descrição do sistema ou funcionalidade desejada, prosseguirei com a implementação conforme as diretrizes estabelecidas."
+        },
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "b1bd86f0-f6c6-45d8-9162-a78744d19c9c",
+      "timestamp": 1779834198.1175141
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "text": "## Status: BLOQUEADO\n\n## Issues\n\n- **Critical** — (Workspace/global): Nenhum arquivo foi criado porque não há requisitos, descrição de sistema, ou qualquer demanda funcional a ser atendida. Não existe material de análise; o workspace está vazio.\n\n## Resumo\n\nA análise do workspace indica ausência total de arquivos ou artefatos a serem revisados. Isso se deve à falta de input técnico do usuário nas etapas anteriores — não foi fornecida nenhuma especificação, requisito, user story ou descrição funcional para orientar o desenvolvimento. Consequentemente, não há como avaliar completude, arquitetura, corretude ou testes. O status do pacote está BLOQUEADO até que requisitos mínimos sejam apresentados."
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 0,
+        "candidatesTokenCount": 144,
+        "promptTokenCount": 1323,
+        "totalTokenCount": 1467
+      },
+      "invocationId": "e-8b20b55c-6453-487c-afda-2fdddce91b5b",
+      "author": "cr_review_analyzer",
+      "actions": {
+        "stateDelta": {
+          "review_analysis": "## Status: BLOQUEADO\n\n## Issues\n\n- **Critical** — (Workspace/global): Nenhum arquivo foi criado porque não há requisitos, descrição de sistema, ou qualquer demanda funcional a ser atendida. Não existe material de análise; o workspace está vazio.\n\n## Resumo\n\nA análise do workspace indica ausência total de arquivos ou artefatos a serem revisados. Isso se deve à falta de input técnico do usuário nas etapas anteriores — não foi fornecida nenhuma especificação, requisito, user story ou descrição funcional para orientar o desenvolvimento. Consequentemente, não há como avaliar completude, arquitetura, corretude ou testes. O status do pacote está BLOQUEADO até que requisitos mínimos sejam apresentados."
+        },
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "fee872ee-5f19-482a-8915-eed4dfc3b2b4",
+      "timestamp": 1779834200.090656
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "functionCall": {
+              "id": "call_tLl1OTa3sIdojOu6V28TbETf",
+              "args": {
+                "conteudo": "## Status: BLOQUEADO\n\n## Issues\n\n- **Critical** — (Workspace/global): Nenhum arquivo foi criado porque não há requisitos, descrição de sistema, ou qualquer demanda funcional a ser atendida. Não existe material de análise; o workspace está vazio.\n\n## Resumo\n\nA análise do workspace indica ausência total de arquivos ou artefatos a serem revisados. Isso se deve à falta de input técnico do usuário nas etapas anteriores — não foi fornecida nenhuma especificação, requisito, user story ou descrição funcional para orientar o desenvolvimento. Consequentemente, não há como avaliar completude, arquitetura, corretude ou testes. O status do pacote está BLOQUEADO até que requisitos mínimos sejam apresentados.",
+                "nome_arquivo": "verificacao_revisao.md"
+              },
+              "name": "tool_salvar_relatorio"
+            }
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 0,
+        "candidatesTokenCount": 175,
+        "promptTokenCount": 1463,
+        "totalTokenCount": 1638
+      },
+      "invocationId": "e-8b20b55c-6453-487c-afda-2fdddce91b5b",
+      "author": "cr_review_persister",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "longRunningToolIds": [],
+      "id": "d3a8e7ac-f16d-4c06-96d3-f56254f012b1",
+      "timestamp": 1779834203.4286077
+    },
+    {
+      "content": {
+        "parts": [
+          {
+            "functionResponse": {
+              "id": "call_tLl1OTa3sIdojOu6V28TbETf",
+              "name": "tool_salvar_relatorio",
+              "response": {
+                "sucesso": true,
+                "caminho": "C:\\Users\\Filipe\\Documents\\GitHub\\AI4ES\\adk\\workspace_output\\review\\verificacao_revisao.md",
+                "bytes_escritos": 729,
+                "erro": null
+              }
+            }
+          }
+        ],
+        "role": "user"
+      },
+      "invocationId": "e-8b20b55c-6453-487c-afda-2fdddce91b5b",
+      "author": "cr_review_persister",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "9026c843-00d5-4e2f-b71c-be2589ce525e",
+      "timestamp": 1779834205.5088098
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "text": "O relatório de revisão foi salvo com sucesso como \"verificacao_revisao.md\", conforme a análise. O status permanece BLOQUEADO até o recebimento de requisitos ou descrição do sistema para análise ativa."
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 0,
+        "candidatesTokenCount": 43,
+        "promptTokenCount": 1706,
+        "totalTokenCount": 1749
+      },
+      "invocationId": "e-8b20b55c-6453-487c-afda-2fdddce91b5b",
+      "author": "cr_review_persister",
+      "actions": {
+        "stateDelta": {
+          "review": "O relatório de revisão foi salvo com sucesso como \"verificacao_revisao.md\", conforme a análise. O status permanece BLOQUEADO até o recebimento de requisitos ou descrição do sistema para análise ativa."
+        },
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "0b76807f-e9fc-4c9f-9c1e-3db5c7ffdf22",
+      "timestamp": 1779834205.5445065
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "functionCall": {
+              "id": "call_uUD5NeJZnv6FFhxrj9fhyHqf",
+              "args": {
+                "request": "O usuário iniciou contato, mas ainda não enviou artefatos de requisito nem código. Contexto: outputs anteriores de requirements_pipeline, design_pipeline e coding_review_pipeline mostram status de espera por requisitos/HUs. Nenhum requisito, HU ou código foi fornecido ainda."
+              },
+              "name": "invocar_planejamento_qa"
+            }
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 1664,
+        "candidatesTokenCount": 72,
+        "promptTokenCount": 2032,
+        "totalTokenCount": 2104
+      },
+      "invocationId": "e-0f7a0090-8283-417c-af15-ede551179e69",
+      "author": "qa_pipeline",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "longRunningToolIds": [],
+      "id": "69c48e64-ecef-4e12-af66-56ad0a1cf2c6",
+      "timestamp": 1779834207.0874798
+    },
+    {
+      "content": {
+        "parts": [
+          {
+            "functionResponse": {
+              "id": "call_uUD5NeJZnv6FFhxrj9fhyHqf",
+              "name": "invocar_planejamento_qa",
+              "response": {
+                "result": "{\n  \"tipo_entrada\": \"indefinido\",\n  \"modo\": \"indefinido\",\n  \"tools\": [],\n  \"casos_de_teste_propostos\": [],\n  \"lifecycle\": {\n    \"status\": \"bloqueado\",\n    \"execution_allowed\": false,\n    \"next_step\": \"aguardar_resolucao_humana\"\n  },\n  \"erro\": \"Nenhum requisito, HU ou código fornecido. O planejamento de QA está bloqueado aguardando artefatos ou contexto operacional mínimo.\"\n}"
+              }
+            }
+          }
+        ],
+        "role": "user"
+      },
+      "invocationId": "e-0f7a0090-8283-417c-af15-ede551179e69",
+      "author": "qa_pipeline",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "7e24ec3c-4128-4351-901d-baa5a2ad51a7",
+      "timestamp": 1779834213.1726558
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "functionCall": {
+              "id": "call_xBxMY0lLRvRueUysIvXVjpW4",
+              "args": {
+                "caminho_base": "qa_pipeline/doubt_artifacts",
+                "id_artefato": "bloqueio_inicial_sem_contexto",
+                "motivo": "Pipeline de QA bloqueado: nenhum requisito, HU ou código foi fornecido. Impossível propor plano de QA sem contexto mínimo dos artefatos do sistema sob teste.",
+                "trecho_suspeito": "Fase inicial — sem qualquer insumo detalhado do sistema, requisitos, HUs ou código.",
+                "trigger_type": "context_missing"
+              },
+              "name": "generate"
+            }
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 2048,
+        "candidatesTokenCount": 108,
+        "promptTokenCount": 2245,
+        "totalTokenCount": 2353
+      },
+      "invocationId": "e-0f7a0090-8283-417c-af15-ede551179e69",
+      "author": "qa_pipeline",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "longRunningToolIds": [],
+      "id": "636e44f8-4c36-4c4e-805a-f6cfa043aaac",
+      "timestamp": 1779834213.2154148
+    },
+    {
+      "content": {
+        "parts": [
+          {
+            "functionResponse": {
+              "id": "call_xBxMY0lLRvRueUysIvXVjpW4",
+              "name": "generate",
+              "response": {
+                "result": "SUCESSO: Artefato salvo em C:\\Users\\Filipe\\Documents\\GitHub\\AI4ES\\adk\\workspace_output\\tests\\inputs\\doubt_artifacts\\Doubt_Artifact_bloqueio_inicial_sem_contexto_20260526T222335.md. INSTRUÇÃO DO SISTEMA: Pare o pipeline AGORA. Comunique a dúvida ao usuário no chat e peça instruções sobre como resolver os requisitos antes de continuar."
+              }
+            }
+          }
+        ],
+        "role": "user"
+      },
+      "invocationId": "e-0f7a0090-8283-417c-af15-ede551179e69",
+      "author": "qa_pipeline",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "bbae2419-65a2-4c6e-90e2-0509f486b1d8",
+      "timestamp": 1779834215.9940226
+    },
+    {
+      "modelVersion": "github_copilot/gpt-4.1-2025-04-14",
+      "content": {
+        "parts": [
+          {
+            "text": "Pipeline de QA bloqueado: nenhum requisito, História de Usuário (HU) ou código foi fornecido.\nImpossível iniciar o planejamento de testes ou gerar qualquer suíte automatizada sem ao menos um artefato de requisito, especificação ou código do sistema a ser testado.\n\nO que você precisa fazer:\n- Envie uma descrição do sistema, produto, funcionalidade, HU ou documento de requisitos (pode ser um briefing simples).\n- Se desejar, anexe também o código-fonte já existente, caso queira que o QA atue sobre ele.\n\nSem esse contexto mínimo, todo o pipeline permanece parado, aguardando sua orientação.\n\nResumo técnico:\n- Nenhum teste gerado\n- Nenhuma execução realizada\n- Nenhuma validação possível\n- Dúvida formal registrada em: \n  workspace_output/tests/inputs/doubt_artifacts/Doubt_Artifact_bloqueio_inicial_sem_contexto_20260526T222335.md\n\nPor favor, envie os insumos do seu sistema para que possamos prosseguir!"
+          }
+        ],
+        "role": "model"
+      },
+      "partial": false,
+      "finishReason": "STOP",
+      "usageMetadata": {
+        "cachedContentTokenCount": 2304,
+        "candidatesTokenCount": 212,
+        "promptTokenCount": 2461,
+        "totalTokenCount": 2673
+      },
+      "invocationId": "e-0f7a0090-8283-417c-af15-ede551179e69",
+      "author": "qa_pipeline",
+      "actions": {
+        "stateDelta": {},
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "fc1d0c74-828c-45ba-92e1-0ad9e2535b49",
+      "timestamp": 1779834216.0663264
+    },
+    {
+      "invocationId": "orchestrator-state",
+      "author": "orchestrator",
+      "actions": {
+        "stateDelta": {
+          "accumulated_outputs": [
+            [
+              "requirements_pipeline",
+              "Olá! Bem-vindo ao pipeline de Engenharia de Requisitos. \n\nPor favor, envie uma descrição do sistema, produto ou funcionalidade que você deseja desenvolver, ou ainda um documento de requisitos (PRD, briefing, etc.), para que eu possa analisar e estruturar todos os requisitos necessários.\n\nComo posso ajudá-lo hoje?"
+            ],
+            [
+              "design_pipeline",
+              "Olá! Você está prestes a iniciar a fase de Design/Arquitetura do seu sistema.\n\nPor favor, envie o lote de Histórias de Usuário (HUs), requisitos detalhados ou uma descrição estruturada das funcionalidades que deseja transformar em diagramação técnica (ex: diagramas Mermaid) e relatório de arquitetura (Markdown).\n\nAssim que receber as Histórias de Usuário ou uma especificação funcional, iniciarei a análise arquitetural e o processamento de artefatos de design conforme o pipeline.\n\nComo deseja prosseguir? Se já tiver suas HUs ou requisitos, basta colar aqui!"
+            ],
+            [
+              "coding_review_pipeline",
+              "O relatório de revisão foi salvo com sucesso como \"verificacao_revisao.md\", conforme a análise. O status permanece BLOQUEADO até o recebimento de requisitos ou descrição do sistema para análise ativa."
+            ],
+            [
+              "qa_pipeline",
+              "Pipeline de QA bloqueado: nenhum requisito, História de Usuário (HU) ou código foi fornecido.\nImpossível iniciar o planejamento de testes ou gerar qualquer suíte automatizada sem ao menos um artefato de requisito, especificação ou código do sistema a ser testado.\n\nO que você precisa fazer:\n- Envie uma descrição do sistema, produto, funcionalidade, HU ou documento de requisitos (pode ser um briefing simples).\n- Se desejar, anexe também o código-fonte já existente, caso queira que o QA atue sobre ele.\n\nSem esse contexto mínimo, todo o pipeline permanece parado, aguardando sua orientação.\n\nResumo técnico:\n- Nenhum teste gerado\n- Nenhuma execução realizada\n- Nenhuma validação possível\n- Dúvida formal registrada em: \n  workspace_output/tests/inputs/doubt_artifacts/Doubt_Artifact_bloqueio_inicial_sem_contexto_20260526T222335.md\n\nPor favor, envie os insumos do seu sistema para que possamos prosseguir!"
+            ]
+          ],
+          "paused_pipeline": null,
+          "paused_inner_session_id": null,
+          "paused_function_call": null
+        },
+        "artifactDelta": {},
+        "requestedAuthConfigs": {},
+        "requestedToolConfirmations": {}
+      },
+      "id": "6dd22c14-4bab-4664-95a3-774cb5e5ca61",
+      "timestamp": 1779834222.3871315
+    }
+  ],
+  "lastUpdateTime": 1779834222.3871315
+}

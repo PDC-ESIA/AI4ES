@@ -1,0 +1,161 @@
+{
+    "sistema": "Sistema de Cardápio Online",
+    "requisitos_funcionais": [
+        {
+            "id": "RF01",
+            "descricao": "O sistema deve permitir que o estabelecimento cadastre itens no cardápio, informando nome, descrição e preço."
+        },
+        {
+            "id": "RF02",
+            "descricao": "O sistema deve permitir que o estabelecimento edite os dados de um item cadastrado."
+        },
+        {
+            "id": "RF03",
+            "descricao": "O sistema deve permitir que o estabelecimento remova um item do cardápio."
+        },
+        {
+            "id": "RF04",
+            "descricao": "O sistema deve permitir que o estabelecimento crie, edite e remova categorias para organizar os itens do cardápio."
+        },
+        {
+            "id": "RF05",
+            "descricao": "O sistema deve permitir que o estabelecimento associe um item a uma categoria."
+        },
+        {
+            "id": "RF06",
+            "descricao": "O sistema deve permitir que o estabelecimento marque um item como indisponível, sem removê-lo do cardápio."
+        },
+        {
+            "id": "RF07",
+            "descricao": "O sistema deve permitir que o estabelecimento reative um item previamente marcado como indisponível."
+        },
+        {
+            "id": "RF08",
+            "descricao": "O sistema deve exibir o cardápio ao cliente via navegador web, sem exigir cadastro ou autenticação."
+        },
+        {
+            "id": "RF09",
+            "descricao": "O sistema deve exibir os itens agrupados por categoria na visão do cliente."
+        },
+        {
+            "id": "RF10",
+            "descricao": "O sistema deve indicar visualmente, na visão do cliente, os itens marcados como indisponíveis."
+        },
+        {
+            "id": "RF11",
+            "descricao": "O sistema deve exibir nome, descrição e preço de cada item na visão do cliente."
+        }
+    ],
+    "requisitos_nao_funcionais": [
+        {
+            "id": "RNF01",
+            "categoria": "Usabilidade",
+            "descricao": "A interface do cliente deve ser responsiva e funcionar adequadamente em dispositivos móveis e desktops."
+        },
+        {
+            "id": "RNF02",
+            "categoria": "Desempenho",
+            "descricao": "O cardápio deve ser carregado em até 3 segundos em conexões de banda larga padrão."
+        },
+        {
+            "id": "RNF03",
+            "categoria": "Segurança",
+            "descricao": "O acesso à área administrativa do estabelecimento deve ser protegido por autenticação (usuário e senha)."
+        },
+        {
+            "id": "RNF04",
+            "categoria": "Disponibilidade",
+            "descricao": "O sistema deve estar disponível ao cliente 99% do tempo em regime 24/7."
+        },
+        {
+            "id": "RNF05",
+            "categoria": "Manutenibilidade",
+            "descricao": "O sistema deve ser desenvolvido de forma modular, facilitando a adição de novas funcionalidades."
+        },
+        {
+            "id": "RNF06",
+            "categoria": "Compatibilidade",
+            "descricao": "O cardápio deve ser acessível nos principais navegadores modernos (Chrome, Firefox, Safari, Edge)."
+        },
+        {
+            "id": "RNF07",
+            "categoria": "Acessibilidade",
+            "descricao": "A interface do cliente deve seguir as diretrizes básicas de acessibilidade web (WCAG 2.1 nível A)."
+        }
+    ],
+    "historias_de_usuario": [
+        {
+            "id": "HU01",
+            "titulo": "Cadastrar item no cardápio",
+            "historia": "Como estabelecimento, quero cadastrar um novo item com nome, descrição e preço, para que ele apareça no cardápio visto pelos clientes.",
+            "criterios_de_aceite": [
+                "Todos os campos obrigatórios (nome e preço) devem ser validados antes de salvar.",
+                "O item deve ser exibido imediatamente no cardápio após o cadastro."
+            ]
+        },
+        {
+            "id": "HU02",
+            "titulo": "Organizar itens por categoria",
+            "historia": "Como estabelecimento, quero criar categorias e associar itens a elas, para que o cardápio fique organizado e mais fácil de navegar.",
+            "criterios_de_aceite": [
+                "Deve ser possível criar e nomear uma categoria livremente.",
+                "Um item pode pertencer a apenas uma categoria.",
+                "A ordem das categorias no cardápio deve ser controlável pelo estabelecimento."
+            ]
+        },
+        {
+            "id": "HU03",
+            "titulo": "Editar item do cardápio",
+            "historia": "Como estabelecimento, quero editar as informações de um item já cadastrado, para corrigir erros ou atualizar preços e descrições.",
+            "criterios_de_aceite": [
+                "As alterações devem ser refletidas imediatamente no cardápio público.",
+                "Todos os campos editáveis do cadastro devem ser modificáveis."
+            ]
+        },
+        {
+            "id": "HU04",
+            "titulo": "Marcar item como indisponível",
+            "historia": "Como estabelecimento, quero marcar um item como indisponível temporariamente, para informar ao cliente sem precisar removê-lo do cardápio.",
+            "criterios_de_aceite": [
+                "O item deve continuar visível no cardápio com indicação clara de indisponibilidade.",
+                "Deve ser possível desfazer a indisponibilidade a qualquer momento."
+            ]
+        },
+        {
+            "id": "HU05",
+            "titulo": "Remover item do cardápio",
+            "historia": "Como estabelecimento, quero remover um item do cardápio, para que ele não apareça mais para os clientes.",
+            "criterios_de_aceite": [
+                "O sistema deve solicitar confirmação antes de excluir o item.",
+                "Após a exclusão, o item não deve mais aparecer no cardápio público."
+            ]
+        },
+        {
+            "id": "HU06",
+            "titulo": "Visualizar o cardápio sem cadastro",
+            "historia": "Como cliente, quero acessar o cardápio pelo navegador sem precisar me cadastrar ou fazer login, para ver as opções disponíveis de forma rápida e sem fricção.",
+            "criterios_de_aceite": [
+                "O cardápio deve ser acessível por URL direta, sem qualquer barreira de autenticação.",
+                "A página deve carregar corretamente em dispositivos móveis."
+            ]
+        },
+        {
+            "id": "HU07",
+            "titulo": "Navegar pelo cardápio por categorias",
+            "historia": "Como cliente, quero ver os itens organizados por categoria, para encontrar mais facilmente o que estou procurando.",
+            "criterios_de_aceite": [
+                "As categorias devem estar visíveis e identificadas no cardápio.",
+                "Os itens devem ser listados dentro de suas respectivas categorias."
+            ]
+        },
+        {
+            "id": "HU08",
+            "titulo": "Identificar itens indisponíveis",
+            "historia": "Como cliente, quero saber quais itens estão indisponíveis, para não me frustrar ao tentar pedi-los.",
+            "criterios_de_aceite": [
+                "Itens indisponíveis devem ter indicação visual clara e distinta (ex.: label, opacidade reduzida).",
+                "A informação de indisponibilidade deve ser exibida sem remover o item da lista."
+            ]
+        }
+    ]
+}
