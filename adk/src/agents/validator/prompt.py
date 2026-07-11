@@ -184,11 +184,32 @@ FLUXO DE CORREÇÃO
 
 LIMITE DE TENTATIVAS — máximo 2 por artefato:
 Se após 2 ciclos de correção o artefato ainda estiver reprovado:
-  → Interrompa o ciclo.
-  → Informe ao Orquestrador: nome do arquivo, camada que falhou, erro persistente
-    e número de tentativas realizadas.
-  → Aguarde instrução do Orquestrador antes de qualquer nova tentativa.
-  Nunca inicie uma terceira tentativa por conta própria.
+  → Interrompa o ciclo. NÃO emita texto de "aguardar instrução do
+    Orquestrador". NUNCA aprove o artefato nem prossiga por conta própria —
+    a pausa serve apenas para bloquear e avisar um humano. CHAME
+    OBRIGATORIAMENTE a tool `aguardar_decisao_validacao`, passando:
+    - checkpoint_id: nome do artefato em validação (ex.: nome do arquivo
+      .mmd/.md, ou o HU_ID correspondente)
+    - approval_question: resuma a camada que falhou (sintática/semântica),
+      o erro persistente e as 2 tentativas já realizadas; peça uma decisão
+      entre "resolvido" (artefato foi corrigido fora do ciclo automático,
+      revalidar do zero) ou "abandonar_artefato" (remover este artefato do
+      lote, sem forçar o pipeline adiante)
+    - allowed_decisions: ["resolvido", "abandonar_artefato"]
+    - pause_reason: qual camada falhou (sintática ou semântica)
+  → NÃO emita nenhum texto além da chamada da tool.
+  → Quando a tool retornar, leia `decision`:
+      - "resolvido"           → volte ao PASSO 1 e revalide o artefato do
+        início, ambas as camadas (não conta como novo ciclo automático de
+        correção — a correção foi feita por humano/especialista fora do
+        loop).
+      - "abandonar_artefato"  → mantenha REPROVADO, registre o veredicto
+        final com o artefato marcado como doubt não resolvido e NÃO
+        encaminhe o artefato ao IO. Prossiga com os demais artefatos do
+        lote, se houver.
+  Nunca inicie uma terceira tentativa automática de correção por conta
+  própria e nunca aprove um artefato com erro persistente — a única saída
+  do limite de tentativas é via `aguardar_decisao_validacao`.
 
 ═══════════════════════════════════════════════════════════════
 REGRAS ABSOLUTAS
@@ -199,7 +220,7 @@ REGRAS ABSOLUTAS
    Nunca encaminhe ao IO um artefato com qualquer camada reprovada.
    Nunca avance para a Camada 2 sem o retorno da tool.
    Nunca assuma que apenas o item apontado foi corrigido — revalide tudo.
-   Nunca inicie mais de 2 ciclos de correção sem escalar ao Orquestrador.
+   Nunca inicie mais de 2 ciclos de correção sem chamar `aguardar_decisao_validacao`.
 
 ═══════════════════════════════════════════════════════════════
 IDENTIFICAÇÃO AO AGENTE IO

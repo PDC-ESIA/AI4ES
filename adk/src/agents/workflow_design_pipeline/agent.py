@@ -1,5 +1,6 @@
 import os
 from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
+from google.adk.tools import LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.design_architect.agent import agent as design_architect
@@ -8,6 +9,7 @@ from src.agents.markdown_specialist.agent import agent as markdown_specialist
 from src.agents.prototyping_specialist.agent import agent as prototyping_specialist
 from src.agents.validator.agent import agent as validator
 from src.agents.io_agent.agent import agent as io_agent
+from shared.tools.design_hitl_tool import aguardar_resolucao_doubt
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
 
@@ -87,22 +89,24 @@ SE não houver bloqueios (has_blocks: false):
 → Avance diretamente para ETAPA 4.
 
 SE houver bloqueios (has_blocks: true):
-1. NÃO encerre. NÃO emita PIPELINE_STAGE_1_COMPLETE. NÃO avance para os especialistas.
-2. Informe o orquestrador com EXATAMENTE este formato:
-   "PIPELINE_BLOCKED: O lote está suspenso aguardando resolução humana.
-   Bloqueios ativos:
-   - <HU_ID>: <nome_do_doubt_artifact>
-   [repita para cada bloqueio]
-   O pipeline só continuará após todos os Doubt_Artifacts serem resolvidos.
-   Instrução ao solicitante: edite cada Doubt_Artifact alterando o status de 'Bloqueado' para 'Resolvido' e solicite a retomada."
+1. NÃO encerre com texto de bloqueio. NÃO emita PIPELINE_STAGE_1_COMPLETE.
+   NÃO avance para os especialistas. CHAME OBRIGATORIAMENTE a tool
+   `aguardar_resolucao_doubt`, passando:
+   - checkpoint_id: hu_ids bloqueados, unidos por vírgula
+   - approval_question: cite cada bloco (filename + hu_id) e peça para
+     resolver (Status: Bloqueado → Resolvido) e responder "retomar" ou
+     "cancelar"
+   - allowed_decisions: ["retomar", "cancelar"]
+   - pause_reason: motivo do bloqueio
+2. NÃO emita nenhum texto além da chamada da tool.
+3. Quando a tool retornar, leia `decision`:
+   - "cancelar" → encerre com "PIPELINE_ERROR: lote cancelado pelo solicitante."
+   - "retomar"  → chame check_active_blocks novamente via Agente IO.
+       - Se ainda houver bloqueios: chame `aguardar_resolucao_doubt`
+         de novo com os bloqueios remanescentes (pausa encadeada — já
+         suportada pelo orchestrator).
+       - Se não houver mais bloqueios: avance para ETAPA 4.
 
-3. Entre em loop de espera:
-   a. Aguarde mensagem de retomada do orquestrador.
-   b. Ao receber retomada: acione o Agente IO para verificar bloqueios novamente.
-   c. SE ainda houver bloqueios: informe quais permanecem e volte ao passo (a).
-   d. SE não houver mais bloqueios: avance para ETAPA 4.
-
-⚠️ NUNCA saia do loop de espera por iniciativa própria.
 ⚠️ NUNCA emita PIPELINE_STAGE_1_COMPLETE enquanto has_blocks for true.
 ⚠️ O lote é indivisível — todas as HUs avançam juntas ou nenhuma avança.
 
@@ -143,6 +147,7 @@ pipeline_controller = LlmAgent(
     tools=[
         AgentTool(agent=io_agent),
         AgentTool(agent=design_architect),
+        LongRunningFunctionTool(aguardar_resolucao_doubt),
     ],
 )
 
