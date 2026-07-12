@@ -4,8 +4,23 @@ Escopo: design_architect, mermaid_specialist, markdown_specialist, io_agent.
 Validator é stateless (recebe content inline, sem filesystem tools) —
 binding ao workspace não se aplica a ele.
 
-Verificação: as tools de filesystem dos especialistas devem ter base_dir
-injetado via closure (invisível ao LLM) apontando para o subdir correto.
+⚠️ ATUALIZADO — ver DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md:
+Este teste antes exigia que `save_artifact` tivesse `base_dir` bound por
+agente (via closure, apontando para um subdir tipo "design/diagrams" ou
+"design/staging"). Essa era exatamente a causa raiz de um incidente real:
+`design_filesystem.py` trata `base_dir` como a RAIZ de uma árvore completa
+de subpastas oficiais (analysis/, diagrams/, prototypes/, reports/,
+doubts/, entrega_final/) — uma raiz COMPARTILHADA entre todos os agentes do
+Time 2, nunca uma subpasta isolada por agente. Fazer bind de
+"design/diagrams" como se fosse a raiz do mermaid_specialist recriava essa
+árvore inteira um nível abaixo do correto (design/diagrams/diagrams/,
+design/diagrams/analysis/ etc.).
+
+O comportamento correto — verificado abaixo — é o oposto do que este teste
+verificava antes: nenhum especialista de Time 2 deve ter `save_artifact`
+bound a um base_dir isolado. Todos devem compartilhar a mesma raiz "design",
+resolvida internamente por `shared/tools/design_filesystem.py`
+independentemente de qualquer workspace por agente.
 """
 from pathlib import Path
 
@@ -14,59 +29,57 @@ import pytest
 # validator é stateless (recebe content inline, sem filesystem tools) —
 # binding ao workspace não se aplica.
 ESPECIALISTAS = [
-    ("design_architect", "design"),
-    ("mermaid_specialist", "design/diagrams"),
-    ("markdown_specialist", "design/reports"),
-    ("io_agent", "design/staging"),
+    "design_architect",
+    "mermaid_specialist",
+    "markdown_specialist",
+    "io_agent",
 ]
 
 
-@pytest.mark.parametrize("nome,subdir_esperado", ESPECIALISTAS)
-def test_especialista_binda_tools_ao_subdir(nome, subdir_esperado, monkeypatch, tmp_path):
-    """Tools de filesystem dos especialistas devem ter base_dir bound (closure).
+@pytest.mark.parametrize("nome", ESPECIALISTAS)
+def test_especialista_nao_tem_save_artifact_isolado_por_agente(nome, monkeypatch, tmp_path):
+    """save_artifact dos especialistas de Time 2 NUNCA deve ter base_dir
+    isolado por agente — todos compartilham a mesma raiz "design".
 
-    Verifica chamando a tool e confirmando que o arquivo é escrito
-    no subdir esperado do workspace.
+    Verifica chamando a tool (com a raiz de design isolada via monkeypatch
+    direto no módulo, para não tocar no workspace_output real) e confirmando
+    que o arquivo cai na pasta oficial de primeiro nível esperada pela
+    extensão/alias — nunca em uma subpasta extra nomeada com o subdir do
+    próprio agente.
     """
-    ws_dir = tmp_path / "ws"
-    # Cria marker para init_workspace aceitar
-    ws_dir.mkdir()
-    (ws_dir / ".ai4se_workspace").write_text("marker")
-    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(ws_dir))
+    from shared.tools import design_filesystem as df
+
+    design_root = tmp_path / "design"
+    monkeypatch.setattr(df, "DESIGN_DIR", design_root)
+    monkeypatch.setattr(df, "ADK_DIR", tmp_path)
+    # Isola também o workspace legado (usado só por outros times) para não
+    # tocar no workspace_output real do projeto durante o teste.
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws_legado_nao_usado_por_design"))
 
     import importlib
     modulo = importlib.import_module(f"src.agents.{nome}.agent")
     importlib.reload(modulo)
 
     agente = modulo.agent
-    expected_base = (ws_dir / subdir_esperado).resolve()
 
-    # Encontrar uma tool que aceite 'caminho' e 'conteudo' (filesystem)
-    encontrou_binding = False
+    save_tool = None
     for t in agente.tools:
-        func = getattr(t, "func", None)
-        if func is None:
-            continue
-        fn_name = getattr(func, "__name__", "")
-        if fn_name == "tool_criar_arquivo":
-            # Chamar a tool e verificar onde escreve
-            result = func("_binding_test.py", "# test")
-            if isinstance(result, dict) and result.get("sucesso"):
-                caminho_escrito = Path(result["caminho"]).resolve()
-                assert caminho_escrito == (expected_base / "_binding_test.py").resolve(), (
-                    f"Esperava escrita em {expected_base}/_binding_test.py, "
-                    f"mas foi em {caminho_escrito}"
-                )
-                encontrou_binding = True
-                # Limpar
-                caminho_escrito.unlink(missing_ok=True)
-            break
-        elif fn_name == "save_artifact":
-            # Design tools usam save_artifact em vez de tool_criar_arquivo
-            encontrou_binding = True
+        func = getattr(t, "func", None) or (t if callable(t) else None)
+        if func is not None and getattr(func, "__name__", "") == "save_artifact":
+            save_tool = func
             break
 
-    assert encontrou_binding, (
-        f"{nome} não tem nenhuma tool de filesystem com base_dir bound. "
-        f"Esperava pelo menos uma para subdir {subdir_esperado!r}."
+    assert save_tool is not None, f"{nome} deveria ter save_artifact entre suas tools."
+
+    result = save_tool(filename="_binding_test.md", content="# test")
+    assert result["status"] == "ok"
+
+    caminho_escrito = Path(result["path"]).resolve()
+    # Sem alias e sem extensão .html/.mmd, o destino correto é a raiz
+    # compartilhada design/analysis/ — nunca uma subpasta com o nome do
+    # próprio agente (ex.: design/diagrams/, design/staging/, design/reports/).
+    esperado = (design_root / "analysis" / "_binding_test.md").resolve()
+    assert caminho_escrito == esperado, (
+        f"{nome}: esperava escrita em {esperado}, mas foi em {caminho_escrito} — "
+        f"indica que save_artifact voltou a ter base_dir isolado por agente."
     )

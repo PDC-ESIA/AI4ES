@@ -185,6 +185,40 @@ def _split_folder_and_name(raw: str) -> "tuple[str, str]":
     return prefix, rest.strip("/")
 
 
+def _strip_redundant_alias_segments(filename: str, dirs: Dict[str, Path]) -> str:
+    """
+    Remove segmentos de pasta redundantes do INÍCIO de `filename` que já
+    correspondem a um alias de pasta conhecido — ex.: "diagrams/x.mmd" → "x.mmd",
+    "diagrams/diagrams/x.mmd" → "x.mmd", "DIAGRAMS/diagrams/x.mmd" → "x.mmd".
+
+    Por quê: existem hoje duas camadas que podem decidir prefixar o nome do
+    arquivo com o alias da pasta de destino — o agente que descreve o pedido
+    em linguagem natural (ex.: "salve na pasta de diagramas") e o Agente IO,
+    que por convenção própria monta literalmente "DIAGRAMS/<nome>" antes de
+    chamar esta ferramenta. Se as duas camadas prefixarem o mesmo nome, o
+    resultado sem esta função seria salvar em <pasta>/<pasta>/<nome> — um
+    arquivo fisicamente válido, mas invisível para qualquer listagem que só
+    enxerga o primeiro nível da pasta oficial (foi exatamente o que aconteceu
+    com os diagramas .mmd de uma run real, salvos em
+    design/diagrams/diagrams/ em vez de design/diagrams/ — o
+    markdown_specialist e o validator reportaram DIAGRAMS/ vazia e bloquearam
+    o pipeline achando que os diagramas nunca tinham sido gerados).
+
+    Esta função torna a resolução de caminho IDEMPOTENTE em relação a esse
+    prefixo: não importa quantas vezes um alias de pasta apareça no início do
+    nome, o destino final é sempre o mesmo único nível dentro da pasta.
+    """
+    aliases = set(_folder_aliases(dirs).keys())
+    current = filename
+    while True:
+        token, rest = _split_folder_and_name(current)
+        if token and rest and token.lower().strip() in aliases:
+            current = rest
+            continue
+        break
+    return current
+
+
 def _resolve_path_arg(raw: str, dirs: Dict[str, Path]) -> "tuple[Path | None, str, str | None]":
     """
     Ponto único de resolução para qualquer argumento de caminho vindo do agente.
@@ -194,16 +228,24 @@ def _resolve_path_arg(raw: str, dirs: Dict[str, Path]) -> "tuple[Path | None, st
         "ANALYSIS/relatorio.md"     → dirs["analysis"],  "relatorio.md",  sem erro
         "PROTOTYPE/login.html"      → dirs["prototype"], "login.html",    sem erro
         "spec/algo.md"              → None,               "algo.md",      mensagem de erro
+        "DIAGRAMS/diagrams/x.mmd"   → dirs["diagrams"],   "x.mmd",         sem erro
+                                       (prefixo duplicado é removido — ver
+                                       _strip_redundant_alias_segments)
 
     Retorna:
         (resolved_dir, clean_filename, error_msg)
 
         resolved_dir   — Path do diretório ou None (sem alias explícito).
-        clean_filename — nome do arquivo sem prefixo de pasta.
+        clean_filename — nome do arquivo sem prefixo de pasta (nunca contém
+                          outro alias de pasta embutido — duplicatas já
+                          foram removidas).
         error_msg      — None se ok; string se o prefixo não foi reconhecido.
     """
     folder_token, filename = _split_folder_and_name(raw)
     resolved_dir, error = _resolve_folder_alias(folder_token, dirs)
+    if error:
+        return resolved_dir, filename, error
+    filename = _strip_redundant_alias_segments(filename, dirs)
     return resolved_dir, filename, error
 
 
@@ -333,6 +375,94 @@ def read_analysis_sections(filepath: str, sections: list[int], caller: str | Non
 
     except Exception as e:
         IOLogger.error("read_analysis_sections", str(e), caller=caller)
+        return {"status": "error", "error": str(e)}
+
+
+def validate_analysis_sections(filename: str, caller: str | None = "unknown", base_dir: str | None = None) -> Dict[str, Any]:
+    """
+    Verifica DETERMINISTICAMENTE se um arquivo analise_tecnica_*.md contém as
+    8 seções obrigatórias (1 a 8), cada uma separada por "<<<FIM_SECAO>>>" e
+    com conteúdo além do título.
+
+    Diferente de pedir a um agente para "ler o arquivo e conferir" — o que
+    depende da interpretação do LLM e pode ser satisfeito por uma leitura
+    superficial ou por um relato equivocado de conclusão — esta função aplica
+    a MESMA lógica estrutural que read_analysis_sections() usa para separar
+    seções, e reporta objetivamente quais números estão ausentes ou vazios.
+
+    Use isto como o "portão" (gate) de conclusão do design_architect (fim do
+    PASSO 8, antes do PASSO 9) e como a verificação de ETAPA 2 do
+    pipeline_controller — em vez de confiar apenas na mensagem de confirmação
+    do design_architect ou em uma leitura manual do conteúdo.
+
+    Args:
+        filename: Nome do arquivo, com ou sem alias de pasta.
+                  Exemplo: "analise_tecnica_HU-001_HU-002.md"
+        caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
+        base_dir: Raiz de workspace isolado (injetada via closure por
+                  agent_factory quando aplicável). Sem base_dir, usa a
+                  raiz compartilhada do projeto.
+
+    Returns:
+        Sucesso: {"status": "ok", "complete": bool,
+                  "found_sections": [1, 2, ...],
+                  "missing_sections": [<números ausentes>],
+                  "empty_sections": [<números presentes mas sem conteúdo>],
+                  "section_delimiter_count": <int>}
+        Falha:   {"status": "error", "error": "<motivo>"}
+    """
+    import re
+
+    _REQUIRED_SECTIONS = list(range(1, 9))
+
+    try:
+        dirs = _resolve_dirs(base_dir)
+        root = _safety_root(base_dir)
+
+        resolved_dir, fname, error = _resolve_path_arg(filename, dirs)
+        if error:
+            return {"status": "error", "error": error}
+
+        if resolved_dir is not None:
+            path = (resolved_dir / fname).resolve()
+            if not _is_safe_path(path, root):
+                return {"status": "error", "error": "Acesso negado: caminho fora do projeto."}
+        else:
+            path = _find_existing_file(fname, dirs, root)
+
+        if path is None or not path.exists():
+            return {"status": "error", "error": f"Arquivo '{fname}' não encontrado."}
+
+        content = path.read_text(encoding="utf-8")
+        parts = [p.strip() for p in content.split("<<<FIM_SECAO>>>") if p.strip()]
+
+        found: Dict[int, str] = {}
+        for part in parts:
+            first_line = part.split("\n")[0].strip()
+            match = re.match(r'^(\d+)\.', first_line)
+            if not match:
+                continue
+            number = int(match.group(1))
+            if number in _REQUIRED_SECTIONS and number not in found:
+                body = part[len(first_line):].strip()
+                found[number] = body
+
+        missing = [n for n in _REQUIRED_SECTIONS if n not in found]
+        empty = [n for n in _REQUIRED_SECTIONS if n in found and not found[n]]
+
+        IOLogger.read(path.name + " [validate_analysis_sections]", caller=caller)
+
+        return {
+            "status": "ok",
+            "complete": not missing and not empty,
+            "found_sections": sorted(found.keys()),
+            "missing_sections": missing,
+            "empty_sections": empty,
+            "section_delimiter_count": content.count("<<<FIM_SECAO>>>"),
+        }
+
+    except Exception as e:
+        IOLogger.error("validate_analysis_sections", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
 
 

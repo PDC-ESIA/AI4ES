@@ -3,7 +3,13 @@ from google.genai import types
 
 from shared.agent_factory import create_se_agent
 from shared.tools.design_date import current_date
-from shared.tools.design_filesystem import save_artifact, append_architect_section, patch_section, list_design_files
+from shared.tools.design_filesystem import (
+    save_artifact,
+    append_architect_section,
+    patch_section,
+    list_design_files,
+    validate_analysis_sections,
+)
 from src.agents.io_agent.agent import agent as io_agent
 from . import prompt
 
@@ -18,6 +24,7 @@ agent = create_se_agent(
         append_architect_section, 
         patch_section, 
         list_design_files,
+        validate_analysis_sections,
     ],
     agent_subdir="design_architect",
     generate_content_config=types.GenerateContentConfig(
