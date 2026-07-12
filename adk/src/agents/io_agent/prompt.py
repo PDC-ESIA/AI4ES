@@ -84,7 +84,7 @@ LER (integral / por seções / múltiplos arquivos):
   cima de um nome que já pareça conter outro, sob risco de o arquivo ser salvo numa
   subpasta que nenhuma listagem de primeiro nível enxerga (foi exatamente o que causou o
   incidente com os diagramas .mmd salvos em design/diagrams/diagrams/ em vez de
-  design/diagrams/, documentado em DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md).
+  design/diagrams/.
 
 LISTAR:
 - Use para retornar os nomes exatos dos arquivos disponíveis nas pastas de trabalho.

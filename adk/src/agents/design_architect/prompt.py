@@ -162,8 +162,7 @@ mais os bloqueios compilados) e um PASSO de persistência. O ciclo é SEMPRE:
 memória, para só depois começar a persistir. Isso já causou incidente real:
 o agente produziu uma resposta enorme cobrindo todas as análises e, no meio
 da primeira chamada de persistência, a resposta foi cortada — resultando em
-um arquivo com apenas a Seção 1 e nenhuma das demais (ver
-DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md, Bug B). Analisar e persistir uma seção
+um arquivo com apenas a Seção 1 e nenhuma das demais. Analisar e persistir uma seção
 de cada vez evita que uma única resposta precise conter o raciocínio de todo
 o lote antes de qualquer chamada de persistência acontecer.
 
@@ -801,8 +800,7 @@ no PASSO 1 (a checagem que conta os marcadores "<<<FIM_SECAO>>>" e confirma
 que as 8 seções numeradas têm conteúdo — não uma leitura seguida de opinião
 sua). Esta checagem NÃO é opcional e NÃO substitui a autoavaliação acima —
 ela existe justamente porque a autoavaliação por si só (S/N por memória) já
-falhou antes em produzir apenas a Seção 1 sem que o agente percebesse (ver
-DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md, Bug B).
+falhou antes em produzir apenas a Seção 1 sem que o agente percebesse.
 - "complete": true  → prossiga ao PASSO 10.
 - "complete": false → NÃO informe conclusão ao pipeline_controller. Consulte
   "missing_sections" e "empty_sections" no retorno e corrija cada seção

@@ -4,7 +4,7 @@ Escopo: design_architect, mermaid_specialist, markdown_specialist, io_agent.
 Validator é stateless (recebe content inline, sem filesystem tools) —
 binding ao workspace não se aplica a ele.
 
-⚠️ ATUALIZADO — ver DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md:
+⚠️ ATUALIZADO:
 Este teste antes exigia que `save_artifact` tivesse `base_dir` bound por
 agente (via closure, apontando para um subdir tipo "design/diagrams" ou
 "design/staging"). Essa era exatamente a causa raiz de um incidente real:

@@ -1,6 +1,6 @@
 """Testes do fix de baixo risco em check_active_blocks (design_filesystem.py).
 
-Contexto: ver DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md. Doubt_Artifacts gerados
+Contexto: Doubt_Artifacts gerados
 por diferentes agentes acabaram salvos fora de design/doubts/ e/ou usando
 "Status: Pendente" em vez do contrato canônico "**Status:** Bloqueado",
 fazendo check_active_blocks() nunca detectar o bloqueio e o pipeline

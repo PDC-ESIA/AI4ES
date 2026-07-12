@@ -1,6 +1,6 @@
 """Testes de validate_analysis_sections (design_filesystem.py).
 
-Contexto: ver DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md, seção 4 (Bug B). Uma run
+Contexto: Uma run
 real produziu um arquivo analise_tecnica_*.md contendo apenas a Seção 1, sem
 o delimitador "<<<FIM_SECAO>>>" e sem as seções 2-8 — e o design_architect
 reportou conclusão mesmo assim, porque a única checagem existente era uma

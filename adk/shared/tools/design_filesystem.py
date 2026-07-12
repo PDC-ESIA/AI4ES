@@ -68,12 +68,6 @@ def _resolve_dirs(base_dir: str | None = None) -> Dict[str, Path]:
         "doubt": root / "doubts",
         "official": root / "entrega_final",
         "template": TEMPLATE_DIR,
-        # NOTA (fix de baixo risco — ver DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md):
-        # "validation" foi observado em uso por código fora deste módulo
-        # (ex.: shared/tools/design_validate/) sem nunca ter sido declarado
-        # aqui. Adicionado só para permitir que check_active_blocks() também
-        # enxergue Doubt_Artifacts salvos ali por engano — não é (ainda) um
-        # destino oficial de save_artifact/_folder_aliases.
         "validation": root / "validation",
     }
 
