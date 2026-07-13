@@ -50,6 +50,24 @@ def test_schemas_task_com_contract():
     assert task.contract.outputs == ["src/auth.py"]
 
 
+def test_schemas_contract_interfaces_aceita_lista_e_string():
+    from src.agents.context_engineer.schemas import Contract
+
+    as_list = Contract.model_validate({
+        "inputs": [],
+        "outputs": [],
+        "interfaces": ["GET /users", "DELETE /users/<id>"],
+    })
+    assert as_list.interfaces == ["GET /users", "DELETE /users/<id>"]
+
+    as_string = Contract.model_validate({
+        "inputs": [],
+        "outputs": [],
+        "interfaces": "POST /auth/login",
+    })
+    assert as_string.interfaces == ["POST /auth/login"]
+
+
 def test_schemas_tasks_output_completo():
     from src.agents.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
     output = TasksOutput(
