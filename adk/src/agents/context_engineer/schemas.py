@@ -6,7 +6,7 @@ de cada task) e Task (Context Window completo para o coder).
 Portado de feat/me2/coding_squad (Time 4).
 """
 
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -37,19 +37,13 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: list[str] = Field(
-        default_factory=list,
-        description="Assinaturas de interface/contrato que devem ser respeitadas",
+    interfaces: Optional[str | dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "Assinatura de interface/contrato que deve ser respeitado. "
+            "Aceita texto livre ou objeto estruturado."
+        ),
     )
-
-    @field_validator("interfaces", mode="before")
-    @classmethod
-    def _coerce_interfaces(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, str):
-            return [value] if value.strip() else []
-        return value
 
 
 class Task(BaseModel):
