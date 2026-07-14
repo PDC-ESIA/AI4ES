@@ -62,6 +62,22 @@ def test_schemas_contract_interfaces_objeto_aceito():
     )
     assert isinstance(contract.interfaces, dict)
     assert "create_ensaio" in contract.interfaces
+def test_schemas_contract_interfaces_aceita_lista_e_string():
+    from src.agents.context_engineer.schemas import Contract
+
+    as_list = Contract.model_validate({
+        "inputs": [],
+        "outputs": [],
+        "interfaces": ["GET /users", "DELETE /users/<id>"],
+    })
+    assert as_list.interfaces == ["GET /users", "DELETE /users/<id>"]
+
+    as_string = Contract.model_validate({
+        "inputs": [],
+        "outputs": [],
+        "interfaces": "POST /auth/login",
+    })
+    assert as_string.interfaces == ["POST /auth/login"]
 
 
 def test_schemas_tasks_output_completo():

@@ -8,7 +8,7 @@ Portado de feat/me2/coding_squad (Time 4).
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MacroContext(BaseModel):
@@ -37,12 +37,9 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: Optional[str | dict[str, Any]] = Field(
+    interfaces: Optional[str] = Field(
         default=None,
-        description=(
-            "Assinatura de interface/contrato que deve ser respeitado. "
-            "Aceita texto livre ou objeto estruturado."
-        ),
+        description="Assinatura de interface/contrato que deve ser respeitado",
     )
 
 
