@@ -37,13 +37,21 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: Optional[str | dict[str, Any]] = Field(
+    interfaces: Optional[list[str | dict[str, Any]]] = Field(
         default=None,
         description=(
             "Assinatura de interface/contrato que deve ser respeitado. "
-            "Aceita texto livre ou objeto estruturado."
+            "Aceita lista de assinaturas em texto e/ou objetos estruturados."
         ),
     )
+
+    @field_validator("interfaces", mode="before")
+    @classmethod
+    def normalize_interfaces(cls, value: Any) -> Any:
+        """Normaliza entrada única (string/objeto) para lista."""
+        if isinstance(value, (str, dict)):
+            return [value]
+        return value
 
 
 class Task(BaseModel):

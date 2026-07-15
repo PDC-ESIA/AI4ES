@@ -8,6 +8,7 @@ import pytest
 from src.agents.workflow_qa.tools.planner_wrapper import (
     _is_empty,
     _FALLBACK_BLOCKED_JSON,
+    _normalize_structured_json,
 )
 
 
@@ -86,9 +87,34 @@ async def test_invoke_once_exception_retorna_marker_de_erro():
         result = await planner_wrapper._invoke_once("request body")
 
     assert result.startswith("ERROR:")
-    # Documenta que 'ERROR: ...' tem mais de 8 chars úteis, então não é
-    # considerado empty pelo _is_empty — quem decide o retry é invocar_planejamento_qa
-    assert planner_wrapper._is_empty(result) is False
+
+
+def test_normalize_structured_json_rejeita_texto_nao_json():
+    assert _normalize_structured_json("ERROR: TimeoutError: boom") is None
+    assert _normalize_structured_json("resposta livre") is None
+
+
+def test_normalize_structured_json_rejeita_json_sem_lifecycle_status():
+    assert _normalize_structured_json('{"foo": "bar"}') is None
+    assert _normalize_structured_json('{"lifecycle": {}}') is None
+
+
+def test_normalize_structured_json_aceita_json_valido():
+    text = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
+    normalized = _normalize_structured_json(text)
+    assert normalized is not None
+    parsed = json.loads(normalized)
+    assert parsed["lifecycle"]["status"] == "ok"
+
+
+def test_normalize_structured_json_aceita_json_em_code_fence():
+    fenced = """```json
+{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}
+```"""
+    normalized = _normalize_structured_json(fenced)
+    assert normalized is not None
+    parsed = json.loads(normalized)
+    assert parsed["lifecycle"]["status"] == "ok"
 
 
 @pytest.mark.asyncio
@@ -101,7 +127,7 @@ async def test_invocar_retorna_first_quando_valido():
     with patch.object(planner_wrapper, "_invoke_once", AsyncMock(return_value=valid_json)) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
 
-    assert result == valid_json
+    assert json.loads(result) == json.loads(valid_json)
     assert mock_invoke.await_count == 1
 
 
@@ -118,7 +144,41 @@ async def test_invocar_tenta_segunda_quando_first_empty():
     ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
 
-    assert result == valid_json
+    assert json.loads(result) == json.loads(valid_json)
+    assert mock_invoke.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_invocar_tenta_segunda_quando_first_timeout_error():
+    """Primeira call com erro do runner deve acionar segunda tentativa."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
+
+    with patch.object(
+        planner_wrapper, "_invoke_once",
+        AsyncMock(side_effect=["ERROR: TimeoutError: boom", valid_json]),
+    ) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert json.loads(result) == json.loads(valid_json)
+    assert mock_invoke.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_invocar_tenta_segunda_quando_first_invalido_nao_vazio():
+    """Payload não-vazio porém inválido deve ser tratado como falha recuperável."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
+
+    with patch.object(
+        planner_wrapper, "_invoke_once",
+        AsyncMock(side_effect=["resposta livre inválida", valid_json]),
+    ) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert json.loads(result) == json.loads(valid_json)
     assert mock_invoke.await_count == 2
 
 
@@ -130,6 +190,23 @@ async def test_invocar_fallback_quando_ambas_empty():
     with patch.object(
         planner_wrapper, "_invoke_once",
         AsyncMock(side_effect=["", "   "]),
+    ) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert result == planner_wrapper._FALLBACK_BLOCKED_JSON
+    assert mock_invoke.await_count == 2
+    parsed = json.loads(result)
+    assert parsed["lifecycle"]["status"] == "bloqueado"
+
+
+@pytest.mark.asyncio
+async def test_invocar_fallback_quando_duas_falhas_timeout():
+    """Timeout/erro nas duas tentativas deve devolver JSON de bloqueio."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    with patch.object(
+        planner_wrapper, "_invoke_once",
+        AsyncMock(side_effect=["ERROR: TimeoutError: one", "ERROR: TimeoutError: two"]),
     ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
 

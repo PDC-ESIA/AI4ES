@@ -21,15 +21,13 @@ from src.agents.workflow_qa.tools.planner_wrapper import invocar_planejamento_qa
 _DEFAULT_MODEL = "gemini-2.5-flash"
 
 
-def _emit_qa_manifest(callback_context) -> "EventActions":
+def _emit_qa_manifest(callback_context):
     """Callback executado ao final do workflow_qa.
 
     Varre o workspace de testes e emite o Manifesto de Fase `qa` no
     session.state. O conteúdo dos artefatos permanece nos arquivos;
     só os metadados trafegam no state.
     """
-    from google.adk.events.event_actions import EventActions
-
     from shared.manifest import ArtifactItem, PhaseManifest, PhaseStatus
     from shared.workspace import get_workspace_root
 
@@ -78,8 +76,9 @@ def _emit_qa_manifest(callback_context) -> "EventActions":
     state = callback_context.state
     manifests = list(state.get("phase_manifests", []) or [])
     manifests.append(manifest.model_dump())
+    state["phase_manifests"] = manifests
 
-    return EventActions(state_delta={"phase_manifests": manifests})
+    return None
 
 _INSTRUCTION = """
 Você é o pipeline de QA / Testes do Time 3.

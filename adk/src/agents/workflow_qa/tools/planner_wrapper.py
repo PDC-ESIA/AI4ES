@@ -6,6 +6,7 @@ runner isolado, faz retry programático em caso de empty, e garante que o
 caller (qa_pipeline) sempre receba JSON estruturado.
 """
 
+import json
 from typing import Optional
 
 from google.adk.runners import Runner
@@ -49,6 +50,42 @@ def _is_empty(text: Optional[str]) -> bool:
     return len(stripped) < _EMPTY_THRESHOLD
 
 
+def _normalize_structured_json(text: Optional[str]) -> Optional[str]:
+    """Retorna JSON canônico quando `text` é um payload estruturado válido.
+
+    Contrato mínimo para o planner: objeto JSON com campo `lifecycle` objeto
+    contendo `status` em string.
+    """
+    if _is_empty(text):
+        return None
+
+    raw = (text or "").strip()
+
+    # Remove cercas comuns de markdown para tentar parse robusto.
+    if raw.startswith("```") and raw.endswith("```"):
+        lines = raw.splitlines()
+        if len(lines) >= 3:
+            raw = "\n".join(lines[1:-1]).strip()
+
+    try:
+        payload = json.loads(raw)
+    except Exception:
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    lifecycle = payload.get("lifecycle")
+    if not isinstance(lifecycle, dict):
+        return None
+
+    status = lifecycle.get("status")
+    if not isinstance(status, str) or not status.strip():
+        return None
+
+    return json.dumps(payload, ensure_ascii=False)
+
+
 async def _invoke_once(request: str, user_id: str = "qa-pipeline") -> str:
     """Roda action_planner uma vez em runner isolado, retorna last_text.
 
@@ -87,7 +124,7 @@ async def _invoke_once(request: str, user_id: str = "qa-pipeline") -> str:
 async def invocar_planejamento_qa(request: str) -> str:
     """Invoca action_planner com retry programático.
 
-    Garantia: sempre devolve string não-vazia com JSON estruturado.
+    Garantia: sempre devolve JSON estruturado.
     Caller (qa_pipeline) pode parsear sem se preocupar com empty.
 
     Args:
@@ -98,11 +135,13 @@ async def invocar_planejamento_qa(request: str) -> str:
         action_planner falhar duas vezes seguidas.
     """
     first = await _invoke_once(request)
-    if not _is_empty(first):
-        return first
+    first_json = _normalize_structured_json(first)
+    if first_json is not None:
+        return first_json
 
     second = await _invoke_once(request + _RETRY_PROMPT_SUFFIX)
-    if not _is_empty(second):
-        return second
+    second_json = _normalize_structured_json(second)
+    if second_json is not None:
+        return second_json
 
     return _FALLBACK_BLOCKED_JSON
