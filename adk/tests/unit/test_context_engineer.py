@@ -62,6 +62,8 @@ def test_schemas_contract_interfaces_objeto_aceito():
     )
     assert isinstance(contract.interfaces, dict)
     assert "create_ensaio" in contract.interfaces
+
+
 def test_schemas_contract_interfaces_aceita_lista_e_string():
     from src.agents.context_engineer.schemas import Contract
 
