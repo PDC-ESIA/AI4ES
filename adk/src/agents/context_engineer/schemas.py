@@ -6,7 +6,7 @@ de cada task) e Task (Context Window completo para o coder).
 Portado de feat/me2/coding_squad (Time 4).
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
