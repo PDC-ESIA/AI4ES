@@ -10,7 +10,6 @@ dependencies = [
     { name = "asyncpg" },
     { name = "boto3" },
     { name = "docker" },
-    { name = "docker" },
     { name = "fastapi" },
     { name = "fastembed" },
     { name = "google-adk" },
