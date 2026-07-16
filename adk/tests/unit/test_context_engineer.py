@@ -60,8 +60,8 @@ def test_schemas_contract_interfaces_objeto_aceito():
             }
         }
     )
-    assert isinstance(contract.interfaces, dict)
-    assert "create_ensaio" in contract.interfaces
+    assert isinstance(contract.interfaces, list)
+    assert any("create_ensaio" in item for item in contract.interfaces)
 
 
 def test_schemas_contract_interfaces_aceita_lista_e_string():
