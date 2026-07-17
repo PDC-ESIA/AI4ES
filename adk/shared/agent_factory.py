@@ -33,7 +33,6 @@ devolvendo o controle ao usuário.
 """
 
 # Tools que aceitam base_dir (filesystem — escopo do agente)
-# ⚠️ Time 2 (Design) NÃO está aqui de propósito. Por favor comunique com o time para a adição delas aqui.
 _FILESYSTEM_TOOL_NAMES = {
     "tool_criar_arquivo",
     "tool_ler_arquivo",
@@ -42,6 +41,18 @@ _FILESYSTEM_TOOL_NAMES = {
     "tool_salvar_artefato_requisito",
     "gerar_doubt_artifact",
     "tool_ask_clarification",
+    # Time 2 (Design) — shared/tools/design_filesystem.py
+    "save_artifact",
+    "append_artifact",
+    "append_architect_section",
+    "patch_section",
+    "promote_artifact",
+    "clear_design_folder",
+    "list_design_files",
+    "check_active_blocks",
+    "read_file",
+    "read_analysis_sections",
+    "read_multiple_files",
 }
 
 # Tools de workspace read (aceitam base_dir como workspace_root)

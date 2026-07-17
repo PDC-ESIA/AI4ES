@@ -1,28 +1,37 @@
 """Regressão: subpastas de design nunca devem se aninhar dentro de si mesmas.
 
-Contexto: uma run real gerou `workspace_output/design/diagrams/diagrams/`,
+Contexto histórico: uma run real gerou `workspace_output/design/diagrams/diagrams/`,
 `design/diagrams/{analysis,doubts,entrega_final,prototypes,reports}` e
 `design/staging/{analysis,diagrams,doubts,entrega_final,prototypes,reports}`
 — uma árvore inteira de subpastas oficiais recriada um nível abaixo do
 correto, dentro da própria pasta de diagramas e dentro de uma pasta
 "staging" que nunca deveria existir.
 
-Causa raiz (confirmada lendo shared/agent_factory.py e shared/workspace.py):
-`_FILESYSTEM_TOOL_NAMES` incluía "save_artifact" (tool de
-shared/tools/design_filesystem.py), fazendo `create_se_agent(...,
-agent_subdir="mermaid_specialist")` injetar `base_dir=<workspace do
-agente>` nessa tool via closure. Só que `AGENT_DIRS["mermaid_specialist"]`
-apontava para "design/diagrams" (não para a raiz "design"), e
-design_filesystem.py trata `base_dir` como a RAIZ de uma árvore completa de
-subpastas (analysis/, diagrams/, prototypes/, reports/, doubts/,
-entrega_final/) — então "design/diagrams" virava a raiz, e a árvore
-inteira era recriada dentro dela.
+Causa raiz histórica: `_FILESYSTEM_TOOL_NAMES` incluía "save_artifact" ao
+mesmo tempo em que `AGENT_DIRS["mermaid_specialist"]` apontava para
+"design/diagrams" (uma subpasta, não a raiz "design") — o binding injetava
+essa subpasta como base_dir, e design_filesystem.py trata base_dir como a
+RAIZ de uma árvore completa (analysis/, diagrams/, prototypes/, reports/,
+doubts/, entrega_final/), recriando a árvore inteira um nível abaixo.
+
+Correção definitiva (roadmap "Integrar design_filesystem.py ao
+agent_factory.py"): duas mudanças em conjunto eliminam o incidente sem
+abrir mão do binding centralizado:
+1. `AGENT_DIRS` unifica os 6 agentes de Time 2 em uma única raiz "design"
+   (nunca mais uma subpasta por agente) — pré-condição verificada abaixo em
+   `test_agent_dirs_time_2_aponta_para_raiz_design_unica`.
+2. `save_artifact` (e as demais tools de design_filesystem.py) voltam a
+   estar em `_FILESYSTEM_TOOL_NAMES`, recebendo base_dir=<raiz "design">
+   via closure — respeitando WORKSPACE_OUTPUT_DIR como os demais times.
 
 Os testes abaixo replicam o caminho real: criar o agente via
 `create_se_agent(agent_subdir=...)` como os arquivos de produção fazem, e
 confirmar que uma chamada de `save_artifact` cai na raiz compartilhada
-"design", nunca em uma subpasta dela.
+"design", nunca em uma subpasta dela — o invariante de fundo (sem
+aninhamento) é o mesmo de antes; só a causa que o garante mudou.
 """
+
+from pathlib import Path
 
 from google.adk.tools import FunctionTool
 
@@ -31,11 +40,13 @@ from shared.tools.design_filesystem import save_artifact
 from shared.workspace import AGENT_DIRS
 
 
-def test_save_artifact_nao_esta_mais_em_filesystem_tool_names():
-    """A causa raiz do incidente: save_artifact nunca deve ser bound por
-    agent_subdir, porque design_filesystem.py já tem seu próprio sistema de
-    alias de pasta com uma única raiz compartilhada."""
-    assert "save_artifact" not in _FILESYSTEM_TOOL_NAMES
+def test_save_artifact_esta_em_filesystem_tool_names_com_binding_para_raiz_unica():
+    """Pós-roadmap: save_artifact DEVE ser bound por agent_subdir — a causa
+    raiz do incidente não era o binding em si, e sim o binding apontar para
+    uma subpasta ("design/diagrams") em vez da raiz compartilhada
+    ("design"). Com AGENT_DIRS unificado (verificado no teste seguinte),
+    o binding é seguro."""
+    assert "save_artifact" in _FILESYSTEM_TOOL_NAMES
     assert "list_staging_files" not in _FILESYSTEM_TOOL_NAMES
 
 
@@ -57,21 +68,31 @@ def test_agent_dirs_time_2_aponta_para_raiz_design_unica():
         )
 
 
-def test_bind_tool_to_workspace_nao_altera_save_artifact(tmp_path):
-    """Mesmo passando explicitamente um workspace de agente 'errado' (uma
-    subpasta), _bind_tool_to_workspace não deve mais tocar em save_artifact —
-    ele não está em nenhuma das 3 categorias bindáveis."""
-    agent_ws_subpasta_errada = tmp_path / "ws" / "design" / "diagrams"
-    agent_ws_subpasta_errada.mkdir(parents=True)
+def test_bind_tool_to_workspace_injeta_base_dir_em_save_artifact(tmp_path):
+    """Pós-roadmap: _bind_tool_to_workspace DEVE criar uma nova FunctionTool
+    para save_artifact, injetando base_dir=agent_workspace via closure —
+    invisível ao LLM. Chamamos a tool resultante e confirmamos que o
+    arquivo é escrito exatamente dentro do agent_workspace informado
+    (aqui, uma raiz "design" simulada — a garantia de que essa raiz é
+    sempre a raiz compartilhada, e não uma subpasta por agente, vem de
+    AGENT_DIRS/get_agent_workspace, testado separadamente)."""
+    design_root_simulada = tmp_path / "design"
+    design_root_simulada.mkdir(parents=True)
 
     tool = FunctionTool(save_artifact)
     result = _bind_tool_to_workspace(
         tool,
-        agent_workspace=str(agent_ws_subpasta_errada),
-        workspace_root=str(tmp_path / "ws"),
+        agent_workspace=str(design_root_simulada),
+        workspace_root=str(tmp_path),
     )
-    # Tool não reconhecida em nenhuma categoria -> retornada intacta.
-    assert result is tool
+    # Tool reconhecida (save_artifact está em _FILESYSTEM_TOOL_NAMES) ->
+    # binding cria uma NOVA FunctionTool, nunca retorna a mesma instância.
+    assert result is not tool
+
+    fn = getattr(result, "func", result)
+    saved = fn(filename="_teste.md", content="# x")
+    assert saved["status"] == "ok"
+    assert Path(saved["path"]).resolve() == (design_root_simulada / "analysis" / "_teste.md").resolve()
 
 
 def test_regressao_incidente_mermaid_specialist_via_create_se_agent(monkeypatch, tmp_path):
@@ -81,21 +102,15 @@ def test_regressao_incidente_mermaid_specialist_via_create_se_agent(monkeypatch,
     confirma que o arquivo cai em <design_root>/diagrams/, nunca em
     <design_root>/diagrams/diagrams/.
 
-    Nota: shared/tools/design_filesystem.py resolve sua raiz (DESIGN_DIR) de
-    forma independente de WORKSPACE_OUTPUT_DIR (usado por shared/workspace.py
-    apenas para o binding legado de outros times) — por isso isolamos a raiz
-    aqui via monkeypatch direto no módulo, como os demais testes de
-    design_filesystem.py já fazem, em vez de setar a variável de ambiente.
+    Pós-roadmap: `agent_subdir='mermaid_specialist'` é resolvido via
+    AGENT_DIRS -> "design" -> get_agent_workspace() ->
+    WORKSPACE_OUTPUT_DIR/design. Isolamos WORKSPACE_OUTPUT_DIR para
+    tmp_path (não mais para um caminho decorrelacionado), de forma que
+    design_root abaixo seja exatamente a raiz que create_se_agent vai
+    injetar via binding.
     """
-    from shared.tools import design_filesystem as df
-
     design_root = tmp_path / "design"
-    monkeypatch.setattr(df, "DESIGN_DIR", design_root)
-    monkeypatch.setattr(df, "ADK_DIR", tmp_path)
-    # agent_subdir ainda passa por get_workspace_root()/AGENT_DIRS internamente
-    # (mesmo não afetando mais save_artifact) — isolamos também para não
-    # tocar no workspace_output real do projeto durante o teste.
-    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws_legado_nao_usado_por_save_artifact"))
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
 
     agent = create_se_agent(
         name="mermaid_specialist_teste",

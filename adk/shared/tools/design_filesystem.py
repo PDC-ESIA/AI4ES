@@ -980,8 +980,25 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
     - Por heading Markdown exato: section_id="## Título".
 
     ⚠️  section_id deve ser APENAS o número ("4") ou o heading exato — nunca "4. Título".
-    ⚠️  new_content deve incluir o título da seção e terminar com "---".
+    ⚠️  new_content deve incluir o título da seção, mas NUNCA um delimitador de
+        fim de seção ("---" ou "<<<FIM_SECAO>>>") — o delimitador original do
+        arquivo é preservado automaticamente. Se um for incluído por engano,
+        é removido antes de gravar.
     ⚠️  Um backup automático é criado antes de qualquer alteração.
+
+    DELIMITADOR DE SEÇÃO — detectado automaticamente, nunca hardcoded:
+    Esta ferramenta é genérica e pode ser chamada por qualquer agente sobre
+    qualquer artefato Markdown do design (relatório, análise técnica, etc.) —
+    cada tipo de arquivo pode usar uma convenção de separação diferente:
+    - "---\\n" (horizontal rule Markdown): convenção de arquivos genéricos
+      escritos via save_artifact/append_artifact (ex.: relatorio_*.md).
+    - "<<<FIM_SECAO>>>\\n": convenção exclusiva de analise_tecnica_*.md,
+      escrito via append_architect_section.
+    patch_section identifica qual delimitador o arquivo já usa (podem até
+    coexistir) e preserva exatamente esse delimitador ao regravar — nunca
+    substitui um pelo outro. Isto corrige um bug anterior em que a regravação
+    sempre forçava "---" mesmo em arquivos que usavam "<<<FIM_SECAO>>>",
+    corrompendo o delimitador real do arquivo na primeira correção aplicada.
 
     Args:
         filename:    Nome do arquivo, com ou sem alias de pasta.
@@ -1028,13 +1045,28 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
         backup_path = _next_version(destination)
         shutil.copy2(str(destination), str(backup_path))
 
-        parts = re.split(r'(?<=\n)---\n', original)
+        # Captura o delimitador junto com o split (grupo de captura), em vez
+        # de descartá-lo — assim ele pode ser preservado tal como estava no
+        # arquivo, sem assumir qual dos dois formatos está em uso.
+        parts = re.split(r'((?<=\n)(?:---|<<<FIM_SECAO>>>)\n)', original)
+
+        _DELIMITER_TOKENS = {"---", "<<<FIM_SECAO>>>"}
+
+        def _strip_trailing_delimiter(content: str) -> str:
+            text = content.rstrip("\n")
+            for marker in ("<<<FIM_SECAO>>>", "---"):
+                if text.endswith(marker):
+                    return text[: -len(marker)].rstrip("\n")
+            return text
+
         section_found = False
         patched_parts = []
 
         for part in parts:
             stripped = part.strip()
-            if not stripped:
+            if not stripped or stripped in _DELIMITER_TOKENS:
+                # Parte vazia ou é o próprio token de delimitador (preservado
+                # exatamente como veio do split — nunca substituído).
                 patched_parts.append(part)
                 continue
 
@@ -1043,7 +1075,7 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
             matched_by_heading = (first_line == section_id.strip())
 
             if not section_found and (matched_by_number or matched_by_heading):
-                patched_parts.append(new_content.rstrip("\n") + "\n")
+                patched_parts.append(_strip_trailing_delimiter(new_content) + "\n")
                 section_found = True
             else:
                 patched_parts.append(part)
@@ -1056,7 +1088,7 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
                 "hint": "Use read_analysis_sections para inspecionar os IDs disponíveis.",
             }
 
-        destination.write_text("---\n".join(patched_parts), encoding="utf-8")
+        destination.write_text("".join(patched_parts), encoding="utf-8")
         timestamp = datetime.now().isoformat()
 
         IOLogger.save(filename, caller=caller, backup=str(backup_path))
