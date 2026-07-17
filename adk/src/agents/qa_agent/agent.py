@@ -4,6 +4,7 @@ from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 from .subagents.action_planner.agent import agent as action_planner_agent
 from .subagents.code_fix_agent.agent import agent as code_fix_agent
+from .subagents.e2e_test_generator.agent import agent as e2e_test_generator_agent
 
 from .subagents.receive_requirements import agent as receber_requisitos_agent
 from shared.tools.pytest_runner import executar_pytest_tool
@@ -17,14 +18,15 @@ agent = LlmAgent(
     description=(
         "Agente QA do Time 3 — PDC-AI4SE. "
         "Recebe artefatos de requisito (RF, HU, UC, RNF, RN), "
-        "gera testes pytest automaticamente em paralelo e reporta cobertura."
+        "gera testes pytest e cobertura, ou planos E2E Playwright quando solicitado."
     ),
     instruction=QA_PROMPT,
     tools=[
+        AgentTool(agent=action_planner_agent),
+        AgentTool(agent=e2e_test_generator_agent, skip_summarization=True),
         FunctionTool(executar_pytest_tool),
         FunctionTool(DoubtArtifactGenerator.generate),
         AgentTool(agent=receber_requisitos_agent),
-        AgentTool(agent=action_planner_agent),
         AgentTool(agent=code_fix_agent),
     ],
 )
