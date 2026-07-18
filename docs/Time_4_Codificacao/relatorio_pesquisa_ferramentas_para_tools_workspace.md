@@ -43,26 +43,26 @@ Acelerar a evolução do ecossistema AI4ES/TACO por meio do reaproveitamento de 
 ### 4.1 Frente A
 | Ferramenta | Gap(s) endereçado(s) | Link |
 |---|---|---|
-| Daytona | Workspace sandboxed, snapshot-rollback, comunicação REST, clonagem/exploração | github.com/daytonaio/daytona |
-| OpenHands | Workspace sandboxed, código executável, REST, `security_risk` no schema | github.com/All-Hands-AI/OpenHands |
-| E2B | Ambiente de execução isolado (microVM/Firecracker) | github.com/e2b-dev/E2B |
+| Daytona | Workspace sandboxed, snapshot-rollback, comunicação REST, clonagem/exploração | https://github.com/daytonaio/daytona.git |
+| OpenHands | Workspace sandboxed, código executável, REST, `security_risk` no schema | https://github.com/OpenHands/OpenHands.git |
+| E2B | Ambiente de execução isolado (microVM/Firecracker) | https://github.com/e2b-dev/E2B.git|
 
 ### 4.2 Frente B
 | Ferramenta | Gap(s) endereçado(s) | Link |
 |---|---|---|
-| ADK Tool Confirmation (nativo) | Classificação/pausa de risco via `require_confirmation` / `request_confirmation` | google.github.io/adk-docs |
+| ADK Tool Confirmation (nativo) | Classificação/pausa de risco via `require_confirmation` / `request_confirmation` | https://adk.dev/ |
 
 ### 4.3 Frente C
 | Ferramenta | Gap(s) endereçado(s) | Link |
 |---|---|---|
-| semantic-router (Aurelio AI) | Seleção de tools por embeddings | github.com/aurelio-labs/semantic-router |
-| vLLM Semantic Router *(monitorar)* | Roteamento semântico de **modelo**, não de **tool** — baixa aderência apesar do nome | github.com/vllm-project/semantic-router |
+| semantic-router (Aurelio AI) | Seleção de tools por embeddings | https://github.com/aurelio-labs/semantic-router.git|
+| vLLM Semantic Router *(monitorar)* | Roteamento semântico de **modelo**, não de **tool** — baixa aderência apesar do nome | https://github.com/vllm-project/semantic-router.git|
 
 ### 4.4 Frente D
 | Ferramenta | Gap(s) endereçado(s) | Link |
 |---|---|---|
-| AutoAgent (HKUDS) | Tool learning + criação de tools em runtime, via geração de código controlada | github.com/HKUDS/AutoAgent |
-| RepoAgent | Parcial: documentação estruturada de repositório (não tool em runtime) | github.com/OpenBMB/RepoAgent |
+| AutoAgent (HKUDS) | Tool learning + criação de tools em runtime, via geração de código controlada | https://github.com/HKUDS/AutoAgent.git|
+| RepoAgent | Parcial: documentação estruturada de repositório (não tool em runtime) | https://github.com/OpenBMB/RepoAgent.git|
 
 ## 5. Análise Comparativa (rubrica de 5 critérios)
 
@@ -78,7 +78,7 @@ Escala: **Alto / Médio / Baixo**
 ### 5.2 Frente B
 | Ferramenta | Aderência | Maturidade | Integração | ADK | Manutenção |
 |---|---|---|---|---|---|
-| ADK Tool Confirmation | Alto (tool isolada); Baixo/Médio (multi-agente/A2A) | Baixo-Médio ("experimental") | Alto (testado nesta conversa) | Alto (nativo) | Baixo (mantido pelo Google) |
+| ADK Tool Confirmation | Alto (tool isolada); Baixo/Médio (multi-agente/A2A) | Baixo-Médio ("experimental") | Alto | Alto (nativo) | Baixo (mantido pelo Google) |
 
 ### 5.3 Frente C
 | Ferramenta | Aderência | Maturidade | Integração | ADK | Manutenção |
@@ -131,7 +131,7 @@ Escala: **Alto / Médio / Baixo**
 | AutoAgent (HKUDS) | Não adotar — incompatibilidade arquitetural | — |
 | RepoAgent | Não adotar | — |
 
-## 10. Próximos Passos
+## 9. Próximos Passos
 - Executar PoCs 1 e 2 (seção 7).
 - Aprofundar pesquisa de E2B e semantic-router/Aurelio AI antes de decidir sobre elas.
 - Reavaliar Frente D após construir a tool própria de contexto, comparando esforço vs. custo de adotar um framework como AutoAgent.
