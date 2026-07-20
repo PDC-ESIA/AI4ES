@@ -28,6 +28,35 @@ QA_AGENT_TOOLS = [
         ],
     },
     {
+        "name": "e2e_test_generator",
+        "agent": "qa_agent",
+        "category": "requirements_to_e2e_plan",
+        "summary": (
+            "Transforma requisitos e contexto técnico em um plano E2E e, "
+            "quando seguro, gera um spec Playwright."
+        ),
+        "input_contract": (
+            "Plano de ação validado do action_planner, requisitos em texto/JSON "
+            "e contexto de sistema, rotas, dados e passos estruturados."
+        ),
+        "output_contract": (
+            "Plano E2E com cenários, confiança e bloqueios; para jornadas web "
+            "completas, arquivo `.spec.ts` gerado e execução local controlada "
+            "quando ambiente e perfil de comando forem autorizados."
+        ),
+        "use_when": [
+            "O usuário pede testes E2E, Playwright ou fluxo ponta a ponta.",
+            "O objetivo é mapear uma jornada web/API completa.",
+            "O usuário pede geração e execução local de um spec Playwright.",
+            "É necessário identificar lacunas antes de automatizar o fluxo.",
+        ],
+        "avoid_when": [
+            "O usuário pede testes unitários ou de integração em pytest.",
+            "O usuário pede execução de um arquivo pytest existente.",
+            "O sistema alvo é exclusivamente CLI ou agêntico neste MVP.",
+        ],
+    },
+    {
         "name": "executar_pytest_tool",
         "agent": "qa_agent",
         "category": "pytest_execution",
@@ -65,7 +94,6 @@ QA_AGENT_TOOLS = [
             "A duvida e apenas falta de requisito explicito para codigo legivel.",
         ],
     },
-
     {
         "name": "code_fix_agent",
         "agent": "qa_agent",
@@ -116,7 +144,9 @@ def list_available_tools(agent_name: str = "qa_agent") -> dict[str, Any]:
     }
 
 
-def describe_tools(tool_names: str = "", agent_name: str = "qa_agent") -> dict[str, Any]:
+def describe_tools(
+    tool_names: str = "", agent_name: str = "qa_agent"
+) -> dict[str, Any]:
     """Descreve uma ou mais tools do QA Agent.
 
     Args:
@@ -127,11 +157,7 @@ def describe_tools(tool_names: str = "", agent_name: str = "qa_agent") -> dict[s
         dict[str, Any]: Dicionário com agente, tools descritas e unknown_tools (se houver).
     """
     normalized_agent = (agent_name or "qa_agent").strip()
-    requested = {
-        item.strip()
-        for item in (tool_names or "").split(",")
-        if item.strip()
-    }
+    requested = {item.strip() for item in (tool_names or "").split(",") if item.strip()}
 
     descriptions = []
     unknown_tools = []
@@ -244,7 +270,9 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
         errors.append("Planos com doubt nao devem selecionar tools.")
 
     if not doubt and not selected_tools:
-        warnings.append("Plano sem doubt deveria selecionar pelo menos uma tool executavel.")
+        warnings.append(
+            "Plano sem doubt deveria selecionar pelo menos uma tool executavel."
+        )
 
     if not isinstance(risk_assessment, dict):
         errors.append("risk_assessment deve ser um objeto.")
@@ -264,7 +292,9 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
         autonomy_decision = {}
     else:
         if autonomy_decision.get("mode") not in {"autonomous", "hitl_required"}:
-            errors.append("autonomy_decision.mode deve ser autonomous ou hitl_required.")
+            errors.append(
+                "autonomy_decision.mode deve ser autonomous ou hitl_required."
+            )
         if not autonomy_decision.get("reason"):
             errors.append("autonomy_decision.reason e obrigatorio.")
         if not isinstance(autonomy_decision.get("less_prompt_more_action"), bool):
@@ -296,7 +326,9 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
             errors.append(
                 "lifecycle.execution_allowed deve refletir a decisao de autonomia."
             )
-        next_step = lifecycle.get("next_step", lifecycle.get("next_step_after_approval"))
+        next_step = lifecycle.get(
+            "next_step", lifecycle.get("next_step_after_approval")
+        )
         if next_step not in {
             "executar_plano",
             "revisar_plano",
@@ -627,9 +659,13 @@ def generate_compliance_report(
             )
 
     if missing_tools:
-        divergences.append("Tools planejadas nao executadas: " + ", ".join(missing_tools))
+        divergences.append(
+            "Tools planejadas nao executadas: " + ", ".join(missing_tools)
+        )
     if extra_tools:
-        divergences.append("Tools executadas sem planejamento: " + ", ".join(extra_tools))
+        divergences.append(
+            "Tools executadas sem planejamento: " + ", ".join(extra_tools)
+        )
 
     execution_status = executed.get("status", "desconhecido")
     if execution_status in {"falha", "erro", "failed"}:
