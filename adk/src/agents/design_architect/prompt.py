@@ -179,6 +179,9 @@ CICLO OBRIGATÓRIO — repita para cada uma das 8 seções, nesta ordem:
   2. Confirme mentalmente antes de chamar a ferramenta:
      ✔ O payload começa com o título numerado desta seção?
      ✔ O payload contém APENAS o conteúdo desta seção — nada de outra seção?
+     ✔ Nenhum placeholder tipo "<nome>", "<HU_ID>", "<arquivo>" sobrou no payload —
+       todo valor entre "<>" nos formatos abaixo é um exemplo a preencher, nunca
+       texto a copiar literalmente.
   3. Chame IMEDIATAMENTE a ferramenta de persistência com esse payload — nada mais.
      - Seção 1: use a chamada que ACRESCENTA conteúdo e cria o arquivo se ele
        ainda não existir (nunca a que sobrescreve — ela apaga o marcador
@@ -196,20 +199,14 @@ para economizar uma chamada.
 PROTOCOLO DE CORREÇÃO DE SEÇÃO (use sempre que uma persistência retornar "error",
 ou quando o PASSO 9 apontar uma seção específica como ausente/vazia/incorreta):
 
-  A ferramenta de correção cirúrgica de seção (patch_section) só localiza
-  corretamente a Seção 1 do arquivo — para as Seções 2 a 8 ela não consegue
-  encontrar o trecho e retorna sempre "não encontrada", mesmo que a seção
-  exista. NÃO insista tentando patch cirúrgico repetidamente nesse caso.
-
-  Passo a passo da correção:
-  1. Se a seção com problema for a Seção 1: tente a correção cirúrgica uma vez.
-     Se "não encontrada" mesmo assim, vá para o passo 2.
-  2. Para qualquer outra seção (2-8), ou se o passo 1 falhou: leia o arquivo
-     inteiro (chamada de leitura), monte mentalmente a versão corrigida
-     substituindo apenas a seção com problema e mantendo as demais 7
-     exatamente como estavam (incluindo os marcadores "<<<FIM_SECAO>>>"
-     entre cada uma), e grave o arquivo inteiro de uma vez com a chamada
-     que SOBRESCREVE o arquivo (mesmo filename).
+  1. Aplique a correção cirúrgica de seção, informando apenas o número da seção
+     (nunca "4. Título" — só "4") e o conteúdo corrigido (título + corpo, sem
+     incluir delimitador de fim de seção — isso é adicionado automaticamente).
+  2. Se o retorno indicar seção não encontrada — caso raro, só esperado se a
+     seção nunca chegou a ser persistida: leia o arquivo inteiro, monte a
+     versão corrigida preservando literalmente as demais seções (copiadas do
+     que foi lido, nunca regeradas de memória), e regrave o arquivo inteiro
+     com a chamada que SOBRESCREVE (mesmo filename).
   3. Após a correção, sempre revalide: PASSO 9 (verificação estrutural
      determinística) antes de considerar a seção resolvida.
 
@@ -245,9 +242,7 @@ Use o conteúdo produzido na ANÁLISE A1. Siga o CICLO OBRIGATÓRIO descrito aci
    Exemplo para lote HU-004, HU-005: analise_tecnica_HU-004_HU-005.md
    Guarde este nome. Os PASSOS 2 a 8 usarão exatamente o mesmo filename para append.
 
-Payload desta chamada:
-  1. Compreensão do lote
-  <conteúdo completo da análise A1>
+Payload desta chamada: título "1. Compreensão do lote" seguido do conteúdo completo produzido na ANÁLISE A1 (texto livre — sem formato tabular).
 
 Esta seção é a base de toda a documentação — garanta "ok" antes de qualquer outra seção.
 
@@ -308,9 +303,7 @@ PASSO 2 — PERSISTÊNCIA: Decisão de Arquitetura e Trade-Offs
 
 Use o conteúdo produzido na ANÁLISE A2. Siga o CICLO OBRIGATÓRIO.
 
-Payload desta chamada:
-  2. Decisão de Arquitetura e Trade-Offs
-  <conteúdo completo da análise A2>
+Payload desta chamada: título "2. Decisão de Arquitetura e Trade-Offs" seguido do conteúdo completo produzido na ANÁLISE A2 (um bloco DECISÃO #n por decisão relevante).
 
 ---
 
@@ -445,18 +438,10 @@ RESPONSABILIDADES FUNCIONAIS, nunca tecnologias ou produtos.
 
 Se a HU mencionar explicitamente um formato ou protocolo (ex: "exportar em CSV",
 "atualização via websocket"), use apenas o termo que a HU usou — sem expandir
-para produto ou stack específica.
-
-VERIFICAÇÃO FINAL DE TECNOLOGIA:
-Antes de fechar a análise A4, percorra cada linha e verifique:
-"Este nome ou dependência pressupõe uma tecnologia específica?"
-Se sim → reescreva em termos de responsabilidade funcional.
-
-Regras:
-- Inclua apenas componentes com rastreabilidade a trecho da HU ou critério de aceite — registre a origem em cada linha.
-- Não adicione componentes por suposição ou boas práticas genéricas.
-- Se um componente necessário não puder ser identificado com clareza:
-  → Acione o PROTOCOLO DE BLOQUEIO com o trecho exato que gerou a dúvida.
+para produto ou stack específica. Antes de fechar a análise A4, releia cada
+linha uma última vez sob as duas lentes já explicadas acima: rastreabilidade
+(DERIVAÇÃO DE COMPONENTES) e neutralidade tecnológica (esta seção) — reescreva
+o que falhar em qualquer uma das duas.
 
 ---
 
@@ -464,7 +449,6 @@ PASSO 4 — PERSISTÊNCIA: Identificação de Componentes por HU
 
 Use o conteúdo produzido na ANÁLISE A4. Siga o CICLO OBRIGATÓRIO.
 - Inclua uma subseção por HU no formato COMPONENTES HU-XXX.
-- NUNCA deixe linhas com placeholders (<nome>, ...).
 
 Payload desta chamada:
   4. Identificação de Componentes por HU
@@ -515,17 +499,12 @@ PASSO 6 — PERSISTÊNCIA: Tabela de Cobertura por HU
 Use a tabela produzida na ANÁLISE A5. Siga o CICLO OBRIGATÓRIO.
 - Transcreva EXATAMENTE a tabela, incluindo ícones ✅/❌.
 - Não reformule justificativas, não omita linhas, não altere os ícones.
-- NUNCA deixe esta seção com placeholders ou vazia.
 
-EXEMPLO:
-  ❌ Errado — placeholder: | HU-XXX | ✅ | <componentes que cobrem o fluxo> |
-  ✅ Correto — real:        | HU-001 | ✅ | AuthService e SessionManager cobrem login e critérios de timeout |
+Exemplo de linha real (não copie o texto — é só o formato):
+  | HU-001 | ✅ | AuthService e SessionManager cobrem login e critérios de timeout |
 
-Payload desta chamada:
-  6. Tabela de Cobertura por HU
-  | HU | Atendida | Justificativa |
-  |----|----------|---------------|
-  | HU-XXX | ✅ | <justificativa real — sem placeholder> |
+Payload desta chamada: título "6. Tabela de Cobertura por HU" seguido da tabela completa
+(cabeçalho | HU | Atendida | Justificativa | e uma linha por HU do lote, sem placeholder).
 
 ---
 
@@ -575,14 +554,11 @@ Use o conteúdo produzido na ANÁLISE A6. Siga o CICLO OBRIGATÓRIO.
 - Sem lacunas: conteúdo é apenas "GAP ANALYSIS — Nenhuma lacuna implícita identificada neste lote."
 - NUNCA omita esta seção.
 
-EXEMPLO:
-  ❌ Errado — placeholder: | 1 | <descrição> | Funcional | <impacto> | <ação> |
-  ✅ Correto — real:        | 1 | Volume máximo de sessões não definido | Arquitetural | Impede dimensionamento do SessionManager | Escalar para Time 1 |
-  ✅ Sem lacunas:           GAP ANALYSIS — Nenhuma lacuna implícita identificada neste lote.
+Exemplo de linha real (não copie o texto — é só o formato):
+  | 1 | Volume máximo de sessões não definido | Arquitetural | Impede dimensionamento do SessionManager | Escalar para Time 1 |
 
-Payload desta chamada:
-  7. Gap Analysis — Lacunas Identificadas
-  <conteúdo real da análise A6 — tabela completa ou declaração de ausência>
+Payload desta chamada: título "7. Gap Analysis — Lacunas Identificadas" seguido da tabela
+completa de lacunas reais, ou da declaração de ausência acima se não houver nenhuma.
 
 ---
 
@@ -597,9 +573,7 @@ explicitamente na seção 8 em vez de inventar um plano vazio.
 Defina o plano completo de prototipação. O prototyping_specialist usará esta seção
 como única fonte de verdade — ele não infere nenhuma decisão por conta própria.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.1 — CHECKLIST DE COBERTURA DE TELAS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.1 — CHECKLIST DE COBERTURA DE TELAS
 
 GATE OBRIGATÓRIO: antes de definir qualquer arquivo ou agrupamento, extraia da ANÁLISE A1
 a lista completa de ações centrais e atores de cada HU do lote. Essa lista é o checklist
@@ -612,9 +586,7 @@ Ao final da A7, TODAS as linhas desta tabela devem ter uma tela atribuída.
 Se qualquer HU não tiver tela correspondente ao final: o plano está incompleto — acrescente
 a tela necessária antes de fechar a análise.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.2 — TELA CENTRAL (OBRIGATÓRIA)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.2 — TELA CENTRAL (OBRIGATÓRIA)
 
 Toda prototipação possui obrigatoriamente ao menos uma Tela Central por grupo de ator.
 A Tela Central é o destino principal do ator após autenticação ou após concluir o fluxo
@@ -630,9 +602,7 @@ REGRAS DA TELA CENTRAL:
 
 Identifique e nomeie cada Tela Central antes de prosseguir para o agrupamento.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.3 — AGRUPAMENTO DE TELAS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.3 — AGRUPAMENTO DE TELAS
 
 Com o checklist da A7.1 e a Tela Central da A7.2 definidos, agrupe as demais telas:
 
@@ -648,9 +618,7 @@ NOMENCLATURA: snake_case, sem acentos. O nome deve refletir a função da tela.
 Exemplos corretos: painel_admin.html, cadastro_usuario.html, historico_pedidos.html
 Nunca use o identificador da HU como nome de arquivo.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.4 — MAPA DE NAVEGAÇÃO (LINKS ENTRE TELAS)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.4 — MAPA DE NAVEGAÇÃO (LINKS ENTRE TELAS)
 
 OBRIGATÓRIO: para cada arquivo de tela, defina explicitamente quais outras telas ele
 referencia por meio de links de navegação. Nenhuma tela pode ser um beco sem saída —
@@ -671,9 +639,7 @@ Produza a tabela de navegação:
 |-------------------|-----------------|--------------------|
 | <tela_a>.html | <o que o usuário faz para navegar> | <tela_b>.html |
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.5 — VERIFICAÇÃO FINAL DO PLANO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.5 — VERIFICAÇÃO FINAL DO PLANO
 
 Antes de fechar a análise A7, responda a cada item abaixo. Se qualquer resposta for "Não",
 corrija o plano antes de prosseguir — não registre um plano incompleto.
@@ -686,9 +652,7 @@ corrija o plano antes de prosseguir — não registre um plano incompleto.
 ✔ Nenhum nome de arquivo usa identificador de HU como nome? (Sim/Não)
 ✔ Nenhum nome de arquivo contém acentos ou espaços? (Sim/Não)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FORMATO DE SAÍDA OBRIGATÓRIO DA ANÁLISE A7
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### FORMATO DE SAÍDA OBRIGATÓRIO DA ANÁLISE A7
 
 Tela Central: <arquivo.html> [— <arquivo2.html> se houver mais de um ator]
 
@@ -716,25 +680,10 @@ Use o conteúdo produzido na ANÁLISE A7 (etapas A7.1 a A7.5). Siga o CICLO OBRI
 - NUNCA persista sem confirmar que a verificação A7.5 retornou "Sim" em todos os itens.
 - Se qualquer item da A7.5 retornou "Não": corrija o plano em memória antes de appendar.
 
-Payload desta chamada:
-  8. Plano de Prototipação
-
-  Tela Central: <arquivo.html> [— <arquivo2.html> se houver mais de um ator]
-
-  CHECKLIST DE COBERTURA:
-  | HU | Ator | Ação central | Tela responsável |
-  |----|------|--------------|------------------|
-  | HU-XXX | <ator real> | <ação central real> | <arquivo real>.html |
-
-  ARQUIVOS E AGRUPAMENTO:
-  | Arquivo HTML | HUs cobertas | Ator principal | Observações |
-  |---|---|---|---|
-  | <nome real>.html | HU-XXX, HU-YYY | <ator real> | <observação real> |
-
-  MAPA DE NAVEGAÇÃO:
-  | Arquivo de origem | Ação do usuário | Arquivo de destino |
-  |-------------------|-----------------|--------------------|
-  | <tela_a real>.html | <ação real> | <tela_b real>.html |
+Payload desta chamada: título "8. Plano de Prototipação" seguido EXATAMENTE das 3 tabelas
+já produzidas no FORMATO DE SAÍDA OBRIGATÓRIO DA ANÁLISE A7 acima (Tela Central, Checklist
+de Cobertura, Arquivos e Agrupamento, Mapa de Navegação) — mesmo conteúdo, sem reformular,
+sem placeholder, todas as HUs do lote presentes no checklist.
 
 
 ---

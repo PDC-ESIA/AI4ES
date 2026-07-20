@@ -89,9 +89,21 @@ def _ensure_dirs(dirs: Dict[str, Path]) -> None:
 
 
 def _is_safe_path(path: Path, root: Path) -> bool:
+    """
+    True se `path` está dentro de `root`, OU dentro de TEMPLATE_DIR.
+
+    TEMPLATE_DIR é uma exceção deliberada e fixa: templates são globais e
+    nunca escopados por base_dir (ver docstring de _resolve_dirs). Sem esta
+    exceção aqui, qualquer leitura de template feita por um agente com
+    workspace isolado (root = base_dir do agente, não o projeto inteiro)
+    seria rejeitada como "fora do projeto" mesmo usando o alias correto —
+    já aconteceu na prática após a integração com agent_factory.
+    """
     try:
         resolved_path = path.resolve()
-        return resolved_path.is_relative_to(root)
+        if resolved_path.is_relative_to(root):
+            return True
+        return resolved_path.is_relative_to(TEMPLATE_DIR.resolve())
     except (ValueError, RuntimeError):
         return False
 
@@ -245,11 +257,23 @@ def _resolve_path_arg(raw: str, dirs: Dict[str, Path]) -> "tuple[Path | None, st
 
 def _find_existing_file(filename: str, dirs: Dict[str, Path], root: Path) -> "Path | None":
     """
-    Procura `filename` em ANALYSIS→DIAGRAMS→PROTOTYPE (dentro de `dirs`) e
-    retorna o primeiro Path que existe. Retorna None se não encontrado em
-    nenhuma pasta conhecida.
+    Procura `filename` em todas as pastas conhecidas do design (analysis,
+    diagrams, prototype, report, doubt, validation, template — nesta ordem)
+    e retorna o primeiro Path que existe. Retorna None se não encontrado em
+    nenhuma delas.
+
+    A ordem prioriza as pastas mais lidas sem alias (analysis/diagrams/
+    prototype) primeiro, por desempenho — mas nenhuma pasta fica de fora.
+    Isso evita falso "arquivo não encontrado" quando o chamador omite o
+    alias de pasta para um arquivo que só existe em report/doubt/validation/
+    template (já aconteceu na prática: relatorio_design_template.md existia
+    em TEMPLATE_DIR mas não era encontrado por uma leitura sem o prefixo
+    "TEMPLATE/", porque a busca padrão não cobria essa pasta).
     """
-    for directory in (dirs["analysis"], dirs["diagrams"], dirs["prototype"]):
+    for directory in (
+        dirs["analysis"], dirs["diagrams"], dirs["prototype"],
+        dirs["report"], dirs["doubt"], dirs["validation"], dirs["template"],
+    ):
         candidate = (directory / filename).resolve()
         if _is_safe_path(candidate, root) and candidate.exists():
             return candidate
@@ -564,6 +588,13 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown", b
 
         if resolved_dir is not None:
             target_dir = resolved_dir
+        elif filename.startswith("Doubt_Artifact"):
+            # Hardcoded de propósito: um Doubt_Artifact mal roteado fica
+            # invisível para check_active_blocks, e isso já aconteceu mais
+            # de uma vez (pasta errada, ou direto na raiz de design/). Não
+            # dependemos do agente lembrar do alias "doubt_dir/" — o nome
+            # do arquivo já é suficiente para rotear com segurança.
+            target_dir = dirs["doubt"]
         elif filename.endswith(".html") or filename == "global.css":
             target_dir = dirs["prototype"]
         elif filename.endswith(".mmd"):
@@ -786,7 +817,7 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
         Falha:         {"status": "error", "error": "<motivo>"}
     """
     _BLOCK_MARKERS = (STATUS_BLOCKED, "EXECUÇÃO PAUSADA")
-    _SCAN_FOLDERS = ("doubt", "analysis", "diagrams", "prototype", "report", "validation")
+    _SCAN_FOLDERS = ("doubt", "analysis", "diagrams", "prototype", "report", "validation", "root")
 
     try:
         dirs = _resolve_dirs(base_dir)
@@ -903,12 +934,14 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown",
 
         if resolved_dir is not None:
             target_dir = resolved_dir
+        elif filename.startswith("Doubt_Artifact"):
+            target_dir = dirs["doubt"]
         elif filename.endswith(".html") or filename == "global.css":
             target_dir = dirs["prototype"]
         elif filename.endswith(".mmd"):
             target_dir = dirs["diagrams"]
-        elif filename.startswith("relatorio_"):          # ← adicionar
-            target_dir = dirs["report"]                  # ← adicionar
+        elif filename.startswith("relatorio_"):
+            target_dir = dirs["report"]
         else:
             target_dir = dirs["analysis"]
 
