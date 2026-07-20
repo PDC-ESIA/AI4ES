@@ -5,7 +5,7 @@ description = "AI4ES ADK"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "google-adk[daytona]>=1.33.0",
+    "google-adk[daytona]==1.33.0",
     "litellm (>=1.72.2,<2.0.0)",
     "fastapi>=0.124.1",
     "uvicorn (>=0.35.0,<0.36.0)",
