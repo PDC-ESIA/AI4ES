@@ -9,6 +9,8 @@ from src.agents.prototyping_specialist.agent import agent as prototyping_special
 from src.agents.validator.agent import agent as validator
 from src.agents.io_agent.agent import agent as io_agent
 
+from .manifest import emit_design_manifest
+
 _DEFAULT_MODEL = "github_copilot/gpt-4"
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -172,4 +174,8 @@ agent = SequentialAgent(
         pipeline_controller,
         parallel_branch,
     ],
+    # Ao encerrar a fase, emite o Manifesto de Design determinístico:
+    # varre workspace_output/design/**, deriva o status do resultado da
+    # validação e dos doubts, e grava em state["design_manifest"].
+    after_agent_callback=emit_design_manifest,
 )
