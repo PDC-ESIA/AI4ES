@@ -229,7 +229,8 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
             user_id="test_user",
             session_id="test_session",
             new_message=genai_types.Content(
-                parts=[genai_types.Part(text="revisar")]
+                role="user",
+                parts=[genai_types.Part(text="revisar")],
             ),
         ))
     finally:

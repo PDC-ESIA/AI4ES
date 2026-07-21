@@ -159,7 +159,8 @@ def _persist_review(callback_context: CallbackContext) -> None:
     )
     if not result.get("sucesso"):
         raise RuntimeError(
-            f"Falha ao persistir relatório de revisão: {result.get('erro')}"
+            "Falha ao persistir relatório de revisão em "
+            f"'{result.get('caminho') or 'verificacao_revisao.md'}': {result.get('erro')}"
         )
 
 
