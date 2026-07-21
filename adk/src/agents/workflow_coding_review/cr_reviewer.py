@@ -46,7 +46,7 @@ def _discover_coder_files() -> str:
     if not coder_dir.exists():
         return "- (nenhum arquivo ainda — coder será executado antes de você)"
     files = sorted(
-        str(p.relative_to(coder_dir))
+        p.relative_to(coder_dir).as_posix()
         for p in coder_dir.rglob("*")
         if p.is_file() and "__pycache__" not in p.parts
     )

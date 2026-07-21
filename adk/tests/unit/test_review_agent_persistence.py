@@ -206,7 +206,7 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
 
     fake_analysis = "## Status: APROVADO\n\n## Issues\nNenhum.\n\n## Resumo\nCodigo ok."
 
-    def _stub_llm(_callback_ctx, _llm_request):
+    def _stub_llm(callback_context, llm_request):
         """Bypassa chamada real ao Gemini — retorna análise fake."""
         return LlmResponse(
             content=genai_types.Content(
