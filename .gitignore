@@ -10,6 +10,9 @@ workspace_output/
 adk/workspace_output/*
 !adk/workspace_output/.ai4se_workspace
 
+# Sandbox
+sandbox_id.txt
+
 # Environment variables
 .env
 .env.*
