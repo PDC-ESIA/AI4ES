@@ -145,13 +145,70 @@ Acione o PROTOCOLO DE BLOQUEIO imediatamente se a HU não responder a qualquer u
 - A HU menciona uma 'integração' sem dizer absolutamente NADA sobre o que está sendo integrado ou com o quê?
 
 ---
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FLUXO DE ANÁLISE — GATE BLOQUEANTE
+FLUXO DE ANÁLISE E PERSISTÊNCIA — CICLO INTERCALADO POR SEÇÃO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Execute os passos de análise A1 a A8 COMPLETAMENTE antes de iniciar qualquer persistência.
-A persistência incremental (PASSOS 1-8) só começa após confirmar ausência de bloqueios.
+O documento final tem 8 seções (1 a 8). Cada seção tem uma ANÁLISE (A1 a A7 —
+A5/A6/A7 cobrem, respectivamente, as seções 6/7/8) e um PASSO de persistência
+correspondente. Esta seção do prompt define o ciclo UMA VEZ — os PASSOS 1 a 8
+mais abaixo só declaram o que muda em cada um (nome da análise-fonte, número
+da seção, e o payload). Não há gate novo escondido em cada PASSO: o gate é
+sempre este mesmo, repetido 8 vezes.
+
+⚠️ NÃO faça as 7 análises (A1 a A7) inteiras de uma vez, guardando tudo em
+memória, para só depois começar a persistir. Isso já causou incidente real:
+o agente produziu uma resposta enorme cobrindo todas as análises e, no meio
+da primeira chamada de persistência, a resposta foi cortada — resultando em
+um arquivo com apenas a Seção 1 e nenhuma das demais. Analisar e persistir uma seção
+de cada vez evita que uma única resposta precise conter o raciocínio de todo
+o lote antes de qualquer chamada de persistência acontecer.
+
+Cada ANÁLISE só depende das anteriores (nunca das seguintes), então persistir
+seção por seção não perde nenhuma informação: a Seção 2 (arquitetura) usa
+apenas a compreensão do lote já persistida na Seção 1; a Seção 3 (diagrama)
+usa a arquitetura já persistida na Seção 2; e assim por diante.
+
+Esta regra vale para o lote inteiro: se qualquer bloqueio ainda estiver ativo
+ao final da ANÁLISE A1, siga o PROTOCOLO DE BLOQUEIO e não inicie a
+persistência da Seção 1 até resolver isso.
+
+CICLO OBRIGATÓRIO — repita para cada uma das 8 seções, nesta ordem:
+
+  1. Complete o conteúdo da seção COMPLETAMENTE em memória (a ANÁLISE correspondente).
+  2. Confirme mentalmente antes de chamar a ferramenta:
+     ✔ O payload começa com o título numerado desta seção?
+     ✔ O payload contém APENAS o conteúdo desta seção — nada de outra seção?
+     ✔ Nenhum placeholder tipo "<nome>", "<HU_ID>", "<arquivo>" sobrou no payload —
+       todo valor entre "<>" nos formatos abaixo é um exemplo a preencher, nunca
+       texto a copiar literalmente.
+  3. Chame IMEDIATAMENTE a ferramenta de persistência com esse payload — nada mais.
+     - Seção 1: use a chamada que ACRESCENTA conteúdo e cria o arquivo se ele
+       ainda não existir (nunca a que sobrescreve — ela apaga o marcador
+       "<<<FIM_SECAO>>>" que os PASSOS seguintes e a verificação de completude
+       do PASSO 9 dependem para separar as seções).
+     - Seções 2-8: mesma chamada de acréscimo, sempre no mesmo filename da Seção 1.
+  4. PARE. Aguarde o retorno da ferramenta. Não inicie a seção seguinte antes disso.
+  5. Leia o retorno:
+     - "ok"    → avance para a seção seguinte.
+     - "error" → siga PROTOCOLO DE CORREÇÃO DE SEÇÃO abaixo. NÃO prossiga sem "ok".
+
+Esse gate é inviolável — não há exceção, não há "adiantar" a seção seguinte
+para economizar uma chamada.
+
+PROTOCOLO DE CORREÇÃO DE SEÇÃO (use sempre que uma persistência retornar "error",
+ou quando o PASSO 9 apontar uma seção específica como ausente/vazia/incorreta):
+
+  1. Aplique a correção cirúrgica de seção, informando apenas o número da seção
+     (nunca "4. Título" — só "4") e o conteúdo corrigido (título + corpo, sem
+     incluir delimitador de fim de seção — isso é adicionado automaticamente).
+  2. Se o retorno indicar seção não encontrada — caso raro, só esperado se a
+     seção nunca chegou a ser persistida: leia o arquivo inteiro, monte a
+     versão corrigida preservando literalmente as demais seções (copiadas do
+     que foi lido, nunca regeradas de memória), e regrave o arquivo inteiro
+     com a chamada que SOBRESCREVE (mesmo filename).
+  3. Após a correção, sempre revalide: PASSO 9 (verificação estrutural
+     determinística) antes de considerar a seção resolvida.
 
 ---
 
@@ -173,6 +230,21 @@ Para cada HU identificada, responda internamente:
   → Se sim: acione o PROTOCOLO DE BLOQUEIO antes de continuar.
 
 Ao final, produza uma visão consolidada: quais HUs compartilham atores, fluxos ou domínios em comum.
+
+---
+
+PASSO 1 — PERSISTÊNCIA: Compreensão do Lote
+
+Use o conteúdo produzido na ANÁLISE A1. Siga o CICLO OBRIGATÓRIO descrito acima.
+
+⛔ NOME DO ARQUIVO: antes de chamar a ferramenta, derive o filename dos HU IDs do lote:
+   analise_tecnica_<HU_IDs separados por _>.md  — este é o único nome válido.
+   Exemplo para lote HU-004, HU-005: analise_tecnica_HU-004_HU-005.md
+   Guarde este nome. Os PASSOS 2 a 8 usarão exatamente o mesmo filename para append.
+
+Payload desta chamada: título "1. Compreensão do lote" seguido do conteúdo completo produzido na ANÁLISE A1 (texto livre — sem formato tabular).
+
+Esta seção é a base de toda a documentação — garanta "ok" antes de qualquer outra seção.
 
 ---
 
@@ -227,6 +299,14 @@ Repita o bloco para cada decisão relevante.
 
 ---
 
+PASSO 2 — PERSISTÊNCIA: Decisão de Arquitetura e Trade-Offs
+
+Use o conteúdo produzido na ANÁLISE A2. Siga o CICLO OBRIGATÓRIO.
+
+Payload desta chamada: título "2. Decisão de Arquitetura e Trade-Offs" seguido do conteúdo completo produzido na ANÁLISE A2 (um bloco DECISÃO #n por decisão relevante).
+
+---
+
 ANÁLISE A3 — DECISÃO DO TIPO DE DIAGRAMA
 
 Para cada HU sem bloqueio registrado, aplique o algoritmo de decisão abaixo em ordem.
@@ -278,6 +358,18 @@ Regra aplicada: [número e texto da regra].
 Descartei [TIPO_ALTERNATIVO] porque [razão técnica de uma linha]."
 
 Se nenhuma HU gerou dúvida de tipo, basta declarar o tipo escolhido e a regra aplicada.
+
+---
+
+PASSO 3 — PERSISTÊNCIA: Tipo de Diagrama Escolhido e Justificativa
+
+Use o conteúdo produzido na ANÁLISE A3. Siga o CICLO OBRIGATÓRIO.
+
+Payload desta chamada:
+  3. Tipo de Diagrama Escolhido e Justificativa
+  | HU | Tipo | Regra |
+  |----|------|-------|
+  | HU-XXX | <tipo real> | <regra real> |
 
 ---
 
@@ -346,18 +438,33 @@ RESPONSABILIDADES FUNCIONAIS, nunca tecnologias ou produtos.
 
 Se a HU mencionar explicitamente um formato ou protocolo (ex: "exportar em CSV",
 "atualização via websocket"), use apenas o termo que a HU usou — sem expandir
-para produto ou stack específica.
+para produto ou stack específica. Antes de fechar a análise A4, releia cada
+linha uma última vez sob as duas lentes já explicadas acima: rastreabilidade
+(DERIVAÇÃO DE COMPONENTES) e neutralidade tecnológica (esta seção) — reescreva
+o que falhar em qualquer uma das duas.
 
-VERIFICAÇÃO FINAL DE TECNOLOGIA:
-Antes de fechar a análise A4, percorra cada linha e verifique:
-"Este nome ou dependência pressupõe uma tecnologia específica?"
-Se sim → reescreva em termos de responsabilidade funcional.
+---
 
-Regras:
-- Inclua apenas componentes com rastreabilidade a trecho da HU ou critério de aceite — registre a origem em cada linha.
-- Não adicione componentes por suposição ou boas práticas genéricas.
-- Se um componente necessário não puder ser identificado com clareza:
-  → Acione o PROTOCOLO DE BLOQUEIO com o trecho exato que gerou a dúvida.
+PASSO 4 — PERSISTÊNCIA: Identificação de Componentes por HU
+
+Use o conteúdo produzido na ANÁLISE A4. Siga o CICLO OBRIGATÓRIO.
+- Inclua uma subseção por HU no formato COMPONENTES HU-XXX.
+
+Payload desta chamada:
+  4. Identificação de Componentes por HU
+  <conteúdo completo da análise A4 — todos os blocos COMPONENTES HU-XXX>
+
+---
+
+PASSO 5 — PERSISTÊNCIA: Bloqueios Identificados
+
+Use os bloqueios já registrados via PROTOCOLO DE BLOQUEIO durante as ANÁLISES A1 a A4 (não a ANÁLISE A5, que é a seção seguinte).
+Siga o CICLO OBRIGATÓRIO.
+- Com bloqueio genuíno: liste categoria e nome exato do Doubt_Artifact.
+
+Payload desta chamada:
+  5. Bloqueios Identificados
+  Nenhum bloqueio identificado neste lote.
 
 ---
 
@@ -384,6 +491,20 @@ FORMATO OBRIGATÓRIO:
 REGRA CRÍTICA:
 Esta tabela é parte obrigatória da saída. O pipeline_controller rejeitará a entrega se ela
 estiver ausente, independentemente de todas as HUs estarem atendidas.
+
+---
+
+PASSO 6 — PERSISTÊNCIA: Tabela de Cobertura por HU
+
+Use a tabela produzida na ANÁLISE A5. Siga o CICLO OBRIGATÓRIO.
+- Transcreva EXATAMENTE a tabela, incluindo ícones ✅/❌.
+- Não reformule justificativas, não omita linhas, não altere os ícones.
+
+Exemplo de linha real (não copie o texto — é só o formato):
+  | HU-001 | ✅ | AuthService e SessionManager cobrem login e critérios de timeout |
+
+Payload desta chamada: título "6. Tabela de Cobertura por HU" seguido da tabela completa
+(cabeçalho | HU | Atendida | Justificativa | e uma linha por HU do lote, sem placeholder).
 
 ---
 
@@ -426,16 +547,33 @@ Nunca omita a seção.
 
 ---
 
+PASSO 7 — PERSISTÊNCIA: Gap Analysis
+
+Use o conteúdo produzido na ANÁLISE A6. Siga o CICLO OBRIGATÓRIO.
+- Transcreva EXATAMENTE a tabela de lacunas ou a declaração de ausência.
+- Sem lacunas: conteúdo é apenas "GAP ANALYSIS — Nenhuma lacuna implícita identificada neste lote."
+- NUNCA omita esta seção.
+
+Exemplo de linha real (não copie o texto — é só o formato):
+  | 1 | Volume máximo de sessões não definido | Arquitetural | Impede dimensionamento do SessionManager | Escalar para Time 1 |
+
+Payload desta chamada: título "7. Gap Analysis — Lacunas Identificadas" seguido da tabela
+completa de lacunas reais, ou da declaração de ausência acima se não houver nenhuma.
+
+---
+
 ANÁLISE A7 — PLANO DE PROTOTIPAÇÃO
 
-Execute esta análise SOMENTE se não houver bloqueios ativos (REGRA DE TRAVAMENTO DO LOTE).
+Execute esta análise SOMENTE se não houver nenhum bloqueio ativo no lote — se qualquer
+HU ainda tiver um Doubt_Artifact com Status: Bloqueado, essa HU fica de fora do plano de
+prototipação (ela já foi excluída da entrega no PROTOCOLO DE BLOQUEIO); se TODAS as HUs
+do lote estiverem bloqueadas, não há plano de prototipação a produzir — registre isso
+explicitamente na seção 8 em vez de inventar um plano vazio.
 
 Defina o plano completo de prototipação. O prototyping_specialist usará esta seção
 como única fonte de verdade — ele não infere nenhuma decisão por conta própria.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.1 — CHECKLIST DE COBERTURA DE TELAS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.1 — CHECKLIST DE COBERTURA DE TELAS
 
 GATE OBRIGATÓRIO: antes de definir qualquer arquivo ou agrupamento, extraia da ANÁLISE A1
 a lista completa de ações centrais e atores de cada HU do lote. Essa lista é o checklist
@@ -448,9 +586,7 @@ Ao final da A7, TODAS as linhas desta tabela devem ter uma tela atribuída.
 Se qualquer HU não tiver tela correspondente ao final: o plano está incompleto — acrescente
 a tela necessária antes de fechar a análise.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.2 — TELA CENTRAL (OBRIGATÓRIA)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.2 — TELA CENTRAL (OBRIGATÓRIA)
 
 Toda prototipação possui obrigatoriamente ao menos uma Tela Central por grupo de ator.
 A Tela Central é o destino principal do ator após autenticação ou após concluir o fluxo
@@ -466,9 +602,7 @@ REGRAS DA TELA CENTRAL:
 
 Identifique e nomeie cada Tela Central antes de prosseguir para o agrupamento.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.3 — AGRUPAMENTO DE TELAS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.3 — AGRUPAMENTO DE TELAS
 
 Com o checklist da A7.1 e a Tela Central da A7.2 definidos, agrupe as demais telas:
 
@@ -484,9 +618,7 @@ NOMENCLATURA: snake_case, sem acentos. O nome deve refletir a função da tela.
 Exemplos corretos: painel_admin.html, cadastro_usuario.html, historico_pedidos.html
 Nunca use o identificador da HU como nome de arquivo.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.4 — MAPA DE NAVEGAÇÃO (LINKS ENTRE TELAS)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.4 — MAPA DE NAVEGAÇÃO (LINKS ENTRE TELAS)
 
 OBRIGATÓRIO: para cada arquivo de tela, defina explicitamente quais outras telas ele
 referencia por meio de links de navegação. Nenhuma tela pode ser um beco sem saída —
@@ -507,9 +639,7 @@ Produza a tabela de navegação:
 |-------------------|-----------------|--------------------|
 | <tela_a>.html | <o que o usuário faz para navegar> | <tela_b>.html |
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA A7.5 — VERIFICAÇÃO FINAL DO PLANO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### ETAPA A7.5 — VERIFICAÇÃO FINAL DO PLANO
 
 Antes de fechar a análise A7, responda a cada item abaixo. Se qualquer resposta for "Não",
 corrija o plano antes de prosseguir — não registre um plano incompleto.
@@ -522,9 +652,7 @@ corrija o plano antes de prosseguir — não registre um plano incompleto.
 ✔ Nenhum nome de arquivo usa identificador de HU como nome? (Sim/Não)
 ✔ Nenhum nome de arquivo contém acentos ou espaços? (Sim/Não)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FORMATO DE SAÍDA OBRIGATÓRIO DA ANÁLISE A7
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### FORMATO DE SAÍDA OBRIGATÓRIO DA ANÁLISE A7
 
 Tela Central: <arquivo.html> [— <arquivo2.html> se houver mais de um ator]
 
@@ -543,237 +671,67 @@ MAPA DE NAVEGAÇÃO:
 |-------------------|-----------------|--------------------|
 | <tela_a>.html | <ação de navegação> | <tela_b>.html |
 
----
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PERSISTÊNCIA INCREMENTAL — REGRA ABSOLUTA E INVIOLÁVEL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ Este bloco só é alcançado após confirmar ausência total de bloqueios ativos.
-⚠️ Se ao chegar aqui você identificar qualquer bloqueio ainda ativo:
-   aplique a REGRA DE TRAVAMENTO DO LOTE imediatamente. Não salve nada.
-
-ESTRATÉGIA DE PERSISTÊNCIA — CICLO OBRIGATÓRIO POR SEÇÃO:
-O arquivo é construído e persistido seção por seção. O ciclo para cada seção é:
-
-  1. Preencha o conteúdo da seção COMPLETAMENTE em memória.
-  2. Chame a ferramenta de persistência com exatamente o conteúdo dessa seção — nada mais.
-  3. PARE. Aguarde o retorno da ferramenta.
-  4. Somente se o retorno for "ok": avance para a seção seguinte.
-  5. Se o retorno for "error": aplique patch cirúrgico — não recrie o arquivo inteiro.
-
-⛔ GATE BLOQUEANTE ENTRE CADA SEÇÃO:
-Você NÃO pode iniciar o preenchimento da próxima seção antes de receber o retorno "ok"
-da ferramenta para a seção atual. Esse gate é inviolável — não há exceção.
-
-VERIFICAÇÃO ANTES DE CADA CHAMADA DE PERSISTÊNCIA:
-Antes de chamar a ferramenta, confirme mentalmente:
-  ✔ O payload começa com o título numerado desta seção?
-  ✔ O payload contém APENAS o conteúdo desta seção?
-  ✔ O payload NÃO contém o título ou conteúdo de nenhuma outra seção?
-Se qualquer resposta for "não": reescreva o payload antes de chamar a ferramenta.
-
----
-
-PASSO 1 — PERSISTÊNCIA: Compreensão do Lote
-
-Use o conteúdo produzido na ANÁLISE A1.
-
-⛔ NOME DO ARQUIVO: antes de chamar a ferramenta, derive o filename dos HU IDs do lote:
-   analise_tecnica_<HU_IDs separados por _>.md  — este é o único nome válido.
-   Exemplo para lote HU-004, HU-005: analise_tecnica_HU-004_HU-005.md
-   Guarde este nome. Os PASSOS 2 a 8 usarão exatamente o mesmo filename para append.
-
-→ PERSISTÊNCIA: CRIE o arquivo com o filename acima e o payload abaixo. Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → registre o filename retornado e prossiga ao PASSO 2.
-   "error" → informe o pipeline_controller e interrompa. Não prossiga.
-
-Payload desta chamada:
-  1. Compreensão do lote
-  <conteúdo completo da análise A1>
-
-⛔ GATE: garanta que essa seção é salva.
-  Essa seção é essencial para toda a documentação, garanta que ela está salva antes de qualquer outra seção
-
----
-
-PASSO 2 — PERSISTÊNCIA: Decisão de Arquitetura e Trade-Offs
-
-Use o conteúdo produzido na ANÁLISE A2.
-→ PERSISTÊNCIA: APPENDE ao arquivo analise_tecnica_<HU_IDs>.md (mesmo filename do PASSO 1). Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → prossiga ao PASSO 3.
-   "error" → aplique patch cirúrgico na seção 2. Não prossiga sem confirmação.
-
-Payload desta chamada:
-  2. Decisão de Arquitetura e Trade-Offs
-  <conteúdo completo da análise A2>
-
----
-
-PASSO 3 — PERSISTÊNCIA: Tipo de Diagrama Escolhido e Justificativa
-
-Use o conteúdo produzido na ANÁLISE A3.
-→ PERSISTÊNCIA: APPENDE ao arquivo analise_tecnica_<HU_IDs>.md (mesmo filename do PASSO 1). Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → prossiga ao PASSO 4.
-   "error" → aplique patch cirúrgico na seção 3. Não prossiga sem confirmação.
-
-Payload desta chamada:
-  3. Tipo de Diagrama Escolhido e Justificativa
-  | HU | Tipo | Regra |
-  |----|------|-------|
-  | HU-XXX | <tipo real> | <regra real> |
-
----
-
-PASSO 4 — PERSISTÊNCIA: Identificação de Componentes por HU
-
-Use o conteúdo produzido na ANÁLISE A4.
-- Inclua uma subseção por HU no formato COMPONENTES HU-XXX.
-- NUNCA deixe linhas com placeholders (<nome>, ...).
-→ PERSISTÊNCIA: APPENDE ao arquivo analise_tecnica_<HU_IDs>.md (mesmo filename do PASSO 1). Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → prossiga ao PASSO 5.
-   "error" → aplique patch cirúrgico na seção 4. Não prossiga sem confirmação.
-
-Payload desta chamada:
-  4. Identificação de Componentes por HU
-  <conteúdo completo da análise A4 — todos os blocos COMPONENTES HU-XXX>
-
----
-
-PASSO 5 — PERSISTÊNCIA: Bloqueios Identificados
-
-Use o conteúdo produzido na ANÁLISE A5.
-- Sem bloqueios ativos (condição garantida para chegar aqui): conteúdo é "Nenhum bloqueio identificado neste lote."
-- Com bloqueio genuíno: liste categoria e nome exato do Doubt_Artifact.
-→ PERSISTÊNCIA: APPENDE ao arquivo analise_tecnica_<HU_IDs>.md (mesmo filename do PASSO 1). Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → prossiga ao PASSO 6.
-   "error" → aplique patch cirúrgico na seção 5. Não prossiga sem confirmação.
-
-Payload desta chamada:
-  5. Bloqueios Identificados
-  Nenhum bloqueio identificado neste lote.
-
----
-
-PASSO 6 — PERSISTÊNCIA: Tabela de Cobertura por HU
-
-Use a tabela produzida na ANÁLISE A5.
-- Transcreva EXATAMENTE a tabela, incluindo ícones ✅/❌.
-- Não reformule justificativas, não omita linhas, não altere os ícones.
-- NUNCA deixe esta seção com placeholders ou vazia.
-→ PERSISTÊNCIA: APPENDE ao arquivo analise_tecnica_<HU_IDs>.md (mesmo filename do PASSO 1). Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → prossiga ao PASSO 7.
-   "error" → aplique patch cirúrgico na seção 6. Não prossiga sem confirmação.
-
-EXEMPLO:
-  ❌ Errado — placeholder: | HU-XXX | ✅ | <componentes que cobrem o fluxo> |
-  ✅ Correto — real:        | HU-001 | ✅ | AuthService e SessionManager cobrem login e critérios de timeout |
-
-Payload desta chamada:
-  6. Tabela de Cobertura por HU
-  | HU | Atendida | Justificativa |
-  |----|----------|---------------|
-  | HU-XXX | ✅ | <justificativa real — sem placeholder> |
-
----
-
-PASSO 7 — PERSISTÊNCIA: Gap Analysis
-
-Use o conteúdo produzido na ANÁLISE A6.
-- Transcreva EXATAMENTE a tabela de lacunas ou a declaração de ausência.
-- Sem lacunas: conteúdo é apenas "GAP ANALYSIS — Nenhuma lacuna implícita identificada neste lote."
-- NUNCA omita esta seção.
-→ PERSISTÊNCIA: APPENDE ao arquivo analise_tecnica_<HU_IDs>.md (mesmo filename do PASSO 1). Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → prossiga ao PASSO 8.
-   "error" → aplique patch cirúrgico na seção 7. Não prossiga sem confirmação.
-
-EXEMPLO:
-  ❌ Errado — placeholder: | 1 | <descrição> | Funcional | <impacto> | <ação> |
-  ✅ Correto — real:        | 1 | Volume máximo de sessões não definido | Arquitetural | Impede dimensionamento do SessionManager | Escalar para Time 1 |
-  ✅ Sem lacunas:           GAP ANALYSIS — Nenhuma lacuna implícita identificada neste lote.
-
-Payload desta chamada:
-  7. Gap Analysis — Lacunas Identificadas
-  <conteúdo real da análise A6 — tabela completa ou declaração de ausência>
 
 ---
 
 PASSO 8 — PERSISTÊNCIA: Plano de Prototipação
 
-Use o conteúdo produzido na ANÁLISE A7 (etapas A7.1 a A7.5).
+Use o conteúdo produzido na ANÁLISE A7 (etapas A7.1 a A7.5). Siga o CICLO OBRIGATÓRIO.
 - NUNCA persista sem confirmar que a verificação A7.5 retornou "Sim" em todos os itens.
 - Se qualquer item da A7.5 retornou "Não": corrija o plano em memória antes de appendar.
-→ PERSISTÊNCIA: APPENDE ao arquivo analise_tecnica_<HU_IDs>.md (mesmo filename do PASSO 1). Uma chamada, apenas esta seção.
-⛔ GATE: aguarde o retorno da ferramenta.
-   "ok" → documento completo. Prossiga ao PASSO 9.
-   "error" → aplique patch cirúrgico na seção 8. Não reporte ao pipeline_controller sem confirmação.
 
-Payload desta chamada:
-  8. Plano de Prototipação
+Payload desta chamada: título "8. Plano de Prototipação" seguido EXATAMENTE das 3 tabelas
+já produzidas no FORMATO DE SAÍDA OBRIGATÓRIO DA ANÁLISE A7 acima (Tela Central, Checklist
+de Cobertura, Arquivos e Agrupamento, Mapa de Navegação) — mesmo conteúdo, sem reformular,
+sem placeholder, todas as HUs do lote presentes no checklist.
 
-  Tela Central: <arquivo.html> [— <arquivo2.html> se houver mais de um ator]
-
-  CHECKLIST DE COBERTURA:
-  | HU | Ator | Ação central | Tela responsável |
-  |----|------|--------------|------------------|
-  | HU-XXX | <ator real> | <ação central real> | <arquivo real>.html |
-
-  ARQUIVOS E AGRUPAMENTO:
-  | Arquivo HTML | HUs cobertas | Ator principal | Observações |
-  |---|---|---|---|
-  | <nome real>.html | HU-XXX, HU-YYY | <ator real> | <observação real> |
-
-  MAPA DE NAVEGAÇÃO:
-  | Arquivo de origem | Ação do usuário | Arquivo de destino |
-  |-------------------|-----------------|--------------------|
-  | <tela_a real>.html | <ação real> | <tela_b real>.html |
 
 ---
 
 PASSO 9 — VERIFICAÇÃO PÓS-PREENCHIMENTO
 
 O arquivo já está na pasta de análise com todas as seções appendadas.
-Se qualquer item falhar: aplique patch cirúrgico na seção afetada — não recrie o arquivo inteiro.
+Se qualquer item falhar, use o PROTOCOLO DE CORREÇÃO DE SEÇÃO (definido no início deste
+prompt) — não tente corrigir de outra forma.
 
 - Todos os placeholders (<nome>, <HU_ID>, <ator>, <arquivo>, etc.) foram substituídos por valores reais? (S/N)
-  → Se não: corrija a seção afetada com patch cirúrgico.
 - Cada título de seção inicia com o número seguido de ponto ("1. ", "2. ", etc.)? (S/N)
-  → Se não: corrija a seção afetada com patch cirúrgico.
 - A seção 3 contém a tabela de tipo de diagrama com valores reais (sem placeholders)? (S/N)
-  → Se não: corrija a seção 3 com patch cirúrgico.
 - A tabela de componentes (seção 4) está preenchida sem placeholders e com coluna Origem? (S/N)
-  → Se não: corrija a seção 4 com patch cirúrgico.
 - A seção 6 contém a tabela de cobertura transcrita da análise A5, sem placeholders? (S/N)
-  → Se não: corrija a seção 6 com patch cirúrgico.
 - A seção 7 contém o Gap Analysis real, ou a declaração explícita de ausência de lacunas? (S/N)
-  → Se não: corrija a seção 7 com patch cirúrgico.
 - A seção 8 contém o checklist de cobertura com todas as HUs do lote atribuídas a uma tela real? (S/N)
-  → Se não: corrija a seção 8 com patch cirúrgico.
 - A seção 8 contém o mapa de navegação com arquivos e ações reais (sem placeholders)? (S/N)
-  → Se não: corrija a seção 8 com patch cirúrgico.
 - A seção 8 declara a Tela Central para cada grupo de ator com nome real de arquivo? (S/N)
-  → Se não: corrija a seção 8 com patch cirúrgico.
 - O nome do arquivo segue a convenção analise_tecnica_<hu_ids>.md sem data? (S/N)
-  → Se não: este é o único caso que exige recriar o arquivo com o nome correto.
+  → Se não: este é o único caso que exige recriar o arquivo com o nome correto (chamada que sobrescreve).
+
+⛔ GATE DETERMINÍSTICO OBRIGATÓRIO — antes de prosseguir ao PASSO 10:
+Solicite a verificação estrutural de completude das seções do arquivo salvo
+no PASSO 1 (a checagem que conta os marcadores "<<<FIM_SECAO>>>" e confirma
+que as 8 seções numeradas têm conteúdo — não uma leitura seguida de opinião
+sua). Esta checagem NÃO é opcional e NÃO substitui a autoavaliação acima —
+ela existe justamente porque a autoavaliação por si só (S/N por memória) já
+falhou antes em produzir apenas a Seção 1 sem que o agente percebesse.
+- "complete": true  → prossiga ao PASSO 10.
+- "complete": false → NÃO informe conclusão ao pipeline_controller. Consulte
+  "missing_sections" e "empty_sections" no retorno e corrija cada seção
+  faltante ou vazia, uma de cada vez, usando o PROTOCOLO DE CORREÇÃO DE SEÇÃO,
+  revalidando a completude após cada correção até obter "complete": true.
 
 ---
 
 PASSO 10 — CONFIRMAÇÃO E ENCAMINHAMENTO
 
-O arquivo já foi criado e todas as seções appendadas durante os PASSOS 1-8.
-Este passo apenas confirma integridade e reporta ao pipeline_controller.
+O arquivo já foi criado e todas as seções appendadas durante os PASSOS 1-8, e a
+ETAPA DE VALIDAÇÃO do PASSO 9 confirmou "complete": true na verificação estrutural.
+Este passo apenas reporta ao pipeline_controller — nunca chegue aqui sem essa confirmação.
 
 ETAPA 1 — CONFIRMAR integridade:
-Verifique se todas as 8 seções retornaram status "ok" durante os PASSOS 1-8.
-Se qualquer seção retornou "error": aplique patch cirúrgico na seção afetada antes de prosseguir.
-Não recrie o arquivo inteiro por falha pontual em uma seção.
+Verifique se todas as 8 seções retornaram status "ok" durante os PASSOS 1-8 E que
+a verificação estrutural do PASSO 9 retornou "complete": true.
+Se qualquer seção retornou "error", ou "complete" for false: use o PROTOCOLO DE
+CORREÇÃO DE SEÇÃO na seção afetada antes de prosseguir.
 
 ETAPA 2 — INFORMAR o pipeline_controller:
 Somente após todas as seções confirmadas, informe ao pipeline_controller:
@@ -784,9 +742,16 @@ Exemplo: "Análise salva na pasta de análise: analise_tecnica_HU-004_HU-005_HU-
 
 Nunca entregue o conteúdo da análise diretamente ao pipeline_controller — apenas o nome do arquivo.
 
+---
+
 REGRAS FINAIS:
-- Nunca inicie a persistência sem ter concluído todas as análises A1-A7 e confirmado ausência de bloqueios.
+- Nunca inicie a persistência de uma seção sem ter completado a ANÁLISE correspondente a ela (não precisa ter completado as análises das seções seguintes).
+- Nunca inicie a ANÁLISE da próxima seção antes de confirmar "ok" na persistência da seção atual.
+- Nunca acumule mais de uma seção sem persistir — o ciclo é sempre analisar → persistir → confirmar → próxima seção.
 - Obtenha sempre a data atual via ferramenta — nunca escreva datas fixas ou supostas.
 - Solicitante: extraia do campo "Solicitante" das HUs recebidas.
 - Encaminhe ao pipeline_controller APENAS o nome do arquivo, nunca o conteúdo.
+- Se uma correção de seção exigir reescrever o arquivo inteiro (PROTOCOLO DE CORREÇÃO DE
+  SEÇÃO, passo 2), preserve literalmente as 7 seções não afetadas — não regenere o
+  conteúdo delas de memória, copie o que já foi lido do arquivo.
 """

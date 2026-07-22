@@ -1,5 +1,6 @@
 import os
 from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
+from google.adk.tools import LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.design_architect.agent import agent as design_architect
@@ -8,6 +9,7 @@ from src.agents.markdown_specialist.agent import agent as markdown_specialist
 from src.agents.prototyping_specialist.agent import agent as prototyping_specialist
 from src.agents.validator.agent import agent as validator
 from src.agents.io_agent.agent import agent as io_agent
+from shared.tools.design_hitl_tool import aguardar_resolucao_doubt
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
 
@@ -60,20 +62,31 @@ ETAPA 2 — ANÁLISE TÉCNICA (BLOQUEANTE)
 ⚠️ VOCÊ SÓ PODE AVANÇAR PARA A ETAPA 3 APÓS VER O ARQUIVO NA LISTA DO AGENTE IO.
 
 Valide que o CONTEÚDO DO ARQUIVO SALVO contém TODAS as seções obrigatórias.
-Peça ao Agente IO para ler o arquivo confirmado e verifique:
-- Compreensão do lote
-- Decisão(ões) de arquitetura e trade-offs
-- Tipo de diagrama por HU
-- Componentes por HU com origens
-- Seção "Bloqueios identificados" (mesmo que declare "Nenhum")
-- Tabela de cobertura por HU
-- Gap Analysis
-- Plano de Prototipação (seção 8): deve conter "Tela Central" declarada e tabela com ao menos uma linha de arquivo HTML
-Uma seção é válida somente se contiver conteúdo além do título.
-Não confie apenas no nome do arquivo ou na mensagem de confirmação do design_architect.
+⛔ ESTA VALIDAÇÃO É DETERMINÍSTICA, NÃO NARRATIVA: acione o Agente IO para pedir a
+verificação estrutural de completude do arquivo confirmado (a checagem que conta
+os marcadores de fim de seção e reporta quais seções estão ausentes ou vazias) —
+NÃO tente avaliar completude apenas lendo o texto e "achando" que está completo.
+Uma autoavaliação textual já falhou uma vez em pegar um arquivo com só a Seção 1
+ — por isso a checagem estrutural
+é obrigatória e substitui qualquer inspeção manual.
 
-Se qualquer seção estiver ausente: devolva ao design_architect informando o campo
-faltante e aguarde a versão corrigida.
+Leia o retorno dessa verificação:
+- "complete": true  → avance para ETAPA 3.
+- "complete": false → NÃO avance. Informe ao design_architect exatamente quais
+  seções estão em "missing_sections" (nunca persistidas) e "empty_sections"
+  (persistidas só com título) e aguarde a versão corrigida. Após a correção,
+  repita a verificação estrutural — não aceite a palavra do design_architect
+  de que corrigiu sem essa confirmação.
+
+As 8 seções esperadas (para referência, mas a fonte de verdade é a verificação estrutural):
+- 1. Compreensão do lote
+- 2. Decisão(ões) de arquitetura e trade-offs
+- 3. Tipo de diagrama por HU
+- 4. Componentes por HU com origens
+- 5. Bloqueios identificados (mesmo que declare "Nenhum")
+- 6. Tabela de cobertura por HU
+- 7. Gap Analysis
+- 8. Plano de Prototipação: deve conter "Tela Central" declarada e tabela com ao menos uma linha de arquivo HTML
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ETAPA 3 — VERIFICAÇÃO DE BLOQUEIOS (HITL)
@@ -87,22 +100,24 @@ SE não houver bloqueios (has_blocks: false):
 → Avance diretamente para ETAPA 4.
 
 SE houver bloqueios (has_blocks: true):
-1. NÃO encerre. NÃO emita PIPELINE_STAGE_1_COMPLETE. NÃO avance para os especialistas.
-2. Informe o orquestrador com EXATAMENTE este formato:
-   "PIPELINE_BLOCKED: O lote está suspenso aguardando resolução humana.
-   Bloqueios ativos:
-   - <HU_ID>: <nome_do_doubt_artifact>
-   [repita para cada bloqueio]
-   O pipeline só continuará após todos os Doubt_Artifacts serem resolvidos.
-   Instrução ao solicitante: edite cada Doubt_Artifact alterando o status de 'Bloqueado' para 'Resolvido' e solicite a retomada."
+1. NÃO encerre com texto de bloqueio. NÃO emita PIPELINE_STAGE_1_COMPLETE.
+   NÃO avance para os especialistas. CHAME OBRIGATORIAMENTE a tool
+   `aguardar_resolucao_doubt`, passando:
+   - checkpoint_id: hu_ids bloqueados, unidos por vírgula
+   - approval_question: cite cada bloco (filename + hu_id) e peça para
+     resolver (Status: Bloqueado → Resolvido) e responder "retomar" ou
+     "cancelar"
+   - allowed_decisions: ["retomar", "cancelar"]
+   - pause_reason: motivo do bloqueio
+2. NÃO emita nenhum texto além da chamada da tool.
+3. Quando a tool retornar, leia `decision`:
+   - "cancelar" → encerre com "PIPELINE_ERROR: lote cancelado pelo solicitante."
+   - "retomar"  → chame check_active_blocks novamente via Agente IO.
+       - Se ainda houver bloqueios: chame `aguardar_resolucao_doubt`
+         de novo com os bloqueios remanescentes (pausa encadeada — já
+         suportada pelo orchestrator).
+       - Se não houver mais bloqueios: avance para ETAPA 4.
 
-3. Entre em loop de espera:
-   a. Aguarde mensagem de retomada do orquestrador.
-   b. Ao receber retomada: acione o Agente IO para verificar bloqueios novamente.
-   c. SE ainda houver bloqueios: informe quais permanecem e volte ao passo (a).
-   d. SE não houver mais bloqueios: avance para ETAPA 4.
-
-⚠️ NUNCA saia do loop de espera por iniciativa própria.
 ⚠️ NUNCA emita PIPELINE_STAGE_1_COMPLETE enquanto has_blocks for true.
 ⚠️ O lote é indivisível — todas as HUs avançam juntas ou nenhuma avança.
 
@@ -113,17 +128,14 @@ ETAPA 4 — VERIFICAÇÃO PRÉ-SEQUÊNCIA
 Acione o Agente IO: "[pipeline_controller] Liste todos os arquivos disponíveis em design_dir."
 Confirme que existe arquivo com nome iniciando em analise_tecnica_.
 - Ausente: retorne ao design_architect solicitando que salve a análise.
-- Presente: leia o arquivo via Agente IO e valide que TODAS as seções obrigatórias possuem conteúdo além do título:
-  - Compreensão do lote
-  - Decisão de Arquitetura e Trade-Offs
-  - Tipo de Diagrama Escolhido e Justificativa
-  - Identificação de Componentes por HU
-  - Bloqueios Identificados
-  - Tabela de Cobertura por HU
-  - Gap Analysis
-  - Plano de Prototipação: deve conter "Tela Central" e tabela de arquivos HTML com ao menos uma linha. Se ausente ou contiver apenas o título sem tabela: devolva ao design_architect informando que a seção 8 está incompleta.
-  Se qualquer seção existir mas estiver vazia (apenas título sem conteúdo): devolva ao design_architect informando as seções vazias e aguarde versão corrigida.
-  Somente avance para ETAPA 5 após confirmar conteúdo real em todas as seções.
+- Presente: acione o Agente IO para repetir a verificação estrutural de
+  completude neste ponto (o mesmo gate determinístico da ETAPA 2) — isto
+  confirma que nenhuma seção foi corrompida ou perdida entre a ETAPA 2 e o
+  retorno do parallel_branch.
+  - "complete": true  → avance para ETAPA 5.
+  - "complete": false → devolva ao design_architect informando "missing_sections"
+    e "empty_sections" retornados pela ferramenta, e aguarde a versão corrigida.
+    Repita a chamada após a correção. Não avance para ETAPA 5 sem "complete": true.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ETAPA 5 — ENCERRAMENTO OBRIGATÓRIO
@@ -143,6 +155,7 @@ pipeline_controller = LlmAgent(
     tools=[
         AgentTool(agent=io_agent),
         AgentTool(agent=design_architect),
+        LongRunningFunctionTool(aguardar_resolucao_doubt),
     ],
 )
 

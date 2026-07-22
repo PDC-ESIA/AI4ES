@@ -10,6 +10,7 @@ from .filesystem import (
 )
 # NOTE: `gerar_doubt_artifact` é reexportado de `doubt_generator_analista` para manter compatibilidade.
 from .hitl_tool import aguardar_aprovacao_humana
+from .design_hitl_tool import aguardar_resolucao_doubt, aguardar_decisao_validacao
 from .planner_tools import (
     create_hitl_checkpoint,
     describe_tools,
@@ -53,6 +54,8 @@ __all__ = [
     "coletar_doubts_pendentes",
     "responder_doubt",
     "aguardar_aprovacao_humana",
+    "aguardar_resolucao_doubt",
+    "aguardar_decisao_validacao",
     "create_hitl_checkpoint",
     "describe_tools",
     "generate_compliance_report",

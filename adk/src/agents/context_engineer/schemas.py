@@ -6,9 +6,9 @@ de cada task) e Task (Context Window completo para o coder).
 Portado de feat/me2/coding_squad (Time 4).
 """
 
-from typing import Optional
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MacroContext(BaseModel):
@@ -37,10 +37,19 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: Optional[str] = Field(
-        default=None,
-        description="Assinatura de interface/contrato que deve ser respeitado",
+    interfaces: list[str] = Field(
+        default_factory=list,
+        description="Assinaturas de interface/contrato que devem ser respeitadas",
     )
+
+    @field_validator("interfaces", mode="before")
+    @classmethod
+    def _coerce_interfaces(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value] if value.strip() else []
+        return value
 
 
 class Task(BaseModel):
