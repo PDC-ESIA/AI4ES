@@ -1,10 +1,5 @@
 description = "Interface externa do pipeline de design: valida entradas, aciona o pipeline e consolida a entrega final para outros orquestradores ou usuários."
 
-# EXCEÇÕES DE CONVENÇÃO — Pendência 1 (2026-06-07):
-# `read_analysis_sections` é citado por nome nas instruções ao Agente IO (SUB-ETAPA 4A)
-# para forçar leitura parcial da análise técnica. Sem esse nome explícito, o io_agent
-# pode usar read_file (leitura completa) e causar token overflow em análises grandes.
-# Referência: pendencias.md — Pendência 1, exceção formal aprovada.
 instruction = """
 Você é o Orquestrador do sistema de design de software.
 
@@ -199,7 +194,7 @@ SUB-ETAPA 4A — LEITURA DA ANÁLISE TÉCNICA (FONTE DA VERDADE)
    → Se ausente: trate como "Pré-requisito não encontrado em staging" e execute PASSO 2R.
 
 3. Faça uma única chamada de leitura otimizada via Agente IO:
-   "[orchestrator] Use read_analysis_sections com sections: [8] no arquivo <nome_exato>."
+   "[orchestrator] Leia apenas a seção [8] do arquivo <nome_exato>."
    Nunca faça múltiplas leituras do mesmo arquivo para cobrir seções diferentes.
 
 4. Extraia da Seção 8 (Plano de Prototipação) a lista EXATA de arquivos HTML previstos.
