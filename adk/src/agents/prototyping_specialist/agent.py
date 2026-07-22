@@ -14,6 +14,7 @@ agent = create_se_agent(
         AgentTool(agent=io_agent),
         current_date,
     ],
+    agent_subdir="prototyping_specialist",
     generate_content_config=types.GenerateContentConfig(
         max_output_tokens=16384,
     ),

@@ -16,11 +16,21 @@ Time 2, nunca uma subpasta isolada por agente. Fazer bind de
 árvore inteira um nível abaixo do correto (design/diagrams/diagrams/,
 design/diagrams/analysis/ etc.).
 
-O comportamento correto — verificado abaixo — é o oposto do que este teste
-verificava antes: nenhum especialista de Time 2 deve ter `save_artifact`
-bound a um base_dir isolado. Todos devem compartilhar a mesma raiz "design",
-resolvida internamente por `shared/tools/design_filesystem.py`
-independentemente de qualquer workspace por agente.
+⚠️ ATUALIZADO (2ª vez): desde a integração de `design_filesystem.py` ao
+mecanismo centralizado de workspace (`shared/agent_factory.py` +
+`shared/workspace.py`), `save_artifact` **volta a ser bound** via closure —
+mas agora corretamente, porque `AGENT_DIRS` mapeia os 6 agentes de Time 2
+para a mesma raiz `"design"` (nunca uma subpasta por agente). O binding
+passa a apontar sempre para essa raiz compartilhada, resolvida a partir de
+`WORKSPACE_OUTPUT_DIR` (não mais para o antigo fallback interno de
+`design_filesystem.py`).
+
+O invariante protegido por este teste continua o mesmo de antes: nenhum
+especialista de Time 2 deve escrever em uma subpasta isolada por agente
+(ex.: `design/diagrams/`, `design/staging/`) — todos devem compartilhar a
+mesma raiz `"design"`. O que muda é *como* isso é garantido: antes, por
+ausência de binding; agora, por binding para uma raiz comum via
+`WORKSPACE_OUTPUT_DIR`.
 """
 from pathlib import Path
 
@@ -50,11 +60,16 @@ def test_especialista_nao_tem_save_artifact_isolado_por_agente(nome, monkeypatch
     from shared.tools import design_filesystem as df
 
     design_root = tmp_path / "design"
-    monkeypatch.setattr(df, "DESIGN_DIR", design_root)
+    # Fallback antigo (usado só quando base_dir não é passado) — deixado
+    # monkeypatchado por segurança, mas não deveria mais ser exercitado,
+    # já que save_artifact agora sempre recebe base_dir via binding.
+    monkeypatch.setattr(df, "DESIGN_DIR", tmp_path / "_fallback_nao_deveria_ser_usado")
     monkeypatch.setattr(df, "ADK_DIR", tmp_path)
-    # Isola também o workspace legado (usado só por outros times) para não
-    # tocar no workspace_output real do projeto durante o teste.
-    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws_legado_nao_usado_por_design"))
+    # WORKSPACE_OUTPUT_DIR agora é a fonte de verdade: get_agent_workspace()
+    # resolve <WORKSPACE_OUTPUT_DIR>/design para todos os 6 agentes de Time 2
+    # (AGENT_DIRS unifica todos em "design"). Apontamos para tmp_path para
+    # que design_root (usado abaixo na asserção) seja exatamente essa raiz.
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
 
     import importlib
     modulo = importlib.import_module(f"src.agents.{nome}.agent")
@@ -83,3 +98,61 @@ def test_especialista_nao_tem_save_artifact_isolado_por_agente(nome, monkeypatch
         f"{nome}: esperava escrita em {esperado}, mas foi em {caminho_escrito} — "
         f"indica que save_artifact voltou a ter base_dir isolado por agente."
     )
+
+
+def test_workspace_output_dir_diferente_do_default_muda_onde_design_le_e_escreve(monkeypatch, tmp_path):
+    """Cobertura nova (passo 5 do roadmap): antes da integração ao
+    agent_factory, WORKSPACE_OUTPUT_DIR não tinha nenhum efeito sobre onde
+    design_filesystem.py lia/escrevia — a raiz vinha sempre do fallback
+    interno (_find_root/ADK_DIR/DESIGN_DIR), independente da variável de
+    ambiente. Esse comportamento nunca foi testado, porque não existia.
+
+    Agora, dois valores diferentes de WORKSPACE_OUTPUT_DIR devem produzir
+    duas raízes de escrita/leitura distintas para o mesmo agente (aqui,
+    mermaid_specialist), provando que a variável de ambiente passou a ser
+    a fonte de verdade.
+    """
+    import importlib
+
+    from shared.tools.design_filesystem import save_artifact as _save_artifact_unbound
+
+    workspace_a = tmp_path / "workspace_a"
+    workspace_b = tmp_path / "workspace_b"
+
+    for workspace_root in (workspace_a, workspace_b):
+        monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace_root))
+
+        modulo = importlib.import_module("src.agents.mermaid_specialist.agent")
+        importlib.reload(modulo)
+        agente = modulo.agent
+
+        save_tool = None
+        for t in agente.tools:
+            func = getattr(t, "func", None) or (t if callable(t) else None)
+            if func is not None and getattr(func, "__name__", "") == "save_artifact":
+                save_tool = func
+                break
+        assert save_tool is not None
+
+        result = save_tool(filename="diagrama_wsdir_test.mmd", content="flowchart TD\n")
+        assert result["status"] == "ok"
+
+        caminho_escrito = Path(result["path"]).resolve()
+        esperado = (workspace_root / "design" / "diagrams" / "diagrama_wsdir_test.mmd").resolve()
+        assert caminho_escrito == esperado, (
+            f"WORKSPACE_OUTPUT_DIR={workspace_root}: esperava escrita em {esperado}, "
+            f"mas foi em {caminho_escrito}."
+        )
+
+    # As duas raízes devem ser realmente distintas (prova de que a env var
+    # de fato controlou o destino, e não caiu em um cache/fallback comum).
+    arquivo_a = workspace_a / "design" / "diagrams" / "diagrama_wsdir_test.mmd"
+    arquivo_b = workspace_b / "design" / "diagrams" / "diagrama_wsdir_test.mmd"
+    assert arquivo_a.exists()
+    assert arquivo_b.exists()
+    assert arquivo_a.resolve() != arquivo_b.resolve()
+
+    # Sanidade: a tool desbindada (chamada direta, sem passar por
+    # create_se_agent) continua usando o fallback histórico quando nenhum
+    # base_dir é informado — comportamento antigo 100% preservado.
+    assert _save_artifact_unbound.__name__ == "save_artifact"

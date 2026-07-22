@@ -49,8 +49,8 @@ Para CADA requisito atômico recebido, gere uma Task contendo:
     Se não for possível determinar, deixe a lista vazia.
   - **outputs**: arquivos que o Coder deve CRIAR ou MODIFICAR.
     Se não for possível determinar, deixe a lista vazia.
-  - **interfaces**: assinatura de interface/contrato que deve ser respeitado.
-    Se não houver, use null.
+  - **interfaces**: lista de assinaturas de interface/contrato que devem ser respeitadas
+    (ex: rotas HTTP, assinaturas de função). Se não houver, use lista vazia.
 
 ## Passo 3 — Persistir no Workspace
 Após gerar todas as tasks, persista cada uma individualmente no repositório

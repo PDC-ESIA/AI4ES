@@ -67,7 +67,7 @@ verificação estrutural de completude do arquivo confirmado (a checagem que con
 os marcadores de fim de seção e reporta quais seções estão ausentes ou vazias) —
 NÃO tente avaliar completude apenas lendo o texto e "achando" que está completo.
 Uma autoavaliação textual já falhou uma vez em pegar um arquivo com só a Seção 1
-(ver DIAGNOSTICO_BLOQUEIO_HITL_2026-07.md, Bug B) — por isso a checagem estrutural
+ — por isso a checagem estrutural
 é obrigatória e substitui qualquer inspeção manual.
 
 Leia o retorno dessa verificação:

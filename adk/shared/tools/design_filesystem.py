@@ -89,9 +89,21 @@ def _ensure_dirs(dirs: Dict[str, Path]) -> None:
 
 
 def _is_safe_path(path: Path, root: Path) -> bool:
+    """
+    True se `path` está dentro de `root`, OU dentro de TEMPLATE_DIR.
+
+    TEMPLATE_DIR é uma exceção deliberada e fixa: templates são globais e
+    nunca escopados por base_dir (ver docstring de _resolve_dirs). Sem esta
+    exceção aqui, qualquer leitura de template feita por um agente com
+    workspace isolado (root = base_dir do agente, não o projeto inteiro)
+    seria rejeitada como "fora do projeto" mesmo usando o alias correto —
+    já aconteceu na prática após a integração com agent_factory.
+    """
     try:
         resolved_path = path.resolve()
-        return resolved_path.is_relative_to(root)
+        if resolved_path.is_relative_to(root):
+            return True
+        return resolved_path.is_relative_to(TEMPLATE_DIR.resolve())
     except (ValueError, RuntimeError):
         return False
 
@@ -245,11 +257,23 @@ def _resolve_path_arg(raw: str, dirs: Dict[str, Path]) -> "tuple[Path | None, st
 
 def _find_existing_file(filename: str, dirs: Dict[str, Path], root: Path) -> "Path | None":
     """
-    Procura `filename` em ANALYSIS→DIAGRAMS→PROTOTYPE (dentro de `dirs`) e
-    retorna o primeiro Path que existe. Retorna None se não encontrado em
-    nenhuma pasta conhecida.
+    Procura `filename` em todas as pastas conhecidas do design (analysis,
+    diagrams, prototype, report, doubt, validation, template — nesta ordem)
+    e retorna o primeiro Path que existe. Retorna None se não encontrado em
+    nenhuma delas.
+
+    A ordem prioriza as pastas mais lidas sem alias (analysis/diagrams/
+    prototype) primeiro, por desempenho — mas nenhuma pasta fica de fora.
+    Isso evita falso "arquivo não encontrado" quando o chamador omite o
+    alias de pasta para um arquivo que só existe em report/doubt/validation/
+    template (já aconteceu na prática: relatorio_design_template.md existia
+    em TEMPLATE_DIR mas não era encontrado por uma leitura sem o prefixo
+    "TEMPLATE/", porque a busca padrão não cobria essa pasta).
     """
-    for directory in (dirs["analysis"], dirs["diagrams"], dirs["prototype"]):
+    for directory in (
+        dirs["analysis"], dirs["diagrams"], dirs["prototype"],
+        dirs["report"], dirs["doubt"], dirs["validation"], dirs["template"],
+    ):
         candidate = (directory / filename).resolve()
         if _is_safe_path(candidate, root) and candidate.exists():
             return candidate
@@ -564,6 +588,13 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown", b
 
         if resolved_dir is not None:
             target_dir = resolved_dir
+        elif filename.startswith("Doubt_Artifact"):
+            # Hardcoded de propósito: um Doubt_Artifact mal roteado fica
+            # invisível para check_active_blocks, e isso já aconteceu mais
+            # de uma vez (pasta errada, ou direto na raiz de design/). Não
+            # dependemos do agente lembrar do alias "doubt_dir/" — o nome
+            # do arquivo já é suficiente para rotear com segurança.
+            target_dir = dirs["doubt"]
         elif filename.endswith(".html") or filename == "global.css":
             target_dir = dirs["prototype"]
         elif filename.endswith(".mmd"):
@@ -786,7 +817,7 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
         Falha:         {"status": "error", "error": "<motivo>"}
     """
     _BLOCK_MARKERS = (STATUS_BLOCKED, "EXECUÇÃO PAUSADA")
-    _SCAN_FOLDERS = ("doubt", "analysis", "diagrams", "prototype", "report", "validation")
+    _SCAN_FOLDERS = ("doubt", "analysis", "diagrams", "prototype", "report", "validation", "root")
 
     try:
         dirs = _resolve_dirs(base_dir)
@@ -903,12 +934,14 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown",
 
         if resolved_dir is not None:
             target_dir = resolved_dir
+        elif filename.startswith("Doubt_Artifact"):
+            target_dir = dirs["doubt"]
         elif filename.endswith(".html") or filename == "global.css":
             target_dir = dirs["prototype"]
         elif filename.endswith(".mmd"):
             target_dir = dirs["diagrams"]
-        elif filename.startswith("relatorio_"):          # ← adicionar
-            target_dir = dirs["report"]                  # ← adicionar
+        elif filename.startswith("relatorio_"):
+            target_dir = dirs["report"]
         else:
             target_dir = dirs["analysis"]
 
@@ -980,8 +1013,25 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
     - Por heading Markdown exato: section_id="## Título".
 
     ⚠️  section_id deve ser APENAS o número ("4") ou o heading exato — nunca "4. Título".
-    ⚠️  new_content deve incluir o título da seção e terminar com "---".
+    ⚠️  new_content deve incluir o título da seção, mas NUNCA um delimitador de
+        fim de seção ("---" ou "<<<FIM_SECAO>>>") — o delimitador original do
+        arquivo é preservado automaticamente. Se um for incluído por engano,
+        é removido antes de gravar.
     ⚠️  Um backup automático é criado antes de qualquer alteração.
+
+    DELIMITADOR DE SEÇÃO — detectado automaticamente, nunca hardcoded:
+    Esta ferramenta é genérica e pode ser chamada por qualquer agente sobre
+    qualquer artefato Markdown do design (relatório, análise técnica, etc.) —
+    cada tipo de arquivo pode usar uma convenção de separação diferente:
+    - "---\\n" (horizontal rule Markdown): convenção de arquivos genéricos
+      escritos via save_artifact/append_artifact (ex.: relatorio_*.md).
+    - "<<<FIM_SECAO>>>\\n": convenção exclusiva de analise_tecnica_*.md,
+      escrito via append_architect_section.
+    patch_section identifica qual delimitador o arquivo já usa (podem até
+    coexistir) e preserva exatamente esse delimitador ao regravar — nunca
+    substitui um pelo outro. Isto corrige um bug anterior em que a regravação
+    sempre forçava "---" mesmo em arquivos que usavam "<<<FIM_SECAO>>>",
+    corrompendo o delimitador real do arquivo na primeira correção aplicada.
 
     Args:
         filename:    Nome do arquivo, com ou sem alias de pasta.
@@ -1028,13 +1078,28 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
         backup_path = _next_version(destination)
         shutil.copy2(str(destination), str(backup_path))
 
-        parts = re.split(r'(?<=\n)---\n', original)
+        # Captura o delimitador junto com o split (grupo de captura), em vez
+        # de descartá-lo — assim ele pode ser preservado tal como estava no
+        # arquivo, sem assumir qual dos dois formatos está em uso.
+        parts = re.split(r'((?<=\n)(?:---|<<<FIM_SECAO>>>)\n)', original)
+
+        _DELIMITER_TOKENS = {"---", "<<<FIM_SECAO>>>"}
+
+        def _strip_trailing_delimiter(content: str) -> str:
+            text = content.rstrip("\n")
+            for marker in ("<<<FIM_SECAO>>>", "---"):
+                if text.endswith(marker):
+                    return text[: -len(marker)].rstrip("\n")
+            return text
+
         section_found = False
         patched_parts = []
 
         for part in parts:
             stripped = part.strip()
-            if not stripped:
+            if not stripped or stripped in _DELIMITER_TOKENS:
+                # Parte vazia ou é o próprio token de delimitador (preservado
+                # exatamente como veio do split — nunca substituído).
                 patched_parts.append(part)
                 continue
 
@@ -1043,7 +1108,7 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
             matched_by_heading = (first_line == section_id.strip())
 
             if not section_found and (matched_by_number or matched_by_heading):
-                patched_parts.append(new_content.rstrip("\n") + "\n")
+                patched_parts.append(_strip_trailing_delimiter(new_content) + "\n")
                 section_found = True
             else:
                 patched_parts.append(part)
@@ -1056,7 +1121,7 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
                 "hint": "Use read_analysis_sections para inspecionar os IDs disponíveis.",
             }
 
-        destination.write_text("---\n".join(patched_parts), encoding="utf-8")
+        destination.write_text("".join(patched_parts), encoding="utf-8")
         timestamp = datetime.now().isoformat()
 
         IOLogger.save(filename, caller=caller, backup=str(backup_path))
