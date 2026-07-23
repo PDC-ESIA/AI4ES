@@ -99,7 +99,7 @@ class ExecutionReport(BaseModel):
     )
     report_path: Optional[str] = Field(
         default=None,
-        description="Caminho do relatório .md persistido no workspace",
+        description="Caminho do relatório .json (ExecutionReport) persistido no workspace",
     )
     total_duration_seconds: float = Field(
         default=0.0,
