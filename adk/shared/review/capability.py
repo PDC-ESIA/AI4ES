@@ -37,6 +37,18 @@ class ReviewCapability(Protocol):
 
 
 _SEVERITY_ORDER: dict[str, int] = {"critical": 0, "warning": 1, "info": 2}
+_SUBPROCESS_TIMEOUT = 60
+
+
+def _diagnostic(origem: str, mensagem: str) -> list[Finding]:
+    """Retorna um Finding informativo quando a ferramenta falha em executar."""
+    return [Finding(
+        origem=origem,
+        regra="tool-unavailable",
+        severidade="info",
+        arquivo="",
+        mensagem=mensagem,
+    )]
 
 
 class RuffCapability:
@@ -50,10 +62,17 @@ class RuffCapability:
                 ["ruff", "check", "--output-format", "json", str(target_dir)],
                 capture_output=True,
                 text=True,
+                timeout=_SUBPROCESS_TIMEOUT,
             )
             if not proc.stdout.strip():
                 return []
             items = json.loads(proc.stdout)
+        except FileNotFoundError:
+            return _diagnostic(self.name, "ruff não encontrado — instale ruff>=0.4.0")
+        except subprocess.TimeoutExpired:
+            return _diagnostic(self.name, f"ruff excedeu timeout de {_SUBPROCESS_TIMEOUT}s")
+        except json.JSONDecodeError:
+            return _diagnostic(self.name, "ruff retornou JSON inválido")
         except Exception:
             return []
 
@@ -89,10 +108,17 @@ class BanditCapability:
                 ["bandit", "-r", "--format", "json", "-q", str(target_dir)],
                 capture_output=True,
                 text=True,
+                timeout=_SUBPROCESS_TIMEOUT,
             )
             if not proc.stdout.strip():
                 return []
             data = json.loads(proc.stdout)
+        except FileNotFoundError:
+            return _diagnostic(self.name, "bandit não encontrado — instale bandit>=1.9.4")
+        except subprocess.TimeoutExpired:
+            return _diagnostic(self.name, f"bandit excedeu timeout de {_SUBPROCESS_TIMEOUT}s")
+        except json.JSONDecodeError:
+            return _diagnostic(self.name, "bandit retornou JSON inválido")
         except Exception:
             return []
 
