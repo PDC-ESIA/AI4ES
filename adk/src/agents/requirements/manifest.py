@@ -70,20 +70,19 @@ def _scan_artifacts(req_ws: Path, ws_root: Path) -> list[dict]:
     return artifacts
 
 
-def _scan_doubts(ws_root: Path) -> list[dict]:
-    """Varre o diretório de doubt artifacts e classifica bloqueantes.
+def _scan_doubts(req_ws: Path, ws_root: Path) -> list[dict]:
+    """Varre o workspace de requisitos por arquivos Doubt_Artifact_*.md.
 
-    Doubts do agente de requisitos são gravados em
-    workspace_output/tests/inputs/doubt_artifacts/ por gerar_doubt_artifact.
+    Os doubts são gravados por gerar_doubt_artifact diretamente na raiz
+    de req_ws (workspace_output/requirements/), com nome no padrão
+    Doubt_Artifact_<ID>_<timestamp>.md.
+
+    O marcador de bloqueante no arquivo é '**Bloqueante:** Sim'.
     """
-    doubt_dir = get_agent_workspace("receive_requirements") / "doubt_artifacts"
-    if not doubt_dir.exists():
-        return []
-
     doubts: list[dict] = []
-    for f in sorted(doubt_dir.glob("*.md")):
-        text = f.read_text(encoding="utf-8", errors="ignore").lower()
-        bloqueante = "bloqueante: true" in text or "🔴" in text
+    for f in sorted(req_ws.glob("Doubt_Artifact_*.md")):
+        text = f.read_text(encoding="utf-8", errors="ignore")
+        bloqueante = "**Bloqueante:** Sim" in text
         doubts.append({
             "id":         f.stem,
             "severidade": "alta" if bloqueante else "media",
@@ -132,7 +131,7 @@ def emit_requirements_manifest(callback_context: CallbackContext) -> None:
         req_ws  = get_agent_workspace("requirements_agent")
 
         artifacts = _scan_artifacts(req_ws, ws_root)
-        doubts    = _scan_doubts(ws_root)
+        doubts    = _scan_doubts(req_ws, ws_root)
         status    = _derive_status(artifacts, doubts)
 
         manifest: dict = {

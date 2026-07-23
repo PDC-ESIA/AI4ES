@@ -17,6 +17,7 @@ from src.agents.requirements.manifest import (
     _build_summary,
     _derive_status,
     _scan_artifacts,
+    _scan_doubts,
     emit_requirements_manifest,
 )
 
@@ -80,9 +81,33 @@ def test_scan_glossario_fallback_raiz(tmp_path):
     assert any(a["tipo"] == "Glossario" for a in arts)
 
 
-# ---------------------------------------------------------------------------
-# _derive_status
-# ---------------------------------------------------------------------------
+def test_scan_doubts_detecta_nao_bloqueante(tmp_path):
+    content = """# Doubt_Artifact
+- **Bloqueante:** N\u00e3o
+- **Status:** Aberta
+"""
+    _make_ws(tmp_path, {"Doubt_Artifact_D-001_20260723_120000_000000.md": content})
+    doubts = _scan_doubts(tmp_path, tmp_path)
+    assert len(doubts) == 1
+    assert doubts[0]["bloqueante"] is False
+    assert doubts[0]["severidade"] == "media"
+
+
+def test_scan_doubts_detecta_bloqueante(tmp_path):
+    content = """# Doubt_Artifact
+- **Bloqueante:** Sim
+- **Status:** Aberta
+"""
+    _make_ws(tmp_path, {"Doubt_Artifact_D-001_20260723_120000_000000.md": content})
+    doubts = _scan_doubts(tmp_path, tmp_path)
+    assert doubts[0]["bloqueante"] is True
+    assert doubts[0]["severidade"] == "alta"
+
+
+def test_scan_doubts_vazio_sem_arquivos(tmp_path):
+    assert _scan_doubts(tmp_path, tmp_path) == []
+
+
 
 def test_status_ok_sem_doubts():
     arts = [{"tipo": "HU", "id": "HU-001", "path": "x"}]
