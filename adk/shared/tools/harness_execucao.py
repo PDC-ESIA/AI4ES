@@ -595,7 +595,7 @@ def _render_markdown(report: ExecutionReport) -> str:
 
 def executar_harness_validacao(
     task_id: str,
-    iteration: int = 0,
+    iteration: int = 1,
     *,
     coder_base_dir=None,
     execution_base_dir=None,
