@@ -2,6 +2,9 @@
 adk/temp/
 adk/artifacts
 
+# Workspace com prefixo alternativo (gerado por configuração de ambiente anterior)
+adk/pdc_workspace_output/
+
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
 # Mantemos apenas o marker versionado em adk/workspace_output para permitir
 # bootstrap seguro do init_workspace; o restante continua ignorado.

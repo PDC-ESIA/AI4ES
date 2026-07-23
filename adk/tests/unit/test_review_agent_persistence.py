@@ -183,6 +183,54 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
         assert not relatorio.exists(), f"Não deveria criar arquivo para state={state}"
 
 
+def test_analyzer_tem_before_agent_callback(tmp_path, monkeypatch):
+    """_analyzer.before_agent_callback está configurado com _inject_static_findings."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
+
+    assert cr_reviewer._analyzer.before_agent_callback is cr_reviewer._inject_static_findings
+
+
+def test_inject_static_findings_popula_state(tmp_path, monkeypatch):
+    """_inject_static_findings injeta static_findings_block no state do callback."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    monkeypatch.setenv("REVIEWER_STATIC_ANALYSIS", "1")
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
+
+    coder_ws = tmp_path / "ws" / "coder" / "src"
+    coder_ws.mkdir(parents=True, exist_ok=True)
+    (coder_ws / "app.py").write_text("import os\n")
+
+    class _FakeCtx:
+        state = {}
+
+    cr_reviewer._inject_static_findings(_FakeCtx())
+    assert "static_findings_block" in _FakeCtx.state
+    assert isinstance(_FakeCtx.state["static_findings_block"], str)
+
+
+def test_inject_static_findings_desabilitado_nao_popula_state(tmp_path, monkeypatch):
+    """Com REVIEWER_STATIC_ANALYSIS=0, o state não é modificado."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    monkeypatch.setenv("REVIEWER_STATIC_ANALYSIS", "0")
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(cr_reviewer)
+
+    class _FakeCtx:
+        state = {}
+
+    cr_reviewer._inject_static_findings(_FakeCtx())
+    assert "static_findings_block" not in _FakeCtx.state
+
+
 def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
     """Verifica que o ADK Runner dispara after_agent_callback após _analyzer completar.
 
