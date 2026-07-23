@@ -2,9 +2,13 @@
 
 Instância ajustada do reviewer original (src/agents/reviewer/):
 - Analyzer: lê arquivos de coder/src/ (não diff git), produz análise markdown.
+- Análise estática pré-LLM via before_agent_callback (Ruff + Bandit).
 - Persistência via after_agent_callback Python puro — sem LLM no passo de escrita.
   Isso elimina o risco de "modo narrador" (LLM descreve a chamada em vez de executá-la).
 - Evita conflito de parent com o sdlc_pipeline (instância dedicada).
+
+Variáveis de ambiente:
+    REVIEWER_STATIC_ANALYSIS: "0" desabilita análise estática pré-LLM (padrão: habilitado).
 """
 
 import os
@@ -15,6 +19,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
 from shared.agent_factory import _bind_tool_to_workspace
+from shared.review import run_capabilities
 from shared.workspace import get_agent_workspace, get_workspace_root
 from shared.tools import tool_ler_arquivo, tool_salvar_relatorio
 from src.agents.reviewer import prompt as reviewer_prompt
@@ -26,6 +31,8 @@ else:
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
+_STATIC_ANALYSIS_ENABLED = os.environ.get("REVIEWER_STATIC_ANALYSIS", "1") != "0"
+_MAX_FINDINGS = 30
 
 _WORKSPACE_ROOT = str(get_workspace_root())
 _CODER_WS = str(get_agent_workspace("cr_coder"))
@@ -115,9 +122,14 @@ _ANALYZER_BASE = (
     )
 )
 
-# Template final: injeta workspace e lista de arquivos em runtime
+# Template final: injeta análise estática, workspace e lista de arquivos em runtime
 _ANALYZER_INSTRUCTION_TEMPLATE = (
     _ANALYZER_BASE + "\n\n"
+    "# ANÁLISE ESTÁTICA (pré-LLM)\n"
+    "Os seguintes problemas foram identificados por ferramentas determinísticas\n"
+    "(Ruff e Bandit) antes desta análise. Use-os como ponto de partida e\n"
+    "complemente com sua revisão das 4 camadas:\n\n"
+    "__STATIC_FINDINGS__\n\n"
     "# WORKSPACE\n"
     "Os arquivos a revisar estão em `__CODER_WS__/`.\n"
     "Use caminhos RELATIVOS — tool_ler_arquivo resolve automaticamente.\n\n"
@@ -126,13 +138,49 @@ _ANALYZER_INSTRUCTION_TEMPLATE = (
 )
 
 
-def _analyzer_instruction_provider(_ctx) -> str:
-    """InstructionProvider: injeta lista de arquivos do coder no momento da invocação."""
+def _format_findings_block(findings) -> str:
+    """Formata lista de Finding em bloco legível para o prompt do LLM."""
+    if not findings:
+        return "Nenhum problema identificado pelas ferramentas de análise estática."
+    lines = []
+    for f in findings:
+        loc = f"{f.arquivo}:{f.linha}" if f.linha else f.arquivo
+        lines.append(f"[{f.severidade.upper()}] {f.origem}/{f.regra} — {loc}\n  {f.mensagem}")
+    return "\n".join(lines)
+
+
+def _analyzer_instruction_provider(ctx) -> str:
+    """InstructionProvider: injeta findings estáticos e lista de arquivos em runtime."""
+    static_block = ""
+    if hasattr(ctx, "state"):
+        static_block = ctx.state.get("static_findings_block", "")
     return (
         _ANALYZER_INSTRUCTION_TEMPLATE
+        .replace("__STATIC_FINDINGS__", static_block or "Análise estática não disponível.")
         .replace("__CODER_WS__", _CODER_WS)
         .replace("__FILES__", _discover_coder_files())
     )
+
+
+def _inject_static_findings(callback_context: CallbackContext) -> None:
+    """Roda análise estática no workspace do coder antes do LLM analisar.
+
+    Injeta o bloco de findings em state["static_findings_block"] para que
+    _analyzer_instruction_provider o inclua no prompt em runtime.
+    Retorna None para não interromper a execução do agente.
+    """
+    if not _STATIC_ANALYSIS_ENABLED:
+        return None
+    coder_path = Path(_CODER_WS)
+    if not coder_path.exists():
+        callback_context.state["static_findings_block"] = (
+            "Workspace do coder não encontrado — análise estática ignorada."
+        )
+        return None
+    findings = run_capabilities(coder_path)
+    capped = findings[:_MAX_FINDINGS]
+    callback_context.state["static_findings_block"] = _format_findings_block(capped)
+    return None
 
 
 def _persist_review(callback_context: CallbackContext) -> None:
@@ -174,6 +222,7 @@ _analyzer = LlmAgent(
         _bind(FunctionTool(tool_ler_arquivo), _CODER_WS),
     ],
 )
+_analyzer.before_agent_callback = _inject_static_findings
 _analyzer.after_agent_callback = _persist_review
 
 # agent é exportado como LlmAgent (not SequentialAgent) — a persistência acontece
