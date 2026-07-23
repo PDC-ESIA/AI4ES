@@ -141,7 +141,7 @@ def test_emit_grava_state_e_arquivo(tmp_path):
 
     with patch("src.agents.requirements.manifest.get_agent_workspace", return_value=tmp_path), \
          patch("src.agents.requirements.manifest.get_workspace_root", return_value=tmp_path):
-        emit_requirements_manifest(ctx)
+        emit_requirements_manifest(callback_context=ctx)
 
     assert "requirements_manifest" in ctx.state
     assert ctx.state["requirements_manifest"]["phase"] == "requirements"
@@ -160,7 +160,7 @@ def test_emit_manifest_json_valido(tmp_path):
 
     with patch("src.agents.requirements.manifest.get_agent_workspace", return_value=tmp_path), \
          patch("src.agents.requirements.manifest.get_workspace_root", return_value=tmp_path):
-        emit_requirements_manifest(ctx)
+        emit_requirements_manifest(callback_context=ctx)
 
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert manifest["phase"] == "requirements"
@@ -177,4 +177,4 @@ def test_emit_nao_quebra_pipeline_em_falha(tmp_path):
         "src.agents.requirements.manifest.get_agent_workspace",
         side_effect=RuntimeError("erro simulado"),
     ):
-        emit_requirements_manifest(ctx)  # não deve lançar
+        emit_requirements_manifest(callback_context=ctx)  # não deve lançar

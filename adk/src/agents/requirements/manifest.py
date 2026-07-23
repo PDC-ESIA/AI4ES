@@ -118,12 +118,12 @@ def _build_summary(artifacts: list[dict], doubts: list[dict]) -> str:
     return base
 
 
-def emit_requirements_manifest(ctx: CallbackContext) -> None:
+def emit_requirements_manifest(callback_context: CallbackContext) -> None:
     """after_agent_callback — emite manifesto de saída da fase de requisitos.
 
-    Grava em ctx.state["requirements_manifest"] para o orquestrador usar
-    como handoff (in-memory) e persiste requirements/manifest.json no
-    workspace para rastreabilidade e debug.
+    Grava em callback_context.state["requirements_manifest"] para o
+    orquestrador usar como handoff (in-memory) e persiste
+    requirements/manifest.json no workspace para rastreabilidade e debug.
 
     Retorna None para não sobrescrever a saída do agente.
     """
@@ -144,7 +144,7 @@ def emit_requirements_manifest(ctx: CallbackContext) -> None:
         }
 
         # Handoff in-memory para o orquestrador
-        ctx.state["requirements_manifest"] = manifest
+        callback_context.state["requirements_manifest"] = manifest
 
         # Cópia persistida para rastreabilidade
         manifest_path = req_ws / "manifest.json"
