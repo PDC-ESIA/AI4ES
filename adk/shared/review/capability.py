@@ -37,6 +37,7 @@ class ReviewCapability(Protocol):
 
 
 _SEVERITY_ORDER: dict[str, int] = {"critical": 0, "warning": 1, "info": 2}
+_SUBPROCESS_TIMEOUT = 60
 
 
 class RuffCapability:
@@ -50,10 +51,32 @@ class RuffCapability:
                 ["ruff", "check", "--output-format", "json", str(target_dir)],
                 capture_output=True,
                 text=True,
+                timeout=_SUBPROCESS_TIMEOUT,
             )
             if not proc.stdout.strip():
                 return []
             items = json.loads(proc.stdout)
+        except FileNotFoundError:
+            return [Finding(
+                origem=self.name, regra="NOT_INSTALLED", severidade="info",
+                arquivo=str(target_dir),
+                mensagem="ruff não encontrado no PATH — análise estática via Ruff foi ignorada.",
+                sugestao="Instale/embuta o ruff no ambiente de execução do reviewer.",
+            )]
+        except subprocess.TimeoutExpired:
+            return [Finding(
+                origem=self.name, regra="TIMEOUT", severidade="info",
+                arquivo=str(target_dir),
+                mensagem=f"Execução do ruff excedeu o timeout de {_SUBPROCESS_TIMEOUT}s — análise estática via Ruff foi ignorada.",
+                sugestao="Aumente o timeout ou reduza o escopo do diretório analisado.",
+            )]
+        except json.JSONDecodeError:
+            return [Finding(
+                origem=self.name, regra="INVALID_OUTPUT", severidade="info",
+                arquivo=str(target_dir),
+                mensagem="Saída JSON do ruff é inválida — análise estática via Ruff foi ignorada.",
+                sugestao="Verifique versão/flags do ruff e se há logs em stderr.",
+            )]
         except Exception:
             return []
 
@@ -89,10 +112,32 @@ class BanditCapability:
                 ["bandit", "-r", "--format", "json", "-q", str(target_dir)],
                 capture_output=True,
                 text=True,
+                timeout=_SUBPROCESS_TIMEOUT,
             )
             if not proc.stdout.strip():
                 return []
             data = json.loads(proc.stdout)
+        except FileNotFoundError:
+            return [Finding(
+                origem=self.name, regra="NOT_INSTALLED", severidade="info",
+                arquivo=str(target_dir),
+                mensagem="bandit não encontrado no PATH — análise de segurança via Bandit foi ignorada.",
+                sugestao="Instale/embuta o bandit no ambiente de execução do reviewer.",
+            )]
+        except subprocess.TimeoutExpired:
+            return [Finding(
+                origem=self.name, regra="TIMEOUT", severidade="info",
+                arquivo=str(target_dir),
+                mensagem=f"Execução do bandit excedeu o timeout de {_SUBPROCESS_TIMEOUT}s — análise de segurança via Bandit foi ignorada.",
+                sugestao="Aumente o timeout ou reduza o escopo do diretório analisado.",
+            )]
+        except json.JSONDecodeError:
+            return [Finding(
+                origem=self.name, regra="INVALID_OUTPUT", severidade="info",
+                arquivo=str(target_dir),
+                mensagem="Saída JSON do bandit é inválida — análise de segurança via Bandit foi ignorada.",
+                sugestao="Verifique versão/flags do bandit e se há logs em stderr.",
+            )]
         except Exception:
             return []
 
