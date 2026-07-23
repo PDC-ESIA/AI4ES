@@ -6,34 +6,12 @@ estruturados (HUs, RFs, RNFs, UCs, RNs e Glossário).
 """
 
 import os
-from typing import TYPE_CHECKING, Any
 
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
-from shared.workspace import init_workspace
 from src.agents.requirements.agent import agent as requirements_agent
 from src.agents.requirements.manifest import emit_requirements_manifest
-
-if TYPE_CHECKING:
-    from google.adk.agents.callback_context import CallbackContext
-else:
-    CallbackContext = Any
-
-
-def _reset_workspace(callback_context: CallbackContext) -> None:
-    """before_agent_callback — limpa e recria o workspace antes de cada run.
-
-    Garante ambiente isolado para cada nova invocação do pipeline,
-    replicando o comportamento do orquestrador (_handle_fresh_run).
-    """
-    try:
-        init_workspace()
-    except Exception as exc:  # noqa: BLE001
-        import logging
-        logging.getLogger(__name__).warning(
-            "[WORKSPACE] Falha ao resetar workspace: %s", exc
-        )
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -93,5 +71,4 @@ agent = LlmAgent(
         AgentTool(agent=requirements_agent),
     ],
 )
-agent.before_agent_callback = _reset_workspace
 agent.after_agent_callback = emit_requirements_manifest
