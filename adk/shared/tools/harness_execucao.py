@@ -16,11 +16,9 @@ Reaproveita as ferramentas já existentes do repositório:
 - `shared/tools/pytest_runner.py` — execução da suíte de testes automatizados.
 """
 
+from __future__ import annotations
+
 import json
-import logging
-import os
-import re
-import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path
