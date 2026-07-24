@@ -20,7 +20,7 @@ A parte técnica da solução funcionou como esperado durante os testes. A invia
 
 ### Encaminhamento
 
-A investigação segue para uma alternativa que rode localmente, sem depender de conexão com serviços externos para a execução dos agentes.
+Foi decidido não avançar com esta PoC no formato proposto
 
 ---
 
