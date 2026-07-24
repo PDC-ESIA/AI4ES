@@ -11,6 +11,7 @@ from shared.tools.design_filesystem import (
     acquire_lock,
     check_lock,
     release_lock,
+    validate_analysis_sections,
 )
 from src.agents.io_agent.agent import agent as io_agent
 from . import prompt
@@ -29,6 +30,7 @@ agent = create_se_agent(
         acquire_lock,
         check_lock,
         release_lock,
+        validate_analysis_sections,
     ],
     agent_subdir="design_architect",
     generate_content_config=types.GenerateContentConfig(
