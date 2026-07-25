@@ -3,8 +3,9 @@
 Define MacroContext (contexto global do épico), Contract (fronteiras de I/O
 de cada task) e Task (Context Window completo para o coder).
 
-Portado de feat/me2/coding_squad (Time 4).
-"""
+Atualizado para incluir a rastreabilidade entre requisitos, designe e tasks
+para o enriquecimento de contexto.
+""" 
 
 from typing import Any
 
@@ -24,7 +25,6 @@ class MacroContext(BaseModel):
             "(ex: ['Usar SQLAlchemy', 'API RESTful'])"
         )
     )
-
 
 class Contract(BaseModel):
     """Fronteiras: o que o Coder pode consumir e o que deve produzir."""
@@ -69,7 +69,21 @@ class Task(BaseModel):
     contract: Contract = Field(
         description="Fronteiras: o que ler e o que produzir"
     )
-
+    requirement_id: str = Field(
+        description=(
+            "ID do requisito de origem que motivou esta task "
+            "(ex: RF-001). Garante a rastreabilidade."
+        )
+    )
+    design_refs: list[str] = Field(
+        description=(
+            "Paths dos artefatos de design referenciados por esta task. "
+            "Pode incluir diagramas mermaid, relatórios de arquitetura mínima "
+            "e análises técnicas por HU. "
+            "Todos sob workspace_output/sessions/<session_id>/design/. "
+            "Deve conter ao menos um artefato."
+        )
+    )
 
 class TasksOutput(BaseModel):
     """Saída completa do Context Engineer."""
