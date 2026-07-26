@@ -19,6 +19,10 @@ Reaproveita as ferramentas já existentes do repositório:
 from __future__ import annotations
 
 import json
+import logging
+import os
+import re
+import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path

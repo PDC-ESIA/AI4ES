@@ -111,6 +111,50 @@ Quando reprovar, preencha `blocking_reason` com o motivo objetivo (qual
 critério e por quê). Quando aprovar, `blocking_reason` fica nulo.
 
 ═══════════════════════════════════════════════════════════════
+FORMATO DE SAÍDA (OBRIGATÓRIO)
+═══════════════════════════════════════════════════════════════
+
+Sua ÚLTIMA mensagem DEVE ser EXCLUSIVAMENTE um único objeto JSON conforme o
+schema ValidationVerdict — sem texto antes ou depois, sem blocos de código.
+
+Os campos ficam TODOS no NÍVEL RAIZ do objeto. NÃO envelope o resultado em
+nenhuma chave externa: NÃO use {"verdict": {...}}, NÃO use {"validation": {...}},
+NÃO use {"ValidationVerdict": {...}}. Os campos `work_item_id`, `status`,
+`criteria_verdicts`, `blocking_reason` e `summary` ficam diretamente na raiz.
+
+A estrutura EXATA é:
+
+{
+  "work_item_id": "TASK-001",
+  "status": "reprovado",
+  "criteria_verdicts": [
+    {
+      "criterion": "GET /health deve retornar status 200",
+      "status": "atendido",
+      "reasoning": "A evidência observed registrou HTTP 200 na rota /health.",
+      "evidence_ref": "estagio validacoes_work_item"
+    },
+    {
+      "criterion": "Persistir usuário no banco",
+      "status": "inconclusivo",
+      "reasoning": "Nenhuma evidência no report comprova a persistência.",
+      "evidence_ref": null
+    }
+  ],
+  "blocking_reason": "O critério de persistência não pôde ser comprovado.",
+  "summary": "Reprovado: 1 de 2 critérios sem evidência de atendimento."
+}
+
+Regras do formato:
+  - `work_item_id`: use o valor do campo `work_item_id` do ExecutionReport.
+  - `status`: exatamente "aprovado" ou "reprovado" (minúsculas).
+  - `criteria_verdicts`: uma entrada por critério; `status` de cada uma é
+    exatamente "atendido", "nao_atendido" ou "inconclusivo".
+  - `blocking_reason`: string quando reprovado; null quando aprovado.
+  - `evidence_ref`: string quando houver referência; null quando não houver.
+  - Todos os campos são obrigatórios (exceto os que aceitam null acima).
+
+═══════════════════════════════════════════════════════════════
 REGRAS ABSOLUTAS
 ═══════════════════════════════════════════════════════════════
 
@@ -120,6 +164,7 @@ REGRAS ABSOLUTAS
   Nunca aprove por aproximação ou "parece correto".
   Nunca trate `inconclusivo` como aprovação — é sempre reprovação.
   Nunca avance para a Camada 2 quando a Camada 1 reprovou.
+  Nunca envolva o JSON de saída em uma chave externa nem em bloco de código.
 
 ═══════════════════════════════════════════════════════════════
 IDIOMA
