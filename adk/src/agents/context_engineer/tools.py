@@ -1,8 +1,8 @@
 """Tools do Agente Context Engineer.
 
 Persistência de tasks contextualizadas como JSON no workspace centralizado.
+Leitura de artefatos de requisitos e design diretamente do workspace.
 
-Leitura de artefatos de requisitos e design a partir dos paths informafos pelo manifesto de cada fase.
 """
 
 import json
@@ -12,7 +12,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
 
-from shared.workspace import get_agent_workspace
+from shared.workspace import get_agent_workspace, get_workspace_root
 
 logger = logging.getLogger(__name__)
 
@@ -27,23 +27,11 @@ class SalvarTaskSchema(BaseModel):
             raise ValueError(f"task_id deve iniciar com 'TASK-'. Recebido: '{v}'")
         return v
 
-class LerArtefatosManifestoSchema(BaseModel):
-    paths: list[str] = Field(
-        ...,
-        description=(
-            "Lista de paths individuais dos artefatos informados pelo manifesto da fase anterior. Cada path aponta para um arquivo especifico no workspace."
-        )
-    )
+class LerWorkspaceFaseSchema(BaseModel):
     fase: str = Field(
         ...,
-        description="Fase de origem dos artefatos: 'requirements' ou 'design'"
+        description="Fase cujos artefatos serão lidos: 'requirements' ou 'design'"
     )
- 
-    @field_validator("paths")
-    def validar_paths(cls, v):
-        if not v:
-            raise ValueError("A lista de paths não pode estar vazia.")
-        return v
  
     @field_validator("fase")
     def validar_fase(cls, v):
@@ -95,82 +83,97 @@ def tool_salvar_task(task_id: str, task_json: str) -> dict:
     except Exception as e:
         return {"sucesso": False, "erro": f"Erro ao salvar task: {e}", "caminho": None}
 
-def tool_ler_artefatos_manifesto(paths: list[str], fase: str) -> dict:
-    """Lê os artefatos de uma fase à partir dos paths individuais do manifesto.
+def tool_ler_workspace_fase(fase: str) -> dict:
+    """Lê todos os artefatos de uma fase diretamente do workspace.
  
     Deve ser chamada duas vezes antes de gerar qualquer task:
-    - fase='requirements': lê HUs, RFs, RNFs, casos de uso, regras de negócio
-    - fase='design': lê diagramas mermaid, relatórios e análises técnicas por HU
+    - fase='requirements': lê RFs, RNFs, HUs e demais artefatos do Time de Requisitos
+    - fase='design': lê diagramas, relatórios e análises técnicas do Time de Designe
  
-    Se qualquer path não existir no disco, a tool retorna erro e o agente
-    deve PARAR — nao gerar tasks sem todos os artefatos necessários.
+    Se a pasta da fase não existir ou estiver vazia, retorna erro e o
+    agente deve PARAR — não gerar tasks sem os artefatos necessários.
  
     Args:
-        paths (list[str]): Paths individuais dos artefatos informados pelo manifesto.
-        fase (str): Fase de origem: 'requirements' ou 'design'.
+        fase (str): Fase cujos artefatos serão lidos: 'requirements' ou 'design'.
  
     Returns:
-        dict: sucesso, fase, artefatos lidos com conteúdo, paths não encontrados.
+        dict: sucesso, fase, artefatos lidos com conteúdo, caminho e erros.
     """
     try:
-        dados = LerArtefatosManifestoSchema(paths=paths, fase=fase)
+        dados = LerWorkspaceFaseSchema(fase=fase)
     except ValidationError as e:
         return {"sucesso": False, "erro": str(e), "artefatos": None}
  
+    workspace_root = get_workspace_root()
+    mapeamento_fases = {
+        "requirements": "requirements",
+        "design": "design",
+    }
+    pasta_fase = workspace_root / mapeamento_fases[dados.fase]
+ 
+    if not pasta_fase.exists():
+        return {
+            "sucesso": False,
+            "erro": (
+                "Pasta da fase '" + dados.fase + "' não encontrada em: "
+                + str(pasta_fase)
+                + ". Verifique se a fase anterior concluiu com sucesso."
+            ),
+            "artefatos": None,
+            "caminho_esperado": str(pasta_fase),
+        }
+ 
+    arquivos = [a for a in pasta_fase.rglob("*") if a.is_file()]
+ 
+    if not arquivos:
+        return {
+            "sucesso": False,
+            "erro": (
+                "Pasta da fase '" + dados.fase + "' existe mas está vazia: "
+                + str(pasta_fase)
+                + ". A fase anterior pode não ter persistido seus artefatos."
+            ),
+            "artefatos": None,
+            "caminho_esperado": str(pasta_fase),
+        }
+ 
     artefatos = []
-    paths_nao_encontrados = []
+    erros = []
  
-    for path_str in dados.paths:
-        path = Path(path_str)
- 
-        if not path.exists():
-            paths_nao_encontrados.append(path_str)
-            logger.error(
-                "[CONTEXT ENGINEER] Artefato não encontrado ["
-                + dados.fase + "]: " + path_str
-            )
-            continue
- 
+    for arquivo in arquivos:
         try:
-            conteudo = path.read_text(encoding="utf-8")
+            conteudo = arquivo.read_text(encoding="utf-8")
             artefatos.append({
-                "path": path_str,
-                "tipo": path.suffix.lstrip("."),
-                "nome": path.name,
-                "fase": dados.fase,
+                "path": str(arquivo.relative_to(workspace_root)),
+                "nome": arquivo.name,
+                "tipo": arquivo.suffix.lstrip("."),
                 "conteúdo": conteudo,
             })
             logger.info(
                 "[CONTEXT ENGINEER] Artefato lido ["
-                + dados.fase + "]: " + path_str
+                + dados.fase + "]: " + str(arquivo)
             )
         except Exception as e:
-            paths_nao_encontrados.append(path_str)
+            erros.append(str(arquivo) + ": " + str(e))
             logger.error(
-                "[CONTEXT ENGINEER] Erro ao ler ["
-                + dados.fase + "] " + path_str + ": " + str(e)
+                "[CONTEXT ENGINEER] Erro ao ler " + str(arquivo) + ": " + str(e)
             )
  
-    if paths_nao_encontrados:
+    if erros:
         return {
             "sucesso": False,
-            "erro": (
-                "Os seguintes artefatos da fase '" + dados.fase
-                + "' não foram encontrados ou não puderam ser lidos: "
-                + str(paths_nao_encontrados)
-                + ". Verifique se a fase anterior concluiu corretamente."
-            ),
-            "artefatos": None,
-            "paths_não_encontrados": paths_nao_encontrados,
+            "erro": "Erros ao ler artefatos: " + str(erros),
+            "artefatos": artefatos if artefatos else None,
         }
  
     return {
         "sucesso": True,
         "erro": None,
         "fase": dados.fase,
-        "artefátos": artefatos,
+        "artefatos": artefatos,
         "total_lidos": len(artefatos),
+        "caminho_pasta": str(pasta_fase),
     }
 
 tool_salvar_task_adk = FunctionTool(tool_salvar_task)
-tool_ler_artefatos_manifesto_adk = FunctionTool(tool_ler_artefatos_manifesto)
+tool_ler_workspace_fase_adk = FunctionTool(tool_ler_workspace_fase)
