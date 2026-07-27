@@ -7,7 +7,7 @@ Atualizado para incluir a rastreabilidade entre requisitos, designe e tasks
 para o enriquecimento de contexto.
 """ 
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -44,9 +44,9 @@ class Contract(BaseModel):
 
     @field_validator("interfaces", mode="before")
     @classmethod
-    def _coerce_interfaces(cls, v: Any) -> Optional[list[str]]:
+    def _coerce_interfaces(cls, v: Any) -> list[str]:
         if v is None:
-            return None
+            return []
         if isinstance(v, str):
             return [v]
         if isinstance(v, dict):
@@ -101,7 +101,7 @@ class Task(BaseModel):
     )
     design_refs: list[str] = Field(
         description=(
-            "Referência aos artefatos de design e arquitetura que motivara, essa esta task. "
+            "Referência aos artefatos de design e arquitetura que motivaram esta task. "
             "Pode incluir nomes de diagramas, relatórios de arquitetura mínima e análises técnicas por HU. "
             "Deve conter ao menos uma referência."
         )

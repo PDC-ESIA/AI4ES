@@ -20,7 +20,7 @@ def test_context_engineer_tem_output_schema():
 
 def test_context_engineer_tem_tool_salvar_task():
     from src.agents.context_engineer import root_agent
-    # Factory injeta tool_ask_clarification_adk + tool_salvar_task
+    # Factory injeta tool_ask_clarification_adk + tool_salvar_task + tool_ler_workspace_fase
     assert len(root_agent.tools) == 3
 
 
@@ -160,12 +160,12 @@ def test_tool_ler_workspace_fase_pasta_inexistente(tmp_path, monkeypatch):
     from src.agents.context_engineer.tools import tool_ler_workspace_fase
     result = tool_ler_workspace_fase("requirements")
     assert result["sucesso"] is False
-    assert "nao encontrada" in result["erro"]
+    assert "não encontrada" in result["erro"]
 
 
 def test_tool_ler_workspace_fase_invalida(tmp_path, monkeypatch):
     """tool_ler_workspace_fase rejeita fase invalida."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from src.agents.context_engineer.tools import tool_ler_workspace_fase
-    result = tool_ler_workspace_fase("invalida")
+    result = tool_ler_workspace_fase("inválida")
     assert result["sucesso"] is False

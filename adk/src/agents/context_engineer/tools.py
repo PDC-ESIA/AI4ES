@@ -62,17 +62,17 @@ def tool_salvar_task(task_id: str, task_json: str) -> dict:
     try:
         task_data = json.loads(dados.task_json)
     except json.JSONDecodeError as e:
-        return {"sucesso": False, "erro": f"JSON inválido: {e}", "caminho": None}
+        return {"sucesso": False, "erro": "JSON inválido: " + str(e), "caminho": None}
 
     output_dir = get_agent_workspace("context_engineer")
-    output_file = output_dir / f"{dados.task_id}.json"
+    output_file = output_dir / (dados.task_id + ".json")
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file.write_text(
             json.dumps(task_data, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        logger.info(f"[CONTEXT ENGINEER] Task salva: {output_file.resolve()}")
+        logger.info("[CONTEXT ENGINEER] Task salva: " + str(output_file.resolve()))
         return {
             "sucesso": True,
             "erro": None,
@@ -80,7 +80,7 @@ def tool_salvar_task(task_id: str, task_json: str) -> dict:
             "task_id": dados.task_id,
         }
     except Exception as e:
-        return {"sucesso": False, "erro": f"Erro ao salvar task: {e}", "caminho": None}
+        return {"sucesso": False, "erro": "Erro ao salvar task: " + str(e), "caminho": None}
 
 def tool_ler_workspace_fase(fase: str) -> dict:
     """Lê todos os artefatos de uma fase diretamente do workspace.
@@ -146,7 +146,7 @@ def tool_ler_workspace_fase(fase: str) -> dict:
                 "path": str(arquivo.relative_to(workspace_root)),
                 "nome": arquivo.name,
                 "tipo": arquivo.suffix.lstrip("."),
-                "conteúdo": conteudo,
+                "conteudo": conteudo,
             })
             logger.info(
                 "[CONTEXT ENGINEER] Artefato lido ["
