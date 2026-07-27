@@ -19,9 +19,9 @@ instruction = (
 
 # FLUXO OBRIGATÓRIO
 
-## Passo 1 — Ler artefatos de requisitos do worskspace
+## Passo 1 — Ler artefatos de requisitos do workspace
 - Chame tool_ler_workspace_fase com fase='requirements'.
-- Esta tool le todos os artefatos produzidos pelo Time de Requisitos no workspace: "HUs, RFs, RNFs, casos de uso, regras de negócio e glossário.
+- Esta tool lê todos os artefatos produzidos pelo Time de Requisitos no workspace: HUs, RFs, RNFs, casos de uso, regras de negócio e glossário.
 - Se retornar sucesso=False, PARE IMEDIATAMENTE. Não gere nenhuma task.
 
 ## Passo 2 — Ler artefatos de designe do workspace

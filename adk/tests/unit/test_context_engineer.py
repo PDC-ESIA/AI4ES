@@ -21,7 +21,7 @@ def test_context_engineer_tem_output_schema():
 def test_context_engineer_tem_tool_salvar_task():
     from src.agents.context_engineer import root_agent
     # Factory injeta tool_ask_clarification_adk + tool_salvar_task
-    assert len(root_agent.tools) == 2
+    assert len(root_agent.tools) == 3
 
 
 def test_schemas_macro_context_minimal():
@@ -44,6 +44,8 @@ def test_schemas_task_com_contract():
         description="Criar endpoint POST /auth/login",
         acceptance_criteria=["Retorna 200 com JWT", "Retorna 401 com credenciais inválidas"],
         contract=Contract(inputs=[], outputs=["src/auth.py"]),
+        requirement_id="RF-001",
+        design_refs=["design/analise_tecnica_HU-001.md"],
     )
     assert task.id == "TASK-001"
     assert task.business_rules == []  # default factory
@@ -98,6 +100,8 @@ def test_schemas_tasks_output_completo():
                 description="Z",
                 acceptance_criteria=["A"],
                 contract=Contract(),
+                requirement_id="RF-001",
+                design_refs=["design/analise_tecnica_HU-001.md"],
             )
         ],
     )
@@ -136,3 +140,32 @@ def test_tool_salvar_task_json_invalido_rejeita(tmp_path, monkeypatch):
     result = tool_salvar_task("TASK-002", "not a json")
     assert result["sucesso"] is False
     assert "JSON inválido" in result["erro"] or "JSON inválido" in str(result.get("erro", ""))
+
+def test_tool_ler_workspace_fase_requirements(tmp_path, monkeypatch):
+    """tool_ler_workspace_fase le arquivos da pasta requirements."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    pasta = tmp_path / "ws" / "requirements"
+    pasta.mkdir(parents=True)
+    (pasta / "RF-001.md").write_text("# RF-001\nDescrição do requisito", encoding="utf-8")
+    from src.agents.context_engineer.tools import tool_ler_workspace_fase
+    result = tool_ler_workspace_fase("requirements")
+    assert result["sucesso"] is True
+    assert result["total_lidos"] == 1
+    assert result["artefatos"][0]["nome"] == "RF-001.md"
+
+
+def test_tool_ler_workspace_fase_pasta_inexistente(tmp_path, monkeypatch):
+    """tool_ler_workspace_fase retorna erro se pasta nao existe."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from src.agents.context_engineer.tools import tool_ler_workspace_fase
+    result = tool_ler_workspace_fase("requirements")
+    assert result["sucesso"] is False
+    assert "nao encontrada" in result["erro"]
+
+
+def test_tool_ler_workspace_fase_invalida(tmp_path, monkeypatch):
+    """tool_ler_workspace_fase rejeita fase invalida."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from src.agents.context_engineer.tools import tool_ler_workspace_fase
+    result = tool_ler_workspace_fase("invalida")
+    assert result["sucesso"] is False

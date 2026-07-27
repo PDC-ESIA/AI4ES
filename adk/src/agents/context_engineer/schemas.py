@@ -37,13 +37,9 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: Optional[list[str]] = Field(
-        default=None,
-        description=(
-            "Assinatura(s) de interface/contrato que devem ser respeitadas. "
-            "Aceita str única, dict (chave: valor) ou list[str] na entrada; "
-            "sempre normalizado para list[str] internamente."
-        ),
+    interfaces: list[str] = Field(
+        default_factory=list,
+        description="Assinaturas de interface/contrato que devem ser respeitadas",
     )
 
     @field_validator("interfaces", mode="before")
@@ -92,7 +88,7 @@ class Task(BaseModel):
         description="Regras de negócio específicas desta task",
     )
     acceptance_criteria: list[str] = Field(
-        description="Critérios de aceitação verificáveis derivados dps RFs, RNFs e decisões de designe"
+        description="Critérios de aceitação verificáveis derivados dos RFs, RNFs e decisões de design"
     )
     contract: Contract = Field(
         description="Fronteiras: o que ler e o que produzir"
@@ -110,6 +106,14 @@ class Task(BaseModel):
             "Deve conter ao menos uma referência."
         )
     )
+    @field_validator("design_refs")
+    @classmethod
+    def validar_design_refs(cls, v):
+        if not v:
+            raise ValueError(
+                "design_refs deve conter ao menos uma referência a um artefato de design."
+            )
+        return v
 
 class TasksOutput(BaseModel):
     """Saída completa do Context Engineer."""

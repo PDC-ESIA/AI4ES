@@ -7,7 +7,6 @@ Leitura de artefatos de requisitos e design diretamente do workspace.
 
 import json
 import logging
-from pathlib import Path
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
@@ -142,7 +141,7 @@ def tool_ler_workspace_fase(fase: str) -> dict:
  
     for arquivo in arquivos:
         try:
-            conteudo = arquivo.read_text(encoding="utf-8")
+            conteudo = arquivo.read_text(encoding="utf-8", errors="replace")
             artefatos.append({
                 "path": str(arquivo.relative_to(workspace_root)),
                 "nome": arquivo.name,
