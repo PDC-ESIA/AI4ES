@@ -6,6 +6,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
 from .prompt import E2E_TEST_GENERATOR_PROMPT
+from .schemas import RespostaE2E
 from .tools.gerar_testes_e2e import gerar_testes_e2e
 
 
@@ -14,8 +15,9 @@ agent = LlmAgent(
     model=os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash"),
     description=(
         "Consome um plano validado do action_planner, materializa cenários E2E "
-        "e gera/executa specs Playwright localmente para jornadas web."
+        "e gera/executa specs Playwright localmente para jornadas web e API."
     ),
     instruction=E2E_TEST_GENERATOR_PROMPT,
     tools=[FunctionTool(gerar_testes_e2e)],
+    output_schema=RespostaE2E,
 )

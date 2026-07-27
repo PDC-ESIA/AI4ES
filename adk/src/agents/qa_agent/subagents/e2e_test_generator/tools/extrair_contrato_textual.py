@@ -24,9 +24,9 @@ def _linhas_fluxo(texto: str) -> list[str]:
     return [
         encontrado.group(1).strip()
         for encontrado in re.finditer(
-            r"^\s*\d+[.)]\s+(.+?)\s*$",
+            r"(?:^|\s)\d+[.)]\s+(.+?)(?=\s+\d+[.)]\s+|$)",
             texto,
-            flags=re.MULTILINE,
+            flags=re.DOTALL,
         )
     ]
 
@@ -39,15 +39,20 @@ def _extrair_passos(
     rota_acesso: str | None = None
 
     for linha in _linhas_fluxo(texto):
-        acesso = re.search(r"\bacessar\s+(/[^\s.,;]+)", linha, flags=re.IGNORECASE)
+        acesso = re.search(
+            r"\bacessar\s+(?:(?:a\s+)?rota\s+)?(/[^\s.,;]+)",
+            linha,
+            flags=re.IGNORECASE,
+        )
         if acesso:
             rota_acesso = acesso.group(1)
             continue
 
         preencher = re.search(
-            r'\bpreencher\s+(?:o\s+)?campo\s+com\s+nome\s+acess\S*\s+"([^"]+)"\s+usando\s+"([^"]+)"',
+            r"""\bpreencher\s+(?:o\s+)?campo\s+com\s+nome\s+acess\S*\s+
+            ["']([^"']+)["']\s+usando\s+["']([^"']+)["']""",
             linha,
-            flags=re.IGNORECASE,
+            flags=re.IGNORECASE | re.VERBOSE,
         )
         if preencher:
             nome, valor = preencher.groups()
@@ -63,9 +68,10 @@ def _extrair_passos(
             continue
 
         clicar = re.search(
-            r'\bclicar\s+(?:no|na)\s+(bot\S*|link)\s+com\s+nome\s+acess\S*\s+"([^"]+)"',
+            r"""\bclicar\s+(?:no|na)\s+(bot\S*|link)\s+com\s+nome\s+
+            acess\S*\s+["']([^"']+)["']""",
             linha,
-            flags=re.IGNORECASE,
+            flags=re.IGNORECASE | re.VERBOSE,
         )
         if clicar:
             elemento, nome = clicar.groups()
@@ -83,9 +89,10 @@ def _extrair_passos(
             continue
 
         verificar_texto = re.search(
-            r'\bverificar\b.*?\btexto\s+"([^"]+)".*?(?:aparece|vis[ií]vel|exibid[oa])',
+            r"""\bverificar\b.*?\btexto\s+["']([^"']+)["'].*?
+            (?:aparece|vis[ií]vel|exibid[oa])""",
             linha,
-            flags=re.IGNORECASE,
+            flags=re.IGNORECASE | re.VERBOSE,
         )
         if verificar_texto:
             passos.append(
