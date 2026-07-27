@@ -37,9 +37,13 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: list[str] = Field(
-        default_factory=list,
-        description="Assinaturas de interface/contrato que devem ser respeitadas",
+    interfaces: Optional[list[str]] = Field(
+        default=None,
+        description=(
+            "Assinatura(s) de interface/contrato que devem ser respeitadas. "
+            "Aceita str única, dict (chave: valor) ou list[str] na entrada; "
+            "sempre normalizado para list[str] internamente."
+        ),
     )
 
     @field_validator("interfaces", mode="before")

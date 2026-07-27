@@ -50,6 +50,20 @@ def test_schemas_task_com_contract():
     assert task.contract.outputs == ["src/auth.py"]
 
 
+def test_schemas_contract_interfaces_objeto_aceito():
+    from src.agents.context_engineer.schemas import Contract
+    contract = Contract(
+        interfaces={
+            "create_ensaio": {
+                "method": "POST",
+                "params": {"titulo": "str", "cliente": "str"},
+            }
+        }
+    )
+    assert isinstance(contract.interfaces, list)
+    assert any("create_ensaio" in item for item in contract.interfaces)
+
+
 def test_schemas_contract_interfaces_aceita_lista_e_string():
     from src.agents.context_engineer.schemas import Contract
 
