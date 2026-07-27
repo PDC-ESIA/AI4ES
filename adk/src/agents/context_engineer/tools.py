@@ -87,8 +87,7 @@ def tool_ler_workspace_fase(fase: str) -> dict:
  
     Deve ser chamada duas vezes antes de gerar qualquer task:
     - fase='requirements': lê RFs, RNFs, HUs e demais artefatos do Time de Requisitos
-    - fase='design': lê diagramas, relatórios e análises técnicas do Time de Designe
- 
+    - fase='design': lê diagramas, relatórios e análises técnicas do Time de Design
     Se a pasta da fase não existir ou estiver vazia, retorna erro e o
     agente deve PARAR — não gerar tasks sem os artefatos necessários.
  
