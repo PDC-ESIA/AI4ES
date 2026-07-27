@@ -33,8 +33,6 @@ workspace_output/
 ```json
 {
   "phase": "input",
-  "session_id": "<id da sessão gerado pelo orchestrador>",
-  "created_at": "<timestamp ISO 8601, ex: 2026-07-26T16:00:00Z>",
   "status": "ready",
   "files": [
     {
@@ -56,8 +54,6 @@ workspace_output/
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | `phase` | `string` | Sempre `"input"`. Identifica o manifesto como sendo de entrada. |
-| `session_id` | `string` | ID da sessão do orchestrador. Permite rastrear quais arquivos pertencem a qual execução. |
-| `created_at` | `string` | Timestamp ISO 8601 de quando o manifesto foi gerado. |
 | `status` | `string` | `"ready"` se há arquivos disponíveis. `"empty"` se nenhum arquivo foi enviado — o agente deve processar o texto do prompt normalmente, sem tentar ler arquivos. |
 | `files` | `array` | Lista de objetos, um por arquivo enviado. Vazio (`[]`) quando `status` é `"empty"`. |
 | `summary` | `string` | Mensagem legível resumindo o conteúdo do manifesto. |
@@ -79,8 +75,6 @@ Cada arquivo enviado pelo usuário gera **um objeto** dentro do array `files`.
 ```json
 {
   "phase": "input",
-  "session_id": "sess-abc123",
-  "created_at": "2026-07-26T16:00:00Z",
   "status": "ready",
   "files": [
     {
@@ -107,8 +101,6 @@ Cada arquivo enviado pelo usuário gera **um objeto** dentro do array `files`.
 ```json
 {
   "phase": "input",
-  "session_id": "sess-xyz789",
-  "created_at": "2026-07-26T17:00:00Z",
   "status": "empty",
   "files": [],
   "summary": "Nenhum arquivo enviado. O agente processará o texto do prompt diretamente."
