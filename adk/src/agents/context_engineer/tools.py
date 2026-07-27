@@ -87,7 +87,7 @@ def tool_ler_workspace_fase(fase: str) -> dict:
  
     Deve ser chamada duas vezes antes de gerar qualquer task:
     - fase='requirements': lê RFs, RNFs, HUs e demais artefatos do Time de Requisitos
-    - fase='design': lê diagramas, relatórios e análises técnicas do Time de Designe
+    - fase='design': lê diagramas, relatórios e análises técnicas do Time de Design
  
     Se a pasta da fase não existir ou estiver vazia, retorna erro e o
     agente deve PARAR — não gerar tasks sem os artefatos necessários.
@@ -122,7 +122,14 @@ def tool_ler_workspace_fase(fase: str) -> dict:
             "caminho_esperado": str(pasta_fase),
         }
  
-    arquivos = [a for a in pasta_fase.rglob("*") if a.is_file()]
+    arquivos = [
+    a
+    for a in pasta_fase.rglob("*")
+    if a.is_file()
+    and a.suffix.lower() in {".md", ".txt", ".json", ".yml", ".yaml", ".mmd", ".mermaid"}
+    and not any(part.startswith(".") for part in a.relative_to(pasta_fase).parts)
+    and a.stat().st_size <= 500_000
+]
  
     if not arquivos:
         return {
@@ -142,6 +149,9 @@ def tool_ler_workspace_fase(fase: str) -> dict:
     for arquivo in arquivos:
         try:
             conteudo = arquivo.read_text(encoding="utf-8", errors="replace")
+            max_chars = 50_000
+            if len(conteudo) > max_chars:
+                conteudo = conteudo[:max_chars] + "\n...[TRUNCADO]..."
             artefatos.append({
                 "path": str(arquivo.relative_to(workspace_root)),
                 "nome": arquivo.name,

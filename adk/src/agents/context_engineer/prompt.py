@@ -55,7 +55,7 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requisitos, gere 
     - outputs: arquivos que o Coder deve CRIAR ou MODIFICAR.
     - interfaces: assinaturas de rotas ou funções dos diagramas mermaid.
 - **requirement_id**: ID do RF de origem (ex.: RF-001).
-    - Garante a rastreabilidade explícita ate os artefatos do Time de requisitos.
+    - Garante a rastreabilidade explícita até os artefatos do Time de requisitos.
 - **design_refs**: paths dos artefatos de design lidos do workspace que são relevantes para este RF específico.
     - Deve conter ao menos um path.
 

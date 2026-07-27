@@ -3,7 +3,7 @@
 Define MacroContext (contexto global do épico), Contract (fronteiras de I/O
 de cada task) e Task (Context Window completo para o coder).
 
-Atualizado para incluir a rastreabilidade entre requisitos, designe e tasks
+Atualizado para incluir a rastreabilidade entre requisitos, design e tasks
 para o enriquecimento de contexto.
 """ 
 
