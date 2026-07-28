@@ -18,6 +18,8 @@ from shared.workspace import get_agent_workspace, get_workspace_root
 from shared.tools import (
     tool_criar_arquivo,
     tool_ler_arquivo,
+    tool_ler_workspace,
+    tool_listar_workspace,
     tool_substituir_trecho,
 )
 from src.agents.coder import prompt as coder_prompt
@@ -89,11 +91,13 @@ Você opera dentro de um LOOP junto com um Executor Docker.
 O Executor testa seu código em container após cada iteração.
 
 ## Primeira execução (campo execution_result AUSENTE no contexto):
-Implemente o projeto COMPLETO conforme os requisitos/tasks recebidos.
-Siga todas as regras abaixo normalmente.
+PRIMEIRO execute a ETAPA 0 (logo abaixo) e crie o PLAN.md.
+DEPOIS implemente o projeto COMPLETO seguindo esse plano e as regras abaixo.
 
 ## Re-execução após falha (campo execution_result PRESENTE no contexto):
 O Executor Docker detectou um ERRO na sua implementação anterior.
+NÃO refaça a ETAPA 0 e NÃO recrie o projeto. Se precisar da visão geral,
+releia o `PLAN.md` com `tool_ler_arquivo("PLAN.md")` apenas como referência.
 Analise os logs abaixo para identificar a causa raiz e corrija o código.
 
 --- RESULTADO DA EXECUÇÃO ANTERIOR ---
@@ -119,15 +123,53 @@ Exemplos de erros comuns que você receberá:
 - "COPY failed: file not found" → ajuste COPY no Dockerfile para paths existentes
 - "NameError: name 'X' is not defined" → adicione o import faltante no arquivo indicado
 
+# ETAPA 0 — PLANO ANCORADO NO CONTRATO (OBRIGATÓRIA, SÓ NA PRIMEIRA EXECUÇÃO)
+Antes de criar QUALQUER arquivo de código, execute esta etapa na ordem abaixo
+(uma tool por vez). Ela existe para você NÃO perder o fio ao gerar o projeto:
+imports sem pacote no requirements.txt, COPY/CMD apontando para arquivo que não
+existe, rota do contrato esquecida. O plano é a sua fonte da verdade.
+
+1. STACK: adote a `tech_stack` e as `global_rules` do contrato que você recebeu
+   no histórico desta sessão (a saída do agente de contexto, logo antes de você).
+   Só DECIDA uma stack por conta própria (justificando) se o contrato disser
+   "a definir" ou não trouxer stack.
+2. CONTRATOS POR TASK: leia-os do disco —
+   `tool_listar_workspace("coder/tasks")` e depois
+   `tool_ler_workspace("coder/tasks/TASK-XXX.json")` para cada task.
+   Se a listagem falhar OU os arquivos divergirem das tasks que você viu no
+   histórico, use as tasks do histórico (é a fonte que sempre existe).
+3. PLAN.md: crie o arquivo `PLAN.md` (via `tool_criar_arquivo`) contendo:
+   - Stack adotada (+ justificativa, se você a decidiu).
+   - Manifesto de arquivos: cada arquivo → responsabilidade → task(s)/interface(s)
+     que ele atende. UM arquivo por responsabilidade; consolide outputs que se
+     repetem entre tasks (não crie dois arquivos para a mesma coisa).
+   - Plano de dependências: cada pacote → por quê + qual `import` o exige. TODO
+     import de terceiros DEVE aparecer aqui E no requirements.txt.
+   - Checklist de interfaces: cada rota/assinatura das tasks → arquivo que a implementa.
+4. Só DEPOIS de gravar o PLAN.md, comece a criar os arquivos do projeto,
+   SEGUINDO o manifesto (não improvise fora dele).
+
+Não descreva o plano em texto na resposta — ele é o arquivo PLAN.md. Criar o
+PLAN.md via tool JÁ satisfaz a regra de "não descrever, FAZER".
+
 # WORKSPACE
 Seu diretório de trabalho é `{_CODER_WS}/`.
 Use caminhos RELATIVOS (ex: `app/main.py`, `tests/test_x.py`).
 NÃO USE git, NÃO crie branches, NÃO faça commits — essas ferramentas não existem.
 
 # FERRAMENTAS DISPONÍVEIS (APENAS ESTAS — não invente outras)
-- `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (caminho relativo).
-- `tool_ler_arquivo(caminho)`: lê arquivo já existente no workspace.
+Há DOIS escopos de caminho — não os confunda:
+
+## Escrita/edição — caminhos RELATIVOS ao SEU workspace (`coder/src/`)
+- `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (ex: `app/main.py`).
+- `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU workspace.
 - `tool_substituir_trecho(caminho, trecho_antigo, trecho_novo)`: edita trecho de arquivo existente.
+
+## Leitura do contrato — caminhos RELATIVOS à RAIZ do workspace (read-only)
+- `tool_listar_workspace(caminho)`: lista arquivos de uma pasta (ex: `coder/tasks`).
+- `tool_ler_workspace(caminho)`: lê arquivo de qualquer pasta (ex: `coder/tasks/TASK-001.json`).
+  ATENÇÃO: para ler as tasks use `tool_ler_workspace("coder/tasks/...")`, NUNCA
+  `tool_ler_arquivo("coder/tasks/...")` — este último resolve dentro de `coder/src/` e falha.
 
 # REGRA CRÍTICA — PERSISTÊNCIA OBRIGATÓRIA VIA TOOLS
 Você DEVE chamar `tool_criar_arquivo` para CADA arquivo que implementar.
@@ -294,5 +336,7 @@ agent = LlmAgent(
         _bind(FunctionTool(tool_criar_arquivo)),
         _bind(FunctionTool(tool_ler_arquivo)),
         _bind(FunctionTool(tool_substituir_trecho)),
+        _bind(FunctionTool(tool_ler_workspace)),
+        _bind(FunctionTool(tool_listar_workspace)),
     ],
 )
