@@ -64,16 +64,48 @@ def _mock_docker(build_raises=None):
     container.status = "running"
     container.attrs = {"State": {"ExitCode": 0}}
     container.logs.return_value = b"2026-07-22T10:00:00 INFO [app] Uvicorn running"
+    container.exec_run.side_effect = _fake_exec_run
     client.containers.run.return_value = container
     client.containers.get.side_effect = docker.errors.NotFound("sem container")
     return client
+
+
+class _ExecResult:
+    def __init__(self, exit_code, output):
+        self.exit_code = exit_code
+        self.output = output
+
+
+def _fake_exec_run(cmd, workdir=None, demux=False):
+    """Simula os comandos que o estágio 6 dispara dentro do container:
+    probe do pytest, execução da suíte (sucesso) e `cat` dos relatórios."""
+    shell = cmd[-1] if isinstance(cmd, (list, tuple)) else cmd
+
+    def out(s):
+        b = s.encode()
+        return (b, b"") if demux else b
+
+    if "pytest --version" in shell:
+        return _ExecResult(0, out("pytest 8.2.0"))
+    if shell.startswith("cat ") and "report.json" in shell:
+        return _ExecResult(0, out(json.dumps(
+            {"summary": {"passed": 1, "failed": 0, "error": 0, "skipped": 0, "total": 1},
+             "tests": []}
+        )))
+    if shell.startswith("cat ") and "cov.json" in shell:
+        return _ExecResult(0, out(json.dumps(
+            {"totals": {"percent_covered": 100.0, "covered_lines": 5, "num_statements": 5}}
+        )))
+    if "python -m pytest" in shell:
+        return _ExecResult(0, out("1 passed in 0.01s"))
+    return _ExecResult(0, out(""))
 
 
 # ---------------------------------------------------------------------------
 # Task de exemplo + app FastAPI mínima
 # ---------------------------------------------------------------------------
 
-def _preparar_workspace(tmp_path, criteria):
+def _preparar_workspace(tmp_path, criteria, com_suite=False):
     coder = tmp_path / "coder" / "src"
     execution = tmp_path / "coder" / "execution"
     tasks = tmp_path / "coder" / "tasks"
@@ -89,6 +121,10 @@ def _preparar_workspace(tmp_path, criteria):
         encoding="utf-8",
     )
     (coder / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+    if com_suite:
+        (coder / "test_main.py").write_text(
+            "def test_home():\n    assert True\n", encoding="utf-8"
+        )
 
     (tasks / f"{_TASK_ID}.json").write_text(
         json.dumps(
@@ -210,3 +246,41 @@ def test_poc_status_execucao_sozinho_nao_encerra(tmp_path):
     # Execução bem-sucedida NÃO basta: o veredito é 'reprovado' → não encerra.
     assert veredito.status == VerdictStatus.REPROVADO
     assert _executor_encerraria(veredito) is False
+
+
+# ===========================================================================
+# PoC 4 — a suíte roda DENTRO do container (cobre a costura harness↔pytest)
+# ===========================================================================
+
+def test_poc_suite_executada_no_container(tmp_path):
+    """Com uma suíte no workspace do coder, o estágio 6 executa o pytest DENTRO
+    do container (/app), não via a tool do QA. É exatamente a costura que, antes,
+    reescrevia o path para o workspace do qa_agent e devolvia ERR_MODULO_NAO_ENCONTRADO.
+    """
+    criteria = ["A rota GET / deve responder 200"]
+    coder, execution, tasks = _preparar_workspace(tmp_path, criteria, com_suite=True)
+
+    report = _rodar_harness(coder, execution, tasks, _mock_docker())
+
+    testes = next(s for s in report["stages"] if s["stage"] == "testes_automatizados")
+    # Executou no container, contra o path /app — sem rebase para o qa_agent
+    assert testes["status"] == "sucesso"
+    assert testes["evidence"]["alvo_container"] == "/app/test_main.py"
+    assert testes["evidence"]["modo"] == "json"
+    assert testes["evidence"]["resumo"]["passaram"] == 1
+    assert report["overall_status"] == "sucesso"
+
+    # E o fluxo segue normalmente até o veredito (aprovado) → executor encerraria
+    report_file = execution / f"{_TASK_ID}.report.json"
+    disk_report = json.loads(report_file.read_text(encoding="utf-8"))
+    criteria_verdicts = [
+        CriterionVerdict(
+            criterion=c,
+            status=CriterionStatus.ATENDIDO,
+            reasoning="Evidência do harness confirma HTTP 200 na rota.",
+        )
+        for c in disk_report["acceptance_criteria"]
+    ]
+    veredito = montar_veredito(disk_report, criteria_verdicts)
+    assert veredito.status == VerdictStatus.APROVADO
+    assert _executor_encerraria(veredito) is True

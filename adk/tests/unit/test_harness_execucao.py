@@ -1,10 +1,13 @@
 """Tests para o harness de execução (shared/tools/harness_execucao.py).
 
-Docker, requests e pytest são MOCKADOS — nenhum container real é subido e
-nenhuma suíte real é executada. Cobre:
+Docker e requests são MOCKADOS — nenhum container real é subido. O estágio 6
+roda pytest DENTRO do container via `container.exec_run`, também mockado
+(ver `_make_exec_run`), então nenhuma suíte real é executada. Cobre:
 - caminho feliz: 9 estágios concluem, overall_status=sucesso, report bem-formado;
 - abort crítico: falha na implantação (estágio 2) aborta 4–7, overall=falha;
 - estágio de testes PULADO quando não há suíte;
+- testes que FALHAM viram FALHA no estágio, mas o harness não emite veredito;
+- fallback para modo 'plain' quando os plugins de report/cov não estão na imagem;
 - serialização JSON + markdown com sobrescrita atômica;
 - estágio 7 produz um CriterionEvidence por critério e NUNCA um veredito.
 """
@@ -43,8 +46,63 @@ def _mock_response(status_code=200, json_data=None):
     return r
 
 
-def _mock_docker(container_status="running", build_raises=None):
-    """Cria um client Docker mockado (build/run/cleanup)."""
+class _ExecResult:
+    """Imita o ExecResult do docker-py (exit_code + output)."""
+
+    def __init__(self, exit_code, output):
+        self.exit_code = exit_code
+        self.output = output
+
+
+def _make_exec_run(pytest_exit=0, has_pytest=True, json_plugin=True, report=None, cov=None):
+    """Fabrica um `exec_run` que simula os comandos que o estágio 6 dispara no
+    container: probe do pytest, execução da suíte e `cat` dos relatórios.
+
+    - pytest_exit: exit code do pytest (0 ok, 1 falhas, 5 nada coletado, 124 timeout).
+    - has_pytest: se False, o probe falha e a instalação em runtime não resolve.
+    - json_plugin: se False, `--json-report` é rejeitado (exit 4) → fallback plain.
+    """
+    report = report or {
+        "summary": {"passed": 1, "failed": 0, "error": 0, "skipped": 0, "total": 1},
+        "tests": [],
+    }
+    cov = cov or {"totals": {"percent_covered": 100.0, "covered_lines": 3, "num_statements": 3}}
+
+    def exec_run(cmd, workdir=None, demux=False):
+        shell = cmd[-1] if isinstance(cmd, (list, tuple)) else cmd
+
+        def out(s):
+            b = s.encode()
+            return (b, b"") if demux else b
+
+        if "pytest --version" in shell:
+            return _ExecResult(0 if has_pytest else 1, out("pytest 8.2.0" if has_pytest else ""))
+        if shell.startswith("pip install"):
+            return _ExecResult(0, out("installed"))
+        if shell.startswith("cat ") and "report.json" in shell:
+            return _ExecResult(0, out(json.dumps(report)))
+        if shell.startswith("cat ") and "cov.json" in shell:
+            return _ExecResult(0, out(json.dumps(cov)))
+        if "python -m pytest" in shell:
+            if "--json-report" in shell and not json_plugin:
+                return _ExecResult(4, out("error: unrecognized arguments: --json-report"))
+            texto = "1 passed in 0.01s" if pytest_exit == 0 else "1 failed in 0.01s"
+            return _ExecResult(pytest_exit, out(texto))
+        return _ExecResult(0, out(""))
+
+    return exec_run
+
+
+def _mock_docker(
+    container_status="running",
+    build_raises=None,
+    pytest_exit=0,
+    has_pytest=True,
+    json_plugin=True,
+    report=None,
+):
+    """Cria um client Docker mockado (build/run/cleanup) cujo container expõe
+    um `exec_run` que simula a execução do pytest dentro do container."""
     client = MagicMock()
     if build_raises is not None:
         client.images.build.side_effect = build_raises
@@ -61,6 +119,12 @@ def _mock_docker(container_status="running", build_raises=None):
     container.attrs = {"State": {"ExitCode": 0}}
     container.logs.return_value = (
         b"2026-07-21T10:00:00 INFO [app] Uvicorn running on http://0.0.0.0:8000"
+    )
+    container.exec_run.side_effect = _make_exec_run(
+        pytest_exit=pytest_exit,
+        has_pytest=has_pytest,
+        json_plugin=json_plugin,
+        report=report,
     )
     client.containers.run.return_value = container
     # _cleanup_container: sem container antigo → NotFound (fluxo limpo)
@@ -104,29 +168,16 @@ def _dirs(tmp_path):
     return coder, execution, tasks
 
 
-def _run(task_id, coder, execution, tasks, client, pytest_result=None):
-    """Executa o harness com Docker/requests/pytest/sleep mockados."""
-    patches = [
-        patch("docker.from_env", return_value=client),
-        patch("requests.get", return_value=_mock_response()),
-        patch("shared.tools.harness_execucao.time.sleep"),
-    ]
-    if pytest_result is not None:
-        patches.append(
-            patch(
-                "shared.tools.harness_execucao.executar_pytest_tool",
-                return_value=pytest_result,
-            )
-        )
-    with patches[0], patches[1], patches[2]:
-        if pytest_result is not None:
-            with patches[3]:
-                return executar_harness_validacao(
-                    task_id, 1,
-                    coder_base_dir=coder,
-                    execution_base_dir=execution,
-                    tasks_base_dir=tasks,
-                )
+def _run(task_id, coder, execution, tasks, client):
+    """Executa o harness com Docker, requests e time.sleep mockados.
+
+    O pytest do estágio 6 roda "dentro do container" via `container.exec_run`,
+    também mockado em `_mock_docker` — nenhum container real é subido nem
+    suíte real é executada.
+    """
+    with patch("docker.from_env", return_value=client), \
+         patch("requests.get", return_value=_mock_response()), \
+         patch("shared.tools.harness_execucao.time.sleep"):
         return executar_harness_validacao(
             task_id, 1,
             coder_base_dir=coder,
@@ -145,10 +196,7 @@ def test_caminho_feliz_nove_estagios_sucesso(tmp_path):
     _write_src(coder, with_suite=True)
     client, _ = _mock_docker()
 
-    result = _run(
-        "TASK-001", coder, execution, tasks, client,
-        pytest_result={"status": "sucesso", "resultado_resumo": "sucesso_total"},
-    )
+    result = _run("TASK-001", coder, execution, tasks, client)
 
     # Ordem e completude dos 9 estágios
     nomes = [s["stage"] for s in result["stages"]]
@@ -166,14 +214,18 @@ def test_caminho_feliz_report_persistido(tmp_path):
     _write_src(coder, with_suite=True)
     client, _ = _mock_docker()
 
-    result = _run(
-        "TASK-001", coder, execution, tasks, client,
-        pytest_result={"status": "sucesso", "resultado_resumo": "sucesso_total"},
-    )
+    result = _run("TASK-001", coder, execution, tasks, client)
 
     assert result["report_path"].endswith("TASK-001.report.json")
     assert result["work_item_id"] == "TASK-001"
     assert result["iteration"] == 1
+
+    # O estágio 6 rodou a suíte DENTRO do container: o alvo é o path /app,
+    # não um path reescrito para o workspace do qa_agent (regressão do bug).
+    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
+    assert testes["status"] == "sucesso"
+    assert testes["evidence"]["alvo_container"] == "/app/test_app.py"
+    assert testes["evidence"]["modo"] == "json"
 
 
 # ===========================================================================
@@ -285,3 +337,61 @@ def test_estagio7_uma_evidencia_por_criterio_sem_veredito(tmp_path):
     # Critério com rota é verificável; critério semântico não é
     assert evidencias[0]["checkable"] is True
     assert evidencias[1]["checkable"] is False
+
+
+# ===========================================================================
+# Testes que FALHAM → estágio FALHA, mas o harness NÃO emite veredito
+# ===========================================================================
+
+def test_testes_falharam_marcam_falha_sem_veredito(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, with_suite=True)
+    # pytest sai com 1 (houve falhas); report reflete 1 falha
+    client, _ = _mock_docker(
+        pytest_exit=1,
+        report={
+            "summary": {"passed": 0, "failed": 1, "error": 0, "skipped": 0, "total": 1},
+            "tests": [
+                {
+                    "nodeid": "test_app.py::test_ok",
+                    "outcome": "failed",
+                    "call": {"crash": {"lineno": 2, "message": "AssertionError"}},
+                }
+            ],
+        },
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    by_name = {s["stage"]: s for s in result["stages"]}
+    testes = by_name["testes_automatizados"]
+
+    # O estágio marca FALHA e registra o código, mas continua sendo só evidência
+    assert testes["status"] == "falha"
+    assert testes["error_code"] == "TESTES_FALHARAM"
+    assert testes["evidence"]["resumo"]["falharam"] == 1
+    # Nenhum campo de veredito vazou para a evidência do estágio
+    assert not ({"verdict", "aprovado", "veredito", "approved"} & set(testes["evidence"].keys()))
+    # Testes não são estágio crítico: a falha deles NÃO derruba o status agregado
+    # (o julgamento é do implementation_validator, não do harness).
+    assert result["overall_status"] == "sucesso"
+
+
+# ===========================================================================
+# Sem plugins de report/cov na imagem → fallback para modo 'plain'
+# ===========================================================================
+
+def test_fallback_plain_quando_sem_plugin_json(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, with_suite=True)
+    # pytest existe, mas --json-report/--cov não são reconhecidos (exit 4)
+    client, _ = _mock_docker(pytest_exit=0, json_plugin=False)
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
+
+    # Caiu para o modo texto, mas ainda classificou o resultado a partir do exit code
+    assert testes["status"] == "sucesso"
+    assert testes["evidence"]["modo"] == "plain"
+    assert testes["evidence"]["resumo"]["passaram"] == 1
