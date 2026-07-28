@@ -222,6 +222,35 @@ Qualquer erro abaixo causa falha total do build ou crash no runtime.
       ensaio = relationship("Ensaio", back_populates="fotos")
   ```
 
+## Jinja2Templates.TemplateResponse — use a API NOVA (Starlette ≥ 1.0)
+- A assinatura ANTIGA (nome do template como 1º argumento e request dentro do
+  dict de contexto) QUEBRA em Starlette ≥ 1.0 com
+  `TypeError: unhashable type: 'dict'` → HTTP 500 em TODA rota que renderiza template.
+- SEMPRE passe `request` como PRIMEIRO argumento posicional.
+- NUNCA coloque `request` dentro do dict de contexto.
+- Exemplo CORRETO:
+  ```python
+  from fastapi import Request
+  from fastapi.templating import Jinja2Templates
+
+  templates = Jinja2Templates(directory="templates")
+
+  @app.get("/login")
+  def login_page(request: Request):
+      return templates.TemplateResponse(
+          request,
+          "login.html",
+          {{"user": user, "errors": errors}},
+      )
+  ```
+- Exemplo ERRADO (assinatura antiga — NUNCA use):
+  ```python
+  return templates.TemplateResponse(
+      "login.html",
+      {{"request": request, "user": user, "errors": errors}},
+  )
+  ```
+
 ## Imports consistentes com requirements.txt
 - Todo `import X` ou `from X import ...` no código DEVE ter o pacote
   correspondente no requirements.txt. Se importou, deve estar listado.
