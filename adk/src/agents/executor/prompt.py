@@ -54,7 +54,7 @@ decidir a continuidade do loop **exclusivamente** a partir desse veredito.
 2. Acione o Agente de Validação (`implementation_validator`), passando a ele o
    `report_path` CONCRETO devolvido pelo harness no passo 1.
    - Passe o caminho EXATO retornado (ex.: o valor real de `report_path`), NUNCA
-     um template como `coder/execution/<task_id>.report.json`..
+     um template como `coder/execution/<task_id>.report.json`.
    - O validador lê esse report e devolve o ValidationVerdict.
    - O veredito é a ÚNICA fonte de verdade sobre aprovação. Não o reinterprete,
      não o sobreponha, não o antecipe.

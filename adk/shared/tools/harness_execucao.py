@@ -693,11 +693,33 @@ def _coletar_evidencia_criterio(
 
     Nunca decide se o critério foi atendido — apenas registra o que foi
     verificado e o que foi observado. A conclusão é do validador.
+
+    A única checagem que o harness sabe derivar com segurança é um GET sem
+    payload. Critérios que mencionam POST/PUT/PATCH/DELETE exigiriam inventar
+    corpo/headers — adivinhação que o harness não faz. Nesses casos o critério
+    é marcado como NÃO verificável (evidência honesta), em vez de executar um
+    GET desalinhado e rotulá-lo de verificável, o que poderia induzir o
+    validador a conclusões erradas (ex.: um 405 em rota POST é o comportamento
+    esperado para um GET, não uma falha do critério).
     """
     path_match = _PATH_RE.search(criterion)
-    tem_http = bool(_VERBO_HTTP_RE.search(criterion))
+    verbos = {m.upper() for m in _VERBO_HTTP_RE.findall(criterion)}
+    verbos_nao_checaveis = verbos - {"GET"}
 
-    if path_match or tem_http:
+    # Verbo com payload/efeito colateral → sem checagem determinística derivável.
+    if verbos_nao_checaveis:
+        listado = ", ".join(sorted(verbos_nao_checaveis))
+        return CriterionEvidence(
+            criterion=criterion,
+            check_performed=(
+                f"Nenhuma checagem determinística derivável: critério requer "
+                f"{listado} (payload/efeito colateral não inferível pelo harness)."
+            ),
+            observed="Requer avaliação do validador a partir das evidências coletadas.",
+            checkable=False,
+        )
+
+    if path_match or verbos:
         rota = path_match.group(1) if path_match else (main_route or "/")
         if not rota or rota == "/":
             rota = main_route or "/"

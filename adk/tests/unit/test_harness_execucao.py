@@ -395,3 +395,40 @@ def test_fallback_plain_quando_sem_plugin_json(tmp_path):
     assert testes["status"] == "sucesso"
     assert testes["evidence"]["modo"] == "plain"
     assert testes["evidence"]["resumo"]["passaram"] == 1
+
+
+# ===========================================================================
+# Estágio 7 — critérios com POST/PUT/PATCH/DELETE não são checados via GET
+# ===========================================================================
+
+def test_estagio7_verbo_com_payload_nao_e_checado_via_get(tmp_path):
+    """Critério que exige POST/PUT/PATCH/DELETE não pode ser 'verificado' com um
+    GET desalinhado: deve sair como checkable=False, com o motivo registrado,
+    para não induzir o validador (ex.: 405 num endpoint POST é o esperado para
+    um GET, não uma falha do critério)."""
+    coder, execution, tasks = _dirs(tmp_path)
+    criteria = [
+        "POST /usuarios deve retornar 201",                      # verbo com payload
+        "Após o POST /itens, o GET /itens deve listar o item",   # verbos mistos
+        "A rota GET /status responde 200",                       # GET puro → checável
+    ]
+    _write_task(tasks, criteria=criteria)
+    _write_src(coder)
+    client, _ = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    ev = {e["criterion"]: e for e in result["criteria_evidence"]}
+
+    # POST puro: não checável, e o motivo cita o verbo não derivável
+    assert ev[criteria[0]]["checkable"] is False
+    assert "POST" in ev[criteria[0]]["check_performed"]
+    # Nenhuma requisição desalinhada foi registrada como checagem
+    assert not ev[criteria[0]]["check_performed"].startswith("Requisição HTTP GET")
+
+    # Verbos mistos (GET + POST): a parte não-executável contamina o todo → não checável
+    assert ev[criteria[1]]["checkable"] is False
+    assert "POST" in ev[criteria[1]]["check_performed"]
+
+    # GET puro continua checável, com a requisição registrada
+    assert ev[criteria[2]]["checkable"] is True
+    assert ev[criteria[2]]["check_performed"].startswith("Requisição HTTP GET")
