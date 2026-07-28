@@ -4,8 +4,10 @@ Instância-espelho de `src/agents/executor/` (mesma ideia de cr_reviewer → rev
 - REUSA a "alma" (fluxo + salvaguarda) de `executor/prompt.py`; a instrução NÃO
   é mais definida aqui — este espelho apenas a reusa.
 - Compõe harness + AgentTool(validador) + exit_loop, derivado do consolidado.
-- O encerramento do loop depende exclusivamente do veredito do validador — nunca
-  do status técnico de execução do harness.
+- O loop encerra em DUAS condições: quando o veredito do validador é 'aprovado',
+  OU quando o protocolo de estagnação detecta que o coder não fez alterações e o
+  bloqueio se repete (encerramento por estagnação, com status `bloqueado` — NÃO é
+  aprovação). O status técnico de execução do harness, sozinho, nunca encerra.
 
 Binding ao workspace do workflow: o harness já resolve, em tempo de CHAMADA, os
 seus base_dirs default — coder/src (get_agent_workspace("cr_coder"), entrada do

@@ -114,45 +114,54 @@ critério e por quê). Quando aprovar, `blocking_reason` fica nulo.
 FORMATO DE SAÍDA (OBRIGATÓRIO)
 ═══════════════════════════════════════════════════════════════
 
-Sua ÚLTIMA mensagem DEVE ser EXCLUSIVAMENTE um único objeto JSON conforme o
-schema ValidationVerdict — sem texto antes ou depois, sem blocos de código.
+Sua resposta é consumida por um parser determinístico, NÃO por um humano. Ela
+DEVE seguir EXATAMENTE o formato de texto abaixo — sem JSON, sem blocos de
+código (```), sem títulos, sem comentários, sem qualquer texto fora do formato.
 
-Os campos ficam TODOS no NÍVEL RAIZ do objeto. NÃO envelope o resultado em
-nenhuma chave externa: NÃO use {"verdict": {...}}, NÃO use {"validation": {...}},
-NÃO use {"ValidationVerdict": {...}}. Os campos `work_item_id`, `status`,
-`criteria_verdicts`, `blocking_reason` e `summary` ficam diretamente na raiz.
+A PRIMEIRA linha da resposta DEVE ser `REPORT_PATH: ` seguido do caminho exato
+do report que você recebeu e leu. Em seguida, emita UM bloco `### CRITERIO` por
+critério de aceite do report — sem omitir nenhum.
 
-A estrutura EXATA é:
+O formato de cada bloco é EXATAMENTE:
 
-{
-  "work_item_id": "TASK-001",
-  "status": "reprovado",
-  "criteria_verdicts": [
-    {
-      "criterion": "GET /health deve retornar status 200",
-      "status": "atendido",
-      "reasoning": "A evidência observed registrou HTTP 200 na rota /health.",
-      "evidence_ref": "estagio validacoes_work_item"
-    },
-    {
-      "criterion": "Persistir usuário no banco",
-      "status": "inconclusivo",
-      "reasoning": "Nenhuma evidência no report comprova a persistência.",
-      "evidence_ref": null
-    }
-  ],
-  "blocking_reason": "O critério de persistência não pôde ser comprovado.",
-  "summary": "Reprovado: 1 de 2 critérios sem evidência de atendimento."
-}
+### CRITERIO
+TEXTO: <critério de aceite, copiado VERBATIM do campo acceptance_criteria do report>
+STATUS: atendido | nao_atendido | inconclusivo
+JUSTIFICATIVA: <uma linha citando a evidência exata do report>
+EVIDENCIA_REF: <estágio/evidência usado, ou "-">
 
-Regras do formato:
-  - `work_item_id`: use o valor do campo `work_item_id` do ExecutionReport.
-  - `status`: exatamente "aprovado" ou "reprovado" (minúsculas).
-  - `criteria_verdicts`: uma entrada por critério; `status` de cada uma é
-    exatamente "atendido", "nao_atendido" ou "inconclusivo".
-  - `blocking_reason`: string quando reprovado; null quando aprovado.
-  - `evidence_ref`: string quando houver referência; null quando não houver.
-  - Todos os campos são obrigatórios (exceto os que aceitam null acima).
+Exemplo COMPLETO de uma resposta bem-formada (para um report com dois critérios):
+
+REPORT_PATH: /workspace/coder/execution/TASK-001.report.json
+
+### CRITERIO
+TEXTO: GET /health deve retornar status 200
+STATUS: atendido
+JUSTIFICATIVA: A evidência observed registrou "GET /health → HTTP 200".
+EVIDENCIA_REF: estagio validacoes_work_item
+
+### CRITERIO
+TEXTO: Persistir usuário no banco
+STATUS: inconclusivo
+JUSTIFICATIVA: Nenhuma evidência no report comprova a persistência.
+EVIDENCIA_REF: -
+
+Regras do formato (o parser casa por igualdade EXATA):
+  - A primeira linha DEVE ser `REPORT_PATH: <caminho>`.
+  - Um bloco `### CRITERIO` por critério do report — não omita nenhum.
+  - `TEXTO:` deve ser copiado VERBATIM do campo `acceptance_criteria` do report.
+    Um critério parafraseado NÃO será casado com o report e será tratado como
+    não julgado → `inconclusivo` (o que reprova). Copie o texto exatamente.
+  - `STATUS:` exatamente "atendido", "nao_atendido" ou "inconclusivo" (minúsculas).
+  - `JUSTIFICATIVA:` uma única linha citando a evidência exata do report.
+  - `EVIDENCIA_REF:` o estágio/evidência usado, ou "-" quando não houver.
+  - NÃO emita nenhum texto fora desse formato; NÃO use JSON; NÃO use blocos de
+    código.
+
+Observação: o veredito global (aprovado/reprovado) NÃO é escrito por você — ele
+é derivado deterministicamente dos STATUS que você julgar, aplicando a política
+de duas camadas e a agregação conservadora descritas acima. Sua tarefa é apenas
+julgar cada critério individualmente no formato acima.
 
 ═══════════════════════════════════════════════════════════════
 REGRAS ABSOLUTAS
@@ -164,7 +173,8 @@ REGRAS ABSOLUTAS
   Nunca aprove por aproximação ou "parece correto".
   Nunca trate `inconclusivo` como aprovação — é sempre reprovação.
   Nunca avance para a Camada 2 quando a Camada 1 reprovou.
-  Nunca envolva o JSON de saída em uma chave externa nem em bloco de código.
+  Nunca emita a saída como JSON nem dentro de um bloco de código — use apenas o
+    formato de texto REPORT_PATH + blocos ### CRITERIO especificado acima.
 
 ═══════════════════════════════════════════════════════════════
 IDIOMA

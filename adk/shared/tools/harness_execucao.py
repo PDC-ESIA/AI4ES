@@ -32,6 +32,7 @@ from typing import Optional
 import docker
 import requests
 from docker.errors import APIError, BuildError
+from google.adk.tools import ToolContext
 
 from shared.tools import harness_docker as hd
 from shared.tools.log_parser_tool import parse_log_text
@@ -847,6 +848,7 @@ def executar_harness_validacao(
     coder_base_dir=None,
     execution_base_dir=None,
     tasks_base_dir=None,
+    tool_context: ToolContext | None = None,
 ) -> dict:
     """Executa o harness de validação (9 estágios) sobre o artefato do coder.
 
@@ -862,6 +864,11 @@ def executar_harness_validacao(
         coder_base_dir: Sobrescreve o diretório do código do coder (injeção em testes).
         execution_base_dir: Sobrescreve o diretório de saída da execução.
         tasks_base_dir: Sobrescreve o diretório onde ficam as Tasks em JSON.
+        tool_context: Injetado pela FunctionTool do ADK quando o parâmetro é
+            declarado. Opcional — chamadas diretas (testes, PoC) não o passam.
+            Quando presente, grava o caminho absoluto do report gravado em
+            `tool_context.state["report_path"]`, tornando a evidência resolvível
+            pelo validador sem depender do eco do LLM.
 
     Returns:
         dict: `ExecutionReport.model_dump(mode="json")` — apenas evidências,
@@ -935,6 +942,11 @@ def executar_harness_validacao(
     _serializar_json_atomico(report_json_path, payload)
     report_md_path.parent.mkdir(parents=True, exist_ok=True)
     report_md_path.write_text(_render_markdown(report), encoding="utf-8")
+
+    # Grava o caminho do report no session state (fonte determinística para o
+    # validador). Só quando há contexto — chamadas diretas (testes/PoC) o omitem.
+    if tool_context is not None:
+        tool_context.state["report_path"] = str(report_json_path.resolve())
 
     return payload
 

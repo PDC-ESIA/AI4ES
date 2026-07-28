@@ -61,8 +61,12 @@ def _cv(status, criterion="c"):
 
 def test_agent_wiring():
     assert root_agent.name == "implementation_validator"
-    assert agent.output_key == "validation"
-    assert agent.output_schema is ValidationVerdict
+    # GAP-00: sem output_schema (schema + tools são mutuamente exclusivos no ADK).
+    # O LLM emite markdown em output_key="validation_raw"; um after_agent_callback
+    # determinístico parseia a resposta e aplica a política.
+    assert agent.output_schema is None
+    assert agent.output_key == "validation_raw"
+    assert agent.after_agent_callback is not None
 
 
 # ===========================================================================
