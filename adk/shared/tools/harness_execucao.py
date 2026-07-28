@@ -22,6 +22,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import time
 from datetime import datetime, timezone
@@ -34,7 +35,6 @@ from docker.errors import APIError, BuildError
 
 from shared.tools import harness_docker as hd
 from shared.tools.log_parser_tool import parse_log_text
-from shared.tools.pytest_runner import executar_pytest_tool
 from shared.workspace import get_agent_workspace
 
 logger = logging.getLogger(__name__)
@@ -426,7 +426,153 @@ def _localizar_suite(coder_dir: Path) -> Optional[Path]:
     return candidatos[0] if candidatos else None
 
 
+# --- Execução da suíte DENTRO do container implantado ---------------------
+#
+# A versão anterior delegava ao `executar_pytest_tool` do QA, que enclausurava
+# o path da suíte no workspace do qa_agent (rebase → ERR_MODULO_NAO_ENCONTRADO)
+# e acoplava o harness ao estado global daquela tool. Agora o harness roda o
+# pytest ele mesmo, contra o artefato realmente implantado em /app (ver
+# Dockerfile: WORKDIR /app + COPY . /app/). Continua apenas coletando
+# evidência — nenhum veredito, nenhum contador global, nenhum doubt artifact.
+
+_TESTS_TIMEOUT = 60  # segundos — teto para a execução da suíte no container
+_APP_WORKDIR = "/app"
+_REPORT_JSON_IN = f"{_APP_WORKDIR}/.harness_pytest_report.json"
+_COV_JSON_IN = f"{_APP_WORKDIR}/.harness_cov.json"
+
+_PLAIN_PASSOU_RE = re.compile(r"(\d+) passed")
+_PLAIN_FALHOU_RE = re.compile(r"(\d+) failed")
+_PLAIN_ERRO_RE = re.compile(r"(\d+) error")
+
+
+def _exec_no_container(container, comando: str) -> tuple[Optional[int], str, str]:
+    """Executa um comando shell dentro do container; retorna (exit_code, stdout, stderr).
+
+    Usa `/bin/sh -c` para habilitar `timeout`, redirecionamento e encadeamento.
+    Não trata exceções: quem chama decide como reportá-las (o estágio as
+    converte num StageResult de ERRO).
+    """
+    res = container.exec_run(
+        ["/bin/sh", "-c", comando], workdir=_APP_WORKDIR, demux=True
+    )
+    saida = res.output if isinstance(res.output, tuple) else (res.output, None)
+    stdout = (saida[0] or b"").decode("utf-8", errors="replace")
+    stderr = (saida[1] or b"").decode("utf-8", errors="replace")
+    return res.exit_code, stdout, stderr
+
+
+def _pytest_disponivel(container) -> bool:
+    """Garante `pytest` executável no container; tenta instalar se ausente.
+
+    A instalação em runtime depende de rede no container. Se falhar, retorna
+    False e o estágio degrada de forma honesta (PULADO/PYTEST_INDISPONIVEL) —
+    NÃO cai para o host, para não reintroduzir a divergência host↔container.
+    """
+    code, _, _ = _exec_no_container(container, "python -m pytest --version")
+    if code == 0:
+        return True
+    _exec_no_container(
+        container, "pip install --no-cache-dir pytest pytest-json-report pytest-cov"
+    )
+    code, _, _ = _exec_no_container(container, "python -m pytest --version")
+    return code == 0
+
+
+def _rodar_pytest_no_container(
+    container, alvo: str
+) -> tuple[Optional[int], str, str, str]:
+    """Roda a suíte no container. Tenta o modo 'json' (com plugins de report/cov);
+    se as opções não forem reconhecidas (pytest exit 4 = erro de uso, plugins
+    ausentes), cai para o modo 'plain' (só stdout).
+
+    Retorna (exit_code, stdout, stderr, modo).
+    """
+    alvo_q = shlex.quote(alvo)
+    cmd_json = (
+        f"timeout {_TESTS_TIMEOUT} python -m pytest {alvo_q} "
+        f"--json-report --json-report-file={_REPORT_JSON_IN} "
+        f"--cov={_APP_WORKDIR} --cov-report=json:{_COV_JSON_IN} "
+        f"-q -p no:cacheprovider"
+    )
+    code, out, err = _exec_no_container(container, cmd_json)
+    if code == 4:  # opção desconhecida → plugins ausentes → fallback texto
+        cmd_plain = (
+            f"timeout {_TESTS_TIMEOUT} python -m pytest {alvo_q} -q -p no:cacheprovider"
+        )
+        code, out, err = _exec_no_container(container, cmd_plain)
+        return code, out, err, "plain"
+    return code, out, err, "json"
+
+
+def _parse_report_json(container) -> dict:
+    """Lê e resume o report.json do pytest-json-report de dentro do container."""
+    _, raw, _ = _exec_no_container(container, f"cat {_REPORT_JSON_IN}")
+    data = json.loads(raw)
+    summary = data.get("summary", {}) or {}
+    testes = data.get("tests", []) or []
+    falhas = [
+        {
+            "nodeid": t.get("nodeid"),
+            "outcome": t.get("outcome"),
+            "linha": (t.get("call", {}) or {}).get("crash", {}).get("lineno"),
+            "mensagem": (t.get("call", {}) or {}).get("crash", {}).get("message"),
+        }
+        for t in testes
+        if t.get("outcome") not in ("passed", "skipped")
+    ]
+    return {
+        "passaram": summary.get("passed", 0),
+        "falharam": summary.get("failed", 0),
+        "erros": summary.get("error", 0),
+        "pulados": summary.get("skipped", 0),
+        "total": summary.get("total", summary.get("collected", 0)),
+        "falhas": falhas[:20],
+    }
+
+
+def _parse_cobertura_json(container) -> dict:
+    """Lê o coverage.json de dentro do container (best-effort)."""
+    try:
+        _, raw, _ = _exec_no_container(container, f"cat {_COV_JSON_IN}")
+        totals = json.loads(raw).get("totals", {}) or {}
+        return {
+            "percentual": round(totals.get("percent_covered", 0.0), 2),
+            "linhas_cobertas": totals.get("covered_lines", 0),
+            "linhas_totais": totals.get("num_statements", 0),
+        }
+    except Exception:
+        return {"percentual": 0.0, "linhas_cobertas": 0, "linhas_totais": 0}
+
+
+def _parse_stdout_plain(stdout: str) -> dict:
+    """Resumo mínimo a partir do stdout do pytest quando não há JSON report."""
+
+    def _n(rx: re.Pattern) -> int:
+        m = rx.search(stdout)
+        return int(m.group(1)) if m else 0
+
+    passaram, falharam, erros = (
+        _n(_PLAIN_PASSOU_RE),
+        _n(_PLAIN_FALHOU_RE),
+        _n(_PLAIN_ERRO_RE),
+    )
+    return {
+        "passaram": passaram,
+        "falharam": falharam,
+        "erros": erros,
+        "pulados": 0,
+        "total": passaram + falharam + erros,
+        "falhas": [],
+    }
+
+
 def _estagio_testes(ctx: _HarnessContext) -> StageResult:
+    """Estágio 6 — executa a suíte de testes DENTRO do container implantado.
+
+    Localiza a suíte no workspace do coder (host), traduz o caminho para o
+    interior do container (`/app/...`) e roda o pytest lá dentro. Apenas coleta
+    evidência: a decisão sobre o que as falhas significam é do validador.
+    """
     if not ctx.app_ok:
         return _pulado(
             StageName.TESTES_AUTOMATIZADOS,
@@ -445,18 +591,90 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
             error_code=None,
         )
 
-    resultado = executar_pytest_tool(str(suite))
-    ok = resultado.get("status") == "sucesso"
+    # Path host → path no container (Dockerfile: WORKDIR /app + COPY . /app/).
+    rel = suite.relative_to(ctx.coder_dir)
+    alvo = f"{_APP_WORKDIR}/{rel.as_posix()}"
+
+    try:
+        if not _pytest_disponivel(ctx.container):
+            return StageResult(
+                stage=StageName.TESTES_AUTOMATIZADOS,
+                status=StageStatus.PULADO,
+                duration_seconds=round(time.time() - t0, 3),
+                summary=(
+                    "pytest indisponível no container e não foi possível "
+                    "instalá-lo (sem rede?). Testes não executados."
+                ),
+                evidence={"suite": str(suite), "alvo_container": alvo},
+                error_code="PYTEST_INDISPONIVEL",
+            )
+
+        exit_code, stdout, stderr, modo = _rodar_pytest_no_container(ctx.container, alvo)
+    except Exception as e:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Falha ao executar pytest no container: {e}",
+            evidence={"suite": str(suite), "alvo_container": alvo},
+            error_code="EXEC_FALHOU",
+        )
+
+    # Resumo estruturado (JSON report quando disponível; stdout como fallback).
+    if modo == "json":
+        try:
+            resumo = _parse_report_json(ctx.container)
+        except Exception:
+            resumo = _parse_stdout_plain(stdout)
+        cobertura = _parse_cobertura_json(ctx.container)
+    else:
+        resumo = _parse_stdout_plain(stdout)
+        cobertura = {"percentual": 0.0, "linhas_cobertas": 0, "linhas_totais": 0}
+
+    # Classificação técnica (SEM veredito) a partir do exit code do pytest:
+    #   0 = tudo passou | 1 = houve falhas | 5 = nada coletado
+    #   124 = timeout (coreutils) | 2/3/4 = interrompido/erro interno/uso incorreto
+    if exit_code == 5:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.PULADO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Suíte '{suite.name}' não coletou nenhum teste.",
+            evidence={"suite": str(suite), "alvo_container": alvo, "modo": modo},
+            error_code=None,
+        )
+    if exit_code == 0:
+        status, error_code = StageStatus.SUCESSO, None
+    elif exit_code == 124:
+        status, error_code = StageStatus.FALHA, "TESTES_TIMEOUT"
+    elif exit_code == 1:
+        status, error_code = StageStatus.FALHA, "TESTES_FALHARAM"
+    else:
+        status, error_code = StageStatus.ERRO, "PYTEST_ERRO_EXECUCAO"
+
+    tail = (stdout or "")[-3000:]
+    if stderr:
+        tail += f"\n--- stderr ---\n{stderr[-1000:]}"
+
     return StageResult(
         stage=StageName.TESTES_AUTOMATIZADOS,
-        status=StageStatus.SUCESSO if ok else StageStatus.FALHA,
+        status=status,
         duration_seconds=round(time.time() - t0, 3),
         summary=(
-            f"Suíte '{suite.name}' executada: "
-            f"{resultado.get('resultado_resumo', resultado.get('status'))}."
+            f"Suíte '{suite.name}' executada no container "
+            f"(modo={modo}, exit={exit_code}): {resumo['passaram']} passaram, "
+            f"{resumo['falharam']} falharam, {resumo['erros']} erros."
         ),
-        evidence={"suite": str(suite), "pytest": resultado},
-        error_code=None if ok else "TESTES_FALHARAM",
+        evidence={
+            "suite": str(suite),
+            "alvo_container": alvo,
+            "modo": modo,
+            "exit_code": exit_code,
+            "resumo": resumo,
+            "cobertura": cobertura,
+            "saida_tail": tail,
+        },
+        error_code=error_code,
     )
 
 
