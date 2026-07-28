@@ -3,8 +3,17 @@
 Define a estrutura de diretórios, inicialização (com limpeza) e
 resolução segura de caminhos por agente.
 
-Regra: o sistema atende UMA prompt por vez. A cada nova sessão/prompt,
-o workspace é limpo e recriado com subpastas vazias.
+Suporta dois modos, escolhidos por quem chama (opt-in, não muda o padrão):
+
+- **Legado (sem `session_id`)**: opera direto sobre a raiz de
+  `WORKSPACE_OUTPUT_DIR`. `init_workspace()` limpa e recria essa raiz
+  inteira — comportamento inalterado, preservado por compatibilidade.
+- **Por sessão (com `session_id`)**: opera sob
+  `WORKSPACE_OUTPUT_DIR/sessions/<session_id>/`, isolada das demais
+  sessões. `init_workspace(session_id=...)` só limpa/recria a subpasta
+  dessa sessão — nunca toca em `sessions/<outro_id>/`. Quem decide o
+  `session_id` (tipicamente `ctx.session.id`) é responsabilidade de quem
+  chama (ex.: o orchestrator), não deste módulo.
 
 Portado de feat/me2/coding_squad (Time 4) — adaptado para os 14 agentes
 + 5 workflows da nossa consolidação.
@@ -26,6 +35,9 @@ _DEFAULT_WORKSPACE = "./workspace_output"
 # Arquivo marker que identifica um diretório como workspace gerenciado.
 # Previne rmtree acidental em diretórios que não são workspace.
 _WORKSPACE_MARKER = ".ai4se_workspace"
+
+# Subpasta sob a raiz onde vivem os workspaces isolados por sessão.
+_SESSIONS_SUBDIR = "sessions"
 
 # Mapeamento agente → subpasta dentro do workspace.
 # Cobre os 14 agentes individuais + 5 workflows + o orchestrator.
@@ -88,13 +100,34 @@ def get_workspace_root() -> Path:
 
     resolved = resolved.resolve()
 
-    logger.debug(
-        f"[WORKSPACE] {_ENV_WORKSPACE}='{raw}' → resolvido para: {resolved}"
-    )
+    logger.debug(f"[WORKSPACE] {_ENV_WORKSPACE}='{raw}' → resolvido para: {resolved}")
     return resolved
 
 
-def init_workspace() -> Path:
+def get_session_root(session_id: str) -> Path:
+    """Resolve a raiz isolada de uma sessão específica.
+
+    Path: ``<workspace_root>/sessions/<session_id>/``. Sessões diferentes
+    nunca compartilham diretório — isso é o que garante que inicializar ou
+    limpar a sessão corrente jamais afeta artefatos de sessões anteriores.
+
+    Args:
+        session_id: identificador da sessão (ex.: ``ctx.session.id``).
+            Quem decide esse valor é responsabilidade de quem chama (o
+            orchestrator, tipicamente) — este módulo só resolve o path.
+
+    Returns:
+        Path: caminho absoluto resolvido (não cria o diretório).
+
+    Raises:
+        ValueError: se `session_id` for vazio.
+    """
+    if not session_id:
+        raise ValueError("session_id não pode ser vazio.")
+    return get_workspace_root() / _SESSIONS_SUBDIR / session_id
+
+
+def init_workspace(session_id: str | None = None) -> Path:
     """Limpa e recria o workspace (somente a raiz + marker).
 
     As subpastas dos agentes são criadas sob demanda por
@@ -104,6 +137,13 @@ def init_workspace() -> Path:
     Deve ser chamado no início de cada nova sessão/prompt para garantir
     um ambiente limpo.
 
+    Args:
+        session_id: quando informado, opera sob a raiz isolada dessa sessão
+            (``get_session_root(session_id)``) em vez da raiz legada —
+            limpa/recria só a subpasta dessa sessão, nunca a de outra.
+            Quando omitido (padrão), preserva o comportamento legado:
+            limpa/recria a raiz inteira de ``WORKSPACE_OUTPUT_DIR``.
+
     Safety checks:
     - Se o diretório já existe, só remove se contiver o marker
       `.ai4se_workspace` (previne rmtree acidental em diretórios errados).
@@ -111,14 +151,15 @@ def init_workspace() -> Path:
       permissões insuficientes ou path inválido).
 
     Returns:
-        Path: Caminho absoluto da raiz do workspace recriado.
+        Path: Caminho absoluto da raiz do workspace recriado (raiz legada ou
+        raiz da sessão, dependendo de `session_id`).
 
     Raises:
         PermissionError: Se não houver permissão para criar/limpar o diretório.
         RuntimeError: Se o diretório existente não for um workspace gerenciado
             (ausência do marker `.ai4se_workspace`).
     """
-    root = get_workspace_root()
+    root = get_session_root(session_id) if session_id else get_workspace_root()
 
     if root.exists():
         marker = root / _WORKSPACE_MARKER
@@ -157,7 +198,7 @@ def init_workspace() -> Path:
     return root
 
 
-def get_agent_workspace(agent_name: str) -> Path:
+def get_agent_workspace(agent_name: str, session_id: str | None = None) -> Path:
     """Retorna o caminho absoluto da subpasta do agente no workspace.
 
     Cria o diretório sob demanda na primeira chamada (lazy init),
@@ -165,6 +206,9 @@ def get_agent_workspace(agent_name: str) -> Path:
 
     Args:
         agent_name: Nome do agente (deve existir em AGENT_DIRS).
+        session_id: quando informado, resolve a subpasta sob a raiz isolada
+            dessa sessão (``get_session_root(session_id)``) em vez da raiz
+            legada. Quando omitido (padrão), preserva o comportamento legado.
 
     Returns:
         Path absoluto da subpasta do agente (já existente no filesystem).
@@ -177,6 +221,7 @@ def get_agent_workspace(agent_name: str) -> Path:
             f"Agente '{agent_name}' não possui subpasta mapeada. "
             f"Agentes válidos: {sorted(AGENT_DIRS.keys())}"
         )
-    agent_path = get_workspace_root() / AGENT_DIRS[agent_name]
+    root = get_session_root(session_id) if session_id else get_workspace_root()
+    agent_path = root / AGENT_DIRS[agent_name]
     agent_path.mkdir(parents=True, exist_ok=True)
     return agent_path
