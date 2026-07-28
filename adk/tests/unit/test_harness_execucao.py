@@ -432,3 +432,17 @@ def test_estagio7_verbo_com_payload_nao_e_checado_via_get(tmp_path):
     # GET puro continua checável, com a requisição registrada
     assert ev[criteria[2]]["checkable"] is True
     assert ev[criteria[2]]["check_performed"].startswith("Requisição HTTP GET")
+
+    
+def test_container_nao_inicia_preserva_logs_na_evidence(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder)
+    client, _ = _mock_docker(container_status="exited")
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    implant = next(s for s in result["stages"] if s["stage"] == "implantacao_artefato")
+
+    assert implant["status"] == "falha"
+    assert implant["error_code"] == "CONTAINER_NAO_INICIOU"
+    assert "Uvicorn running" in implant["evidence"]["runtime_logs_tail"]

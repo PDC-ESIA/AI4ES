@@ -281,7 +281,10 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
             status=StageStatus.FALHA,
             duration_seconds=round(time.time() - t0, 3),
             summary=f"Container não iniciou (status={container.status}, exit={exit_code}).",
-            evidence={"container_status": container.status, "exit_code": exit_code},
+            evidence={"container_status": container.status, 
+                      "exit_code": exit_code,
+                       "runtime_logs_tail": ctx.runtime_logs[-3000:], 
+                       },
             error_code="CONTAINER_NAO_INICIOU",
         )
 

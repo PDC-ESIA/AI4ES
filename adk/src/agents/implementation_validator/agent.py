@@ -117,12 +117,24 @@ def montar_veredito(
             )
             for c in _extrair_criterios(report)
         ]
+
+        estagio_falho = next(
+            (s for s in report.get("stages", []) if s.get("status") in ("falha", "erro")),
+            None,
+        )
+        detalhe_estagio = (
+            f" Estágio que falhou: '{estagio_falho['stage']}'"
+            f" (error_code={estagio_falho.get('error_code')})."
+            if estagio_falho else ""
+        )
+
         return ValidationVerdict(
             work_item_id=work_item_id,
             status=VerdictStatus.REPROVADO,
             criteria_verdicts=verdicts,
             blocking_reason=(
-                f"Execução do harness terminou com status '{overall}'. "
+                f"Execução do harness terminou com status '{overall}'."
+                f"{detalhe_estagio} "
                 f"A Camada 2 (semântica) não foi executada."
             ),
             summary="Reprovado na Camada 1: a execução não foi bem-sucedida.",

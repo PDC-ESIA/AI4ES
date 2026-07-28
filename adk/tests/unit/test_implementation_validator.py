@@ -34,6 +34,10 @@ def _report(overall, criteria=("A rota / responde 200", "O domínio está corret
     return {
         "work_item_id": "TASK-001",
         "overall_status": overall,
+        "stages": [
+            {"stage": "implantacao_artefato", "status": "falha",
+             "error_code": "CONTAINER_NAO_INICIOU"},
+        ] if overall in ("falha", "erro") else [],
         "acceptance_criteria": list(criteria),
         "criteria_evidence": [
             {
@@ -72,6 +76,8 @@ def test_camada1_execucao_falha_reprova_com_inconclusivos(overall):
     assert v.status == VerdictStatus.REPROVADO
     assert v.blocking_reason  # preenchido
     assert overall in v.blocking_reason
+    assert "implantacao_artefato" in v.blocking_reason 
+    assert "CONTAINER_NAO_INICIOU" in v.blocking_reason
     # Todos os critérios ficam inconclusivo (nenhum pôde ser comprovado)
     assert len(v.criteria_verdicts) == 2
     assert all(cv.status == CriterionStatus.INCONCLUSIVO for cv in v.criteria_verdicts)
