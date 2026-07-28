@@ -99,6 +99,13 @@ class Task(BaseModel):
             "(ex: RF-001). Garante a rastreabilidade até o time de Requisitos."
         )
     )
+    @field_validator("requirement_id")
+    @classmethod
+    def validar_requirement_id(cls, v: str) -> str:
+        if not v or not v.startswith("RF-"):
+            raise ValueError("requirement_id deve iniciar com 'RF-' (ex: RF-001).")
+        return v
+    
     design_refs: list[str] = Field(
         description=(
             "Referência aos artefatos de design e arquitetura que motivaram esta task. "

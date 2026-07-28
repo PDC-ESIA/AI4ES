@@ -101,7 +101,7 @@ def tool_ler_workspace_fase(fase: str) -> dict:
     try:
         dados = LerWorkspaceFaseSchema(fase=fase)
     except ValidationError as e:
-        return {"sucesso": False, "erro": str(e), "artefatos": None}
+        return {"sucesso": False, "erro": str(e), "fase": fase, "artefatos": None}
  
     workspace_root = get_workspace_root()
     mapeamento_fases = {
@@ -122,14 +122,17 @@ def tool_ler_workspace_fase(fase: str) -> dict:
             "caminho_esperado": str(pasta_fase),
         }
  
-    arquivos = [
-    a
-    for a in pasta_fase.rglob("*")
-    if a.is_file()
-    and a.suffix.lower() in {".md", ".txt", ".json", ".yml", ".yaml", ".mmd", ".mermaid"}
-    and not any(part.startswith(".") for part in a.relative_to(pasta_fase).parts)
-    and a.stat().st_size <= 500_000
-]
+    arquivos = sorted(
+         [
+             a
+             for a in pasta_fase.rglob("*")
+             if a.is_file()
+             and a.suffix.lower() in {".md", ".txt", ".json", ".yml", ".yaml", ".mmd", ".mermaid"}
+             and not any(part.startswith(".") for part in a.relative_to(pasta_fase).parts)
+             and a.stat().st_size <= 500_000
+         ],
+         key=lambda p: str(p.relative_to(pasta_fase)),
+     )
  
     if not arquivos:
         return {

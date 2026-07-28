@@ -20,8 +20,9 @@ def test_context_engineer_tem_output_schema():
 
 def test_context_engineer_tem_tool_salvar_task():
     from src.agents.context_engineer import root_agent
-    # Factory injeta tool_ask_clarification_adk + tool_salvar_task + tool_ler_workspace_fase
-    assert len(root_agent.tools) == 3
+    # Garante que as tools do agente incluem as funções essenciais (evita teste frágil por contagem).
+    tool_names = {getattr(getattr(t, "func", t), "__name__", "") for t in root_agent.tools}
+    assert {"tool_salvar_task", "tool_ler_workspace_fase"} <= tool_names
 
 
 def test_schemas_macro_context_minimal():

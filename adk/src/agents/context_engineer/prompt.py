@@ -36,17 +36,20 @@ Com todos os artefatos carregados de ambas as fases, identifique e sintetize:
 - global_rules: restrições arquiteturais derivadas das análises técnicas e relatórios de arquitetura mínima. Máximo 4 regras. Se não houver, use ['Seguir padrões do projeto'].
 
 ## Passo 4 — Decompor em Tasks Contextualizadas
+Antes de gerar qualquer task, verifique se existem Requisitos Funcionais (RFs) nos artefatos lidos no Passo 1. Se não houver nenhum RF identificado, PARE IMEDIATAMENTE e retorne um erro claro informando que nenhum RF foi encontrado no workspace — não gere tasks usando HUs ou outros artefatos como substitutos.
 Para CADA requisito funcional (RF) encontrado nos artefatos de requisitos, gere uma Task contendo:
 - **id**: formato TASK-XXX (sequencial, ex.: TASK-001, TASK-002).
 - **type**: classifique como frontend | backend | database | infra | test.
 - **complexity**: estime como low | medium | high com base nos RFs e na análise técnica do time de design.
 - **description**: Reescreva orientada à implementação combinando a description do RF com as decisões técnicas do contexto de design. Deve ser clara o suficiente para o Coder saber EXATAMENTE o que codificar.
 - **business_rules**: extraia regras de negócio específicas desta task. Se não houver regras explícitas, deixe a lista vazia.
-- **acceptance_criteria**: derive cruzando OBRIGATORIAMENTE quatro fontes:
+- **acceptance_criteria**: derive APENAS a partir das fontes que existirem nos artefatos lidos:
     1. description do próprio RF (critério funcional específico)
     2. acceptance_criteria da UserStory vinculada ao RF via hu_parent (base funcional do usuário)
     3. description dos RNFs relevantes para este RF (performance, segurança, usabilidade conforme ISO 25010)
     4. Decisões de arquitetura da análise técnica lidas do workspace (critérios de implementação específicos da stack escolhida)
+    - NUNCA invente critérios baseados em suposições - use apenas o que foi lido do workspace.
+    - Se apenas o RF estiver disponível, derive os critérios somente a partir dele.
     - Cada critério deve ser testável pelo Time de QA.
     - Formato: verbo no infinitivo + condição + resultado esperado.
     - Exemplo: 'Retornar status 401 quando credenciais forem inválidas'
