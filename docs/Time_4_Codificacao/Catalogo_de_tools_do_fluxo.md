@@ -1,9 +1,9 @@
 # Catálogo de Tools — `workflow_coding_review`
 
 Inventário das ferramentas (`FunctionTool`) usadas pelos quatro agentes do pipeline
-`coding_review_pipeline` (`agent.py`): `cr_context_engineer` → `LoopAgent[cr_coder ↔ cr_executor]` → `cr_reviewer` (analyzer).
+ `coding_review_pipeline` (`adk/src/agents/workflow_coding_review/agent.py`): `cr_context_engineer` → `LoopAgent[cr_coder ↔ cr_executor]` → `cr_reviewer` (analyzer).
 
-A coluna **Origem** traz o caminho do arquivo onde a função da tool está definida..
+A coluna **Origem** traz o caminho do arquivo onde a função da tool está definida.
 
 
 ## 1. `cr_context_engineer` (`cr_context_engineer.py`)
@@ -11,17 +11,16 @@ A coluna **Origem** traz o caminho do arquivo onde a função da tool está defi
 
 | Tool | Origem | Entrada | Retorno | Descrição |
 |---|---|---|---|---|
-| `_tool_salvar_task_cr` (`FunctionTool` como `_tool_salvar_task_cr_adk`) | `src/agents/workflow_coding_review/cr_context_engineer.py` | `task_id: str`, `task_json: str` | `dict {sucesso, erro, caminho, task_id} ou dict {sucesso, erro, caminho}` | Valida via `SalvarTaskSchema`, faz `json.loads` do conteúdo e grava `<task_id>.json` em `workspace_output/coder/tasks/`. Cópia local de `tool_salvar_task`, mudando só o diretório de destino. |
-
+ | `_tool_salvar_task_cr` (`FunctionTool` como `_tool_salvar_task_cr_adk`) | `adk/src/agents/workflow_coding_review/cr_context_engineer.py` | `task_id: str`, `task_json: str` | `dict {sucesso, erro, caminho, task_id} ou dict {sucesso, erro, caminho}` | Valida via `SalvarTaskSchema`, faz `json.loads` do conteúdo e grava `<task_id>.json` em `workspace_output/coder/tasks/`. Cópia local de `tool_salvar_task`, mudando só o diretório de destino. |
 ---
 
 ## 2. `cr_coder` (`cr_coder.py`)
 
 | Tool | Origem | Entrada | Retorno | Descrição |
 |---|---|---|---|---|
-| `tool_criar_arquivo` | `shared/tools/filesystem.py` | `caminho: str`, `conteudo: str`, `base_dir` (existe na função original, mas bound por closure a `workspace_output/coder/src/` — invisível ao LLM) | `dict {sucesso, caminho, bytes_escritos, erro} ou dict {sucesso, erro, caminho}` | Cria/sobrescreve arquivo completo. Valida extensão (whitelist) e bloqueia diretórios protegidos (`.git`, `.venv`, etc.). Única forma de persistir código — texto solto na resposta é descartado. |
-| `tool_ler_arquivo` | `shared/tools/filesystem.py` | `caminho: str`, `base_dir` (bound a `workspace_output/coder/src/` — invisível ao LLM) | `str` (conteúdo do arquivo, ou `"Erro: ..."`) | Lê arquivo existente como texto UTF-8. Usado nas re-execuções para inspecionar o arquivo apontado como causa do erro. |
-| `tool_substituir_trecho` | `shared/tools/filesystem.py` | `caminho: str`, `trecho_antigo: str`, `trecho_novo: str`, `base_dir` (bound a `workspace_output/coder/src/` — invisível ao LLM) | `str` (mensagem `"Sucesso: ..."` ou `"Erro: ..."`) | Substitui a **primeira** ocorrência exata (byte-a-byte) de `trecho_antigo` por `trecho_novo`. Preferida a recriar o arquivo inteiro nas correções pós-falha. |
+ | `tool_criar_arquivo` | `adk/shared/tools/filesystem.py` | `caminho: str`, `conteudo: str`, `base_dir` (existe na função original, mas bound por closure a `workspace_output/coder/src/` — invisível ao LLM) | `dict {sucesso, caminho, bytes_escritos, erro} ou dict {sucesso, erro, caminho}` | Cria/sobrescreve arquivo completo. Valida extensão (whitelist) e bloqueia diretórios protegidos (`.git`, `.venv`, etc.). Única forma de persistir código — texto solto na resposta é descartado. |
+ | `tool_ler_arquivo` | `adk/shared/tools/filesystem.py` | `caminho: str`, `base_dir` (bound a `workspace_output/coder/src/` — invisível ao LLM) | `str` (conteúdo do arquivo, ou `"Erro: ..."`) | Lê arquivo existente como texto UTF-8. Usado nas re-execuções para inspecionar o arquivo apontado como causa do erro. |
+ | `tool_substituir_trecho` | `adk/shared/tools/filesystem.py` | `caminho: str`, `trecho_antigo: str`, `trecho_novo: str`, `base_dir` (bound a `workspace_output/coder/src/` — invisível ao LLM) | `str` (mensagem `"Sucesso: ..."` ou `"Erro: ..."`) | Substitui a **primeira** ocorrência exata (byte-a-byte) de `trecho_antigo` por `trecho_novo`. Preferida a recriar o arquivo inteiro nas correções pós-falha. |      
 ---
 
 ## 3. `cr_executor` (`cr_executor.py`)
