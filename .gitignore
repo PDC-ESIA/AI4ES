@@ -5,9 +5,16 @@ adk/artifacts/
 adk/workspace_output/
 workspace_output/
 
+# Workspace com prefixo alternativo (gerado por configuração de ambiente anterior)
+adk/pdc_workspace_output/
+
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
-adk/workspace_output/
+# Mantemos apenas o marker versionado em adk/workspace_output para permitir
+# bootstrap seguro do init_workspace; o restante continua ignorado.
 workspace_output/
+!adk/workspace_output/
+adk/workspace_output/*
+!adk/workspace_output/.ai4se_workspace
 
 # Environment variables
 .env
