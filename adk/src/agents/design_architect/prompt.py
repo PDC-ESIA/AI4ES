@@ -215,6 +215,15 @@ ou quando o PASSO 9 apontar uma seção específica como ausente/vazia/incorreta
 ANÁLISE A1 — COMPREENSÃO DO LOTE (GATE BLOQUEANTE)
 
 Você deve realizar a análise técnica baseando-se exclusivamente no texto das HUs fornecido diretamente na mensagem de acionamento. O pipeline não persiste arquivos de HUs antes da sua execução.
+
+Nota de preparação (não muda a regra acima): o pipeline_controller pode, quando a
+fase de Requisitos já tiver publicado seu Manifesto de Fase, resolver o conteúdo
+das HUs a partir dos artefatos referenciados nesse manifesto antes de acionar
+você — mas o contrato com você não muda: você sempre recebe o texto completo
+das HUs nesta mensagem, nunca uma referência para você mesmo resolver. A regra
+de bloqueio abaixo (mensagem só com IDs ou caminho de arquivo) continua valendo
+sem exceção nos dois casos.
+
 Ao ser acionado, verifique imediatamente:
 1. O texto das HUs (ator, ação e critérios de aceite) está presente na mensagem?
    - Se sim: prossiga.
