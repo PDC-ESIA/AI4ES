@@ -15,6 +15,7 @@ executor → validador.
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from google.genai import types
 
 from shared.agent_factory import create_se_agent
 from shared.tools.filesystem import tool_ler_arquivo
+from shared.workspace import get_agent_workspace
 
 from . import prompt
 from .schemas import (
@@ -31,6 +33,24 @@ from .schemas import (
     ValidationVerdict,
     VerdictStatus,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _report_path_valido(caminho: str, task_id: str) -> bool:
+    """True se `caminho` é exatamente <task_id>.report.json dentro do
+    workspace do cr_executor. Resolve `..` antes de comparar (anti-traversal)."""
+    if not task_id:
+        return False
+    try:
+        p = Path(caminho).resolve()
+        raiz = get_agent_workspace("cr_executor").resolve()
+        return (
+            p.name == f"{task_id}.report.json"
+            and (p == raiz / p.name or raiz in p.parents)
+        )
+    except Exception:
+        return False
 
 # ---------------------------------------------------------------------------
 # Política de veredito — codificação determinística (Camada 1 + agregação)
@@ -200,16 +220,33 @@ def _parse_e_aplicar_politica(callback_context):
     #      (a) session state `report_path`, gravado deterministicamente pela tool
     #          do harness (não depende do LLM);
     #      (b) fallback: o regex `_PATH_RE` sobre a resposta do LLM (eco).
-    caminhos: list[str] = []
+    #    Cada caminho SÓ é lido se apontar exatamente para o report esperado
+    #    deste work item dentro do workspace do cr_executor — venha do state ou
+    #    do eco. Caminho do eco (fonte b) que não valida é descartado COM AVISO
+    #    de segurança (um LLM manipulado poderia apontar para /etc/passwd ou um
+    #    report forjado).
+    task_id = callback_context.state.get("task_id") or ""
+
+    caminhos: list[tuple[str, bool]] = []  # (caminho, veio_do_eco)
     do_state = callback_context.state.get("report_path")
     if do_state:
-        caminhos.append(str(do_state))
+        caminhos.append((str(do_state), False))
     m = _PATH_RE.search(raw)
     if m:
-        caminhos.append(m.group("path"))
+        caminhos.append((m.group("path"), True))
 
     report = None
-    for caminho in caminhos:
+    for caminho, veio_do_eco in caminhos:
+        if not _report_path_valido(caminho, task_id):
+            if veio_do_eco:
+                logger.warning(
+                    "Segurança: REPORT_PATH ecoado pelo validador foi rejeitado "
+                    "por apontar fora do report esperado no workspace do "
+                    "cr_executor: %r (task_id=%r).",
+                    caminho,
+                    task_id,
+                )
+            continue
         try:
             report = json.loads(Path(caminho).read_text(encoding="utf-8"))
             break

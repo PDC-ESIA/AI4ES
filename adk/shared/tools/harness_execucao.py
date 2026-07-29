@@ -947,8 +947,25 @@ def executar_harness_validacao(
     # validador). Só quando há contexto — chamadas diretas (testes/PoC) o omitem.
     if tool_context is not None:
         tool_context.state["report_path"] = str(report_json_path.resolve())
+        tool_context.state["task_id"] = task_id
 
     return payload
+
+
+def executar_harness_tool(
+    task_id: str,
+    iteration: int = 1,
+    tool_context: ToolContext | None = None,
+) -> dict:
+    """Entrypoint do harness exposto ao LLM (via FunctionTool).
+
+    Os diretórios de trabalho são SEMPRE os do workspace do fluxo — o LLM
+    não os controla. A função `executar_harness_validacao` mantém os
+    parâmetros `*_base_dir` para injeção em testes/PoC, fora do schema da tool.
+    """
+    return executar_harness_validacao(
+        task_id, iteration, tool_context=tool_context,
+    )
 
 
 # ---------------------------------------------------------------------------

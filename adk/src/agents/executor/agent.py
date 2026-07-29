@@ -14,7 +14,7 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 
 from shared.agent_factory import create_se_agent
-from shared.tools.harness_execucao import executar_harness_validacao
+from shared.tools.harness_execucao import executar_harness_tool
 from src.agents.implementation_validator import root_agent as implementation_validator
 
 from . import prompt
@@ -24,7 +24,7 @@ agent = create_se_agent(
     description=prompt.description,
     instruction=prompt.instruction,
     tools=[
-        FunctionTool(executar_harness_validacao),
+        FunctionTool(executar_harness_tool),
         AgentTool(agent=implementation_validator),
         exit_loop,
     ],

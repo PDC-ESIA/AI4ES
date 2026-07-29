@@ -30,7 +30,7 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
-from shared.tools.harness_execucao import executar_harness_validacao
+from shared.tools.harness_execucao import executar_harness_tool
 from src.agents.executor import prompt as executor_prompt
 from src.agents.implementation_validator import root_agent as implementation_validator
 
@@ -52,7 +52,7 @@ agent = LlmAgent(
         max_output_tokens=8192,
     ),
     tools=[
-        FunctionTool(executar_harness_validacao),
+        FunctionTool(executar_harness_tool),
         AgentTool(agent=implementation_validator),
         FunctionTool(exit_loop),
     ],
