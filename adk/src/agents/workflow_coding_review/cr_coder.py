@@ -104,8 +104,9 @@ Analise os logs abaixo para identificar a causa raiz e corrija o código.
 {{execution_result?}}
 --- FIM DO RESULTADO ---
 
-Se o bloco acima estiver VAZIO, significa que é a primeira execução (siga o
-fluxo normal de implementação completa).
+Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
+fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
+PRIMEIRO e só depois a implementação completa.
 
 Se o bloco acima contiver informações de erro, você DEVE:
 1. Analisar o erro nos logs (build ou runtime) para identificar a causa raiz.
@@ -282,14 +283,14 @@ Qualquer erro abaixo causa falha total do build ou crash no runtime.
       return templates.TemplateResponse(
           request,
           "login.html",
-          {{"user": user, "errors": errors}},
+          {{"titulo": "Login", "errors": []}},
       )
   ```
 - Exemplo ERRADO (assinatura antiga — NUNCA use):
   ```python
   return templates.TemplateResponse(
       "login.html",
-      {{"request": request, "user": user, "errors": errors}},
+      {{"request": request, "titulo": "Login", "errors": []}},
   )
   ```
 
