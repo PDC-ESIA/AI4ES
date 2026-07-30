@@ -76,15 +76,60 @@ o orçamento do loop sem progresso e NÃO é permitido.
    veredito). O pipeline seguirá para o reviewer.
 
    ## Se ValidationVerdict.status == 'reprovado':
-   NÃO chame exit_loop (salvo o caso de ESTAGNAÇÃO descrito no passo 4). Produza
-   um texto DETALHADO para o coder com:
-   - **Veredito**: REPROVADO
-   - **blocking_reason**: o motivo do bloqueio, copiado do veredito
-   - **Critérios não atendidos/inconclusivos**: liste os CriterionVerdict que
-     não ficaram 'atendido', com o `reasoning` de cada um
-   - **Evidência relevante**: aponte, a partir do ExecutionReport, os logs ou
-     estágios que sustentam o bloqueio
-   O coder receberá este texto na próxima iteração e corrigirá o código.
+   NÃO chame exit_loop (salvo o caso de ESTAGNAÇÃO descrito no passo 4).
+
+   Sua resposta é consumida por um parser determinístico, NÃO por um humano.
+   Para CADA CriterionVerdict do veredito que NÃO ficou 'atendido' (ou seja,
+   'nao_atendido' ou 'inconclusivo'), emita um bloco no formato EXATO abaixo —
+   sem JSON, sem blocos de código (```), sem qualquer texto fora do formato.
+
+   A PRIMEIRA linha da resposta DEVE ser:
+   BLOCKING_REASON: <blocking_reason do veredito, copiado>
+
+   Em seguida, UM bloco `### CORRECAO` por critério não atendido/inconclusivo —
+   não omita nenhum:
+
+   ### CORRECAO
+   CRITERIO: <critério, copiado VERBATIM do CriterionVerdict.criterion>
+   CAUSA_RAIZ: <diagnóstico de uma linha — POR QUE o critério falhou, não uma
+     repetição do reasoning do validador>
+   ARQUIVOS_AFETADOS: <caminhos relativos ao workspace do coder, separados por
+     vírgula, que precisam mudar para corrigir este critério; "-" se não for
+     possível localizar>
+   MUDANCA_REQUERIDA: <instrução imperativa e acionável — o que fazer, não uma
+     narrativa>
+   EVIDENCIA_REF: <copiado do evidence_ref do CriterionVerdict, ou o estágio/log
+     do ExecutionReport que sustenta o diagnóstico, ou "-">
+
+   Exemplo COMPLETO de uma resposta bem-formada (veredito com dois critérios
+   não atendidos):
+
+   BLOCKING_REASON: Ao menos um critério ficou nao_atendido ou inconclusivo.
+
+   ### CORRECAO
+   CRITERIO: Persistir usuário no banco
+   CAUSA_RAIZ: Model User não tem ForeignKey para Ensaio, causa NoForeignKeysError.
+   ARQUIVOS_AFETADOS: app/models.py
+   MUDANCA_REQUERIDA: Adicionar coluna ensaio_id = Column(Integer, ForeignKey("ensaios.id")) no model User.
+   EVIDENCIA_REF: estagio inicializacao_aplicacao
+
+   ### CORRECAO
+   CRITERIO: GET /health deve retornar status 200
+   CAUSA_RAIZ: Rota /health não foi implementada.
+   ARQUIVOS_AFETADOS: app/main.py
+   MUDANCA_REQUERIDA: Adicionar endpoint GET /health retornando {"status": "ok"}.
+   EVIDENCIA_REF: -
+
+   Regras do formato (será parseado por regex, casamento exato):
+   - Um bloco `### CORRECAO` por critério 'nao_atendido' ou 'inconclusivo' do
+     veredito — NENHUM pode ser omitido.
+   - `CRITERIO:` deve ser copiado VERBATIM do `CriterionVerdict.criterion` — um
+     critério parafraseado não será casado e será tratado como não diagnosticado.
+   - NÃO emita texto fora desse formato; NÃO use JSON; NÃO use blocos de código.
+
+   O coder receberá esta spec estruturada (já validada contra o veredito real)
+   na próxima iteração, e deve corrigir SOMENTE os arquivos listados em
+   ARQUIVOS_AFETADOS.
 
 4. PROTOCOLO ANTI-ESTAGNAÇÃO (quando o coder declara que não mudou nada):
    Dispare este protocolo quando, ao tomar o turno, a mensagem do coder declarar

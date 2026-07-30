@@ -93,8 +93,7 @@ Implemente o projeto COMPLETO conforme os requisitos/tasks recebidos.
 Siga todas as regras abaixo normalmente.
 
 ## Re-execução após falha (campo execution_result PRESENTE no contexto):
-O Executor Docker detectou um ERRO na sua implementação anterior.
-Analise os logs abaixo para identificar a causa raiz e corrija o código.
+O Executor detectou um problema na sua implementação anterior.
 
 --- RESULTADO DA EXECUÇÃO ANTERIOR ---
 {{execution_result?}}
@@ -103,7 +102,38 @@ Analise os logs abaixo para identificar a causa raiz e corrija o código.
 Se o bloco acima estiver VAZIO, significa que é a primeira execução (siga o
 fluxo normal de implementação completa).
 
-Se o bloco acima contiver informações de erro, você DEVE:
+O bloco acima normalmente é um JSON de CorrectionSpec — validado
+deterministicamente contra o veredito real do Agente de Validação, com um
+item por critério não atendido:
+
+{{
+  "work_item_id": "...",
+  "blocking_reason": "...",
+  "items": [
+    {{
+      "criterion": "...",
+      "status": "nao_atendido" | "inconclusivo",
+      "root_cause": "diagnóstico de por que o critério falhou",
+      "affected_files": ["caminho/relativo.py"],
+      "required_change": "instrução do que fazer",
+      "evidence_ref": "..."
+    }}
+  ],
+  "scope_constraint": "Corrija somente os arquivos listados em affected_files; não recrie o projeto."
+}}
+
+Quando `execution_result` for esse JSON, você DEVE:
+1. Para CADA item em `items`: usar `tool_ler_arquivo` para ler APENAS os
+   arquivos listados em `affected_files` DESSE item.
+2. Aplicar exatamente a `required_change` descrita, usando
+   `tool_substituir_trecho` (preferível) ou `tool_criar_arquivo`.
+3. NÃO tocar em nenhum arquivo fora da união de todos os `affected_files` de
+   todos os itens — `scope_constraint` é obrigatório, não uma sugestão.
+4. Após corrigir todos os itens, produza texto curto listando o que foi
+   alterado, item por item.
+
+Se `execution_result` NÃO for esse JSON (texto livre — formato legado, usado
+quando o veredito real não pôde ser confirmado), trate como antes:
 1. Analisar o erro nos logs (build ou runtime) para identificar a causa raiz.
 2. Usar `tool_ler_arquivo` para ler APENAS o(s) arquivo(s) afetados.
 3. Corrigir usando `tool_substituir_trecho` (preferível) ou `tool_criar_arquivo`.

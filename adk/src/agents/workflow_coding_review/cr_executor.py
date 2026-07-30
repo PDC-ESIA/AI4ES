@@ -33,6 +33,9 @@ from google.genai import types
 from shared.tools.harness_execucao import executar_harness_tool
 from src.agents.executor import prompt as executor_prompt
 from src.agents.implementation_validator import root_agent as implementation_validator
+from src.agents.workflow_coding_review.cr_executor_correction import (
+    parse_e_montar_correction_spec,
+)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
@@ -57,3 +60,4 @@ agent = LlmAgent(
         FunctionTool(exit_loop),
     ],
 )
+agent.after_agent_callback = parse_e_montar_correction_spec

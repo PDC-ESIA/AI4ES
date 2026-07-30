@@ -15,6 +15,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from src.agents.implementation_validator.schemas import CriterionStatus
+
 
 class StageStatus(str, Enum):
     """Resultado técnico de um estágio de execução (sem juízo de aprovação)."""
@@ -104,4 +106,51 @@ class ExecutionReport(BaseModel):
     total_duration_seconds: float = Field(
         default=0.0,
         description="Duração total da execução em segundos",
+    )
+
+
+class CorrectionItem(BaseModel):
+    """Instrução de correção estruturada para um único critério não atendido.
+
+    Produzida pelo executor (metodologia spec-driven) a partir do
+    ValidationVerdict real quando o veredito é 'reprovado' — nunca a partir
+    apenas do texto do LLM, que é conferido contra o veredito real antes de
+    virar este objeto (ver `workflow_coding_review/cr_executor_correction.py`).
+    """
+
+    criterion: str = Field(description="Critério de aceite, verbatim do ValidationVerdict")
+    status: CriterionStatus = Field(description="Situação do critério no veredito real")
+    root_cause: str = Field(description="Diagnóstico da causa raiz (não repete o reasoning)")
+    affected_files: list[str] = Field(
+        default_factory=list,
+        description="Caminhos relativos ao workspace do coder que precisam mudar",
+    )
+    required_change: str = Field(description="Instrução de mudança, imperativa e acionável")
+    evidence_ref: Optional[str] = Field(
+        default=None,
+        description="Referência de evidência copiada do CriterionVerdict real",
+    )
+
+
+class CorrectionSpec(BaseModel):
+    """Spec de correção estruturada entregue ao coder na próxima iteração.
+
+    Substitui a prosa livre que o executor produzia quando reprovado. Cada
+    `CorrectionItem` corresponde a um critério não atendido/inconclusivo do
+    ValidationVerdict real — nenhum é omitido (itens não diagnosticados pelo
+    LLM viram um CorrectionItem de fallback, nunca somem silenciosamente).
+    """
+
+    work_item_id: str = Field(description="Identificador do work item")
+    blocking_reason: Optional[str] = Field(
+        default=None,
+        description="Motivo do bloqueio, copiado do ValidationVerdict real",
+    )
+    items: list[CorrectionItem] = Field(
+        default_factory=list,
+        description="Um item de correção por critério não atendido/inconclusivo",
+    )
+    scope_constraint: str = Field(
+        default="Corrija somente os arquivos listados em affected_files; não recrie o projeto.",
+        description="Restrição de escopo reforçada ao coder",
     )
