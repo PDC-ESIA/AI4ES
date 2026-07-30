@@ -9,6 +9,21 @@ Instância-espelho de `src/agents/executor/` (mesma ideia de cr_reviewer → rev
   bloqueio se repete (encerramento por estagnação, com status `bloqueado` — NÃO é
   aprovação). O status técnico de execução do harness, sozinho, nunca encerra.
 
+## Relatório de erro ao coder (determinístico)
+
+Quando o veredito é 'reprovado', o `after_agent_callback` deste agente monta um
+`ErrorReport` e o devolve como saída do turno — substituindo a prosa do LLM. O
+relatório é montado a partir de duas fontes que JÁ existem, sem nenhuma síntese
+do LLM:
+- `state['validation']` — o ValidationVerdict real, escrito pelo callback do
+  `implementation_validator` (política determinística: Camada 1 + agregação);
+- o ExecutionReport em disco (`state['report_path']`, gravado pelo harness) —
+  de onde saem os estágios em falha com sua EVIDÊNCIA BRUTA (logs, tracebacks).
+
+O ErrorReport diz o QUE falhou e mostra o material bruto do POR QUÊ. Ele NÃO
+prescreve correção: diagnosticar causa raiz, escolher arquivos e decidir a
+mudança é trabalho do coder — não do executor.
+
 Binding ao workspace do workflow: o harness já resolve, em tempo de CHAMADA, os
 seus base_dirs default — coder/src (get_agent_workspace("cr_coder"), entrada do
 coder), coder/execution ("cr_executor", saída da execução) e coder/tasks
@@ -21,32 +36,12 @@ evita esse efeito colateral.
 
 Vive no LoopAgent [coder → executor]; o validador é AgentTool interna do
 executor. O cr_reviewer permanece fora do loop.
-
-CorrectionSpec (spec-driven): quando o validador reprova, o executor é
-instruído (`executor/prompt.py`, passo 3) a emitir um markdown de formato fixo
-com um bloco `### CORRECAO` por critério não atendido/inconclusivo — em vez da
-prosa livre usada anteriormente. `parse_e_montar_correction_spec`, registrado
-como `after_agent_callback` do agente, faz o parse desse markdown e o CONFERE
-contra o ValidationVerdict REAL (nunca contra o que o próprio LLM disse sobre
-si mesmo) antes de montar o `CorrectionSpec` final que o coder consome na
-próxima iteração — mesma filosofia de `implementation_validator`
-(`_parse_e_aplicar_politica`/`montar_veredito`): o LLM nunca decide sozinho o
-que vira "verdade".
-
-O veredito real chega via `callback_context.state["validation"]` — escrito
-pelo próprio `after_agent_callback` do `implementation_validator` quando ele
-roda como `AgentTool` dentro do turno do executor. `AgentTool.run_async`
-encaminha `event.actions.state_delta` do sub-agente pro `tool_context.state`
-do agente pai a cada evento (google/adk/tools/agent_tool.py), por isso essa
-chave chega aqui mesmo sem o executor nunca ter escrito nela diretamente.
 """
-
-from __future__ import annotations
 
 import json
 import logging
 import os
-import re
+from pathlib import Path
 from typing import Optional
 
 from google.adk.agents import LlmAgent
@@ -56,186 +51,134 @@ from google.genai import types
 
 from shared.tools.harness_execucao import executar_harness_tool
 from src.agents.executor import prompt as executor_prompt
-from src.agents.executor.schemas import CorrectionItem, CorrectionSpec
+from src.agents.executor.schemas import ErrorReport, FailedCriterion, FailedStage
 from src.agents.implementation_validator import root_agent as implementation_validator
-from src.agents.implementation_validator.schemas import CriterionStatus
+from src.agents.implementation_validator.agent import _report_path_valido
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
+# Marcador que o prompt manda o executor emitir no encerramento por ESTAGNAÇÃO.
+# Nesse caminho o resumo `bloqueado` é destinado ao reviewer (o loop já vai
+# encerrar), então o callback NÃO o substitui pelo ErrorReport.
+_MARCADOR_ESTAGNACAO = "STATUS: bloqueado"
 
-# ---------------------------------------------------------------------------
-# CorrectionSpec — parse do markdown do executor + validação cruzada
-# ---------------------------------------------------------------------------
-
-_BLOCKING_RE = re.compile(r"^BLOCKING_REASON:\s*(?P<reason>.+?)\s*$", re.MULTILINE)
-
-_CORRECAO_RE = re.compile(
-    r"### CORRECAO\s*\n"
-    r"CRITERIO:\s*(?P<criterio>.+)\s*\n"
-    r"CAUSA_RAIZ:\s*(?P<causa>.+)\s*\n"
-    r"ARQUIVOS_AFETADOS:\s*(?P<arquivos>.+)\s*\n"
-    r"MUDANCA_REQUERIDA:\s*(?P<mudanca>.+)\s*\n"
-    r"(?:EVIDENCIA_REF:\s*(?P<evidencia>.+)\s*\n?)?",
-    re.IGNORECASE,
-)
+# Estágios apenas PULADOS são consequência em cascata do que falhou antes
+# ("Abortado: ..."), não trazem evidência útil — só falha/erro entram no report.
+_STATUS_COM_EVIDENCIA = ("falha", "erro")
 
 
-def _parse_arquivos(raw: str) -> list[str]:
-    """`"a.py, b.py"` -> `["a.py", "b.py"]`; `"-"`/vazio -> `[]`."""
-    raw = (raw or "").strip()
-    if not raw or raw == "-":
-        return []
-    return [p.strip() for p in raw.split(",") if p.strip()]
+def _como_content(report: ErrorReport) -> types.Content:
+    """Serializa o ErrorReport como saída final do turno do executor.
 
-
-def _evidencia(
-    bloco_evidencia: Optional[str], fallback: Optional[str]
-) -> Optional[str]:
-    """Usa a evidência do bloco do LLM, exceto quando vazia/"-" — aí usa o
-    evidence_ref do CriterionVerdict real, se houver."""
-    evid = (bloco_evidencia or "").strip()
-    return evid if evid and evid != "-" else fallback
-
-
-def _status_seguro(valor: str) -> CriterionStatus:
-    """CriterionStatus a partir de string do veredito real, com fallback
-    conservador para INCONCLUSIVO se o valor for inesperado."""
-    try:
-        return CriterionStatus(valor)
-    except ValueError:
-        return CriterionStatus.INCONCLUSIVO
-
-
-def _como_content(spec: CorrectionSpec) -> types.Content:
-    """Serializa a CorrectionSpec como saída final do agente (mesma técnica de
-    `implementation_validator._como_content`: o callback substitui a resposta
-    do agente, então o coder recebe o JSON validado, não a prosa/markdown cru)."""
+    Retornar um Content do `after_agent_callback` substitui a resposta do agente
+    — é assim que o coder passa a receber o relatório determinístico no lugar da
+    prosa que o LLM escreveu.
+    """
     return types.Content(
         role="model",
-        parts=[types.Part(text=json.dumps(spec.model_dump(), ensure_ascii=False))],
+        parts=[types.Part(text=json.dumps(report.model_dump(), ensure_ascii=False))],
     )
 
 
-def parse_e_montar_correction_spec(callback_context) -> Optional[types.Content]:
+def _carregar_execution_report(callback_context) -> dict:
+    """Lê o ExecutionReport do disco a partir do `report_path` do state.
+
+    O caminho é validado com o mesmo helper estrito do validador (Spec C):
+    precisa ser `<task_id>.report.json` dentro do workspace do cr_executor.
+    Em qualquer falha devolve {} — o ErrorReport ainda sai, só sem a seção de
+    estágios (o veredito, que é o essencial, nunca depende do disco).
+    """
+    caminho = callback_context.state.get("report_path")
+    task_id = callback_context.state.get("task_id")
+    if not caminho:
+        return {}
+    if not _report_path_valido(caminho, task_id or ""):
+        logger.warning(
+            "cr_executor: report_path recusado pela validação de workspace (%s); "
+            "ErrorReport seguirá sem a evidência de estágios.",
+            caminho,
+        )
+        return {}
+    try:
+        return json.loads(Path(caminho).read_text(encoding="utf-8"))
+    except Exception:
+        logger.warning("cr_executor: falha ao ler o ExecutionReport em %s", caminho)
+        return {}
+
+
+def montar_error_report(callback_context) -> Optional[types.Content]:
     """`after_agent_callback` do `cr_executor_agent`.
 
-    Retorna `None` (mantém a saída original do executor) quando:
-    - o veredito real é 'aprovado' (nada a corrigir);
-    - nenhum bloco `### CORRECAO` foi encontrado — cobre tanto o caminho de
-      aprovação quanto o de ESTAGNAÇÃO (passo 4 do prompt, que usa outro
-      formato de propósito e já chama exit_loop, então este execution_result
-      nunca é lido pelo coder mesmo). Se o LLM simplesmente ignorar o formato
-      num reprovado real "normal", o efeito é degradar de volta pra prosa
-      livre (comportamento pré-existente) — nunca um crash.
+    Monta o ErrorReport determinístico e o devolve no lugar da saída do turno.
 
-    Caso contrário, monta e retorna o `CorrectionSpec` (JSON) substituindo a
-    saída do turno.
+    Retorna `None` (preservando a saída original do executor) quando:
+    - `state['validation']` está ausente — o mecanismo de propagação não
+      disparou; degrada para a prosa do LLM em vez de emitir relatório vazio;
+    - o veredito real é 'aprovado' — não há erro a relatar;
+    - o turno é o encerramento por ESTAGNAÇÃO — o resumo `bloqueado` é destinado
+      ao reviewer e não pode ser sobrescrito.
     """
-    raw = callback_context.state.get("execution_result", "") or ""
-
-    blocos = list(_CORRECAO_RE.finditer(raw))
-    if not blocos:
-        return None
-
-    m = _BLOCKING_RE.search(raw)
-    blocking_reason_llm = m.group("reason").strip() if m else None
-
     validation = callback_context.state.get("validation")
     if not validation:
-        # Mecanismo de propagação de state não disparou (não deveria acontecer
-        # em produção — ver tests/unit/test_cr_executor_correction_spec.py).
-        # Fail-safe conservador: monta a partir só do que o LLM escreveu, sem
-        # cross-check — nunca descarta o diagnóstico silenciosamente.
         logger.warning(
-            "cr_executor: state['validation'] ausente; "
-            "montando CorrectionSpec sem validação cruzada contra o veredito real."
+            "cr_executor: state['validation'] ausente; mantendo a saída do LLM "
+            "(sem ErrorReport determinístico nesta iteração)."
         )
-        try:
-            items = [
-                CorrectionItem(
-                    criterion=b.group("criterio").strip(),
-                    status=CriterionStatus.INCONCLUSIVO,
-                    root_cause=b.group("causa").strip(),
-                    affected_files=_parse_arquivos(b.group("arquivos")),
-                    required_change=b.group("mudanca").strip(),
-                    evidence_ref=_evidencia(b.group("evidencia"), None),
-                )
-                for b in blocos
-            ]
-            spec = CorrectionSpec(
-                work_item_id="desconhecido",
-                blocking_reason=blocking_reason_llm,
-                items=items,
-            )
-        except Exception:
-            logger.exception("cr_executor: falha ao montar CorrectionSpec (fallback)")
-            return None
-        callback_context.state["correction_spec"] = spec.model_dump()
-        return _como_content(spec)
+        return None
 
     if validation.get("status") != "reprovado":
-        # Aprovado: nada a corrigir, mantém a saída original do executor.
         return None
 
-    # ---- validação cruzada contra o ValidationVerdict REAL ----
-    diagnosticados = {b.group("criterio").strip(): b for b in blocos}
+    raw = callback_context.state.get("execution_result", "") or ""
+    if _MARCADOR_ESTAGNACAO.casefold() in raw.casefold():
+        return None
 
-    items: list[CorrectionItem] = []
-    for cv in validation.get("criteria_verdicts", []) or []:
-        status = cv.get("status")
-        if status == "atendido":
-            continue  # critério atendido não precisa de correção
+    exec_report = _carregar_execution_report(callback_context)
 
-        criterio = cv.get("criterion", "")
-        bloco = diagnosticados.get(criterio)
-        if bloco is not None:
-            items.append(
-                CorrectionItem(
-                    criterion=criterio,
-                    status=_status_seguro(status),
-                    root_cause=bloco.group("causa").strip(),
-                    affected_files=_parse_arquivos(bloco.group("arquivos")),
-                    required_change=bloco.group("mudanca").strip(),
-                    evidence_ref=_evidencia(
-                        bloco.group("evidencia"), cv.get("evidence_ref")
-                    ),
-                )
-            )
-        else:
-            # Critério real não atendido, mas o executor não o diagnosticou —
-            # spec de fallback em vez de deixá-lo sumir silenciosamente (mesma
-            # filosofia conservadora de `montar_veredito`).
-            items.append(
-                CorrectionItem(
-                    criterion=criterio,
-                    status=_status_seguro(status),
-                    root_cause="Não diagnosticado pelo executor.",
-                    affected_files=[],
-                    required_change="Revisar manualmente — sem diagnóstico automático.",
-                    evidence_ref=cv.get("evidence_ref"),
-                )
-            )
+    criterios = [
+        FailedCriterion(
+            criterion=cv.get("criterion", ""),
+            status=cv.get("status", ""),
+            reasoning=cv.get("reasoning", ""),
+            evidence_ref=cv.get("evidence_ref"),
+        )
+        for cv in validation.get("criteria_verdicts", [])
+        if cv.get("status") != "atendido"
+    ]
+
+    estagios = [
+        FailedStage(
+            stage=s.get("stage", ""),
+            status=s.get("status", ""),
+            error_code=s.get("error_code"),
+            summary=s.get("summary", ""),
+            evidence=s.get("evidence") or {},
+        )
+        for s in exec_report.get("stages", [])
+        if s.get("status") in _STATUS_COM_EVIDENCIA
+    ]
 
     try:
-        spec = CorrectionSpec(
-            work_item_id=validation.get("work_item_id", "desconhecido"),
-            blocking_reason=validation.get("blocking_reason") or blocking_reason_llm,
-            items=items,
+        report = ErrorReport(
+            work_item_id=validation.get("work_item_id")
+            or exec_report.get("work_item_id", "desconhecido"),
+            iteration=exec_report.get("iteration"),
+            verdict_status=validation.get("status", "reprovado"),
+            blocking_reason=validation.get("blocking_reason"),
+            failed_criteria=criterios,
+            failed_stages=estagios,
+            report_path=callback_context.state.get("report_path"),
         )
     except Exception:
-        logger.exception("cr_executor: falha ao montar CorrectionSpec")
+        logger.exception("cr_executor: falha ao montar o ErrorReport")
         return None
 
-    callback_context.state["correction_spec"] = spec.model_dump()
-    return _como_content(spec)
+    callback_context.state["error_report"] = report.model_dump()
+    return _como_content(report)
 
-
-# ---------------------------------------------------------------------------
-# Agente — por último no módulo: o callback já existe quando é referenciado
-# ---------------------------------------------------------------------------
 
 # A instrução (fluxo + salvaguarda) é reusada VERBATIM do consolidado: não há
 # diferenças de workspace/contexto a ajustar — os nomes de tool e o fluxo já
@@ -256,4 +199,4 @@ agent = LlmAgent(
         FunctionTool(exit_loop),
     ],
 )
-agent.after_agent_callback = parse_e_montar_correction_spec
+agent.after_agent_callback = montar_error_report

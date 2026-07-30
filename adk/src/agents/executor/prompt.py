@@ -78,58 +78,15 @@ o orçamento do loop sem progresso e NÃO é permitido.
    ## Se ValidationVerdict.status == 'reprovado':
    NÃO chame exit_loop (salvo o caso de ESTAGNAÇÃO descrito no passo 4).
 
-   Sua resposta é consumida por um parser determinístico, NÃO por um humano.
-   Para CADA CriterionVerdict do veredito que NÃO ficou 'atendido' (ou seja,
-   'nao_atendido' ou 'inconclusivo'), emita um bloco no formato EXATO abaixo —
-   sem JSON, sem blocos de código (```), sem qualquer texto fora do formato.
+   O relatório que o coder recebe é montado AUTOMATICAMENTE a partir do veredito
+   real e do ExecutionReport (um `ErrorReport` determinístico com o veredito, os
+   critérios não atendidos e a evidência bruta dos estágios em falha). Você NÃO
+   precisa redigi-lo, NÃO deve diagnosticar causa raiz, NÃO deve apontar quais
+   arquivos mudar e NÃO deve prescrever a correção — interpretar a evidência e
+   decidir a mudança é trabalho do coder.
 
-   A PRIMEIRA linha da resposta DEVE ser:
-   BLOCKING_REASON: <blocking_reason do veredito, copiado>
-
-   Em seguida, UM bloco `### CORRECAO` por critério não atendido/inconclusivo —
-   não omita nenhum:
-
-   ### CORRECAO
-   CRITERIO: <critério, copiado VERBATIM do CriterionVerdict.criterion>
-   CAUSA_RAIZ: <diagnóstico de uma linha — POR QUE o critério falhou, não uma
-     repetição do reasoning do validador>
-   ARQUIVOS_AFETADOS: <caminhos relativos ao workspace do coder, separados por
-     vírgula, que precisam mudar para corrigir este critério; "-" se não for
-     possível localizar>
-   MUDANCA_REQUERIDA: <instrução imperativa e acionável — o que fazer, não uma
-     narrativa>
-   EVIDENCIA_REF: <copiado do evidence_ref do CriterionVerdict, ou o estágio/log
-     do ExecutionReport que sustenta o diagnóstico, ou "-">
-
-   Exemplo COMPLETO de uma resposta bem-formada (veredito com dois critérios
-   não atendidos):
-
-   BLOCKING_REASON: Ao menos um critério ficou nao_atendido ou inconclusivo.
-
-   ### CORRECAO
-   CRITERIO: Persistir usuário no banco
-   CAUSA_RAIZ: Model User não tem ForeignKey para Ensaio, causa NoForeignKeysError.
-   ARQUIVOS_AFETADOS: app/models.py
-   MUDANCA_REQUERIDA: Adicionar coluna ensaio_id = Column(Integer, ForeignKey("ensaios.id")) no model User.
-   EVIDENCIA_REF: estagio inicializacao_aplicacao
-
-   ### CORRECAO
-   CRITERIO: GET /health deve retornar status 200
-   CAUSA_RAIZ: Rota /health não foi implementada.
-   ARQUIVOS_AFETADOS: app/main.py
-   MUDANCA_REQUERIDA: Adicionar endpoint GET /health retornando {"status": "ok"}.
-   EVIDENCIA_REF: -
-
-   Regras do formato (será parseado por regex, casamento exato):
-   - Um bloco `### CORRECAO` por critério 'nao_atendido' ou 'inconclusivo' do
-     veredito — NENHUM pode ser omitido.
-   - `CRITERIO:` deve ser copiado VERBATIM do `CriterionVerdict.criterion` — um
-     critério parafraseado não será casado e será tratado como não diagnosticado.
-   - NÃO emita texto fora desse formato; NÃO use JSON; NÃO use blocos de código.
-
-   O coder receberá esta spec estruturada (já validada contra o veredito real)
-   na próxima iteração, e deve corrigir SOMENTE os arquivos listados em
-   ARQUIVOS_AFETADOS.
+   Produza apenas um texto curto registrando o veredito REPROVADO e o
+   `blocking_reason` copiado do veredito.
 
 4. PROTOCOLO ANTI-ESTAGNAÇÃO (quando o coder declara que não mudou nada):
    Dispare este protocolo quando, ao tomar o turno, a mensagem do coder declarar
@@ -143,9 +100,10 @@ o orçamento do loop sem progresso e NÃO é permitido.
       - Se o veredito continuar 'reprovado' com o MESMO `blocking_reason` da
         rodada anterior → declare **ESTAGNAÇÃO**: o loop não progride porque o
         coder não tem o que corrigir (o bloqueio não é de código). Então:
-          • produza em `execution_result` um resumo com **status `bloqueado`**,
-            contendo o `blocking_reason` e a informação de que o coder declarou
-            não haver mudanças de código;
+          • produza em `execution_result` um resumo cuja PRIMEIRA linha seja
+            EXATAMENTE `STATUS: bloqueado` (marcador obrigatório — é ele que
+            preserva este resumo para o reviewer), seguido do `blocking_reason`
+            e da informação de que o coder declarou não haver mudanças de código;
           • chame `exit_loop`.
    O encerramento por ESTAGNAÇÃO **NÃO é aprovação**: o veredito permanece
    'reprovado' e o pipeline seguinte (reviewer) receberá o `execution_result`

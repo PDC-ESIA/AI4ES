@@ -15,8 +15,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from src.agents.implementation_validator.schemas import CriterionStatus
-
 
 class StageStatus(str, Enum):
     """Resultado técnico de um estágio de execução (sem juízo de aprovação)."""
@@ -109,48 +107,71 @@ class ExecutionReport(BaseModel):
     )
 
 
-class CorrectionItem(BaseModel):
-    """Instrução de correção estruturada para um único critério não atendido.
+class FailedCriterion(BaseModel):
+    """Critério de aceite que não ficou 'atendido' no veredito real.
 
-    Produzida pelo executor (metodologia spec-driven) a partir do
-    ValidationVerdict real quando o veredito é 'reprovado' — nunca a partir
-    apenas do texto do LLM, que é conferido contra o veredito real antes de
-    virar este objeto (ver `workflow_coding_review/cr_executor_correction.py`).
+    Cópia fiel do CriterionVerdict emitido pelo Agente de Validação — nenhum
+    campo é sintetizado, reinterpretado ou acrescentado aqui.
     """
 
     criterion: str = Field(description="Critério de aceite, verbatim do ValidationVerdict")
-    status: CriterionStatus = Field(description="Situação do critério no veredito real")
-    root_cause: str = Field(description="Diagnóstico da causa raiz (não repete o reasoning)")
-    affected_files: list[str] = Field(
-        default_factory=list,
-        description="Caminhos relativos ao workspace do coder que precisam mudar",
-    )
-    required_change: str = Field(description="Instrução de mudança, imperativa e acionável")
+    status: str = Field(description="Situação do critério: nao_atendido | inconclusivo")
+    reasoning: str = Field(description="Justificativa do validador, verbatim")
     evidence_ref: Optional[str] = Field(
         default=None,
-        description="Referência de evidência copiada do CriterionVerdict real",
+        description="Referência de evidência, verbatim do CriterionVerdict",
     )
 
 
-class CorrectionSpec(BaseModel):
-    """Spec de correção estruturada entregue ao coder na próxima iteração.
+class FailedStage(BaseModel):
+    """Estágio do harness que falhou, com a evidência BRUTA que ele coletou.
 
-    Substitui a prosa livre que o executor produzia quando reprovado. Cada
-    `CorrectionItem` corresponde a um critério não atendido/inconclusivo do
-    ValidationVerdict real — nenhum é omitido (itens não diagnosticados pelo
-    LLM viram um CorrectionItem de fallback, nunca somem silenciosamente).
+    A evidência é repassada como o harness a produziu (logs, tracebacks, saída
+    de testes). Nada é diagnosticado: interpretar o traceback e decidir o que
+    mudar é trabalho do coder.
+    """
+
+    stage: str = Field(description="Nome do estágio, como no ExecutionReport")
+    status: str = Field(description="Status técnico do estágio: falha | erro")
+    error_code: Optional[str] = Field(
+        default=None, description="Código do erro do estágio, quando houver"
+    )
+    summary: str = Field(default="", description="Resumo do estágio, verbatim do harness")
+    evidence: dict = Field(
+        default_factory=dict,
+        description="Evidência bruta coletada pelo estágio (logs, tracebacks, saída)",
+    )
+
+
+class ErrorReport(BaseModel):
+    """Relatório de erro entregue ao coder quando o veredito é 'reprovado'.
+
+    Montado DETERMINISTICAMENTE pelo `after_agent_callback` do executor a partir
+    de duas fontes já existentes — o ValidationVerdict real (state['validation'])
+    e o ExecutionReport persistido pelo harness. O LLM do executor não redige
+    este objeto.
+
+    Contém o QUE falhou (veredito por critério) e a EVIDÊNCIA BRUTA de por quê
+    (estágios em falha, com seus logs). NÃO contém prescrição de correção —
+    diagnosticar causa raiz, escolher arquivos e decidir a mudança é do coder.
     """
 
     work_item_id: str = Field(description="Identificador do work item")
+    iteration: Optional[int] = Field(
+        default=None, description="Iteração do loop, como no ExecutionReport"
+    )
+    verdict_status: str = Field(description="Veredito global, verbatim: 'reprovado'")
     blocking_reason: Optional[str] = Field(
-        default=None,
-        description="Motivo do bloqueio, copiado do ValidationVerdict real",
+        default=None, description="Motivo do bloqueio, verbatim do ValidationVerdict"
     )
-    items: list[CorrectionItem] = Field(
+    failed_criteria: list[FailedCriterion] = Field(
         default_factory=list,
-        description="Um item de correção por critério não atendido/inconclusivo",
+        description="Um item por critério não atendido/inconclusivo do veredito real",
     )
-    scope_constraint: str = Field(
-        default="Corrija somente os arquivos listados em affected_files; não recrie o projeto.",
-        description="Restrição de escopo reforçada ao coder",
+    failed_stages: list[FailedStage] = Field(
+        default_factory=list,
+        description="Estágios com falha/erro e sua evidência bruta",
+    )
+    report_path: Optional[str] = Field(
+        default=None, description="Caminho do ExecutionReport completo em disco"
     )
