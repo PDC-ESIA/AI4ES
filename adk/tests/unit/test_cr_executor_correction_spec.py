@@ -21,9 +21,7 @@ from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
-from src.agents.workflow_coding_review.cr_executor_correction import (
-    parse_e_montar_correction_spec,
-)
+from src.agents.workflow_coding_review.cr_executor import parse_e_montar_correction_spec
 
 
 # ===========================================================================
