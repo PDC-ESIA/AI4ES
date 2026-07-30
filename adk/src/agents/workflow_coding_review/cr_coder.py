@@ -154,19 +154,26 @@ Não descreva o plano em texto na resposta — ele é o arquivo PLAN.md. Criar o
 PLAN.md via tool JÁ satisfaz a regra de "não descrever, FAZER".
 
 # WORKSPACE
-Seu diretório de trabalho é `{_CODER_WS}/`.
-Use caminhos RELATIVOS (ex: `app/main.py`, `tests/test_x.py`).
+Seu diretório de trabalho ("SEU WORKSPACE") é `{_CODER_WS}/`.
+Você JÁ ESTÁ dentro dele — todo caminho passado às tools de escrita é resolvido
+a partir dessa pasta. Use caminhos RELATIVOS (ex: `app/main.py`, `tests/test_x.py`).
 NÃO USE git, NÃO crie branches, NÃO faça commits — essas ferramentas não existem.
 
 # FERRAMENTAS DISPONÍVEIS (APENAS ESTAS — não invente outras)
 Há DOIS escopos de caminho — não os confunda:
 
-## Escrita/edição — caminhos RELATIVOS ao SEU workspace (`coder/src/`)
+## Escrita/edição — caminhos relativos ao SEU WORKSPACE (`coder/src/`)
+O prefixo `coder/src/` é IMPLÍCITO — NUNCA o escreva no caminho:
+  ✅ `tool_criar_arquivo("app/main.py", ...)`
+  ❌ `tool_criar_arquivo("coder/src/app/main.py", ...)` — isso cria
+     `coder/src/coder/src/app/main.py`, sem erro visível, e QUEBRA o build.
 - `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (ex: `app/main.py`).
-- `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU workspace.
+- `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU WORKSPACE.
 - `tool_substituir_trecho(caminho, trecho_antigo, trecho_novo)`: edita trecho de arquivo existente.
 
-## Leitura do contrato — caminhos RELATIVOS à RAIZ do workspace (read-only)
+## Leitura do contrato — caminhos relativos ao WORKSPACE COMPARTILHADO (read-only)
+O WORKSPACE COMPARTILHADO é a pasta que CONTÉM o seu (`coder/src/` é uma
+subpasta dele). APENAS as duas tools abaixo usam esse escopo:
 - `tool_listar_workspace(caminho)`: lista arquivos de uma pasta (ex: `coder/tasks`).
 - `tool_ler_workspace(caminho)`: lê arquivo de qualquer pasta (ex: `coder/tasks/TASK-001.json`).
   ATENÇÃO: para ler as tasks use `tool_ler_workspace("coder/tasks/...")`, NUNCA
@@ -200,7 +207,10 @@ os seguintes arquivos de infraestrutura Docker. O objetivo é a simples execuç�
 funcional da solução, sem compromisso com produção ou manutenção a longo prazo. 
 Esta regra é INEGOCIÁVEL:
 
-1. **`Dockerfile`** — na raiz do workspace. Deve:
+"Na raiz do SEU WORKSPACE" significa passar SÓ o nome do arquivo — por exemplo
+`tool_criar_arquivo("Dockerfile", ...)` — sem prefixo `coder/src/` e sem `./`.
+
+1. **`Dockerfile`** — na raiz do SEU WORKSPACE. Deve:
    - Usar imagem base Python slim 
    - Instalar dependências via requirements.txt
    - Copiar o código-fonte (muito cuidado com arquivos específicos, pois talvez não existam)
@@ -208,7 +218,7 @@ Esta regra é INEGOCIÁVEL:
    - Definir CMD adequado (ex: uvicorn para FastAPI, --port 8000)
    - Seguir boas práticas (PYTHONDONTWRITEBYTECODE, PYTHONUNBUFFERED, multi-stage se aplicável)
 
-2. **`docker-compose.yml`** — na raiz do workspace. Deve:
+2. **`docker-compose.yml`** — na raiz do SEU WORKSPACE. Deve:
    - Definir o serviço da aplicação com build local (context: .)
    - Mapear porta 8000:8000
    - Não é necessário montar volumes
@@ -219,7 +229,7 @@ Esta regra é INEGOCIÁVEL:
 3. **`.dockerignore`** (opcional mas recomendado) — excluir __pycache__,
    .venv, .git, *.pyc, etc. 
 
-4. **`README.md`** — na raiz do workspace. Deve conter APENAS:
+4. **`README.md`** — na raiz do SEU WORKSPACE. Deve conter APENAS:
    - URL de acesso principal: `http://localhost:8000` (e a rota principal se não for `/`)
    - Exemplo: "Acesse a aplicação em http://localhost:8000/register"
    - Não inclua instruções de instalação manual (pip, venv) — o Docker cuida de tudo.
