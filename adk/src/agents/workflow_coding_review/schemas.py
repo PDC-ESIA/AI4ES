@@ -1,12 +1,17 @@
-"""Schemas Pydantic do Context Engineer.
+"""Schemas Pydantic do workflow coding_review.
 
-Define MacroContext (contexto global do épico), Contract (fronteiras de I/O
-de cada task) e Task (Context Window completo para o coder).
-Portado de feat/me2/coding_squad (Time 4).
+Define os modelos de saída do cr_context_engineer (TasksOutput) e o schema
+de validação da tool de persistência de tasks (SalvarTaskSchema).
 """
+
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+
+# ---------------------------------------------------------------------------
+# Schemas de saída do cr_context_engineer
+# ---------------------------------------------------------------------------
 
 
 class MacroContext(BaseModel):
@@ -82,7 +87,7 @@ class Task(BaseModel):
 
 
 class TasksOutput(BaseModel):
-    """Saída completa do Context Engineer."""
+    """Saída completa do cr_context_engineer."""
 
     macro_context: MacroContext = Field(
         description="Contexto global do épico — compartilhado por todas as tasks"
@@ -90,3 +95,20 @@ class TasksOutput(BaseModel):
     tasks: list[Task] = Field(
         description="Lista de tasks contextualizadas para o Agente Coder"
     )
+
+
+# ---------------------------------------------------------------------------
+# Schema de validação da tool de persistência
+# ---------------------------------------------------------------------------
+
+
+class SalvarTaskSchema(BaseModel):
+    task_id: str = Field(..., description="ID da task (ex: 'TASK-001')")
+    task_json: str = Field(..., description="Conteúdo JSON serializado da task")
+
+    @field_validator("task_id")
+    @classmethod
+    def validar_task_id(cls, v):
+        if not v.startswith("TASK-"):
+            raise ValueError(f"task_id deve iniciar com 'TASK-'. Recebido: '{v}'")
+        return v

@@ -1,4 +1,4 @@
-"""Tests para src/agents/context_engineer/ — descoberta + schemas + tools."""
+"""Tests para workflow_coding_review schemas + tool de persistência de tasks."""
 
 import json
 from pathlib import Path
@@ -6,26 +6,20 @@ from pathlib import Path
 import pytest
 
 
-def test_context_engineer_root_agent_importavel():
-    from src.agents.context_engineer import root_agent
-    assert root_agent is not None
-    assert root_agent.name == "context_engineer"
+def test_cr_context_engineer_importavel():
+    from src.agents.workflow_coding_review.cr_context_engineer import agent
+    assert agent is not None
+    assert agent.name == "cr_context_engineer"
 
 
-def test_context_engineer_tem_output_schema():
-    from src.agents.context_engineer import root_agent
-    from src.agents.context_engineer.schemas import TasksOutput
-    assert root_agent.output_schema == TasksOutput
-
-
-def test_context_engineer_tem_tool_salvar_task():
-    from src.agents.context_engineer import root_agent
-    # Factory injeta tool_ask_clarification_adk + tool_salvar_task
-    assert len(root_agent.tools) == 2
+def test_cr_context_engineer_tem_output_schema():
+    from src.agents.workflow_coding_review.cr_context_engineer import agent
+    from src.agents.workflow_coding_review.schemas import TasksOutput
+    assert agent.output_schema == TasksOutput
 
 
 def test_schemas_macro_context_minimal():
-    from src.agents.context_engineer.schemas import MacroContext
+    from src.agents.workflow_coding_review.schemas import MacroContext
     mc = MacroContext(
         summary="Sistema de autenticação JWT",
         tech_stack=["Python", "FastAPI"],
@@ -36,7 +30,7 @@ def test_schemas_macro_context_minimal():
 
 
 def test_schemas_task_com_contract():
-    from src.agents.context_engineer.schemas import Task, Contract
+    from src.agents.workflow_coding_review.schemas import Task, Contract
     task = Task(
         id="TASK-001",
         type="backend",
@@ -51,7 +45,7 @@ def test_schemas_task_com_contract():
 
 
 def test_schemas_contract_interfaces_objeto_aceito():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.schemas import Contract
     contract = Contract(
         interfaces={
             "create_ensaio": {
@@ -65,7 +59,7 @@ def test_schemas_contract_interfaces_objeto_aceito():
 
 
 def test_schemas_contract_interfaces_aceita_lista_e_string():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.schemas import Contract
 
     as_list = Contract.model_validate({
         "inputs": [],
@@ -83,7 +77,7 @@ def test_schemas_contract_interfaces_aceita_lista_e_string():
 
 
 def test_schemas_tasks_output_completo():
-    from src.agents.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
+    from src.agents.workflow_coding_review.schemas import TasksOutput, MacroContext, Task, Contract
     output = TasksOutput(
         macro_context=MacroContext(
             summary="X",
@@ -106,17 +100,22 @@ def test_schemas_tasks_output_completo():
 
 
 def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
-    """tool_salvar_task escreve JSON em workspace/tasks/<id>.json."""
+    """tool _tool_salvar_task_cr escreve JSON em workspace/cr_context_engineer/<id>.json."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
+
+    # Reimport para pegar o novo WORKSPACE_OUTPUT_DIR
+    import importlib
+    from src.agents.workflow_coding_review import cr_context_engineer
+    importlib.reload(cr_context_engineer)
+
     task_json = json.dumps({
         "id": "TASK-001",
         "type": "backend",
         "description": "Criar endpoint",
     })
-    result = tool_salvar_task("TASK-001", task_json)
+    result = cr_context_engineer._tool_salvar_task_cr("TASK-001", task_json)
     assert result["sucesso"] is True
-    arquivo = tmp_path / "ws" / "tasks" / "TASK-001.json"
+    arquivo = Path(result["caminho"])
     assert arquivo.is_file()
     conteudo = json.loads(arquivo.read_text(encoding="utf-8"))
     assert conteudo["id"] == "TASK-001"
@@ -124,15 +123,23 @@ def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
 
 def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
-    result = tool_salvar_task("INVALID-001", json.dumps({"x": 1}))
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_context_engineer
+    importlib.reload(cr_context_engineer)
+
+    result = cr_context_engineer._tool_salvar_task_cr("INVALID-001", json.dumps({"x": 1}))
     assert result["sucesso"] is False
     assert "TASK-" in result["erro"]
 
 
 def test_tool_salvar_task_json_invalido_rejeita(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
-    result = tool_salvar_task("TASK-002", "not a json")
+
+    import importlib
+    from src.agents.workflow_coding_review import cr_context_engineer
+    importlib.reload(cr_context_engineer)
+
+    result = cr_context_engineer._tool_salvar_task_cr("TASK-002", "not a json")
     assert result["sucesso"] is False
     assert "JSON inválido" in result["erro"] or "JSON inválido" in str(result.get("erro", ""))

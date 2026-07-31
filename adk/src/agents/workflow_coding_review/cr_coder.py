@@ -1,13 +1,11 @@
 """Coder dedicado ao workflow coding_review.
 
-Instância ajustada do coder original (src/agents/coder/):
-- Prompt composto a partir do canônico, sem seções de Git/HITL.
-- Tools de filesystem bound a workspace_output/coder/src/ (consolidado).
-- Evita conflito de parent com o sdlc_pipeline (instância dedicada).
+Agente de codificação para o pipeline coding_review. Opera dentro de um
+LoopAgent junto com o executor Docker — sem Git, sem HITL.
+Tools de filesystem bound a workspace_output/coder/src/ (consolidado).
 """
 
 import os
-import re
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
@@ -22,7 +20,6 @@ from shared.tools import (
     tool_listar_workspace,
     tool_substituir_trecho,
 )
-from src.agents.coder import prompt as coder_prompt
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
@@ -36,52 +33,54 @@ def _bind(tool):
 
 
 # ---------------------------------------------------------------------------
-# Composição do prompt: split por headers, exclui seções de Git/HITL,
-# adiciona seções de WORKSPACE + FERRAMENTAS específicas deste pipeline.
+# Prompt base (materializado — anteriormente derivado de src/agents/coder/prompt.py
+# com remoção das seções de Git/HITL e ajustes textuais).
 # ---------------------------------------------------------------------------
 
-_EXCLUDE_HEADERS = {
-    "PADRÃO DE COMMITS E BRANCHES",
-    "FLUXO DE TRABALHO SEQUENCIAL",
-    "FORMATO DE SAÍDA DE CÓDIGO",
-    "LEMBRETE FINAL",
-    "REGRA CRÍTICA DE EXECUÇÃO",
-}
+_BASE_INSTRUCTION = """\
+# PERFIL DO AGENTE
+Você é um Engenheiro de Software Sênior autônomo operando dentro de um ambiente ADK (Agent
+Development Kit). Sua principal função é analisar requisitos, seguir a arquitetura, quando proposta, escrever
+código altamente modular. Você é proativo, mas entende
+que opera sob supervisão humana rigorosa.
+
+
+# DIRETRIZES DE CODIFICAÇÃO (LÓGICA "AFIADA")
+Sua geração de código deve ser estritamente profissional e modular, seguindo os princípios SOLID:
+1. **Responsabilidade Única (SRP):** Nunca gere arquivos monolíticos. Cada arquivo, classe ou
+módulo deve ter apenas um propósito. Se um script passar de 150-200 linhas, divida-o.
+2. **Processamento de Bibliotecas:** ANTES de escrever qualquer código ou adicionar novas
+dependências, analise o contexto fornecido (como `package.json`, `requirements.txt`, ou árvores de
+diretórios).
+   - Reutilize bibliotecas e funções já existentes no projeto.
+   - Só sugira a instalação de novas dependências se for estritamente necessário e justifique o porquê.
+3. **Qualidade e Resiliência:** Todo código deve incluir tratamento de erros adequado, logs claros
+(onde aplicável) e tipagem estrita (se a linguagem suportar).
+
+4. **ARQUIVOS OBRIGATÓRIOS PARA PYTEST COLETAR TESTES:**
+   - `app/__init__.py` (vazio basta) — torna `app` pacote importável
+   - `tests/__init__.py` (vazio basta) — torna `tests` pacote
+   - `conftest.py` na raiz (vazio basta) — pytest usa para detectar rootdir
+
+   Sem esses 3 arquivos, pytest falha com `ModuleNotFoundError: No module named 'app'`
+   ao executar `tests/test_*.py` que importam `from app.main import app`. Crie-os SEMPRE
+   que entregar um projeto Python testável.
+
+
+# FLUXO DE TRABALHO (CHAIN OF THOUGHT)
+Para cada tarefa recebida, você deve OBRIGATORIAMENTE seguir esta estrutura de pensamento antes de invocar
+qualquer capacidade de código:
+
+
+<thinking>
+1. Análise: Qual é o objetivo da tarefa? Quais bibliotecas do projeto posso usar?
+2. Planejamento Modular: Quais arquivos precisam ser criados ou editados? Como eles se conectam?
+</thinking>"""
 
 
 def _build_instruction() -> str:
-    """Compõe a instrução do coder a partir do prompt canônico, sem git/HITL."""
-    sections = re.split(r"(?=^# )", coder_prompt.instruction.strip(), flags=re.MULTILINE)
-
-    kept = []
-    for section in sections:
-        header_match = re.match(r"^# (.+)", section)
-        if header_match:
-            title = header_match.group(1).strip()
-            if any(title.startswith(exc) for exc in _EXCLUDE_HEADERS):
-                continue
-        kept.append(section)
-
-    # Ajuste 1: PERFIL DO AGENTE — remover menção a git
-    composed = "\n".join(kept)
-    composed = composed.replace(
-        "código altamente modular e gerenciar o controle de versão (Git).",
-        "código altamente modular.",
-    )
-
-    # Ajuste 2: CHAIN OF THOUGHT — remover item "Estratégia Git"
-    composed = re.sub(
-        r"\n\s*3\.\s*Estratégia Git:.*?(?=\n</thinking>)",
-        "",
-        composed,
-        flags=re.DOTALL,
-    )
-
-    # Ajuste 3: CHAIN OF THOUGHT — remover "ou Git" da introdução
-    composed = composed.replace(
-        "qualquer capacidade de código ou Git:",
-        "qualquer capacidade de código:",
-    )
+    """Compõe a instrução final: prompt base + seções de workspace/ferramentas."""
+    composed = _BASE_INSTRUCTION
 
     # Seções adicionais: MODO DE OPERAÇÃO + WORKSPACE + FERRAMENTAS + SAÍDA FINAL
     workspace_section = f"""

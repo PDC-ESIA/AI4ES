@@ -63,7 +63,7 @@ def test_executor_agent_tem_3_tools(executor_module):
 def test_executor_compoe_harness_validador_exit_loop(executor_module):
     """As três peças novas estão presentes e nomeadas."""
     names = _tool_names(executor_module.agent)
-    assert "executar_harness_validacao" in names   # harness (bound ao workspace do workflow)
+    assert "executar_harness_tool" in names          # harness (bound ao workspace do workflow)
     assert "implementation_validator" in names     # AgentTool do validador
     assert "exit_loop" in names                    # encerramento pelo veredito
 
