@@ -108,7 +108,49 @@ Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
 fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
 PRIMEIRO e só depois a implementação completa.
 
-Se o bloco acima contiver informações de erro, você DEVE:
+O bloco acima normalmente é um JSON de ErrorReport — montado deterministicamente
+a partir do veredito real do Agente de Validação e do relatório de execução:
+
+{{
+  "work_item_id": "...",
+  "iteration": 2,
+  "verdict_status": "reprovado",
+  "blocking_reason": "motivo do bloqueio",
+  "failed_criteria": [
+    {{
+      "criterion": "critério de aceite que não passou",
+      "status": "nao_atendido" | "inconclusivo",
+      "reasoning": "por que o validador não considerou atendido",
+      "evidence_ref": "..."
+    }}
+  ],
+  "failed_stages": [
+    {{
+      "stage": "inicializacao_aplicacao",
+      "status": "falha",
+      "error_code": "APP_NAO_INICIALIZOU",
+      "summary": "...",
+      "evidence": {{ "runtime_logs_tail": "traceback bruto...", "...": "..." }}
+    }}
+  ],
+  "report_path": "..."
+}}
+
+Esse relatório diz O QUE falhou e mostra a EVIDÊNCIA BRUTA — ele NÃO diz qual é
+a causa raiz nem quais arquivos mudar. O diagnóstico é SEU. Quando
+`execution_result` for esse JSON, você DEVE:
+1. Ler `blocking_reason` e `failed_criteria` para entender o que não foi atendido.
+2. Analisar a `evidence` de cada item de `failed_stages` — especialmente logs e
+   tracebacks — para identificar você mesmo a causa raiz (arquivo e linha).
+3. Usar `tool_ler_arquivo` para ler APENAS o(s) arquivo(s) que a sua análise
+   apontou como afetados.
+4. Corrigir usando `tool_substituir_trecho` (preferível) ou `tool_criar_arquivo`.
+5. NÃO recrie o projeto: mexa somente no que é necessário para resolver o que o
+   relatório aponta.
+6. Ao final, produza texto curto listando o que foi alterado e por quê.
+
+Se `execution_result` NÃO for esse JSON (texto livre — usado quando o veredito
+real não pôde ser confirmado), trate como antes:
 1. Analisar o erro nos logs (build ou runtime) para identificar a causa raiz.
 2. Usar `tool_ler_arquivo` para ler APENAS o(s) arquivo(s) afetados.
 3. Corrigir usando `tool_substituir_trecho` (preferível) ou `tool_criar_arquivo`.
