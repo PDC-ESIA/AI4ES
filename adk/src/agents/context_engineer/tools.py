@@ -113,16 +113,29 @@ def _ler_pasta_workspace(pasta_fase: Path, workspace_root: Path, nome_fase: str)
             "caminho_esperado": str(pasta_fase),
         }
  
-    arquivos = sorted(
-        [
-            a for a in pasta_fase.rglob("*")
-            if a.is_file()
-            and a.suffix.lower() in EXTENSOES_TEXTUAIS
-            and not any(part.startswith(".") for part in a.relative_to(pasta_fase).parts)
-            and a.stat().st_size <= TAMANHO_MAXIMO
-        ],
-        key=lambda p: str(p.relative_to(pasta_fase)),
-    )
+    arquivos = []
+    for a in pasta_fase.rglob("*"):
+        if not a.is_file():
+            continue
+        if a.suffix.lower() not in EXTENSOES_TEXTUAIS:
+            continue
+        if any(part.startswith(".") for part in a.relative_to(pasta_fase).parts):
+            continue
+        try:
+            if a.stat().st_size > TAMANHO_MAXIMO:
+                continue
+        except OSError as e:
+            logger.warning(
+                "[CONTEXT ENGINEER] Ignorando arquivo inacessível: "
+                + str(a)
+                + " ("
+                + str(e)
+                + ")"
+            )
+            continue
+        arquivos.append(a)
+
+    arquivos = sorted(arquivos, key=lambda p: str(p.relative_to(pasta_fase)))
  
     if not arquivos:
         return {
