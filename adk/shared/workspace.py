@@ -62,6 +62,7 @@ AGENT_DIRS: dict[str, str] = {
     "cr_coder": "coder/src",
     "cr_executor": "coder/execution",
     "cr_reviewer": "coder/review",
+    "implementation_validator": "coder/validation",
     # Orquestração
     "orchestrator": "orchestrator",
     "pipeline": "pipeline",

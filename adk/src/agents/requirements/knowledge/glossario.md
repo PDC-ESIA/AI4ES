@@ -7,3 +7,5 @@
 
 | Termo | Definição | Fontes |
 |-------|-----------|--------|
+| FastAPI | Framework web assíncrono de alto desempenho em Python utilizado para a construção de APIs e backend da aplicação. | Texto de Requisitos |
+| Jinja2 | Motor de templates para Python utilizado na renderização do lado do servidor (Server-Side Rendering) de páginas HTML. | Texto de Requisitos |
