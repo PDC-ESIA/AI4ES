@@ -17,7 +17,7 @@ from .callbacks import (
     emitir_resultado_e2e_sem_reinterpretacao,
     registrar_resultado_e2e,
 )
-from .qa_prompt import QA_PROMPT
+from .prompt import QA_PROMPT
 
 _qa_cache = create_qa_agent_response_cache(prompt_text=QA_PROMPT)
 
