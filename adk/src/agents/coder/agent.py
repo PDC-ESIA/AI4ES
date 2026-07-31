@@ -1,13 +1,15 @@
 from google.adk.tools import FunctionTool
 
 from shared.agent_factory import create_se_agent
-from shared.tools.coding_review import (
+from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
+    tool_ler_arquivo,
+    tool_substituir_trecho,
+)
+from shared.tools.coding_tools.git import (
     tool_git_add,
     tool_git_checkout,
     tool_git_commit,
-    tool_ler_arquivo,
-    tool_substituir_trecho,
 )
 from . import prompt
 

@@ -1,4 +1,3 @@
-
 """Reviewer dedicado ao workflow coding_review.
 
 Instância ajustada do reviewer original (src/agents/reviewer/):
@@ -10,6 +9,9 @@ Instância ajustada do reviewer original (src/agents/reviewer/):
 
 Variáveis de ambiente:
     REVIEWER_STATIC_ANALYSIS: "0" desabilita análise estática pré-LLM (padrão: habilitado).
+
+Os callbacks/helpers de análise estática (Ruff+Bandit) e persistência vivem em
+shared/tools/coding_tools/review_tools.py.
 """
 
 import os
@@ -17,8 +19,8 @@ import os
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
-from AI4ES.adk.shared.tools.coding_review.filesystem_coding import tool_ler_arquivo
-from shared.tools.coding_review.static_review import (
+from shared.tools.coding_tools.filesystem_coding import tool_ler_arquivo
+from shared.tools.coding_tools.review_tools import (
     _CODER_WS,
     _REVIEW_WS,
     _bind,
@@ -33,7 +35,7 @@ _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
 # Re-exportados para uso/teste via atributo do módulo (ex.: cr_reviewer._CODER_WS,
 # cr_reviewer._discover_coder_files) — mantém compatibilidade com quem já
-# referenciava esses nomes diretamente aqui antes da extração para static_review.py.
+# referenciava esses nomes diretamente aqui antes da extração para review_tools.py.
 __all__ = [
     "agent",
     "_analyzer",

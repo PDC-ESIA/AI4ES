@@ -1,11 +1,9 @@
-"""Tools de persistência de tasks contextualizadas (Context Engineer).
+"""Tools do Agente Context Engineer.
 
-Duas variantes:
-- tool_salvar_task / tool_salvar_task_adk: versão canônica, usada pelo
-  agente standalone `context_engineer` — grava em workspace/tasks/.
-- _tool_salvar_task_cr / _tool_salvar_task_cr_adk: mesma lógica, usada pelo
-  `cr_context_engineer` (workflow_coding_review) — grava no subdir
-  consolidado workspace/coder/tasks/.
+Persistência de tasks contextualizadas como JSON no workspace centralizado.
+
+Phase 2.E: migrado para usar get_agent_workspace() — escreve em workspace/tasks/
+em vez do antigo artefatos/tasks/ hardcoded.
 """
 
 import json
@@ -73,7 +71,6 @@ def tool_salvar_task(task_id: str, task_json: str) -> dict:
 
 
 tool_salvar_task_adk = FunctionTool(tool_salvar_task)
-
 
 def _tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
     """Salva task contextualizada em workspace_output/coder/tasks/.

@@ -191,6 +191,7 @@ def _discover_main_route(base_url: str, http_mod) -> Optional[str]:
 
         # Retorna a primeira rota GET (ordem de declaração no código)
         return get_routes[0]
+
     except Exception as e:
         logger.warning(f"[CR EXECUTOR] Erro ao descobrir rota principal: {e}")
         return "/"  # fallback: tenta raiz

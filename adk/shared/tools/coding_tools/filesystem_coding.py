@@ -1,15 +1,10 @@
-"""Ferramentas de filesystem exclusivas do fluxo de codificação (coding_review).
+"""Ferramentas de filesystem compartilhadas entre agentes."""
 
-Usadas por cr_coder/cr_reviewer (workflow_coding_review) e pelos agentes
-standalone equivalentes (coder, reviewer).
-"""
-
+import re
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
-
-from shared.tools._path_utils import _resolver_caminho
 
 EXTENSOES_PERMITIDAS = {
     ".py",
@@ -43,6 +38,8 @@ DIRETORIOS_PROIBIDOS = {
     ".env",
 }
 
+ID_REQ_PATTERN = re.compile(r"^[A-Z]{1,4}-\d{3}$")
+
 
 class RelatorioSchema(BaseModel):
     conteudo: str = Field(..., description="Conteúdo em Markdown do relatório")
@@ -57,6 +54,40 @@ class RelatorioSchema(BaseModel):
         if not v.endswith(".md"):
             raise ValueError("O relatório DEVE ser um arquivo Markdown (.md)")
         return v
+
+
+def _resolver_caminho(caminho: str, base_dir: Optional[str] = None) -> Path:
+    """Resolve caminho relativo ao base_dir (se informado) com proteção anti-traversal.
+
+    Args:
+        caminho: Caminho informado pelo agente.
+        base_dir: Diretório base do agente no workspace (opcional).
+
+    Returns:
+        Path resolvido e validado.
+
+    Raises:
+        ValueError: Se o caminho tenta escapar do base_dir (absolute ou ..).
+    """
+    if base_dir is None:
+        return Path(caminho)
+
+    base = Path(base_dir).resolve()
+    rel = Path(caminho)
+
+    if rel.is_absolute():
+        raise ValueError(
+            f"Caminho absoluto não permitido com base_dir: '{caminho}'. "
+            f"Use caminhos relativos ao seu diretório de trabalho."
+        )
+
+    if ".." in rel.parts:
+        raise ValueError(
+            f"Path traversal não permitido: '{caminho}'. "
+            f"Não use '..' no caminho."
+        )
+
+    return base / rel
 
 
 def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: Optional[str] = None) -> dict:

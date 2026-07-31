@@ -1,4 +1,4 @@
-"""Ferramentas Git do fluxo de codificação (coding_review)."""
+"""Ferramentas Git compartilhadas entre agentes."""
 
 import subprocess
 from subprocess import run

@@ -1,5 +1,5 @@
-from .coding_review.git import tool_git_add, tool_git_commit, tool_git_checkout, tool_ler_diff, tool_preparar_commit, tool_confirmar_commit
-from .coding_review.filesystem_coding import (
+from .coding_tools.git import tool_git_add, tool_git_commit, tool_git_checkout, tool_ler_diff, tool_preparar_commit, tool_confirmar_commit
+from .coding_tools.filesystem_coding import (
     tool_criar_arquivo,
     tool_salvar_relatorio,
     tool_ler_arquivo,

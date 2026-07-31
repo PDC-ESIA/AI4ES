@@ -5,6 +5,10 @@
 - _persist_review (after_agent_callback): grava a análise do LLM em disco,
   sem passar por uma tool exposta ao modelo (evita "modo narrador").
 - _discover_coder_files / _format_findings_block / _bind: helpers de suporte.
+
+_analyzer_instruction_provider NÃO está aqui de propósito: ele depende de
+_ANALYZER_INSTRUCTION_TEMPLATE, que é montado a partir do prompt do reviewer
+e fica em cr_reviewer.py junto com a definição do agente.
 """
 
 import os
@@ -14,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.review import run_capabilities
 from shared.workspace import get_agent_workspace, get_workspace_root
-from AI4ES.adk.shared.tools.coding_review.filesystem_coding import tool_salvar_relatorio
+from shared.tools.coding_tools.filesystem_coding import tool_salvar_relatorio
 
 if TYPE_CHECKING:
     from google.adk.agents.callback_context import CallbackContext

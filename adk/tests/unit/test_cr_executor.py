@@ -33,7 +33,7 @@ def executor_module(tmp_path, monkeypatch):
     """
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from shared.tools.coding_review import docker_executor
+    from shared.tools.coding_tools import docker_executor
     from src.agents.workflow_coding_review import cr_executor
 
     importlib.reload(docker_executor)
@@ -330,7 +330,7 @@ def test_executar_em_docker_sucesso_completo(executor_module, coder_ws, exec_ws,
     with (
         patch("docker.from_env", return_value=mock_client),
         patch(
-            "shared.tools.coding_review.docker_executor.time.sleep",
+            "shared.tools.coding_tools.docker_executor.time.sleep",
             return_value=None,
         ),
         patch("requests.get", side_effect=mock_get),
@@ -386,7 +386,7 @@ def test_executar_em_docker_falha_rota_principal_500(executor_module, coder_ws, 
     with (
         patch("docker.from_env", return_value=mock_client),
         patch(
-            "shared.tools.coding_review.docker_executor.time.sleep",
+            "shared.tools.coding_tools.docker_executor.time.sleep",
             return_value=None,
         ),
         patch("requests.get", side_effect=mock_get),

@@ -15,7 +15,7 @@ Este agente vive DENTRO de um LoopAgent junto com o coder:
 Quando o executor chama exit_loop(), o loop para e o pipeline segue.
 
 As tools de execução Docker (build, run, healthcheck) e seus helpers vivem
-em shared/tools/coding_review/docker_executor.py.
+em shared/tools/coding_tools/docker_executor.py.
 """
 
 import os
@@ -25,7 +25,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import types
 
-from shared.tools.coding_review.docker_executor import (
+from shared.tools.coding_tools.docker_executor import (
     _CODER_WS,
     _EXEC_WS,
     _HOST_PORT,
