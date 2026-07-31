@@ -1,10 +1,10 @@
 """Context Engineer dedicado ao workflow coding_review.
 
 Instância ajustada do context_engineer original (src/agents/context_engineer/):
-- Lê artefatos de requisitos e design diretamente do workspace em vez de
-  consumir state["requirements"] ou contexto acumulado pelo orchestrator.
+- Lê artefatos de requisitos e design diretamente do workspace.
+- Verifica artefatos mínimos obrigatórios e gera Doubt Artifact se ausentes.
 - Enriquece cada task com rastreabilidade explicita (requirement_id,
-  design_refs) e critérios de aceitação derivados de múltiplas fontes.
+  design_refs) e critérios de aceitação.
 - Persiste tasks em workspace_output/coder/tasks/ (consolidado sob coder/).
 - Evita conflito de parent com o sdlc_pipeline (instância dedicada).
 """
@@ -21,7 +21,9 @@ from shared.workspace import get_agent_workspace
 from src.agents.context_engineer import prompt as ce_prompt, schemas as ce_schemas
 from src.agents.context_engineer.tools import (
     SalvarTaskSchema,
-    tool_ler_workspace_fase_adk,
+    tool_ler_requirements_adk,
+    tool_ler_design_adk,
+    tool_gerar_doubt_artifact_adk,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,6 +82,8 @@ agent = LlmAgent(
     output_schema=ce_schemas.TasksOutput,
     tools=[
         tool_salvar_task_cr_adk,
-        tool_ler_workspace_fase_adk,
+        tool_ler_requirements_adk,
+        tool_ler_design_adk,
+        tool_gerar_doubt_artifact_adk,
     ],
 )
