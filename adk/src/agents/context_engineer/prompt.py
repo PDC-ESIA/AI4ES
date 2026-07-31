@@ -26,7 +26,7 @@ instruction = (
 * Chame tool_gerar_doubt_artifact informando:
 - titulo: se sucesso=False use 'Pasta de requisitos ausente ou inacessível' senão use 'Artefatos mínimos de requisitos ausentes'
 - fase_bloqueada: 'requirements'
-- descricao: se sucesso=False use o campo erro do retorno senão use o campo artefatos_minimos_ausentes do retorno
+- descricao: se sucesso=False use o campo erro do retorno senão use uma string com os itens de artefatos_minimos_ausentes (ex.: juntar com '; ')
 - acao_necessaria: 'A fase requirements deve ser reprocessada antes de continuar'
 * PARE IMEDIATAMENTE. Não gere nenhuma task.
 
