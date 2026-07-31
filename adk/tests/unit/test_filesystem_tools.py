@@ -13,7 +13,8 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from shared.tools.filesystem import tool_criar_arquivo, tool_salvar_artefato_requisito
+from AI4ES.adk.shared.tools.coding_review.filesystem_coding import tool_criar_arquivo
+from shared.tools.filesystem import tool_salvar_artefato_requisito
 
 
 

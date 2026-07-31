@@ -25,11 +25,18 @@ import pytest
 
 @pytest.fixture
 def executor_module(tmp_path, monkeypatch):
-    """Reimporta cr_executor com workspace temporário."""
+    """Reimporta cr_executor (+ docker_executor) com workspace temporário.
+
+    docker_executor.py computa _CODER_WS/_EXEC_WS a nível de módulo — precisa
+    ser recarregado ANTES de cr_executor.py para que os nomes re-exportados
+    (cr_executor._CODER_WS etc.) reflitam o novo WORKSPACE_OUTPUT_DIR.
+    """
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
+    from shared.tools.coding_review import docker_executor
     from src.agents.workflow_coding_review import cr_executor
 
+    importlib.reload(docker_executor)
     importlib.reload(cr_executor)
     return cr_executor
 
@@ -323,7 +330,7 @@ def test_executar_em_docker_sucesso_completo(executor_module, coder_ws, exec_ws,
     with (
         patch("docker.from_env", return_value=mock_client),
         patch(
-            "src.agents.workflow_coding_review.cr_executor.time.sleep",
+            "shared.tools.coding_review.docker_executor.time.sleep",
             return_value=None,
         ),
         patch("requests.get", side_effect=mock_get),
@@ -379,7 +386,7 @@ def test_executar_em_docker_falha_rota_principal_500(executor_module, coder_ws, 
     with (
         patch("docker.from_env", return_value=mock_client),
         patch(
-            "src.agents.workflow_coding_review.cr_executor.time.sleep",
+            "shared.tools.coding_review.docker_executor.time.sleep",
             return_value=None,
         ),
         patch("requests.get", side_effect=mock_get),

@@ -5,9 +5,9 @@ composta com workspace binding — tool_salvar_task escreve em workspace/tasks/.
 """
 
 from shared.agent_factory import create_se_agent
+from shared.tools.coding_review.context_engineer_task import tool_salvar_task_adk
 
 from . import prompt, schemas
-from .tools import tool_salvar_task_adk
 
 agent = create_se_agent(
     name="context_engineer",

@@ -3,15 +3,17 @@
 import pytest
 from pathlib import Path
 
-from shared.tools.filesystem import (
+from AI4ES.adk.shared.tools.coding_review.filesystem_coding import (
     tool_criar_arquivo,
     tool_ler_arquivo,
     tool_substituir_trecho,
     tool_salvar_relatorio,
+)
+from shared.tools.filesystem import (
     tool_ler_workspace,
     tool_listar_workspace,
-    _resolver_caminho,
 )
+from shared.tools._path_utils import _resolver_caminho
 
 
 def test_criar_arquivo_sem_base_dir_funciona(tmp_path, monkeypatch):

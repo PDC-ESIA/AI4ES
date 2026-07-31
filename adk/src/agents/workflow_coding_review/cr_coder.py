@@ -15,7 +15,7 @@ from google.genai import types
 
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.workspace import get_agent_workspace, get_workspace_root
-from shared.tools import (
+from shared.tools.coding_review import (
     tool_criar_arquivo,
     tool_ler_arquivo,
     tool_substituir_trecho,

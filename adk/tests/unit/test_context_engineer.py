@@ -108,7 +108,7 @@ def test_schemas_tasks_output_completo():
 def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
     """tool_salvar_task escreve JSON em workspace/tasks/<id>.json."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
+    from shared.tools.coding_review.context_engineer_task import tool_salvar_task
     task_json = json.dumps({
         "id": "TASK-001",
         "type": "backend",
@@ -124,7 +124,7 @@ def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
 
 def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
+    from shared.tools.coding_review.context_engineer_task import tool_salvar_task
     result = tool_salvar_task("INVALID-001", json.dumps({"x": 1}))
     assert result["sucesso"] is False
     assert "TASK-" in result["erro"]
@@ -132,7 +132,7 @@ def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
 
 def test_tool_salvar_task_json_invalido_rejeita(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
+    from shared.tools.coding_review.context_engineer_task import tool_salvar_task
     result = tool_salvar_task("TASK-002", "not a json")
     assert result["sucesso"] is False
     assert "JSON inválido" in result["erro"] or "JSON inválido" in str(result.get("erro", ""))

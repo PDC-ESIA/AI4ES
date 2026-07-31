@@ -1,7 +1,7 @@
 from google.adk.tools import FunctionTool
 
 from shared.agent_factory import create_se_agent
-from shared.tools import (
+from shared.tools.coding_review import (
     tool_criar_arquivo,
     tool_git_add,
     tool_git_checkout,

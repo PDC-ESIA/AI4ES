@@ -32,7 +32,7 @@ sys.modules["pydantic"].BaseModel = object
 sys.modules["pydantic"].Field = lambda *a, **k: None
 sys.modules["pydantic"].field_validator = lambda *a, **k: lambda f: f
 
-from shared.tools.git import (  # noqa: E402
+from shared.tools.coding_review.git import (  # noqa: E402
     tool_git_add,
     trava_seguranca_git_commit,
     tool_git_commit,
@@ -381,8 +381,8 @@ class TestCwdPropagation:
 
             return R()
 
-        monkeypatch.setattr("shared.tools.git.run", fake_run)
-        from shared.tools.git import tool_git_add
+        monkeypatch.setattr("shared.tools.coding_review.git.run", fake_run)
+        from shared.tools.coding_review.git import tool_git_add
 
         tool_git_add("file.py", cwd="/tmp/algum_dir")
         assert captured[0] == "/tmp/algum_dir"
@@ -401,8 +401,8 @@ class TestCwdPropagation:
 
             return R()
 
-        monkeypatch.setattr("shared.tools.git.run", fake_run)
-        from shared.tools.git import tool_preparar_commit
+        monkeypatch.setattr("shared.tools.coding_review.git.run", fake_run)
+        from shared.tools.coding_review.git import tool_preparar_commit
 
         tool_preparar_commit("feat: x", cwd="/tmp/outro_dir")
         assert "/tmp/outro_dir" in captured
