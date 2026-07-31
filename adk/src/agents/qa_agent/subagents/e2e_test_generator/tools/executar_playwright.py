@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -20,6 +21,8 @@ _PERFIS_COMANDO_PERMITIDOS = {
 }
 _TIMEOUT_MINIMO_SEGUNDOS = 5
 _TIMEOUT_MAXIMO_SEGUNDOS = 300
+_TIMEOUT_INSTALACAO_SEGUNDOS = 300
+_MAX_RELATORIO_BYTES = 20_000_000
 
 
 def _project_root() -> Path:
@@ -36,6 +39,165 @@ def _resolver_node() -> Path | None:
     return Path(encontrado).resolve() if encontrado else None
 
 
+def _booleano(ambiente: dict[str, Any], chave: str, padrao: bool = False) -> bool:
+    valor = ambiente.get(chave, padrao)
+    if isinstance(valor, bool):
+        return valor
+    if isinstance(valor, str):
+        return valor.strip().lower() in {"1", "true", "sim", "yes"}
+    return bool(valor)
+
+
+def _ambiente_minimo_node() -> dict[str, str]:
+    """Mantém apenas variáveis operacionais; credenciais não chegam aos testes."""
+
+    permitidas = {
+        "SYSTEMROOT",
+        "WINDIR",
+        "PATH",
+        "PATHEXT",
+        "TEMP",
+        "TMP",
+        "USERPROFILE",
+        "HOME",
+        "LOCALAPPDATA",
+        "APPDATA",
+        "PROGRAMDATA",
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "NODE_EXTRA_CA_CERTS",
+    }
+    return {
+        chave: valor
+        for chave in permitidas
+        if (valor := os.environ.get(chave)) is not None
+    }
+
+
+def _redigir_segredos(texto: str) -> str:
+    texto = re.sub(
+        r"(?i)\b(authorization\s*[:=]\s*)[^\r\n,;]+",
+        r"\1[REDACTED]",
+        texto,
+    )
+    texto = re.sub(
+        r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+",
+        "Bearer [REDACTED]",
+        texto,
+    )
+    texto = re.sub(
+        (
+            r"(?i)\b(api[_-]?key|access[_-]?token|token|"
+            r"password|passwd|secret)\b(\s*[:=]\s*)([^\s,;]+)"
+        ),
+        r"\1\2[REDACTED]",
+        texto,
+    )
+    return re.sub(
+        r"(https?://)([^/\s:@]+):([^@\s/]+)@",
+        r"\1[REDACTED]@",
+        texto,
+        flags=re.IGNORECASE,
+    )
+
+
+def _resumo_processo(processo: subprocess.CompletedProcess[str]) -> list[str]:
+    return _logs_resumidos(processo.stdout or "", processo.stderr or "")
+
+
+def _preparar_runtime_playwright(
+    raiz: Path,
+    node: Path,
+    cli: Path,
+) -> tuple[bool, list[str]]:
+    """Instala somente a versão fixada no package.json, sem scripts npm."""
+
+    logs: list[str] = []
+    if not cli.is_file():
+        pacote = raiz / "package.json"
+        try:
+            manifesto = json.loads(pacote.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return False, [f"package.json do runtime inválido: {exc}"]
+        versao = (
+            manifesto.get("devDependencies", {}).get("@playwright/test")
+            if isinstance(manifesto.get("devDependencies"), dict)
+            else None
+        )
+        npm_cli = node.parent / "node_modules" / "npm" / "bin" / "npm-cli.js"
+        pnpm_cli = (
+            node.parent.parent
+            / "node_modules"
+            / "pnpm"
+            / "bin"
+            / "pnpm.mjs"
+        )
+        if not isinstance(versao, str) or not versao:
+            return False, [
+                "A versão fixada de @playwright/test não foi encontrada."
+            ]
+        if pnpm_cli.is_file() and (raiz / "pnpm-lock.yaml").is_file():
+            instalar_pacote = [
+                str(node),
+                str(pnpm_cli),
+                "install",
+                "--frozen-lockfile",
+                "--ignore-scripts",
+            ]
+        elif npm_cli.is_file():
+            instalar_pacote = [
+                str(node),
+                str(npm_cli),
+                "install",
+                "--no-save",
+                "--package-lock=false",
+                "--ignore-scripts",
+                f"@playwright/test@{versao}",
+            ]
+        else:
+            return False, [
+                "Não foi possível localizar pnpm ou npm para preparar Playwright."
+            ]
+        try:
+            processo = subprocess.run(
+                instalar_pacote,
+                cwd=raiz,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=_TIMEOUT_INSTALACAO_SEGUNDOS,
+                check=False,
+                shell=False,
+                env=_ambiente_minimo_node(),
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return False, [f"Falha ao preparar @playwright/test: {exc}"]
+        logs.extend(_resumo_processo(processo))
+        if processo.returncode != 0 or not cli.is_file():
+            return False, logs or ["A instalação de @playwright/test falhou."]
+
+    instalar_browser = [str(node), str(cli), "install", "chromium"]
+    try:
+        processo_browser = subprocess.run(
+            instalar_browser,
+            cwd=raiz,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=_TIMEOUT_INSTALACAO_SEGUNDOS,
+            check=False,
+            shell=False,
+            env=_ambiente_minimo_node(),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, [*logs, f"Falha ao preparar Chromium: {exc}"]
+    logs.extend(_resumo_processo(processo_browser))
+    if processo_browser.returncode != 0:
+        return False, logs or ["A instalação controlada do Chromium falhou."]
+    return True, logs
+
+
 def _valor_inteiro(
     ambiente: dict[str, Any],
     chave: str,
@@ -45,7 +207,7 @@ def _valor_inteiro(
 ) -> int:
     try:
         valor = int(ambiente.get(chave, padrao))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return padrao
     return max(minimo, min(valor, maximo))
 
@@ -54,7 +216,7 @@ def _logs_resumidos(stdout: str, stderr: str) -> list[str]:
     linhas = [
         linha.strip() for linha in f"{stdout}\n{stderr}".splitlines() if linha.strip()
     ]
-    return [linha[:500] for linha in linhas[-20:]]
+    return [_redigir_segredos(linha)[:500] for linha in linhas[-20:]]
 
 
 def _coletar_falhas(relatorio: dict[str, Any]) -> list[dict[str, Any]]:
@@ -74,7 +236,7 @@ def _coletar_falhas(relatorio: dict[str, Any]) -> list[dict[str, Any]]:
                     for erro in resultado.get("errors", []):
                         mensagem = str(erro.get("message") or erro.get("value") or "")
                         if mensagem:
-                            mensagens.append(mensagem[:2_000])
+                            mensagens.append(_redigir_segredos(mensagem)[:2_000])
                 falhas.append(
                     {
                         "teste": " > ".join([*caminho_atual, titulo_spec]),
@@ -153,6 +315,21 @@ def executar_playwright(
     config = raiz / "playwright.config.ts"
     cli = raiz / "node_modules" / "@playwright" / "test" / "cli.js"
     node = _resolver_node()
+    logs_preparacao: list[str] = []
+    if (
+        node is not None
+        and _booleano(entrada.ambiente_execucao, "auto_instalar_runtime")
+    ):
+        preparado, logs_preparacao = _preparar_runtime_playwright(
+            raiz,
+            node,
+            cli,
+        )
+        if not preparado:
+            return ResultadoExecucaoE2E(
+                status="bloqueado_infraestrutura",
+                logs_resumidos=logs_preparacao,
+            )
     ausentes = [
         nome
         for nome, existe in {
@@ -167,7 +344,7 @@ def executar_playwright(
             status="bloqueado_infraestrutura",
             logs_resumidos=[
                 "Runtime ausente: " + ", ".join(ausentes) + ".",
-                "Execute npm install e npx playwright install chromium.",
+                "A execução foi encerrada autonomamente sem tentar comandos livres.",
             ],
         )
 
@@ -188,10 +365,17 @@ def executar_playwright(
     )
     relatorio = destino / f"{arquivo.stem}.playwright-report.json"
     artefatos = destino / "test-results" / arquivo.stem
+    if artefatos.exists() and destino not in artefatos.resolve().parents:
+        return ResultadoExecucaoE2E(
+            status="bloqueado_infraestrutura",
+            logs_resumidos=[
+                "Diretório de artefatos aponta para fora do workspace E2E."
+            ],
+        )
     if relatorio.exists():
         relatorio.unlink()
 
-    env = os.environ.copy()
+    env = _ambiente_minimo_node()
     env.update(
         {
             "E2E_TEST_DIR": str(destino),
@@ -247,6 +431,16 @@ def executar_playwright(
             diretorio_artefatos=str(artefatos),
             logs_resumidos=_logs_resumidos(processo.stdout, processo.stderr),
         )
+    if relatorio.stat().st_size > _MAX_RELATORIO_BYTES:
+        return ResultadoExecucaoE2E(
+            status="erro_execucao",
+            comando=comando_exibido,
+            codigo_saida=processo.returncode,
+            duracao_ms=duracao_ms,
+            arquivo_relatorio=str(relatorio),
+            diretorio_artefatos=str(artefatos),
+            logs_resumidos=["Relatório Playwright excedeu o limite de 20 MB."],
+        )
     try:
         conteudo_relatorio = json.loads(relatorio.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -270,5 +464,5 @@ def executar_playwright(
         arquivo_relatorio=relatorio,
         diretorio_artefatos=artefatos,
         stdout=processo.stdout,
-        stderr=processo.stderr,
+        stderr="\n".join([*logs_preparacao, processo.stderr]),
     )

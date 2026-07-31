@@ -18,6 +18,9 @@ bloqueada antes de qualquer processamento ou escrita.
 ## O que ele faz
 
 - normaliza requisitos em texto ou JSON;
+- aceita um envelope único vindo de humano ou agente;
+- inspeciona código/workspace sem executá-lo para descobrir framework,
+  entrypoint, perfil de inicialização e rotas;
 - identifica conservadoramente superfícies `web`, `api` ou `fullstack`;
 - mapeia fluxo feliz, falha externa, timeout e dados malformados;
 - separa bloqueios de plano, geração de código e execução;
@@ -35,11 +38,42 @@ bloqueada antes de qualquer processamento ou escrita.
 - não aceita shell, argumentos arbitrários, browser remoto ou ambiente externo;
 - não calcula cobertura de código;
 - não corrige código nem gera Doubt Artifacts.
+- não pausa para HITL: lacunas são devolvidas como bloqueios estruturados.
 
 API e fullstack ainda recebem um plano e bloqueios explícitos. CLI e sistemas
 agênticos permanecem fora do escopo do gerador Playwright.
 
 ## Contrato para geração
+
+A entrada recomendada é um envelope JSON serializado no parâmetro `requisitos`:
+
+```json
+{
+  "origem": "agente",
+  "id_execucao": "e2e-contato-001",
+  "requisitos": "Validar o envio do formulário de contato.",
+  "codigo_fonte": [
+    {"nome": "app/main.py", "conteudo": "from fastapi import FastAPI\napp = FastAPI()"}
+  ],
+  "workspace_projeto": null,
+  "contexto_runtime": {},
+  "politica_execucao": {
+    "autonomo": true,
+    "permitir_hitl": false,
+    "max_tentativas": 2
+  },
+  "metadados": {}
+}
+```
+
+Para teste manual, altere somente `origem` para `humano`. Os dois valores usam
+o mesmo parser, a mesma inspeção e o mesmo pipeline. Entradas antigas em texto
+continuam aceitas e são adaptadas internamente para esse contrato.
+
+`workspace_projeto`, quando usado, deve apontar para uma pasta dentro de `adk/`
+ou do workspace gerenciado. A inspeção é somente leitura, ignora dependências e
+artefatos, e possui limites de arquivos e bytes. Este incremento descobre o
+comando de inicialização, mas ainda não inicia o servidor automaticamente.
 
 Cada item de `rotas_ou_telas` deve conter `rota` e `passos_automacao`. As ações
 aceitas são `preencher`, `clicar`, `marcar`, `desmarcar`, `selecionar`,

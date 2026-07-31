@@ -1,17 +1,22 @@
 """Mapeamento determinístico de requisitos para cenários E2E."""
 
+import re
 from typing import Iterable
 
 from ..schemas import (
+    AcaoAutomacao,
     AnaliseSuperficie,
     CategoriaCenario,
     CenarioE2E,
+    ContratoNegativoE2E,
     EntradaE2ENormalizada,
     PassoAutomacao,
     RequisitoNormalizado,
+    SuperficieContratoNegativo,
     TipoSistema,
     ValidacaoContratoE2E,
 )
+from .validar_contrato_e2e import erros_contrato_negativo
 
 
 def _unicos(itens: Iterable[str]) -> list[str]:
@@ -46,8 +51,24 @@ def _dados_declarados(entrada: EntradaE2ENormalizada) -> list[str]:
 def _dependencias_declaradas(entrada: EntradaE2ENormalizada) -> list[str]:
     dependencias: list[str] = []
     for indice, contrato in enumerate(entrada.contratos_api, start=1):
+        externa = contrato.get("externa", contrato.get("external"))
+        tem_identidade_servico = any(
+            contrato.get(chave)
+            for chave in ("servico", "service", "nome_servico", "service_name")
+        )
+        if externa is not True and not tem_identidade_servico:
+            continue
         valor = None
-        for chave in ("servico", "service", "nome", "name", "endpoint", "url", "rota"):
+        for chave in (
+            "servico",
+            "service",
+            "nome_servico",
+            "service_name",
+            "nome",
+            "name",
+            "endpoint",
+            "url",
+        ):
             if contrato.get(chave):
                 valor = str(contrato[chave]).strip()
                 break
@@ -66,6 +87,42 @@ def _requisitos_com_termos(
         for requisito in requisitos
         if any(termo in requisito.conteudo.lower() for termo in termos)
     ]
+
+
+def _requisitos_timeout_comportamental(
+    requisitos: list[RequisitoNormalizado],
+) -> list[RequisitoNormalizado]:
+    """Ignora timeouts que configuram o runner, não o comportamento do SUT."""
+
+    configuracoes = (
+        r"timeout\s+por\s+teste",
+        r"timeout\s+total",
+        r"timeout\s+global",
+        r"tempo\s+limite\s+(?:da|de)\s+execu[cç][aã]o",
+    )
+    encontrados: list[RequisitoNormalizado] = []
+    for requisito in requisitos:
+        texto = requisito.conteudo.lower()
+        for padrao in configuracoes:
+            texto = re.sub(
+                rf"{padrao}[^.;\n]*",
+                "",
+                texto,
+                flags=re.IGNORECASE,
+            )
+        if any(
+            termo in texto
+            for termo in (
+                "timeout",
+                "latência",
+                "latencia",
+                "lento",
+                "demora",
+                "tempo limite",
+            )
+        ):
+            encontrados.append(requisito)
+    return encontrados
 
 
 def _assercoes_de_requisitos(
@@ -111,6 +168,10 @@ def _cenario_fluxo_feliz(
     if analise.tipo_sistema in {TipoSistema.WEB, TipoSistema.FULLSTACK}:
         if not entrada.rotas_ou_telas:
             lacunas.append("A rota ou tela inicial do fluxo não foi informada.")
+        elif not any(alvo.passos_automacao for alvo in entrada.rotas_ou_telas):
+            lacunas.append(
+                "Os passos estruturados do fluxo feliz não foram informados."
+            )
     if analise.tipo_sistema in {TipoSistema.API, TipoSistema.FULLSTACK}:
         if not entrada.contratos_api:
             lacunas.append("O contrato API participante do fluxo não foi informado.")
@@ -160,6 +221,9 @@ def _cenario_falha_externa(
         lacunas.append(
             "O comportamento esperado quando a dependência falha não foi declarado."
         )
+    lacunas.append(
+        "A automação de falha externa ainda não possui passos estruturados suportados."
+    )
     return CenarioE2E(
         id=f"E2E-{indice:03d}",
         nome="Falha controlada de dependência externa",
@@ -173,9 +237,7 @@ def _cenario_falha_externa(
         dependencias=dependencias,
         mocks_stubs=mocks,
         lacunas=lacunas,
-        pronto_para_automacao=(
-            validacao.pode_gerar_codigo and not lacunas and bool(assercoes)
-        ),
+        pronto_para_automacao=False,
     )
 
 
@@ -185,10 +247,7 @@ def _cenario_timeout(
     validacao: ValidacaoContratoE2E,
 ) -> CenarioE2E:
     dependencias = _dependencias_declaradas(entrada)
-    requisitos = _requisitos_com_termos(
-        entrada.requisitos,
-        ("timeout", "latência", "latencia", "lento", "demora", "tempo limite"),
-    )
+    requisitos = _requisitos_timeout_comportamental(entrada.requisitos)
     lacunas: list[str] = []
     passos: list[str] = []
     mocks: list[str] = []
@@ -202,6 +261,9 @@ def _cenario_timeout(
     assercoes = _assercoes_de_requisitos(requisitos)
     if not assercoes:
         lacunas.append("O limite de tempo e a resposta esperada não foram declarados.")
+    lacunas.append(
+        "A automação de latência ainda não possui passos estruturados suportados."
+    )
     return CenarioE2E(
         id=f"E2E-{indice:03d}",
         nome="Latência ou timeout no fluxo E2E",
@@ -215,9 +277,7 @@ def _cenario_timeout(
         dependencias=dependencias,
         mocks_stubs=mocks,
         lacunas=lacunas,
-        pronto_para_automacao=(
-            validacao.pode_gerar_codigo and not lacunas and bool(assercoes)
-        ),
+        pronto_para_automacao=False,
     )
 
 
@@ -256,6 +316,9 @@ def _cenario_dados_malformados(
     assercoes = _assercoes_de_requisitos(requisitos)
     if not assercoes:
         lacunas.append("A resposta esperada para dados inválidos não foi declarada.")
+    lacunas.append(
+        "A automação de dados inválidos ainda não possui passos estruturados suportados."
+    )
     return CenarioE2E(
         id=f"E2E-{indice:03d}",
         nome="Rejeição de dados malformados",
@@ -268,9 +331,99 @@ def _cenario_dados_malformados(
         assercoes=assercoes,
         dependencias=_dependencias_declaradas(entrada),
         lacunas=lacunas,
-        pronto_para_automacao=(
-            validacao.pode_gerar_codigo and not lacunas and bool(assercoes)
+        pronto_para_automacao=False,
+    )
+
+
+def _cenario_negativo_explicito(
+    indice: int,
+    contrato: ContratoNegativoE2E,
+    entrada: EntradaE2ENormalizada,
+    analise: AnaliseSuperficie,
+    validacao: ValidacaoContratoE2E,
+) -> CenarioE2E:
+    """Materializa somente fatos declarados no contrato negativo."""
+
+    lacunas = erros_contrato_negativo(entrada, analise, contrato)
+    passos: list[str] = []
+    assercoes: list[str] = []
+    mocks: list[str] = []
+    dependencias = [contrato.dependencia] if contrato.dependencia else []
+    dados = _dados_declarados(entrada)
+    if contrato.dados_teste:
+        dados.append(
+            "Contrato negativo com campos: "
+            + ", ".join(sorted(contrato.dados_teste))
+            + "."
+        )
+
+    if contrato.superficie == SuperficieContratoNegativo.WEB:
+        if contrato.mock_rede is not None:
+            mock = contrato.mock_rede
+            descricao = (
+                f"Mock {mock.metodo} {mock.rota or 'sem rota'} "
+                f"com status {mock.status_simulado}"
+            )
+            if mock.atraso_ms:
+                descricao += f" e atraso de {mock.atraso_ms} ms"
+            mocks.append(descricao + ".")
+            passos.append("Instalar o mock de rede explicitamente declarado.")
+        passos.append(f"Acessar a rota declarada: {contrato.rota}.")
+        passos.extend(
+            _descrever_passo_automacao(passo)
+            for passo in contrato.passos_automacao
+        )
+        assercoes.extend(
+            _descrever_passo_automacao(passo)
+            for passo in contrato.passos_automacao
+            if passo.acao
+            in {
+                AcaoAutomacao.VERIFICAR_VISIVEL,
+                AcaoAutomacao.VERIFICAR_TEXTO,
+                AcaoAutomacao.VERIFICAR_URL,
+            }
+        )
+    else:
+        passos.append(
+            f"Enviar {contrato.metodo} para a rota declarada {contrato.rota}."
+        )
+        if contrato.categoria == CategoriaCenario.TIMEOUT_LATENCIA:
+            assercoes.append(
+                f"A chamada excede o timeout explícito de {contrato.timeout_ms} ms."
+            )
+        elif contrato.status_esperado is not None:
+            assercoes.append(
+                f"A resposta possui status HTTP {contrato.status_esperado}."
+            )
+        if "resposta_esperada" in contrato.model_fields_set:
+            assercoes.append("O corpo JSON corresponde à resposta declarada.")
+
+    objetivos = {
+        CategoriaCenario.FALHA_DEPENDENCIA_EXTERNA: (
+            "Validar a resposta controlada à falha explícita de uma dependência."
         ),
+        CategoriaCenario.TIMEOUT_LATENCIA: (
+            "Validar o comportamento temporal descrito no contrato explícito."
+        ),
+        CategoriaCenario.DADOS_MALFORMADOS: (
+            "Validar a rejeição dos dados inválidos declarados no contrato."
+        ),
+    }
+    return CenarioE2E(
+        id=f"E2E-{indice:03d}",
+        nome=contrato.nome or f"Cenário negativo {contrato.id}",
+        categoria=contrato.categoria,
+        objetivo=objetivos[contrato.categoria],
+        requisitos_origem=[item.id for item in entrada.requisitos],
+        precondicoes=_precondicoes(entrada),
+        passos=passos,
+        dados_teste=_unicos(dados),
+        assercoes=_unicos(assercoes),
+        dependencias=_unicos(dependencias),
+        mocks_stubs=_unicos(mocks),
+        lacunas=lacunas,
+        pronto_para_automacao=validacao.pode_gerar_codigo and not lacunas,
+        contrato_negativo_id=contrato.id,
     )
 
 
@@ -296,7 +449,28 @@ def mapear_cenarios_e2e(
             )
         )
 
-    cenarios.append(_cenario_falha_externa(len(cenarios) + 1, entrada, validacao))
-    cenarios.append(_cenario_timeout(len(cenarios) + 1, entrada, validacao))
-    cenarios.append(_cenario_dados_malformados(len(cenarios) + 1, entrada, validacao))
+    geradores_padrao = {
+        CategoriaCenario.FALHA_DEPENDENCIA_EXTERNA: _cenario_falha_externa,
+        CategoriaCenario.TIMEOUT_LATENCIA: _cenario_timeout,
+        CategoriaCenario.DADOS_MALFORMADOS: _cenario_dados_malformados,
+    }
+    for categoria, gerador_padrao in geradores_padrao.items():
+        contratos = [
+            contrato
+            for contrato in entrada.contratos_negativos
+            if contrato.categoria == categoria
+        ]
+        if not contratos:
+            cenarios.append(gerador_padrao(len(cenarios) + 1, entrada, validacao))
+            continue
+        for contrato in contratos:
+            cenarios.append(
+                _cenario_negativo_explicito(
+                    len(cenarios) + 1,
+                    contrato,
+                    entrada,
+                    analise,
+                    validacao,
+                )
+            )
     return cenarios

@@ -10,6 +10,11 @@ from .subagents.receive_requirements import agent as receber_requisitos_agent
 from shared.tools.pytest_runner import executar_pytest_tool
 from shared.tools.doubt_tool import DoubtArtifactGenerator
 
+from .callbacks import (
+    bloquear_reexecucao_e2e,
+    emitir_resultado_e2e_sem_reinterpretacao,
+    registrar_resultado_e2e,
+)
 from .qa_prompt import QA_PROMPT
 
 agent = LlmAgent(
@@ -23,12 +28,15 @@ agent = LlmAgent(
     instruction=QA_PROMPT,
     tools=[
         AgentTool(agent=action_planner_agent),
-        AgentTool(agent=e2e_test_generator_agent, skip_summarization=True),
+        AgentTool(agent=e2e_test_generator_agent),
         FunctionTool(executar_pytest_tool),
         FunctionTool(DoubtArtifactGenerator.generate),
         AgentTool(agent=receber_requisitos_agent),
         AgentTool(agent=code_fix_agent),
     ],
+    before_tool_callback=bloquear_reexecucao_e2e,
+    after_tool_callback=registrar_resultado_e2e,
+    after_model_callback=emitir_resultado_e2e_sem_reinterpretacao,
 )
 
 # ADK framework expects this export

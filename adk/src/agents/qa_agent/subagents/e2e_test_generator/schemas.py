@@ -5,7 +5,7 @@ gerado a partir dos passos estruturados definidos neste módulo.
 """
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -40,11 +40,22 @@ class NivelConfianca(str, Enum):
     BAIXO = "baixo"
 
 
+class OrigemEntradaE2E(str, Enum):
+    AGENTE = "agente"
+    HUMANO = "humano"
+    DESCONHECIDA = "desconhecida"
+
+
 class CategoriaCenario(str, Enum):
     FLUXO_FELIZ = "fluxo_feliz"
     FALHA_DEPENDENCIA_EXTERNA = "falha_dependencia_externa"
     TIMEOUT_LATENCIA = "timeout_latencia"
     DADOS_MALFORMADOS = "dados_malformados"
+
+
+class SuperficieContratoNegativo(str, Enum):
+    WEB = "web"
+    API = "api"
 
 
 class CategoriaBloqueio(str, Enum):
@@ -86,6 +97,7 @@ class EntradaE2E(_SchemaBase):
     perfis_usuario: Any = None
     dados_teste: Any = None
     contratos_api: Any = None
+    contratos_negativos: Any = None
     ambiente_execucao: Any = None
     comando_execucao: str | None = None
     restricoes: Any = None
@@ -110,6 +122,83 @@ class EntradaE2E(_SchemaBase):
     @field_validator("base_url", "comando_execucao", mode="before")
     @classmethod
     def normalizar_textos_opcionais(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+
+class PoliticaExecucaoAutonomaE2E(_SchemaBase):
+    """Política fechada: o E2E nunca pausa aguardando uma pessoa."""
+
+    autonomo: Literal[True] = True
+    permitir_hitl: Literal[False] = False
+    max_tentativas: int = Field(default=2, ge=1, le=3)
+
+
+class ContextoRuntimeE2E(_SchemaBase):
+    """Fatos de runtime já conhecidos pelo agente produtor, quando existirem."""
+
+    tipo_sistema: TipoSistema | None = None
+    framework: str | None = Field(default=None, max_length=100)
+    base_url: str | None = Field(default=None, max_length=2_000)
+    rota_healthcheck: str | None = Field(default=None, max_length=2_000)
+    entrypoint: str | None = Field(default=None, max_length=1_000)
+    perfil_inicializacao: str | None = Field(default=None, max_length=100)
+    ambiente: dict[str, Any] = Field(default_factory=dict)
+
+
+class EntradaAutonomaE2E(_SchemaBase):
+    """Envelope único aceito igualmente de outro agente ou de uma pessoa."""
+
+    origem: OrigemEntradaE2E = OrigemEntradaE2E.DESCONHECIDA
+    id_execucao: str | None = Field(default=None, max_length=200)
+    requisitos: Any
+    codigo_fonte: Any = None
+    tipo_sistema: TipoSistema | None = None
+    framework_alvo: FrameworkAlvo = FrameworkAlvo.PLAYWRIGHT
+    base_url: str | None = Field(default=None, max_length=2_000)
+    rotas_ou_telas: Any = None
+    perfis_usuario: Any = None
+    dados_teste: Any = None
+    contratos_api: Any = None
+    contratos_negativos: Any = None
+    ambiente_execucao: Any = None
+    comando_execucao: str | None = Field(default=None, max_length=1_000)
+    restricoes: Any = None
+    workspace_projeto: str | None = Field(default=None, max_length=4_000)
+    contexto_runtime: ContextoRuntimeE2E = Field(default_factory=ContextoRuntimeE2E)
+    politica_execucao: PoliticaExecucaoAutonomaE2E = Field(
+        default_factory=PoliticaExecucaoAutonomaE2E
+    )
+    metadados: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("workspace_projeto", mode="before")
+    @classmethod
+    def normalizar_workspace(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @field_validator("tipo_sistema", mode="before")
+    @classmethod
+    def normalizar_tipo_sistema(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip().lower()
+            return value or None
+        return value
+
+    @field_validator("framework_alvo", mode="before")
+    @classmethod
+    def normalizar_framework(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return FrameworkAlvo.PLAYWRIGHT
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("base_url", "comando_execucao", mode="before")
+    @classmethod
+    def normalizar_textos_execucao(cls, value: Any) -> Any:
         if isinstance(value, str):
             value = value.strip()
             return value or None
@@ -163,6 +252,76 @@ class AlvoNavegacao(_SchemaBase):
     erros_automacao: list[str] = Field(default_factory=list)
 
 
+class MockRedeNegativoE2E(_SchemaBase):
+    """Resposta de rede simulada, restrita a uma rota relativa do sistema alvo."""
+
+    rota: str | None = Field(default=None, max_length=2_000)
+    metodo: str = Field(default="GET", min_length=1, max_length=20)
+    status_simulado: int | None = Field(default=None, ge=100, le=599)
+    resposta_simulada: Any = None
+    atraso_ms: int = Field(default=0, ge=0, le=120_000)
+
+    @field_validator("rota", mode="before")
+    @classmethod
+    def normalizar_rota(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @field_validator("metodo", mode="before")
+    @classmethod
+    def normalizar_metodo(cls, value: Any) -> Any:
+        return value.strip().upper() if isinstance(value, str) else value
+
+
+class ContratoNegativoE2E(_SchemaBase):
+    """Contrato explícito e declarativo para um único cenário negativo."""
+
+    id: str | None = Field(default=None, max_length=120)
+    nome: str | None = Field(default=None, max_length=300)
+    categoria: CategoriaCenario
+    superficie: SuperficieContratoNegativo
+    rota: str | None = Field(default=None, max_length=2_000)
+    metodo: str = Field(default="GET", min_length=1, max_length=20)
+    dependencia: str | None = Field(default=None, max_length=500)
+    payload: Any = None
+    status_esperado: int | None = Field(default=None, ge=100, le=599)
+    resposta_esperada: Any = None
+    espera_timeout: bool = False
+    timeout_ms: int | None = Field(default=None, ge=100, le=120_000)
+    dados_teste: dict[str, Any] = Field(default_factory=dict)
+    passos_automacao: list[PassoAutomacao] = Field(default_factory=list)
+    mock_rede: MockRedeNegativoE2E | None = None
+
+    @field_validator("categoria", mode="before")
+    @classmethod
+    def normalizar_categoria(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip().lower()
+        if value == CategoriaCenario.FLUXO_FELIZ.value:
+            raise ValueError("contratos_negativos não aceitam a categoria fluxo_feliz")
+        return value
+
+    @field_validator("superficie", mode="before")
+    @classmethod
+    def normalizar_superficie(cls, value: Any) -> Any:
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("id", "nome", "rota", "dependencia", mode="before")
+    @classmethod
+    def normalizar_textos_opcionais(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @field_validator("metodo", mode="before")
+    @classmethod
+    def normalizar_metodo(cls, value: Any) -> Any:
+        return value.strip().upper() if isinstance(value, str) else value
+
+
 class EntradaE2ENormalizada(_SchemaBase):
     requisitos: list[RequisitoNormalizado] = Field(default_factory=list)
     codigo_fonte: list[CodigoFonteNormalizado] = Field(default_factory=list)
@@ -173,6 +332,7 @@ class EntradaE2ENormalizada(_SchemaBase):
     perfis_usuario: list[str] = Field(default_factory=list)
     dados_teste: list[dict[str, Any]] = Field(default_factory=list)
     contratos_api: list[dict[str, Any]] = Field(default_factory=list)
+    contratos_negativos: list[ContratoNegativoE2E] = Field(default_factory=list)
     ambiente_execucao: dict[str, Any] = Field(default_factory=dict)
     comando_execucao: str | None = None
     restricoes: list[str] = Field(default_factory=list)
@@ -184,6 +344,39 @@ class AnaliseSuperficie(_SchemaBase):
     sinais_encontrados: list[str] = Field(default_factory=list)
     suportado_no_p0: bool
     resumo: str
+
+
+class RotaDescobertaE2E(_SchemaBase):
+    rota: str = Field(min_length=1, max_length=2_000)
+    metodo: str | None = Field(default=None, max_length=20)
+    origem: str = Field(min_length=1, max_length=1_000)
+
+
+class ContratoAPIDescobertoE2E(_SchemaBase):
+    rota: str = Field(min_length=1, max_length=2_000)
+    metodo: str = Field(min_length=1, max_length=20)
+    status_esperado: int = Field(default=200, ge=100, le=599)
+    resposta_esperada: Any = None
+    origem: str = Field(min_length=1, max_length=1_000)
+    confianca: float = Field(default=0, ge=0, le=1)
+
+
+class ProjetoInspecionadoE2E(_SchemaBase):
+    """Resultado somente-leitura da inspeção determinística do código/projeto."""
+
+    framework: str = "desconhecido"
+    tipo_sistema: TipoSistema = TipoSistema.DESCONHECIDO
+    linguagens: list[str] = Field(default_factory=list)
+    entrypoint: str | None = None
+    perfil_inicializacao: str | None = None
+    comando_inicializacao_sugerido: list[str] = Field(default_factory=list)
+    rotas: list[RotaDescobertaE2E] = Field(default_factory=list)
+    contratos_api: list[ContratoAPIDescobertoE2E] = Field(default_factory=list)
+    arquivos_analisados: list[str] = Field(default_factory=list)
+    sinais_encontrados: list[str] = Field(default_factory=list)
+    confianca: float = Field(default=0, ge=0, le=1)
+    limites_atingidos: list[str] = Field(default_factory=list)
+    bloqueios: list[str] = Field(default_factory=list)
 
 
 class BloqueioE2E(_SchemaBase):
@@ -219,6 +412,7 @@ class CenarioE2E(_SchemaBase):
     mocks_stubs: list[str] = Field(default_factory=list)
     lacunas: list[str] = Field(default_factory=list)
     pronto_para_automacao: bool = False
+    contrato_negativo_id: str | None = None
 
 
 class ResultadoExecucaoE2E(_SchemaBase):
