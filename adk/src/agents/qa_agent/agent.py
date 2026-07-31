@@ -11,6 +11,11 @@ from shared.cache import create_qa_agent_response_cache
 from shared.tools.pytest_runner import executar_pytest_tool
 from shared.tools.doubt_tool import DoubtArtifactGenerator
 
+from .callbacks import (
+    bloquear_reexecucao_e2e,
+    emitir_resultado_e2e_sem_reinterpretacao,
+    registrar_resultado_e2e,
+)
 from .qa_prompt import QA_PROMPT
 
 _qa_cache = create_qa_agent_response_cache(prompt_text=QA_PROMPT)
@@ -26,15 +31,21 @@ agent = LlmAgent(
     instruction=QA_PROMPT,
     tools=[
         AgentTool(agent=action_planner_agent),
-        AgentTool(agent=e2e_test_generator_agent, skip_summarization=True),
+        AgentTool(agent=e2e_test_generator_agent),
         FunctionTool(executar_pytest_tool),
         FunctionTool(DoubtArtifactGenerator.generate),
         AgentTool(agent=receber_requisitos_agent),
         AgentTool(agent=code_fix_agent),
     ],
+<<<<<<< HEAD
     before_model_callback=_qa_cache.before_model_callback,
     after_model_callback=_qa_cache.after_model_callback,
     on_model_error_callback=_qa_cache.on_model_error_callback,
+=======
+    before_tool_callback=bloquear_reexecucao_e2e,
+    after_tool_callback=registrar_resultado_e2e,
+    after_model_callback=emitir_resultado_e2e_sem_reinterpretacao,
+>>>>>>> origin/feature/time3-testes
 )
 
 # ADK framework expects this export

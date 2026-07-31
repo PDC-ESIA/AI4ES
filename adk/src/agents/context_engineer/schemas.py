@@ -2,10 +2,8 @@
 
 Define MacroContext (contexto global do épico), Contract (fronteiras de I/O
 de cada task) e Task (Context Window completo para o coder).
-
 Portado de feat/me2/coding_squad (Time 4).
 """
-
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -40,10 +38,28 @@ class Contract(BaseModel):
     interfaces: Optional[str | dict[str, Any]] = Field(
         default=None,
         description=(
-            "Assinatura de interface/contrato que deve ser respeitado. "
-            "Aceita texto livre ou objeto estruturado."
+            "Assinatura(s) de interface/contrato que devem ser respeitadas. "
+            "Aceita str única, dict (chave: valor) ou list[str] na entrada; "
+            "sempre normalizado para list[str] internamente."
         ),
     )
+
+    @field_validator("interfaces", mode="before")
+    @classmethod
+    def _coerce_interfaces(cls, v: Any) -> Optional[list[str]]:
+        """Normaliza str/dict/list em list[str] antes da validação de tipo."""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return [v]
+        if isinstance(v, dict):
+            return [f"{chave}: {valor}" for chave, valor in v.items()]
+        if isinstance(v, list):
+            return [item if isinstance(item, str) else str(item) for item in v]
+        raise TypeError(
+            f"interfaces deve ser str, dict, list[str] ou None — "
+            f"recebido {type(v).__name__}"
+        )
 
 
 class Task(BaseModel):

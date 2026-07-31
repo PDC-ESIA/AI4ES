@@ -1,6 +1,7 @@
 """Normalização determinística das entradas do gerador E2E."""
 
 import json
+import re
 from pathlib import PurePath
 from typing import Any
 
@@ -9,6 +10,7 @@ from pydantic import ValidationError
 from ..schemas import (
     AlvoNavegacao,
     CodigoFonteNormalizado,
+    ContratoNegativoE2E,
     EntradaE2E,
     EntradaE2ENormalizada,
     LocalizadorPlaywright,
@@ -17,6 +19,13 @@ from ..schemas import (
 )
 
 _MAX_TOTAL_CARACTERES = 500_000
+_MAX_REQUISITOS = 100
+_MAX_ARQUIVOS_CODIGO = 200
+_MAX_ALVOS = 50
+_MAX_PASSOS_POR_ALVO = 100
+_MAX_CONTRATOS_API = 100
+_MAX_CONTRATOS_NEGATIVOS = 100
+_MAX_CONJUNTOS_DADOS = 100
 
 
 def _tentar_decodificar_json(value: Any) -> Any:
@@ -381,6 +390,16 @@ def _inferir_linguagem(nome: str) -> str | None:
     }.get(extensao)
 
 
+def _nome_codigo_textual(conteudo: str, indice: int) -> str:
+    """Atribui nome técnico somente quando o framework é inequívoco no código."""
+
+    if re.search(r"\bFastAPI\s*\(", conteudo):
+        return "main.py"
+    if re.search(r"\bFlask\s*\(", conteudo):
+        return "app.py"
+    return f"codigo_fonte_{indice}.txt"
+
+
 def _normalizar_codigo_fonte(raw: Any) -> list[CodigoFonteNormalizado]:
     raw = _tentar_decodificar_json(raw)
     if raw in (None, "", [], {}):
@@ -392,10 +411,12 @@ def _normalizar_codigo_fonte(raw: Any) -> list[CodigoFonteNormalizado]:
         if isinstance(item, str):
             conteudo = item.strip()
             if conteudo:
+                nome = _nome_codigo_textual(conteudo, indice)
                 codigos.append(
                     CodigoFonteNormalizado(
-                        nome=f"codigo_fonte_{indice}.txt",
+                        nome=nome,
                         conteudo=conteudo,
+                        linguagem=_inferir_linguagem(nome),
                     )
                 )
             continue
@@ -441,6 +462,58 @@ def _normalizar_lista_objetos(raw: Any) -> list[dict[str, Any]]:
     return normalizados
 
 
+def _normalizar_contratos_negativos(raw: Any) -> list[ContratoNegativoE2E]:
+    raw = _tentar_decodificar_json(raw)
+    if raw in (None, "", [], {}):
+        return []
+    itens = raw if isinstance(raw, list) else [raw]
+    contratos: list[ContratoNegativoE2E] = []
+    ids: set[str] = set()
+    for indice, item in enumerate(itens, start=1):
+        if isinstance(item, ContratoNegativoE2E):
+            atualizacoes: dict[str, str] = {}
+            if item.id is None:
+                atualizacoes["id"] = f"NEG-{indice:03d}"
+            if item.nome is None:
+                atualizacoes["nome"] = (
+                    f"Cenário negativo explícito "
+                    f"{atualizacoes.get('id') or item.id}"
+                )
+            contrato = item.model_copy(update=atualizacoes)
+            if contrato.id in ids:
+                raise ValueError(f"ID de contrato negativo duplicado: {contrato.id}.")
+            ids.add(contrato.id)
+            contratos.append(contrato)
+            continue
+        if not isinstance(item, dict):
+            raise ValueError(
+                f"Contrato negativo {indice} deve ser um objeto JSON estruturado."
+            )
+        payload = dict(item)
+        if payload.get("id") in (None, ""):
+            payload["id"] = f"NEG-{indice:03d}"
+        if payload.get("nome") in (None, ""):
+            payload["nome"] = f"Cenário negativo explícito {payload.get('id')}"
+        try:
+            contrato = ContratoNegativoE2E.model_validate(payload)
+        except ValidationError as exc:
+            campos = ", ".join(
+                ".".join(str(parte) for parte in erro["loc"])
+                for erro in exc.errors(include_url=False)
+            )
+            raise ValueError(
+                f"Contrato negativo {indice} inválido nos campos: "
+                f"{campos or 'não identificados'}."
+            ) from exc
+        if contrato.id is None:
+            raise ValueError(f"Contrato negativo {indice} ficou sem ID.")
+        if contrato.id in ids:
+            raise ValueError(f"ID de contrato negativo duplicado: {contrato.id}.")
+        ids.add(contrato.id)
+        contratos.append(contrato)
+    return contratos
+
+
 def _normalizar_ambiente(raw: Any) -> dict[str, Any]:
     raw = _tentar_decodificar_json(raw)
     if raw in (None, "", {}):
@@ -453,8 +526,58 @@ def _normalizar_ambiente(raw: Any) -> dict[str, Any]:
 def _validar_limite(entrada: EntradaE2ENormalizada) -> None:
     total = sum(len(item.conteudo) for item in entrada.requisitos)
     total += sum(len(item.conteudo) for item in entrada.codigo_fonte)
+    total += len(
+        json.dumps(
+            {
+                "rotas_ou_telas": [
+                    item.model_dump(mode="json")
+                    for item in entrada.rotas_ou_telas
+                ],
+                "dados_teste": entrada.dados_teste,
+                "contratos_api": entrada.contratos_api,
+                "contratos_negativos": [
+                    item.model_dump(mode="json")
+                    for item in entrada.contratos_negativos
+                ],
+            },
+            ensure_ascii=False,
+            default=str,
+        )
+    )
     if total > _MAX_TOTAL_CARACTERES:
         raise ValueError("Entrada E2E excede o limite de 500.000 caracteres para o P0.")
+    limites = {
+        "requisitos": (len(entrada.requisitos), _MAX_REQUISITOS),
+        "arquivos de código": (len(entrada.codigo_fonte), _MAX_ARQUIVOS_CODIGO),
+        "rotas/telas": (len(entrada.rotas_ou_telas), _MAX_ALVOS),
+        "contratos API": (len(entrada.contratos_api), _MAX_CONTRATOS_API),
+        "contratos negativos": (
+            len(entrada.contratos_negativos),
+            _MAX_CONTRATOS_NEGATIVOS,
+        ),
+        "conjuntos de dados": (len(entrada.dados_teste), _MAX_CONJUNTOS_DADOS),
+    }
+    excedidos = [
+        f"{nome}: {quantidade}/{limite}"
+        for nome, (quantidade, limite) in limites.items()
+        if quantidade > limite
+    ]
+    for alvo in entrada.rotas_ou_telas:
+        if len(alvo.passos_automacao) > _MAX_PASSOS_POR_ALVO:
+            excedidos.append(
+                f"passos em '{alvo.nome}': "
+                f"{len(alvo.passos_automacao)}/{_MAX_PASSOS_POR_ALVO}"
+            )
+    for contrato in entrada.contratos_negativos:
+        if len(contrato.passos_automacao) > _MAX_PASSOS_POR_ALVO:
+            excedidos.append(
+                f"passos no contrato negativo '{contrato.id}': "
+                f"{len(contrato.passos_automacao)}/{_MAX_PASSOS_POR_ALVO}"
+            )
+    if excedidos:
+        raise ValueError(
+            "Entrada E2E excede limites estruturais: " + "; ".join(excedidos)
+        )
 
 
 def normalizar_entrada_e2e(
@@ -477,6 +600,9 @@ def normalizar_entrada_e2e(
         perfis_usuario=_normalizar_lista_textos(entrada_validada.perfis_usuario),
         dados_teste=_normalizar_lista_objetos(entrada_validada.dados_teste),
         contratos_api=_normalizar_lista_objetos(entrada_validada.contratos_api),
+        contratos_negativos=_normalizar_contratos_negativos(
+            entrada_validada.contratos_negativos
+        ),
         ambiente_execucao=_normalizar_ambiente(entrada_validada.ambiente_execucao),
         comando_execucao=entrada_validada.comando_execucao,
         restricoes=_normalizar_lista_textos(entrada_validada.restricoes),
