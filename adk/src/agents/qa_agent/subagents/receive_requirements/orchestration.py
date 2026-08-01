@@ -122,7 +122,7 @@ async def _processar_todos_em_paralelo(
 
 
 async def _processar_artefato(artefato: dict) -> dict:
-    """Processa单个 artefato de requisito gerando teste pytest.
+    """Processa um único artefato de requisito gerando teste pytest.
 
     Args:
         artefato: Dicionário com id_artefato, tipo, conteudo, modulo, criticidade.

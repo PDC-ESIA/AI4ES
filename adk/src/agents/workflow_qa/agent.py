@@ -49,11 +49,11 @@ def _emit_qa_manifest(callback_context) -> "EventActions":
                     )
                 )
 
-    # Código de teste em tests/<slug>/test_<slug>.py
-    tests_dir = root / "tests"
+    # Código de teste em tests/inputs/<slug>/test_<slug>.py
+    tests_dir = root / "tests" / "inputs"
     if tests_dir.exists():
         for slug_dir in sorted(tests_dir.iterdir()):
-            if not slug_dir.is_dir() or slug_dir.name == "inputs":
+            if not slug_dir.is_dir():
                 continue
             test_file = slug_dir / f"test_{slug_dir.name}.py"
             if test_file.exists():

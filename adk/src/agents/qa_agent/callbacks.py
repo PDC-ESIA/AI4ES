@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from google.adk.agents.context import Context
-from google.adk.models import LlmResponse
+from google.adk.models.llm_response import LlmResponse
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
@@ -80,10 +80,11 @@ def emitir_resultado_e2e_sem_reinterpretacao(
         update={
             "content": types.Content(
                 role="model",
-                parts=[
-                    types.Part.from_text(
-                        text=f"Resultado E2E terminal:\n\n```json\n{texto_json}\n```"
-                    )
+                parts=[types.Part.from_text(text=texto_json)],
+            ),
+            "turn_complete": True,
+        }
+    )
                 ],
             ),
             "turn_complete": True,
