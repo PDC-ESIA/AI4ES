@@ -216,5 +216,5 @@ futuro).
 
 | Ação | Esforço estimado |
 |---|---|
-| R2 — confirmar com o time se `tool_preparar_commit`/`tool_confirmar_commit`/`trava_seguranca_git_commit` têm uso futuro planejado; se não, remover de `git.py` e dos re-exports (`Vshared/tools/__init__.py`, `agent_factory.py`) | ~30 min (código) + tempo de alinhamento com o time |
+| R2 — confirmar com o time se `tool_preparar_commit`/`tool_confirmar_commit` têm uso futuro planejado; se não, remover de `git.py` e dos re-exports (`shared/tools/__init__.py`, `agent_factory.py`) | ~30 min (código) + tempo de alinhamento com o time |
 | R1 — confirmar se as `tool_salvar_task`/`_tool_salvar_task_cr` são realmente redundantes | tempo de alinhamento com o time |
