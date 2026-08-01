@@ -7,6 +7,9 @@ Responsabilidade: ler, salvar, promover e listar artefatos em disco.
 Logging de operações delegado integralmente ao IOLogger (design_logger.py).
 """
 
+import json
+import os
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -29,6 +32,7 @@ PROTOTYPE_DIR = DESIGN_DIR / "prototypes"
 REPORT_DIR = DESIGN_DIR / "reports"
 DOUBT_DIR = DESIGN_DIR / "doubts"
 OFFICIAL_DIR = DESIGN_DIR / "entrega_final" # Sujeito a mudanças
+LOCKS_DIR = DESIGN_DIR / ".locks"
 
 TEMPLATE_DIR = ADK_DIR / "shared" / "templates"
 LOG_FILENAME = "io_operations.log"
@@ -277,6 +281,65 @@ def _find_existing_file(filename: str, dirs: Dict[str, Path], root: Path) -> "Pa
         candidate = (directory / filename).resolve()
         if _is_safe_path(candidate, root) and candidate.exists():
             return candidate
+    return None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Helpers Privados — Lock de Escrita
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# O lock é indexado pelo NOME do arquivo (alias de pasta é ignorado): o mesmo
+# nome resolve sempre para o mesmo lock, independente de como o especialista
+# referenciou a pasta. Locks vivem em LOCKS_DIR como arquivos JSON criados
+# atomicamente (O_CREAT | O_EXCL) — dois especialistas nunca obtêm o mesmo lock.
+# Leituras nunca consultam locks; apenas operações de escrita são controladas.
+
+
+def _lock_path(filename: str) -> Path:
+    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", filename)
+    return LOCKS_DIR / f"{safe_name}.lock"
+
+
+def _read_lock(lock_file: Path) -> "Dict[str, Any] | None":
+    """Retorna os metadados do lock ou None se o arquivo estiver livre."""
+    try:
+        return json.loads(lock_file.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (json.JSONDecodeError, OSError):
+        # Lock ilegível: trata como ocupado por dono desconhecido (conservador).
+        return {"owner": "desconhecido", "acquired_at": ""}
+
+
+def _check_write_permission(filename: str, caller: str | None) -> "Dict[str, Any] | None":
+    """
+    Valida se `caller` possui permissão de escrita (lock) sobre `filename`.
+
+    Retorna None quando autorizado, ou um dict de erro pronto para ser
+    devolvido ao agente quando a escrita deve ser bloqueada.
+    """
+    lock_info = _read_lock(_lock_path(filename))
+    if lock_info is None:
+        return {
+            "status": "blocked",
+            "error": (
+                f"Escrita bloqueada: nenhum lock ativo para '{filename}'. "
+                "Adquira permissão de escrita com acquire_lock (informando seu nome em caller) "
+                "antes de modificar o arquivo e libere-o com release_lock ao terminar."
+            ),
+            "filename": filename,
+        }
+    owner = lock_info.get("owner", "desconhecido")
+    if owner != (caller or ""):
+        return {
+            "status": "blocked",
+            "error": (
+                f"Escrita bloqueada: o arquivo '{filename}' está com lock de '{owner}'. "
+                f"Somente '{owner}' pode modificá-lo até liberar o lock via release_lock."
+            ),
+            "filename": filename,
+            "locked_by": owner,
+        }
     return None
 
 
@@ -559,6 +622,9 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown", b
 
     ⚠️  Sobrescreve o arquivo inteiro. Para acrescentar conteúdo, use append_artifact.
     ⚠️  Para corrigir uma seção específica de Markdown, use patch_section.
+    ⚠️  Requer lock de escrita: adquira-o antes com acquire_lock (informando seu nome
+        em caller) e libere-o com release_lock ao terminar. Escrita sem lock, ou com
+        lock pertencente a outro especialista, é bloqueada.
 
     Args:
         filename: Nome do arquivo, com ou sem alias de pasta.
@@ -572,10 +638,10 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown", b
                   raiz compartilhada do projeto (comportamento histórico).
 
     Returns:
-        dict com chaves: `status` ("ok" | "error"), `path` (str do
+        dict com chaves: `status` ("ok" | "blocked" | "error"), `path` (str do
         path final em sucesso), `versioned_backup` (str do path do
         backup criado, se houve; None caso contrário), `timestamp`
-        (ISO 8601). Em erro: `status="error"`, `error`, `filename`.
+        (ISO 8601). Em bloqueio ou erro: `error`, `filename`.
     """
     try:
         dirs = _resolve_dirs(base_dir)
@@ -585,6 +651,11 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown", b
         resolved_dir, filename, error = _resolve_path_arg(filename, dirs)
         if error:
             return {"status": "error", "error": error, "filename": filename}
+
+        denied = _check_write_permission(filename, caller)
+        if denied:
+            IOLogger.error("save_artifact", denied["error"], caller=caller)
+            return denied
 
         if resolved_dir is not None:
             target_dir = resolved_dir
@@ -907,6 +978,9 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown",
 
     ⚠️  Não cria backup. Para substituir o arquivo inteiro, use save_artifact.
     ⚠️  Para corrigir uma seção já escrita, use patch_section.
+    ⚠️  Requer lock de escrita: adquira-o antes com acquire_lock (informando seu nome
+        em caller) e libere-o com release_lock ao terminar. Escrita sem lock, ou com
+        lock pertencente a outro especialista, é bloqueada.
 
     Args:
         filename: Nome do arquivo, com ou sem alias de pasta.
@@ -921,6 +995,7 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown",
     Returns:
         Sucesso:  {"status": "ok", "path": "<caminho>",
                    "bytes_total": <tamanho total após append>, "timestamp": "<ISO 8601>"}
+        Bloqueio: {"status": "blocked", "error": "<motivo>", "filename": "<nome>"}
         Falha:    {"status": "error", "error": "<motivo>", "filename": "<nome>"}
     """
     try:
@@ -931,6 +1006,11 @@ def append_artifact(filename: str, content: str, caller: str | None = "unknown",
         resolved_dir, filename, error = _resolve_path_arg(filename, dirs)
         if error:
             return {"status": "error", "error": error, "filename": filename}
+
+        denied = _check_write_permission(filename, caller)
+        if denied:
+            IOLogger.error("append_artifact", denied["error"], caller=caller)
+            return denied
 
         if resolved_dir is not None:
             target_dir = resolved_dir
@@ -1018,6 +1098,9 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
         arquivo é preservado automaticamente. Se um for incluído por engano,
         é removido antes de gravar.
     ⚠️  Um backup automático é criado antes de qualquer alteração.
+    ⚠️  Requer lock de escrita: adquira-o antes com acquire_lock (informando seu nome
+        em caller) e libere-o com release_lock ao terminar. Escrita sem lock, ou com
+        lock pertencente a outro especialista, é bloqueada.
 
     DELIMITADOR DE SEÇÃO — detectado automaticamente, nunca hardcoded:
     Esta ferramenta é genérica e pode ser chamada por qualquer agente sobre
@@ -1061,6 +1144,11 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
         resolved_dir, filename, error = _resolve_path_arg(filename, dirs)
         if error:
             return {"status": "error", "error": error, "filename": filename}
+
+        denied = _check_write_permission(filename, caller)
+        if denied:
+            IOLogger.error("patch_section", denied["error"], caller=caller)
+            return denied
 
         if resolved_dir is not None:
             destination = (resolved_dir / filename).resolve()
@@ -1140,18 +1228,188 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Mocks
+# Lock de Escrita (Ferramentas do Agente)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def check_lock(filepath: str) -> dict:
-    """Mock: verifica se o arquivo está bloqueado por outro agente."""
-    return {"status": "ok", "locked": False, "filepath": filepath}
+def acquire_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Adquire o lock de escrita exclusivo de um arquivo para o especialista `caller`.
+
+    Enquanto o lock estiver ativo, somente o detentor pode modificar o arquivo
+    (save_artifact, append_artifact e patch_section são bloqueados para os demais).
+    A aquisição é atômica: dois especialistas nunca obtêm o mesmo lock ao mesmo
+    tempo. Leituras nunca são afetadas por locks.
+
+    Chamar novamente para um lock que você já possui é seguro (idempotente).
+
+    ⚠️  Ao terminar as modificações, libere o lock com release_lock.
+
+    Args:
+        filepath: Nome do arquivo, com ou sem alias de pasta.
+                  Exemplos: "analise_tecnica_HU-001.md"
+                            "PROTOTYPE/login.html"
+        caller:   OBRIGATÓRIO — nome do especialista que precisa escrever.
+                  Exemplo: "mermaid_specialist".
+
+    Returns:
+        Sucesso:  {"status": "ok", "locked": true, "owner": "<caller>", "filepath": "<nome>"}
+        Ocupado:  {"status": "blocked", "locked": true, "owner": "<outro>", "error": "<motivo>"}
+        Falha:    {"status": "error", "error": "<motivo>"}
+    """
+    try:
+        if not caller or caller.strip().lower() in ("", "unknown"):
+            return {
+                "status": "error",
+                "error": "Identificação obrigatória: informe em `caller` o nome do especialista que precisa do lock.",
+            }
+        caller = caller.strip()
+
+        _, filename, error = _resolve_path_arg(filepath)
+        if error:
+            return {"status": "error", "error": error}
+        if not filename:
+            return {"status": "error", "error": "Nome de arquivo vazio."}
+
+        _ensure_dirs()
+        lock_file = _lock_path(filename)
+        payload = json.dumps(
+            {"owner": caller, "filepath": filename, "acquired_at": datetime.now().isoformat()},
+            ensure_ascii=False,
+        )
+
+        try:
+            fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            current = _read_lock(lock_file) or {}
+            owner = current.get("owner", "desconhecido")
+            if owner == caller:
+                return {
+                    "status": "ok",
+                    "locked": True,
+                    "owner": caller,
+                    "filepath": filename,
+                    "msg": "Você já possuía o lock deste arquivo.",
+                }
+            return {
+                "status": "blocked",
+                "locked": True,
+                "owner": owner,
+                "filepath": filename,
+                "error": (
+                    f"Lock negado: '{filename}' já está com lock de '{owner}'. "
+                    "Aguarde a liberação via release_lock pelo detentor."
+                ),
+            }
+
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(payload)
+
+        IOLogger.lock(filename, caller=caller)
+        return {"status": "ok", "locked": True, "owner": caller, "filepath": filename}
+
+    except Exception as e:
+        IOLogger.error("acquire_lock", str(e), caller=caller)
+        return {"status": "error", "error": str(e)}
 
 
-def release_lock(filepath: str) -> dict:
-    """Mock: libera o lock do arquivo após escrita."""
-    return {"status": "ok", "released": True, "filepath": filepath}
+def check_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Verifica se um arquivo está com lock de escrita ativo e quem é o detentor.
 
+    Operação apenas de consulta — não adquire nem libera o lock.
+
+    Args:
+        filepath: Nome do arquivo, com ou sem alias de pasta.
+        caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
+
+    Returns:
+        Livre:    {"status": "ok", "locked": false, "filepath": "<nome>"}
+        Ocupado:  {"status": "ok", "locked": true, "owner": "<detentor>",
+                   "acquired_at": "<ISO 8601>", "filepath": "<nome>"}
+        Falha:    {"status": "error", "error": "<motivo>"}
+    """
+    try:
+        _, filename, error = _resolve_path_arg(filepath)
+        if error:
+            return {"status": "error", "error": error}
+        if not filename:
+            return {"status": "error", "error": "Nome de arquivo vazio."}
+
+        lock_info = _read_lock(_lock_path(filename))
+        if lock_info is None:
+            return {"status": "ok", "locked": False, "filepath": filename}
+        return {
+            "status": "ok",
+            "locked": True,
+            "owner": lock_info.get("owner", "desconhecido"),
+            "acquired_at": lock_info.get("acquired_at", ""),
+            "filepath": filename,
+        }
+
+    except Exception as e:
+        IOLogger.error("check_lock", str(e), caller=caller)
+        return {"status": "error", "error": str(e)}
+
+
+def release_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Libera o lock de escrita de um arquivo. Somente o detentor pode liberar.
+
+    Use sempre após concluir as modificações em um arquivo cujo lock você
+    adquiriu com acquire_lock, para permitir que outros especialistas escrevam.
+
+    Args:
+        filepath: Nome do arquivo, com ou sem alias de pasta.
+        caller:   OBRIGATÓRIO — nome do especialista que possui o lock.
+
+    Returns:
+        Sucesso:  {"status": "ok", "released": true, "filepath": "<nome>"}
+        Já livre: {"status": "ok", "released": false, "filepath": "<nome>", "msg": "<aviso>"}
+        Negado:   {"status": "blocked", "released": false, "owner": "<detentor>", "error": "<motivo>"}
+        Falha:    {"status": "error", "error": "<motivo>"}
+    """
+    try:
+        _, filename, error = _resolve_path_arg(filepath)
+        if error:
+            return {"status": "error", "error": error}
+        if not filename:
+            return {"status": "error", "error": "Nome de arquivo vazio."}
+
+        lock_file = _lock_path(filename)
+        lock_info = _read_lock(lock_file)
+        if lock_info is None:
+            return {
+                "status": "ok",
+                "released": False,
+                "filepath": filename,
+                "msg": "Nenhum lock ativo — o arquivo já estava livre.",
+            }
+
+        owner = lock_info.get("owner", "desconhecido")
+        if owner != (caller or "").strip():
+            return {
+                "status": "blocked",
+                "released": False,
+                "owner": owner,
+                "filepath": filename,
+                "error": (
+                    f"Liberação negada: o lock de '{filename}' pertence a '{owner}'. "
+                    "Somente o detentor pode liberá-lo."
+                ),
+            }
+
+        lock_file.unlink(missing_ok=True)
+        IOLogger.unlock(filename, caller=caller)
+        return {"status": "ok", "released": True, "filepath": filename}
+
+    except Exception as e:
+        IOLogger.error("release_lock", str(e), caller=caller)
+        return {"status": "error", "error": str(e)}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Mocks
+# ──────────────────────────────────────────────────────────────────────────────
 
 def list_versions(filepath: str) -> dict:
     """Mock: lista versões anteriores de um artefato."""

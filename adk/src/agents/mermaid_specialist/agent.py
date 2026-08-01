@@ -3,7 +3,15 @@ from google.genai import types
 
 from shared.agent_factory import create_se_agent
 from shared.tools.design_date import current_date
-from shared.tools.design_filesystem import save_artifact, list_design_files, append_artifact, patch_section
+from shared.tools.design_filesystem import (
+    save_artifact,
+    list_design_files,
+    append_artifact,
+    patch_section,
+    acquire_lock,
+    check_lock,
+    release_lock,
+)
 from src.agents.io_agent.agent import agent as io_agent
 from . import prompt
 
@@ -17,7 +25,10 @@ agent = create_se_agent(
         save_artifact,
         list_design_files,
         append_artifact,
-        patch_section
+        patch_section,
+        acquire_lock,
+        check_lock,
+        release_lock,
     ],
     agent_subdir="mermaid_specialist",
     generate_content_config=types.GenerateContentConfig(
