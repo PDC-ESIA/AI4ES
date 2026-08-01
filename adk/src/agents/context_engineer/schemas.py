@@ -7,7 +7,7 @@ Atualizado para incluir rastreabilidade entre requisitos, design e tasks
 conforme issue #299.
 """
  
-from typing import Any, Optional
+from typing import Any
 from pydantic import BaseModel, Field, field_validator
  
  
