@@ -75,7 +75,7 @@ class TraceabilityMatrixItem(BaseModel):
     lacuna_descricao: Optional[str] = Field(None, description="Descrição da lacuna encontrada, quando lacuna_detectada=True")
 
 class TraceabilityMatrix(BaseModel):
-    id: str = Field(..., description="ID da matriz (padrão AAAA-999, ex: MTR-001)")
+    id: str = Field(..., description="ID da matriz (padrão PREFIXO-999, ex: MTR-001)")
     itens: List[TraceabilityMatrixItem] = Field(default_factory=list, description="Linhas da matriz, uma por artefato rastreado")
     lacunas_candidatas_doubt: List[str] = Field(
         default_factory=list,
