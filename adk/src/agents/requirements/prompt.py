@@ -95,7 +95,7 @@ Regra obrigatória sobre lacunas de rastreabilidade:
   - Rastreabilidade **backward**: de cada artefato (ex.: RF) até seu(s) artefato(s) de origem (ex.: a HU da qual ele deriva).
   - Rastreabilidade **forward**: de cada artefato de origem (ex.: HU) até todos os artefatos que ele originou (ex.: RFs, UCs, RNs relacionados).
 - Gere DOIS formatos do mesmo artefato, sempre consistentes entre si:
-  1. **JSON** — preenchendo o campo `traceability_matrix` do schema `AnalystOutput` (objeto `TraceabilityMatrix`, com itens `TraceabilityMatrixItem` contendo os campos genéricos `id_agente_origem`, `tipo_relacao` e listas de `TraceabilityLink` para as rastreabilidades forward e backward). Este JSON é o contrato de integração para consumo futuro por outros agentes (ex.: Design, Codificação, Testes).
+  1. **JSON** — preenchendo o campo `traceability_matrix` do schema `AnalystOutput` (objeto `TraceabilityMatrix`, com itens `TraceabilityMatrixItem` contendo o campo genérico `id_agente_origem` e listas de `TraceabilityLink` (cada link contém `tipo_relacao`) para as rastreabilidades forward e backward). Este JSON é o contrato de integração para consumo futuro por outros agentes (ex.: Design, Codificação, Testes).
   2. **Markdown** — a mesma informação, em formato de tabela, atribuída ao campo `markdown` do objeto `TraceabilityMatrix` e persistida como artefato via `tool_salvar_artefato_requisito`, com tipo diferente de GLOSSARIO para que seja salva em `Outros/`.
 - Use um ID próprio para a matriz no padrão AAAA-999 (ex.: MTR-001).
 - A tabela Markdown deve conter, no mínimo, as colunas:
