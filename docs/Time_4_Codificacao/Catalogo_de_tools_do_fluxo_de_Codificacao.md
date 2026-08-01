@@ -209,6 +209,12 @@ futuro).
 |---|---|---|---|
 | R1 | `tool_salvar_task` × `_tool_salvar_task_cr` (`context_engineer_tools.py`) | Corpo idêntico — validação via `SalvarTaskSchema`, `json.loads`, grava `<task_id>.json`. A única diferença é a chave fixa passada a `get_agent_workspace(...)`: `"context_engineer"` numa, `"cr_context_engineer"` na outra. | **Unificar** numa única função parametrizada (`tool_salvar_task(task_id, task_json, workspace_key="context_engineer")`), com dois `FunctionTool` distintos fazendo bind do parâmetro por closure — mesmo padrão já usado pra `base_dir`/`cwd` no resto do repositório. |
 | R2 | `tool_git_commit` × par `tool_preparar_commit`/`tool_confirmar_commit` (`git.py`) | Duas formas de commitar com aprovação: a primeira usa o mecanismo nativo do ADK (`FunctionTool(tool_git_commit, require_confirmation=True)`, já em uso pelo `coder`); a segunda é um protocolo prepare/confirm implementado à mão, que **nenhum agente usa hoje**. | **Manter uma, descontinuar a outra** — como o gate de aprovação do `tool_git_commit` via `require_confirmation=True` já resolve o caso de uso, o par `tool_preparar_commit`/`tool_confirmar_commit` é candidato a remoção. Confirmar com o time se há plano de uso antes de remover (pode ter sido feito pra um fluxo HITL que não chegou a ser ligado). |
-| R3 | `tool_criar_arquivo` × `tool_salvar_relatorio` (`filesystem_coding.py`) | Ambas escrevem texto em disco a partir de `conteudo`/`base_dir`. Validação diferente: `tool_criar_arquivo` checa whitelist de extensão + diretório protegido; `tool_salvar_relatorio` exige `.md` via `RelatorioSchema`. `.md` já está na whitelist de `tool_criar_arquivo`. | **Manter ambas com justificativa técnica** — a validação de `tool_salvar_relatorio` é mais estrita (só markdown, sem checar diretório protegido) e o nome comunica intenção (relatório vs código) pro LLM escolher a tool certa. Redundância parcial, baixa prioridade. |
 
 ---
+
+## Plano de ação
+
+| Ação | Esforço estimado |
+|---|---|
+| R2 — confirmar com o time se `tool_preparar_commit`/`tool_confirmar_commit`/`trava_seguranca_git_commit` têm uso futuro planejado; se não, remover de `git.py` e dos re-exports (`Vshared/tools/__init__.py`, `agent_factory.py`) | ~30 min (código) + tempo de alinhamento com o time |
+| R1 — confirmar se as `tool_salvar_task`/`_tool_salvar_task_cr` são realmente redundantes | tempo de alinhamento com o time |
