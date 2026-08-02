@@ -49,6 +49,11 @@ env/
 ENV/
 adk/.venv-docker/
 
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+
 # Google ADK
 .adk/
 .adk/sessions/

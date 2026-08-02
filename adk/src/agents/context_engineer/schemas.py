@@ -35,7 +35,7 @@ class Contract(BaseModel):
         default_factory=list,
         description="Arquivos que o Coder deve CRIAR ou MODIFICAR",
     )
-    interfaces: Optional[list[str]] = Field(
+    interfaces: Optional[str | dict[str, Any]] = Field(
         default=None,
         description=(
             "Assinatura(s) de interface/contrato que devem ser respeitadas. "
