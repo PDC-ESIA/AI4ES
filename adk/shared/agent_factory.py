@@ -41,7 +41,8 @@ _FILESYSTEM_TOOL_NAMES = {
     "tool_salvar_artefato_requisito",
     "gerar_doubt_artifact",
     "tool_ask_clarification",
-    # Time 2 (Design) — shared/tools/design_filesystem.py
+    "ler_artefatos_gerados",
+    # Time 2 (Design) — design_filesystem.py
     "save_artifact",
     "append_artifact",
     "append_architect_section",
