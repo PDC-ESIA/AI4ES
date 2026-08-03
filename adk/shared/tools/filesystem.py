@@ -204,3 +204,59 @@ def tool_listar_workspace(caminho: str = ".", base_dir: Optional[str] = None) ->
         return sorted(p.name for p in path.iterdir())
     except Exception as e:
         return f"Erro ao listar '{caminho}': {e}"
+
+
+# Mapeamento prefixo de ID → subpasta de leitura (espelha _SUBPASTAS_BASE_DIR).
+_PREFIXO_SUBPASTA: dict[str, str] = {
+    "HU":  "HUs",
+    "RF":  "RFs",
+    "RNF": "RNFs",
+    "RN":  "RNs",
+}
+
+
+def ler_artefatos_gerados(ids: str, base_dir: Optional[str] = None) -> str:
+    """Lê o conteúdo de múltiplos artefatos de requisitos pelos seus IDs.
+
+    Use para inspecionar artefatos persistidos pelo requirements_agent antes
+    de validá-los ou referenciá-los. O tipo do artefato é deduzido
+    automaticamente do prefixo do ID (HU → HUs/, RF → RFs/, etc.).
+
+    Args:
+        ids: IDs dos artefatos separados por vírgula
+            (ex: "HU-001,RF-001,RNF-002"). Espaços extras são ignorados.
+        base_dir: Diretório base do agente (injetado pela factory). Quando
+            None, retorna erro — a tool é workspace-bound por design.
+
+    Returns:
+        str com o conteúdo de cada artefato encontrado, separados por
+        marcadores "=== <ID> ===" e "=== FIM <ID> ===". IDs não
+        encontrados são reportados individualmente. Retorna "Erro:" se
+        base_dir ausente ou ids vazio.
+    """
+    if base_dir is None:
+        return "Erro: ler_artefatos_gerados requer base_dir (workspace do agente)."
+
+    ids_limpos = [i.strip() for i in ids.split(",") if i.strip()]
+    if not ids_limpos:
+        return "Erro: nenhum ID informado."
+
+    base = Path(base_dir).resolve()
+    partes: list[str] = []
+
+    for id_req in ids_limpos:
+        prefixo = id_req.split("-")[0].upper() if "-" in id_req else ""
+        subdir = _PREFIXO_SUBPASTA.get(prefixo, "Outros")
+        caminho = base / subdir / f"{id_req}.md"
+
+        if not caminho.is_file():
+            partes.append(f"=== {id_req} ===\nArtefato não encontrado em {caminho}.\n=== FIM {id_req} ===")
+            continue
+
+        try:
+            conteudo = caminho.read_text(encoding="utf-8")
+            partes.append(f"=== {id_req} ===\n{conteudo}\n=== FIM {id_req} ===")
+        except Exception as e:
+            partes.append(f"=== {id_req} ===\nErro ao ler: {e}\n=== FIM {id_req} ===")
+
+    return "\n\n".join(partes)
