@@ -74,6 +74,14 @@ class IOLogger:
         _write(_make_string("PRMT", filename, caller=caller))
 
     @staticmethod
+    def lock(filename: str, *, caller: str | None = None) -> None:
+        _write(_make_string("LOCK", filename, caller=caller))
+
+    @staticmethod
+    def unlock(filename: str, *, caller: str | None = None) -> None:
+        _write(_make_string("UNLCK", filename, caller=caller))
+
+    @staticmethod
     def erase(directory: str, *, caller: str | None = None) -> None:
         _write(_make_string("ERASE", directory, caller=caller, detail="dir "))
 

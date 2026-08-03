@@ -2,6 +2,7 @@ from shared.agent_factory import create_se_agent
 from shared.tools.design_date import current_date
 from shared.tools.design_filesystem import (
     save_artifact,
+    acquire_lock,
     check_lock,
     release_lock,
     list_versions,
@@ -27,6 +28,7 @@ agent = create_se_agent(
     instruction=prompt.instruction,
     tools=[
         save_artifact,
+        acquire_lock,
         check_lock,
         release_lock,
         list_versions,
