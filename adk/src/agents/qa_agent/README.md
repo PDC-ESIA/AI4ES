@@ -24,6 +24,7 @@ O QA Agent possui responsabilidades bem definidas focadas na automação de test
 
 - **Análise de Requisitos e Código:** Interpreta vários tipos de artefatos de requisitos (HU, RF, UC, RNF, RN), regras de negócio e código-fonte, mapeando os critérios de aceitação para testes.
 - **Geração Automática de Testes:** Cria de forma autônoma scripts de testes utilizando `pytest`, abrangendo testes unitários e casos de testes.
+- **Planejamento, geração e execução E2E:** O subagente `action_planner` é chamado diretamente como primeiro passo, escolhe a estratégia, autoriza o fluxo e produz o handoff. Depois, e somente quando selecionado no plano, `e2e_test_generator` materializa cenários, gera um arquivo `.spec.ts` e pode executá-lo localmente em Chromium headless.
 - **Execução e Validação:** Executa os testes gerados diretamente contra o ambiente local através da ferramenta `pytest_runner`.
 - **Autocorreção (Code Fix):** Através de seus subagentes (`action_planner`, `code_fix_agent`), ele planeja ações e tenta corrigir os códigos de teste gerados caso haja falhas na execução.
 - **Limites de Atuação:** O agente não implementa funcionalidades no código-fonte principal; sua atuação é estritamente limitada à criação, correção e execução do código de **testes**.
@@ -87,11 +88,13 @@ A validação é considerada bem-sucedida quando o agente gera os testes, execut
 - Arquivos de requisitos, como HU, RF, UC, RNF, RN, em Markdown (`.md`) ou formato equivalente.
 - Arquivos de código-fonte em Python (`.py`) correspondentes à funcionalidade a ser testada OU não para gerar casos de teste.
 - Prompt de instruções especificando quais níveis de teste e coberturas são desejadas.
+- Solicitação explícita de plano E2E, acompanhada quando possível de URL, rotas/telas, perfis, dados, contratos API e passos de automação estruturados.
 
 **Saídas:**
 - Arquivo de testes gerado automaticamente (ex: `test_autenticacao_auto.py`).
 - Logs de execução do `pytest` exibindo se os testes passaram ou falharam (relatório de cobertura).
 - Artefatos de dúvida (`DoubtArtifact`) caso o agente identifique falta de contexto ou ausência de arquivos anexados.
+- Plano E2E estruturado com cenários, nível de confiança e bloqueios; quando o contrato web estiver completo, arquivo Playwright `.spec.ts` no workspace.
 
 ---
 

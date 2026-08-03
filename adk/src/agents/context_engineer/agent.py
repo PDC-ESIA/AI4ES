@@ -7,7 +7,12 @@ composta com workspace binding — tool_salvar_task escreve em workspace/tasks/.
 from shared.agent_factory import create_se_agent
 
 from . import prompt, schemas
-from .tools import tool_salvar_task_adk
+from .tools import (
+    tool_salvar_task_adk,
+    tool_ler_requirements_adk,
+    tool_ler_design_adk,
+    tool_gerar_doubt_artifact_adk,
+)
 
 agent = create_se_agent(
     name="context_engineer",
@@ -15,6 +20,11 @@ agent = create_se_agent(
     instruction=prompt.instruction,
     output_key="tasks",
     output_schema=schemas.TasksOutput,
-    tools=[tool_salvar_task_adk],
+    tools=[
+        tool_salvar_task_adk,
+        tool_ler_requirements_adk,
+        tool_ler_design_adk,
+        tool_gerar_doubt_artifact_adk,
+    ],
     agent_subdir="context_engineer",
 )

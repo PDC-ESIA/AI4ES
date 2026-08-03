@@ -47,6 +47,7 @@ AGENT_DIRS: dict[str, str] = {
     "action_planner": "tests/planning",
     "code_fix_agent": "tests/fixes",
     "receive_requirements": "tests/inputs",
+    "e2e_test_generator": "tests/e2e",
     # Time 4 — Codificação
     "context_engineer": "tasks",
     "architect": "architecture",
@@ -61,6 +62,7 @@ AGENT_DIRS: dict[str, str] = {
     "cr_coder": "coder/src",
     "cr_executor": "coder/execution",
     "cr_reviewer": "coder/review",
+    "implementation_validator": "coder/validation",
     # Orquestração
     "orchestrator": "orchestrator",
     "pipeline": "pipeline",

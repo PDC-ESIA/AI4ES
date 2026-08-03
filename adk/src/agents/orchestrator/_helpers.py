@@ -8,6 +8,8 @@ de state, inspeção de event shape).
 from datetime import datetime, timezone
 from typing import Any
 
+from shared.manifest import PhaseManifest
+
 
 EMPTY_RETRY_PROMPT = (
     "Sua resposta anterior veio vazia. Por favor, reprocesse o pedido. "
@@ -174,3 +176,72 @@ def _build_function_response_payload(
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
         "checkpoint_id": checkpoint_id,
     }
+
+
+def _load_phase_manifests(state: dict[str, Any]) -> list[PhaseManifest]:
+    """Carrega e valida os manifestos de fase presentes no state."""
+    raw = state.get("phase_manifests", []) or []
+    return [PhaseManifest.model_validate(item) for item in raw]
+
+
+def _build_manifest_input(manifests: list[PhaseManifest]) -> str:
+    """Monta input leve com a lista de manifestos para o próximo pipeline.
+
+    O orquestrador dispatcher fino NUNCA abre os artefatos nem cola seu
+    conteúdo. Apenas repassa os metadados (phase, status, paths).
+    """
+    if not manifests:
+        return ""
+
+    linhas = ["Manifesto de Fase das fases anteriores:"]
+    for manifest in manifests:
+        linhas.append(f"\n## phase: {manifest.phase} (status: {manifest.status.value})")
+        if manifest.summary:
+            linhas.append(f"summary: {manifest.summary}")
+        if manifest.artifacts:
+            linhas.append("artifacts:")
+            for artefato in manifest.artifacts:
+                linhas.append(
+                    f"  - tipo={artefato.tipo} id={artefato.id} path={artefato.path}"
+                )
+        if manifest.doubts:
+            linhas.append("doubts:")
+            for duvida in manifest.doubts:
+                linhas.append(
+                    f"  - id={duvida.id} severidade={duvida.severidade} "
+                    f"bloqueante={duvida.bloqueante} path={duvida.path}"
+                )
+    return "\n".join(linhas)
+
+
+def _merge_state_delta(state: dict[str, Any], delta: dict[str, Any] | None) -> None:
+    """Aplica um state_delta vindo de um pipeline interno no state externo.
+
+    Faz merge de listas (como phase_manifests) concatenando novos itens.
+    """
+    if not delta:
+        return
+    for key, value in delta.items():
+        if key == "phase_manifests" and isinstance(value, list):
+            existing = state.get("phase_manifests", [])
+            if not isinstance(existing, list):
+                existing = []
+            # Evita duplicatas baseadas em (phase, ids dos artefatos).
+            existing_keys = {
+                (
+                    m.get("phase"),
+                    tuple(sorted(a.get("id") for a in m.get("artifacts", []))),
+                )
+                for m in existing
+            }
+            for item in value:
+                item_key = (
+                    item.get("phase"),
+                    tuple(sorted(a.get("id") for a in item.get("artifacts", []))),
+                )
+                if item_key not in existing_keys:
+                    existing.append(item)
+                    existing_keys.add(item_key)
+            state["phase_manifests"] = existing
+        else:
+            state[key] = value

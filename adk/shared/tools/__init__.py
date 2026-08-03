@@ -7,6 +7,7 @@ from .filesystem import (
     tool_salvar_artefato_requisito,
     tool_ler_workspace,
     tool_listar_workspace,
+    ler_artefatos_gerados,
 )
 # NOTE: `gerar_doubt_artifact` é reexportado de `doubt_generator_analista` para manter compatibilidade.
 from .hitl_tool import aguardar_aprovacao_humana
@@ -50,6 +51,7 @@ __all__ = [
     "run_search",
     "check_glossary",
     "add_to_glossary",
+    "ler_artefatos_gerados",
     "tool_ask_clarification_adk",
     "coletar_doubts_pendentes",
     "responder_doubt",
