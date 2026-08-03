@@ -97,4 +97,3 @@ class AnalystOutput(BaseModel):
     )
     doubt_generated: bool = Field(False, description="Indica se houve geração de Doubt Artifact")
     summary: str = Field(..., description="Resumo executivo do processamento")
-    
