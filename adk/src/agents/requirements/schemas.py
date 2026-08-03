@@ -81,7 +81,7 @@ class TraceabilityMatrix(BaseModel):
         default_factory=list,
         description="Lista de lacunas de rastreabilidade detectadas (ex: 'RF-005 sem HU de origem'), reportadas como candidatas a Doubt_Artifact"
     )
-    markdown: str = Field(..., description="Representação completa da matriz em formato Markdown (tabela), para persistência em Outros/")
+    markdown: str = Field(..., description="Representação completa da matriz em formato Markdown (tabela), persistida com tipo próprio RASTREABILIDADE no mesmo repositório estruturado dos demais artefatos")
 
 class AnalystOutput(BaseModel):
     status: str = Field(..., description="Status da execução: 'concluido' ou 'bloqueado'")
@@ -97,3 +97,4 @@ class AnalystOutput(BaseModel):
     )
     doubt_generated: bool = Field(False, description="Indica se houve geração de Doubt Artifact")
     summary: str = Field(..., description="Resumo executivo do processamento")
+    
