@@ -16,7 +16,7 @@ A coluna **Origem** traz o caminho do arquivo onde a função da tool está defi
 |---|---|
 | `filesystem_coding.py` | `tool_criar_arquivo`, `tool_ler_arquivo`, `tool_substituir_trecho`, `tool_salvar_relatorio` |
 | `git.py` | `tool_git_add`, `tool_git_commit`, `tool_git_checkout`, `tool_ler_diff`, `tool_preparar_commit`, `tool_confirmar_commit` |
-| `context_engineer_tools.py` | `tool_salvar_task`/`tool_salvar_task_adk` (canônica) + `_tool_salvar_task_cr`/`_tool_salvar_task_cr_adk` (variante do `cr_context_engineer`) |
+| `context_engineer_tools.py` | `tool_salvar_task`/`tool_salvar_task_adk` (canônica) + `tool_salvar_task_cr`/`tool_salvar_task_cr_adk` (variante do `cr_context_engineer`) + `tool_ler_requirements`, `tool_ler_design`, `tool_gerar_doubt_artifact` |
 | `review_tools.py` | Callbacks/helpers do `cr_reviewer`: `_inject_static_findings`, `_persist_review`, `_discover_coder_files`, `_format_findings_block`, `_bind` |
 | `harness_docker.py` | Helpers determinísticos de Docker (`_detect_entrypoint`, `_generate_dockerfile`, `_discover_main_route` etc.) — sucessor do antigo build/run embutido no executor |
 | `harness_execucao.py` | `executar_harness_validacao` / `executar_harness_tool` — os 9 estágios do harness de validação usados pelo `cr_executor`/`executor` |
@@ -27,7 +27,10 @@ A coluna **Origem** traz o caminho do arquivo onde a função da tool está defi
 
 | Tool | Origem | Entrada | Retorno | Descrição |
 |---|---|---|---|---|
-| `_tool_salvar_task_cr` (`FunctionTool` como `_tool_salvar_task_cr_adk`) | `adk/shared/tools/coding_tools/context_engineer_tools.py` | `task_id: str`, `task_json: str` | `dict {sucesso, erro, caminho, task_id} ou dict {sucesso, erro, caminho}` | Valida via `SalvarTaskSchema`, faz `json.loads` do conteúdo e grava `<task_id>.json` em `workspace_output/coder/tasks/`. Variante de `tool_salvar_task`, mudando só o diretório de destino. |
+| `tool_salvar_task_cr` (`FunctionTool` como `tool_salvar_task_cr_adk`) | `adk/shared/tools/coding_tools/context_engineer_tools.py` | `task_id: str`, `task_json: str` | `dict {sucesso, erro, caminho, task_id} ou dict {sucesso, erro, caminho}` | Valida via `SalvarTaskSchema`, faz `json.loads` do conteúdo e grava `<task_id>.json` em `workspace_output/coder/tasks/`. Variante de `tool_salvar_task`, mudando só o diretório de destino. |
+| `tool_ler_requirements` | `adk/shared/tools/coding_tools/context_engineer_tools.py` | — (sem parâmetros) | `dict {sucesso, artefatos, artefatos_minimos_presentes, artefatos_minimos_ausentes, tem_hu, erro}` | Lê todos os artefatos textuais de `requirements/` no workspace via `_ler_pasta_workspace`. Exige pelo menos 1 `RF-*.md` em `requirements/RFs/` (bloqueante); reporta `tem_hu` separadamente (ausência de HU não bloqueia sozinha). |
+| `tool_ler_design` | `adk/shared/tools/coding_tools/context_engineer_tools.py` | — (sem parâmetros) | `dict {sucesso, artefatos, artefatos_minimos_presentes, artefatos_minimos_ausentes, erro}` | Lê todos os artefatos textuais de `design/` no workspace. Exige pelo menos 1 `analise_tecnica_*.md`; se ausente, `artefatos_minimos_presentes=False` para o agente gerar Doubt Artifact. |
+| `tool_gerar_doubt_artifact` | `adk/shared/tools/coding_tools/context_engineer_tools.py` | `titulo: str`, `fase_bloqueada: str`, `descricao: str`, `acao_necessaria: str`, `nome_arquivo: str = "Doubt_Artifact_context_engineer.md"` | `dict {sucesso, erro, caminho, titulo, fase_bloqueada, status}` | Doubt Artifact específico do `context_engineer` (paralelo ao `tool_ask_clarification` genérico, que este agente não usa) — grava direto na **raiz do workspace** (`get_workspace_root()`, sem `base_dir`/bind). Usado quando `requirements/`/`design/` estão ausentes, incompletos, ou inconsistentes entre si. |
 ---
 
 ## 2. `cr_coder` (`cr_coder.py`)
@@ -143,7 +146,10 @@ Passa `agent_subdir="context_engineer"` → tools **bound**. `AGENT_DIRS["contex
 
 | Tool | Origem | Entrada | Retorno | Descrição |
 |---|---|---|---|---|
-| `tool_salvar_task_adk` | `shared/tools/coding_tools/context_engineer_tools.py` | `task_id: str`, `task_json: str` | `dict {sucesso, erro, caminho, task_id}` | Versão canônica; `cr_context_engineer` usa a variante `_tool_salvar_task_cr` do mesmo arquivo. Valida `task_id` (deve iniciar com `"TASK-"`), faz `json.loads` e grava `<task_id>.json` via `get_agent_workspace("context_engineer")`. |
+| `tool_salvar_task_adk` | `shared/tools/coding_tools/context_engineer_tools.py` | `task_id: str`, `task_json: str` | `dict {sucesso, erro, caminho, task_id}` | Versão canônica; `cr_context_engineer` usa a variante `tool_salvar_task_cr` do mesmo arquivo. Valida `task_id` (deve iniciar com `"TASK-"`), faz `json.loads` e grava `<task_id>.json` via `get_agent_workspace("context_engineer")`. |
+| `tool_ler_requirements_adk` | `shared/tools/coding_tools/context_engineer_tools.py` | — (sem parâmetros) | `dict {sucesso, artefatos, artefatos_minimos_presentes, artefatos_minimos_ausentes, tem_hu, erro}` | Idêntica à usada pelo `cr_context_engineer` (seção 1) — lê `requirements/` do workspace. |
+| `tool_ler_design_adk` | `shared/tools/coding_tools/context_engineer_tools.py` | — (sem parâmetros) | `dict {sucesso, artefatos, artefatos_minimos_presentes, artefatos_minimos_ausentes, erro}` | Idêntica à usada pelo `cr_context_engineer` (seção 1) — lê `design/` do workspace. |
+| `tool_gerar_doubt_artifact_adk` | `shared/tools/coding_tools/context_engineer_tools.py` | `titulo: str`, `fase_bloqueada: str`, `descricao: str`, `acao_necessaria: str`, `nome_arquivo: str = "Doubt_Artifact_context_engineer.md"` | `dict {sucesso, erro, caminho, titulo, fase_bloqueada, status}` | Idêntica à usada pelo `cr_context_engineer` (seção 1) — grava na raiz do workspace, sem bind. Coexiste com `tool_ask_clarification` abaixo (o `context_engineer` tem os dois mecanismos disponíveis). |
 | `tool_ask_clarification` | `shared/tools/clarification.py`, auto-injetada | `titulo, secao, descricao, impacto, sugestao, nome_arquivo: str`, `base_dir` (existe na função original, mas bound por closure a `workspace_output/tasks/` — invisível ao LLM) | `dict {sucesso, erro, caminho, título, status}` | Igual ao `coder`, mas bound ao workspace do agente (`workspace_output/tasks/`). |
 ---
 
@@ -190,8 +196,11 @@ futuro).
 | `tool_git_checkout` | `coder` | ativa |
 | `tool_ler_diff` | `reviewer` | ativa |
 | `tool_ask_clarification` | `coder`, `context_engineer`, `reviewer` (auto-injetada) — ausente em todos os `cr_*` e no `executor`/`implementation_validator` | ativa |
-| `_tool_salvar_task_cr` (variante) | `cr_context_engineer` | ativa |
+| `tool_salvar_task_cr` (variante) | `cr_context_engineer` | ativa |
 | `tool_salvar_task` / `tool_salvar_task_adk` | `context_engineer` | ativa |
+| `tool_ler_requirements` | `cr_context_engineer`, `context_engineer` | ativa |
+| `tool_ler_design` | `cr_context_engineer`, `context_engineer` | ativa |
+| `tool_gerar_doubt_artifact` | `cr_context_engineer`, `context_engineer` | ativa |
 | `executar_harness_tool` / `executar_harness_validacao` | `cr_executor`, `executor` | ativa |
 | `AgentTool(implementation_validator)` | `cr_executor`, `executor` (mesma instância nos dois) | ativa |
 | `exit_loop` (nativa do ADK) | `cr_executor`, `executor` | ativa |
@@ -207,7 +216,7 @@ futuro).
 
 | # | Tools envolvidas | Sobreposição | Recomendação |
 |---|---|---|---|
-| R1 | `tool_salvar_task` × `_tool_salvar_task_cr` (`context_engineer_tools.py`) | Corpo idêntico — validação via `SalvarTaskSchema`, `json.loads`, grava `<task_id>.json`. A única diferença é a chave fixa passada a `get_agent_workspace(...)`: `"context_engineer"` numa, `"cr_context_engineer"` na outra. | **Unificar** numa única função parametrizada (`tool_salvar_task(task_id, task_json, workspace_key="context_engineer")`), com dois `FunctionTool` distintos fazendo bind do parâmetro por closure — mesmo padrão já usado pra `base_dir`/`cwd` no resto do repositório. |
+| R1 | `tool_salvar_task` × `tool_salvar_task_cr` (`context_engineer_tools.py`) | Corpo idêntico — validação via `SalvarTaskSchema`, `json.loads`, grava `<task_id>.json`. A única diferença é a chave fixa passada a `get_agent_workspace(...)`: `"context_engineer"` numa, `"cr_context_engineer"` na outra. | **Unificar** numa única função parametrizada (`tool_salvar_task(task_id, task_json, workspace_key="context_engineer")`), com dois `FunctionTool` distintos fazendo bind do parâmetro por closure — mesmo padrão já usado pra `base_dir`/`cwd` no resto do repositório. |
 | R2 | `tool_git_commit` × par `tool_preparar_commit`/`tool_confirmar_commit` (`git.py`) | Duas formas de commitar com aprovação: a primeira usa o mecanismo nativo do ADK (`FunctionTool(tool_git_commit, require_confirmation=True)`, já em uso pelo `coder`); a segunda é um protocolo prepare/confirm implementado à mão, que **nenhum agente usa hoje**. | **Manter uma, descontinuar a outra** — como o gate de aprovação do `tool_git_commit` via `require_confirmation=True` já resolve o caso de uso, o par `tool_preparar_commit`/`tool_confirmar_commit` é candidato a remoção. Confirmar com o time se há plano de uso antes de remover (pode ter sido feito pra um fluxo HITL que não chegou a ser ligado). |
 
 ---
