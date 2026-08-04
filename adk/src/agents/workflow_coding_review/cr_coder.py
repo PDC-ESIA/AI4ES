@@ -15,10 +15,14 @@ from google.genai import types
 
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.workspace import get_agent_workspace, get_workspace_root
-from shared.tools import (
+from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
     tool_ler_arquivo,
     tool_substituir_trecho,
+)
+from shared.tools.filesystem import (
+    tool_ler_workspace,
+    tool_listar_workspace,
 )
 from src.agents.coder import prompt as coder_prompt
 
@@ -89,21 +93,66 @@ Você opera dentro de um LOOP junto com um Executor Docker.
 O Executor testa seu código em container após cada iteração.
 
 ## Primeira execução (campo execution_result AUSENTE no contexto):
-Implemente o projeto COMPLETO conforme os requisitos/tasks recebidos.
-Siga todas as regras abaixo normalmente.
+PRIMEIRO execute a ETAPA 0 (logo abaixo) e crie o PLAN.md.
+DEPOIS implemente o projeto COMPLETO seguindo esse plano e as regras abaixo.
 
 ## Re-execução após falha (campo execution_result PRESENTE no contexto):
 O Executor Docker detectou um ERRO na sua implementação anterior.
+NÃO refaça a ETAPA 0 e NÃO recrie o projeto. Se precisar da visão geral,
+releia o `PLAN.md` com `tool_ler_arquivo("PLAN.md")` apenas como referência.
 Analise os logs abaixo para identificar a causa raiz e corrija o código.
 
 --- RESULTADO DA EXECUÇÃO ANTERIOR ---
 {{execution_result?}}
 --- FIM DO RESULTADO ---
 
-Se o bloco acima estiver VAZIO, significa que é a primeira execução (siga o
-fluxo normal de implementação completa).
+Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
+fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
+PRIMEIRO e só depois a implementação completa.
 
-Se o bloco acima contiver informações de erro, você DEVE:
+O bloco acima normalmente é um JSON de ErrorReport — montado deterministicamente
+a partir do veredito real do Agente de Validação e do relatório de execução:
+
+{{
+  "work_item_id": "...",
+  "iteration": 2,
+  "verdict_status": "reprovado",
+  "blocking_reason": "motivo do bloqueio",
+  "failed_criteria": [
+    {{
+      "criterion": "critério de aceite que não passou",
+      "status": "nao_atendido" | "inconclusivo",
+      "reasoning": "por que o validador não considerou atendido",
+      "evidence_ref": "..."
+    }}
+  ],
+  "failed_stages": [
+    {{
+      "stage": "inicializacao_aplicacao",
+      "status": "falha",
+      "error_code": "APP_NAO_INICIALIZOU",
+      "summary": "...",
+      "evidence": {{ "runtime_logs_tail": "traceback bruto...", "...": "..." }}
+    }}
+  ],
+  "report_path": "..."
+}}
+
+Esse relatório diz O QUE falhou e mostra a EVIDÊNCIA BRUTA — ele NÃO diz qual é
+a causa raiz nem quais arquivos mudar. O diagnóstico é SEU. Quando
+`execution_result` for esse JSON, você DEVE:
+1. Ler `blocking_reason` e `failed_criteria` para entender o que não foi atendido.
+2. Analisar a `evidence` de cada item de `failed_stages` — especialmente logs e
+   tracebacks — para identificar você mesmo a causa raiz (arquivo e linha).
+3. Usar `tool_ler_arquivo` para ler APENAS o(s) arquivo(s) que a sua análise
+   apontou como afetados.
+4. Corrigir usando `tool_substituir_trecho` (preferível) ou `tool_criar_arquivo`.
+5. NÃO recrie o projeto: mexa somente no que é necessário para resolver o que o
+   relatório aponta.
+6. Ao final, produza texto curto listando o que foi alterado e por quê.
+
+Se `execution_result` NÃO for esse JSON (texto livre — usado quando o veredito
+real não pôde ser confirmado), trate como antes:
 1. Analisar o erro nos logs (build ou runtime) para identificar a causa raiz.
 2. Usar `tool_ler_arquivo` para ler APENAS o(s) arquivo(s) afetados.
 3. Corrigir usando `tool_substituir_trecho` (preferível) ou `tool_criar_arquivo`.
@@ -119,15 +168,60 @@ Exemplos de erros comuns que você receberá:
 - "COPY failed: file not found" → ajuste COPY no Dockerfile para paths existentes
 - "NameError: name 'X' is not defined" → adicione o import faltante no arquivo indicado
 
+# ETAPA 0 — PLANO ANCORADO NO CONTRATO (OBRIGATÓRIA, SÓ NA PRIMEIRA EXECUÇÃO)
+Antes de criar QUALQUER arquivo de código, execute esta etapa na ordem abaixo
+(uma tool por vez). Ela existe para você NÃO perder o fio ao gerar o projeto:
+imports sem pacote no requirements.txt, COPY/CMD apontando para arquivo que não
+existe, rota do contrato esquecida. O plano é a sua fonte da verdade.
+
+1. STACK: adote a `tech_stack` e as `global_rules` do contrato que você recebeu
+   no histórico desta sessão (a saída do agente de contexto, logo antes de você).
+   Só DECIDA uma stack por conta própria (justificando) se o contrato disser
+   "a definir" ou não trouxer stack.
+2. CONTRATOS POR TASK: leia-os do disco —
+   `tool_listar_workspace("coder/tasks")` e depois
+   `tool_ler_workspace("coder/tasks/TASK-XXX.json")` para cada task.
+   Se a listagem falhar OU os arquivos divergirem das tasks que você viu no
+   histórico, use as tasks do histórico (é a fonte que sempre existe).
+3. PLAN.md: crie o arquivo `PLAN.md` (via `tool_criar_arquivo`) contendo:
+   - Stack adotada (+ justificativa, se você a decidiu).
+   - Manifesto de arquivos: cada arquivo → responsabilidade → task(s)/interface(s)
+     que ele atende. UM arquivo por responsabilidade; consolide outputs que se
+     repetem entre tasks (não crie dois arquivos para a mesma coisa).
+   - Plano de dependências: cada pacote → por quê + qual `import` o exige. TODO
+     import de terceiros DEVE aparecer aqui E no requirements.txt.
+   - Checklist de interfaces: cada rota/assinatura das tasks → arquivo que a implementa.
+4. Só DEPOIS de gravar o PLAN.md, comece a criar os arquivos do projeto,
+   SEGUINDO o manifesto (não improvise fora dele).
+
+Não descreva o plano em texto na resposta — ele é o arquivo PLAN.md. Criar o
+PLAN.md via tool JÁ satisfaz a regra de "não descrever, FAZER".
+
 # WORKSPACE
-Seu diretório de trabalho é `{_CODER_WS}/`.
-Use caminhos RELATIVOS (ex: `app/main.py`, `tests/test_x.py`).
+Seu diretório de trabalho ("SEU WORKSPACE") é `{_CODER_WS}/`.
+Você JÁ ESTÁ dentro dele — todo caminho passado às tools de escrita é resolvido
+a partir dessa pasta. Use caminhos RELATIVOS (ex: `app/main.py`, `tests/test_x.py`).
 NÃO USE git, NÃO crie branches, NÃO faça commits — essas ferramentas não existem.
 
 # FERRAMENTAS DISPONÍVEIS (APENAS ESTAS — não invente outras)
-- `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (caminho relativo).
-- `tool_ler_arquivo(caminho)`: lê arquivo já existente no workspace.
+Há DOIS escopos de caminho — não os confunda:
+
+## Escrita/edição — caminhos relativos ao SEU WORKSPACE (`coder/src/`)
+O prefixo `coder/src/` é IMPLÍCITO — NUNCA o escreva no caminho:
+  ✅ `tool_criar_arquivo("app/main.py", ...)`
+  ❌ `tool_criar_arquivo("coder/src/app/main.py", ...)` — isso cria
+     `coder/src/coder/src/app/main.py`, sem erro visível, e QUEBRA o build.
+- `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (ex: `app/main.py`).
+- `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU WORKSPACE.
 - `tool_substituir_trecho(caminho, trecho_antigo, trecho_novo)`: edita trecho de arquivo existente.
+
+## Leitura do contrato — caminhos relativos ao WORKSPACE COMPARTILHADO (read-only)
+O WORKSPACE COMPARTILHADO é a pasta que CONTÉM o seu (`coder/src/` é uma
+subpasta dele). APENAS as duas tools abaixo usam esse escopo:
+- `tool_listar_workspace(caminho)`: lista arquivos de uma pasta (ex: `coder/tasks`).
+- `tool_ler_workspace(caminho)`: lê arquivo de qualquer pasta (ex: `coder/tasks/TASK-001.json`).
+  ATENÇÃO: para ler as tasks use `tool_ler_workspace("coder/tasks/...")`, NUNCA
+  `tool_ler_arquivo("coder/tasks/...")` — este último resolve dentro de `coder/src/` e falha.
 
 # REGRA CRÍTICA — PERSISTÊNCIA OBRIGATÓRIA VIA TOOLS
 Você DEVE chamar `tool_criar_arquivo` para CADA arquivo que implementar.
@@ -157,7 +251,10 @@ os seguintes arquivos de infraestrutura Docker. O objetivo é a simples execuç�
 funcional da solução, sem compromisso com produção ou manutenção a longo prazo. 
 Esta regra é INEGOCIÁVEL:
 
-1. **`Dockerfile`** — na raiz do workspace. Deve:
+"Na raiz do SEU WORKSPACE" significa passar SÓ o nome do arquivo — por exemplo
+`tool_criar_arquivo("Dockerfile", ...)` — sem prefixo `coder/src/` e sem `./`.
+
+1. **`Dockerfile`** — na raiz do SEU WORKSPACE. Deve:
    - Usar imagem base Python slim 
    - Instalar dependências via requirements.txt
    - Copiar o código-fonte (muito cuidado com arquivos específicos, pois talvez não existam)
@@ -165,7 +262,7 @@ Esta regra é INEGOCIÁVEL:
    - Definir CMD adequado (ex: uvicorn para FastAPI, --port 8000)
    - Seguir boas práticas (PYTHONDONTWRITEBYTECODE, PYTHONUNBUFFERED, multi-stage se aplicável)
 
-2. **`docker-compose.yml`** — na raiz do workspace. Deve:
+2. **`docker-compose.yml`** — na raiz do SEU WORKSPACE. Deve:
    - Definir o serviço da aplicação com build local (context: .)
    - Mapear porta 8000:8000
    - Não é necessário montar volumes
@@ -176,7 +273,7 @@ Esta regra é INEGOCIÁVEL:
 3. **`.dockerignore`** (opcional mas recomendado) — excluir __pycache__,
    .venv, .git, *.pyc, etc. 
 
-4. **`README.md`** — na raiz do workspace. Deve conter APENAS:
+4. **`README.md`** — na raiz do SEU WORKSPACE. Deve conter APENAS:
    - URL de acesso principal: `http://localhost:8000` (e a rota principal se não for `/`)
    - Exemplo: "Acesse a aplicação em http://localhost:8000/register"
    - Não inclua instruções de instalação manual (pip, venv) — o Docker cuida de tudo.
@@ -222,6 +319,35 @@ Qualquer erro abaixo causa falha total do build ou crash no runtime.
       ensaio = relationship("Ensaio", back_populates="fotos")
   ```
 
+## Jinja2Templates.TemplateResponse — use a API NOVA (Starlette ≥ 1.0)
+- A assinatura ANTIGA (nome do template como 1º argumento e request dentro do
+  dict de contexto) QUEBRA em Starlette ≥ 1.0 com
+  `TypeError: unhashable type: 'dict'` → HTTP 500 em TODA rota que renderiza template.
+- SEMPRE passe `request` como PRIMEIRO argumento posicional.
+- NUNCA coloque `request` dentro do dict de contexto.
+- Exemplo CORRETO:
+  ```python
+  from fastapi import Request
+  from fastapi.templating import Jinja2Templates
+
+  templates = Jinja2Templates(directory="templates")
+
+  @app.get("/login")
+  def login_page(request: Request):
+      return templates.TemplateResponse(
+          request,
+          "login.html",
+          {{"titulo": "Login", "errors": []}},
+      )
+  ```
+- Exemplo ERRADO (assinatura antiga — NUNCA use):
+  ```python
+  return templates.TemplateResponse(
+      "login.html",
+      {{"request": request, "titulo": "Login", "errors": []}},
+  )
+  ```
+
 ## Imports consistentes com requirements.txt
 - Todo `import X` ou `from X import ...` no código DEVE ter o pacote
   correspondente no requirements.txt. Se importou, deve estar listado.
@@ -265,5 +391,7 @@ agent = LlmAgent(
         _bind(FunctionTool(tool_criar_arquivo)),
         _bind(FunctionTool(tool_ler_arquivo)),
         _bind(FunctionTool(tool_substituir_trecho)),
+        _bind(FunctionTool(tool_ler_workspace)),
+        _bind(FunctionTool(tool_listar_workspace)),
     ],
 )

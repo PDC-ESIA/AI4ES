@@ -26,8 +26,10 @@ collect_ignore = [
 
 from src.agents.requirements import schemas as _req_schemas  # noqa: F401
 from src.agents.reviewer import schemas as _rev_schemas  # noqa: F401
+from src.agents.executor import schemas as _exec_schemas  # noqa: F401
+from src.agents.implementation_validator import schemas as _implval_schemas  # noqa: F401
 from src.agents.context_engineer import schemas as _ce_schemas  # noqa: F401
-from src.agents.context_engineer.tools import tool_salvar_task  # noqa: F401
+from shared.tools.coding_tools.context_engineer_tools import tool_salvar_task  # noqa: F401
 from src.agents.workflow_coding_review.agent import agent as _cr  # noqa: F401
 from src.agents.workflow_requirements.agent import agent as _req  # noqa: F401
 from src.agents.workflow_design_pipeline.agent import agent as _design  # noqa: F401

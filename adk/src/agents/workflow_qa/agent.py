@@ -20,6 +20,67 @@ from src.agents.workflow_qa.tools.planner_wrapper import invocar_planejamento_qa
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 
+
+def _emit_qa_manifest(callback_context) -> "EventActions":
+    """Callback executado ao final do workflow_qa.
+
+    Varre o workspace de testes e emite o Manifesto de Fase `qa` no
+    session.state. O conteúdo dos artefatos permanece nos arquivos;
+    só os metadados trafegam no state.
+    """
+    from google.adk.events.event_actions import EventActions
+
+    from shared.manifest import ArtifactItem, PhaseManifest, PhaseStatus
+    from shared.workspace import get_workspace_root
+
+    root = get_workspace_root()
+    artifacts: list[ArtifactItem] = []
+
+    # JSONs de input em tests/inputs/<slug>.json
+    inputs_dir = root / "tests" / "inputs"
+    if inputs_dir.exists():
+        for path in sorted(inputs_dir.iterdir()):
+            if path.is_file() and path.suffix == ".json":
+                artifacts.append(
+                    ArtifactItem(
+                        tipo="input",
+                        id=path.stem,
+                        path=str(path.relative_to(root)),
+                    )
+                )
+
+    # Código de teste em tests/inputs/<slug>/test_<slug>.py
+    tests_dir = root / "tests" / "inputs"
+    if tests_dir.exists():
+        for slug_dir in sorted(tests_dir.iterdir()):
+            if not slug_dir.is_dir():
+                continue
+            test_file = slug_dir / f"test_{slug_dir.name}.py"
+            if test_file.exists():
+                artifacts.append(
+                    ArtifactItem(
+                        tipo="teste",
+                        id=slug_dir.name,
+                        path=str(test_file.relative_to(root)),
+                    )
+                )
+
+    status = PhaseStatus.OK if artifacts else PhaseStatus.PARTIAL
+
+    manifest = PhaseManifest(
+        phase="qa",
+        status=status,
+        artifacts=artifacts,
+        doubts=[],
+        summary=f"QA gerou {len(artifacts)} artefato(s) de teste.",
+    )
+
+    state = callback_context.state
+    manifests = list(state.get("phase_manifests", []) or [])
+    manifests.append(manifest.model_dump())
+
+    return EventActions(state_delta={"phase_manifests": manifests})
+
 _INSTRUCTION = """
 Você é o pipeline de QA / Testes do Time 3.
 
@@ -116,4 +177,5 @@ agent = LlmAgent(
         FunctionTool(DoubtArtifactGenerator.generate),
         LongRunningFunctionTool(aguardar_aprovacao_humana),
     ],
+    after_agent_callback=_emit_qa_manifest,
 )

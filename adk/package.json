@@ -1,0 +1,13 @@
+{
+  "name": "ai4es-e2e-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runtime Playwright controlado pelo subagente E2E do QA Agent.",
+  "scripts": {
+    "e2e:install": "playwright install chromium",
+    "e2e:test": "playwright test --config=playwright.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
