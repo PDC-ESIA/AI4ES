@@ -13,7 +13,7 @@ julgamento pertence ao validador (implementation_validator). Por isso o
 Reaproveita as ferramentas já existentes do repositório:
 - `shared/tools/harness_docker.py` — build/run/cleanup de container e rota.
 - `shared/tools/log_parser_tool.py` — parsing dos logs de build e runtime.
-- `shared/tools/pytest_runner.py` — execução da suíte de testes automatizados.
+- `shared/tools/stack_adapters/` — execução dos testes por stack (adapter).
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ import json
 import logging
 import os
 import re
-import shlex
 import shutil
 import time
 from datetime import datetime, timezone
@@ -36,6 +35,7 @@ from google.adk.tools import ToolContext
 
 from shared.tools import harness_docker as hd
 from shared.tools.log_parser_tool import parse_log_text
+from shared.tools.stack_adapters import StackAdapter, resolver_stack
 from shared.workspace import get_agent_workspace
 
 logger = logging.getLogger(__name__)
@@ -66,6 +66,7 @@ class _HarnessContext:
 
         # Preenchidos ao longo dos estágios
         self.tech_stack: list[str] = []
+        self.adapter: Optional[StackAdapter] = None  # resolvido no estágio 1
         self.acceptance_criteria: list[str] = []
         self.contract: dict = {}
         self.dockerfile: str = ""
@@ -132,16 +133,28 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     ctx.acceptance_criteria = list(task.get("acceptance_criteria", []))
     ctx.contract = task.get("contract", {}) or {}
 
-    # Valida o workspace do coder (deve conter código Python)
-    if not ctx.coder_dir.exists() or not any(ctx.coder_dir.rglob("*.py")):
+    # Resolve a stack em camadas (Tier 1 declarado → Tier 2 manifesto → Tier 3
+    # falha explícita). Substitui o antigo gate ".py?/SRC_VAZIO", que confundia
+    # "sem código nenhum" com "stack não reconhecida" — problemas diferentes.
+    resolucao = resolver_stack(ctx.tech_stack, ctx.coder_dir)
+    if resolucao.adapter is None:
         return StageResult(
             stage=StageName.PREPARACAO_AMBIENTE,
             status=StageStatus.ERRO,
             duration_seconds=round(time.time() - t0, 3),
-            summary="Nenhum arquivo Python encontrado no workspace do coder.",
-            evidence={"coder_dir": str(ctx.coder_dir)},
-            error_code="SRC_VAZIO",
+            summary=(
+                "Stack não identificada: nenhum adapter registrado reivindicou a "
+                "tech_stack declarada e nenhum manifesto reconhecido foi "
+                "encontrado no workspace do coder."
+            ),
+            evidence={
+                "coder_dir": str(ctx.coder_dir),
+                "tech_stack_declarada": ctx.tech_stack,
+                "detalhe_resolucao": resolucao.detalhe,
+            },
+            error_code="STACK_NAO_IDENTIFICADA",
         )
+    ctx.adapter = resolucao.adapter
 
     # Resolve Dockerfile (do coder ou fallback determinístico via harness_docker)
     dockerfile_path = ctx.coder_dir / "Dockerfile"
@@ -159,12 +172,16 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
         duration_seconds=round(time.time() - t0, 3),
         summary=(
             f"Ambiente preparado: Task carregada ({len(ctx.acceptance_criteria)} "
-            f"critérios), Dockerfile de origem '{origem_dockerfile}'."
+            f"critérios), stack '{ctx.adapter.nome}' (via {resolucao.origem}), "
+            f"Dockerfile de origem '{origem_dockerfile}'."
         ),
         evidence={
             "task_file": str(task_file),
             "acceptance_criteria": ctx.acceptance_criteria,
             "dockerfile_origem": origem_dockerfile,
+            "stack_adapter": ctx.adapter.nome,
+            "stack_origem": resolucao.origem,
+            "stack_detalhe": resolucao.detalhe,
         },
         error_code=None,
     )
@@ -420,34 +437,13 @@ def _estagio_coleta_logs_execucao(ctx: _HarnessContext) -> StageResult:
 # Estágio 6 — Execução dos testes automatizados
 # ===========================================================================
 
-def _localizar_suite(coder_dir: Path) -> Optional[Path]:
-    """Localiza um arquivo de suíte de testes no workspace do coder."""
-    candidatos = sorted(
-        p for p in coder_dir.rglob("test_*.py") if "__pycache__" not in p.parts
-    )
-    candidatos += sorted(
-        p for p in coder_dir.rglob("*_test.py") if "__pycache__" not in p.parts
-    )
-    return candidatos[0] if candidatos else None
+# A execução da suíte é específica de cada stack (localizar, rodar, parsear) e
+# vive nos adapters (`shared/tools/stack_adapters/`). O harness mantém só o gate
+# genérico e a primitiva `_exec_no_container`, que o adapter recebe por injeção
+# para rodar seu comando contra o artefato realmente implantado em /app.
 
-
-# --- Execução da suíte DENTRO do container implantado ---------------------
-#
-# A versão anterior delegava ao `executar_pytest_tool` do QA, que enclausurava
-# o path da suíte no workspace do qa_agent (rebase → ERR_MODULO_NAO_ENCONTRADO)
-# e acoplava o harness ao estado global daquela tool. Agora o harness roda o
-# pytest ele mesmo, contra o artefato realmente implantado em /app (ver
-# Dockerfile: WORKDIR /app + COPY . /app/). Continua apenas coletando
-# evidência — nenhum veredito, nenhum contador global, nenhum doubt artifact.
-
-_TESTS_TIMEOUT = 60  # segundos — teto para a execução da suíte no container
+# Workdir do artefato no container (Dockerfile: WORKDIR /app + COPY . /app/).
 _APP_WORKDIR = "/app"
-_REPORT_JSON_IN = f"{_APP_WORKDIR}/.harness_pytest_report.json"
-_COV_JSON_IN = f"{_APP_WORKDIR}/.harness_cov.json"
-
-_PLAIN_PASSOU_RE = re.compile(r"(\d+) passed")
-_PLAIN_FALHOU_RE = re.compile(r"(\d+) failed")
-_PLAIN_ERRO_RE = re.compile(r"(\d+) error")
 
 
 def _exec_no_container(container, comando: str) -> tuple[Optional[int], str, str]:
@@ -466,220 +462,41 @@ def _exec_no_container(container, comando: str) -> tuple[Optional[int], str, str
     return res.exit_code, stdout, stderr
 
 
-def _pytest_disponivel(container) -> bool:
-    """Garante `pytest` executável no container; tenta instalar se ausente.
-
-    A instalação em runtime depende de rede no container. Se falhar, retorna
-    False e o estágio degrada de forma honesta (PULADO/PYTEST_INDISPONIVEL) —
-    NÃO cai para o host, para não reintroduzir a divergência host↔container.
-    """
-    code, _, _ = _exec_no_container(container, "python -m pytest --version")
-    if code == 0:
-        return True
-    _exec_no_container(
-        container, "pip install --no-cache-dir pytest pytest-json-report pytest-cov"
-    )
-    code, _, _ = _exec_no_container(container, "python -m pytest --version")
-    return code == 0
-
-
-def _rodar_pytest_no_container(
-    container, alvo: str
-) -> tuple[Optional[int], str, str, str]:
-    """Roda a suíte no container. Tenta o modo 'json' (com plugins de report/cov);
-    se as opções não forem reconhecidas (pytest exit 4 = erro de uso, plugins
-    ausentes), cai para o modo 'plain' (só stdout).
-
-    Retorna (exit_code, stdout, stderr, modo).
-    """
-    alvo_q = shlex.quote(alvo)
-    cmd_json = (
-        f"timeout {_TESTS_TIMEOUT} python -m pytest {alvo_q} "
-        f"--json-report --json-report-file={_REPORT_JSON_IN} "
-        f"--cov={_APP_WORKDIR} --cov-report=json:{_COV_JSON_IN} "
-        f"-q -p no:cacheprovider"
-    )
-    code, out, err = _exec_no_container(container, cmd_json)
-    if code == 4:  # opção desconhecida → plugins ausentes → fallback texto
-        cmd_plain = (
-            f"timeout {_TESTS_TIMEOUT} python -m pytest {alvo_q} -q -p no:cacheprovider"
-        )
-        code, out, err = _exec_no_container(container, cmd_plain)
-        return code, out, err, "plain"
-    return code, out, err, "json"
-
-
-def _parse_report_json(container) -> dict:
-    """Lê e resume o report.json do pytest-json-report de dentro do container."""
-    _, raw, _ = _exec_no_container(container, f"cat {_REPORT_JSON_IN}")
-    data = json.loads(raw)
-    summary = data.get("summary", {}) or {}
-    testes = data.get("tests", []) or []
-    falhas = [
-        {
-            "nodeid": t.get("nodeid"),
-            "outcome": t.get("outcome"),
-            "linha": (t.get("call", {}) or {}).get("crash", {}).get("lineno"),
-            "mensagem": (t.get("call", {}) or {}).get("crash", {}).get("message"),
-        }
-        for t in testes
-        if t.get("outcome") not in ("passed", "skipped")
-    ]
-    return {
-        "passaram": summary.get("passed", 0),
-        "falharam": summary.get("failed", 0),
-        "erros": summary.get("error", 0),
-        "pulados": summary.get("skipped", 0),
-        "total": summary.get("total", summary.get("collected", 0)),
-        "falhas": falhas[:20],
-    }
-
-
-def _parse_cobertura_json(container) -> dict:
-    """Lê o coverage.json de dentro do container (best-effort)."""
-    try:
-        _, raw, _ = _exec_no_container(container, f"cat {_COV_JSON_IN}")
-        totals = json.loads(raw).get("totals", {}) or {}
-        return {
-            "percentual": round(totals.get("percent_covered", 0.0), 2),
-            "linhas_cobertas": totals.get("covered_lines", 0),
-            "linhas_totais": totals.get("num_statements", 0),
-        }
-    except Exception:
-        return {"percentual": 0.0, "linhas_cobertas": 0, "linhas_totais": 0}
-
-
-def _parse_stdout_plain(stdout: str) -> dict:
-    """Resumo mínimo a partir do stdout do pytest quando não há JSON report."""
-
-    def _n(rx: re.Pattern) -> int:
-        m = rx.search(stdout)
-        return int(m.group(1)) if m else 0
-
-    passaram, falharam, erros = (
-        _n(_PLAIN_PASSOU_RE),
-        _n(_PLAIN_FALHOU_RE),
-        _n(_PLAIN_ERRO_RE),
-    )
-    return {
-        "passaram": passaram,
-        "falharam": falharam,
-        "erros": erros,
-        "pulados": 0,
-        "total": passaram + falharam + erros,
-        "falhas": [],
-    }
-
-
 def _estagio_testes(ctx: _HarnessContext) -> StageResult:
     """Estágio 6 — executa a suíte de testes DENTRO do container implantado.
 
-    Localiza a suíte no workspace do coder (host), traduz o caminho para o
-    interior do container (`/app/...`) e roda o pytest lá dentro. Apenas coleta
-    evidência: a decisão sobre o que as falhas significam é do validador.
+    Delega ao adapter de stack resolvido no Estágio 1 (`ctx.adapter`): é ele que
+    localiza a suíte, garante a ferramenta no container, roda e parseia — tudo
+    específico da stack. O harness só faz o gate genérico (a app inicializou?),
+    injeta a primitiva `_exec_no_container` e traduz o `ResultadoTestes` do
+    adapter num `StageResult`. Apenas coleta evidência: a decisão sobre o que as
+    falhas significam é do validador.
     """
     if not ctx.app_ok:
         return _pulado(
             StageName.TESTES_AUTOMATIZADOS,
             "Abortado: aplicação não inicializou; testes não executados.",
         )
+    if ctx.adapter is None:
+        # Invariante: app_ok ⇒ env_ok ⇒ stack resolvida no Estágio 1. Guarda
+        # defensiva para nunca desreferenciar um adapter ausente.
+        return _pulado(
+            StageName.TESTES_AUTOMATIZADOS,
+            "Abortado: nenhum adapter de stack resolvido; testes não executados.",
+        )
     t0 = time.time()
 
-    suite = _localizar_suite(ctx.coder_dir)
-    if suite is None:
-        return StageResult(
-            stage=StageName.TESTES_AUTOMATIZADOS,
-            status=StageStatus.PULADO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary="Nenhuma suíte de testes encontrada no workspace do coder.",
-            evidence={"suite": None},
-            error_code=None,
-        )
-
-    # Path host → path no container (Dockerfile: WORKDIR /app + COPY . /app/).
-    rel = suite.relative_to(ctx.coder_dir)
-    alvo = f"{_APP_WORKDIR}/{rel.as_posix()}"
-
-    try:
-        if not _pytest_disponivel(ctx.container):
-            return StageResult(
-                stage=StageName.TESTES_AUTOMATIZADOS,
-                status=StageStatus.PULADO,
-                duration_seconds=round(time.time() - t0, 3),
-                summary=(
-                    "pytest indisponível no container e não foi possível "
-                    "instalá-lo (sem rede?). Testes não executados."
-                ),
-                evidence={"suite": str(suite), "alvo_container": alvo},
-                error_code="PYTEST_INDISPONIVEL",
-            )
-
-        exit_code, stdout, stderr, modo = _rodar_pytest_no_container(ctx.container, alvo)
-    except Exception as e:
-        return StageResult(
-            stage=StageName.TESTES_AUTOMATIZADOS,
-            status=StageStatus.ERRO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Falha ao executar pytest no container: {e}",
-            evidence={"suite": str(suite), "alvo_container": alvo},
-            error_code="EXEC_FALHOU",
-        )
-
-    # Resumo estruturado (JSON report quando disponível; stdout como fallback).
-    if modo == "json":
-        try:
-            resumo = _parse_report_json(ctx.container)
-        except Exception:
-            resumo = _parse_stdout_plain(stdout)
-        cobertura = _parse_cobertura_json(ctx.container)
-    else:
-        resumo = _parse_stdout_plain(stdout)
-        cobertura = {"percentual": 0.0, "linhas_cobertas": 0, "linhas_totais": 0}
-
-    # Classificação técnica (SEM veredito) a partir do exit code do pytest:
-    #   0 = tudo passou | 1 = houve falhas | 5 = nada coletado
-    #   124 = timeout (coreutils) | 2/3/4 = interrompido/erro interno/uso incorreto
-    if exit_code == 5:
-        return StageResult(
-            stage=StageName.TESTES_AUTOMATIZADOS,
-            status=StageStatus.PULADO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Suíte '{suite.name}' não coletou nenhum teste.",
-            evidence={"suite": str(suite), "alvo_container": alvo, "modo": modo},
-            error_code=None,
-        )
-    if exit_code == 0:
-        status, error_code = StageStatus.SUCESSO, None
-    elif exit_code == 124:
-        status, error_code = StageStatus.FALHA, "TESTES_TIMEOUT"
-    elif exit_code == 1:
-        status, error_code = StageStatus.FALHA, "TESTES_FALHARAM"
-    else:
-        status, error_code = StageStatus.ERRO, "PYTEST_ERRO_EXECUCAO"
-
-    tail = (stdout or "")[-3000:]
-    if stderr:
-        tail += f"\n--- stderr ---\n{stderr[-1000:]}"
+    resultado = ctx.adapter.executar_testes(
+        _exec_no_container, ctx.container, ctx.coder_dir
+    )
 
     return StageResult(
         stage=StageName.TESTES_AUTOMATIZADOS,
-        status=status,
+        status=StageStatus(resultado.status),
         duration_seconds=round(time.time() - t0, 3),
-        summary=(
-            f"Suíte '{suite.name}' executada no container "
-            f"(modo={modo}, exit={exit_code}): {resumo['passaram']} passaram, "
-            f"{resumo['falharam']} falharam, {resumo['erros']} erros."
-        ),
-        evidence={
-            "suite": str(suite),
-            "alvo_container": alvo,
-            "modo": modo,
-            "exit_code": exit_code,
-            "resumo": resumo,
-            "cobertura": cobertura,
-            "saida_tail": tail,
-        },
-        error_code=error_code,
+        summary=resultado.summary,
+        evidence=resultado.evidence,
+        error_code=resultado.error_code,
     )
 
 
