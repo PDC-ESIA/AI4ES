@@ -119,8 +119,8 @@ Sub-agentes internos:
 
 | Fonte | Formato | Lida por |
 |---|---|---|
-| `workspace_output/requirements/manifest.json` | JSON — schema do manifesto de fase | `cr_context_engineer` via `before_agent_callback` |
-| `workspace_output/design/manifest.json` | JSON — schema do manifesto de fase | `cr_context_engineer` via `before_agent_callback` |
+| `workspace_output/requirements/` | Diretório de artefatos (HUs, RFs, RNFs) | `cr_context_engineer` via `tool_ler_requirements_adk` |
+| `workspace_output/design/` | Diretório de artefatos (análise técnica, diagramas) | `cr_context_engineer` via `tool_ler_design_adk` |
 | Prompt do usuário | Texto livre (via orchestrator) | `cr_context_engineer` (mensagem de entrada) |
 
 **Schema do manifesto de entrada (requirements e design):**
@@ -182,12 +182,15 @@ Arquivos de config reconhecidos: `requirements.txt`, `Dockerfile`, `docker-compo
 |---|---|
 | Há doubt com `bloqueante == true` | `blocked` |
 | Nenhum artefato do tipo `codigo` produzido | `blocked` |
+| Há qualquer doubt não-bloqueante | `partial` |
 | Reviewer retornou `## Status: APROVADO` | `ok` |
 | Qualquer outro caso (reviewer ausente, BLOQUEADO, falha) | `partial` |
 
-> **Nota para consumidores:** `partial` significa que código foi produzido mas a
-> revisão não aprovou. O QA deve tratar `status != "ok"` como sinal de atenção
-> e decidir se prossegue ou aguarda re-execução.
+> **Nota para consumidores:** `partial` significa que código foi produzido mas
+> há doubts não-bloqueantes pendentes ou a revisão não aprovou. Apenas `ok`
+> garante ausência de doubts e aprovação explícita do reviewer. O QA deve
+> tratar `status != "ok"` como sinal de atenção e decidir se prossegue ou
+> aguarda re-execução.
 
 ### 3.4 Limites de Atuação
 
