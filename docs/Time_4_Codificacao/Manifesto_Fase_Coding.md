@@ -123,26 +123,9 @@ Sub-agentes internos:
 | `workspace_output/design/` | Diretório de artefatos (análise técnica, diagramas) | `cr_context_engineer` via `tool_ler_design_adk` |
 | Prompt do usuário | Texto livre (via orchestrator) | `cr_context_engineer` (mensagem de entrada) |
 
-**Schema do manifesto de entrada (requirements e design):**
+O `cr_context_engineer` lê o **conteúdo completo dos artefatos** de cada diretório via `rglob` — não apenas um manifesto de resumo. Se os manifestos de requirements (`requirements/manifest.json`) ou design (`design/manifest.json`) existirem, são lidos como mais um arquivo do diretório e o LLM usa as informações junto com os demais artefatos.
 
-```json
-{
-  "phase": "requirements | design",
-  "status": "ok | partial | blocked",
-  "artifacts": [
-    { "tipo": "<tipo>", "id": "<id>", "path": "<path-relativo>" }
-  ],
-  "doubts": [
-    { "id": "<id>", "severidade": "alta | media | baixa", "bloqueante": true, "path": "<path>" }
-  ],
-  "summary": "<texto>",
-  "session_id": "<opcional>"
-}
-```
-
-**Comportamento quando manifesto de entrada está ausente:**
-O `cr_context_engineer` injeta `"(manifesto de X não disponível)"` no prompt.
-O pipeline segue com o que o usuário forneceu diretamente.
+> **Nota:** Os manifestos de requirements e design têm como principal consumidor o **orquestrador SDLC** — que os usa para decidir deterministicamente se pode avançar para a próxima fase. O context engineer, por ser um LLM com tools de leitura, não depende deles como entrada primária.
 
 ### 3.3 Saídas Produzidas
 
@@ -235,14 +218,21 @@ O Time de Codificação:
 
 ### 4.1 Para o Time 2 — Design (produtor de entrada)
 
-O `cr_context_engineer` lê `workspace_output/design/manifest.json` antes de rodar.
-O manifesto de design deve estar presente e válido para que o contexto de
-arquitetura seja injetado no prompt do context engineer.
+O `cr_context_engineer` lê os artefatos de design via `tool_ler_design_adk`, que
+atualmente varre o diretório `workspace_output/design/` por completo (`rglob`). O
+`design/manifest.json`, quando presente, é lido como mais um arquivo do diretório —
+não como guia estrutural de quais arquivos ler.
 
-**O que o Time 2 deve garantir:**
-- `design/manifest.json` presente ao final do pipeline de design
-- Artefatos referenciados em `artifacts[].path` acessíveis no workspace
-- `status` refletindo fidedignamente o resultado da validação
+O objetivo arquitetural (descrito em `TIME_4_CODIFICACAO.md` seção 2) é evoluir para
+leitura manifest-guided: a tool consultaria `artifacts[].path` do manifesto de design
+para ler exatamente os artefatos declarados, sem varredura cega. Essa adaptação está
+registrada como melhoria pendente na seção 6.
+
+**O que o Time 2 deve garantir (situação atual):**
+- Artefatos de design acessíveis em `workspace_output/design/` ao final do pipeline
+- Pelo menos um `analise_tecnica_*.md` presente (verificação mínima da tool)
+- `design/manifest.json` presente — necessário para o gating do orquestrador e,
+  futuramente, para a leitura manifest-guided
 
 ### 4.2 Para o Time 3 — QA (consumidor de saída)
 
@@ -274,9 +264,9 @@ Este manifesto é versionado em duas formas complementares:
 
 ---
 
-## 6. Melhoria Pendente
+## 6. Melhorias Pendentes
 
-### Gating do orquestrador (prioridade: alta)
+### 6.1 Gating do orquestrador (prioridade: alta)
 
 O orquestrador ainda não lê `coding_manifest` antes de disparar o pipeline de QA.
 
@@ -286,6 +276,24 @@ tokens e produzindo testes inválidos.
 **Sugestão:** O orchestrator deve verificar `state["coding_manifest"]["status"]`
 antes de invocar `qa_pipeline`. Se `blocked`, sinalizar ao usuário e aguardar
 re-execução.
+
+### 6.2 Leitura manifest-guided nas tools de entrada (prioridade: média)
+
+As tools `tool_ler_requirements_adk` e `tool_ler_design_adk` atualmente varrem os
+diretórios das fases anteriores via `rglob`, sem usar os manifestos como guia
+estrutural. O manifesto de requirements ou design, quando presente, é lido como
+mais um arquivo — não como índice de quais artefatos foram produzidos.
+
+**Problema:** A leitura via rglob funciona na prática, mas não segue o contrato
+definido em `TIME_4_CODIFICACAO.md` (seção 2): o context engineer deveria usar
+`artifacts[].path` do manifesto para saber exatamente o que foi produzido pela
+fase anterior, sem assumir a estrutura do diretório.
+
+**Sugestão:** Adaptar as tools para tentar leitura manifest-guided primeiro
+(`manifest.json` → `artifacts[].path`), com fallback para rglob quando o manifesto
+não existir. Isso alinha o mecanismo de entrada ao padrão já adotado na saída
+(`emit_coding_manifest`) e prepara o pipeline para a refatoração do orquestrador
+descrita em `ORQUESTRADOR.md`.
 
 ---
 
