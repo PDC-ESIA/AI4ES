@@ -25,6 +25,8 @@ from .context_engineer import agent as _context_engineer
 from .coder import agent as _coder
 from .executor.agent import agent as _executor
 from .reviewer.agent import agent as _reviewer
+from .manifest import emit_coding_manifest
+
 
 # ---------------------------------------------------------------------------
 # Loop de codificação + execução: coder produz/corrige → executor testa
@@ -51,7 +53,8 @@ agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → [codificação ↔ execução Docker] → revisão."
+        "contexto → [codificação ↔ execução Docker] → revisão → manifesto."
     ),
     sub_agents=[_context_engineer, _code_execute_loop, _reviewer],
+    after_agent_callback=emit_coding_manifest,
 )
