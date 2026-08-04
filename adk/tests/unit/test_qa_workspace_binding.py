@@ -26,14 +26,18 @@ def test_doubt_dir_resolve_sibling_de_tests(monkeypatch, tmp_path):
 
 
 def test_pytest_runner_resolve_dynamic_base(monkeypatch, tmp_path):
-    """_normalizar_caminho_arquivo deve resolver paths relativos para o workspace."""
+    """_normalizar_caminho_arquivo deve resolver paths relativos para o workspace do qa_agent.
+
+    O qa_agent mapeia para <WORKSPACE_OUTPUT_DIR>/tests/ (AGENT_DIRS["qa_agent"] = "tests").
+    Paths relativos passados a _normalizar_caminho_arquivo são resolvidos sob esse diretório.
+    """
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
 
-    # cria estrutura esperada
-    tests_inputs = tmp_path / "tests" / "inputs"
-    tests_inputs.mkdir(parents=True)
-    (tests_inputs / "hu_001").mkdir()
-    arquivo = tests_inputs / "hu_001" / "test_hu_001.py"
+    # qa_agent → tests/ (não tests/inputs/)
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir(parents=True, exist_ok=True)
+    (tests_dir / "hu_001").mkdir(parents=True, exist_ok=True)
+    arquivo = tests_dir / "hu_001" / "test_hu_001.py"
     arquivo.write_text("def test_x(): assert True\n")
 
     from adk.shared.tools.pytest_runner import _normalizar_caminho_arquivo
