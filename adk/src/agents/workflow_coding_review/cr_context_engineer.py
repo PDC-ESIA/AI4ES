@@ -30,8 +30,10 @@ agent = LlmAgent(
     description=ce_prompt.description,
     instruction=ce_prompt.instruction,
     output_key="tasks",
-    # output_schema removido: GAP-00 — output_schema e tools são mutuamente
-    # exclusivos no LlmAgent (ADK 1.33.0).
+    # output_schema removido: GAP-00 — neste agente, usar output_schema junto
+    # com tools causa conflito: o ADK ativa constrained decoding ao detectar
+    # output_schema, o que desabilita chamadas de tool. Mantida a abordagem
+    # via tools, conforme padrão do workflow coding_review.
     tools=[
         tool_salvar_task_cr_adk,
         tool_ler_requirements_adk,
