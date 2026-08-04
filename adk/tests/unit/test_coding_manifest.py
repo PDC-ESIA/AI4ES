@@ -92,7 +92,7 @@ def test_scan_artifacts_detecta_config(tmp_path):
     ids = {a["id"] for a in arts}
     assert tipos == {"config"}
     assert "Dockerfile" in ids
-    assert "requirements" in ids
+    assert "requirements.txt" in ids
 
 
 def test_scan_artifacts_detecta_revisao(tmp_path):
