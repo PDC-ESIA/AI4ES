@@ -20,7 +20,9 @@ def test_discover_coder_files_workspace_vazio(tmp_path, monkeypatch):
     (tmp_path / "ws" / "coder").mkdir(parents=True)
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     result = cr_reviewer._discover_coder_files()
@@ -32,7 +34,9 @@ def test_discover_coder_files_lista_arquivos_relativos(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     coder_ws = Path(cr_reviewer._CODER_WS)
@@ -52,7 +56,9 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     coder_ws = Path(cr_reviewer._CODER_WS)
@@ -71,7 +77,9 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_pa
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     coder_ws = Path(cr_reviewer._CODER_WS)
@@ -98,7 +106,9 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     coder_ws = Path(cr_reviewer._CODER_WS)
@@ -119,7 +129,9 @@ def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     assert cr_reviewer._analyzer.after_agent_callback is cr_reviewer._persist_review
@@ -130,7 +142,9 @@ def test_agent_e_alias_do_analyzer(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     assert cr_reviewer.agent is cr_reviewer._analyzer
@@ -141,7 +155,9 @@ def test_persist_review_cria_arquivo_no_review_ws(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     review_ws = Path(cr_reviewer._REVIEW_WS)
@@ -163,7 +179,9 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     review_ws = Path(cr_reviewer._REVIEW_WS)
@@ -188,7 +206,9 @@ def test_analyzer_tem_before_agent_callback(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     assert cr_reviewer._analyzer.before_agent_callback is cr_reviewer._inject_static_findings
@@ -200,7 +220,9 @@ def test_inject_static_findings_popula_state(tmp_path, monkeypatch):
     monkeypatch.setenv("REVIEWER_STATIC_ANALYSIS", "1")
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     coder_ws = tmp_path / "ws" / "coder" / "src"
@@ -221,7 +243,9 @@ def test_inject_static_findings_desabilitado_nao_popula_state(tmp_path, monkeypa
     monkeypatch.setenv("REVIEWER_STATIC_ANALYSIS", "0")
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     class _FakeCtx:
@@ -241,7 +265,9 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
+    from shared.tools.coding_tools import review_tools
     from src.agents.workflow_coding_review import cr_reviewer
+    importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
     review_ws = Path(cr_reviewer._REVIEW_WS)

@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 import docker
 from docker.errors import BuildError
 
-from shared.tools.harness_execucao import executar_harness_validacao
+from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
 from src.agents.executor.schemas import ExecutionReport
 
 _STAGE_ORDER = [
@@ -177,7 +177,7 @@ def _run(task_id, coder, execution, tasks, client):
     """
     with patch("docker.from_env", return_value=client), \
          patch("requests.get", return_value=_mock_response()), \
-         patch("shared.tools.harness_execucao.time.sleep"):
+         patch("shared.tools.coding_tools.harness_execucao.time.sleep"):
         return executar_harness_validacao(
             task_id, 1,
             coder_base_dir=coder,
