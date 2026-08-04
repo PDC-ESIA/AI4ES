@@ -62,6 +62,10 @@ AGENT_DIRS: dict[str, str] = {
     "cr_executor": "coder/execution",
     "cr_reviewer": "coder/review",
     "implementation_validator": "coder/validation",
+    # Workflow humaneval — benchmark de funções puras
+    "he_coder": "humaneval/src",
+    "he_executor": "humaneval/execution",
+    "he_tasks": "humaneval/tasks",
     # Orquestração
     "orchestrator": "orchestrator",
     "pipeline": "pipeline",

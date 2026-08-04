@@ -35,6 +35,9 @@ dependencies = [
     "bandit>=1.9.4",
 ]
 
+[project.optional-dependencies]
+benchmark = ["datasets>=2.14.0"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

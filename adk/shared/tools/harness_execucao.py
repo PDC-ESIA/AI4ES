@@ -595,6 +595,10 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
             error_code=None,
         )
 
+    # Se estamos em modo local (sem container), delega para _estagio_testes_local
+    if ctx.container is None:
+        return _estagio_testes_local(ctx, suite, t0)
+
     # Path host → path no container (Dockerfile: WORKDIR /app + COPY . /app/).
     rel = suite.relative_to(ctx.coder_dir)
     alvo = f"{_APP_WORKDIR}/{rel.as_posix()}"
@@ -676,6 +680,113 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
             "exit_code": exit_code,
             "resumo": resumo,
             "cobertura": cobertura,
+            "saida_tail": tail,
+        },
+        error_code=error_code,
+    )
+
+
+# ===========================================================================
+# Estágio 6 (variante local) — pytest no host, sem Docker
+# ===========================================================================
+
+def _resolver_python_venv() -> str:
+    """Retorna o caminho do interpretador Python do venv ativo, se existir.
+
+    Ordem de resolução:
+    1. VIRTUAL_ENV/bin/python (venv ativo)
+    2. sys.executable (o Python que está rodando este processo)
+    3. "python3" (fallback sistema)
+    """
+    import sys as _sys
+
+    venv = os.environ.get("VIRTUAL_ENV")
+    if venv:
+        venv_python = Path(venv) / "bin" / "python"
+        if venv_python.is_file():
+            return str(venv_python)
+    return _sys.executable or "python3"
+
+
+def _estagio_testes_local(ctx: _HarnessContext, suite: Path, t0: float) -> StageResult:
+    """Executa a suíte de testes no host (subprocess) — usado por mode='local'.
+
+    Dispensa Docker: roda pytest como subprocesso no diretório do coder.
+    Apenas coleta evidência (igual ao estágio Docker).
+    """
+    import subprocess
+
+    python_bin = _resolver_python_venv()
+
+    try:
+        proc = subprocess.run(
+            [
+                python_bin, "-m", "pytest",
+                str(suite), "-q", "-p", "no:cacheprovider",
+            ],
+            cwd=str(ctx.coder_dir),
+            capture_output=True,
+            text=True,
+            timeout=_TESTS_TIMEOUT,
+        )
+        exit_code = proc.returncode
+        stdout = proc.stdout
+        stderr = proc.stderr
+    except subprocess.TimeoutExpired:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.FALHA,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Suíte '{suite.name}' excedeu timeout de {_TESTS_TIMEOUT}s.",
+            evidence={"suite": str(suite), "modo": "local"},
+            error_code="TESTES_TIMEOUT",
+        )
+    except Exception as e:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Falha ao executar pytest no host: {e}",
+            evidence={"suite": str(suite), "modo": "local"},
+            error_code="EXEC_FALHOU",
+        )
+
+    resumo = _parse_stdout_plain(stdout)
+
+    if exit_code == 5:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.PULADO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Suíte '{suite.name}' não coletou nenhum teste.",
+            evidence={"suite": str(suite), "modo": "local"},
+            error_code=None,
+        )
+    if exit_code == 0:
+        status, error_code = StageStatus.SUCESSO, None
+    elif exit_code == 1:
+        status, error_code = StageStatus.FALHA, "TESTES_FALHARAM"
+    else:
+        status, error_code = StageStatus.ERRO, "PYTEST_ERRO_EXECUCAO"
+
+    tail = (stdout or "")[-3000:]
+    if stderr:
+        tail += f"\n--- stderr ---\n{stderr[-1000:]}"
+
+    return StageResult(
+        stage=StageName.TESTES_AUTOMATIZADOS,
+        status=status,
+        duration_seconds=round(time.time() - t0, 3),
+        summary=(
+            f"Suíte '{suite.name}' executada no host "
+            f"(modo=local, exit={exit_code}): {resumo['passaram']} passaram, "
+            f"{resumo['falharam']} falharam, {resumo['erros']} erros."
+        ),
+        evidence={
+            "suite": str(suite),
+            "modo": "local",
+            "exit_code": exit_code,
+            "resumo": resumo,
             "saida_tail": tail,
         },
         error_code=error_code,
@@ -845,6 +956,7 @@ def executar_harness_validacao(
     task_id: str,
     iteration: int = 1,
     *,
+    mode: str = "web",
     coder_base_dir=None,
     execution_base_dir=None,
     tasks_base_dir=None,
@@ -887,19 +999,56 @@ def executar_harness_validacao(
 
     # ---- Estágios 1..5 ----
     stages.append(_estagio_preparacao(ctx))
-    stages.append(_estagio_implantacao(ctx) if ctx.env_ok
-                  else _pulado(StageName.IMPLANTACAO_ARTEFATO,
-                               "Abortado: preparação do ambiente falhou."))
-    stages.append(_estagio_coleta_logs_implantacao(ctx))
-    stages.append(_estagio_inicializacao(ctx))
-    stages.append(_estagio_coleta_logs_execucao(ctx))
+
+    _is_local = mode == "local"
+
+    if _is_local:
+        # mode=local: pula Docker inteiro (estágios 2-5), roda pytest no host
+        stages.append(_pulado(StageName.IMPLANTACAO_ARTEFATO,
+                              "Pulado: mode=local (sem Docker)."))
+        stages.append(_pulado(StageName.COLETA_LOGS_IMPLANTACAO,
+                              "Pulado: mode=local (sem Docker)."))
+        stages.append(_pulado(StageName.INICIALIZACAO_APLICACAO,
+                              "Pulado: mode=local (sem servidor web)."))
+        stages.append(_pulado(StageName.COLETA_LOGS_EXECUCAO,
+                              "Pulado: mode=local (sem container)."))
+        ctx.deploy_ok = True
+        ctx.app_ok = True
+    else:
+        stages.append(_estagio_implantacao(ctx) if ctx.env_ok
+                      else _pulado(StageName.IMPLANTACAO_ARTEFATO,
+                                   "Abortado: preparação do ambiente falhou."))
+        stages.append(_estagio_coleta_logs_implantacao(ctx))
+
+        # ---- Estágio 4 — Inicialização da aplicação ----
+        if mode == "function_only":
+            stages.append(StageResult(
+                stage=StageName.INICIALIZACAO_APLICACAO,
+                status=StageStatus.PULADO,
+                duration_seconds=0.0,
+                summary="Pulado: mode=function_only (sem servidor web).",
+                evidence={},
+                error_code=None,
+            ))
+            ctx.app_ok = True
+        else:
+            stages.append(_estagio_inicializacao(ctx))
+
+        stages.append(_estagio_coleta_logs_execucao(ctx))
 
     # ---- Estágio 6 ----
     stages.append(_estagio_testes(ctx))
 
     # ---- Estágio 7 ----
-    r7, criteria_evidence = _estagio_validacoes_work_item(ctx)
-    stages.append(r7)
+    if mode in ("function_only", "local"):
+        stages.append(_pulado(
+            StageName.VALIDACOES_WORK_ITEM,
+            f"Pulado: mode={mode} (sem rotas HTTP a verificar).",
+        ))
+        criteria_evidence = []
+    else:
+        r7, criteria_evidence = _estagio_validacoes_work_item(ctx)
+        stages.append(r7)
 
     # ---- Estágio 8 — Consolidação ----
     t8 = time.time()
@@ -955,6 +1104,7 @@ def executar_harness_validacao(
 def executar_harness_tool(
     task_id: str,
     iteration: int = 1,
+    mode: str = "web",
     tool_context: ToolContext | None = None,
 ) -> dict:
     """Entrypoint do harness exposto ao LLM (via FunctionTool).
@@ -964,7 +1114,7 @@ def executar_harness_tool(
     parâmetros `*_base_dir` para injeção em testes/PoC, fora do schema da tool.
     """
     return executar_harness_validacao(
-        task_id, iteration, tool_context=tool_context,
+        task_id, iteration, mode=mode, tool_context=tool_context,
     )
 
 
