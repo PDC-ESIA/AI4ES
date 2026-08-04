@@ -28,7 +28,7 @@ from shared.workspace import get_agent_workspace, get_workspace_root
 if TYPE_CHECKING:
     from google.adk.agents.callback_context import CallbackContext
 else:
-    CallbackContext = Any
+    CallbackContext = Any  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
             if "__pycache__" not in f.parts and f.name not in _IGNORED:
                 artifacts.append({
                     "tipo": "codigo",
-                    "id": f.stem,
+                    "id": str(f.relative_to(app_dir).with_suffix("")).replace("\\", "/"),
                     "path": str(f.relative_to(ws_root)).replace("\\", "/"),
                 })
 
@@ -68,7 +68,7 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
             if "__pycache__" not in f.parts and f.name not in _IGNORED:
                 artifacts.append({
                     "tipo": "teste",
-                    "id": f.stem,
+                    "id": str(f.relative_to(tests_dir).with_suffix("")).replace("\\", "/"),
                     "path": str(f.relative_to(ws_root)).replace("\\", "/"),
                 })
 
