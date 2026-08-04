@@ -78,7 +78,7 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
             if f.is_file() and f.name in _CONFIG_FILES:
                 artifacts.append({
                     "tipo": "config",
-                    "id": f.stem,
+                    "id": f.name,
                     "path": str(f.relative_to(ws_root)).replace("\\", "/"),
                 })
 
