@@ -192,6 +192,107 @@ def _default_output_path() -> str:
     return str(_RESULTS_DIR / f"{timestamp}-{model_safe}.json")
 
 
+def _gerar_relatorio_markdown(summary: dict) -> str:
+    """Gera relatório markdown estruturado a partir do summary dict."""
+    from collections import Counter
+
+    results = summary["results"]
+    n = len(results)
+    times = sorted(r["duration_seconds"] for r in results)
+    dist = Counter(r["iterations"] for r in results)
+    multi = [r for r in results if r["iterations"] > 1]
+    failed = [r for r in results if not r["passed"]]
+    first_pass_pct = round(dist.get(1, 0) / n * 100, 1) if n else 0
+
+    lines = [
+        f"# Relatório de Benchmark — HumanEval",
+        "",
+        "## 1. Resumo Executivo",
+        "",
+        "| Métrica | Valor |",
+        "|---------|-------|",
+        f"| **Pass@1** | **{summary['pass_at_1']*100:.1f}%** |",
+        f"| Problemas avaliados | {n} |",
+        f"| Aprovados | {summary['passed']} |",
+        f"| Reprovados | {summary['failed']} |",
+        f"| Modelo | {summary.get('model', 'N/A')} |",
+        f"| Data de execução | {summary.get('executed_at', 'N/A')} |",
+        f"| Modo de execução | local (pytest no host, sem Docker) |",
+        "",
+        "## 2. Métricas Agregadas",
+        "",
+        "| Métrica | Valor |",
+        "|---------|-------|",
+        f"| Total de problemas | {n} |",
+        f"| Aprovados (final) | {summary['passed']} |",
+        f"| Reprovados | {summary['failed']} |",
+        f"| Pass@1 (final) | {summary['pass_at_1']*100:.1f}% |",
+        f"| First-pass (1 iteração) | {first_pass_pct}% ({dist.get(1, 0)}/{n}) |",
+        f"| Média de iterações | {summary['avg_iterations']} |",
+        f"| Mediana de tempo/problema | {times[n//2]:.2f}s |",
+        f"| Tempo total de execução | {sum(times)/60:.1f} min |",
+        "",
+        "## 3. Distribuição de Iterações",
+        "",
+        "| Iterações | Problemas | % |",
+        "|-----------|-----------|---|",
+    ]
+    for k in sorted(dist):
+        lines.append(f"| {k} | {dist[k]} | {dist[k]/n*100:.1f}% |")
+
+    lines += [
+        "",
+        "## 4. Distribuição de Tempo",
+        "",
+        "| Percentil | Tempo |",
+        "|-----------|-------|",
+        f"| Mínimo | {times[0]:.2f}s |",
+        f"| P25 | {times[n//4]:.2f}s |",
+        f"| P50 (mediana) | {times[n//2]:.2f}s |",
+        f"| P75 | {times[3*n//4]:.2f}s |",
+        f"| Máximo | {times[-1]:.2f}s |",
+        f"| **Total** | **{sum(times)/60:.1f} min** |",
+        "",
+    ]
+
+    if multi:
+        lines += [
+            "## 5. Problemas com Autocorreção (retry)",
+            "",
+            "| Problema | Iterações | Tempo | Resultado |",
+            "|----------|-----------|-------|-----------|",
+        ]
+        for r in multi:
+            status = "PASS" if r["passed"] else "FAIL"
+            lines.append(
+                f"| {r['task_id']} | {r['iterations']} | {r['duration_seconds']}s | {status} |"
+            )
+        autocorr_ok = sum(1 for r in multi if r["passed"])
+        lines += [
+            "",
+            f"Taxa de sucesso da autocorreção: **{autocorr_ok}/{len(multi)}** dos problemas",
+            f"que falharam na primeira tentativa foram corrigidos pelo loop coder-executor.",
+            "",
+        ]
+
+    if failed:
+        lines += [
+            "## 6. Análise de Falhas",
+            "",
+        ]
+        for r in failed:
+            lines += [
+                f"### {r['task_id']}",
+                "",
+                f"- **Iterações**: {r['iterations']} (exauriu limite)",
+                f"- **Tempo**: {r['duration_seconds']}s",
+                f"- **Erro**: {r.get('error') or 'Testes falharam em todas as iterações'}",
+                "",
+            ]
+
+    return "\n".join(lines) + "\n"
+
+
 async def run_benchmark(n_problems: int = 164, output_file: str | None = None):
     """Executa o benchmark HumanEval completo."""
     if output_file is None:
@@ -254,11 +355,21 @@ async def run_benchmark(n_problems: int = 164, output_file: str | None = None):
     print(f"  Avg time:   {summary['avg_duration_seconds']}s")
     print(f"{'='*60}")
 
-    Path(output_file).write_text(
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
         json.dumps(summary, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
     print(f"\nResultados salvos em: {output_file}")
+
+    # Gera relatório markdown ao lado do JSON
+    report_md_path = output_path.with_suffix(".report.md")
+    report_md_path.write_text(
+        _gerar_relatorio_markdown(summary),
+        encoding="utf-8",
+    )
+    print(f"Relatório salvo em:   {report_md_path}")
 
 
 def main():
