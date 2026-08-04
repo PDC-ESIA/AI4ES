@@ -199,12 +199,19 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         validation = _validation_verdict(coder_ws)
         status     = _derive_status(artifacts, doubts, validation)
 
+        session_id = (
+            getattr(getattr(callback_context, "session", None), "id", None)
+            or getattr(callback_context, "session_id", None)
+            or callback_context.state.get("session_id")
+        )
+
         manifest: dict = {
-            "phase":     PHASE_NAME,
-            "status":    status,
-            "artifacts": artifacts,
-            "doubts":    doubts,
-            "summary":   _build_summary(artifacts, doubts, validation),
+            "phase":      PHASE_NAME,
+            "status":     status,
+            "artifacts":  artifacts,
+            "doubts":     doubts,
+            "summary":    _build_summary(artifacts, doubts, validation),
+            "session_id": session_id,
         }
 
         callback_context.state[STATE_KEY] = manifest
