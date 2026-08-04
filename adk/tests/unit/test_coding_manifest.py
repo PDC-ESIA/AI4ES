@@ -154,6 +154,35 @@ def test_scan_doubts_detecta_bloqueante(tmp_path):
     assert doubts[0]["id"] == "Doubt_Artifact_D-001_20260723"
 
 
+def test_scan_doubts_detecta_formato_tool_gerar_doubt_artifact(tmp_path):
+    """Doubt gerado por tool_gerar_doubt_artifact_adk na raiz do workspace.
+
+    A tool escreve 'EXECUÇÃO PAUSADA' (sem '**Bloqueante:** Sim').
+    O scanner deve reconhecer esse formato como bloqueante.
+    """
+    conteudo = (
+        "# Doubt Artifact — Artefatos mínimos ausentes\n"
+        "\n"
+        "> EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA\n"
+        "> Gerado pelo context_engineer em 2026-08-04 10:00:00\n"
+        "\n"
+        "## Fase Bloqueada\n"
+        "**requirements**\n"
+        "\n"
+        "## Descrição do Problema\n"
+        "Pasta requirements/ não encontrada.\n"
+        "\n"
+        "## Ação Necessária\n"
+        "Executar o pipeline de requisitos antes do coding.\n"
+    )
+    _make_ws(tmp_path, {"Doubt_Artifact_context_engineer.md": conteudo})
+    doubts = _scan_doubts(tmp_path, tmp_path)
+    assert len(doubts) == 1
+    assert doubts[0]["bloqueante"] is True
+    assert doubts[0]["severidade"] == "alta"
+    assert doubts[0]["id"] == "Doubt_Artifact_context_engineer"
+
+
 def test_scan_doubts_detecta_nao_bloqueante(tmp_path):
     _make_ws(tmp_path, {
         "tasks/Doubt_Artifact_D-002_20260723.md": (
@@ -277,6 +306,8 @@ def test_emit_grava_state_e_arquivo(tmp_path):
 
     ctx = MagicMock()
     ctx.state = {}
+    ctx.session = MagicMock(id=None)
+    ctx.session_id = None
 
     with patch("src.agents.workflow_coding_review.manifest.get_agent_workspace", return_value=coder_ws), \
          patch("src.agents.workflow_coding_review.manifest.get_workspace_root", return_value=tmp_path):
@@ -294,6 +325,8 @@ def test_emit_manifest_json_valido(tmp_path):
 
     ctx = MagicMock()
     ctx.state = {}
+    ctx.session = MagicMock(id=None)
+    ctx.session_id = None
 
     with patch("src.agents.workflow_coding_review.manifest.get_agent_workspace", return_value=coder_ws), \
          patch("src.agents.workflow_coding_review.manifest.get_workspace_root", return_value=tmp_path):
@@ -305,6 +338,7 @@ def test_emit_manifest_json_valido(tmp_path):
     assert "artifacts" in data
     assert "doubts" in data
     assert "summary" in data
+    assert "session_id" in data
 
 
 def test_emit_nao_quebra_pipeline_em_falha():
