@@ -13,8 +13,11 @@ import argparse
 import asyncio
 import json
 import logging
+import os
+import re
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 # Adiciona raiz do projeto ao path
@@ -174,8 +177,26 @@ async def _executar_problema(item: dict, first_run: bool = False) -> dict:
         }
 
 
-async def run_benchmark(n_problems: int = 164, output_file: str = "humaneval_results.json"):
+_DEFAULT_MODEL = "gemini-2.5-flash"
+_MODEL = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
+
+# Diretório padrão para resultados versionáveis
+_RESULTS_DIR = Path(__file__).resolve().parent.parent / "benchmark_results" / "humaneval"
+
+
+def _default_output_path() -> str:
+    """Gera path padrão: benchmark_results/humaneval/{yyyyMMddhhmm}-{model}.json"""
+    timestamp = datetime.now().strftime("%Y%m%d%H%M")
+    model_safe = re.sub(r"[/\s]+", "-", _MODEL)
+    _RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    return str(_RESULTS_DIR / f"{timestamp}-{model_safe}.json")
+
+
+async def run_benchmark(n_problems: int = 164, output_file: str | None = None):
     """Executa o benchmark HumanEval completo."""
+    if output_file is None:
+        output_file = _default_output_path()
+
     print("Carregando dataset HumanEval...")
     dataset = load_dataset("openai/openai_humaneval", split="test")
     total = min(n_problems, len(dataset))
@@ -211,6 +232,8 @@ async def run_benchmark(n_problems: int = 164, output_file: str = "humaneval_res
 
     summary = {
         "benchmark": "HumanEval",
+        "model": _MODEL,
+        "executed_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "total_problems": len(results),
         "passed": total_pass,
         "failed": total_fail,
@@ -245,8 +268,8 @@ def main():
         help="Numero de problemas a executar (default: 164 = todos)",
     )
     parser.add_argument(
-        "--output", type=str, default="humaneval_results.json",
-        help="Arquivo de saida com resultados (default: humaneval_results.json)",
+        "--output", type=str, default=None,
+        help="Arquivo de saida (default: benchmark_results/humaneval/{timestamp}-{model}.json)",
     )
     parser.add_argument(
         "--verbose", action="store_true",

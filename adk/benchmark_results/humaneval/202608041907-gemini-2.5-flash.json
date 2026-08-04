@@ -1,5 +1,7 @@
 {
   "benchmark": "HumanEval",
+  "model": "gemini-2.5-flash",
+  "executed_at": "2026-08-04T19:07:00",
   "total_problems": 164,
   "passed": 163,
   "failed": 1,
