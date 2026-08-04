@@ -96,15 +96,18 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
 
 
 def _scan_doubts(coder_ws: Path, ws_root: Path) -> list[dict]:
-    """Varre o workspace de coding por Doubt_Artifact_*.md.
+    """Varre por Doubt_Artifact_*.md nos locais do workflow de coding.
 
     tool_gerar_doubt_artifact_adk escreve em ws_root/Doubt_Artifact_*.md
-    (raiz do workspace), não dentro de coder/. O scan parte de ws_root
-    para cobrir ambos os casos. O marcador de bloqueante é
+    (raiz do workspace). O scan cobre a raiz (não recursivo) e o interior
+    de coder/ (recursivo), evitando capturar doubts de outras fases
+    (requirements/, design/, etc.). O marcador de bloqueante é
     '**Bloqueante:** Sim' (mesmo padrão do Time 1).
     """
+    candidates = set(ws_root.glob("Doubt_Artifact_*.md"))
+    candidates |= set(coder_ws.rglob("Doubt_Artifact_*.md"))
     doubts: list[dict] = []
-    for f in sorted(ws_root.rglob("Doubt_Artifact_*.md")):
+    for f in sorted(candidates):
         try:
             text = f.read_text(encoding="utf-8", errors="ignore")
         except OSError:
