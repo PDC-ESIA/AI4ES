@@ -112,7 +112,9 @@ def _scan_doubts(coder_ws: Path, ws_root: Path) -> list[dict]:
             text = f.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
-        bloqueante = "**Bloqueante:** Sim" in text
+        # Detecta dois formatos: padrão Time 1 ("**Bloqueante:** Sim") e
+        # formato gerado por tool_gerar_doubt_artifact_adk ("EXECUÇÃO PAUSADA").
+        bloqueante = "**Bloqueante:** Sim" in text or "EXECUÇÃO PAUSADA" in text
         doubts.append({
             "id": f.stem,
             "severidade": "alta" if bloqueante else "media",
