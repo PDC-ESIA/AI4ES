@@ -1264,13 +1264,14 @@ def acquire_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
             }
         caller = caller.strip()
 
-        _, filename, error = _resolve_path_arg(filepath)
+        dirs = _resolve_dirs()
+        _, filename, error = _resolve_path_arg(filepath, dirs)
         if error:
             return {"status": "error", "error": error}
         if not filename:
             return {"status": "error", "error": "Nome de arquivo vazio."}
 
-        _ensure_dirs()
+        LOCKS_DIR.mkdir(parents=True, exist_ok=True)
         lock_file = _lock_path(filename)
         payload = json.dumps(
             {"owner": caller, "filepath": filename, "acquired_at": datetime.now().isoformat()},
@@ -1329,7 +1330,8 @@ def check_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
         Falha:    {"status": "error", "error": "<motivo>"}
     """
     try:
-        _, filename, error = _resolve_path_arg(filepath)
+        dirs = _resolve_dirs()
+        _, filename, error = _resolve_path_arg(filepath, dirs)
         if error:
             return {"status": "error", "error": error}
         if not filename:
@@ -1369,7 +1371,8 @@ def release_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
         Falha:    {"status": "error", "error": "<motivo>"}
     """
     try:
-        _, filename, error = _resolve_path_arg(filepath)
+        dirs = _resolve_dirs()
+        _, filename, error = _resolve_path_arg(filepath, dirs)
         if error:
             return {"status": "error", "error": error}
         if not filename:
