@@ -19,6 +19,7 @@ import logging
 import re
 from pathlib import Path
 
+from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import types
 
@@ -305,23 +306,38 @@ def _parse_e_aplicar_politica(callback_context):
 # Agente — por último no módulo: o callback já existe quando é referenciado
 # ---------------------------------------------------------------------------
 
-# Abordagem (b): SEM `agent_subdir`. O validador lê o ExecutionReport a partir
-# do `report_path` CONCRETO (absoluto) que o executor lhe entrega, gravado pelo
-# harness em coder/execution/{task_id}.report.json. `tool_ler_arquivo` só aceita
-# caminho absoluto quando `base_dir` é None (com `base_dir` setado,
-# `_resolver_caminho` REJEITA caminhos absolutos). Por isso NÃO passamos
-# agent_subdir: assim o report absoluto é lido diretamente do disco, sem o
-# validador precisar conhecer o task_id nem remontar o caminho. O validador é
-# read-only (só lê o report), então não precisa de workspace bound para escrita.
-agent = create_se_agent(
-    name="implementation_validator",
-    description=prompt.description,
-    instruction=prompt.instruction,
-    output_key="validation_raw",
-    tools=[FunctionTool(tool_ler_arquivo)],
-    # SEM output_schema — GAP-00: schema + tools são mutuamente exclusivos.
-)
-agent.after_agent_callback = _parse_e_aplicar_politica
+def criar_agente() -> LlmAgent:
+    """Constrói uma instância NOVA do validador, já com a política acoplada.
+
+    Existe porque `sub_agents` do ADK exige parent ÚNICO: `BaseAgent` levanta
+    `ValueError` ao adotar um agente que já tem `parent_agent`. Enquanto o
+    validador era usado só via `AgentTool` (que não define parent), o singleton
+    de módulo abaixo bastava; ao virar sub-agente de DUAS orquestrações
+    diferentes (o executor consolidado e o do workflow), o mesmo objeto Python
+    não pode ser reaproveitado. Cada chamada devolve uma instância própria.
+
+    Abordagem (b): SEM `agent_subdir`. O validador lê o ExecutionReport a partir
+    do `report_path` CONCRETO (absoluto) que o executor lhe entrega, gravado pelo
+    harness em coder/execution/{task_id}.report.json. `tool_ler_arquivo` só aceita
+    caminho absoluto quando `base_dir` é None (com `base_dir` setado,
+    `_resolver_caminho` REJEITA caminhos absolutos). Por isso NÃO passamos
+    agent_subdir: assim o report absoluto é lido diretamente do disco, sem o
+    validador precisar conhecer o task_id nem remontar o caminho. O validador é
+    read-only (só lê o report), então não precisa de workspace bound para escrita.
+    """
+    novo = create_se_agent(
+        name="implementation_validator",
+        description=prompt.description,
+        instruction=prompt.instruction,
+        output_key="validation_raw",
+        tools=[FunctionTool(tool_ler_arquivo)],
+        # SEM output_schema — GAP-00: schema + tools são mutuamente exclusivos.
+    )
+    novo.after_agent_callback = _parse_e_aplicar_politica
+    return novo
+
+
+agent = criar_agente()
 
 # ADK CLI busca por `root_agent` ao carregar um app diretamente.
 root_agent = agent

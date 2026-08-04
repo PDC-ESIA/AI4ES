@@ -65,6 +65,7 @@ class _HarnessContext:
         self.tasks_dir = tasks_dir
 
         # Preenchidos ao longo dos estágios
+        self.tech_stack: list[str] = []
         self.acceptance_criteria: list[str] = []
         self.contract: dict = {}
         self.dockerfile: str = ""
@@ -837,6 +838,33 @@ def _render_markdown(report: ExecutionReport) -> str:
     return "\n".join(linhas) + "\n"
 
 
+def _ler_tech_stack(tool_context: ToolContext | None) -> list[str]:
+    """Lê a stack declarada pelo context_engineer em `session.state`.
+
+    O caminho do dado é `state["tasks"]["macro_context"]["tech_stack"]` — a
+    saída estruturada (`TasksOutput`) que o `cr_context_engineer` já grava via
+    `output_key="tasks"`. Nada é escrito aqui: o harness apenas consome.
+
+    Tolerante a ausência: chamadas diretas (testes/PoC) não passam contexto, e
+    a chave pode não existir ou vir malformada. Em qualquer desses casos
+    devolve `[]` — decidir o que fazer com uma stack desconhecida não é
+    responsabilidade deste módulo.
+    """
+    if tool_context is None:
+        return []
+
+    try:
+        tech_stack = tool_context.state["tasks"]["macro_context"]["tech_stack"]
+    except (KeyError, TypeError, IndexError):
+        return []
+
+    if not isinstance(tech_stack, list) or not all(isinstance(t, str) for t in tech_stack):
+        logger.warning(f"[HARNESS] tech_stack em formato inesperado: {tech_stack!r}")
+        return []
+
+    return tech_stack
+
+
 # ===========================================================================
 # Tool pública — orquestra os 9 estágios
 # ===========================================================================
@@ -866,9 +894,10 @@ def executar_harness_validacao(
         tasks_base_dir: Sobrescreve o diretório onde ficam as Tasks em JSON.
         tool_context: Injetado pela FunctionTool do ADK quando o parâmetro é
             declarado. Opcional — chamadas diretas (testes, PoC) não o passam.
-            Quando presente, grava o caminho absoluto do report gravado em
-            `tool_context.state["report_path"]`, tornando a evidência resolvível
-            pelo validador sem depender do eco do LLM.
+            Quando presente, lê a stack declarada pelo context_engineer em
+            `tool_context.state["tasks"]` e grava o caminho absoluto do report
+            em `tool_context.state["report_path"]`, tornando a evidência
+            resolvível pelo validador sem depender do eco do LLM.
 
     Returns:
         dict: `ExecutionReport.model_dump(mode="json")` — apenas evidências,
@@ -881,6 +910,7 @@ def executar_harness_validacao(
     tasks_dir = Path(tasks_base_dir) if tasks_base_dir else get_agent_workspace("cr_context_engineer")
 
     ctx = _HarnessContext(task_id, coder_dir, exec_dir, tasks_dir)
+    ctx.tech_stack = _ler_tech_stack(tool_context)
 
     stages: list[StageResult] = []
     criteria_evidence: list[CriterionEvidence] = []
