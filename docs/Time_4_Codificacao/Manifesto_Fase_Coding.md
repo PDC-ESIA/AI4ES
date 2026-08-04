@@ -165,10 +165,10 @@ Arquivos de config reconhecidos: `requirements.txt`, `Dockerfile`, `docker-compo
   "phase": "coding",
   "status": "ok | partial | blocked",
   "artifacts": [
-    { "tipo": "codigo",  "id": "main",      "path": "workspace_output/coder/src/app/main.py" },
-    { "tipo": "teste",   "id": "test_main", "path": "workspace_output/coder/src/tests/test_main.py" },
-    { "tipo": "config",  "id": "Dockerfile","path": "workspace_output/coder/src/Dockerfile" },
-    { "tipo": "revisao", "id": "verificacao_revisao", "path": "workspace_output/coder/review/verificacao_revisao.md" }
+    { "tipo": "codigo",  "id": "main",      "path": "coder/src/app/main.py" },
+    { "tipo": "teste",   "id": "test_main", "path": "coder/src/tests/test_main.py" },
+    { "tipo": "config",  "id": "Dockerfile","path": "coder/src/Dockerfile" },
+    { "tipo": "revisao", "id": "verificacao_revisao", "path": "coder/review/verificacao_revisao.md" }
   ],
   "doubts": [],
   "summary": "Fase coding concluída com status 'ok'. Artefatos: 3 codigo, 1 config, 1 revisao, 1 teste. Revisão: pass. sem doubts.",
@@ -223,7 +223,7 @@ O Time de Codificação:
 #### Regras de sanitização de saída do manifesto
 
 - O conteúdo dos artefatos NUNCA entra no manifesto — apenas `tipo`, `id` e `path`
-- `path` é sempre relativo ao pai de `workspace_output/` (nunca absoluto)
+- `path` é sempre relativo à raiz do workspace (`workspace_output/`) (nunca absoluto)
 - O manifesto é best-effort: qualquer falha na emissão é logada, nunca propaga exceção
 
 ---
