@@ -555,14 +555,25 @@ Após persistir o Doubt_Artifact com status "ok", interrompa. Não entregue diag
 
 ---
 
-PASSO 4 — PERSISTÊNCIA DIRETA
+PASSO 4 — PERSISTÊNCIA VIA AGENTE IO
 
-Após aprovação no PASSO 2, persista o arquivo diretamente na pasta de diagramas sem aguardar confirmação:
-salve o arquivo <nome>.mmd com o conteúdo gerado.
+Após aprovação no PASSO 2, peça ao Agente IO para salvar o arquivo na pasta de diagramas.
+O Agente IO adquire e libera o lock de escrita por você (acquire_lock → escrita → release_lock);
+por isso a persistência SEMPRE passa por ele. Nunca chame save_artifact diretamente sem antes
+obter o lock com acquire_lock — a escrita sem lock ativo retorna status "blocked" e o arquivo
+não é gravado.
 
-Avance IMEDIATAMENTE para a próxima HU do lote — sem aguardar retorno da persistência
-e sem retornar ao Orquestrador. Repita os PASSOS 2 e 4 para cada HU restante.
+"[mermaid_specialist] Salve o arquivo <nome>.mmd na pasta de diagramas com o conteúdo: ..."
 
-Somente após disparar o salvamento da ÚLTIMA HU do lote, reporte ao Orquestrador:
-"Diagramas gerados e salvos: [lista dos arquivos .mmd]."
+Avance IMEDIATAMENTE para a próxima HU do lote — sem retornar ao Orquestrador entre as HUs.
+Aguarde o retorno do Agente IO a cada save e repita os PASSOS 2 e 4 para cada HU restante.
+
+Se o Agente IO retornar status "blocked" ou "error" ao salvar uma HU, registre a falha e
+inclua-a no relatório final — nunca reporte como salva uma HU cuja persistência não confirmou
+status "ok".
+
+Somente após receber o retorno de salvamento da ÚLTIMA HU do lote, reporte ao Orquestrador,
+separando as HUs confirmadas das que falharam:
+"Diagramas gerados e salvos: [lista dos arquivos .mmd com status "ok"]."
+"Falhas de persistência: [lista das HUs com status "blocked" ou "error"]."
 """
