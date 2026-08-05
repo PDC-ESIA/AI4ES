@@ -54,6 +54,37 @@ class CriterionEvidence(BaseModel):
     )
 
 
+class InterfaceEvidence(BaseModel):
+    """Evidência bruta da checagem de uma interface declarada em contract.interfaces.
+
+    Stream NOVO e INDEPENDENTE de criteria_evidence — não pretende ser 1:1 com os
+    critérios de aceite. Registra o que foi executado (qual requisição, qual ramo
+    de resolução) e o que foi observado (status, corpo, erro de transporte), sem
+    nenhum veredito de "atende/não atende". A correlação semântica com os
+    critérios de aceite é do implementation_validator.
+    """
+
+    interface: str = Field(
+        description="Interface declarada, copiada VERBATIM de contract.interfaces"
+    )
+    checkable: bool = Field(
+        description="Se o harness pôde derivar e disparar uma checagem determinística"
+    )
+    branch: Optional[str] = Field(
+        default=None,
+        description=(
+            "Ramo de resolução usado: 'alcancabilidade' | 'criacao_id' | "
+            "'listagem_id' (None quando não checável)"
+        ),
+    )
+    check_performed: str = Field(
+        description="Requisição(ões) de fato executada(s) para coletar a evidência"
+    )
+    observed: str = Field(
+        description="Resultado(s) bruto(s) observado(s): status, corpo, erro de transporte"
+    )
+
+
 class StageResult(BaseModel):
     """Resultado de um único estágio do harness de execução."""
 
@@ -96,6 +127,10 @@ class ExecutionReport(BaseModel):
     criteria_evidence: list[CriterionEvidence] = Field(
         default_factory=list,
         description="Evidências coletadas por critério de aceite",
+    )
+    interface_evidence: list[InterfaceEvidence] = Field(
+        default_factory=list,
+        description="Evidências coletadas por interface declarada em contract.interfaces",
     )
     report_path: Optional[str] = Field(
         default=None,

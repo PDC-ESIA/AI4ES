@@ -29,8 +29,6 @@ _STARTUP_GRACE_PERIOD = 5  # segundos para o app inicializar dentro do container
 _HTTP_HEALTHCHECK_TIMEOUT = 10  # timeout do GET de homologação
 _HEALTHCHECK_RETRIES = 3  # tentativas de healthcheck HTTP
 _HEALTHCHECK_RETRY_INTERVAL = 2  # segundos entre retries
-_HEALTHCHECK_ENDPOINT = "/docs"  # FastAPI sempre gera /docs (Swagger UI)
-_OPENAPI_ENDPOINT = "/openapi.json"  # Schema de rotas para descobrir rota principal
 _MEMORY_LIMIT = "512m"
 _CPU_QUOTA = 50000  # 50 % de 1 core
 
@@ -142,49 +140,3 @@ def _cleanup_container(client: docker.DockerClient, name: str) -> None:
         pass
     except Exception as e:
         logger.warning(f"[CR EXECUTOR] Falha ao remover container '{name}': {e}")
-
-
-def _discover_main_route(base_url: str, http_mod) -> Optional[str]:
-    """Descobre a rota principal da app via /openapi.json.
-
-    Estratégia:
-    1. Busca /openapi.json (FastAPI sempre gera)
-    2. Filtra rotas GET excluindo /docs, /openapi.json, /redoc
-    3. Prioriza "/" (raiz), depois a primeira rota com GET
-    4. Retorna None se não encontrar rota candidata (API pura sem HTML)
-    """
-    _SKIP_ROUTES = {"/docs", "/docs/oauth2-redirect", "/openapi.json", "/redoc"}
-
-    try:
-        resp = http_mod.get(
-            f"{base_url}{_OPENAPI_ENDPOINT}",
-            timeout=_HTTP_HEALTHCHECK_TIMEOUT,
-        )
-        if resp.status_code != 200:
-            logger.warning("[CR EXECUTOR] Não foi possível obter /openapi.json")
-            return "/"  # fallback: tenta raiz
-
-        schema = resp.json()
-        paths = schema.get("paths", {})
-
-        # Coletar rotas GET que não são internas
-        get_routes = []
-        for path, methods in paths.items():
-            if path in _SKIP_ROUTES:
-                continue
-            if "get" in methods:
-                get_routes.append(path)
-
-        if not get_routes:
-            return None  # app não tem GET routes (improvável mas possível)
-
-        # Priorizar raiz
-        if "/" in get_routes:
-            return "/"
-
-        # Retorna a primeira rota GET (ordem de declaração no código)
-        return get_routes[0]
-
-    except Exception as e:
-        logger.warning(f"[CR EXECUTOR] Erro ao descobrir rota principal: {e}")
-        return "/"  # fallback: tenta raiz

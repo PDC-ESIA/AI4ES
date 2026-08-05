@@ -57,6 +57,11 @@ Campos relevantes do report:
   - `stages`          : resultado de cada estágio do harness.
   - `criteria_evidence`: uma evidência por critério de aceite, cada uma com
                         `criterion`, `check_performed`, `observed` e `checkable`.
+  - `interface_evidence`: uma evidência por interface declarada em
+                        `contract.interfaces` (rotas do contrato), cada uma com
+                        `interface`, `checkable`, `branch`, `check_performed` e
+                        `observed`. É um stream INDEPENDENTE — NÃO é 1:1 com os
+                        critérios de aceite; use como evidência de apoio.
   - `acceptance_criteria`: a lista de critérios de aceite do Work Item.
 
 ═══════════════════════════════════════════════════════════════
@@ -91,6 +96,12 @@ A validação tem DUAS camadas obrigatórias e sequenciais.
           - Evidência sustenta o critério   → `atendido`.
           - Evidência contradiz o critério  → `nao_atendido`.
           - Sem evidência suficiente no report para decidir → `inconclusivo`.
+      Em AMBOS os casos (checkable true e false), considere TAMBÉM
+      `interface_evidence` como evidência de APOIO ao julgar o critério: uma
+      evidência de interface (rota do contrato) pode corroborar ou contradizer o
+      critério — inclusive quando `checkable = true`, somando-se à evidência
+      determinística direta. É um stream independente (não 1:1 com os critérios):
+      correlacione semanticamente, sem exigir correspondência textual exata.
       Em `reasoning`, cite a evidência exata que embasou a decisão.
       Em `evidence_ref`, referencie a evidência/estágio usado, quando houver.
 

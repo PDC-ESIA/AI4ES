@@ -29,7 +29,6 @@ from pathlib import Path
 from typing import Optional
 
 import docker
-import requests
 from docker.errors import APIError, BuildError
 from google.adk.tools import ToolContext
 
@@ -76,8 +75,6 @@ class _HarnessContext:
         self.container = None
         self.build_logs: str = ""
         self.runtime_logs: str = ""
-        self.base_url: str = f"http://localhost:{hd._HOST_PORT}"
-        self.main_route: Optional[str] = None
 
         # Flags de dependência entre estágios
         self.env_ok: bool = False       # estágio 1
@@ -264,7 +261,6 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
             detach=True,
             mem_limit=hd._MEMORY_LIMIT,
             cpu_quota=hd._CPU_QUOTA,
-            ports={"8000/tcp": ("0.0.0.0", hd._HOST_PORT)},
             environment={
                 "DATABASE_URL": "sqlite:///./data/app.db",
                 "UPLOAD_DIR": "/app/uploads",
@@ -429,15 +425,12 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
         )
 
     ctx.app_ok = True
-    # main_route continua vindo do /openapi.json pela porta PUBLICADA (host) —
-    # intocado nesta fatia; é a Fatia C2c que aposenta este mecanismo.
-    ctx.main_route = hd._discover_main_route(ctx.base_url, requests)
     return StageResult(
         stage=StageName.INICIALIZACAO_APLICACAO,
         status=StageStatus.SUCESSO,
         duration_seconds=round(time.time() - t0, 3),
         summary=f"Aplicação respondendo em {base_interno}/ (HTTP {status_code}).",
-        evidence={"base_url_interno": base_interno, "main_route": ctx.main_route},
+        evidence={"base_url_interno": base_interno},
         error_code=None,
     )
 
@@ -548,23 +541,53 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
 
 _PATH_RE = re.compile(r"(/[\w\-/{}]*)")
 _VERBO_HTTP_RE = re.compile(r"\b(GET|POST|PUT|DELETE|PATCH)\b", re.IGNORECASE)
+_PARAM_SEG_RE = re.compile(r"\{[^/}]+\}")
+
+# Nomes de campo genéricos aceitos como identificador de um recurso criado/listado
+# — conjunto pequeno e SEM semântica de negócio (ver spec C2c §2/§3.3).
+_CAMPOS_ID = ("id", "_id", "uuid")
+
+# Timeout das requisições de evidência (ms), no mesmo teto do liveness.
+_EVIDENCIA_TIMEOUT_MS = hd._HTTP_HEALTHCHECK_TIMEOUT * 1000
+
+
+def _probe_uma(container, base_interno: str, metodo: str, rota: str):
+    """Dispara UMA requisição via probe (sem body/headers — nunca inventa payload).
+
+    Devolve `(resultado, erro_mecanico)`:
+      - `resultado`: o dict do probe (pode ter `error` de transporte preenchido);
+      - `erro_mecanico`: str quando `probe.ProbeError` (falha do MECANISMO do
+        probe — binário/arquitetura/put_archive), categoria DIFERENTE de um erro
+        de transporte de requisição.
+    Só uma das duas posições é significativa por chamada.
+    """
+    try:
+        resultados = probe.executar_probe(
+            container,
+            [{"method": metodo, "path": rota, "timeout_ms": _EVIDENCIA_TIMEOUT_MS}],
+            base_interno,
+        )
+    except probe.ProbeError as e:
+        return None, str(e)
+    return (resultados[0] if resultados else {}), None
 
 
 def _coletar_evidencia_criterio(
-    criterion: str, base_url: str, main_route: Optional[str]
+    criterion: str, container, base_interno: str
 ) -> CriterionEvidence:
     """Deriva uma checagem determinística para um critério, SEM julgá-lo.
 
-    Nunca decide se o critério foi atendido — apenas registra o que foi
-    verificado e o que foi observado. A conclusão é do validador.
+    Nunca decide se o critério foi atendido — apenas registra o que foi verificado
+    e o que foi observado. A conclusão é do validador.
 
-    A única checagem que o harness sabe derivar com segurança é um GET sem
-    payload. Critérios que mencionam POST/PUT/PATCH/DELETE exigiriam inventar
-    corpo/headers — adivinhação que o harness não faz. Nesses casos o critério
-    é marcado como NÃO verificável (evidência honesta), em vez de executar um
-    GET desalinhado e rotulá-lo de verificável, o que poderia induzir o
-    validador a conclusões erradas (ex.: um 405 em rota POST é o comportamento
-    esperado para um GET, não uma falha do critério).
+    A única checagem que o harness sabe derivar com segurança é um GET sem payload,
+    e SÓ quando o critério traz um path explícito. Critérios que mencionam
+    POST/PUT/PATCH/DELETE exigiriam inventar corpo/headers (adivinhação que o
+    harness não faz); critérios sem path explícito não têm rota a testar — ambos
+    viram NÃO verificáveis (evidência honesta), sem chutar a rota raiz.
+
+    A requisição roda DE DENTRO do container, via probe, contra a porta interna
+    (mesmo modelo do Estágio 4) — não pela porta publicada (que deixou de existir).
     """
     path_match = _PATH_RE.search(criterion)
     verbos = {m.upper() for m in _VERBO_HTTP_RE.findall(criterion)}
@@ -583,34 +606,236 @@ def _coletar_evidencia_criterio(
             checkable=False,
         )
 
-    if path_match or verbos:
-        rota = path_match.group(1) if path_match else (main_route or "/")
-        if not rota or rota == "/":
-            rota = main_route or "/"
-        try:
-            resp = requests.get(f"{base_url}{rota}", timeout=hd._HTTP_HEALTHCHECK_TIMEOUT)
-            observed = f"GET {rota} → HTTP {resp.status_code}"
-        except Exception as e:
-            observed = f"GET {rota} → falha de conexão: {e}"
+    if path_match:
+        rota = path_match.group(1)
+        resultado, mecanico = _probe_uma(container, base_interno, "GET", rota)
+        if mecanico is not None:
+            observed = f"GET {rota} → falha do probe: {mecanico}"
+        elif resultado.get("error"):
+            observed = f"GET {rota} → falha de transporte: {resultado['error']}"
+        else:
+            observed = f"GET {rota} → HTTP {resultado.get('status')}"
         return CriterionEvidence(
             criterion=criterion,
-            check_performed=f"Requisição HTTP GET {rota}",
+            check_performed=f"Requisição HTTP GET {rota} (via probe, porta interna).",
             observed=observed,
             checkable=True,
         )
 
-    # Critério semântico demais para checagem determinística
+    # Critério sem path explícito (com ou sem verbo) → sem rota a testar.
     return CriterionEvidence(
         criterion=criterion,
-        check_performed="Nenhuma checagem determinística derivável (critério semântico).",
+        check_performed="Nenhuma checagem determinística derivável (sem rota explícita / semântico demais).",
         observed="Requer avaliação do validador a partir das evidências coletadas.",
         checkable=False,
     )
 
 
+# --- Evidência por interface declarada (contract.interfaces) — três ramos -----
+
+def _extrair_verbo_rota(texto: str) -> tuple[Optional[str], Optional[str]]:
+    """Extrai o primeiro verbo HTTP e a primeira rota — mesma extração dos critérios."""
+    verbos = _VERBO_HTTP_RE.findall(texto)
+    verbo = verbos[0].upper() if verbos else None
+    path_match = _PATH_RE.search(texto)
+    rota = path_match.group(1) if path_match else None
+    return verbo, rota
+
+
+def _param_no_ultimo_segmento(rota: str) -> bool:
+    segs = [s for s in rota.split("/") if s]
+    return bool(segs) and bool(re.fullmatch(r"\{[^/}]+\}", segs[-1]))
+
+
+def _rota_pai(rota: str) -> str:
+    """Rota sem o último segmento — `/items/{id}` → `/items` (`/{id}` → `/`)."""
+    segs = [s for s in rota.split("/") if s]
+    pai = "/".join(segs[:-1])
+    return "/" + pai if pai else "/"
+
+
+def _substituir_ultimo_param(rota: str, valor: str) -> str:
+    """Troca o último segmento `{...}` pelo valor real do ID."""
+    segs = rota.split("/")
+    for i in range(len(segs) - 1, -1, -1):
+        if re.fullmatch(r"\{[^/}]+\}", segs[i]):
+            segs[i] = valor
+            break
+    return "/".join(segs)
+
+
+def _extrair_id(body: str) -> Optional[str]:
+    """Extrai um identificador genérico do corpo JSON, sem semântica de negócio.
+
+    Objeto de topo: procura `id`/`_id`/`uuid` direto. Lista/array: usa o primeiro
+    item. None se nada casar (nunca inventa um valor).
+    """
+    try:
+        dado = json.loads(body or "")
+    except Exception:
+        return None
+    return _id_de(dado)
+
+
+def _id_de(dado) -> Optional[str]:
+    if isinstance(dado, dict):
+        for campo in _CAMPOS_ID:
+            valor = dado.get(campo)
+            if isinstance(valor, (str, int)) and not isinstance(valor, bool):
+                return str(valor)
+        return None
+    if isinstance(dado, list) and dado:
+        return _id_de(dado[0])
+    return None
+
+
+def _evidencia_interface(
+    interface: str, ramo: str, metodo: str, rota: str, resultado, mecanico, prefixo: str = ""
+) -> InterfaceEvidence:
+    """Monta a InterfaceEvidence a partir do resultado bruto de UMA requisição."""
+    if mecanico is not None:
+        observed = f"{metodo} {rota} → falha do probe: {mecanico}"
+    elif resultado.get("error"):
+        observed = f"{metodo} {rota} → falha de transporte: {resultado['error']}"
+    else:
+        corpo = (resultado.get("body") or "")[:500]
+        observed = f"{metodo} {rota} → HTTP {resultado.get('status')}"
+        if corpo:
+            observed += f"; corpo: {corpo}"
+    pref = f"{prefixo} " if prefixo else ""
+    return InterfaceEvidence(
+        interface=interface,
+        checkable=True,
+        branch=ramo,
+        check_performed=f"{pref}Requisição {metodo} {rota} (via probe, porta interna).".strip(),
+        observed=observed,
+    )
+
+
+def _interface_nao_checavel(interface: str, motivo: str) -> InterfaceEvidence:
+    return InterfaceEvidence(
+        interface=interface,
+        checkable=False,
+        branch=None,
+        check_performed=f"Nenhuma checagem derivável: {motivo}.",
+        observed="Requer avaliação do validador a partir das demais evidências do report.",
+    )
+
+
+def _resolver_id_grupo(
+    container, base_interno: str, rota_pai: str, verbos: list, rotas: list
+) -> tuple[Optional[str], Optional[str], str]:
+    """Resolve UM id real da rota pai — Ramo 1 (POST/criar) ou Ramo 2 (GET/listar).
+
+    Nunca inventa valor. Devolve `(id, ramo, motivo)`: id/ramo preenchidos em
+    sucesso; id=None + motivo objetivo quando nenhum ramo resolveu.
+    """
+    # A rota pai precisa estar CONCRETA. Se ela mesma ainda carrega um {...}
+    # (parâmetro ANINHADO — ex.: pai '/users/{user_id}/comments' de
+    # '/users/{user_id}/comments/{comment_id}'), casar/disparar contra ela
+    # mandaria o placeholder literal na URL, produzindo evidência de uma rota que
+    # nunca existiu. Resolver esse parâmetro intermediário seria uma capacidade
+    # nova (fora de escopo) — aqui tratamos como "sem interface correlata
+    # resolvível", o mesmo caminho de quando nada é declarado na rota pai.
+    if _PARAM_SEG_RE.search(rota_pai):
+        return None, None, (
+            f"rota pai '{rota_pai}' ainda depende de outro parâmetro não "
+            f"resolvido (parâmetro aninhado) — nenhuma interface de "
+            f"criação/listagem utilizável sem inventar valor"
+        )
+
+    tentativas = []
+    tem_post = any(verbos[j] == "POST" and rotas[j] == rota_pai for j in range(len(verbos)))
+    tem_get = any(verbos[j] == "GET" and rotas[j] == rota_pai for j in range(len(verbos)))
+
+    # Ramo 1 — criar e capturar ID (POST na rota pai, sem body inventado).
+    if tem_post:
+        resultado, mecanico = _probe_uma(container, base_interno, "POST", rota_pai)
+        if mecanico is not None:
+            tentativas.append(f"POST {rota_pai}: falha do probe ({mecanico})")
+        elif resultado.get("error"):
+            tentativas.append(f"POST {rota_pai}: {resultado['error']}")
+        else:
+            ident = _extrair_id(resultado.get("body", ""))
+            if ident is not None:
+                return ident, "criacao_id", ""
+            tentativas.append(f"POST {rota_pai}: sem ID extraível (HTTP {resultado.get('status')})")
+
+    # Ramo 2 — descobrir via listagem (GET na rota pai).
+    if tem_get:
+        resultado, mecanico = _probe_uma(container, base_interno, "GET", rota_pai)
+        if mecanico is not None:
+            tentativas.append(f"GET {rota_pai}: falha do probe ({mecanico})")
+        elif resultado.get("error"):
+            tentativas.append(f"GET {rota_pai}: {resultado['error']}")
+        else:
+            ident = _extrair_id(resultado.get("body", ""))
+            if ident is not None:
+                return ident, "listagem_id", ""
+            tentativas.append(f"GET {rota_pai}: sem ID extraível (HTTP {resultado.get('status')})")
+
+    if not tentativas:
+        return None, None, (
+            f"nenhuma interface de criação (POST) ou listagem (GET) declarada em "
+            f"'{rota_pai}' para obter um ID real"
+        )
+    return None, None, f"não foi possível obter um ID real em '{rota_pai}' — {'; '.join(tentativas)}"
+
+
+def _coletar_evidencias_interfaces(
+    container, base_interno: str, interfaces: list
+) -> list[InterfaceEvidence]:
+    """Evidência por interface declarada — os três ramos (spec C2c §3.3).
+
+    Stream independente de criteria_evidence. Nunca inventa valor de parâmetro nem
+    payload; nunca julga "atende/não atende" — só coleta evidência bruta.
+    """
+    raws = [str(x) for x in interfaces]
+    parsed = [_extrair_verbo_rota(r) for r in raws]
+    verbos = [p[0] for p in parsed]
+    rotas = [p[1] for p in parsed]
+
+    evid: list = [None] * len(raws)
+    grupos: dict = {}  # rota_pai -> [índices dos alvos com param no último segmento]
+
+    for i, raw in enumerate(raws):
+        verbo, rota = verbos[i], rotas[i]
+        if not verbo or not rota:
+            evid[i] = _interface_nao_checavel(
+                raw, "verbo e/ou rota não identificáveis na interface declarada"
+            )
+        elif not _PARAM_SEG_RE.search(rota):
+            # Ramo 3 — alcançabilidade pura (qualquer verbo, sem body/headers).
+            resultado, mecanico = _probe_uma(container, base_interno, verbo, rota)
+            evid[i] = _evidencia_interface(raw, "alcancabilidade", verbo, rota, resultado, mecanico)
+        elif _param_no_ultimo_segmento(rota):
+            grupos.setdefault(_rota_pai(rota), []).append(i)
+        else:
+            # Parâmetro fora do último segmento — não resolvível sem inventar valor.
+            evid[i] = _interface_nao_checavel(
+                raw, f"parâmetro de path fora do último segmento em '{rota}'"
+            )
+
+    for pai, indices in grupos.items():
+        ident, ramo, motivo = _resolver_id_grupo(container, base_interno, pai, verbos, rotas)
+        # Não-destrutivos (GET/PUT/PATCH) antes de DELETE, p/ não invalidar o ID.
+        for i in sorted(indices, key=lambda k: 1 if verbos[k] == "DELETE" else 0):
+            if ident is None:
+                evid[i] = _interface_nao_checavel(raws[i], motivo)
+            else:
+                rota_alvo = _substituir_ultimo_param(rotas[i], ident)
+                resultado, mecanico = _probe_uma(container, base_interno, verbos[i], rota_alvo)
+                evid[i] = _evidencia_interface(
+                    raws[i], ramo, verbos[i], rota_alvo, resultado, mecanico,
+                    prefixo=f"[ID '{ident}' via {ramo}]",
+                )
+
+    return evid  # ordem original das interfaces declaradas
+
+
 def _estagio_validacoes_work_item(
     ctx: _HarnessContext,
-) -> tuple[StageResult, list[CriterionEvidence]]:
+) -> tuple[StageResult, list[CriterionEvidence], list[InterfaceEvidence]]:
     if not ctx.app_ok:
         return (
             _pulado(
@@ -618,25 +843,39 @@ def _estagio_validacoes_work_item(
                 "Abortado: aplicação não inicializou; evidências não coletadas.",
             ),
             [],
+            [],
         )
     t0 = time.time()
+    base_interno = f"http://localhost:{_porta_interna(ctx.dockerfile)}"
+
     evidencias = [
-        _coletar_evidencia_criterio(c, ctx.base_url, ctx.main_route)
+        _coletar_evidencia_criterio(c, ctx.container, base_interno)
         for c in ctx.acceptance_criteria
     ]
+    interface_evid = _coletar_evidencias_interfaces(
+        ctx.container, base_interno, ctx.contract.get("interfaces") or []
+    )
+
     checaveis = sum(1 for e in evidencias if e.checkable)
+    checaveis_if = sum(1 for e in interface_evid if e.checkable)
     result = StageResult(
         stage=StageName.VALIDACOES_WORK_ITEM,
         status=StageStatus.SUCESSO,
         duration_seconds=round(time.time() - t0, 3),
         summary=(
-            f"Evidência coletada para {len(evidencias)} critérios "
-            f"({checaveis} verificáveis automaticamente). Nenhum julgamento emitido."
+            f"Evidência coletada para {len(evidencias)} critérios ({checaveis} "
+            f"verificáveis) e {len(interface_evid)} interfaces ({checaveis_if} "
+            f"verificáveis). Nenhum julgamento emitido."
         ),
-        evidence={"total_criterios": len(evidencias), "verificaveis": checaveis},
+        evidence={
+            "total_criterios": len(evidencias),
+            "verificaveis": checaveis,
+            "total_interfaces": len(interface_evid),
+            "verificaveis_interfaces": checaveis_if,
+        },
         error_code=None,
     )
-    return result, evidencias
+    return result, evidencias, interface_evid
 
 
 # ===========================================================================
@@ -694,6 +933,21 @@ def _render_markdown(report: ExecutionReport) -> str:
             )
     else:
         linhas.append("_Nenhuma evidência coletada (estágio de validação não executado)._")
+
+    linhas += ["", "## Evidências por interface declarada", ""]
+    if report.interface_evidence:
+        linhas += [
+            "| Interface | Ramo | Verificação | Observado | Verificável |",
+            "| --------- | ---- | ----------- | --------- | ----------- |",
+        ]
+        for e in report.interface_evidence:
+            interface = e.interface.replace("|", "\\|")
+            ramo = (e.branch or "-").replace("|", "\\|")
+            check = e.check_performed.replace("|", "\\|")
+            obs = e.observed.replace("|", "\\|")
+            linhas.append(f"| {interface} | {ramo} | {check} | {obs} | {e.checkable} |")
+    else:
+        linhas.append("_Nenhuma interface declarada em contract.interfaces._")
     return "\n".join(linhas) + "\n"
 
 
@@ -773,6 +1027,7 @@ def executar_harness_validacao(
 
     stages: list[StageResult] = []
     criteria_evidence: list[CriterionEvidence] = []
+    interface_evidence: list[InterfaceEvidence] = []
 
     # ---- Estágios 1..5 ----
     stages.append(_estagio_preparacao(ctx))
@@ -787,7 +1042,7 @@ def executar_harness_validacao(
     stages.append(_estagio_testes(ctx))
 
     # ---- Estágio 7 ----
-    r7, criteria_evidence = _estagio_validacoes_work_item(ctx)
+    r7, criteria_evidence, interface_evidence = _estagio_validacoes_work_item(ctx)
     stages.append(r7)
 
     # ---- Estágio 8 — Consolidação ----
@@ -823,6 +1078,7 @@ def executar_harness_validacao(
         overall_status=overall,
         stages=stages,
         criteria_evidence=criteria_evidence,
+        interface_evidence=interface_evidence,
         report_path=str(report_json_path),
         total_duration_seconds=round(time.time() - t_inicio, 3),
     )
@@ -872,6 +1128,7 @@ def executar_harness_tool(
 from src.agents.executor.schemas import (  # noqa: E402
     CriterionEvidence,
     ExecutionReport,
+    InterfaceEvidence,
     StageName,
     StageResult,
     StageStatus,
