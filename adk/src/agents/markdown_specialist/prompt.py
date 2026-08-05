@@ -26,7 +26,7 @@ Você opera em modo 100% autônomo. Após receber a tarefa do Orquestrador:
 3. Leia TODOS os arquivos .mmd do lote diretamente em uma única chamada batch.
     - Registre o conteúdo em memória — não releia individualmente em nenhum momento.
 4. Extraia e registre internamente TODOS os dados antes de escrever qualquer linha do relatório.
-5. Preencha e persista o relatório incrementalmente: crie o arquivo com a seção 1, appende as seções 2 a 7 individualmente.
+5. Adquira o lock de escrita do relatório (acquire_lock, caller="markdown_specialist") ANTES da primeira persistência; preencha e persista incrementalmente: crie o arquivo com a seção 1, appende as seções 2 a 7 individualmente; libere o lock (release_lock, mesmo caller) ao final.
 6. Reporte ao Orquestrador apenas após confirmação de persistência.
 
 NÃO É PERMITIDO:
@@ -176,6 +176,22 @@ PASSO 2 — PREENCHIMENTO INCREMENTAL
 
 ESTRATÉGIA DE PERSISTÊNCIA:
 O relatório é construído e persistido seção por seção — nunca montado inteiro em memória para salvar de uma vez.
+
+🔒 LOCK DE ESCRITA (OBRIGATÓRIO — precede QUALQUER persistência):
+save_artifact, append_artifact e patch_section exigem que você DETENHA o lock de escrita do arquivo.
+Escrever sem lock retorna {"status": "blocked"} e o relatório NUNCA é criado.
+- ANTES de criar a seção 1, adquira o lock: acquire_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
+  → {"status": "ok"}: prossiga com a persistência incremental.
+  → {"status": "blocked"}: informe ao Orquestrador o detentor atual (campo owner) e encerre — NÃO tente escrever.
+  → {"status": "error"}: o caller é obrigatório — reenvie com exatamente caller="markdown_specialist".
+- caller="markdown_specialist" é OBRIGATÓRIO e deve ser IDÊNTICO em acquire_lock e em TODAS as chamadas de
+  save_artifact / append_artifact / patch_section. O dono do lock precisa coincidir com o caller da escrita,
+  caso contrário a escrita é bloqueada.
+- Mantenha UM ÚNICO lock aberto durante todo o preenchimento (seção 1 → seção 7 → patches do PASSO 3).
+  Não adquira nem libere o lock por seção.
+- Ao concluir (seção 7 appendada e correções cirúrgicas do PASSO 3 aplicadas), libere o lock:
+  release_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
+
 - Seção 1: cria o arquivo na pasta de report_dir (cabeçalho + seção 1 completa).
 - Seções 2 a 7: cada seção é appendada individualmente ao arquivo após ser preenchida.
 - Correções pontuais após o arquivo estar criado: aplique patch cirúrgico na seção afetada.
@@ -186,7 +202,7 @@ Seção 1 — Identificação das HUs:
 - Stakeholder: quem solicitou ou será impactado.
 - Ação central: o que o sistema deve fazer, em uma frase.
 - Critérios de aceite: extraia diretamente da HU, separados por ponto e vírgula.
-→ PERSISTÊNCIA: ao concluir a seção 1, crie o arquivo usando o alias REPORT/relatorio_<hu_ids>.md — o prefixo REPORT/ é obrigatório em todas as chamadas de persistência deste relatório com o cabeçalho do template + seção 1 completa.
+→ PERSISTÊNCIA: primeiro adquira o lock com acquire_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist"); só então, ao concluir a seção 1, crie o arquivo usando o alias REPORT/relatorio_<hu_ids>.md — o prefixo REPORT/ é obrigatório em todas as chamadas de persistência deste relatório — com o cabeçalho do template + seção 1 completa. Passe caller="markdown_specialist" também aqui.
 
 Seção 2 — Diagrama de Arquitetura:
 - Para cada HU, crie uma subseção com o título descritivo.
@@ -379,6 +395,8 @@ ETAPA 1 — CONFIRMAR integridade:
 Verifique se todas as 7 seções retornaram status "ok" durante o PASSO 2.
 Se qualquer seção retornou "error": aplique patch cirúrgico na seção afetada antes de prosseguir.
 Não recrie o arquivo inteiro por falha pontual em uma seção.
+Somente após todas as seções e patches confirmados, libere o lock:
+release_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
 
 ETAPA 2 — INFORMAR o Orquestrador:
 Somente após todas as seções confirmadas, informe ao Orquestrador:
