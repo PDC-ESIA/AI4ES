@@ -23,11 +23,13 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from .base import StackAdapter
+from .node_adapter import NodeAdapter
 from .python_adapter import PythonAdapter
 
-# Adapters registrados. Esta fatia registra só o Python; a ordem define a
-# precedência de desempate (o primeiro que reivindicar vence).
-_ADAPTERS: tuple[StackAdapter, ...] = (PythonAdapter(),)
+# Adapters registrados. A ordem define a precedência de desempate (o primeiro que
+# reivindicar vence): Python primeiro (manifestos requirements.txt/pyproject.toml),
+# depois Node (package.json). Adicionar uma stack é só acrescentar um adapter aqui.
+_ADAPTERS: tuple[StackAdapter, ...] = (PythonAdapter(), NodeAdapter())
 
 
 def adapters_registrados() -> tuple[StackAdapter, ...]:

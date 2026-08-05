@@ -6,6 +6,7 @@ conhece a interface (`StackAdapter`) e a resolução em camadas (`resolver_stack
 """
 
 from .base import ExecNoContainer, FileMarker, ResultadoTestes, StackAdapter
+from .node_adapter import NodeAdapter
 from .python_adapter import PythonAdapter
 from .registry import ResolucaoStack, adapters_registrados, resolver_stack
 
@@ -14,6 +15,7 @@ __all__ = [
     "FileMarker",
     "ResultadoTestes",
     "StackAdapter",
+    "NodeAdapter",
     "PythonAdapter",
     "ResolucaoStack",
     "adapters_registrados",
