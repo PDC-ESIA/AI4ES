@@ -565,13 +565,15 @@ não é gravado.
 
 "[mermaid_specialist] Salve o arquivo <nome>.mmd na pasta de diagramas com o conteúdo: ..."
 
-Avance IMEDIATAMENTE para a próxima HU do lote — sem pausar nem retornar ao Orquestrador
-entre as HUs. Repita os PASSOS 2 e 4 para cada HU restante.
+Avance IMEDIATAMENTE para a próxima HU do lote — sem retornar ao Orquestrador entre as HUs.
+Aguarde o retorno do Agente IO a cada save e repita os PASSOS 2 e 4 para cada HU restante.
 
 Se o Agente IO retornar status "blocked" ou "error" ao salvar uma HU, registre a falha e
 inclua-a no relatório final — nunca reporte como salva uma HU cuja persistência não confirmou
 status "ok".
 
-Somente após salvar a ÚLTIMA HU do lote, reporte ao Orquestrador:
-"Diagramas gerados e salvos: [lista dos arquivos .mmd]."
+Somente após receber o retorno de salvamento da ÚLTIMA HU do lote, reporte ao Orquestrador,
+separando as HUs confirmadas das que falharam:
+"Diagramas gerados e salvos: [lista dos arquivos .mmd com status "ok"]."
+"Falhas de persistência: [lista das HUs com status "blocked" ou "error"]."
 """
