@@ -34,6 +34,7 @@ from docker.errors import APIError, BuildError
 from google.adk.tools import ToolContext
 
 from shared.tools import harness_docker as hd
+from shared.tools import probe
 from shared.tools.log_parser_tool import parse_log_text
 from shared.tools.stack_adapters import StackAdapter, resolver_stack
 from shared.workspace import get_agent_workspace
@@ -349,6 +350,22 @@ def _estagio_coleta_logs_implantacao(ctx: _HarnessContext) -> StageResult:
 # Estágio 4 — Inicialização da aplicação [crítico]
 # ===========================================================================
 
+_EXPOSE_RE = re.compile(r"^\s*EXPOSE\s+(\d+)", re.IGNORECASE | re.MULTILINE)
+
+
+def _porta_interna(dockerfile: str) -> int:
+    """Porta que a app escuta DENTRO do container, lida do EXPOSE do Dockerfile.
+
+    O probe roda de dentro do container, então a porta relevante é a interna
+    (declarada via EXPOSE), não a publicada no host. Fallback para
+    `hd._HOST_PORT` APENAS quando o Dockerfile não declara EXPOSE nenhum —
+    preserva o comportamento de hoje sem fixar de novo a suposição de 8000. Em
+    múltiplos EXPOSE, usa o primeiro (a porta HTTP primária, por convenção).
+    """
+    m = _EXPOSE_RE.search(dockerfile or "")
+    return int(m.group(1)) if m else hd._HOST_PORT
+
+
 def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
     if not ctx.deploy_ok:
         return _pulado(
@@ -360,23 +377,46 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
     # Grace period para a app subir dentro do container
     time.sleep(hd._STARTUP_GRACE_PERIOD)
 
-    healthcheck_url = f"{ctx.base_url}{hd._HEALTHCHECK_ENDPOINT}"
+    # Liveness DE DENTRO do container, via probe: a porta que importa é a interna
+    # (EXPOSE), não a publicada no host. "Vivo" = qualquer resposta HTTP (erro de
+    # transporte nulo), inclusive 4xx/5xx — a porta respondeu, a app subiu. Não
+    # depende mais de /docs (hd._HEALTHCHECK_ENDPOINT) existir.
+    porta = _porta_interna(ctx.dockerfile)
+    base_interno = f"http://localhost:{porta}"
+    requisicao = [{
+        "method": "GET",
+        "path": "/",
+        "timeout_ms": hd._HTTP_HEALTHCHECK_TIMEOUT * 1000,
+    }]
+
     alive = False
     ultimo_erro = ""
     status_code = None
     for tentativa in range(1, hd._HEALTHCHECK_RETRIES + 1):
         try:
-            resp = requests.get(healthcheck_url, timeout=hd._HTTP_HEALTHCHECK_TIMEOUT)
-            status_code = resp.status_code
-            if resp.status_code < 400:
-                alive = True
-                break
-            ultimo_erro = f"App respondeu HTTP {resp.status_code} em {healthcheck_url}."
+            resultados = probe.executar_probe(ctx.container, requisicao, base_interno)
+        except probe.ProbeError as e:
+            # Falha MECÂNICA do probe (binário ausente, arquitetura não suportada,
+            # put_archive recusado) — categoria DIFERENTE de "a app não subiu".
+            # Re-tentar não resolve; encerra já, com error_code próprio para a
+            # distinção ficar visível.
+            return StageResult(
+                stage=StageName.INICIALIZACAO_APLICACAO,
+                status=StageStatus.ERRO,
+                duration_seconds=round(time.time() - t0, 3),
+                summary=f"Falha ao checar liveness via probe: {e}",
+                evidence={"base_url_interno": base_interno, "erro_probe": str(e)},
+                error_code="PROBE_FALHOU",
+            )
+
+        resultado = resultados[0] if resultados else {}
+        status_code = resultado.get("status")
+        if resultado.get("error") is None:
+            alive = True
             break
-        except requests.RequestException as e:
-            ultimo_erro = f"App não respondeu ({e})."
-            if tentativa < hd._HEALTHCHECK_RETRIES:
-                time.sleep(hd._HEALTHCHECK_RETRY_INTERVAL)
+        ultimo_erro = f"App não respondeu em {base_interno}/ ({resultado.get('error')})."
+        if tentativa < hd._HEALTHCHECK_RETRIES:
+            time.sleep(hd._HEALTHCHECK_RETRY_INTERVAL)
 
     if not alive:
         return StageResult(
@@ -384,18 +424,20 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
             status=StageStatus.FALHA,
             duration_seconds=round(time.time() - t0, 3),
             summary=f"Aplicação não inicializou corretamente. {ultimo_erro}",
-            evidence={"healthcheck_url": healthcheck_url, "ultimo_erro": ultimo_erro},
+            evidence={"base_url_interno": base_interno, "ultimo_erro": ultimo_erro},
             error_code="APP_NAO_INICIALIZOU",
         )
 
     ctx.app_ok = True
+    # main_route continua vindo do /openapi.json pela porta PUBLICADA (host) —
+    # intocado nesta fatia; é a Fatia C2c que aposenta este mecanismo.
     ctx.main_route = hd._discover_main_route(ctx.base_url, requests)
     return StageResult(
         stage=StageName.INICIALIZACAO_APLICACAO,
         status=StageStatus.SUCESSO,
         duration_seconds=round(time.time() - t0, 3),
-        summary=f"Aplicação respondendo em {healthcheck_url} (HTTP {status_code}).",
-        evidence={"healthcheck_url": healthcheck_url, "main_route": ctx.main_route},
+        summary=f"Aplicação respondendo em {base_interno}/ (HTTP {status_code}).",
+        evidence={"base_url_interno": base_interno, "main_route": ctx.main_route},
         error_code=None,
     )
 
