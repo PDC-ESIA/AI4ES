@@ -30,7 +30,7 @@ O sistema é composto por **6 agentes especializados** com papéis bem definidos
 | **Gerenciador de Pacotes** | uv |
 | **Servidor** | FastAPI + Uvicorn |
 | **Interface** | Web UI via Google ADK Dev UI (`/dev-ui`) |
-| **Diretório de Artefatos Temporários** | `temp/staging/` |
+| **Diretório de Artefatos Temporários** | `workspace_output/design/` |
 | **Diretório de Entrega Final** | `adk/artifacts/` |
 | **Arquivo de Testes** | `prompt-test.md` |
 
@@ -154,7 +154,7 @@ HUs (input)
 #### IO Agent
 
 - Único ponto de I/O do sistema — todos os agentes leem/escrevem via IO Agent
-- Persiste artefatos em `temp/staging/` com **versionamento automático** (backup por timestamp)
+- Persiste artefatos em `workspace_output/design/**` com **versionamento automático** (backup por timestamp)
 - Promove relatórios aprovados para `adk/artifacts/`
 - Bloqueia promoção se `Status: Em análise` (requer aprovação manual)
 - Protege contra path traversal
@@ -200,8 +200,6 @@ pip install -r requirements.txt
 
 ### Comando de Execução
 
-=======
-
 ## Primeira execução (dentro da pasta adk/)
 
 ### 1. Instalar dependências e preparar o ambiente
@@ -227,8 +225,6 @@ Não é necessária nenhuma chave de API. A autenticação é feita via GitHub n
 ---
 
 ## Executando o servidor (dentro da pasta adk/)
->>>>>>>
->>>>>>> ab97cf61c1ac5a60dfaf8a0f97c33880093cd70d
 
 ```bash
 # Iniciar o servidor de desenvolvimento
@@ -243,7 +239,6 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 **Acessar a interface:**
 
-```
 Acesse a interface em:
 
 ```hyperlink
@@ -275,7 +270,7 @@ cat prompt-test.md
 
 1. Copie o lote de HUs do `prompt-test.md`
 2. Cole no chat do Dev UI com o agente **orchestrator** selecionado
-3. Verifique os artefatos gerados em `temp/staging/`
+3. Verifique os artefatos gerados em `workspace_output/design/**`
 
 ---
 
@@ -310,10 +305,10 @@ HU-002
 
 | Tipo | Localização | Condição de Geração |
 |---|---|---|
-| `analise_tecnica_<hu_ids>.md` | `temp/staging/` | Sempre que Design Architect conclui |
-| `diagrama_<hu_id>_<descricao>.mmd` | `temp/staging/` | Sempre que Mermaid Specialist conclui |
-| `relatorio_<hu_ids>_<YYYY-MM-DD>.md` | `temp/staging/` | Pipeline sem bloqueios |
-| `Doubt_Artifact_<HU_ID>_<data>.md` | `temp/staging/` | HU com lacunas críticas |
+| `analise_tecnica_<hu_ids>.md` | `workspace_output/design/**` | Sempre que Design Architect conclui |
+| `diagrama_<hu_id>_<descricao>.mmd` | `workspace_output/design/**` | Sempre que Mermaid Specialist conclui |
+| `relatorio_<hu_ids>_<YYYY-MM-DD>.md` | `workspace_output/design/**` | Pipeline sem bloqueios |
+| `Doubt_Artifact_<HU_ID>_<data>.md` | `workspace_output/design/**` | HU com lacunas críticas |
 | `relatorio_<hu_ids>_<YYYY-MM-DD>.md` | `adk/artifacts/` | Após aprovação manual + promoção |
 
 **Estrutura do Relatório Final (`relatorio_*.md`):**
@@ -360,7 +355,7 @@ Critérios de Aceite:
 **Resultado Esperado:**
 
 ```
-temp/staging/
+workspace_output/design/**
 ├── analise_tecnica_HU-001.md  
 │     └─▶ análise com decisão arquitetural (sequência + stateless auth)
 ├── diagrama_HU-001_autenticacao.mmd 
