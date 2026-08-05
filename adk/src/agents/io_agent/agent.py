@@ -16,6 +16,8 @@ from shared.tools.design_filesystem import (
     append_artifact,
     patch_section,
     validate_analysis_sections,
+    read_phase_manifest,
+    read_phase_artifact,
 
 )
 from . import prompt
@@ -41,6 +43,8 @@ agent = create_se_agent(
         append_artifact,
         patch_section,
         validate_analysis_sections,
+        read_phase_manifest,
+        read_phase_artifact,
     ],
     agent_subdir="io_agent",
 )

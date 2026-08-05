@@ -261,3 +261,8 @@ docs/superpowers/
 
 .abacusai/
 .abacusai/*
+
+# Artefatos locais fora do escopo do repositório (mantidos fora do commit)
+adk.zip
+AI4ES/
+Orientacoes.md
