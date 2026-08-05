@@ -261,3 +261,6 @@ docs/superpowers/
 
 .abacusai/
 .abacusai/*
+
+# JetBrains IDEs
+.idea/
