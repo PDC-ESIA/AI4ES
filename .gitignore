@@ -13,6 +13,11 @@ workspace_output/
 adk/workspace_output/*
 !adk/workspace_output/.ai4se_workspace
 
+# Histórico persistente dos ExecutionReport do harness. Vive FORA do
+# workspace_output justamente porque este é apagado a cada fresh run; serve para
+# acumular corpus de execuções entre runs. Local, nunca versionado.
+adk/.ai4es_history/
+
 # Environment variables
 .env
 .env.*

@@ -16,13 +16,27 @@ import json
 from unittest.mock import MagicMock, patch
 
 import docker
+import pytest
 from docker.errors import BuildError
 
 from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
 from src.agents.executor.schemas import ExecutionReport
 
+
+@pytest.fixture(autouse=True)
+def _historico_isolado(tmp_path, monkeypatch):
+    """Isola a cópia persistente do ExecutionReport (D10) em tmp_path.
+
+    Sem isto, todo teste que chama o harness grava no `adk/.ai4es_history/`
+    real — o default de `_dir_historico()`. Teste unitário não pode ter efeito
+    colateral no repositório (nem no runner do CI). Os testes que precisam
+    inspecionar o histórico sobrescrevem a env var com um caminho próprio.
+    """
+    monkeypatch.setenv("AI4ES_HISTORY_DIR", str(tmp_path / "_historico_default"))
+
 _STAGE_ORDER = [
     "preparacao_ambiente",
+    "verificacao_estatica",
     "implantacao_artefato",
     "coleta_logs_implantacao",
     "inicializacao_aplicacao",
@@ -148,11 +162,16 @@ def _write_task(tasks_dir, task_id="TASK-001", criteria=None):
     )
 
 
-def _write_src(coder_dir, with_suite=False):
+def _write_src(coder_dir, with_suite=False, requirements="fastapi\n"):
     (coder_dir / "main.py").write_text(
         "from fastapi import FastAPI\napp = FastAPI()\n", encoding="utf-8"
     )
     (coder_dir / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+    # O requirements é necessário para o estágio 2 (verificação estática): sem
+    # ele, `from fastapi import FastAPI` é dependência não declarada e o build
+    # falharia de verdade. `requirements=None` monta justamente esse cenário.
+    if requirements is not None:
+        (coder_dir / "requirements.txt").write_text(requirements, encoding="utf-8")
     if with_suite:
         (coder_dir / "test_app.py").write_text(
             "def test_ok():\n    assert True\n", encoding="utf-8"
@@ -190,7 +209,7 @@ def _run(task_id, coder, execution, tasks, client):
 # Caminho feliz
 # ===========================================================================
 
-def test_caminho_feliz_nove_estagios_sucesso(tmp_path):
+def test_caminho_feliz_dez_estagios_sucesso(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
     _write_src(coder, with_suite=True)
@@ -198,7 +217,7 @@ def test_caminho_feliz_nove_estagios_sucesso(tmp_path):
 
     result = _run("TASK-001", coder, execution, tasks, client)
 
-    # Ordem e completude dos 9 estágios
+    # Ordem e completude dos 10 estágios
     nomes = [s["stage"] for s in result["stages"]]
     assert nomes == _STAGE_ORDER
     # Todos os estágios concluíram com sucesso
@@ -446,3 +465,224 @@ def test_container_nao_inicia_preserva_logs_na_evidence(tmp_path):
     assert implant["status"] == "falha"
     assert implant["error_code"] == "CONTAINER_NAO_INICIOU"
     assert "Uvicorn running" in implant["evidence"]["runtime_logs_tail"]
+
+# ===========================================================================
+# Estágio 2 — Verificação estática de dependências (Fase 2 / Feedforward)
+# ===========================================================================
+# A lógica da análise é testada isolada em `test_verificacao_dependencias.py`.
+# Aqui se verifica só a INTEGRAÇÃO: posição na sequência, efeito em cascata,
+# efeito no overall_status e a política de falha da D9.
+
+def test_verificacao_estatica_passa_quando_imports_conferem(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, requirements="fastapi\n")
+    client, _ = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    estatica = next(s for s in result["stages"] if s["stage"] == "verificacao_estatica")
+
+    assert estatica["status"] == "sucesso"
+    assert estatica["evidence"]["total"] == 0
+    assert estatica["error_code"] is None
+
+
+def test_sem_requirements_reprova_e_pula_estagios_dependentes(tmp_path):
+    """D9 — caso inequívoco: é o único que bloqueia, e bloqueia antes do build."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, requirements=None)   # importa fastapi sem declarar nada
+    client, container = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    por_estagio = {s["stage"]: s for s in result["stages"]}
+
+    assert por_estagio["verificacao_estatica"]["status"] == "falha"
+    assert por_estagio["verificacao_estatica"]["error_code"] == "DEPENDENCIA_AUSENTE"
+
+    # Cascata: os dependentes são PULADOS...
+    for nome in ("implantacao_artefato", "inicializacao_aplicacao", "testes_automatizados"):
+        assert por_estagio[nome]["status"] == "pulado", nome
+
+    # ...e o overall vira falha, que é o que faz a Camada 1 do validador reprovar.
+    assert result["overall_status"] == "falha"
+
+    # O ganho que justifica o gate: nem chegou a buildar a imagem.
+    client.images.build.assert_not_called()
+
+
+def test_divergencia_de_nome_informa_mas_nao_reprova(tmp_path):
+    """D9 — fail-open: alias desconhecido vira evidência, nunca veto."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, requirements="fastapi\n")
+    (coder / "extra.py").write_text("import biblioteca_exotica\n", encoding="utf-8")
+    client, _ = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    estatica = next(s for s in result["stages"] if s["stage"] == "verificacao_estatica")
+
+    assert estatica["status"] == "sucesso", "divergência de nome NÃO pode reprovar"
+    assert estatica["evidence"]["total"] == 1
+    assert estatica["evidence"]["bloqueantes"] == 0
+    assert estatica["evidence"]["achados"][0]["severidade"] == "info"
+    assert result["overall_status"] == "sucesso"
+
+
+def test_alias_conhecido_nao_gera_falso_positivo_no_harness(tmp_path):
+    """Regressão do run real de 04/08: `import PIL` com `pillow` declarado."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, requirements="fastapi\npillow\n")
+    (coder / "thumbs.py").write_text("from PIL import Image\n", encoding="utf-8")
+    client, _ = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    estatica = next(s for s in result["stages"] if s["stage"] == "verificacao_estatica")
+
+    assert estatica["status"] == "sucesso"
+    assert estatica["evidence"]["total"] == 0
+
+
+def test_preparacao_falha_pula_a_verificacao_estatica(tmp_path):
+    """A cascata também vale para trás: sem ambiente, não se verifica nada."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    # Sem nenhum .py → estágio 1 aborta com SRC_VAZIO
+    (coder / "README.md").write_text("vazio", encoding="utf-8")
+    client, _ = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    por_estagio = {s["stage"]: s for s in result["stages"]}
+
+    assert por_estagio["preparacao_ambiente"]["status"] == "erro"
+    assert por_estagio["verificacao_estatica"]["status"] == "pulado"
+
+
+# ===========================================================================
+# D10 — cópia persistente do ExecutionReport, com a iteração no nome
+# ===========================================================================
+
+def test_historico_persistido_fora_do_workspace(tmp_path, monkeypatch):
+    historico = tmp_path / "historico"
+    monkeypatch.setenv("AI4ES_HISTORY_DIR", str(historico))
+
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, with_suite=True)
+    client, _ = _mock_docker()
+
+    _run("TASK-001", coder, execution, tasks, client)
+
+    copias = list(historico.rglob("*.report.json"))
+    assert len(copias) == 1
+    assert "TASK-001" in copias[0].name and "iter1" in copias[0].name
+    # É um ExecutionReport íntegro, não um resumo.
+    ExecutionReport(**json.loads(copias[0].read_text(encoding="utf-8")))
+
+
+def test_historico_nao_sobrescreve_entre_iteracoes(tmp_path, monkeypatch):
+    """O motivo de existir da D10: no workspace, a iteração 2 apaga a 1."""
+    historico = tmp_path / "historico"
+    monkeypatch.setenv("AI4ES_HISTORY_DIR", str(historico))
+
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, with_suite=True)
+    client, _ = _mock_docker()
+
+    with patch("docker.from_env", return_value=client), \
+         patch("requests.get", return_value=_mock_response()), \
+         patch("shared.tools.coding_tools.harness_execucao.time.sleep"):
+        for iteracao in (1, 2, 3):
+            executar_harness_validacao(
+                "TASK-001", iteracao,
+                coder_base_dir=coder,
+                execution_base_dir=execution,
+                tasks_base_dir=tasks,
+            )
+
+    copias = sorted(p.name for p in historico.rglob("*.report.json"))
+    assert len(copias) == 3, "cada iteração precisa sobreviver"
+    assert [n for n in copias if "iter1" in n]
+    assert [n for n in copias if "iter2" in n]
+    assert [n for n in copias if "iter3" in n]
+
+    # Enquanto isso, no workspace só resta a última — que é o problema original.
+    assert len(list(execution.glob("*.report.json"))) == 1
+
+
+def test_falha_ao_persistir_historico_nao_derruba_o_harness(tmp_path, monkeypatch):
+    """Instrumentação não pode quebrar execução."""
+    monkeypatch.setenv("AI4ES_HISTORY_DIR", str(tmp_path / "historico"))
+    monkeypatch.setattr(
+        "shared.tools.coding_tools.harness_execucao._serializar_json_atomico",
+        _falha_apenas_no_historico(tmp_path),
+    )
+
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, with_suite=True)
+    client, _ = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    assert result["overall_status"] == "sucesso"
+
+
+def _falha_apenas_no_historico(tmp_path):
+    """Serializador que explode só ao gravar em `historico/`."""
+    import shared.tools.coding_tools.harness_execucao as he
+
+    real = he._serializar_json_atomico
+
+    def _fake(path, data):
+        if "historico" in str(path):
+            raise OSError("disco cheio (simulado)")
+        return real(path, data)
+
+    return _fake
+
+
+# ===========================================================================
+# Fecho ponta a ponta: gate → overall_status → veredito
+# ===========================================================================
+
+def test_gate_reprova_ate_o_veredito_do_validador(tmp_path):
+    """Prova que o enforcement fecha o circuito, sem inventar mecanismo novo.
+
+    O caminho já existia: estágio crítico em falha → overall_status=falha →
+    Camada 1 do `montar_veredito()` reprova sem julgar critérios → o
+    after_agent_callback do cr_executor monta o ErrorReport → volta ao coder
+    por `{execution_result?}`. O gate só se pendura nesse trilho.
+    """
+    from src.agents.implementation_validator.agent import montar_veredito
+
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, requirements=None)
+    client, _ = _mock_docker()
+
+    report = _run("TASK-001", coder, execution, tasks, client)
+    veredito = montar_veredito(report)
+
+    assert veredito.status == "reprovado"
+    assert "verificacao_estatica" in (veredito.blocking_reason or "")
+    # Camada 1 não julga critério: todos ficam inconclusivos.
+    assert all(c.status == "inconclusivo" for c in veredito.criteria_verdicts)
+
+
+def test_gate_limpo_nao_interfere_no_veredito(tmp_path):
+    """Contraprova: com requirements correto, o gate some do caminho."""
+    from src.agents.implementation_validator.agent import montar_veredito
+
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, with_suite=True, requirements="fastapi\n")
+    client, _ = _mock_docker()
+
+    report = _run("TASK-001", coder, execution, tasks, client)
+    veredito = montar_veredito(report)
+
+    # Sem critérios julgados, a Camada 2 reprova por lista vazia — o ponto aqui
+    # é só que a reprovação NÃO vem mais do gate.
+    assert "verificacao_estatica" not in (veredito.blocking_reason or "")

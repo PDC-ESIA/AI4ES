@@ -35,6 +35,7 @@ from docker.errors import APIError, BuildError
 from google.adk.tools import ToolContext
 
 from shared.tools.coding_tools import harness_docker as hd
+from shared.tools.coding_tools.verificacao_dependencias import verificar_dependencias
 from shared.tools.log_parser_tool import parse_log_text
 from shared.workspace import get_agent_workspace
 
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 # que evita um ciclo de import com o pacote `src.agents.executor`.
 _CRITICAL_STAGES = (
     "preparacao_ambiente",
+    "verificacao_estatica",
     "implantacao_artefato",
     "inicializacao_aplicacao",
 )
@@ -78,8 +80,9 @@ class _HarnessContext:
 
         # Flags de dependência entre estágios
         self.env_ok: bool = False       # estágio 1
-        self.deploy_ok: bool = False     # estágio 2
-        self.app_ok: bool = False        # estágio 4
+        self.static_ok: bool = True      # estágio 2 — True por default (fail-open, D9)
+        self.deploy_ok: bool = False     # estágio 3
+        self.app_ok: bool = False        # estágio 5
 
 
 def _now_iso() -> str:
@@ -170,7 +173,88 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
 
 
 # ===========================================================================
-# Estágio 2 — Implantação do artefato [crítico]
+# Estágio 2 — Verificação estática [crítico]
+# ===========================================================================
+# Confronta imports × requirements.txt ANTES de pagar o build da imagem. A
+# análise mora em `verificacao_dependencias.py` (pura, testável isolada); aqui
+# só se traduz achado em StageResult.
+#
+# Política de falha (D9) — deliberadamente assimétrica:
+#   - `critical` (requirements.txt ausente + imports de terceiros) → status FALHA
+#     e `ctx.static_ok = False`, que pula os estágios dependentes.
+#   - qualquer outro achado → status SUCESSO, achados em `evidence`. Informa sem
+#     vetar, porque nome de import ≠ nome de pacote e a tabela de alias nunca
+#     fica completa.
+#
+# Para promover a fail-closed depois de medir a taxa de falso positivo, basta
+# trocar `_MODO_FALHA_ESTATICA` — é a única linha que decide.
+# ===========================================================================
+
+# "estrito" reprovaria também divergência de nome/alias. Manter "conservador"
+# até haver dado de falso positivo (Fase 5 do plano de Feedforward).
+_MODO_FALHA_ESTATICA = "conservador"
+
+
+def _estagio_verificacao_estatica(ctx: _HarnessContext) -> StageResult:
+    t0 = time.time()
+
+    try:
+        achados = verificar_dependencias(ctx.coder_dir)
+    except Exception as e:  # a verificação nunca pode derrubar o harness
+        logger.warning("[CR EXECUTOR] Verificação estática falhou: %s", e)
+        return StageResult(
+            stage=StageName.VERIFICACAO_ESTATICA,
+            status=StageStatus.SUCESSO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Verificação estática não pôde ser concluída ({type(e).__name__}); seguindo.",
+            evidence={"erro": str(e), "achados": []},
+            error_code=None,
+        )
+
+    bloqueantes = [a for a in achados if a["severidade"] == "critical"]
+    evidencia = {
+        "achados": achados,
+        "total": len(achados),
+        "bloqueantes": len(bloqueantes),
+        "modo": _MODO_FALHA_ESTATICA,
+    }
+
+    if bloqueantes and _MODO_FALHA_ESTATICA == "conservador":
+        ctx.static_ok = False
+        return StageResult(
+            stage=StageName.VERIFICACAO_ESTATICA,
+            status=StageStatus.FALHA,
+            duration_seconds=round(time.time() - t0, 3),
+            summary="; ".join(a["mensagem"] for a in bloqueantes),
+            evidence=evidencia,
+            error_code="DEPENDENCIA_AUSENTE",
+        )
+
+    if achados:
+        return StageResult(
+            stage=StageName.VERIFICACAO_ESTATICA,
+            status=StageStatus.SUCESSO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=(
+                f"{len(achados)} divergência(s) entre imports e requirements.txt — "
+                f"registradas como evidência, sem bloquear (política conservadora)."
+            ),
+            evidence=evidencia,
+            error_code=None,
+        )
+
+    return StageResult(
+        stage=StageName.VERIFICACAO_ESTATICA,
+        status=StageStatus.SUCESSO,
+        duration_seconds=round(time.time() - t0, 3),
+        summary="Imports de terceiros conferem com o requirements.txt.",
+        evidence=evidencia,
+        error_code=None,
+    )
+
+
+# ===========================================================================
+# Estágio 3 — Implantação do artefato [crítico]
 # ===========================================================================
 
 def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
@@ -802,6 +886,43 @@ def _serializar_json_atomico(path: Path, data: dict) -> None:
     os.replace(tmp, path)
 
 
+def _dir_historico() -> Path:
+    """Raiz do histórico persistente de relatórios (fora do workspace_output/)."""
+    override = os.environ.get("AI4ES_HISTORY_DIR")
+    if override:
+        return Path(override)
+    # .../adk/shared/tools/coding_tools/harness_execucao.py → parents[3] == adk/
+    return Path(__file__).resolve().parents[3] / ".ai4es_history"
+
+
+def _persistir_historico(payload: dict, task_id: str, iteration: int) -> Optional[Path]:
+    """Grava cópia do ExecutionReport fora do workspace, sem nunca sobrescrever.
+
+    Existe por dois motivos que o relatório dentro do workspace não atende:
+
+    1. `init_workspace()` apaga o `workspace_output/` a cada fresh run — sem a
+       cópia, não há corpus acumulado entre execuções.
+    2. O relatório do workspace mora em `<task_id>.report.json`, **sem a
+       iteração no nome**: dentro de uma mesma run, cada iteração sobrescreve a
+       anterior. As iterações que falharam — as únicas interessantes para medir
+       classe de erro — se perdem.
+
+    Falha aqui nunca derruba o harness: é instrumentação, não execução.
+    """
+    try:
+        agora = datetime.now(timezone.utc)
+        destino = (
+            _dir_historico()
+            / agora.strftime("%Y-%m-%d")
+            / f"{agora.strftime('%H%M%S-%f')}_{task_id}_iter{iteration}.report.json"
+        )
+        _serializar_json_atomico(destino, payload)
+        return destino
+    except Exception as e:
+        logger.warning("[CR EXECUTOR] Não foi possível persistir o histórico: %s", e)
+        return None
+
+
 def _render_markdown(report: ExecutionReport) -> str:
     """Renderiza o ExecutionReport em markdown legível (sem veredito)."""
     linhas = [
@@ -885,11 +1006,16 @@ def executar_harness_validacao(
     stages: list[StageResult] = []
     criteria_evidence: list[CriterionEvidence] = []
 
-    # ---- Estágios 1..5 ----
+    # ---- Estágios 1..6 ----
     stages.append(_estagio_preparacao(ctx))
-    stages.append(_estagio_implantacao(ctx) if ctx.env_ok
-                  else _pulado(StageName.IMPLANTACAO_ARTEFATO,
+    stages.append(_estagio_verificacao_estatica(ctx) if ctx.env_ok
+                  else _pulado(StageName.VERIFICACAO_ESTATICA,
                                "Abortado: preparação do ambiente falhou."))
+    # O pulo em cascata vem das flags do contexto, NÃO de _CRITICAL_STAGES —
+    # aquela tupla só influencia o overall_status em _agregar_status().
+    stages.append(_estagio_implantacao(ctx) if (ctx.env_ok and ctx.static_ok)
+                  else _pulado(StageName.IMPLANTACAO_ARTEFATO,
+                               "Abortado: preparação do ambiente ou verificação estática falhou."))
     stages.append(_estagio_coleta_logs_implantacao(ctx))
     stages.append(_estagio_inicializacao(ctx))
     stages.append(_estagio_coleta_logs_execucao(ctx))
@@ -942,6 +1068,9 @@ def executar_harness_validacao(
     _serializar_json_atomico(report_json_path, payload)
     report_md_path.parent.mkdir(parents=True, exist_ok=True)
     report_md_path.write_text(_render_markdown(report), encoding="utf-8")
+
+    # Cópia persistente, com a iteração no nome (ver docstring de _persistir_historico).
+    _persistir_historico(payload, task_id, iteration)
 
     # Grava o caminho do report no session state (fonte determinística para o
     # validador). Só quando há contexto — chamadas diretas (testes/PoC) o omitem.

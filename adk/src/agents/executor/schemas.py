@@ -26,9 +26,10 @@ class StageStatus(str, Enum):
 
 
 class StageName(str, Enum):
-    """Os nove estágios do harness de execução, em ordem de pipeline."""
+    """Os dez estágios do harness de execução, em ordem de pipeline."""
 
     PREPARACAO_AMBIENTE = "preparacao_ambiente"
+    VERIFICACAO_ESTATICA = "verificacao_estatica"
     IMPLANTACAO_ARTEFATO = "implantacao_artefato"
     COLETA_LOGS_IMPLANTACAO = "coleta_logs_implantacao"
     INICIALIZACAO_APLICACAO = "inicializacao_aplicacao"
