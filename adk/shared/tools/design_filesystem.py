@@ -1228,7 +1228,136 @@ def patch_section(filename: str, section_id: str, new_content: str, caller: str 
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Lock de Escrita (Ferramentas do Agente)
+# Interfaces entre fases — handoff via Manifesto (preparação tasks 2.4 / 2.6)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# O design já EMITE seu próprio Manifesto de Fase
+# (`src/agents/workflow_design_pipeline/manifest.py`), mas ainda não LÊ o de
+# nenhuma outra fase (ver `00b_ESTADO_ATUAL_TIME2_DESIGN.md`, tasks 2.4/2.6).
+# Hoje (24/07) nenhum outro time publica manifest.json — em particular,
+# `requirements_pipeline` ainda entrega HUs só como texto de retorno, sem
+# emissor de manifesto (ver `workflow_requirements/agent.py`).
+#
+# As duas funções abaixo preparam o lado de LEITURA para quando isso mudar,
+# sem exigir nenhuma mudança de comportamento hoje: a ausência de manifesto
+# de outra fase é tratada como resultado ESPERADO ("absent"), não como erro —
+# o chamador (pipeline_controller) deve continuar com o fluxo atual de texto
+# colado nesse caso. Ver ETAPA 1-B em `workflow_design_pipeline/agent.py`.
+
+def read_phase_manifest(phase: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Lê o Manifesto de Fase (`manifest.json`) publicado por OUTRA fase do SDLC
+    (ex.: "requirements"), para permitir futuramente ler `artifacts[].path`
+    em vez de depender de texto acumulado (ver `time2_design_tasks.md`,
+    tasks 2.4 e 2.6).
+
+    ⚠️  Diferente das demais funções deste módulo, esta NÃO aceita `base_dir`
+    de workspace isolado do design — ela lê deliberadamente a raiz do
+    workspace inteiro (`get_workspace_root()`), porque o manifesto que
+    interessa aqui é o de OUTRA fase, não o do próprio design.
+
+    A ausência do manifesto é o resultado esperado hoje (nenhum outro time
+    ainda publica o seu) — trate "absent" como "prossiga com o fluxo atual",
+    nunca como falha ou motivo de bloqueio do design.
+
+    Args:
+        phase:  Nome canônico da fase de origem (ex.: "requirements"),
+                correspondente à subpasta em workspace_output/.
+        caller: Nome do agente solicitante (rastreabilidade).
+
+    Returns:
+        Ausente: {"status": "absent", "phase": "<phase>",
+                   "hint": "Fase '<phase>' ainda não publicou manifest.json — use o fluxo atual (texto colado)."}
+        Sucesso: {"status": "ok", "phase": "<phase>", "manifest": {<conteúdo bruto do JSON>}}
+        Falha:   {"status": "error", "phase": "<phase>", "error": "<motivo>"}
+    """
+    import json
+    from shared.workspace import get_workspace_root
+
+    _MANIFEST_FILENAME = "manifest.json"
+
+    try:
+        manifest_path = (get_workspace_root() / phase / _MANIFEST_FILENAME).resolve()
+
+        if not manifest_path.exists():
+            IOLogger.read(f"{phase}/{_MANIFEST_FILENAME} [absent]", caller=caller)
+            return {
+                "status": "absent",
+                "phase": phase,
+                "hint": (
+                    f"Fase '{phase}' ainda não publicou {_MANIFEST_FILENAME} — "
+                    "use o fluxo atual (texto colado) até que ela passe a emitir."
+                ),
+            }
+
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+        if not isinstance(manifest, dict) or "artifacts" not in manifest:
+            return {
+                "status": "error",
+                "phase": phase,
+                "error": f"{_MANIFEST_FILENAME} encontrado mas fora do formato esperado (faltando 'artifacts').",
+            }
+
+        IOLogger.read(f"{phase}/{_MANIFEST_FILENAME}", caller=caller)
+        return {"status": "ok", "phase": phase, "manifest": manifest}
+
+    except (OSError, ValueError) as e:
+        IOLogger.error("read_phase_manifest", str(e), caller=caller)
+        return {"status": "error", "phase": phase, "error": str(e)}
+
+
+def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Lê o conteúdo de um artefato referenciado pelo campo `path` de um
+    ManifestArtifact de OUTRA fase (ver read_phase_manifest acima).
+
+    Diferente de read_file/read_multiple_files (que só enxergam as pastas do
+    próprio design via alias), esta função resolve `path` relativo à RAIZ DO
+    WORKSPACE INTEIRO — o mesmo formato gravado por
+    `workflow_design_pipeline/manifest.py::_repo_relative` (ex.:
+    "workspace_output/requirements/hu/HU-001.md") — e restringe o acesso a
+    dentro de workspace_output/, nunca a qualquer outro caminho do sistema.
+    Isso importa porque `path` vem de um manifesto de OUTRA fase — dado
+    externo ao design, não confiável por padrão.
+
+    Args:
+        path:   Caminho relativo (à raiz do repositório), exatamente como
+                aparece em manifest["artifacts"][i]["path"].
+        caller: Nome do agente solicitante (rastreabilidade).
+
+    Returns:
+        Sucesso: {"status": "ok", "path": "<path>", "content": "<conteúdo>"}
+        Falha:   {"status": "error", "path": "<path>", "error": "<motivo>"}
+    """
+    from shared.workspace import get_workspace_root
+
+    try:
+        workspace_root = get_workspace_root().resolve()
+        repo_root = workspace_root.parent  # workspace_output/ → raiz do repo
+        candidate = (repo_root / path).resolve()
+
+        if not candidate.is_relative_to(workspace_root):
+            return {
+                "status": "error",
+                "path": path,
+                "error": "Acesso negado: caminho fora de workspace_output/.",
+            }
+
+        if not candidate.exists():
+            return {"status": "error", "path": path, "error": f"Artefato '{path}' não encontrado."}
+
+        content = candidate.read_text(encoding="utf-8")
+        IOLogger.read(path, caller=caller)
+        return {"status": "ok", "path": path, "content": content}
+
+    except (OSError, ValueError) as e:
+        IOLogger.error("read_phase_artifact", str(e), caller=caller)
+        return {"status": "error", "path": path, "error": str(e)}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Mocks
 # ──────────────────────────────────────────────────────────────────────────────
 
 def acquire_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
