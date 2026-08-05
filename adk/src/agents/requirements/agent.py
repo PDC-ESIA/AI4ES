@@ -17,7 +17,13 @@ from shared.tools import (
     ler_artefatos_gerados,
 )
 from shared.workspace import get_agent_workspace, get_workspace_root
-from . import prompt, schemas
+from . import prompt
+from .traceability import gerar_matriz_rastreabilidade
+from .validation import (
+    auditar_saida_final,
+    registrar_artefato_persistido,
+    validar_antes_de_salvar,
+)
 
 _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
 
@@ -141,6 +147,13 @@ agent = LlmAgent(
     description=prompt.description,
     instruction=prompt.instruction,
     output_key="analysis_result",
+    # C1: rejeita artefato malformado antes de ele tocar o disco.
+    before_tool_callback=validar_antes_de_salvar,
+    # C2: registra em state o que foi realmente gravado.
+    after_tool_callback=registrar_artefato_persistido,
+    # C3 monta a matriz em código; C4 injeta o resultado e audita o conjunto.
+    # A ordem importa: inverter faria a auditoria rodar sem a matriz.
+    after_agent_callback=[gerar_matriz_rastreabilidade, auditar_saida_final],
     tools=[
         FunctionTool(run_slicer),
         FunctionTool(ler_chunk),
