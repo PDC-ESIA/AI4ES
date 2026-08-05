@@ -1393,13 +1393,14 @@ def acquire_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
             }
         caller = caller.strip()
 
-        _, filename, error = _resolve_path_arg(filepath)
+        dirs = _resolve_dirs()
+        _, filename, error = _resolve_path_arg(filepath, dirs)
         if error:
             return {"status": "error", "error": error}
         if not filename:
             return {"status": "error", "error": "Nome de arquivo vazio."}
 
-        _ensure_dirs()
+        LOCKS_DIR.mkdir(parents=True, exist_ok=True)
         lock_file = _lock_path(filename)
         payload = json.dumps(
             {"owner": caller, "filepath": filename, "acquired_at": datetime.now().isoformat()},
@@ -1458,7 +1459,8 @@ def check_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any]:
         Falha:    {"status": "error", "error": "<motivo>"}
     """
     try:
-        _, filename, error = _resolve_path_arg(filepath)
+        dirs = _resolve_dirs()
+        _, filename, error = _resolve_path_arg(filepath, dirs)
         if error:
             return {"status": "error", "error": error}
         if not filename:
@@ -1498,7 +1500,8 @@ def release_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
         Falha:    {"status": "error", "error": "<motivo>"}
     """
     try:
-        _, filename, error = _resolve_path_arg(filepath)
+        dirs = _resolve_dirs()
+        _, filename, error = _resolve_path_arg(filepath, dirs)
         if error:
             return {"status": "error", "error": error}
         if not filename:
@@ -1534,6 +1537,191 @@ def release_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
     except Exception as e:
         IOLogger.error("release_lock", str(e), caller=caller)
         return {"status": "error", "error": str(e)}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Interfaces entre fases — handoff via Manifesto (tasks 2.4 / 2.6)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# O design já EMITE seu próprio Manifesto de Fase
+# (`src/agents/workflow_design_pipeline/manifest.py`) e agora também LÊ o de
+# outras fases (ver `00d_PREPARACAO_MANIFESTO_REQUISITOS_TIME2_DESIGN.md` e
+# `extracao_manifesto_requisitos.md`).
+#
+# Confirmado por inspeção direta do lado Requisitos
+# (`src/agents/requirements/manifest.py::emit_requirements_manifest`, plugado
+# como `after_agent_callback` de `workflow_requirements`): a fase
+# "requirements" JÁ publica `workspace_output/requirements/manifest.json` ao
+# final de cada execução. O caso "absent" deixou de ser garantido — segue
+# sendo tratado como estado neutro (ex.: antes da primeira run de Requisitos
+# numa sessão), não como erro.
+#
+# Ponto crítico confirmado (ver `extracao_manifesto_requisitos.md`, seção 5):
+# os `path` gravados pelo emissor de Requisitos são relativos à RAIZ DO
+# WORKSPACE (`get_workspace_root()`, que já É `workspace_output/`) — ex.:
+# "requirements/HUs/HU-001.md", SEM o prefixo "workspace_output/". Isso é
+# diferente da convenção que o próprio manifesto de Design usa para os SEUS
+# artifacts (`workflow_design_pipeline/manifest.py::_repo_relative`, relativo
+# à raiz do repo, COM o prefixo "workspace_output/"). `read_phase_artifact`
+# resolve pela convenção confirmada (sem prefixo) e normaliza defensivamente
+# um prefixo "workspace_output/" caso apareça — ver docstring da função.
+
+def read_phase_manifest(
+    phase: str,
+    tipo: str | None = None,
+    caller: str | None = "unknown",
+) -> Dict[str, Any]:
+    """
+    Lê o Manifesto de Fase (`manifest.json`) publicado por OUTRA fase do SDLC
+    (ex.: "requirements"), para ler `artifacts[].path` em vez de depender de
+    texto acumulado (ver `time2_design_tasks.md`, tasks 2.4 e 2.6).
+
+    ⚠️  Diferente das demais funções deste módulo, esta NÃO aceita `base_dir`
+    de workspace isolado do design — ela lê deliberadamente a raiz do
+    workspace inteiro (`get_workspace_root()`), porque o manifesto que
+    interessa aqui é o de OUTRA fase, não o do próprio design.
+
+    A ausência do manifesto é tratada como estado neutro (a fase de origem
+    ainda não rodou nesta sessão) — trate "absent" como "prossiga com o fluxo
+    atual", nunca como falha ou motivo de bloqueio do design.
+
+    Args:
+        phase:  Nome canônico da fase de origem (ex.: "requirements"),
+                correspondente à subpasta em workspace_output/.
+        tipo:   Filtro determinístico opcional sobre `manifest["artifacts"]`
+                (ex.: "HU"). Quando informado, a lista `artifacts` retornada
+                contém só os itens com esse `tipo` exato — `doubts`,
+                `status` e `summary` são sempre repassados integralmente,
+                sem filtro (dúvidas não bloqueantes de outros tipos de
+                artefato continuam relevantes para o chamador). Existe para
+                que o filtro por tipo (ex.: só HUs para o design_architect,
+                nunca RFs/RNFs/RNs/Glossário) seja aplicado de forma
+                determinística aqui, e não deixado a critério de leitura do
+                LLM chamador — ver `extracao_manifesto_requisitos.md`,
+                seção 6. Sem filtro (`tipo=None`), o comportamento é idêntico
+                ao anterior: `artifacts` vem cru, sem nenhuma interpretação
+                de campo feita pelo design.
+        caller: Nome do agente solicitante (rastreabilidade).
+
+    Returns:
+        Ausente: {"status": "absent", "phase": "<phase>",
+                   "hint": "Fase '<phase>' ainda não publicou manifest.json — use o fluxo atual (texto colado)."}
+        Sucesso: {"status": "ok", "phase": "<phase>", "manifest": {<JSON, com "artifacts" filtrado por tipo, se pedido>}}
+        Falha:   {"status": "error", "phase": "<phase>", "error": "<motivo>"}
+    """
+    import json
+    from shared.workspace import get_workspace_root
+
+    _MANIFEST_FILENAME = "manifest.json"
+
+    try:
+        manifest_path = (get_workspace_root() / phase / _MANIFEST_FILENAME).resolve()
+
+        if not manifest_path.exists():
+            IOLogger.read(f"{phase}/{_MANIFEST_FILENAME} [absent]", caller=caller)
+            return {
+                "status": "absent",
+                "phase": phase,
+                "hint": (
+                    f"Fase '{phase}' ainda não publicou {_MANIFEST_FILENAME} — "
+                    "use o fluxo atual (texto colado) até que ela passe a emitir."
+                ),
+            }
+
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+        if not isinstance(manifest, dict) or "artifacts" not in manifest:
+            return {
+                "status": "error",
+                "phase": phase,
+                "error": f"{_MANIFEST_FILENAME} encontrado mas fora do formato esperado (faltando 'artifacts').",
+            }
+
+        if tipo is not None:
+            manifest = {
+                **manifest,
+                "artifacts": [
+                    a for a in manifest.get("artifacts", [])
+                    if isinstance(a, dict) and a.get("tipo") == tipo
+                ],
+            }
+
+        IOLogger.read(f"{phase}/{_MANIFEST_FILENAME}", caller=caller)
+        return {"status": "ok", "phase": phase, "manifest": manifest}
+
+    except (OSError, ValueError) as e:
+        IOLogger.error("read_phase_manifest", str(e), caller=caller)
+        return {"status": "error", "phase": phase, "error": str(e)}
+
+
+def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, Any]:
+    """
+    Lê o conteúdo de um artefato referenciado pelo campo `path` de um
+    ManifestArtifact de OUTRA fase (ver read_phase_manifest acima).
+
+    Diferente de read_file/read_multiple_files (que só enxergam as pastas do
+    próprio design via alias), esta função resolve `path` relativo à RAIZ DO
+    WORKSPACE (`get_workspace_root()`, que já É `workspace_output/`) — a
+    convenção confirmada por inspeção direta do emissor real de Requisitos
+    (`src/agents/requirements/manifest.py::_scan_artifacts`, que grava
+    `path` via `f.relative_to(ws_root)`). Um `path` real hoje se parece com
+    "requirements/HUs/HU-001.md" — SEM o prefixo "workspace_output/".
+
+    Isso é diferente da convenção que o próprio manifesto de Design usa
+    (`workflow_design_pipeline/manifest.py::_repo_relative`, relativo à raiz
+    do repo, COM o prefixo "workspace_output/"). Como essa divergência entre
+    fases é uma possibilidade real (cada emissor decide sua própria
+    convenção hoje), esta função resolve primeiro pela convenção confirmada
+    (sem prefixo) e, defensivamente, tenta de novo removendo um eventual
+    prefixo "workspace_output/" antes de desistir — nunca aceita o path como
+    absoluto nem sai de dentro de workspace_output/, porque `path` vem de um
+    manifesto de OUTRA fase (dado externo ao design, não confiável por
+    padrão).
+
+    Args:
+        path:   Caminho relativo, exatamente como aparece em
+                manifest["artifacts"][i]["path"].
+        caller: Nome do agente solicitante (rastreabilidade).
+
+    Returns:
+        Sucesso: {"status": "ok", "path": "<path>", "content": "<conteúdo>"}
+        Falha:   {"status": "error", "path": "<path>", "error": "<motivo>"}
+    """
+    from shared.workspace import get_workspace_root
+
+    try:
+        workspace_root = get_workspace_root().resolve()
+
+        # Convenção confirmada (extracao_manifesto_requisitos.md, seção 5):
+        # path já é relativo a workspace_root, sem prefixo.
+        candidate = (workspace_root / path).resolve()
+
+        # Normalização defensiva: se o path real vier com o prefixo que o
+        # manifesto de Design usa para si mesmo ("workspace_output/..."),
+        # aceita também — sem isso, um manifesto de outra fase que adote essa
+        # convenção seria recusado por engano.
+        if not candidate.exists():
+            prefix = f"{workspace_root.name}/"
+            if path.startswith(prefix):
+                candidate = (workspace_root / path[len(prefix):]).resolve()
+
+        if not candidate.is_relative_to(workspace_root):
+            return {
+                "status": "error",
+                "path": path,
+                "error": "Acesso negado: caminho fora de workspace_output/.",
+            }
+
+        if not candidate.exists():
+            return {"status": "error", "path": path, "error": f"Artefato '{path}' não encontrado."}
+
+        content = candidate.read_text(encoding="utf-8")
+        IOLogger.read(path, caller=caller)
+        return {"status": "ok", "path": path, "content": content}
+
+    except (OSError, ValueError) as e:
+        IOLogger.error("read_phase_artifact", str(e), caller=caller)
+        return {"status": "error", "path": path, "error": str(e)}
 
 
 # ──────────────────────────────────────────────────────────────────────────────

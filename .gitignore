@@ -261,3 +261,10 @@ docs/superpowers/
 
 .abacusai/
 .abacusai/*
+
+# JetBrains IDEs
+.idea/
+# Artefatos locais fora do escopo do repositório (mantidos fora do commit)
+adk.zip
+AI4ES/
+Orientacoes.md

@@ -53,41 +53,53 @@ Acione o Agente IO: "[pipeline_controller] Limpe o diretório design_dir."
 - Sucesso: avance para ETAPA 2.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 1-B — ORIGEM DAS HUs: MANIFESTO DE REQUISITOS, QUANDO DISPONÍVEL (PREPARAÇÃO)
+ETAPA 1-B — ORIGEM DAS HUs: MANIFESTO DE REQUISITOS, QUANDO DISPONÍVEL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Antes de repassar HUs ao design_architect como texto colado (ETAPA 2, comportamento
-histórico e ainda o caminho normal hoje), verifique UMA VEZ se a fase de Requisitos
-já publicou seu próprio Manifesto de Fase — isso prepara a leitura de
-`artifacts[].path` no lugar do texto acumulado (ver `time2_design_tasks.md`,
-tasks 2.4 e 2.6), sem exigir que você mude nada quando essa publicação ainda
-não existir.
+histórico e ainda o caminho de fallback), verifique UMA VEZ se a fase de Requisitos
+já publicou seu próprio Manifesto de Fase — isso permite ler `artifacts[].path`
+no lugar do texto acumulado (ver `time2_design_tasks.md`, tasks 2.4 e 2.6). A
+fase de Requisitos JÁ publica esse manifesto ao final de cada execução — "absent"
+deixou de ser o único resultado possível, mas continua sendo um estado neutro
+válido (ex.: nenhuma run de Requisitos ocorreu ainda nesta sessão).
 
 1. Acione o Agente IO: "[pipeline_controller] Verifique se a fase 'requirements'
-   já publicou seu Manifesto de Fase."
+   já publicou seu Manifesto de Fase, filtrando os artifacts por tipo 'HU'."
 2. Leia o retorno:
-   - status "absent" (CASO ATUAL E ESPERADO — nenhum outro time publica manifesto
-     ainda): NÃO trate como erro, NÃO bloqueie, NÃO gere Doubt_Artifact. Avance
-     para a ETAPA 2 exatamente como hoje, usando o conteúdo de HUs já fornecido
-     nesta chamada.
-   - status "error" (falha ao ler o manifesto de outra fase): trate como
+   - status "absent": NÃO trate como erro, NÃO bloqueie, NÃO gere Doubt_Artifact.
+     Avance para a ETAPA 2 exatamente como hoje, usando o conteúdo de HUs já
+     fornecido nesta chamada.
+   - status "error" (falha ao ler ou manifesto malformado): trate como
      equivalente a "absent" para efeito de fluxo — avance para a ETAPA 2 com o
      texto colado, mas registre o erro no seu histórico de resposta.
    - status "ok" e manifest["status"] igual a "blocked": NÃO avance para o
      design_architect. Responda "PIPELINE_ERROR: fase de requisitos bloqueada —
      aguardando resolução do lado de Requisitos." e encerre.
    - status "ok" e manifest["status"] igual a "ok" ou "partial", com ao menos um
-     item em "artifacts": para cada `path` listado, peça ao Agente IO para ler
-     esse artefato (leitura restrita a workspace_output/, pelo caminho exato do
-     manifesto) e use o conteúdo lido — concatenado na ordem do manifesto — como
-     o "conteúdo de HUs" da ETAPA 2, em vez do texto colado recebido nesta
-     chamada. Ao acionar o design_architect, informe que a origem foi "manifesto
-     de requisitos" apenas como contexto — o payload de conteúdo continua sendo
-     texto completo, nunca uma referência para ele resolver por conta própria.
+     item em "artifacts" (já filtrado por tipo "HU" — NUNCA repasse RFs, RNFs,
+     RNs ou Glossário ao design_architect, mesmo que apareçam no manifesto bruto):
+     para cada `path` listado, peça ao Agente IO para ler esse artefato (leitura
+     restrita a workspace_output/, pelo caminho exato do manifesto) e use o
+     conteúdo lido — concatenado na ordem do manifesto — como o "conteúdo de
+     HUs" da ETAPA 2, em vez do texto colado recebido nesta chamada. Ao acionar
+     o design_architect, informe que a origem foi "manifesto de requisitos"
+     apenas como contexto — o payload de conteúdo continua sendo texto
+     completo, nunca uma referência para ele resolver por conta própria.
+     Se "artifacts" filtrado vier vazio (manifesto sem nenhuma HU, só outros
+     tipos de artefato), trate como equivalente a "absent" e siga com o texto
+     colado desta chamada.
+   - Se manifest["status"] == "partial": o manifesto de Requisitos pode trazer
+     `doubts` não bloqueantes (`bloqueante: false`). Repasse-as ao
+     design_architect como contexto adicional na mesma mensagem de
+     acionamento (ex.: "Dúvidas não bloqueantes registradas por Requisitos:
+     <lista de id + path>") — nunca as descarte silenciosamente, e nunca as
+     trate como motivo de bloqueio (só `bloqueante: true` bloqueia, e isso já
+     é coberto pelo caso "blocked" acima).
 
-⚠️ Esta etapa é aditiva, não decisora por padrão: hoje o resultado será sempre
-"absent", e o comportamento observável do pipeline permanece idêntico ao que
-já era antes desta etapa existir.
+⚠️ O contrato com o design_architect não muda: ele sempre recebe texto
+completo de HUs na mensagem de acionamento, nunca uma referência para
+resolver sozinho — só a ORIGEM desse texto passou a poder vir do manifesto.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ETAPA 2 — ANÁLISE TÉCNICA (BLOQUEANTE)
