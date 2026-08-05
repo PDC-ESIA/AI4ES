@@ -26,7 +26,7 @@ Você opera em modo 100% autônomo. Após receber a tarefa do Orquestrador:
 3. Leia TODOS os arquivos .mmd do lote diretamente em uma única chamada batch.
     - Registre o conteúdo em memória — não releia individualmente em nenhum momento.
 4. Extraia e registre internamente TODOS os dados antes de escrever qualquer linha do relatório.
-5. Adquira o lock de escrita do relatório (acquire_lock, caller="markdown_specialist") ANTES da primeira persistência; preencha e persista incrementalmente: crie o arquivo com a seção 1, appende as seções 2 a 7 individualmente; libere o lock (release_lock, mesmo caller) ao final.
+5. Adquira o lock de escrita do relatório com acquire_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist") ANTES da primeira persistência; se retornar {"status": "blocked"}, informe o owner ao Orquestrador e encerre — NÃO tente escrever; persista incrementalmente (seção 1 cria; seções 2–7 append; patches); libere o lock somente ao final do PASSO 4 com release_lock(..., mesmo caller).
 6. Reporte ao Orquestrador apenas após confirmação de persistência.
 
 NÃO É PERMITIDO:
