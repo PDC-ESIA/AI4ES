@@ -140,10 +140,11 @@ def _preparar_workspace(tmp_path, criteria, com_suite=False):
     return coder, execution, tasks
 
 
-def _rodar_harness(coder, execution, tasks, client):
+def _rodar_harness(coder, execution, tasks, client, comando_teste=None):
+    probe_result = [{"status": 200, "error": None, "body": "OK"}]
     with (
         patch("docker.from_env", return_value=client),
-        patch("requests.get", return_value=_mock_response()),
+        patch("shared.tools.harness_execucao.probe.executar_probe", return_value=probe_result),
         patch("shared.tools.harness_execucao.time.sleep"),
     ):
         return executar_harness_validacao(
@@ -152,6 +153,8 @@ def _rodar_harness(coder, execution, tasks, client):
             coder_base_dir=coder,
             execution_base_dir=execution,
             tasks_base_dir=tasks,
+            comando_teste=comando_teste,
+            comando_teste_origem="llm" if comando_teste else None,
         )
 
 
@@ -164,7 +167,7 @@ def test_poc_fluxo_aprovado_encerra(tmp_path):
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria)
 
     # (1) harness RODA
-    report = _rodar_harness(coder, execution, tasks, _mock_docker())
+    report = _rodar_harness(coder, execution, tasks, _mock_docker(), "python -m pytest")
     assert report["overall_status"] == "sucesso"
 
     # (2) report PERSISTIDO em disco
@@ -227,7 +230,7 @@ def test_poc_status_execucao_sozinho_nao_encerra(tmp_path):
     criteria = ["A rota GET / responde 200", "O relatório de auditoria é gerado"]
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria)
 
-    report = _rodar_harness(coder, execution, tasks, _mock_docker())
+    report = _rodar_harness(coder, execution, tasks, _mock_docker(), "python -m pytest")
     assert report["overall_status"] == "sucesso"  # execução tecnicamente OK
 
     report_file = execution / f"{_TASK_ID}.report.json"
@@ -260,14 +263,17 @@ def test_poc_suite_executada_no_container(tmp_path):
     criteria = ["A rota GET / deve responder 200"]
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria, com_suite=True)
 
-    report = _rodar_harness(coder, execution, tasks, _mock_docker())
+    comando = "python -m pytest /app/test_main.py"
+    report = _rodar_harness(coder, execution, tasks, _mock_docker(), comando)
 
     testes = next(s for s in report["stages"] if s["stage"] == "testes_automatizados")
-    # Executou no container, contra o path /app — sem rebase para o qa_agent
+    # Executou no container o comando resolvido externamente, sem rebase para o
+    # workspace do qa_agent.
     assert testes["status"] == "sucesso"
-    assert testes["evidence"]["alvo_container"] == "/app/test_main.py"
-    assert testes["evidence"]["modo"] == "json"
-    assert testes["evidence"]["resumo"]["passaram"] == 1
+    assert testes["evidence"]["comando"] == comando
+    assert testes["evidence"]["comando_origem"] == "llm"
+    assert testes["evidence"]["exit_code"] == 0
+    assert "passed" in testes["evidence"]["saida_tail"]
     assert report["overall_status"] == "sucesso"
 
     # E o fluxo segue normalmente até o veredito (aprovado) → executor encerraria

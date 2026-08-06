@@ -11,6 +11,7 @@ Variáveis de ambiente:
     REVIEWER_STATIC_ANALYSIS: "0" desabilita análise estática pré-LLM (padrão: habilitado).
 """
 
+import json
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -134,7 +135,12 @@ _ANALYZER_INSTRUCTION_TEMPLATE = (
     "Os arquivos a revisar estão em `__CODER_WS__/`.\n"
     "Use caminhos RELATIVOS — tool_ler_arquivo resolve automaticamente.\n\n"
     "# ARQUIVOS A REVISAR\n"
-    "__FILES__\n"
+    "__FILES__\n\n"
+    "# RESULTADO DA EXECUÇÃO DAS TASKS\n"
+    "Este bloco é evidência determinística do iterator. Se o outcome não for\n"
+    "`aprovado`, deixe explícito no relatório que a revisão é parcial ou que o\n"
+    "processamento não foi iniciado; não trate tasks pendentes como aprovadas.\n\n"
+    "__TASK_EXECUTION__\n"
 )
 
 
@@ -152,13 +158,24 @@ def _format_findings_block(findings) -> str:
 def _analyzer_instruction_provider(ctx) -> str:
     """InstructionProvider: injeta findings estáticos e lista de arquivos em runtime."""
     static_block = ""
+    task_execution = {"summary": None, "results": []}
     if hasattr(ctx, "state"):
         static_block = ctx.state.get("static_findings_block", "")
+        task_execution = {
+            "summary": ctx.state.get("task_iteration_summary"),
+            "results": ctx.state.get("task_results") or [],
+            "error": ctx.state.get("task_iteration_error"),
+            "failure_policy": ctx.state.get("task_failure_policy"),
+        }
     return (
         _ANALYZER_INSTRUCTION_TEMPLATE
         .replace("__STATIC_FINDINGS__", static_block or "Análise estática não disponível.")
         .replace("__CODER_WS__", _CODER_WS)
         .replace("__FILES__", _discover_coder_files())
+        .replace(
+            "__TASK_EXECUTION__",
+            json.dumps(task_execution, indent=2, ensure_ascii=False),
+        )
     )
 
 

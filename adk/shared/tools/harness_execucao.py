@@ -13,7 +13,7 @@ julgamento pertence ao validador (implementation_validator). Por isso o
 Reaproveita as ferramentas já existentes do repositório:
 - `shared/tools/harness_docker.py` — build/run/cleanup de container e rota.
 - `shared/tools/log_parser_tool.py` — parsing dos logs de build e runtime.
-- `shared/tools/stack_adapters/` — execução dos testes por stack (adapter).
+- `shared/tools/probe.py` — cliente HTTP injetado no container (liveness/rotas).
 """
 
 from __future__ import annotations
@@ -35,7 +35,6 @@ from google.adk.tools import ToolContext
 from shared.tools import harness_docker as hd
 from shared.tools import probe
 from shared.tools.log_parser_tool import parse_log_text
-from shared.tools.stack_adapters import StackAdapter, resolver_stack
 from shared.workspace import get_agent_workspace
 
 logger = logging.getLogger(__name__)
@@ -66,10 +65,13 @@ class _HarnessContext:
 
         # Preenchidos ao longo dos estágios
         self.tech_stack: list[str] = []
-        self.adapter: Optional[StackAdapter] = None  # resolvido no estágio 1
         self.acceptance_criteria: list[str] = []
         self.contract: dict = {}
         self.dockerfile: str = ""
+        self.dockerfile_resolvido: Optional[str] = None  # entregue pelo chamador
+        self.dockerfile_origem_resolvida: Optional[str] = None
+        self.comando_teste_resolvido: Optional[str] = None  # entregue pelo chamador
+        self.comando_teste_origem_resolvida: Optional[str] = None
         self.build_dir: Optional[Path] = None
         self.docker_client = None
         self.container = None
@@ -131,37 +133,31 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     ctx.acceptance_criteria = list(task.get("acceptance_criteria", []))
     ctx.contract = task.get("contract", {}) or {}
 
-    # Resolve a stack em camadas (Tier 1 declarado → Tier 2 manifesto → Tier 3
-    # falha explícita). Substitui o antigo gate ".py?/SRC_VAZIO", que confundia
-    # "sem código nenhum" com "stack não reconhecida" — problemas diferentes.
-    resolucao = resolver_stack(ctx.tech_stack, ctx.coder_dir)
-    if resolucao.adapter is None:
-        return StageResult(
-            stage=StageName.PREPARACAO_AMBIENTE,
-            status=StageStatus.ERRO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=(
-                "Stack não identificada: nenhum adapter registrado reivindicou a "
-                "tech_stack declarada e nenhum manifesto reconhecido foi "
-                "encontrado no workspace do coder."
-            ),
-            evidence={
-                "coder_dir": str(ctx.coder_dir),
-                "tech_stack_declarada": ctx.tech_stack,
-                "detalhe_resolucao": resolucao.detalhe,
-            },
-            error_code="STACK_NAO_IDENTIFICADA",
-        )
-    ctx.adapter = resolucao.adapter
-
-    # Resolve Dockerfile (do coder ou fallback determinístico via harness_docker)
-    dockerfile_path = ctx.coder_dir / "Dockerfile"
-    if dockerfile_path.is_file():
-        ctx.dockerfile = dockerfile_path.read_text(encoding="utf-8")
-        origem_dockerfile = "coder"
+    # Resolve Dockerfile. Quando o chamador (ExecutorOrchestrator) já resolveu —
+    # priorizando o do coder, senão via LLM — usa direto (o harness NÃO recheca o
+    # workspace do coder nesse caso). Em chamada direta (teste/PoC), sem chamador
+    # externo, olha o coder ele mesmo; sem Dockerfile nenhum, falha honesta — o
+    # harness não gera fallback embutido.
+    if ctx.dockerfile_resolvido is not None:
+        ctx.dockerfile = ctx.dockerfile_resolvido
+        origem_dockerfile = ctx.dockerfile_origem_resolvida or "externo"
     else:
-        ctx.dockerfile = hd._generate_dockerfile(ctx.coder_dir)
-        origem_dockerfile = "fallback"
+        dockerfile_path = ctx.coder_dir / "Dockerfile"
+        if dockerfile_path.is_file():
+            ctx.dockerfile = dockerfile_path.read_text(encoding="utf-8")
+            origem_dockerfile = "coder"
+        else:
+            return StageResult(
+                stage=StageName.PREPARACAO_AMBIENTE,
+                status=StageStatus.ERRO,
+                duration_seconds=round(time.time() - t0, 3),
+                summary=(
+                    "Nenhum Dockerfile: não fornecido pelo chamador e ausente no "
+                    "workspace do coder."
+                ),
+                evidence={"coder_dir": str(ctx.coder_dir)},
+                error_code="DOCKERFILE_AUSENTE",
+            )
 
     ctx.env_ok = True
     return StageResult(
@@ -170,16 +166,12 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
         duration_seconds=round(time.time() - t0, 3),
         summary=(
             f"Ambiente preparado: Task carregada ({len(ctx.acceptance_criteria)} "
-            f"critérios), stack '{ctx.adapter.nome}' (via {resolucao.origem}), "
-            f"Dockerfile de origem '{origem_dockerfile}'."
+            f"critérios), Dockerfile de origem '{origem_dockerfile}'."
         ),
         evidence={
             "task_file": str(task_file),
             "acceptance_criteria": ctx.acceptance_criteria,
             "dockerfile_origem": origem_dockerfile,
-            "stack_adapter": ctx.adapter.nome,
-            "stack_origem": resolucao.origem,
-            "stack_detalhe": resolucao.detalhe,
         },
         error_code=None,
     )
@@ -238,7 +230,10 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
             status=StageStatus.FALHA,
             duration_seconds=round(time.time() - t0, 3),
             summary="Falha ao construir a imagem Docker.",
-            evidence={"build_logs_tail": ctx.build_logs[-2000:]},
+            evidence={
+                "build_logs_tail": ctx.build_logs[-2000:],
+                "dockerfile_usado": ctx.dockerfile,
+            },
             error_code="FALHA_BUILD",
         )
     except APIError as e:
@@ -472,13 +467,16 @@ def _estagio_coleta_logs_execucao(ctx: _HarnessContext) -> StageResult:
 # Estágio 6 — Execução dos testes automatizados
 # ===========================================================================
 
-# A execução da suíte é específica de cada stack (localizar, rodar, parsear) e
-# vive nos adapters (`shared/tools/stack_adapters/`). O harness mantém só o gate
-# genérico e a primitiva `_exec_no_container`, que o adapter recebe por injeção
-# para rodar seu comando contra o artefato realmente implantado em /app.
+# O comando que roda a suíte é resolvido pela LLM (test_command_resolver) e
+# entregue ao harness já pronto — o harness só o executa contra o artefato
+# implantado em /app e classifica pelo exit code. `_exec_no_container` é
+# genérico: não conhece test runner nem stack nenhuma.
 
 # Workdir do artefato no container (Dockerfile: WORKDIR /app + COPY . /app/).
 _APP_WORKDIR = "/app"
+
+# Teto para o comando de teste no container (segundos).
+_TESTES_TIMEOUT = 120
 
 
 def _exec_no_container(container, comando: str) -> tuple[Optional[int], str, str]:
@@ -498,40 +496,73 @@ def _exec_no_container(container, comando: str) -> tuple[Optional[int], str, str
 
 
 def _estagio_testes(ctx: _HarnessContext) -> StageResult:
-    """Estágio 6 — executa a suíte de testes DENTRO do container implantado.
+    """Estágio 6 — executa o comando de teste DENTRO do container implantado.
 
-    Delega ao adapter de stack resolvido no Estágio 1 (`ctx.adapter`): é ele que
-    localiza a suíte, garante a ferramenta no container, roda e parseia — tudo
-    específico da stack. O harness só faz o gate genérico (a app inicializou?),
-    injeta a primitiva `_exec_no_container` e traduz o `ResultadoTestes` do
-    adapter num `StageResult`. Apenas coleta evidência: a decisão sobre o que as
-    falhas significam é do validador.
+    O comando é resolvido FORA do harness (LLM, via ExecutorOrchestrator) e
+    entregue em `ctx.comando_teste_resolvido`. O harness só o roda contra o
+    artefato em /app e classifica pelo exit code — sem conhecer o test runner.
+    Apenas coleta evidência: o que as falhas significam é do validador.
     """
     if not ctx.app_ok:
         return _pulado(
             StageName.TESTES_AUTOMATIZADOS,
             "Abortado: aplicação não inicializou; testes não executados.",
         )
-    if ctx.adapter is None:
-        # Invariante: app_ok ⇒ env_ok ⇒ stack resolvida no Estágio 1. Guarda
-        # defensiva para nunca desreferenciar um adapter ausente.
+    comando = ctx.comando_teste_resolvido
+    if not comando:
+        # None/"" cobre "ninguém passou comando" e "resolução falhou/recusada
+        # pelo filtro" — evidência honesta, sem error_code (não é falha do harness).
         return _pulado(
             StageName.TESTES_AUTOMATIZADOS,
-            "Abortado: nenhum adapter de stack resolvido; testes não executados.",
+            "Nenhum comando de teste resolvido; testes não executados.",
         )
     t0 = time.time()
 
-    resultado = ctx.adapter.executar_testes(
-        _exec_no_container, ctx.container, ctx.coder_dir
-    )
+    try:
+        exit_code, stdout, stderr = _exec_no_container(
+            ctx.container, f"timeout {_TESTES_TIMEOUT} {comando}"
+        )
+    except Exception as e:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Falha ao executar o comando de teste no container: {e}",
+            evidence={
+                "comando": comando,
+                "comando_origem": ctx.comando_teste_origem_resolvida,
+            },
+            error_code="EXEC_FALHOU",
+        )
+
+    # Classificação pelo exit code (sem parsing de contagem):
+    #   0 = passou | 124 = timeout (coreutils) | 126/127 = comando não encontrado
+    #   / não executável (sinal de retry) | qualquer outro != 0 = testes falharam.
+    if exit_code == 0:
+        status, error_code = StageStatus.SUCESSO, None
+    elif exit_code == 124:
+        status, error_code = StageStatus.FALHA, "TESTES_TIMEOUT"
+    elif exit_code in (126, 127):
+        status, error_code = StageStatus.FALHA, "COMANDO_NAO_ENCONTRADO"
+    else:
+        status, error_code = StageStatus.FALHA, "TESTES_FALHARAM"
+
+    tail = (stdout or "")[-3000:]
+    if stderr:
+        tail += f"\n--- stderr ---\n{stderr[-1000:]}"
 
     return StageResult(
         stage=StageName.TESTES_AUTOMATIZADOS,
-        status=StageStatus(resultado.status),
+        status=status,
         duration_seconds=round(time.time() - t0, 3),
-        summary=resultado.summary,
-        evidence=resultado.evidence,
-        error_code=resultado.error_code,
+        summary=f"Comando de teste executado no container (exit={exit_code}): '{comando}'.",
+        evidence={
+            "comando": comando,
+            "comando_origem": ctx.comando_teste_origem_resolvida,
+            "exit_code": exit_code,
+            "saida_tail": tail,
+        },
+        error_code=error_code,
     )
 
 
@@ -951,7 +982,7 @@ def _render_markdown(report: ExecutionReport) -> str:
     return "\n".join(linhas) + "\n"
 
 
-def _ler_tech_stack(tool_context: ToolContext | None) -> list[str]:
+def ler_tech_stack(tool_context: ToolContext | None) -> list[str]:
     """Lê a stack declarada pelo context_engineer em `session.state`.
 
     O caminho do dado é `state["tasks"]["macro_context"]["tech_stack"]` — a
@@ -990,6 +1021,10 @@ def executar_harness_validacao(
     execution_base_dir=None,
     tasks_base_dir=None,
     tool_context: ToolContext | None = None,
+    dockerfile: Optional[str] = None,
+    dockerfile_origem: Optional[str] = None,
+    comando_teste: Optional[str] = None,
+    comando_teste_origem: Optional[str] = None,
 ) -> dict:
     """Executa o harness de validação (9 estágios) sobre o artefato do coder.
 
@@ -1023,7 +1058,11 @@ def executar_harness_validacao(
     tasks_dir = Path(tasks_base_dir) if tasks_base_dir else get_agent_workspace("cr_context_engineer")
 
     ctx = _HarnessContext(task_id, coder_dir, exec_dir, tasks_dir)
-    ctx.tech_stack = _ler_tech_stack(tool_context)
+    ctx.tech_stack = ler_tech_stack(tool_context)
+    ctx.dockerfile_resolvido = dockerfile
+    ctx.dockerfile_origem_resolvida = dockerfile_origem
+    ctx.comando_teste_resolvido = comando_teste
+    ctx.comando_teste_origem_resolvida = comando_teste_origem
 
     stages: list[StageResult] = []
     criteria_evidence: list[CriterionEvidence] = []

@@ -30,6 +30,7 @@ estagnação NÃO é aprovar — o veredito continua reprovado.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, AsyncGenerator, Callable, Optional
 
@@ -41,7 +42,8 @@ from google.adk.events.event_actions import EventActions
 from google.genai import types
 from pydantic import ConfigDict, PrivateAttr
 
-from shared.tools.harness_execucao import executar_harness_validacao
+from shared.tools.build_context import reunir_contexto_build
+from shared.tools.harness_execucao import executar_harness_validacao, ler_tech_stack
 from shared.workspace import get_agent_workspace
 
 from .estagnacao import LIMITE_REPETICOES, hash_codigo, resumo_bloqueado
@@ -57,6 +59,18 @@ _CHAVE_ITERACAO = "executor_iteration"
 _CHAVE_CONTAGEM_ESTAGNACAO = "stagnation_count"
 _CHAVE_CHAVE_ESTAGNACAO = "stagnation_key"
 
+# Estágio de testes no payload do harness (StageName.TESTES_AUTOMATIZADOS.value —
+# usado como literal para não importar StageName daqui e reabrir o ciclo).
+_STAGE_TESTES = "testes_automatizados"
+
+# Filtro leve do comando de teste resolvido: recusa se contiver qualquer um destes
+# como substring (instalar dependência é do Dockerfile/build, nunca do teste).
+_PADROES_PERIGOSOS = (
+    "rm -rf", "sudo", "curl", "wget", "apt install", "apt-get install",
+    "pip install", "npm install", "npm ci", "yarn add", "chmod 777",
+    "dd if=", "mkfs", "> /dev/",
+)
+
 
 class ExecutorOrchestrator(BaseAgent):
     """Orquestra harness → validador → decisão de encerramento, sem LLM."""
@@ -71,6 +85,8 @@ class ExecutorOrchestrator(BaseAgent):
         self,
         *,
         validator: BaseAgent,
+        dockerfile_resolver: BaseAgent,
+        test_command_resolver: BaseAgent,
         error_report_builder: Optional[ErrorReportBuilder] = None,
         **kwargs: Any,
     ) -> None:
@@ -79,18 +95,108 @@ class ExecutorOrchestrator(BaseAgent):
             não importado como singleton, porque o ADK exige parent ÚNICO em
             `sub_agents` — use `implementation_validator.agent.criar_agente()`
             para obter uma instância própria por orquestração.
+        dockerfile_resolver: agente que resolve o Dockerfile quando o coder não
+            traz um próprio (passo 0). Injetado como instância própria
+            (`dockerfile_resolver.agent.criar_agente()`) pelo mesmo motivo do
+            validador — `sub_agents` exige parent único.
+        test_command_resolver: agente que resolve o comando de teste (Estágio 6).
+            Injetado como instância própria, mesma obrigação de parent único.
         error_report_builder: hook que monta o `ErrorReport` do turno reprovado
             (ver `executor/error_report.py`). Sem ele, um veredito reprovado
             apenas registra o `blocking_reason` em texto — o loop continua
             igual, mas o coder não recebe a evidência bruta dos estágios.
         """
-        super().__init__(sub_agents=[validator], **kwargs)
+        super().__init__(
+            sub_agents=[validator, dockerfile_resolver, test_command_resolver],
+            **kwargs,
+        )
         self._error_report_builder = error_report_builder
 
     @property
     def validator(self) -> BaseAgent:
         """O agente de validação — mesma instância passada ao construtor."""
         return self.sub_agents[0]
+
+    @property
+    def dockerfile_resolver(self) -> BaseAgent:
+        """O agente resolvedor de Dockerfile — mesma instância passada ao construtor."""
+        return self.sub_agents[1]
+
+    @property
+    def test_command_resolver(self) -> BaseAgent:
+        """O agente resolvedor do comando de teste — mesma instância do construtor."""
+        return self.sub_agents[2]
+
+    # ------------------------------------------------------------------
+    # Comando de teste — leitura do agente, filtro de segurança e cache
+    # ------------------------------------------------------------------
+
+    def _ler_comando_resolvido(
+        self, ctx: InvocationContext
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Lê o comando resolvido pelo agente (do state) e aplica o filtro leve.
+
+        `(comando, "llm")` quando há comando não-vazio e seguro; senão
+        `(None, None)` — o harness então pula o Estágio 6 honestamente.
+        """
+        resolucao = ctx.session.state.get("test_command_resolution") or {}
+        comando = (resolucao.get("comando") or "").strip()
+        if not comando:
+            return None, None
+        if not self._comando_seguro(comando):
+            logger.warning("executor: comando de teste recusado pelo filtro: %r", comando)
+            return None, None
+        return comando, "llm"
+
+    @staticmethod
+    def _comando_seguro(comando: str) -> bool:
+        """Recusa comando com padrão perigoso (instalar/apagar/baixar/etc.).
+
+        Instalar dependência é problema do Dockerfile/build, nunca do comando de
+        teste — mesma filosofia dos adapters aposentados.
+        """
+        alvo = comando.lower()
+        return not any(padrao in alvo for padrao in _PADROES_PERIGOSOS)
+
+    @staticmethod
+    def _ler_cache_comando(cache_path) -> Optional[str]:
+        """Comando cacheado por Task (`{task_id}.test_command.json`), ou None."""
+        try:
+            dados = json.loads(cache_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        comando = dados.get("comando") if isinstance(dados, dict) else None
+        return comando if isinstance(comando, str) and comando.strip() else None
+
+    @staticmethod
+    def _atualizar_cache_comando(
+        cache_path, comando: Optional[str], estagio6: Optional[dict]
+    ) -> None:
+        """Grava o cache quando o comando final RODOU (mesmo com testes falhando de
+        verdade); invalida (remove) quando ainda deu COMANDO_NAO_ENCONTRADO — assim
+        a próxima iteração resolve do zero."""
+        error_code = (estagio6 or {}).get("error_code")
+        if comando and estagio6 is not None and error_code != "COMANDO_NAO_ENCONTRADO":
+            try:
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                cache_path.write_text(
+                    json.dumps({"comando": comando}, ensure_ascii=False), encoding="utf-8"
+                )
+            except OSError:
+                logger.warning("executor: falha ao gravar cache de comando em %s", cache_path)
+        elif error_code == "COMANDO_NAO_ENCONTRADO":
+            try:
+                cache_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    @staticmethod
+    def _stage(payload: dict, nome: str) -> Optional[dict]:
+        """O dict do StageResult com `stage == nome` no payload do harness, ou None."""
+        for s in payload.get("stages", []) or []:
+            if s.get("stage") == nome:
+                return s
+        return None
 
     async def _run_async_impl(
         self, ctx: InvocationContext
@@ -118,10 +224,103 @@ class ExecutorOrchestrator(BaseAgent):
 
         iteration = self._proxima_iteracao(cb)
 
-        # ---- 1. Harness ----
-        # Chamada síncrona direta, como a FunctionTool do ADK já fazia com esta
-        # mesma função (ela não é awaitable e o ADK a invoca inline).
-        payload = executar_harness_validacao(task_id, iteration, tool_context=cb)
+        # tech_stack declarada, lida uma vez: vira DICA (não autoritativa) para os
+        # dois resolvedores (Dockerfile e comando de teste).
+        tech_stack = ler_tech_stack(cb)
+        coder_dir = get_agent_workspace("cr_coder")
+
+        # ---- 0. Dockerfile: prioriza o do coder; senão, resolve via LLM ----
+        # O harness é função pura: RECEBE o Dockerfile pronto. Quem decide de onde
+        # ele vem é aqui. O Dockerfile do coder SEMPRE vence — nem chama a LLM.
+        dockerfile_path = coder_dir / "Dockerfile"
+        if dockerfile_path.is_file():
+            dockerfile_resolvido = dockerfile_path.read_text(encoding="utf-8")
+            origem_dockerfile = "coder"
+        else:
+            # Sem Dockerfile do coder: reúne o contexto (determinístico, sem tool)
+            # e o injeta na conversa do resolvedor — mesmo truque do REPORT_PATH,
+            # mantendo o agente sem capacidade de vasculhar o filesystem.
+            yield self._evento_texto(
+                ctx,
+                "Nenhum Dockerfile no workspace do coder. Resolva o Dockerfile a "
+                "partir do CONTEXTO DO WORKSPACE a seguir.\n\n"
+                + reunir_contexto_build(coder_dir, tech_stack=tech_stack),
+                cb,
+            )
+            async for event in self.dockerfile_resolver.run_async(ctx):
+                yield event
+            resolucao = ctx.session.state.get("dockerfile_resolution") or {}
+            dockerfile_resolvido = resolucao.get("dockerfile")
+            # None quando a extração falhou: não passa Dockerfile ao harness, que
+            # cai no próprio caminho honesto (DOCKERFILE_AUSENTE).
+            origem_dockerfile = "llm" if dockerfile_resolvido else None
+
+        # ---- 1. Comando de teste + Harness (com 1 retry se o comando não rodar) --
+        # O comando é resolvido FORA do harness (aqui) e entregue pronto. Cache por
+        # Task no workspace do executor: "qual ferramenta roda os testes" é estável
+        # entre iterações do loop.
+        exec_dir = get_agent_workspace("cr_executor")
+        cache_path = exec_dir / f"{task_id}.test_command.json"
+
+        comando = self._ler_cache_comando(cache_path)
+        if comando:
+            origem_comando = "cache"
+        else:
+            yield self._evento_texto(
+                ctx,
+                "Resolva o COMANDO que roda a suíte de testes já configurada neste "
+                "projeto, a partir do CONTEXTO DO WORKSPACE a seguir.\n\n"
+                + reunir_contexto_build(coder_dir, tech_stack=tech_stack),
+                cb,
+            )
+            async for event in self.test_command_resolver.run_async(ctx):
+                yield event
+            comando, origem_comando = self._ler_comando_resolvido(ctx)
+
+        payload = executar_harness_validacao(
+            task_id,
+            iteration,
+            tool_context=cb,
+            dockerfile=dockerfile_resolvido,
+            dockerfile_origem=origem_dockerfile,
+            comando_teste=comando,
+            comando_teste_origem=origem_comando,
+        )
+
+        # Retry ÚNICO: só quando o comando RODOU e não foi encontrado/executável
+        # (127/126), sinal de que a LLM (ou um cache stale) errou a invocação — NÃO
+        # quando os testes rodaram e falharam de verdade. Roda o harness inteiro de
+        # novo (rebuild incluso — Opção A), sem mecanismo novo de reuso de container.
+        estagio6 = self._stage(payload, _STAGE_TESTES)
+        if estagio6 and estagio6.get("error_code") == "COMANDO_NAO_ENCONTRADO":
+            ev = estagio6.get("evidence") or {}
+            yield self._evento_texto(
+                ctx,
+                "O comando de teste anterior NÃO foi encontrado/executável no "
+                f"container. Comando: {ev.get('comando')!r}. Saída:\n"
+                f"{ev.get('saida_tail', '')}\n\n"
+                "Resolva um comando corrigido a partir do CONTEXTO a seguir.\n\n"
+                + reunir_contexto_build(coder_dir, tech_stack=tech_stack),
+                cb,
+            )
+            async for event in self.test_command_resolver.run_async(ctx):
+                yield event
+            comando, origem_comando = self._ler_comando_resolvido(ctx)
+            payload = executar_harness_validacao(
+                task_id,
+                iteration,
+                tool_context=cb,
+                dockerfile=dockerfile_resolvido,
+                dockerfile_origem=origem_dockerfile,
+                comando_teste=comando,
+                comando_teste_origem=origem_comando,
+            )
+            estagio6 = self._stage(payload, _STAGE_TESTES)
+
+        # Cache: grava quando o comando final rodou (mesmo com testes falhando de
+        # verdade); invalida quando ainda deu COMANDO_NAO_ENCONTRADO.
+        self._atualizar_cache_comando(cache_path, comando, estagio6)
+
         report_path = payload.get("report_path", "")
 
         # O report_path vai no CONTEÚDO do turno porque é assim que ele entra no
@@ -147,10 +346,14 @@ class ExecutorOrchestrator(BaseAgent):
         status = validation.get("status")
 
         if status == "aprovado":
+            resumo_aprovado = (
+                f"Veredito APROVADO para {task_id}. "
+                f"{validation.get('summary') or ''}"
+            ).rstrip()
+            cb.state["execution_result"] = resumo_aprovado
             yield self._evento_texto(
                 ctx,
-                f"Veredito APROVADO para {task_id}. "
-                f"{validation.get('summary') or ''}".rstrip(),
+                resumo_aprovado,
                 cb,
                 escalate=True,
             )
@@ -191,6 +394,10 @@ class ExecutorOrchestrator(BaseAgent):
             self._error_report_builder(cb) if self._error_report_builder else None
         )
         if conteudo is not None:
+            texto = "".join(
+                part.text or "" for part in (conteudo.parts or []) if part.text is not None
+            )
+            cb.state["execution_result"] = texto
             yield Event(
                 author=self.name,
                 invocation_id=ctx.invocation_id,
@@ -200,12 +407,12 @@ class ExecutorOrchestrator(BaseAgent):
             )
             return
 
-        yield self._evento_texto(
-            ctx,
+        resumo_reprovado = (
             f"Veredito REPROVADO para {task_id}: "
-            f"{validation.get('blocking_reason') or 'sem blocking_reason.'}",
-            cb,
+            f"{validation.get('blocking_reason') or 'sem blocking_reason.'}"
         )
+        cb.state["execution_result"] = resumo_reprovado
+        yield self._evento_texto(ctx, resumo_reprovado, cb)
 
     # ------------------------------------------------------------------
     # Resolução determinística das entradas do harness

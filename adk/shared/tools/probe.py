@@ -28,6 +28,8 @@ import tarfile
 from pathlib import Path
 from typing import Any
 
+import docker.errors
+
 logger = logging.getLogger(__name__)
 
 # Binários estáticos pré-compilados (ver shared/probe/build.sh). Não são
@@ -56,6 +58,28 @@ class ProbeError(RuntimeError):
     resultado). É falha da mecânica do probe: arquitetura sem binário, binário
     ausente, `put_archive` recusado, saída não-JSON.
     """
+
+
+def _erro_probe_de_docker(e: docker.errors.DockerException) -> ProbeError:
+    """Converte uma exceção crua da lib do Docker em `ProbeError`.
+
+    Distingue o container PARADO (HTTP 409 / "is not running") — evidência
+    ACIONÁVEL para o coder: a aplicação dele subiu e caiu antes do probe — de uma
+    falha mecânica genérica do Docker (mensagem original preservada p/ diagnóstico).
+    """
+    # status_code primeiro (não exige str(e), que em APIError formata a response);
+    # getattr devolve None se a property não estiver disponível.
+    parado = getattr(e, "status_code", None) == 409
+    try:
+        texto = str(e)
+    except Exception:
+        texto = type(e).__name__
+    if parado or "is not running" in texto:
+        return ProbeError(
+            "o container não está mais em execução no momento do probe: a "
+            "aplicação subiu e encerrou/caiu antes da checagem."
+        )
+    return ProbeError(f"falha da mecânica do Docker ao executar o probe: {texto}")
 
 
 def _tar_de_bytes(nome: str, dados: bytes, mode: int) -> bytes:
@@ -133,14 +157,21 @@ def executar_probe(
     transporte de requisições individuais NÃO levantam — vêm no campo `error` de
     cada resultado.
     """
-    caminho_probe = injetar_probe(container)
+    try:
+        caminho_probe = injetar_probe(container)
 
-    spec_bytes = json.dumps(requisicoes).encode("utf-8")
-    tar_spec = _tar_de_bytes(_NOME_SPEC, spec_bytes, 0o644)
-    if not container.put_archive(_DIR_NO_CONTAINER, tar_spec):
-        raise ProbeError("put_archive falhou ao gravar o request-spec no container")
+        spec_bytes = json.dumps(requisicoes).encode("utf-8")
+        tar_spec = _tar_de_bytes(_NOME_SPEC, spec_bytes, 0o644)
+        if not container.put_archive(_DIR_NO_CONTAINER, tar_spec):
+            raise ProbeError("put_archive falhou ao gravar o request-spec no container")
 
-    res = container.exec_run([caminho_probe, _CAMINHO_SPEC, base_url], demux=True)
+        res = container.exec_run([caminho_probe, _CAMINHO_SPEC, base_url], demux=True)
+    except docker.errors.DockerException as e:
+        # Nenhuma exceção CRUA da lib do Docker escapa: vira ProbeError — a
+        # categoria que o harness (Estágios 4/7) já converte em StageResult de
+        # erro. (`injetar_probe`/`put_archive`/`exec_run` podem levantar APIError,
+        # p.ex. 409 quando o container caiu entre o Estágio 2 e o probe.)
+        raise _erro_probe_de_docker(e) from e
 
     saida = res.output if isinstance(res.output, tuple) else (res.output, None)
     stdout = (saida[0] or b"").decode("utf-8", errors="replace")
@@ -157,3 +188,4 @@ def executar_probe(
         raise ProbeError(
             f"saída do probe não é JSON válido: {e}; stdout={stdout[:500]!r}"
         )
+            

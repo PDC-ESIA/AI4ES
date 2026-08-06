@@ -185,7 +185,7 @@ _BLOCO_RE = re.compile(
     r"TEXTO:\s*(?P<texto>.+?)\s*\n"
     r"STATUS:\s*(?P<status>atendido|nao_atendido|inconclusivo)\s*\n"
     r"JUSTIFICATIVA:\s*(?P<just>.+?)\s*\n"
-    r"(?:EVIDENCIA_REF:\s*(?P<ref>.+?)\s*\n?)?",
+    r"(?:EVIDENCIA_REF:\s*(?P<ref>[^\n]+)\s*(?:\n|$))?",
     re.IGNORECASE,
 )
 _PATH_RE = re.compile(r"REPORT_PATH:\s*(?P<path>\S+)")

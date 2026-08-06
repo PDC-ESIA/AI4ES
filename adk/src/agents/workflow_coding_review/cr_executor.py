@@ -38,15 +38,19 @@ Vive no LoopAgent [coder → executor]; o validador é sub-agente do executor. O
 cr_reviewer permanece fora do loop.
 """
 
+from src.agents.dockerfile_resolver.agent import criar_agente as criar_dockerfile_resolver
 from src.agents.executor import prompt as executor_prompt
 from src.agents.executor.error_report import montar_error_report
 from src.agents.executor.orchestrator import ExecutorOrchestrator
-from src.agents.implementation_validator.agent import criar_agente
+from src.agents.implementation_validator.agent import criar_agente as criar_validator
+from src.agents.test_command_resolver.agent import criar_agente as criar_test_command_resolver
 
 # `name` preservado literalmente: é o identificador já em uso no workflow.
 agent = ExecutorOrchestrator(
     name="cr_executor_agent",
     description=executor_prompt.description,
-    validator=criar_agente(),
+    validator=criar_validator(),
+    dockerfile_resolver=criar_dockerfile_resolver(),
+    test_command_resolver=criar_test_command_resolver(),
     error_report_builder=montar_error_report,
 )

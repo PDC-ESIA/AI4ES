@@ -25,6 +25,7 @@ from .cr_context_engineer import agent as _context_engineer
 from .cr_coder import agent as _coder
 from .cr_executor import agent as _executor
 from .cr_reviewer import agent as _reviewer
+from .task_iterator import TaskIterator
 
 # ---------------------------------------------------------------------------
 # Loop de codificação + execução: coder produz/corrige → executor testa
@@ -45,13 +46,29 @@ _code_execute_loop = LoopAgent(
 )
 
 # ---------------------------------------------------------------------------
+# Camada de iteração sobre as tasks: envolve o loop de correção e o roda UMA vez
+# por task (ordem topológica estável). A política `fail_fast` para no primeiro
+# fracasso; `continue_independent` preserva tasks sem dependências bloqueadas. O executor
+# não sabe que existe uma fila — quem troca a task é esta camada (ver
+# task_iterator.py). O max_iterations do loop passa a valer por-task.
+# ---------------------------------------------------------------------------
+_task_iterator = TaskIterator(
+    name="task_iterator",
+    description=(
+        "Itera as tasks em ordem topológica estável, rodando o loop de "
+        "codificação/execução uma vez por task conforme a política de falha."
+    ),
+    code_execute_loop=_code_execute_loop,
+)
+
+# ---------------------------------------------------------------------------
 # Pipeline completo (SequentialAgent)
 # ---------------------------------------------------------------------------
 agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → [codificação ↔ execução Docker] → revisão."
+        "contexto → [iteração de tasks: codificação ↔ execução Docker] → revisão."
     ),
-    sub_agents=[_context_engineer, _code_execute_loop, _reviewer],
+    sub_agents=[_context_engineer, _task_iterator, _reviewer],
 )

@@ -9,6 +9,9 @@ sobre um ExecutionReport mock — sem rodar o LLM real. Cobre:
 - um critério inconclusivo → reprovado global (conservador).
 """
 
+import importlib
+import json
+
 import pytest
 
 from src.agents.implementation_validator.agent import (
@@ -149,3 +152,74 @@ def test_execucao_ok_sem_vereditos_reprova():
     v = montar_veredito(_report("sucesso"))
     assert v.status == VerdictStatus.REPROVADO
     assert "Nenhum critério" in v.blocking_reason
+
+
+# ===========================================================================
+# Callback — leitura do report + parse + enforcement
+# ===========================================================================
+
+
+class _CallbackContext:
+    def __init__(self, state):
+        self.state = state
+
+
+def test_callback_sem_report_reprova_fail_safe():
+    modulo = importlib.import_module("src.agents.implementation_validator.agent")
+    ctx = _CallbackContext({"task_id": "TASK-001", "validation_raw": ""})
+
+    content = modulo._parse_e_aplicar_politica(ctx)
+
+    assert ctx.state["validation"]["status"] == "reprovado"
+    assert "não pôde ser lido" in ctx.state["validation"]["blocking_reason"]
+    assert json.loads(content.parts[0].text)["status"] == "reprovado"
+
+
+def test_callback_parseia_criterios_e_aprova(tmp_path, monkeypatch):
+    modulo = importlib.import_module("src.agents.implementation_validator.agent")
+    task_id = "TASK-001"
+    report_path = tmp_path / f"{task_id}.report.json"
+    report_path.write_text(json.dumps(_report("sucesso", criteria=("Critério A",))), encoding="utf-8")
+    monkeypatch.setattr(modulo, "get_agent_workspace", lambda _: tmp_path)
+    raw = """### CRITERIO
+TEXTO: Critério A
+STATUS: atendido
+JUSTIFICATIVA: Evidência suficiente.
+EVIDENCIA_REF: validacoes_work_item
+"""
+    ctx = _CallbackContext(
+        {
+            "task_id": task_id,
+            "report_path": str(report_path),
+            "validation_raw": raw,
+        }
+    )
+
+    content = modulo._parse_e_aplicar_politica(ctx)
+
+    assert ctx.state["validation"]["status"] == "aprovado"
+    assert ctx.state["validation"]["criteria_verdicts"][0]["evidence_ref"] == (
+        "validacoes_work_item"
+    )
+    assert json.loads(content.parts[0].text)["status"] == "aprovado"
+
+
+def test_callback_criterio_omitido_vira_inconclusivo(tmp_path, monkeypatch):
+    modulo = importlib.import_module("src.agents.implementation_validator.agent")
+    task_id = "TASK-001"
+    report_path = tmp_path / f"{task_id}.report.json"
+    report_path.write_text(json.dumps(_report("sucesso", criteria=("Critério real",))), encoding="utf-8")
+    monkeypatch.setattr(modulo, "get_agent_workspace", lambda _: tmp_path)
+    ctx = _CallbackContext(
+        {
+            "task_id": task_id,
+            "report_path": str(report_path),
+            "validation_raw": "### CRITERIO\nTEXTO: Outro critério\nSTATUS: atendido\nJUSTIFICATIVA: x\n",
+        }
+    )
+
+    modulo._parse_e_aplicar_politica(ctx)
+
+    verdict = ctx.state["validation"]
+    assert verdict["status"] == "reprovado"
+    assert verdict["criteria_verdicts"][0]["status"] == "inconclusivo"

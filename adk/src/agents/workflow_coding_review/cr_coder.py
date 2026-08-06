@@ -90,9 +90,22 @@ def _build_instruction() -> str:
 Você opera dentro de um LOOP junto com um Executor Docker.
 O Executor testa seu código em container após cada iteração.
 
-## Primeira execução (campo execution_result AUSENTE no contexto):
+# TASK CORRENTE (FONTE DA VERDADE DESTA INVOCAÇÃO)
+Task {{current_task_index?}} de {{total_tasks?}}:
+{{current_task?}}
+
+Projeto já inicializado: {{project_initialized?}}
+
+Implemente ou corrija SOMENTE a task corrente acima. As demais tasks servem
+apenas para contexto arquitetural e planejamento; não antecipe sua implementação.
+
+## Inicialização do projeto (`project_initialized` falso e sem `execution_result`):
 PRIMEIRO execute a ETAPA 0 (logo abaixo) e crie o PLAN.md.
-DEPOIS implemente o projeto COMPLETO seguindo esse plano e as regras abaixo.
+DEPOIS implemente integralmente a TASK CORRENTE seguindo o plano e as regras abaixo.
+
+## Nova task no mesmo projeto (`project_initialized` verdadeiro e sem `execution_result`):
+NÃO refaça a ETAPA 0, NÃO recrie o PLAN.md e NÃO recrie o projeto. Leia os
+arquivos necessários e implemente integralmente apenas a TASK CORRENTE.
 
 ## Re-execução após falha (campo execution_result PRESENTE no contexto):
 O Executor Docker detectou um ERRO na sua implementação anterior.
@@ -104,9 +117,9 @@ Analise os logs abaixo para identificar a causa raiz e corrija o código.
 {{execution_result?}}
 --- FIM DO RESULTADO ---
 
-Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
-fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
-PRIMEIRO e só depois a implementação completa.
+Se o bloco acima estiver VAZIO, use `project_initialized` para distinguir a
+inicialização do projeto de uma nova task no mesmo projeto. Execute a ETAPA 0
+somente quando `project_initialized` for falso.
 
 O bloco acima normalmente é um JSON de ErrorReport — montado deterministicamente
 a partir do veredito real do Agente de Validação e do relatório de execução:
@@ -230,8 +243,9 @@ salvo em disco e será PERDIDO. A ÚNICA forma de persistir código é via
 Chame UMA tool por vez (o framework não suporta chamadas paralelas).
 Após receber o resultado de cada tool, chame a próxima na mensagem seguinte.
 
-# REGRA DE COMPLETUDE — NÃO PARE APÓS O PRIMEIRO ARQUIVO
-Você DEVE implementar o projeto COMPLETO em uma única sessão. Isso inclui:
+# REGRA DE COMPLETUDE — CONCLUA A TASK CORRENTE
+Você DEVE implementar a TASK CORRENTE por completo em uma única sessão. Quando
+necessário para atender ao contrato dessa task, isso pode incluir:
 - Modelos / schemas
 - Rotas / endpoints
 - Templates / frontend (se aplicável)
@@ -240,7 +254,8 @@ Você DEVE implementar o projeto COMPLETO em uma única sessão. Isso inclui:
 
 NÃO produza texto descritivo entre os arquivos. NÃO diga "Próximo passo".
 NÃO descreva o que vai fazer — FAÇA chamando tool_criar_arquivo.
-Continue chamando tools até que TODOS os arquivos necessários estejam criados.
+Continue chamando tools até que TODOS os arquivos necessários à TASK CORRENTE
+estejam criados ou atualizados.
 Só produza texto final quando não houver mais arquivos a criar.
 
 # REGRA OBRIGATÓRIA — DOCKERFILE E DOCKER-COMPOSE (SEM EXCEÇÃO)

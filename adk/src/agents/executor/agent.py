@@ -14,7 +14,9 @@ O validador é injetado por `criar_agente()` (instância própria, não o single
 de módulo): como sub-agente ele ganha `parent_agent`, e o ADK exige parent único.
 """
 
-from src.agents.implementation_validator.agent import criar_agente
+from src.agents.dockerfile_resolver.agent import criar_agente as criar_dockerfile_resolver
+from src.agents.implementation_validator.agent import criar_agente as criar_validator
+from src.agents.test_command_resolver.agent import criar_agente as criar_test_command_resolver
 
 from . import prompt
 from .error_report import montar_error_report
@@ -23,7 +25,9 @@ from .orchestrator import ExecutorOrchestrator
 agent = ExecutorOrchestrator(
     name="executor",
     description=prompt.description,
-    validator=criar_agente(),
+    validator=criar_validator(),
+    dockerfile_resolver=criar_dockerfile_resolver(),
+    test_command_resolver=criar_test_command_resolver(),
     error_report_builder=montar_error_report,
 )
 

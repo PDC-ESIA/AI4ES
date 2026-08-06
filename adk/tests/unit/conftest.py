@@ -24,6 +24,8 @@ collect_ignore = [
 # Nenhum desses imports é executado durante os testes — servem apenas para
 # popular sys.modules antes que test_git_tools.py substitua pydantic.BaseModel.
 
+from google.adk.apps import App as _adk_app  # noqa: F401
+
 from src.agents.requirements import schemas as _req_schemas  # noqa: F401
 from src.agents.reviewer import schemas as _rev_schemas  # noqa: F401
 from src.agents.executor import schemas as _exec_schemas  # noqa: F401
