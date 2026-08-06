@@ -7,7 +7,7 @@ resolvido por LLM; a descoberta de rota principal saiu junto com o healthcheck
 baseado em OpenAPI.
 """
 
-from shared.tools import harness_docker as hd
+from shared.tools.coding_tools import harness_docker as hd
 
 
 # ===========================================================================

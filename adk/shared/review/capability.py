@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Literal, Protocol
@@ -59,7 +60,15 @@ class RuffCapability:
     def run(self, target_dir: Path) -> list[Finding]:
         try:
             proc = subprocess.run(
-                ["ruff", "check", "--output-format", "json", str(target_dir)],
+                [
+                    sys.executable,
+                    "-m",
+                    "ruff",
+                    "check",
+                    "--output-format",
+                    "json",
+                    str(target_dir),
+                ],
                 capture_output=True,
                 text=True,
                 timeout=_SUBPROCESS_TIMEOUT,

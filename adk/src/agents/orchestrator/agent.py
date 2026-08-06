@@ -41,10 +41,13 @@ from shared.workspace import init_workspace
 from src.agents.orchestrator._helpers import (
     _build_function_response_payload,
     _build_input,
+    _build_manifest_input,
     _clear_pause_state,
     _extract_user_text,
     _is_empty_response,
     _is_pending_long_running_call,
+    _load_phase_manifests,
+    _merge_state_delta,
     _parse_decision,
     _set_pause_state,
     EMPTY_RETRY_PROMPT,
@@ -197,6 +200,9 @@ class _PipelineOrchestrator(BaseAgent):
         state["accumulated_outputs"] = []
         accumulated: list[tuple[str, str]] = []
 
+        # Manifestos das fases anteriores — contrato leve entre Times.
+        phase_manifests = _load_phase_manifests(state)
+
         # Inicializa (limpa e recria) o workspace de saída dos agentes.
         init_workspace()
 
@@ -205,8 +211,20 @@ class _PipelineOrchestrator(BaseAgent):
         if legacy is not None:
             await legacy[0].close()
 
-        for pipeline in self._pipelines:
-            pipeline_input = _build_input(user_text, accumulated)
+        for idx, pipeline in enumerate(self._pipelines):
+            # Dispatcher fino: repassa só os manifestos das fases anteriores.
+            prior_manifests = phase_manifests[:idx]
+            manifest_context = _build_manifest_input(prior_manifests)
+            if manifest_context:
+                pipeline_input = (
+                    f"{user_text}\n\n"
+                    f"---\n"
+                    f"{manifest_context}\n"
+                    f"---"
+                )
+            else:
+                pipeline_input = user_text
+
             content = types.Content(
                 role="user",
                 parts=[types.Part.from_text(text=pipeline_input)],
@@ -221,8 +239,12 @@ class _PipelineOrchestrator(BaseAgent):
                 credential_service=ctx.credential_service,
                 plugins=ctx.plugin_manager.plugins if ctx.plugin_manager else None,
             )
+            # Repassa os manifestos acumulados para o pipeline ler paths do workspace.
+            inner_state = {
+                "phase_manifests": [m.model_dump() for m in prior_manifests]
+            }
             inner_session = await runner.session_service.create_session(
-                app_name=pipeline.name, user_id=ctx.user_id, state={},
+                app_name=pipeline.name, user_id=ctx.user_id, state=inner_state,
             )
 
             last_text = ""
@@ -233,6 +255,9 @@ class _PipelineOrchestrator(BaseAgent):
                 new_message=content,
             ):
                 yield event
+                # Aplica state_delta vindo do pipeline (ex: novo manifesto QA).
+                if event.actions and event.actions.state_delta:
+                    _merge_state_delta(state, event.actions.state_delta)
                 if event.content and event.content.parts:
                     for part in event.content.parts:
                         if part.text:
@@ -283,11 +308,14 @@ class _PipelineOrchestrator(BaseAgent):
                     "paused_inner_session_id": state["paused_inner_session_id"],
                     "paused_function_call": state["paused_function_call"],
                     "accumulated_outputs": accumulated,
+                    "phase_manifests": state.get("phase_manifests", []),
                 })
                 return  # NÃO roda pipelines subsequentes
 
             # Pipeline concluiu sem pausa.
             accumulated.append((pipeline.name, last_text))
+            # Atualiza manifestos locais para a próxima iteração.
+            phase_manifests = _load_phase_manifests(state)
             await runner.close()
 
         state["accumulated_outputs"] = accumulated
@@ -296,6 +324,7 @@ class _PipelineOrchestrator(BaseAgent):
             "paused_pipeline": None,
             "paused_inner_session_id": None,
             "paused_function_call": None,
+            "phase_manifests": state.get("phase_manifests", []),
         })
 
     @staticmethod

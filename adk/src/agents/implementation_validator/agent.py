@@ -24,7 +24,7 @@ from google.adk.tools import FunctionTool
 from google.genai import types
 
 from shared.agent_factory import create_se_agent
-from shared.tools.filesystem import tool_ler_arquivo
+from shared.tools.coding_tools.filesystem_coding import tool_ler_arquivo
 from shared.workspace import get_agent_workspace
 
 from . import prompt

@@ -15,12 +15,14 @@ from google.genai import types
 
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.workspace import get_agent_workspace, get_workspace_root
-from shared.tools import (
+from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
     tool_ler_arquivo,
+    tool_substituir_trecho,
+)
+from shared.tools.filesystem import (
     tool_ler_workspace,
     tool_listar_workspace,
-    tool_substituir_trecho,
 )
 from src.agents.coder import prompt as coder_prompt
 

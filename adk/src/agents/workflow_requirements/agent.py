@@ -11,6 +11,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.requirements.agent import agent as requirements_agent
+from src.agents.requirements.manifest import emit_requirements_manifest
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -70,3 +71,4 @@ agent = LlmAgent(
         AgentTool(agent=requirements_agent),
     ],
 )
+agent.after_agent_callback = emit_requirements_manifest

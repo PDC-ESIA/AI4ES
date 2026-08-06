@@ -43,7 +43,10 @@ from google.genai import types
 from pydantic import ConfigDict, PrivateAttr
 
 from shared.tools.build_context import reunir_contexto_build
-from shared.tools.harness_execucao import executar_harness_validacao, ler_tech_stack
+from shared.tools.coding_tools.harness_execucao import (
+    executar_harness_validacao,
+    ler_tech_stack,
+)
 from shared.workspace import get_agent_workspace
 
 from .estagnacao import LIMITE_REPETICOES, hash_codigo, resumo_bloqueado

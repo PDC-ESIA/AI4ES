@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 import docker
 from docker.errors import BuildError
 
-from shared.tools.harness_execucao import executar_harness_validacao
+from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
 from src.agents.implementation_validator.agent import montar_veredito
 from src.agents.implementation_validator.schemas import (
     CriterionStatus,
@@ -144,8 +144,11 @@ def _rodar_harness(coder, execution, tasks, client, comando_teste=None):
     probe_result = [{"status": 200, "error": None, "body": "OK"}]
     with (
         patch("docker.from_env", return_value=client),
-        patch("shared.tools.harness_execucao.probe.executar_probe", return_value=probe_result),
-        patch("shared.tools.harness_execucao.time.sleep"),
+        patch(
+            "shared.tools.coding_tools.harness_execucao.probe.executar_probe",
+            return_value=probe_result,
+        ),
+        patch("shared.tools.coding_tools.harness_execucao.time.sleep"),
     ):
         return executar_harness_validacao(
             _TASK_ID,

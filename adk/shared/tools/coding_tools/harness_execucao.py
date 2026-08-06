@@ -32,8 +32,8 @@ import docker
 from docker.errors import APIError, BuildError
 from google.adk.tools import ToolContext
 
-from shared.tools import harness_docker as hd
 from shared.tools import probe
+from shared.tools.coding_tools import harness_docker as hd
 from shared.tools.log_parser_tool import parse_log_text
 from shared.workspace import get_agent_workspace
 
