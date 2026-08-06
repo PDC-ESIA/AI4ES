@@ -19,10 +19,12 @@ from src.agents.requirements.traceability import STATE_MATRIZ, construir_matriz
 from src.agents.requirements.validation import (
     STATE_ARTEFATOS,
     STATE_AUDITORIA,
+    TOOL_DUVIDA,
     TOOL_SALVAR,
     auditar_analise,
     auditar_saida_final,
     extrair_bloco_json,
+    rebaixar_duvida_de_glossario,
     registrar_artefato_persistido,
     validar_antes_de_salvar,
     validar_artefato_markdown,
@@ -149,6 +151,52 @@ def test_callback_curto_circuita_artefato_invalido():
 def test_callback_ignora_outras_tools():
     args = {"qualquer": "coisa"}
     assert validar_antes_de_salvar(_tool("run_slicer"), args, _ctx()) is None
+
+
+# ---------------------------------------------------------------------------
+# C1 — dúvida sobre glossário não nasce bloqueante
+# ---------------------------------------------------------------------------
+
+def _duvida(artefato, bloqueante=True):
+    return {
+        "id_duvida": "D-001",
+        "id_artefato_afetado": artefato,
+        "bloqueante": bloqueante,
+    }
+
+
+@pytest.mark.parametrize(
+    "artefato",
+    ["Glossario", "Glossário", "Glossary", "[Glossário]", "GLOSSARIO-001"],
+)
+def test_duvida_de_glossario_perde_o_poder_de_veto(artefato):
+    args = _duvida(artefato)
+    assert rebaixar_duvida_de_glossario(_tool(TOOL_DUVIDA), args, _ctx()) is None
+    assert args["bloqueante"] is False
+
+
+def test_duvida_de_requisito_continua_bloqueando():
+    args = _duvida("HU-001")
+    rebaixar_duvida_de_glossario(_tool(TOOL_DUVIDA), args, _ctx())
+    assert args["bloqueante"] is True
+
+
+def test_duvida_de_glossario_nao_bloqueante_fica_intacta():
+    args = _duvida("Glossario", bloqueante=False)
+    rebaixar_duvida_de_glossario(_tool(TOOL_DUVIDA), args, _ctx())
+    assert args["bloqueante"] is False
+
+
+def test_rebaixamento_nunca_cancela_a_tool():
+    """A dúvida continua sendo registrada; só muda a severidade."""
+    args = _duvida("Glossario")
+    assert rebaixar_duvida_de_glossario(_tool(TOOL_DUVIDA), args, _ctx()) is None
+
+
+def test_rebaixamento_ignora_outras_tools():
+    args = _duvida("Glossario")
+    assert rebaixar_duvida_de_glossario(_tool(TOOL_SALVAR), args, _ctx()) is None
+    assert args["bloqueante"] is True
 
 
 # ---------------------------------------------------------------------------

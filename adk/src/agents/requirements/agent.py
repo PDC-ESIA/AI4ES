@@ -21,6 +21,7 @@ from . import prompt
 from .traceability import gerar_matriz_rastreabilidade
 from .validation import (
     auditar_saida_final,
+    rebaixar_duvida_de_glossario,
     registrar_artefato_persistido,
     validar_antes_de_salvar,
 )
@@ -147,8 +148,10 @@ agent = LlmAgent(
     description=prompt.description,
     instruction=prompt.instruction,
     output_key="analysis_result",
-    # C1: rejeita artefato malformado antes de ele tocar o disco.
-    before_tool_callback=validar_antes_de_salvar,
+    # C1: rejeita artefato malformado antes de ele tocar o disco e impede que
+    # uma dúvida sobre o glossário nasça bloqueante. Ambos retornam None para
+    # as tools que não lhes dizem respeito, então a ordem é indiferente.
+    before_tool_callback=[rebaixar_duvida_de_glossario, validar_antes_de_salvar],
     # C2: registra em state o que foi realmente gravado.
     after_tool_callback=registrar_artefato_persistido,
     # C3 monta a matriz em código; C4 injeta o resultado e audita o conjunto.

@@ -52,10 +52,14 @@ else:
 logger = logging.getLogger(__name__)
 
 TOOL_SALVAR = "tool_salvar_artefato_requisito"
+TOOL_DUVIDA = "gerar_doubt_artifact"
 
 # Chave de state onde C2 acumula o que foi gravado e C4 lê.
 STATE_ARTEFATOS = "artefatos_persistidos"
 STATE_AUDITORIA = "requirements_audit"
+
+# Termos que identificam o glossário como artefato afetado por uma dúvida.
+_TERMOS_GLOSSARIO = ("glossario", "glossary")
 
 # ---------------------------------------------------------------------------
 # C1 — Validação estrutural do Markdown antes da gravação
@@ -236,6 +240,51 @@ def validar_antes_de_salvar(
             "Corrija os pontos acima e chame tool_salvar_artefato_requisito novamente."
         )
     }
+
+
+def _e_sobre_glossario(id_artefato_afetado: object) -> bool:
+    """True quando o artefato afetado pela dúvida é o glossário."""
+    if not isinstance(id_artefato_afetado, str):
+        return False
+    alvo = chave_normalizada(id_artefato_afetado.strip().strip("[]"))
+    return any(termo in alvo for termo in _TERMOS_GLOSSARIO)
+
+
+def rebaixar_duvida_de_glossario(
+    tool: BaseTool,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+) -> dict[str, Any] | None:
+    """before_tool_callback — dúvida sobre glossário não nasce bloqueante.
+
+    O glossário ainda não é produzido de forma confiável, e o prompt já o
+    trata como opcional nesta fase. Mas o modelo, ao esbarrar num termo sem
+    definição, chama `gerar_doubt_artifact` com `bloqueante=True` — e aí a
+    fase inteira trava por causa do artefato menos crítico que ela produz.
+
+    A correção acontece aqui, antes da gravação, e não na leitura do arquivo:
+    o Doubt_Artifact nasce marcado como não-bloqueante, de modo que qualquer
+    consumidor a jusante — manifesto, HITL, outro Time — leia o mesmo fato.
+    Corrigir na leitura exigiria que cada leitor conhecesse a exceção.
+
+    A dúvida continua registrada e visível: o que se remove é só o poder de
+    veto sobre a fase. Retorna None sempre — nunca cancela a tool.
+    """
+    if tool.name != TOOL_DUVIDA:
+        return None
+    if not args.get("bloqueante"):
+        return None
+    if not _e_sobre_glossario(args.get("id_artefato_afetado")):
+        return None
+
+    # Mutação in-place: o ADK repassa este mesmo dict à tool (functions.py,
+    # `function_args` é compartilhado entre o callback e a chamada).
+    args["bloqueante"] = False
+    logger.info(
+        "[VALIDACAO] Dúvida %s sobre o glossário rebaixada para não-bloqueante.",
+        args.get("id_duvida"),
+    )
+    return None
 
 
 # ---------------------------------------------------------------------------
