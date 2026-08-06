@@ -85,8 +85,3 @@ def emitir_resultado_e2e_sem_reinterpretacao(
             "turn_complete": True,
         }
     )
-                ],
-            ),
-            "turn_complete": True,
-        }
-    )
