@@ -1,7 +1,9 @@
 """Workflow coding_review: pipeline enxuto de codificação com revisão.
 
-Pipeline: context_engineer -> LoopAgent[coder ↔ executor] -> reviewer
+Pipeline: context_engineer -> feedforward -> LoopAgent[coder ↔ executor] -> reviewer
   - context_engineer: fragmenta requisitos em tasks contextualizadas
+  - feedforward: monta o context_pack (conhecimento core + stack, de adk/knowledge/)
+                 a partir do tech_stack decidido pelo context_engineer — sem LLM
   - coder: implementa código a partir das tasks (workspace isolado)
             Em re-execução: corrige código baseado no erro do executor
   - executor: builda e roda código em Docker
@@ -22,6 +24,7 @@ import os
 from google.adk.agents import LoopAgent, SequentialAgent
 
 from .cr_context_engineer import agent as _context_engineer
+from .cr_feedforward import agent as _feedforward
 from .cr_coder import agent as _coder
 from .cr_executor import agent as _executor
 from .cr_reviewer import agent as _reviewer
@@ -51,7 +54,7 @@ agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → [codificação ↔ execução Docker] → revisão."
+        "contexto → feedforward → [codificação ↔ execução Docker] → revisão."
     ),
-    sub_agents=[_context_engineer, _code_execute_loop, _reviewer],
+    sub_agents=[_context_engineer, _feedforward, _code_execute_loop, _reviewer],
 )

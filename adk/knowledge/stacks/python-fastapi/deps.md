@@ -1,12 +1,5 @@
 # Dependências — stack `python-fastapi`
 
-> Escopo: `stack:python-fastapi`. Allowlist curada, não um `requirements.txt` pinado único
-> (decisão D1 — relatório §10.2: um `requirements.txt` de referência amarraria o pipeline a
-> uma stack fixa, contrariando a intenção de remover a trava de stack). Fonte: o bloco
-> `# ERROS COMUNS` original do `cr_coder.py` + a tabela de alias de
-> `shared/tools/coding_tools/verificacao_dependencias.py::ALIAS_IMPORT_PARA_PACOTE`, mantidas
-> em sincronia manual — se a tabela do gate mudar, atualize aqui também.
-
 ## Pacotes conhecidamente bons para este stack
 
 | Pacote | Uso |

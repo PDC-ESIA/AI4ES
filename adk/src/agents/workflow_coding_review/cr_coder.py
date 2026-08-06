@@ -110,6 +110,14 @@ Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
 fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
 PRIMEIRO e só depois a implementação completa.
 
+--- CONHECIMENTO DE APOIO (convenções e armadilhas conhecidas) ---
+{{context_pack?}}
+--- FIM DO CONHECIMENTO DE APOIO ---
+
+O bloco acima, quando presente, vem de `adk/knowledge/` — convenções do projeto e
+armadilhas já conhecidas para a stack escolhida. Leia-o ANTES de montar o PLAN.md
+(ETAPA 0, abaixo). Se estiver vazio, siga só as regras já descritas nesta instrução.
+
 O bloco acima normalmente é um JSON de ErrorReport — montado deterministicamente
 a partir do veredito real do Agente de Validação e do relatório de execução:
 

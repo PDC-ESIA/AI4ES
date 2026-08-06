@@ -1,9 +1,4 @@
-# Convenções de código — core (agnóstico de stack)
-
-> Escopo: `core`. Entra em TODO `context_pack`, independente da stack escolhida pelo
-> `cr_context_engineer`. Fonte: princípios já vigentes no prompt canônico do coder
-> (`src/agents/coder/prompt.py`, seção "DIRETRIZES DE CODIFICAÇÃO"), consolidados aqui como
-> conhecimento versionado em vez de string hardcoded — ver relatório §12.5.
+# Convenções de código
 
 ## Responsabilidade Única (SRP)
 
