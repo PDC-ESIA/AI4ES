@@ -41,11 +41,101 @@ _MARCADOR_ESTAGNACAO = "STATUS: bloqueado"
 _STATUS_COM_EVIDENCIA = ("falha", "erro")
 
 
+def _texto_markdown(valor: object, fallback: str = "—") -> str:
+    """Normaliza texto para Markdown sem reinterpretar o conteúdo original."""
+    if valor is None or valor == "":
+        return fallback
+    return str(valor).replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _render_markdown(report: ErrorReport) -> str:
+    """Apresenta o ErrorReport no loop mantendo os mesmos dados estruturados."""
+    linhas = [
+        f"# Relatório de Execução — {report.work_item_id}",
+        "",
+        "> **Resultado da validação:** REPROVADO",
+        "",
+        "## Resumo",
+        "",
+        f"- **Work item:** `{report.work_item_id}`",
+        f"- **Iteração:** {_texto_markdown(report.iteration)}",
+        f"- **Veredito:** `{report.verdict_status}`",
+        f"- **Relatório completo:** {_texto_markdown(report.report_path)}",
+        "",
+        "### Motivo do bloqueio",
+        "",
+        _texto_markdown(report.blocking_reason, "_Motivo não informado pelo validador._"),
+        "",
+        "## Critérios não atendidos ou inconclusivos",
+        "",
+    ]
+
+    if report.failed_criteria:
+        for indice, criterio in enumerate(report.failed_criteria, start=1):
+            linhas.extend(
+                [
+                    f"### {indice}. {_texto_markdown(criterio.criterion)}",
+                    "",
+                    f"- **Status:** `{criterio.status}`",
+                    f"- **Referência da evidência:** {_texto_markdown(criterio.evidence_ref)}",
+                    "",
+                    "**Justificativa do validador**",
+                    "",
+                    _texto_markdown(criterio.reasoning),
+                    "",
+                ]
+            )
+    else:
+        linhas.extend(["_Nenhum critério individual foi informado._", ""])
+
+    linhas.extend(["## Estágios com falha ou erro", ""])
+    if report.failed_stages:
+        for indice, estagio in enumerate(report.failed_stages, start=1):
+            linhas.extend(
+                [
+                    f"### {indice}. `{estagio.stage}`",
+                    "",
+                    f"- **Status técnico:** `{estagio.status}`",
+                    f"- **Código do erro:** `{_texto_markdown(estagio.error_code)}`",
+                    "",
+                    "**Resumo do estágio**",
+                    "",
+                    _texto_markdown(estagio.summary),
+                    "",
+                    "<details>",
+                    "<summary><strong>Evidência bruta</strong></summary>",
+                    "",
+                    "```json",
+                    json.dumps(estagio.evidence, ensure_ascii=False, indent=2, default=str),
+                    "```",
+                    "",
+                    "</details>",
+                    "",
+                ]
+            )
+    else:
+        linhas.extend(
+            [
+                "_Nenhum estágio com status `falha` ou `erro` foi registrado._",
+                "",
+            ]
+        )
+
+    linhas.extend(
+        [
+            "---",
+            "",
+            "O relatório apresenta as evidências coletadas sem prescrever a correção.",
+        ]
+    )
+    return "\n".join(linhas).rstrip() + "\n"
+
+
 def _como_content(report: ErrorReport) -> types.Content:
-    """Serializa o ErrorReport como saída do turno do executor."""
+    """Renderiza o ErrorReport como saída Markdown do turno do executor."""
     return types.Content(
         role="model",
-        parts=[types.Part(text=json.dumps(report.model_dump(), ensure_ascii=False))],
+        parts=[types.Part(text=_render_markdown(report))],
     )
 
 

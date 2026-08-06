@@ -400,7 +400,16 @@ class ExecutorOrchestrator(BaseAgent):
             texto = "".join(
                 part.text or "" for part in (conteudo.parts or []) if part.text is not None
             )
-            cb.state["execution_result"] = texto
+            # O evento mostrado no loop é Markdown, mas o contrato interno com
+            # o coder permanece sendo o JSON estruturado do ErrorReport.
+            # Isso separa apresentação de dados sem alterar a interpretação do
+            # retry nem os placeholders já usados pelo prompt do coder.
+            error_report = cb.state.get("error_report")
+            cb.state["execution_result"] = (
+                json.dumps(error_report, ensure_ascii=False)
+                if isinstance(error_report, dict)
+                else texto
+            )
             yield Event(
                 author=self.name,
                 invocation_id=ctx.invocation_id,

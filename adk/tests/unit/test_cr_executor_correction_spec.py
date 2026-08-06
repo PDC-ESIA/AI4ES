@@ -1,7 +1,5 @@
 """Regressões do feedback determinístico que substituiu o antigo CorrectionSpec."""
 
-import json
-
 from src.agents.executor.error_report import montar_error_report
 from src.agents.executor.estagnacao import MARCADOR_ESTAGNACAO, hash_codigo, resumo_bloqueado
 
@@ -39,13 +37,19 @@ def test_error_report_sem_report_em_disco_ainda_preserva_veredito():
     content = montar_error_report(ctx)
 
     assert content is not None
-    report = json.loads(content.parts[0].text)
+    markdown = content.parts[0].text
+    report = ctx.state["error_report"]
     assert report["work_item_id"] == "TASK-001"
     assert report["verdict_status"] == "reprovado"
     assert len(report["failed_criteria"]) == 1
     assert report["failed_criteria"][0]["criterion"] == "GET / deve responder 200"
     assert report["failed_stages"] == []
-    assert ctx.state["error_report"] == report
+    assert markdown.startswith("# Relatório de Execução — TASK-001")
+    assert "> **Resultado da validação:** REPROVADO" in markdown
+    assert "## Critérios não atendidos ou inconclusivos" in markdown
+    assert "HTTP 500 observado." in markdown
+    assert "## Estágios com falha ou erro" in markdown
+    assert not markdown.lstrip().startswith("{")
 
 
 def test_error_report_nao_emitido_sem_reprovacao():
