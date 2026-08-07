@@ -1,7 +1,9 @@
 # Catálogo de Tools — `workflow_coding_review`
 
 Inventário das ferramentas (`FunctionTool`) usadas pelos quatro agentes do pipeline
-`coding_review_pipeline` (`adk/src/agents/workflow_coding_review/agent.py`): `cr_context_engineer` → `LoopAgent[cr_coder ↔ cr_executor]` → `cr_reviewer` (analyzer).
+`coding_review_pipeline` (`adk/src/agents/workflow_coding_review/agent.py`): `cr_context_engineer` → `cr_feedforward` → `LoopAgent[cr_coder ↔ cr_executor]` → `cr_reviewer` (analyzer).
+
+> O `cr_feedforward` é um `BaseAgent` determinístico **sem LLM e sem tools** — monta o `context_pack` a partir de `adk/knowledge/` e o injeta no prompt do `cr_coder` via `{context_pack?}`. Por não ter tools, não recebe seção própria neste catálogo.
 
 **Todas as tools exclusivas deste fluxo (`cr_*` + agentes "de fora" equivalentes) vivem
 em `adk/shared/tools/coding_tools/`.** Tools genuinamente compartilhadas com outros fluxos

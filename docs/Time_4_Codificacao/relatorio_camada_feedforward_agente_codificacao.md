@@ -26,13 +26,18 @@ O trabalho ocorre em duas frentes, com maturidades diferentes. Esta seção decl
 | Harness de execução determinístico — 9 estágios, `ExecutionReport` estruturado | ✅ **Implementado** (PR #324) | `adk/shared/tools/coding_tools/harness_execucao.py` |
 | Veredito determinístico em 2 camadas (`implementation_validator`) | ✅ **Implementado** (PR #324) | `adk/src/agents/implementation_validator/` |
 | `ErrorReport` determinístico devolvido ao coder | ✅ **Implementado** (PR #324) | `cr_executor.py::montar_error_report` |
-| Camada de provisionamento de contexto (`cr_feedforward` + `knowledge/`) | 📋 **Especificada** (§8, §10) — implementação pendente | — |
-| Gate estático de dependências pré-build | 🚧 **Implementado, PR pendente** (§8.3, §10) | `coding_tools/verificacao_dependencias.py` + estágio `verificacao_estatica` no harness |
+| Camada de provisionamento de contexto (`cr_feedforward` + `knowledge/`) | 🚧 **Implementada, entregue neste PR** (§8, §10) | `workflow_coding_review/cr_feedforward.py` + `adk/knowledge/` |
+| Gate estático de dependências pré-build | 🚧 **Implementado, entregue neste PR** (§8.3, §10) | `coding_tools/verificacao_dependencias.py` + estágio `verificacao_estatica` no harness |
 | Protocolo de validação quantitativa | 📋 **Especificado** (§11) — execução pendente | — |
 
 > Entre o PR #340 e a redação final deste relatório entraram 8 PRs que reconstruíram o executor. Sobre o impacto disso na durabilidade das referências de código, ver §13.
 
-> **⚠️ Leia isto antes do resto — o documento é publicado à frente do código (05/08/2026).** O gate do §8.3 **já está implementado**, na branch `feature/303-camada-feedforward` (commit `983e114`, sobre `develop` @ `4c9d482`), com 30 testes unitários e uma execução real ponta a ponta. Ele **ainda não está em `develop`**, e é por isso que este relatório é publicado antes: o documento serve de contexto compartilhado enquanto o código espera o PR. Onde o texto diz que o gate "não existe" ou que "nenhum estágio faz verificação estática" (§7/G4), leia **"não existia em `4c9d482`, a base da análise"**. As seções marcadas 📋 na tabela acima — a camada de provisionamento e o protocolo de validação — essas sim continuam sem código.
+> **⚠️ Leia isto antes do resto — a análise está ancorada em `develop` @ `4c9d482`.** Os dois componentes marcados 🚧 acima **já estão implementados** na branch `feature/303-camada-feedforward` e chegam ao `develop` **neste mesmo PR**, junto deste documento — a entrega da issue #303 é única, com todos os commits:
+>
+> - **Gate estático do §8.3** — commit `983e114`, 30 testes unitários e uma execução real ponta a ponta.
+> - **Camada de provisionamento do §8.2** — `cr_feedforward` (`BaseAgent` sem LLM) + a KB em `adk/knowledge/`, com 36 testes. O bloco `ERROS COMUNS` foi migrado do prompt do `cr_coder` para a KB no mesmo PR, então o conhecimento de convenções deixou de viver em string Python (§7/G1).
+>
+> Onde o texto descreve esses dois como ausentes — "nenhum estágio faz verificação estática" (§7/G4), conhecimento "hardcoded em string Python" (§7/G1) —, leia **"não existia em `4c9d482`, a base da análise"**. A única linha 📋 que continua sem código é o **protocolo de validação quantitativa** (§11): os 15 runs ainda não foram executados, e nenhuma afirmação de ganho é feita aqui (§13).
 
 ---
 
@@ -93,7 +98,7 @@ O pipeline **não parte do zero**: já existe um proto-harness. A tabela classif
 | Contrato lido do disco pelo coder na Etapa 0 | `cr_coder.py` §`ETAPA 0`; `tool_ler_workspace("coder/tasks/…")` | Feedforward | Dinâmico (por run) |
 | `PLAN.md` — manifesto de arquivos, plano de dependências, checklist de interfaces | `cr_coder.py` §`ETAPA 0` | Feedforward auto-gerado | Dinâmico (intra-run) |
 | Prompt estático: modo de operação, workspace, entrega Docker obrigatória, completude | `cr_coder.py:89–283` | Feedforward | Estático (hardcoded em Python) |
-| Seção `# ERROS COMUNS — EVITE A TODO CUSTO` | `cr_coder.py:286–368` | Feedback destilado manualmente em feedforward | Estático (hardcoded) |
+| Seção `# ERROS COMUNS — EVITE A TODO CUSTO` | `cr_coder.py:286–368` **em `4c9d482`** | Feedback destilado manualmente em feedforward | Estático (hardcoded) — 🚧 **migrado para `adk/knowledge/` neste PR**, deixando de ser hardcoded (§12.3) |
 | Contexto das fases anteriores (requisitos, design) | `_build_input` em `orchestrator/_helpers.py:117–129` | Feedforward degradado | Dinâmico, **truncado em 8.000 chars por fase** |
 | Harness de execução — 9 estágios determinísticos (preparação → implantação → logs → inicialização → logs → testes → validações → consolidação → relatório) | `shared/tools/coding_tools/harness_execucao.py` (988 linhas) | Feedback (sensor) | **Oráculo executável**; produz `ExecutionReport` (`<task_id>.report.json`) e nunca emite veredito |
 | Veredito determinístico em 2 camadas | `implementation_validator/agent.py::montar_veredito` | **Enforcement** | Camada 1: execução falha → reprova sem julgar. Camada 2: agregação conservadora |
@@ -251,10 +256,10 @@ Vereditos: **Adotar** · **Adotar (princípio)** — replicar o mecanismo sem im
 
 | # | Gap | Evidência | Severidade |
 |---|---|---|---|
-| **G1** | Conhecimento de convenções **hardcoded em string Python**, não em KB versionada. Reenquadrado pela literatura: é **texto passivo** (ContextCov) — regra enunciada sem mecanismo que force conformidade | `cr_coder.py:89–366` (o arquivo cresceu de 353 para 397 linhas entre o PR #340 e o #348) | Alta |
+| **G1** | Conhecimento de convenções **hardcoded em string Python**, não em KB versionada. Reenquadrado pela literatura: é **texto passivo** (ContextCov) — regra enunciada sem mecanismo que force conformidade | `cr_coder.py:89–366` (o arquivo cresceu de 353 para 397 linhas entre o PR #340 e o #348) | **Alta** — 🚧 **majoritariamente fechado nesta entrega**: o bloco `ERROS COMUNS` migrou para `adk/knowledge/`, versionada e montada pelo `cr_feedforward` (§8.2); a instrução composta caiu de ~330 para 246 linhas. Sobram duas seções ainda em string (`REGRA OBRIGATÓRIA — DOCKERFILE` e `DIRETRIZES DE CODIFICAÇÃO`), mantidas de propósito: a KB só as substitui parcialmente, e a segunda vem do prompt canônico compartilhado com o `coder` role |
 | **G2** | **Sem memória cross-run.** As lições morrem no wipe do workspace; a destilação falha→regra é manual (dev edita `cr_coder.py`). A política de escrita efetiva é **vanilla add**, sem validação, dedup ou deprecação — o oposto do que o Memp (`Add ⊖ Del ⊕ Update`) e o ACE (*grow-and-refine*) recomendam | `orchestrator/agent.py`, `_handle_fresh_run`; commits que adicionam blocos ao `ERROS COMUNS` | Alta |
 | **G3** | **Handoff upstream lossy** — artefatos de `requirements/` e `design/` ficam em disco; ao pipeline de codificação chega o último texto de cada fase truncado em 8.000 chars | `_helpers.py:128` | Média |
-| **G4** | **Dependências não aterradas** — `requirements.txt` gerado do zero a cada run; é a classe de falha nº 1 (metade do `ERROS COMUNS` trata de PyPI/imports). Em `4c9d482`, **nenhum estágio do harness fazia verificação estática**: não havia `ast.parse`, nem confronto `import ↔ requirements`, nem Ruff/Semgrep antes do build — o erro só aparecia como falha de build no estágio 2, depois de pago o custo da imagem | `cr_coder.py` §`ERROS COMUNS`; ausência verificada em `harness_execucao.py` | **Alta** — 🚧 **em fechamento**: o estágio `verificacao_estatica` do §8.3 está implementado e aguarda PR (ver §1.1). A parte de *aterramento* do gap (allowlist por stack) segue aberta |
+| **G4** | **Dependências não aterradas** — `requirements.txt` gerado do zero a cada run; é a classe de falha nº 1 (metade do `ERROS COMUNS` trata de PyPI/imports). Em `4c9d482`, **nenhum estágio do harness fazia verificação estática**: não havia `ast.parse`, nem confronto `import ↔ requirements`, nem Ruff/Semgrep antes do build — o erro só aparecia como falha de build no estágio 2, depois de pago o custo da imagem | `cr_coder.py` §`ERROS COMUNS`; ausência verificada em `harness_execucao.py` | **Alta** — 🚧 **em fechamento**: o estágio `verificacao_estatica` do §8.3 está implementado e é entregue neste PR (ver §1.1). A parte de *aterramento* do gap (allowlist por stack) segue aberta |
 | **G5** | **Sem exemplares** — apps aprovados nunca viram referência | — | Baixa |
 | **G6** | Coder não relia contexto sob demanda | `cr_coder.py` | ✅ **Fechado** no PR #340 |
 | **G7** | `tech_stack` inferida por run, com fallback `["a definir"]`; a stack real não vem de fonte de conhecimento | `context_engineer/prompt.py:77` | Média |
@@ -502,6 +507,8 @@ Justificativa: TRACE mostra que compilar a lição em verificação reduz viola�
 
 ### 12.3 Estágio 2 — Provisionamento de contexto
 
+> 🚧 **Entregue neste PR.** O `cr_feedforward`, a KB em `adk/knowledge/` e a injeção `{context_pack?}` estão implementados, com o `ERROS COMUNS` migrado do prompt no mesmo PR. O que segue é a especificação de origem. Duas diferenças conscientes em relação a ela: (i) os campos de governança abaixo **ainda não são escritos por item** — resolvem problemas do Estágio 3 (destilação automática), que não existe nesta issue, e o `knowledge/README.md` registra o formato para quando existir; (ii) a seleção de stack casa por substring, não por igualdade.
+
 Implementar `cr_feedforward` + `knowledge/` + `{context_pack?}`, migrando o conteúdo do `ERROS COMUNS` do prompt para a KB no mesmo PR. Formato do item de conhecimento, seguindo o padrão do CODESKILL — **arquivo markdown com título, condição de gatilho e instruções acionáveis** — acrescido dos campos de governança que o Memp e o GovMem indicam:
 
 ```yaml
@@ -549,7 +556,7 @@ Destilação `ExecutionReport → lessons.md` com curadoria humana. A política 
 
 - **Corrigir G8** — hoje em `coding_tools/harness_execucao.py:135`. É o desbloqueador de qualquer trabalho multi-stack e a trava de stack real do pipeline. Correção mínima: trocar "existe ao menos um `.py`" por "existe `Dockerfile` **ou** código reconhecível" — o build Docker em si já é agnóstico de linguagem; só o gate não é.
 - **Reavaliar o truncamento de 8.000 chars** do `_build_input` (G3). Fora do escopo desta camada, mas o braço B do experimento já produz o dado necessário para decidir.
-- **Tratar o `ERROS COMUNS` como store de memória, não como prompt.** Enquanto viver em `cr_coder.py`, cada lição nova é um write com política *vanilla add*, sem dedup, sem deprecação e sem verificação — exatamente as operações que o Memp (`Add ⊖ Del ⊕ Update`) e o ACE (*grow-and-refine*) identificam como necessárias.
+- **Tratar o `ERROS COMUNS` como store de memória, não como prompt** — 🚧 **primeira metade entregue neste PR.** O bloco saiu de `cr_coder.py` e virou `adk/knowledge/`, versionada e editável por PR de documentação, com dedup por item na montagem do pack. O que **não** foi entregue é a política de escrita: as lições continuam sendo adicionadas à mão, sem deprecação e sem verificação automática — as operações que o Memp (`Add ⊖ Del ⊕ Update`) e o ACE (*grow-and-refine*) identificam como necessárias e que dependem do Estágio 3.
 
 ---
 

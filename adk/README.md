@@ -22,7 +22,7 @@ adk/
 │       ├── reviewer/
 │       ├── test_planner/
 │       ├── validator/
-│       ├── workflow_coding_review/      # pipeline enxuto contexto→coder→review
+│       ├── workflow_coding_review/      # pipeline contexto→feedforward→coder→review
 │       └── workflow_design_pipeline/    # pipeline de design
 ├── shared/
 │   └── tools/                  # tools compartilhadas (git, filesystem, slicer, etc)
