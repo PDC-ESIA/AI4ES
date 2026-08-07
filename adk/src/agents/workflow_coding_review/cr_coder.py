@@ -110,14 +110,6 @@ Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
 fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
 PRIMEIRO e só depois a implementação completa.
 
---- CONHECIMENTO DE APOIO (convenções e armadilhas conhecidas) ---
-{{context_pack?}}
---- FIM DO CONHECIMENTO DE APOIO ---
-
-O bloco acima, quando presente, vem de `adk/knowledge/` — convenções do projeto e
-armadilhas já conhecidas para a stack escolhida. Leia-o ANTES de montar o PLAN.md
-(ETAPA 0, abaixo). Se estiver vazio, siga só as regras já descritas nesta instrução.
-
 O bloco acima normalmente é um JSON de ErrorReport — montado deterministicamente
 a partir do veredito real do Agente de Validação e do relatório de execução:
 
@@ -167,14 +159,15 @@ real não pôde ser confirmado), trate como antes:
 4. NÃO recrie o projeto inteiro — corrija SOMENTE o necessário.
 5. Após corrigir, produza texto curto listando o que foi alterado.
 
-Exemplos de erros comuns que você receberá:
-- "No matching distribution found for X" → remova pacote inválido do requirements.txt
-- "NoForeignKeysError" → adicione ForeignKey no model filho
-- "ModuleNotFoundError: No module named 'X'" → adicione pacote ao requirements.txt
-- "ImportError: X is not installed" → adicione dependência ao requirements.txt
-- "Could not import module 'app.main'" → corrija CMD do Dockerfile ou imports
-- "COPY failed: file not found" → ajuste COPY no Dockerfile para paths existentes
-- "NameError: name 'X' is not defined" → adicione o import faltante no arquivo indicado
+--- CONHECIMENTO DE APOIO (convenções e armadilhas conhecidas) ---
+{{context_pack?}}
+--- FIM DO CONHECIMENTO DE APOIO ---
+
+O bloco acima vem de `adk/knowledge/` — convenções do projeto, armadilhas já
+conhecidas e o mapa de sinais de erro da stack escolhida. Ele tem PRECEDÊNCIA
+sobre as suas suposições: o contrato manda no O QUÊ implementar, este bloco manda
+no COMO. Leia-o ANTES da ETAPA 0 (abaixo), e consulte-o também ao diagnosticar um
+erro reportado pelo Executor. Se estiver vazio, siga só as regras desta instrução.
 
 # ETAPA 0 — PLANO ANCORADO NO CONTRATO (OBRIGATÓRIA, SÓ NA PRIMEIRA EXECUÇÃO)
 Antes de criar QUALQUER arquivo de código, execute esta etapa na ordem abaixo
@@ -290,89 +283,6 @@ ATENÇÃO: Se você encerrar a sessão SEM ter criado `Dockerfile`,
 `docker-compose.yml` e `README.md` via `tool_criar_arquivo`, a entrega será
 considerada INCOMPLETA e INVÁLIDA. Estes arquivos são tão obrigatórios quanto
 o próprio código da aplicação.
-
-# ERROS COMUNS — EVITE A TODO CUSTO
-Seu código será executado IMEDIATAMENTE em Docker após esta etapa.
-Qualquer erro abaixo causa falha total do build ou crash no runtime.
-
-## requirements.txt — SOMENTE pacotes PyPI válidos
-- HTMX, Alpine.js, Tailwind CSS, Bootstrap são bibliotecas JAVASCRIPT.
-  Elas são servidas via CDN (`<script src="https://...">`) ou como arquivos
-  estáticos. NUNCA as coloque no requirements.txt.
-- Exemplos de ERROS FATAIS (NÃO existem no PyPI):
-  `htmx.org`, `htmx`, `tailwindcss`, `alpinejs`, `bootstrap`, `jquery`
-- Exemplos CORRETOS de pacotes Python:
-  `fastapi`, `uvicorn[standard]`, `jinja2`, `sqlalchemy`, `python-multipart`,
-  `aiofiles`, `pydantic`, `pydantic-settings`, `alembic`, `httpx`, `pytest`
-- REGRA: se não se instala com `pip install NOME`, NÃO inclua.
-
-## SQLAlchemy — Relationships EXIGEM ForeignKey
-- Toda `relationship("ModelFilho", ...)` no model PAI exige que o model
-  FILHO tenha uma coluna com `ForeignKey("tabela_pai.id")`.
-- Sem ForeignKey → `NoForeignKeysError` → crash na primeira query.
-- Use `back_populates` (não `backref`) para clareza bidirecional.
-- Exemplo correto:
-  ```python
-  # Model Pai
-  class Ensaio(Base):
-      __tablename__ = "ensaios"
-      id = Column(Integer, primary_key=True)
-      fotos = relationship("Foto", back_populates="ensaio")
-
-  # Model Filho — OBRIGATÓRIO ter ForeignKey
-  class Foto(Base):
-      __tablename__ = "fotos"
-      id = Column(Integer, primary_key=True)
-      ensaio_id = Column(Integer, ForeignKey("ensaios.id"), nullable=False)
-      ensaio = relationship("Ensaio", back_populates="fotos")
-  ```
-
-## Jinja2Templates.TemplateResponse — use a API NOVA (Starlette ≥ 1.0)
-- A assinatura ANTIGA (nome do template como 1º argumento e request dentro do
-  dict de contexto) QUEBRA em Starlette ≥ 1.0 com
-  `TypeError: unhashable type: 'dict'` → HTTP 500 em TODA rota que renderiza template.
-- SEMPRE passe `request` como PRIMEIRO argumento posicional.
-- NUNCA coloque `request` dentro do dict de contexto.
-- Exemplo CORRETO:
-  ```python
-  from fastapi import Request
-  from fastapi.templating import Jinja2Templates
-
-  templates = Jinja2Templates(directory="templates")
-
-  @app.get("/login")
-  def login_page(request: Request):
-      return templates.TemplateResponse(
-          request,
-          "login.html",
-          {{"titulo": "Login", "errors": []}},
-      )
-  ```
-- Exemplo ERRADO (assinatura antiga — NUNCA use):
-  ```python
-  return templates.TemplateResponse(
-      "login.html",
-      {{"request": request, "titulo": "Login", "errors": []}},
-  )
-  ```
-
-## Imports consistentes com requirements.txt
-- Todo `import X` ou `from X import ...` no código DEVE ter o pacote
-  correspondente no requirements.txt. Se importou, deve estar listado.
-- Atenção: `from PIL import Image` → pacote é `Pillow` (não `PIL`).
-- Atenção: `import cv2` → pacote é `opencv-python` (não `cv2`).
-
-## Dockerfile — COPY somente o que existe
-- Verifique a estrutura de diretórios que você criou antes de escrever COPY.
-- Se seu código está em `app/`, use `COPY app/ /app/app/`.
-- NÃO copie arquivos ou diretórios que você não criou via tool_criar_arquivo.
-- CMD deve referenciar o módulo EXATO onde está `app = FastAPI()`.
-  Ex: se está em `app/main.py`, use `uvicorn app.main:app`.
-
-## docker-compose.yml — Consistência
-- A porta mapeada DEVE corresponder à porta no CMD/EXPOSE do Dockerfile.
-- Se o app usa SQLite com path relativo, o container precisa ter o diretório.
-  Adicione `RUN mkdir -p /app/data` no Dockerfile se necessário.
 
 # SAÍDA FINAL
 Somente após criar TODOS os arquivos via tools (incluindo Dockerfile,

@@ -19,7 +19,7 @@
 ## Nome de import ≠ nome de pacote PyPI
 
 Nenhuma tabela de alias fica completa — por isso o gate (`verificacao_estatica`) trata
-divergência de nome como `info`, não como bloqueio (D9). Os conhecidos hoje:
+divergência de nome como `info`, não como bloqueio (relatório §8.3). Os conhecidos hoje:
 
 | `import X` | Pacote PyPI |
 |---|---|

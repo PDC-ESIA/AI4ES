@@ -30,6 +30,18 @@ dentro do dict de contexto. A assinatura antiga quebra com
 Correto: `templates.TemplateResponse(request, "login.html", {"titulo": "Login"})`
 Errado (assinatura antiga, nunca use): `templates.TemplateResponse("login.html", {"request": request, "titulo": "Login"})`
 
+## Jinja2Templates — importe de `fastapi.templating`, não de `starlette.templating`
+
+Use `from fastapi.templating import Jinja2Templates`. Importar de
+`starlette.templating` funciona (o FastAPI reexporta a classe e traz o Starlette como
+dependência transitiva), mas cria um `import starlette` sem linha correspondente no
+`requirements.txt` — dependência de terceiros usada diretamente sem ser declarada. O
+gate `verificacao_estatica` sinaliza isso como achado `info` em toda rota que
+renderiza template. Importe sempre pelo namespace do `fastapi`.
+
+Correto: `from fastapi.templating import Jinja2Templates`
+Errado: `from starlette.templating import Jinja2Templates`
+
 ## Arquivos que o pytest exige para coletar testes
 
 Sem estes 3 arquivos, `tests/test_*.py` que fazem `from app.main import app` falha com
@@ -41,25 +53,17 @@ Sem estes 3 arquivos, `tests/test_*.py` que fazem `from app.main import app` fal
 
 Crie os 3 SEMPRE que entregar um projeto Python testável.
 
-## requirements.txt precisa refletir os imports reais
+## COPY e CMD do Dockerfile em projeto FastAPI
 
-Todo `import X` / `from X import ...` no código DEVE ter o pacote correspondente no
-`requirements.txt`. Atenção a nome de import != nome de pacote — ver `deps.md` neste
-diretório para a tabela de alias conhecida (ex.: `from PIL import Image` exige o pacote
-`Pillow`, não `PIL`).
-
-## Dockerfile — COPY só o que existe
-
-Verifique a estrutura de diretórios criada antes de escrever `COPY` — não copie nada que
-você não criou via tool de escrita. Se o código está em `app/`, use `COPY app/ /app/app/`.
-O `CMD` deve referenciar o módulo EXATO onde está `app = FastAPI()` (ex.: se está em
-`app/main.py`, use `uvicorn app.main:app`).
+Se o código está em `app/`, use `COPY app/ /app/app/`. O `CMD` deve referenciar o módulo
+EXATO onde está `app = FastAPI()` — se está em `app/main.py`, use `uvicorn app.main:app`.
+Errar o módulo do `CMD` produz `Could not import module 'app.main'` no start do container.
 
 ## SQLite com path relativo em container
 
-A porta mapeada no `docker-compose.yml` deve corresponder à porta no `CMD`/`EXPOSE` do
-Dockerfile. Se o app usa SQLite com path relativo, o container precisa ter o diretório —
-adicione `RUN mkdir -p /app/data` no Dockerfile se necessário.
+Se o app usa SQLite com path relativo, o container precisa ter o diretório — adicione
+`RUN mkdir -p /app/data` no Dockerfile se necessário. Sem isso o start falha com
+`unable to open database file`.
 
 ## Sinais de erro conhecidos (mapa rápido)
 

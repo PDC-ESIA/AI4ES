@@ -2,14 +2,14 @@
 
 Este diretório é a KB consumida pelo `cr_feedforward` (`src/agents/workflow_coding_review/`)
 para montar o `context_pack` injetado no prompt do `cr_coder` via `{context_pack?}`.
-Arquitetura completa, *rationale* e decisões (D1–D10): ver
+Arquitetura completa, *rationale* e decisões de projeto: ver
 `docs/Time_4_Codificacao/relatorio_camada_feedforward_agente_codificacao.md`, §8 e §10.
 
 **Por que é consumida por injeção no prompt, não por tool:** as tools de leitura do coder
 são presas ao `workspace_root` (`shared/agent_factory.py`) e `_resolver_caminho`
 (`shared/tools/coding_tools/filesystem_coding.py`) rejeita caminho absoluto e `..`. A KB é
 fisicamente inalcançável por tool do coder — não é preferência de design, é o que o código
-permite (D3).
+permite (relatório §8.2).
 
 ## Layout
 
@@ -36,15 +36,25 @@ knowledge/
   destilação `ExecutionReport → lição` (Estágio 3 do relatório, §12.4) — **ainda não
   implementada** nesta issue, é trabalho futuro. Quando existir: só escreve após validação
   executável (`state['validation'].status == "aprovado"`); acumula por padrão, nunca
-  reescreve o arquivo inteiro (D7, evita *context collapse*); dedup e deprecação ativas;
-  curadoria humana obrigatória antes de qualquer escrita (o GovMem mediu 0 de 133
-  candidatos reais seguros para promoção automática); promoção para `core/lessons.md` só
-  com o mesmo padrão observado em **duas stacks diferentes** (D8); chave de indexação
+  reescreve o arquivo inteiro (*grow-and-refine*, evita *context collapse*); dedup e
+  deprecação ativas; curadoria humana obrigatória antes de qualquer escrita (o GovMem
+  mediu 0 de 133 candidatos reais seguros para promoção automática); promoção para
+  `core/lessons.md` só com o mesmo padrão observado em **duas stacks diferentes**; chave de indexação
   primária é `stages[].error_code` do harness (granularidade acionada-por-evento).
-- **`cr_feedforward` lê e concatena os `.md` como estão** — não parseia nada. O pack
-  acumula por padrão (long-context, D7): não é comprimido por orçamento arbitrário de
-  tokens. Truncar por budget fixo é o anti-padrão que o relatório aponta no `_build_input`
-  do orchestrator (truncamento cego de 8.000 chars).
+- **`cr_feedforward` quebra cada arquivo nos seus itens (`## título`) e concatena.** A
+  única leitura estrutural é essa: o `# título` do arquivo e o preâmbulo antes do
+  primeiro `##` são descartados, e itens de mesmo título aparecem **uma vez** no pack —
+  `core/` é montado antes de `stacks/`, então o item promovido a `core/` é o que
+  sobrevive. Os arquivos entram na ordem `consistency-rules → pitfalls → lessons →
+  deps → conventions` (regra acionável antes de referência); um `.md` novo entra no fim.
+  Fora isso o pack **acumula por padrão** (long-context, *grow-and-refine*): não é comprimido por
+  orçamento arbitrário de tokens. Truncar por budget fixo é o anti-padrão que o relatório
+  aponta no `_build_input` do orchestrator (truncamento cego de 8.000 chars).
+
+> **Ao escrever um item:** o título (`## ...`) é a chave de dedup — dois itens com o
+> mesmo título são o mesmo item. Não repita em `stacks/<stack>/` uma regra que já está
+> em `core/`; se a stack precisa de um detalhe próprio, dê a ele um título específico
+> (ex.: `## COPY e CMD do Dockerfile em projeto FastAPI`).
 
 ## Por que os itens não carregam frontmatter YAML (por enquanto)
 
