@@ -60,6 +60,25 @@ Se o código está em `app/`, use `COPY app/ /app/app/`. O `CMD` deve referencia
 EXATO onde está `app = FastAPI()` — se está em `app/main.py`, use `uvicorn app.main:app`.
 Errar o módulo do `CMD` produz `Could not import module 'app.main'` no start do container.
 
+## Dockerfile — NÃO copie `app/static/` (ou qualquer pasta) que você não criou
+
+Erro recorrente e específico: o Dockerfile inclui `COPY app/static/ /app/app/static/`
+por hábito (é comum em projetos FastAPI ter uma pasta de estáticos), mesmo quando
+`app/static/` nunca foi criada via tool de escrita nesta sessão. O build quebra com:
+
+```
+COPY failed: file not found in build context or excluded by .dockerignore: stat app/static/: file does not exist
+```
+
+NÃO tente contornar isso com sintaxe de shell, tipo `COPY app/static/ ... 2>/dev/null || :`
+— instrução `COPY` do Dockerfile NÃO é uma linha de shell, não aceita redirecionamento
+nem fallback com `||`. Isso quebra o build de outro jeito, não resolve nada.
+
+Regra: antes de escrever qualquer linha `COPY`, confira no seu próprio `PLAN.md` (manifesto
+de arquivos) se aquela pasta está de fato na lista do que você criou. Se o projeto não usa
+CSS/JS/imagens em arquivo separado (ex.: CSS inline no `<style>` do HTML), a linha
+`COPY app/static/ ...` simplesmente NÃO deve existir no Dockerfile.
+
 ## SQLite com path relativo em container
 
 Se o app usa SQLite com path relativo, o container precisa ter o diretório — adicione
