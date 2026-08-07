@@ -158,7 +158,7 @@ class ExecutorOrchestrator(BaseAgent):
         Instalar dependência é problema do Dockerfile/build, nunca do comando de
         teste — mesma filosofia dos adapters aposentados.
         """
-        alvo = comando.lower()
+        alvo = " ".join(comando.lower().split())
         return not any(padrao in alvo for padrao in _PADROES_PERIGOSOS)
 
     @staticmethod

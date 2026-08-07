@@ -133,6 +133,22 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     ctx.acceptance_criteria = list(task.get("acceptance_criteria", []))
     ctx.contract = task.get("contract", {}) or {}
 
+    # O Estágio 2 copia integralmente este diretório para o contexto de build.
+    # Validá-lo aqui transforma uma eventual limpeza/inacessibilidade do
+    # workspace em evidência estruturada, em vez de deixar o FileNotFoundError
+    # de shutil.copytree escapar e derrubar o harness. A checagem precede a
+    # resolução do Dockerfile porque ambos os caminhos (Dockerfile externo ou
+    # lido do coder) dependem da existência do artefato do coder.
+    if not ctx.coder_dir.is_dir():
+        return StageResult(
+            stage=StageName.PREPARACAO_AMBIENTE,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Workspace do coder ausente ou inválido: {ctx.coder_dir}.",
+            evidence={"coder_dir": str(ctx.coder_dir)},
+            error_code="CODER_DIR_AUSENTE",
+        )
+
     # Resolve Dockerfile. Quando o chamador (ExecutorOrchestrator) já resolveu —
     # priorizando o do coder, senão via LLM — usa direto (o harness NÃO recheca o
     # workspace do coder nesse caso). Em chamada direta (teste/PoC), sem chamador

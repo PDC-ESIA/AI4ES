@@ -213,6 +213,32 @@ def test_caminho_feliz_report_persistido(tmp_path):
 # Abort crítico — falha na implantação (estágio 2) aborta 4–7
 # ===========================================================================
 
+def test_coder_dir_ausente_vira_evidencia_antes_do_dockerfile_resolvido(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    coder.rmdir()
+
+    with patch("docker.from_env") as docker_from_env:
+        result = executar_harness_validacao(
+            "TASK-001",
+            1,
+            coder_base_dir=coder,
+            execution_base_dir=execution,
+            tasks_base_dir=tasks,
+            dockerfile="FROM python:3.12-slim\n",
+            dockerfile_origem="llm",
+        )
+
+    by_name = {s["stage"]: s for s in result["stages"]}
+    preparacao = by_name["preparacao_ambiente"]
+    assert preparacao["status"] == "erro"
+    assert preparacao["error_code"] == "CODER_DIR_AUSENTE"
+    assert preparacao["evidence"] == {"coder_dir": str(coder)}
+    assert str(coder) in preparacao["summary"]
+    assert by_name["implantacao_artefato"]["status"] == "pulado"
+    docker_from_env.assert_not_called()
+
+
 def test_abort_critico_implantacao_pula_estagios_seguintes(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
