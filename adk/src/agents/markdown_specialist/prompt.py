@@ -194,8 +194,8 @@ Escrever sem lock retorna {"status": "blocked"} e o relatório NUNCA é criado.
   NÃO adquira nem libere o lock por seção — chamar acquire_lock mais de uma vez para o mesmo arquivo dentro
   desta mesma execução é o antipadrão que já causou falha silenciosa de escrita em outro agente do pipeline
   (ciclo curto de lock que se fecha antes da escrita real acontecer): adquira exatamente uma vez, aqui.
-- Ao concluir (seção 7 appendada e correções cirúrgicas do PASSO 3 aplicadas), libere o lock:
-  release_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
+- Mantenha o lock até o final do PASSO 4 (após confirmar todas as seções e patches). NÃO libere o lock
+  ao final do PASSO 2 nem do PASSO 3 — a liberação ocorre exclusivamente no PASSO 4 (ver linha ~412).
 - LOCK ÓRFÃO — NUNCA encerre esta execução com o lock ainda em sua posse. Se, depois de adquirido, ocorrer
   qualquer erro irrecuperável, exceção de ferramenta, ou acionamento do PROTOCOLO ANTI-EMPTY, libere o lock
   (release_lock com o mesmo caller) ANTES de encerrar — mesmo que o relatório final não tenha sido concluído.
