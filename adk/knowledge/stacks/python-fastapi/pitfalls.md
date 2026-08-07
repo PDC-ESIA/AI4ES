@@ -36,8 +36,9 @@ Use `from fastapi.templating import Jinja2Templates`. Importar de
 `starlette.templating` funciona (o FastAPI reexporta a classe e traz o Starlette como
 dependência transitiva), mas cria um `import starlette` sem linha correspondente no
 `requirements.txt` — dependência de terceiros usada diretamente sem ser declarada. O
-gate `verificacao_estatica` sinaliza isso como achado `info` em toda rota que
-renderiza template. Importe sempre pelo namespace do `fastapi`.
+gate `verificacao_estatica` registra isso como achado `import_transitivo` (informativo,
+nunca bloqueante) em toda rota que renderiza template. Importe sempre pelo namespace do
+`fastapi`.
 
 Correto: `from fastapi.templating import Jinja2Templates`
 Errado: `from starlette.templating import Jinja2Templates`
