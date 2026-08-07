@@ -10,6 +10,7 @@ from pathlib import Path
 
 from shared.tools.coding_tools.verificacao_dependencias import (
     ALIAS_IMPORT_PARA_PACOTE,
+    TRANSITIVOS_CONHECIDOS,
     verificar_dependencias,
 )
 
@@ -236,6 +237,91 @@ def test_requirements_alternativo_em_subpasta_e_reconhecido(tmp_path):
         },
     )
     assert verificar_dependencias(tmp_path) == []
+
+
+# ---------------------------------------------------------------------------
+# Import transitivo — achado registrado, mas não acionável
+# ---------------------------------------------------------------------------
+
+
+def test_caso_real_starlette_sob_fastapi(tmp_path):
+    """Caso real: `Jinja2Templates` importado de `starlette.templating`.
+
+    O achado é verdadeiro (o `starlette` não está declarado) e inofensivo (o
+    `fastapi` o instala). Classificá-lo como divergência comum saturaria a
+    evidência de qualquer projeto FastAPI que renderize template.
+    """
+    _montar_projeto(
+        tmp_path,
+        {
+            "app/main.py": (
+                "from fastapi import FastAPI\n"
+                "from starlette.templating import Jinja2Templates\n"
+            ),
+            "requirements.txt": "fastapi\nuvicorn\njinja2\n",
+        },
+    )
+    achados = verificar_dependencias(tmp_path)
+
+    assert len(achados) == 1
+    achado = achados[0]
+    assert achado["tipo"] == "import_transitivo"
+    assert achado["modulo"] == "starlette"
+    assert achado["severidade"] == "info"
+    # Não há pacote a acrescentar: declarar transitiva duplica o pin.
+    assert achado["pacote_sugerido"] is None
+    assert "fastapi" in achado["mensagem"]
+
+
+def test_transitivo_sem_o_provedor_declarado_volta_a_ser_divergencia(tmp_path):
+    """A tabela não isenta o módulo em si — isenta a combinação com o provedor."""
+    _montar_projeto(
+        tmp_path,
+        {
+            "app/main.py": "from starlette.templating import Jinja2Templates\n",
+            "requirements.txt": "uvicorn\n",
+        },
+    )
+    achados = verificar_dependencias(tmp_path)
+
+    assert len(achados) == 1
+    assert achados[0]["tipo"] == "import_nao_declarado"
+    assert achados[0]["modulo"] == "starlette"
+
+
+def test_transitivo_nao_mascara_dependencia_realmente_ausente(tmp_path):
+    """As duas classes convivem no mesmo run, cada uma com seu tipo."""
+    _montar_projeto(
+        tmp_path,
+        {
+            "app/main.py": "import httpx\nimport starlette\n",
+            "requirements.txt": "fastapi\n",
+        },
+    )
+    achados = verificar_dependencias(tmp_path)
+
+    assert [(a["modulo"], a["tipo"]) for a in achados] == [
+        ("httpx", "import_nao_declarado"),
+        ("starlette", "import_transitivo"),
+    ]
+
+
+def test_transitivo_declarado_explicitamente_nao_gera_achado(tmp_path):
+    """Quem declara a transitiva à mão não é penalizado — é caso de declarado."""
+    _montar_projeto(
+        tmp_path,
+        {
+            "app/main.py": "import starlette\n",
+            "requirements.txt": "fastapi\nstarlette>=0.37\n",
+        },
+    )
+    assert verificar_dependencias(tmp_path) == []
+
+
+def test_tabela_de_transitivos_cobre_o_caso_observado():
+    """Guarda contra remoção acidental do par que motivou a tabela."""
+    assert "starlette" in TRANSITIVOS_CONHECIDOS["fastapi"]
+    assert "pydantic" in TRANSITIVOS_CONHECIDOS["fastapi"]
 
 
 # ---------------------------------------------------------------------------

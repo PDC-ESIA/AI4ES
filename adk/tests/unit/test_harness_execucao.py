@@ -544,6 +544,33 @@ def test_alias_conhecido_nao_gera_falso_positivo_no_harness(tmp_path):
     assert estatica["evidence"]["total"] == 0
 
 
+def test_import_transitivo_nao_conta_como_divergencia_acionavel(tmp_path):
+    """`starlette` sob `fastapi`: registrado em `total`, fora de `acionaveis`.
+
+    É a separação que mantém a evidência do estágio discriminante — sem ela o
+    contador sai 1 em todo projeto FastAPI e deixa de medir qualquer coisa.
+    """
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_src(coder, requirements="fastapi\n")
+    (coder / "templates.py").write_text(
+        "from starlette.templating import Jinja2Templates\n", encoding="utf-8"
+    )
+    client, _ = _mock_docker()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    estatica = next(s for s in result["stages"] if s["stage"] == "verificacao_estatica")
+
+    assert estatica["status"] == "sucesso"
+    assert estatica["evidence"]["total"] == 1
+    assert estatica["evidence"]["transitivos"] == 1
+    assert estatica["evidence"]["acionaveis"] == 0
+    assert estatica["evidence"]["bloqueantes"] == 0
+    # O resumo não pode sugerir divergência onde não há ação a tomar.
+    assert "divergência" not in estatica["summary"]
+    assert result["overall_status"] == "sucesso"
+
+
 def test_preparacao_falha_pula_a_verificacao_estatica(tmp_path):
     """A cascata também vale para trás: sem ambiente, não se verifica nada."""
     coder, execution, tasks = _dirs(tmp_path)

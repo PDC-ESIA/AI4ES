@@ -186,6 +186,12 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
 #     vetar, porque nome de import ≠ nome de pacote e a tabela de alias nunca
 #     fica completa.
 #
+# `evidence` separa achado acionável de import transitivo (dependência que já vem
+# com um pacote declarado, como `starlette` sob `fastapi`). Sem essa separação,
+# `total` acusa divergência em praticamente todo projeto FastAPI e a evidência do
+# estágio deixa de discriminar qualquer coisa — inclusive a taxa de falso
+# positivo que precisa ser medida antes de promover o gate a fail-closed.
+#
 # Para promover a fail-closed depois de medir a taxa de falso positivo, basta
 # trocar `_MODO_FALHA_ESTATICA` — é a única linha que decide.
 # ===========================================================================
@@ -212,10 +218,14 @@ def _estagio_verificacao_estatica(ctx: _HarnessContext) -> StageResult:
         )
 
     bloqueantes = [a for a in achados if a["severidade"] == "critical"]
+    transitivos = [a for a in achados if a["tipo"] == "import_transitivo"]
+    acionaveis = len(achados) - len(transitivos)
     evidencia = {
         "achados": achados,
         "total": len(achados),
         "bloqueantes": len(bloqueantes),
+        "transitivos": len(transitivos),
+        "acionaveis": acionaveis,
         "modo": _MODO_FALHA_ESTATICA,
     }
 
@@ -231,13 +241,26 @@ def _estagio_verificacao_estatica(ctx: _HarnessContext) -> StageResult:
         )
 
     if achados:
+        # Descreve as duas classes separadamente: "1 divergência" para um
+        # `starlette` transitivo induziria o leitor (e o LLM) a mexer no
+        # requirements sem necessidade.
+        partes = []
+        if acionaveis:
+            partes.append(
+                f"{acionaveis} divergência(s) entre imports e requirements.txt"
+            )
+        if transitivos:
+            partes.append(
+                f"{len(transitivos)} import(s) de dependência transitiva "
+                f"já coberta por um pacote declarado"
+            )
         return StageResult(
             stage=StageName.VERIFICACAO_ESTATICA,
             status=StageStatus.SUCESSO,
             duration_seconds=round(time.time() - t0, 3),
             summary=(
-                f"{len(achados)} divergência(s) entre imports e requirements.txt — "
-                f"registradas como evidência, sem bloquear (política conservadora)."
+                f"{' e '.join(partes)} — registrado como evidência, sem bloquear "
+                f"(política conservadora)."
             ),
             evidence=evidencia,
             error_code=None,

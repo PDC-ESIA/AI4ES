@@ -23,6 +23,19 @@ de hoje (o erro aparece no build); o pior caso de bloquear indevidamente é
 induzi-lo a declarar um pacote inexistente, virando falha real. Nome de import
 raramente é igual ao nome do pacote (`PIL` → `Pillow`), e a tabela de alias
 nunca fica completa.
+
+Import transitivo: a terceira categoria
+---------------------------------------
+Entre "declarado" e "faltando" existe um caso intermediário: o módulo não está
+no `requirements.txt`, mas vem instalado junto com um pacote que está — o coder
+importa `Jinja2Templates` de `starlette.templating` e declara só `fastapi`, que
+traz o Starlette. O achado é verdadeiro (não está declarado) e **não é
+acionável**: declarar uma transitiva duplica o pin e pode conflitar com a faixa
+de versão que o pacote provedor exige.
+
+Ele sai como `import_transitivo`, `info` — registrado, nunca suprimido: este
+módulo descreve, não julga. Quem agrega é que separa ruído de sinal, e o harness
+já entrega a contagem pronta em `evidence["acionaveis"]`.
 """
 
 from __future__ import annotations
@@ -32,7 +45,11 @@ import re
 import sys
 from pathlib import Path
 
-__all__ = ["verificar_dependencias", "ALIAS_IMPORT_PARA_PACOTE"]
+__all__ = [
+    "verificar_dependencias",
+    "ALIAS_IMPORT_PARA_PACOTE",
+    "TRANSITIVOS_CONHECIDOS",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +66,24 @@ ALIAS_IMPORT_PARA_PACOTE: dict[str, str] = {
     "yaml": "PyYAML",
     "bs4": "beautifulsoup4",
     "sklearn": "scikit-learn",
+}
+
+# ---------------------------------------------------------------------------
+# Pacote declarado → módulos que ele já traz instalados
+# ---------------------------------------------------------------------------
+# Chave: nome da distribuição PyPI como aparece no requirements (normalizada na
+# consulta). Valor: nomes de IMPORT que ela disponibiliza por tabela.
+#
+# Não precisa ser completa — cobre o que apareceria de forma recorrente. O caso
+# que a motiva é o `starlette` sob `fastapi`: basta uma rota renderizar template
+# para o achado aparecer, e ele sozinho satura a evidência de um projeto inteiro.
+#
+# Resolver isso de verdade (lendo os metadados dos pacotes) é impossível neste
+# estágio: ele roda ANTES do build, então as dependências do app gerado não estão
+# instaladas em lugar nenhum — nem no venv do ADK, nem na imagem.
+TRANSITIVOS_CONHECIDOS: dict[str, tuple[str, ...]] = {
+    "fastapi": ("starlette", "pydantic"),
+    "uvicorn": ("click", "h11"),
 }
 
 # Ordem de busca idêntica à do `harness_docker._detect_requirements`. Reimplementado
@@ -101,6 +136,23 @@ def _ler_requirements(coder_dir: Path) -> tuple[Path | None, set[str]]:
             declarados.add(_normalizar(pacote))
 
     return candidato, declarados
+
+
+def _transitivos_disponiveis(declarados: set[str]) -> dict[str, str]:
+    """Módulo importável por tabela → pacote declarado que o traz.
+
+    Só considera provedores efetivamente presentes no requirements: sem
+    `fastapi` declarado, `starlette` volta a ser um achado legítimo. Em caso de
+    dois provedores para o mesmo módulo, vence o primeiro da tabela — a ordem do
+    literal é estável, então a saída continua determinística.
+    """
+    providos: dict[str, str] = {}
+    for pacote, modulos in TRANSITIVOS_CONHECIDOS.items():
+        if _normalizar(pacote) not in declarados:
+            continue
+        for modulo in modulos:
+            providos.setdefault(modulo, pacote)
+    return providos
 
 
 def _nomes_locais(coder_dir: Path) -> set[str]:
@@ -158,13 +210,17 @@ def verificar_dependencias(coder_dir: Path) -> list[dict]:
     Returns:
         Lista de achados, cada um com as chaves:
 
-        - ``tipo``: ``"requirements_ausente"`` ou ``"import_nao_declarado"``
+        - ``tipo``: ``"requirements_ausente"``, ``"import_nao_declarado"`` ou
+          ``"import_transitivo"``
         - ``modulo``: nome do módulo raiz importado (``""`` no caso de ausência)
         - ``arquivo``: caminho relativo a ``coder_dir`` (``None`` se não aplicável)
         - ``linha``: linha do import (``None`` se não aplicável)
         - ``pacote_sugerido``: nome PyPI provável, quando conhecido
         - ``severidade``: ``"critical"`` ou ``"info"`` (ver D9 no módulo)
         - ``mensagem``: descrição legível do achado
+
+        Achado ``import_transitivo`` é evidência, não pendência: ao contar
+        divergências acionáveis, filtre por ``tipo``, não pelo tamanho da lista.
 
         Lista vazia significa "nada a reportar" — nunca significa aprovação. Este
         módulo descreve; quem julga é o `implementation_validator`.
@@ -211,10 +267,33 @@ def verificar_dependencias(coder_dir: Path) -> list[dict]:
 
     # --- Divergências de nome (D9: informam, não reprovam) -------------------
     achados: list[dict] = []
+    transitivos = _transitivos_disponiveis(declarados)
+
     for modulo in sorted(terceiros):
         arquivo, linha = terceiros[modulo]
+        arquivo_rel = str(arquivo.relative_to(coder_dir)).replace("\\", "/")
         pacote = ALIAS_IMPORT_PARA_PACOTE.get(modulo, modulo)
         if _normalizar(pacote) in declarados or _normalizar(modulo) in declarados:
+            continue
+
+        provedor = transitivos.get(modulo)
+        if provedor is not None:
+            achados.append(
+                {
+                    "tipo": "import_transitivo",
+                    "modulo": modulo,
+                    "arquivo": arquivo_rel,
+                    "linha": linha,
+                    "pacote_sugerido": None,
+                    "severidade": "info",
+                    "mensagem": (
+                        f"'import {modulo}' não consta em {req_path.name}, mas vem "
+                        f"instalado com '{provedor}', que está declarado. Não requer "
+                        f"ação: declarar uma dependência transitiva duplica o pin e "
+                        f"pode conflitar com a faixa de versão que '{provedor}' exige."
+                    ),
+                }
+            )
             continue
 
         conhecido = modulo in ALIAS_IMPORT_PARA_PACOTE
@@ -222,7 +301,7 @@ def verificar_dependencias(coder_dir: Path) -> list[dict]:
             {
                 "tipo": "import_nao_declarado",
                 "modulo": modulo,
-                "arquivo": str(arquivo.relative_to(coder_dir)).replace("\\", "/"),
+                "arquivo": arquivo_rel,
                 "linha": linha,
                 "pacote_sugerido": pacote if conhecido else None,
                 "severidade": "info",
