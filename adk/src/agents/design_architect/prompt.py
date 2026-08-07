@@ -173,6 +173,30 @@ Esta regra vale para o lote inteiro: se qualquer bloqueio ainda estiver ativo
 ao final da ANÁLISE A1, siga o PROTOCOLO DE BLOQUEIO e não inicie a
 persistência da Seção 1 até resolver isso.
 
+🔒 LOCK DE ESCRITA (OBRIGATÓRIO — precede QUALQUER persistência):
+append_architect_section, save_artifact e patch_section exigem que você DETENHA o lock
+de escrita do arquivo. Escrever sem lock retorna {"status": "blocked"} e a chamada
+NÃO tem efeito — nenhum conteúdo é gravado, mesmo que outras partes do retorno pareçam
+bem-sucedidas.
+- ANTES de persistir a Seção 1 (PASSO 1), adquira o lock:
+  acquire_lock("analise_tecnica_<HU_IDs>.md", caller="design_architect"), usando o
+  mesmo filename derivado no PASSO 1.
+  → {"status": "ok"}: prossiga normalmente para a persistência da Seção 1.
+  → {"status": "blocked"}: informe ao pipeline_controller o detentor atual (campo
+    owner) e encerre — NÃO tente escrever, NÃO abra Doubt_Artifact para isso (não é
+    uma ambiguidade de conteúdo).
+- caller="design_architect" é OBRIGATÓRIO e deve ser IDÊNTICO em acquire_lock e em
+  TODAS as chamadas de append_architect_section / save_artifact / patch_section
+  seguintes. O dono do lock precisa coincidir com o caller da escrita, senão a
+  escrita é negada mesmo com o lock ativo.
+- Mantenha UM ÚNICO lock aberto durante todo o preenchimento (Seção 1 → Seção 8,
+  incluindo qualquer correção via PROTOCOLO DE CORREÇÃO DE SEÇÃO). NÃO adquira nem
+  libere o lock por seção — cada ciclo de acquire/release "a seco" entre seções é
+  exatamente o antipadrão que já causou falha de escrita silenciosa neste agente
+  (lock liberado antes da chamada de persistência real acontecer).
+- Libere o lock UMA ÚNICA VEZ, no PASSO 10, somente depois que o PASSO 9 confirmar
+  "complete": true: release_lock("analise_tecnica_<HU_IDs>.md", caller="design_architect").
+
 CICLO OBRIGATÓRIO — repita para cada uma das 8 seções, nesta ordem:
 
   1. Complete o conteúdo da seção COMPLETAMENTE em memória (a ANÁLISE correspondente).
@@ -250,6 +274,11 @@ Use o conteúdo produzido na ANÁLISE A1. Siga o CICLO OBRIGATÓRIO descrito aci
    analise_tecnica_<HU_IDs separados por _>.md  — este é o único nome válido.
    Exemplo para lote HU-004, HU-005: analise_tecnica_HU-004_HU-005.md
    Guarde este nome. Os PASSOS 2 a 8 usarão exatamente o mesmo filename para append.
+
+⛔ LOCK: com o filename já derivado, adquira o lock ANTES desta primeira persistência —
+   acquire_lock("<filename derivado acima>", caller="design_architect") — conforme
+   descrito no bloco "🔒 LOCK DE ESCRITA" no início desta seção do prompt. Só prossiga
+   para a chamada de persistência abaixo se o retorno for {"status": "ok"}.
 
 Payload desta chamada: título "1. Compreensão do lote" seguido do conteúdo completo produzido na ANÁLISE A1 (texto livre — sem formato tabular).
 
@@ -742,7 +771,12 @@ a verificação estrutural do PASSO 9 retornou "complete": true.
 Se qualquer seção retornou "error", ou "complete" for false: use o PROTOCOLO DE
 CORREÇÃO DE SEÇÃO na seção afetada antes de prosseguir.
 
-ETAPA 2 — INFORMAR o pipeline_controller:
+ETAPA 2 — LIBERAR o lock:
+Somente após a confirmação da ETAPA 1, libere o lock adquirido no PASSO 1:
+release_lock("<mesmo filename usado em todas as persistências>", caller="design_architect").
+Isso deve acontecer uma única vez, aqui — nunca antes, e nunca por seção.
+
+ETAPA 3 — INFORMAR o pipeline_controller:
 Somente após todas as seções confirmadas, informe ao pipeline_controller:
 - Nome exato do arquivo na pasta de análise (use o valor retornado na criação da seção 1 — não reconstrua)
 - Confirmação de que o arquivo está disponível na pasta de análise
@@ -757,6 +791,7 @@ REGRAS FINAIS:
 - Nunca inicie a persistência de uma seção sem ter completado a ANÁLISE correspondente a ela (não precisa ter completado as análises das seções seguintes).
 - Nunca inicie a ANÁLISE da próxima seção antes de confirmar "ok" na persistência da seção atual.
 - Nunca acumule mais de uma seção sem persistir — o ciclo é sempre analisar → persistir → confirmar → próxima seção.
+- Nunca chame append_architect_section, save_artifact ou patch_section sem ter adquirido o lock antes (PASSO 1) e sem que ele ainda esteja ativo — não adquira nem libere por seção; um único acquire_lock no PASSO 1 e um único release_lock no PASSO 10.
 - Obtenha sempre a data atual via ferramenta — nunca escreva datas fixas ou supostas.
 - Solicitante: extraia do campo "Solicitante" das HUs recebidas.
 - Encaminhe ao pipeline_controller APENAS o nome do arquivo, nunca o conteúdo.
