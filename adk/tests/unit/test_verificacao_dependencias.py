@@ -1,9 +1,8 @@
 """Testes da verificação estática de dependências (import × requirements.txt).
 
-Cobre os casos da §2.3 do plano da camada de Feedforward. O foco é o modo de
-falha caro: **falso positivo**. Um gate que acusa dependência inexistente devolve
-ao coder um erro que não existe e queima uma iteração do loop — por isso a maior
-parte dos casos aqui afirma "0 achados".
+O foco é o modo de falha caro: **falso positivo**. Um gate que acusa dependência
+inexistente devolve ao coder um erro que não existe e queima uma iteração do
+loop — por isso a maior parte dos casos aqui afirma "0 achados".
 """
 
 from pathlib import Path
@@ -90,10 +89,10 @@ def test_nome_divergente_com_alias_conhecido_nao_gera_achado(tmp_path):
 
 
 def test_caso_real_pillow_nao_gera_achado(tmp_path):
-    """Regressão do run de 04/08: `import PIL` com `pillow` declarado.
+    """Caso real: `import PIL` com `pillow` declarado.
 
-    Foi uma execução bem-sucedida de verdade. Um gate sem a tabela de alias a
-    teria abortado — é o cenário que motiva a política fail-open da D9.
+    Veio de uma execução bem-sucedida de verdade. Um gate sem a tabela de alias a
+    teria abortado — é o cenário que motiva a política fail-open.
     """
     _montar_projeto(
         tmp_path,
@@ -171,7 +170,7 @@ def test_import_de_terceiro_ausente_gera_um_achado_informativo(tmp_path):
     assert achado["modulo"] == "httpx"
     assert achado["arquivo"] == "app/main.py"
     assert achado["linha"] == 2
-    # D9: divergência de nome NUNCA reprova — só informa.
+    # Divergência de nome NUNCA reprova — só informa.
     assert achado["severidade"] == "info"
 
 
@@ -206,7 +205,7 @@ def test_alias_desconhecido_nao_sugere_pacote(tmp_path):
 
 
 def test_requirements_ausente_com_terceiros_e_o_unico_caso_critical(tmp_path):
-    """D9: único cenário sem ambiguidade possível — e o único que reprova."""
+    """Único cenário sem ambiguidade possível — e o único que reprova."""
     _montar_projeto(
         tmp_path,
         {"app/main.py": "from fastapi import FastAPI\nimport sqlalchemy\n"},

@@ -11,8 +11,8 @@ importar o harness. Recebe um diretório, devolve uma lista de dicionários. Que
 transforma achado em `StageResult` — e quem decide se reprova — é o harness
 (`harness_execucao.py::_estagio_verificacao_estatica`).
 
-Política de severidade (decisão D9 do plano de Feedforward)
------------------------------------------------------------
+Política de severidade — fail-open, por decisão
+-----------------------------------------------
 Só existe **um** caso inequívoco, e é o único marcado como ``critical``:
 não existe `requirements.txt` e há imports de terceiros. Todo o resto —
 divergência de nome, alias desconhecido — sai como ``info``.
@@ -56,7 +56,7 @@ __all__ = [
 # Nome de import ≠ nome de pacote PyPI
 # ---------------------------------------------------------------------------
 # Sem esta tabela, todo import da esquerda vira falso positivo. Ela nunca fica
-# completa — é exatamente por isso que a divergência de nome NÃO reprova (D9).
+# completa — é exatamente por isso que a divergência de nome NÃO reprova.
 ALIAS_IMPORT_PARA_PACOTE: dict[str, str] = {
     "jose": "python-jose",
     "dotenv": "python-dotenv",
@@ -216,7 +216,7 @@ def verificar_dependencias(coder_dir: Path) -> list[dict]:
         - ``arquivo``: caminho relativo a ``coder_dir`` (``None`` se não aplicável)
         - ``linha``: linha do import (``None`` se não aplicável)
         - ``pacote_sugerido``: nome PyPI provável, quando conhecido
-        - ``severidade``: ``"critical"`` ou ``"info"`` (ver D9 no módulo)
+        - ``severidade``: ``"critical"`` ou ``"info"`` (ver a política no módulo)
         - ``mensagem``: descrição legível do achado
 
         Achado ``import_transitivo`` é evidência, não pendência: ao contar
@@ -246,7 +246,7 @@ def verificar_dependencias(coder_dir: Path) -> list[dict]:
     if not terceiros:
         return []
 
-    # --- Caso inequívoco (D9: único que reprova) -----------------------------
+    # --- Caso inequívoco (o único que reprova) -------------------------------
     if req_path is None:
         modulos = sorted(terceiros)
         return [
@@ -265,7 +265,7 @@ def verificar_dependencias(coder_dir: Path) -> list[dict]:
             }
         ]
 
-    # --- Divergências de nome (D9: informam, não reprovam) -------------------
+    # --- Divergências de nome (informam, não reprovam) -----------------------
     achados: list[dict] = []
     transitivos = _transitivos_disponiveis(declarados)
 

@@ -1,4 +1,4 @@
-"""Testes da camada de feedforward (issue #303, Fase 4).
+"""Testes da camada de feedforward (issue #303).
 
 Cobrem `build_context_pack`, `selecionar_stack` e `_secoes` — funções puras, sem
 ADK, sem rede. O `_ContextProvisioner` em si não é exercitado aqui: ele só grava

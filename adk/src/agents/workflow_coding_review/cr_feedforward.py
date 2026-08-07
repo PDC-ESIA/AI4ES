@@ -238,7 +238,8 @@ class _ContextProvisioner(BaseAgent):
         # Rede de segurança: este agente é um elo de um SequentialAgent, então
         # qualquer exceção aqui aborta o pipeline de codificação inteiro. Nada que
         # venha da KB — que é editada à mão — justifica isso: o pior caso aceitável
-        # é o coder rodar sem context_pack, que é o comportamento pré-Fase 4.
+        # é o coder rodar sem context_pack, que é o comportamento anterior a esta
+        # camada.
         try:
             pack = build_context_pack(tech_stack)
         except Exception:

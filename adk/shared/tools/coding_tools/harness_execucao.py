@@ -80,7 +80,7 @@ class _HarnessContext:
 
         # Flags de dependência entre estágios
         self.env_ok: bool = False       # estágio 1
-        self.static_ok: bool = True      # estágio 2 — True por default (fail-open, D9)
+        self.static_ok: bool = True      # estágio 2 — True por default (fail-open)
         self.deploy_ok: bool = False     # estágio 3
         self.app_ok: bool = False        # estágio 5
 
@@ -179,7 +179,7 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
 # análise mora em `verificacao_dependencias.py` (pura, testável isolada); aqui
 # só se traduz achado em StageResult.
 #
-# Política de falha (D9) — deliberadamente assimétrica:
+# Política de falha — deliberadamente assimétrica:
 #   - `critical` (requirements.txt ausente + imports de terceiros) → status FALHA
 #     e `ctx.static_ok = False`, que pula os estágios dependentes.
 #   - qualquer outro achado → status SUCESSO, achados em `evidence`. Informa sem
@@ -197,7 +197,7 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
 # ===========================================================================
 
 # "estrito" reprovaria também divergência de nome/alias. Manter "conservador"
-# até haver dado de falso positivo (Fase 5 do plano de Feedforward).
+# até haver taxa de falso positivo medida em execuções reais.
 _MODO_FALHA_ESTATICA = "conservador"
 
 

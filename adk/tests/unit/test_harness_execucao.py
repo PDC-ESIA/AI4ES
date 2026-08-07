@@ -25,7 +25,7 @@ from src.agents.executor.schemas import ExecutionReport
 
 @pytest.fixture(autouse=True)
 def _historico_isolado(tmp_path, monkeypatch):
-    """Isola a cópia persistente do ExecutionReport (D10) em tmp_path.
+    """Isola a cópia persistente do ExecutionReport em tmp_path.
 
     Sem isto, todo teste que chama o harness grava no `adk/.ai4es_history/`
     real — o default de `_dir_historico()`. Teste unitário não pode ter efeito
@@ -467,11 +467,11 @@ def test_container_nao_inicia_preserva_logs_na_evidence(tmp_path):
     assert "Uvicorn running" in implant["evidence"]["runtime_logs_tail"]
 
 # ===========================================================================
-# Estágio 2 — Verificação estática de dependências (Fase 2 / Feedforward)
+# Estágio 2 — Verificação estática de dependências
 # ===========================================================================
 # A lógica da análise é testada isolada em `test_verificacao_dependencias.py`.
 # Aqui se verifica só a INTEGRAÇÃO: posição na sequência, efeito em cascata,
-# efeito no overall_status e a política de falha da D9.
+# efeito no overall_status e a política de falha do estágio.
 
 def test_verificacao_estatica_passa_quando_imports_conferem(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
@@ -488,7 +488,7 @@ def test_verificacao_estatica_passa_quando_imports_conferem(tmp_path):
 
 
 def test_sem_requirements_reprova_e_pula_estagios_dependentes(tmp_path):
-    """D9 — caso inequívoco: é o único que bloqueia, e bloqueia antes do build."""
+    """Caso inequívoco: é o único que bloqueia, e bloqueia antes do build."""
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
     _write_src(coder, requirements=None)   # importa fastapi sem declarar nada
@@ -512,7 +512,7 @@ def test_sem_requirements_reprova_e_pula_estagios_dependentes(tmp_path):
 
 
 def test_divergencia_de_nome_informa_mas_nao_reprova(tmp_path):
-    """D9 — fail-open: alias desconhecido vira evidência, nunca veto."""
+    """Fail-open: alias desconhecido vira evidência, nunca veto."""
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
     _write_src(coder, requirements="fastapi\n")
@@ -587,7 +587,7 @@ def test_preparacao_falha_pula_a_verificacao_estatica(tmp_path):
 
 
 # ===========================================================================
-# D10 — cópia persistente do ExecutionReport, com a iteração no nome
+# Cópia persistente do ExecutionReport, com a iteração no nome
 # ===========================================================================
 
 def test_historico_persistido_fora_do_workspace(tmp_path, monkeypatch):
@@ -609,7 +609,7 @@ def test_historico_persistido_fora_do_workspace(tmp_path, monkeypatch):
 
 
 def test_historico_nao_sobrescreve_entre_iteracoes(tmp_path, monkeypatch):
-    """O motivo de existir da D10: no workspace, a iteração 2 apaga a 1."""
+    """O motivo de existir da cópia: no workspace, a iteração 2 apaga a 1."""
     historico = tmp_path / "historico"
     monkeypatch.setenv("AI4ES_HISTORY_DIR", str(historico))
 
