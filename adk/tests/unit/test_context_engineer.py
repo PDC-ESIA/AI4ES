@@ -130,6 +130,54 @@ def test_schemas_tasks_output_completo():
     assert output.macro_context.summary == "X"
  
  
+def test_schemas_task_delivery_mode_default_service():
+    """Task sem delivery_mode assume 'service' (retrocompatível)."""
+    from src.agents.context_engineer.schemas import Task, Contract
+    task = Task(
+        id="TASK-001",
+        type="backend",
+        complexity="medium",
+        description="Criar endpoint POST /auth/login",
+        acceptance_criteria=["Retorna 200 com JWT"],
+        contract=Contract(),
+        requirement_id="RF-001",
+    )
+    assert task.delivery_mode == "service"
+ 
+ 
+def test_schemas_task_delivery_mode_command_aceito():
+    """Task de função/benchmark/CLI declara delivery_mode='command'."""
+    from src.agents.context_engineer.schemas import Task, Contract
+    task = Task(
+        id="TASK-010",
+        type="backend",
+        complexity="medium",
+        description="Implementar função de benchmark de ordenação",
+        acceptance_criteria=["Mede o tempo de execução corretamente"],
+        contract=Contract(),
+        requirement_id="RF-010",
+        delivery_mode="command",
+    )
+    assert task.delivery_mode == "command"
+ 
+ 
+def test_schemas_task_delivery_mode_invalido_rejeita():
+    """Valor fora de {service, command} é rejeitado pelo Literal."""
+    from pydantic import ValidationError
+    from src.agents.context_engineer.schemas import Task, Contract
+    with pytest.raises(ValidationError):
+        Task(
+            id="TASK-011",
+            type="backend",
+            complexity="low",
+            description="X",
+            acceptance_criteria=["A"],
+            contract=Contract(),
+            requirement_id="RF-011",
+            delivery_mode="batch",
+        )
+ 
+ 
 def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
     """tool_salvar_task escreve JSON em workspace/tasks/<id>.json."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))

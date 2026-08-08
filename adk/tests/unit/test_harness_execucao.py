@@ -18,7 +18,10 @@ from unittest.mock import MagicMock, patch
 import docker
 from docker.errors import BuildError
 
-from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
+from shared.tools.coding_tools.harness_execucao import (
+    _MANIFEST_NAME,
+    executar_harness_validacao,
+)
 from src.agents.executor.schemas import ExecutionReport
 
 _STAGE_ORDER = [
@@ -446,3 +449,234 @@ def test_container_nao_inicia_preserva_logs_na_evidence(tmp_path):
     assert implant["status"] == "falha"
     assert implant["error_code"] == "CONTAINER_NAO_INICIOU"
     assert "Uvicorn running" in implant["evidence"]["runtime_logs_tail"]
+
+
+# ===========================================================================
+# Modo 'command' — artefato roda e TERMINA (benchmark/CLI/função/biblioteca).
+#
+# Diferente do modo 'service' (container fica ouvindo e é sondado por HTTP), o
+# container roda o comando de entrega e espera-se que encerre com um exit code.
+# Nada de Docker/HTTP real: o container é MOCKADO já em estado "exited", e o
+# `client.containers.run` devolve, em sequência, o container do artefato e (se
+# houver test.cmd) o container efêmero da suíte.
+# ===========================================================================
+
+def _make_command_container(exit_code=0, logs=b""):
+    """Container mockado já FINALIZADO (imita o SDK após o processo encerrar)."""
+    c = MagicMock()
+    c.status = "exited"
+    c.attrs = {"State": {"ExitCode": exit_code}}
+    c.logs.return_value = logs
+    return c
+
+
+def _mock_docker_command(artifact_exit=0, test_exit=0, build_raises=None):
+    """Client Docker mockado para o modo 'command'.
+
+    `containers.run` é chamado uma vez para o artefato e, quando há test.cmd,
+    outra vez para a suíte — por isso o `side_effect` com dois containers.
+    """
+    client = MagicMock()
+    if build_raises is not None:
+        client.images.build.side_effect = build_raises
+    else:
+        image = MagicMock()
+        client.images.build.return_value = (
+            image,
+            [
+                {"stream": "Step 1/4 : FROM python:3.12-slim"},
+                {"stream": "Successfully built abc123"},
+            ],
+        )
+
+    artifact = _make_command_container(
+        exit_code=artifact_exit,
+        logs=b"2026-07-21T10:00:00 INFO [bench] score=0.87 concluido",
+    )
+    test_c = _make_command_container(
+        exit_code=test_exit, logs=b"collected 3 items\n3 passed in 0.02s"
+    )
+    client.containers.run.side_effect = [artifact, test_c]
+    client.containers.get.side_effect = docker.errors.NotFound("sem container")
+    return client, artifact, test_c
+
+
+def _write_command_src(coder_dir, manifest, with_dockerfile=True):
+    """Fonte + manifesto (.ai4se_run.json) de uma entrega em modo 'command'.
+
+    O modo 'command' EXIGE Dockerfile do coder (não há fallback); `with_dockerfile`
+    permite exercitar a ausência dele.
+    """
+    (coder_dir / "main.py").write_text(
+        "print('benchmark done')\n", encoding="utf-8"
+    )
+    if with_dockerfile:
+        (coder_dir / "Dockerfile").write_text(
+            'FROM python:3.12-slim\nCOPY . /app\nWORKDIR /app\n'
+            'CMD ["python", "main.py"]\n',
+            encoding="utf-8",
+        )
+    (coder_dir / _MANIFEST_NAME).write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+
+
+def test_command_mode_caminho_feliz_sem_testes(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_command_src(
+        coder,
+        {
+            "delivery_mode": "command",
+            "language": "python",
+            "run": {"success_exit_codes": [0]},
+        },
+    )
+    client, _, _ = _mock_docker_command(artifact_exit=0)
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
+    # Ordem/completude dos 9 estágios preservada
+    assert [s["stage"] for s in result["stages"]] == _STAGE_ORDER
+    # Implantação: o comando rodou até o fim e o exit foi capturado
+    assert by_name["implantacao_artefato"]["status"] == "sucesso"
+    assert by_name["implantacao_artefato"]["evidence"]["exit_code"] == 0
+    # Inicialização: exit dentro dos esperados (sem healthcheck HTTP)
+    assert by_name["inicializacao_aplicacao"]["status"] == "sucesso"
+    # Sem test.cmd → estágio de testes PULADO (não é erro)
+    assert by_name["testes_automatizados"]["status"] == "pulado"
+    # Evidência de critério: nada verificável via HTTP neste modo
+    assert result["criteria_evidence"]
+    assert all(e["checkable"] is False for e in result["criteria_evidence"])
+    assert result["overall_status"] == "sucesso"
+    ExecutionReport(**result)
+
+
+def test_command_mode_exit_fora_do_esperado_reprova_inicializacao(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_command_src(
+        coder,
+        {"delivery_mode": "command", "run": {"success_exit_codes": [0]}},
+    )
+    client, _, _ = _mock_docker_command(artifact_exit=2)
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
+    # O comando rodou até o fim (implantação ok), mas o exit inesperado
+    # reprova a inicialização — que é estágio CRÍTICO.
+    assert by_name["implantacao_artefato"]["status"] == "sucesso"
+    assert by_name["inicializacao_aplicacao"]["status"] == "falha"
+    assert by_name["inicializacao_aplicacao"]["error_code"] == "COMANDO_EXIT_NAO_ESPERADO"
+    # Estágios dependentes da inicialização são pulados
+    assert by_name["testes_automatizados"]["status"] == "pulado"
+    assert by_name["validacoes_work_item"]["status"] == "pulado"
+    assert result["overall_status"] == "falha"
+
+
+def test_command_mode_success_exit_codes_customizado(tmp_path):
+    """Cenário benchmark: um exit code != 0 pode significar sucesso se declarado."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_command_src(
+        coder,
+        {"delivery_mode": "command", "run": {"success_exit_codes": [0, 3]}},
+    )
+    client, _, _ = _mock_docker_command(artifact_exit=3)
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
+    assert by_name["inicializacao_aplicacao"]["status"] == "sucesso"
+    assert by_name["inicializacao_aplicacao"]["evidence"]["exit_code"] == 3
+    assert result["overall_status"] == "sucesso"
+
+
+def test_command_mode_testes_com_test_cmd_passa(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_command_src(
+        coder,
+        {
+            "delivery_mode": "command",
+            "run": {"success_exit_codes": [0]},
+            "test": {"cmd": "pytest -q"},
+        },
+    )
+    client, _, _ = _mock_docker_command(artifact_exit=0, test_exit=0)
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
+
+    # Suíte rodou num container efêmero e passou
+    assert testes["status"] == "sucesso"
+    assert testes["evidence"]["test_cmd"] == "pytest -q"
+    assert testes["evidence"]["exit_code"] == 0
+    assert result["overall_status"] == "sucesso"
+
+
+def test_command_mode_testes_falharam_nao_derrubam_overall(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_command_src(
+        coder,
+        {
+            "delivery_mode": "command",
+            "run": {"success_exit_codes": [0]},
+            "test": {"cmd": "pytest -q"},
+        },
+    )
+    client, _, _ = _mock_docker_command(artifact_exit=0, test_exit=1)
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
+
+    assert testes["status"] == "falha"
+    assert testes["error_code"] == "TESTES_FALHARAM"
+    # Testes NÃO são estágio crítico: a falha vira evidência, não veredito.
+    assert result["overall_status"] == "sucesso"
+
+
+def test_command_mode_sem_dockerfile_erra_na_preparacao(tmp_path):
+    """Sem Dockerfile do coder o harness não adivinha o runtime em modo command."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_command_src(coder, {"delivery_mode": "command"}, with_dockerfile=False)
+    client, _, _ = _mock_docker_command()
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
+    assert by_name["preparacao_ambiente"]["status"] == "erro"
+    assert by_name["preparacao_ambiente"]["error_code"] == "DOCKERFILE_AUSENTE"
+    # Preparação é crítica → implantação e demais estágios pulados
+    assert by_name["implantacao_artefato"]["status"] == "pulado"
+    assert result["overall_status"] == "erro"
+
+
+def test_command_mode_ativado_pelo_delivery_mode_da_task(tmp_path):
+    """Sem 'delivery_mode' no manifesto, o modo vem da Task (fonte primária)."""
+    coder, execution, tasks = _dirs(tmp_path)
+    # Task declara o modo; manifesto do coder omite delivery_mode.
+    (tasks / "TASK-001.json").write_text(
+        json.dumps(
+            {
+                "id": "TASK-001",
+                "description": "Função de benchmark",
+                "acceptance_criteria": ["Deve calcular a métrica corretamente"],
+                "contract": {},
+                "delivery_mode": "command",
+            }
+        ),
+        encoding="utf-8",
+    )
+    _write_command_src(coder, {"run": {"success_exit_codes": [0]}})
+    client, _, _ = _mock_docker_command(artifact_exit=0)
+
+    result = _run("TASK-001", coder, execution, tasks, client)
+    prep = next(s for s in result["stages"] if s["stage"] == "preparacao_ambiente")
+
+    assert prep["evidence"]["delivery_mode"] == "command"
+    assert result["overall_status"] == "sucesso"

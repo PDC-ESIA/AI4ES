@@ -194,3 +194,42 @@ def test_coder_instruction_exige_readme(tmp_path, monkeypatch):
     instr = cr_coder.agent.instruction
     assert "README.md" in instr
     assert "http://localhost:8000" in instr
+
+
+def test_coder_instruction_cobre_manifesto_e_dois_modos(tmp_path, monkeypatch):
+    """Fase 1 (agnóstico): o coder deve conhecer o manifesto de execução e os
+    dois modos de entrega (service/command), não só o web/service Python."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    from src.agents.workflow_coding_review import cr_coder
+
+    importlib.reload(cr_coder)
+
+    instr = cr_coder.agent.instruction
+    # Manifesto de execução agnóstico é obrigatório na saída do coder
+    assert ".ai4se_run.json" in instr
+    assert "delivery_mode" in instr
+    # Ambos os modos de entrega devem ser explicados
+    assert "service" in instr
+    assert "command" in instr
+
+
+def test_coder_instruction_erros_comuns_agnosticos(tmp_path, monkeypatch):
+    """Fase 1 (agnóstico): a seção de erros comuns lidera por princípios de
+    qualquer stack; Python/FastAPI fica como apêndice condicional."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    from src.agents.workflow_coding_review import cr_coder
+
+    importlib.reload(cr_coder)
+
+    instr = cr_coder.agent.instruction
+    # Conteúdo principal é agnóstico
+    assert "QUALQUER STACK" in instr
+    # Python/FastAPI aparece apenas como apêndice opcional
+    assert "APÊNDICE" in instr
+    idx_principio = instr.find("PRINCÍPIOS QUE VALEM PARA QUALQUER STACK")
+    idx_apendice = instr.find("APÊNDICE")
+    assert idx_principio != -1 and idx_apendice != -1
+    # Os princípios agnósticos vêm ANTES do apêndice Python
+    assert idx_principio < idx_apendice
