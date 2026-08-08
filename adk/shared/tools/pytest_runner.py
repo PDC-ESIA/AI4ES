@@ -1,12 +1,13 @@
 import subprocess
 import json
+import os
 from pathlib import Path
 import logging
 import sys
 from datetime import datetime, timezone
 import re
 
-from shared.workspace import get_agent_workspace
+from shared.workspace import get_agent_workspace, get_workspace_root
 
 # Variáveis de controle de estado do agente
 _contador_execucoes = {}
@@ -69,24 +70,65 @@ def gerar_teste_via_hu(hu_conteudo: str, caminho_destino: Path) -> dict:
     }
 
 def _normalizar_caminho_arquivo(caminho_arquivo: str | dict) -> Path:
-    """Normaliza o caminho do arquivo garantindo o enclausuramento no workspace."""
+    """Resolve um teste sem duplicar prefixos e o manté dentro do workspace.
+
+    Aceita os formatos emitidos pelos diferentes agentes:
+    - relativo a ``tests/inputs``: ``rf_001/test_rf_001.py``;
+    - relativo à raiz: ``tests/inputs/rf_001/test_rf_001.py``;
+    - relativo incluindo o nome da raiz: ``workspace_output/tests/...``;
+    - absoluto dentro do workspace.
+    """
     if isinstance(caminho_arquivo, dict):
         caminho_arquivo = caminho_arquivo.get("arquivo_gerado") or caminho_arquivo.get("arquivo") or caminho_arquivo.get("caminho_arquivo")
-    
-    base_dir = get_agent_workspace("qa_agent")
-    p = Path(caminho_arquivo)
 
-    if p.is_absolute():
-        # Se o caminho absoluto tentar escapar do workspace ele é reescrito para ficar dentro da raiz do qa_agent.
-        if base_dir not in p.parents and p != base_dir:
-            logger.warning(f"[QA Subagent] Caminho absoluto externo detectado e bloqueado: {p}. Forçando para o workspace.")
-            p = base_dir / p.name
+    if not isinstance(caminho_arquivo, str) or not caminho_arquivo.strip():
+        raise ValueError("caminho_arquivo deve ser uma string não vazia")
+
+    workspace_root = get_workspace_root().resolve()
+    base_dir = get_agent_workspace("receive_requirements").resolve()
+    recebido = Path(caminho_arquivo.strip()).expanduser()
+
+    if recebido.is_absolute():
+        candidato = recebido.resolve()
     else:
-        p = base_dir / p
-            
-    # Garante que o diretório pai do arquivo exista dentro do workspace
-    p.parent.mkdir(parents=True, exist_ok=True)
-    return p
+        partes = recebido.parts
+        if (
+            len(partes) >= 2
+            and partes[0].casefold() == "tests"
+            and partes[1].casefold() == "inputs"
+        ):
+            candidato = (workspace_root / recebido).resolve()
+        elif partes and partes[0].casefold() in {
+            workspace_root.name.casefold(),
+            "workspace_output",
+        }:
+            candidato = workspace_root.joinpath(*partes[1:]).resolve()
+        else:
+            candidato = (base_dir / recebido).resolve()
+
+        # O LLM às vezes encaminha ao code_fix apenas ``test_*.py``, embora o
+        # arquivo esteja em ``tests/inputs/<slug>/``. Aceitar o basename apenas
+        # quando ele identificar unicamente um teste evita tanto falso
+        # "arquivo ausente" quanto uma correção no artefato errado.
+        if len(partes) == 1 and recebido.name.startswith("test_"):
+            encontrados = sorted(base_dir.glob(f"*/{recebido.name}"))
+            if len(encontrados) == 1:
+                candidato = encontrados[0].resolve()
+            elif len(encontrados) > 1:
+                raise ValueError(
+                    f"Nome de teste ambíguo: {recebido.name}. "
+                    "Informe o path relativo completo dentro de tests/inputs."
+                )
+
+    if not candidato.is_relative_to(workspace_root):
+        logger.warning(
+            "[QA Subagent] Caminho externo detectado e bloqueado: %s. "
+            "Forçando para o workspace de testes.",
+            candidato,
+        )
+        candidato = (base_dir / recebido.name).resolve()
+
+    return candidato
 
 def executar_pytest_tool(caminho_arquivo: str) -> dict:
     """Executa testes pytest em um arquivo específico com análise de cobertura.
@@ -141,15 +183,32 @@ def executar_pytest_tool(caminho_arquivo: str) -> dict:
         "--cov-report=json",
         "--tb=short"
     ]
+
+    # Os fontes materializados preservam a topologia original do Coder. As
+    # duas entradas suportam tanto ``from src.modulo`` quanto ``from modulo``
+    # sem exigir que o teste gerado manipule sys.path corretamente.
+    env = os.environ.copy()
+    pythonpath = [str(dir_base), str(dir_base / "src")]
+    if env.get("PYTHONPATH"):
+        pythonpath.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(pythonpath)
     
     try:
         logger.info(f"[QA Subagent] Executando testes para {nome_artefato}...")
-        resultado = subprocess.run(comando, capture_output=True, text=True, timeout=30, cwd=str(dir_base))
+        resultado = subprocess.run(
+            comando,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(dir_base),
+            env=env,
+        )
         
-        if resultado.returncode == 0:
+        parsed = _parse_resultados_pytest(caminho, resultado, arquivo_cov_json)
+        if parsed["status"] == "sucesso":
             _contador_execucoes[str(caminho)] = 0
 
-        return _parse_resultados_pytest(caminho, resultado, arquivo_cov_json)
+        return parsed
         
     except subprocess.TimeoutExpired:
         logger.error(f"[QA Subagent] Timeout ao executar {caminho}")
@@ -196,7 +255,10 @@ def _classificar_resultado(stdout: str, returncode: int) -> tuple[str, int, int]
     falhou = int(re.search(r'(\d+) failed', stdout).group(1)
                  if re.search(r'(\d+) failed', stdout) else 0)
 
-    if returncode == 0 or (passou > 0 and falhou == 0):
+    # Pytest usa exit code 0 também quando todos os testes foram ignorados.
+    # O QA só pode concluir com sucesso se ao menos um teste foi executado e
+    # passou de fato.
+    if returncode == 0 and passou > 0 and falhou == 0:
         return "sucesso_total", passou, falhou
     elif passou > 0 and falhou > 0:
         return "falha_parcial", passou, falhou
@@ -216,6 +278,8 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
         dict: Dicionário estruturado com status, testes gerados, cobertura e erros.
     """
     classificacao, qtd_passou, qtd_falhou = _classificar_resultado(resultado.stdout, resultado.returncode)
+    match_ignorados = re.search(r'(\d+) skipped', resultado.stdout)
+    qtd_ignorados = int(match_ignorados.group(1)) if match_ignorados else 0
     status_geral = "sucesso" if classificacao == "sucesso_total" else "falha"
     erros = []
 
@@ -226,7 +290,7 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
         "linhas_totais": 0
     }
 
-    if cov_json_path.exists():
+    if cov_json_path.exists() and (qtd_passou + qtd_falhou) > 0:
         try:
             with open(cov_json_path, "r", encoding="utf-8") as f:
                 cov_data = json.load(f)
@@ -246,8 +310,13 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
 
         linhas_com_erro = _extrair_linhas_com_erro(resultado.stdout, caminho.name)
 
+        nenhum_executado = qtd_passou == 0 and qtd_falhou == 0
         erros.append({
-            "codigo": "ERR_TESTE_FALHOU",
+            "codigo": (
+                "ERR_NENHUM_TESTE_EXECUTADO"
+                if nenhum_executado
+                else "ERR_TESTE_FALHOU"
+            ),
             "log": log_completo,
             "linhas_com_erro": linhas_com_erro
         })
@@ -258,6 +327,7 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
         "resultado_resumo": classificacao,      # sucesso_total | falha_parcial | falha_total
         "testes_passaram": qtd_passou,
         "testes_falharam": qtd_falhou,
+        "testes_ignorados": qtd_ignorados,
         "agente_origem": "pytest_runner",
         "proxima_acao_orquestrador": next_action,
         "tipo_teste": "pytest",

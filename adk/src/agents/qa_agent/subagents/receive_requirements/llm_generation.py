@@ -71,7 +71,7 @@ def _gerar_pytest_via_llm(
     for p in arquivos_apoio:
         try:
             texto = p.read_text(encoding="utf-8")
-            arquivos_textos.append(f"--- {p.name} ---\n{texto}\n")
+            arquivos_textos.append(f"--- {p.as_posix()} ---\n{texto}\n")
         except Exception:
             arquivos_textos.append(f"- {p.name} (Arquivo binário ou ilegível)")
 
@@ -89,8 +89,9 @@ def _gerar_pytest_via_llm(
             "O usuário forneceu o código fonte junto aos requisitos. "
             "MAPEAMENTO: Mapeie os cenários de teste contra as funções e métodos reais presentes no código. "
             "Gere os testes pytest COMPLETOS e integrados, utilizando asserts que validem as lógicas existentes. "
-            "REGRA DE IMPORTAÇÃO MANDATÓRIA: Faça a importação das funções/classes de forma RELATIVA e EXPLÍCITA a partir do arquivo fornecido. "
-            "Exemplo obrigatório: se o arquivo for 'calculadora.py' com a função 'somar', você DEVE usar: `from .calculadora import somar`."
+            "REGRA DE IMPORTAÇÃO MANDATÓRIA: os fontes são materializados junto ao teste e o conftest.py configura os imports. "
+            "Se o path contiver `/src/modulo.py`, importe como `from src.modulo import funcao`. "
+            "Não altere sys.path e nunca referencie workspace_output/coder."
         )
     else:
         instrucao_geracao = (
@@ -116,7 +117,8 @@ Regras obrigatórias:
 - Retorne apenas código Python, sem markdown.
 - Use pytest.
 - O teste deve ser executável mesmo sem instalação de módulos externos ao diretório local.
-- Se houver arquivo-fonte local, faça import relativo via pathlib/sys.path usando a própria pasta do teste.
+- Se houver arquivo-fonte local, importe exclusivamente da cópia materializada
+  junto ao teste. Não manipule sys.path; o conftest.py do QA faz isso.
 - Se não houver código-fonte importável, gere testes de contrato (validações e comportamentos inferíveis) sem import quebrado.
 - Cubra cenários feliz, inválido e borda.
 - Inclua asserts objetivos.

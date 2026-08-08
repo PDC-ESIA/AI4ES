@@ -4,7 +4,13 @@ import asyncio
 import json
 import logging
 
-from .io import _gerar_doubt_artifact, _salvar_arquivos_apoio, _slugify, _tests_dir
+from .io import (
+    _gerar_doubt_artifact,
+    _salvar_arquivos_apoio,
+    _salvar_bootstrap_pytest,
+    _slugify,
+    _tests_dir,
+)
 from .llm_generation import _gerar_pytest_via_llm, _parse_fragmented_requirements
 from .normalizer import _normalizar_anexos_inline
 from .sanitizer import _validar_e_sanitizar_codigo
@@ -65,10 +71,13 @@ def receber_requisitos(artefatos_json: str) -> dict:
         if isinstance(lista, dict):
             lista = [lista]
     except json.JSONDecodeError as e:
-        logger.warning(f"[QA] Falha ao ler JSON estrito. Tentando extrair de fragmentos de texto...")
+        logger.warning(
+            "[QA] Falha ao ler JSON estrito. "
+            "Tentando extrair de fragmentos de texto..."
+        )
         try:
             lista = _parse_fragmented_requirements(artefatos_json)
-        except Exception as fallback_e:
+        except Exception:
             caminho = _run_async(
                 _gerar_doubt_artifact("ERR_ENTRADA_JSON", f"Erro ao parsear JSON de entrada: {e}")
             )
@@ -158,6 +167,9 @@ async def _processar_artefato(artefato: dict) -> dict:
 
         anexos_salvos = _salvar_arquivos_apoio(artefato, artefato_dir)
         tem_codigo = any(p.suffix in ['.py', '.java', '.js', '.c'] for p in anexos_salvos)
+        bootstrap_pytest = None
+        if any(p.suffix.casefold() == ".py" for p in anexos_salvos):
+            bootstrap_pytest = _salvar_bootstrap_pytest(artefato_dir)
 
         nomes_anexos = [p.name for p in anexos_salvos]
         if nomes_anexos:
@@ -187,6 +199,14 @@ async def _processar_artefato(artefato: dict) -> dict:
             "pasta_gerada": str(artefato_dir),
             "arquivo_gerado": str(caminho),
             "arquivos_apoio": [str(p) for p in anexos_salvos],
+            "bootstrap_pytest": (
+                str(bootstrap_pytest) if bootstrap_pytest else None
+            ),
+            "marcador_pacote": (
+                str(artefato_dir / "src" / "__init__.py")
+                if (artefato_dir / "src" / "__init__.py").is_file()
+                else None
+            ),
             "erro": None,
         }
 
