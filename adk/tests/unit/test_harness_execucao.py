@@ -18,7 +18,11 @@ from unittest.mock import MagicMock, patch
 import docker
 from docker.errors import BuildError
 
-from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
+from shared.tools.coding_tools.harness_execucao import (
+    _coletar_evidencias_interfaces,
+    executar_harness_validacao,
+)
+from shared.tools.probe import ProbeError
 from src.agents.executor.schemas import ExecutionReport
 
 _STAGE_ORDER = [
@@ -348,6 +352,88 @@ def test_estagio7_uma_evidencia_por_criterio_sem_veredito(tmp_path):
     # Critério com rota é verificável; critério semântico não é
     assert evidencias[0]["checkable"] is True
     assert evidencias[1]["checkable"] is False
+
+
+# ===========================================================================
+# Estágio 7 — evidência por interface declarada
+# ===========================================================================
+
+def test_interface_sem_verbo_ou_rota_nao_e_checavel():
+    with patch(
+        "shared.tools.coding_tools.harness_execucao.probe.executar_probe"
+    ) as executar_probe:
+        [evidencia] = _coletar_evidencias_interfaces(
+            MagicMock(), "http://localhost:8000", ["Interface de usuários"]
+        )
+
+    assert evidencia.checkable is False
+    assert evidencia.branch is None
+    assert "verbo e/ou rota não identificáveis" in evidencia.check_performed
+    executar_probe.assert_not_called()
+
+
+def test_interface_parametrizada_resolve_id_via_get_do_pai():
+    def probe_por_rota(_container, requisicoes, _base_url):
+        rota = requisicoes[0]["path"]
+        if rota == "/itens":
+            return [{"status": 200, "error": None, "body": '[{"id": 42}]'}]
+        return [{"status": 200, "error": None, "body": '{"id": 42}'}]
+
+    with patch(
+        "shared.tools.coding_tools.harness_execucao.probe.executar_probe",
+        side_effect=probe_por_rota,
+    ) as executar_probe:
+        evidencias = _coletar_evidencias_interfaces(
+            MagicMock(),
+            "http://localhost:8000",
+            ["GET /itens", "GET /itens/{id}"],
+        )
+
+    alvo = evidencias[1]
+    assert alvo.checkable is True
+    assert alvo.branch == "listagem_id"
+    assert "ID '42' via listagem_id" in alvo.check_performed
+    assert "GET /itens/42" in alvo.check_performed
+    assert alvo.observed == "GET /itens/42 → HTTP 200; corpo: {\"id\": 42}"
+    assert [
+        chamada.args[1][0]["path"] for chamada in executar_probe.call_args_list
+    ] == ["/itens", "/itens", "/itens/42"]
+
+
+def test_interface_com_rota_pai_ainda_parametrizada_nao_e_checavel():
+    with patch(
+        "shared.tools.coding_tools.harness_execucao.probe.executar_probe"
+    ) as executar_probe:
+        [evidencia] = _coletar_evidencias_interfaces(
+            MagicMock(),
+            "http://localhost:8000",
+            ["GET /usuarios/{usuario_id}/comentarios/{comentario_id}"],
+        )
+
+    assert evidencia.checkable is False
+    assert evidencia.branch is None
+    assert "rota pai '/usuarios/{usuario_id}/comentarios'" in evidencia.check_performed
+    assert "parâmetro aninhado" in evidencia.check_performed
+    executar_probe.assert_not_called()
+
+
+def test_interface_registra_probe_error_como_falha_mecanica():
+    with patch(
+        "shared.tools.coding_tools.harness_execucao.probe.executar_probe",
+        side_effect=ProbeError("binário incompatível com a arquitetura"),
+    ):
+        [evidencia] = _coletar_evidencias_interfaces(
+            MagicMock(), "http://localhost:8000", ["GET /status"]
+        )
+
+    assert evidencia.checkable is True
+    assert evidencia.branch == "alcancabilidade"
+    assert evidencia.check_performed == (
+        "Requisição GET /status (via probe, porta interna)."
+    )
+    assert evidencia.observed == (
+        "GET /status → falha do probe: binário incompatível com a arquitetura"
+    )
 
 
 # ===========================================================================
