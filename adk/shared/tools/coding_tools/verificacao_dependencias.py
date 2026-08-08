@@ -186,7 +186,7 @@ def _coletar_imports(coder_dir: Path) -> list[tuple[str, Path, int]]:
             continue
         try:
             arvore = ast.parse(arquivo.read_text(encoding="utf-8", errors="replace"))
-        except SyntaxError, ValueError, OSError:
+        except (SyntaxError, ValueError, OSError):
             continue
 
         for no in ast.walk(arvore):
