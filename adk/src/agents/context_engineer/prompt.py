@@ -74,7 +74,7 @@ MAS existirem HUs e analise_tecnica_HU-*.md no workspace:
 ## Passo 3 — Extrair Contexto Macro
 Com todos os artefatos carregados de ambas as pastas, identifique e sintetize:
 - summary: resumo de 1 linha do objetivo maior que une todos os requisitos.
-- tech_stack: stack tecnológica inferida dos relatórios e análises técnicas. Se não for possível inferir, use ['a definir'].
+- tech_stack: stack/linguagem/plataforma DECIDIDA pelo arquiteto a partir dos artefatos de requisitos e de arquitetura/design lidos nos Passos 1 e 2. Você NÃO impõe uma stack: apenas reporta a que os artefatos indicam. Se os artefatos NÃO permitirem inferir a stack, use ['a definir'] — nesse caso o Coder escolherá a stack conforme a natureza da task. NUNCA force Python/FastAPI (ou qualquer outra stack) se os artefatos não a indicarem.
 - global_rules: restrições arquiteturais derivadas das análises técnicas e relatórios de arquitetura mínima. Máximo 4 regras. Se não houver, use ['Seguir padrões do projeto'].
 
 ## Passo 4 — Decompor em Tasks Contextualizadas
@@ -82,6 +82,10 @@ Os artefatos mínimos já foram validados nos Passos 1 e 2.
 Para CADA requisito funcional (RF) encontrado nos artefatos de requisitos, gere uma Task contendo:
 - **id**: formato TASK-XXX (sequencial, ex.: TASK-001, TASK-002).
 - **type**: classifique como frontend | backend | database | infra | test.
+- **delivery_mode**: classifique como service | command, inferindo dos artefatos como a entrega será validada:
+    * 'service' — a solução sobe e fica ouvindo (web app, API, servidor HTTP). Ex.: RF que expõe endpoint/rota, interface web.
+    * 'command' — a solução roda e termina (função, algoritmo, benchmark, CLI, biblioteca/módulo). Ex.: pedido de "criar uma função", "implementar um algoritmo", "medir desempenho de".
+    * Na dúvida entre os dois, escolha o que a description do RF e as análises técnicas indicarem; se a task expõe rota/interface é 'service', caso contrário 'command'.
 - **complexity**: estime como low | medium | high com base nos RFs e na análise técnica do time de design.
 - **description**: Reescreva orientada à implementação combinando a description do RF com as decisões técnicas do contexto de design disponível. Deve ser clara o suficiente para o Coder saber EXATAMENTE o que codificar.
 - **business_rules**: extraia regras de negócio específicas desta task. Se não houver regras explícitas, deixe a lista vazia.

@@ -7,7 +7,7 @@ Atualizado para incluir rastreabilidade entre requisitos, design e tasks
 conforme issue #299.
 """
  
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
  
  
@@ -16,7 +16,13 @@ class MacroContext(BaseModel):
  
     summary: str = Field(description="Resumo de 1 linha do objetivo maior")
     tech_stack: list[str] = Field(
-        description="Stack obrigatória (ex: ['Python', 'FastAPI', 'PostgreSQL'])"
+        description=(
+            "Stack/linguagem decidida pelo arquiteto a partir dos artefatos de "
+            "requisitos e arquitetura/design (ex: ['Python', 'FastAPI', "
+            "'PostgreSQL'], ['Rust'], ['C']). NÃO é imposição do sistema: quando "
+            "não for possível inferir dos artefatos, use ['a definir'] — nesse "
+            "caso o Coder escolhe a stack conforme a natureza da task."
+        )
     )
     global_rules: list[str] = Field(
         description=(
@@ -86,6 +92,18 @@ class Task(BaseModel):
     id: str = Field(description="Identificador da task (ex: TASK-001)")
     type: str = Field(description="Tipo: frontend | backend | database | infra | test")
     complexity: str = Field(description="Complexidade: low | medium | high")
+    delivery_mode: Literal["service", "command"] = Field(
+        default="service",
+        description=(
+            "Como a entrega é validada pelo harness. "
+            "'service': a solução sobe e fica ouvindo (web app, API) — validada "
+            "por healthcheck HTTP. "
+            "'command': a solução roda e termina (função, benchmark, algoritmo, "
+            "CLI, biblioteca) — validada por exit code e saída/testes. "
+            "Inferido pelo arquiteto a partir dos artefatos: RF de serviço/API "
+            "→ 'service'; pedido de função/algoritmo/benchmark → 'command'."
+        ),
+    )
     description: str = Field(description="Descrição clara do que codificar")
     business_rules: list[str] = Field(
         default_factory=list,

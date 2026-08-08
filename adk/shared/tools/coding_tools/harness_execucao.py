@@ -50,6 +50,38 @@ _CRITICAL_STAGES = (
     "inicializacao_aplicacao",
 )
 
+# Manifesto de execução opcional gravado pelo coder na raiz do workspace.
+# Declara, de forma agnóstica de linguagem, COMO o harness deve validar a
+# entrega: o modo (service|command), a porta/rota de healthcheck (service) e os
+# comandos de execução/teste (command). Ausente → defaults retrocompatíveis
+# (service + Python + porta 8000), preservando o comportamento histórico.
+_MANIFEST_NAME = ".ai4se_run.json"
+
+# Modos de entrega suportados pelo harness (espelham o enum da Task).
+_MODE_SERVICE = "service"  # sobe e fica ouvindo → validação por healthcheck HTTP
+_MODE_COMMAND = "command"  # roda e termina → validação por exit code + saída/testes
+
+# Teto para a execução de um artefato em modo 'command' (segundos).
+_COMMAND_TIMEOUT = 120
+
+
+def _carregar_manifesto(coder_dir: Path) -> dict:
+    """Lê o manifesto de execução do workspace do coder (best-effort).
+
+    Retorna {} quando o arquivo não existe ou é inválido — nesse caso o harness
+    opera nos defaults retrocompatíveis (service + Python). Nunca levanta: um
+    manifesto malformado degrada para o default em vez de abortar a execução.
+    """
+    path = coder_dir / _MANIFEST_NAME
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        logger.warning("[HARNESS] Manifesto %s inválido; usando defaults.", path)
+        return {}
+
 
 # ===========================================================================
 # Contexto compartilhado entre estágios
@@ -75,6 +107,18 @@ class _HarnessContext:
         self.runtime_logs: str = ""
         self.base_url: str = f"http://localhost:{hd._HOST_PORT}"
         self.main_route: Optional[str] = None
+
+        # Configuração de execução — derivada do manifesto (.ai4se_run.json) ou
+        # dos defaults retrocompatíveis (service + Python + porta 8000).
+        self.delivery_mode: str = _MODE_SERVICE
+        self.language: str = ""
+        self.service_port: int = hd._HOST_PORT          # porta interna do container (service)
+        self.healthcheck_path: str = hd._HEALTHCHECK_ENDPOINT
+        self.run_cmd: Optional[str] = None              # override do comando (command)
+        self.test_cmd: Optional[str] = None             # comando de teste declarado
+        self.success_exit_codes: list[int] = [0]        # exit codes aceitos (command)
+        self.env: dict = {}                             # env vars extra do manifesto
+        self.command_exit_code: Optional[int] = None    # exit code observado (command)
 
         # Flags de dependência entre estágios
         self.env_ok: bool = False       # estágio 1
@@ -131,25 +175,71 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     ctx.acceptance_criteria = list(task.get("acceptance_criteria", []))
     ctx.contract = task.get("contract", {}) or {}
 
-    # Valida o workspace do coder (deve conter código Python)
-    if not ctx.coder_dir.exists() or not any(ctx.coder_dir.rglob("*.py")):
+    # Modo de entrega declarado pela Task (arquiteto). O manifesto do coder pode
+    # confirmá-lo/refiná-lo; a Task é a fonte primária do modo.
+    modo_task = task.get("delivery_mode")
+
+    # Configuração de execução: manifesto do coder > modo da Task > defaults.
+    manifesto = _carregar_manifesto(ctx.coder_dir)
+    modo = manifesto.get("delivery_mode") or modo_task or _MODE_SERVICE
+    ctx.delivery_mode = modo if modo in (_MODE_SERVICE, _MODE_COMMAND) else _MODE_SERVICE
+    ctx.language = str(manifesto.get("language", "") or "")
+    ctx.env = dict(manifesto.get("env", {}) or {})
+
+    service_cfg = manifesto.get("service", {}) or {}
+    ctx.service_port = int(service_cfg.get("port", hd._HOST_PORT) or hd._HOST_PORT)
+    ctx.healthcheck_path = str(
+        service_cfg.get("healthcheck_path") or hd._HEALTHCHECK_ENDPOINT
+    )
+
+    run_cfg = manifesto.get("run", {}) or {}
+    ctx.run_cmd = run_cfg.get("cmd") or None
+    codes = run_cfg.get("success_exit_codes")
+    if isinstance(codes, list) and codes:
+        ctx.success_exit_codes = [int(c) for c in codes]
+
+    test_cfg = manifesto.get("test", {}) or {}
+    ctx.test_cmd = test_cfg.get("cmd") or None
+
+    # Valida o workspace do coder: deve conter algum arquivo de código-fonte.
+    # (Antes exigíamos *.py; agora qualquer linguagem é aceita — a validação de
+    # que o artefato de fato roda cabe aos estágios de implantação/execução.)
+    arquivos = [
+        p for p in ctx.coder_dir.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
+    ]
+    if not ctx.coder_dir.exists() or not arquivos:
         return StageResult(
             stage=StageName.PREPARACAO_AMBIENTE,
             status=StageStatus.ERRO,
             duration_seconds=round(time.time() - t0, 3),
-            summary="Nenhum arquivo Python encontrado no workspace do coder.",
+            summary="Nenhum arquivo de código encontrado no workspace do coder.",
             evidence={"coder_dir": str(ctx.coder_dir)},
             error_code="SRC_VAZIO",
         )
 
-    # Resolve Dockerfile (do coder ou fallback determinístico via harness_docker)
+    # Resolve Dockerfile. Se o coder forneceu um, usa-o (qualquer stack). O
+    # fallback determinístico só sabe gerar um Dockerfile Python/web (service);
+    # em modo 'command' sem Dockerfile do coder não há como adivinhar o runtime.
     dockerfile_path = ctx.coder_dir / "Dockerfile"
     if dockerfile_path.is_file():
         ctx.dockerfile = dockerfile_path.read_text(encoding="utf-8")
         origem_dockerfile = "coder"
-    else:
+    elif ctx.delivery_mode == _MODE_SERVICE:
         ctx.dockerfile = hd._generate_dockerfile(ctx.coder_dir)
         origem_dockerfile = "fallback"
+    else:
+        return StageResult(
+            stage=StageName.PREPARACAO_AMBIENTE,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=(
+                "Modo 'command' exige um Dockerfile fornecido pelo coder "
+                "(o fallback só cobre serviços web Python)."
+            ),
+            evidence={"coder_dir": str(ctx.coder_dir), "delivery_mode": ctx.delivery_mode},
+            error_code="DOCKERFILE_AUSENTE",
+        )
 
     ctx.env_ok = True
     return StageResult(
@@ -158,15 +248,92 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
         duration_seconds=round(time.time() - t0, 3),
         summary=(
             f"Ambiente preparado: Task carregada ({len(ctx.acceptance_criteria)} "
-            f"critérios), Dockerfile de origem '{origem_dockerfile}'."
+            f"critérios), modo '{ctx.delivery_mode}', Dockerfile de origem "
+            f"'{origem_dockerfile}'."
         ),
         evidence={
             "task_file": str(task_file),
             "acceptance_criteria": ctx.acceptance_criteria,
             "dockerfile_origem": origem_dockerfile,
+            "delivery_mode": ctx.delivery_mode,
+            "language": ctx.language,
         },
         error_code=None,
     )
+
+
+# ===========================================================================
+# Helpers de execução de container (compartilhados entre estágios)
+# ===========================================================================
+
+def _env_base(ctx: _HarnessContext) -> dict:
+    """Env base para a execução do container; manifesto estende/sobrescreve.
+
+    As chaves default são inócuas para artefatos que não as usam (modo
+    'command'), e preservam o comportamento histórico do serviço web Python.
+    """
+    environment = {
+        "DATABASE_URL": "sqlite:///./data/app.db",
+        "UPLOAD_DIR": "/app/uploads",
+    }
+    environment.update(ctx.env)
+    return environment
+
+
+def _rodar_container_ate_fim(
+    ctx: _HarnessContext, command, container_name: str, timeout: int
+):
+    """Roda a imagem já construída com `command` até o processo terminar.
+
+    Compartilhado pelo modo 'command' (execução do artefato) e pelo estágio de
+    testes em modo 'command' (execução da suíte declarada em test.cmd). Faz o
+    polling do container até ele sair — evita as exceções de timeout do SDK e
+    mantém o container para coleta de logs — e devolve o exit code + logs para o
+    chamador montar o StageResult.
+
+    Retorna a tupla (exit_code, logs, container, erro), onde `erro` é None em
+    término normal ou uma tupla (summary, error_code) quando o container não
+    pôde subir (ERRO_RUN) ou estourou o timeout (COMANDO_TIMEOUT).
+    """
+    client = ctx.docker_client
+    hd._cleanup_container(client, container_name)
+    try:
+        container = client.containers.run(
+            image=hd._IMAGE_TAG,
+            name=container_name,
+            detach=True,
+            mem_limit=hd._MEMORY_LIMIT,
+            cpu_quota=hd._CPU_QUOTA,
+            environment=_env_base(ctx),
+            command=command,  # None → usa o CMD do Dockerfile
+        )
+    except Exception as e:
+        return None, "", None, (f"erro ao subir o container: {e}", "ERRO_RUN")
+
+    deadline = time.time() + timeout
+    finished = False
+    while time.time() < deadline:
+        container.reload()
+        if container.status in ("exited", "dead"):
+            finished = True
+            break
+        time.sleep(0.5)
+
+    logs = container.logs(timestamps=True).decode("utf-8", errors="replace")
+    if not finished:
+        try:
+            container.kill()
+        except Exception:
+            pass
+        return (
+            None,
+            logs,
+            container,
+            (f"comando não terminou dentro de {timeout}s (timeout).", "COMANDO_TIMEOUT"),
+        )
+
+    exit_code = container.attrs.get("State", {}).get("ExitCode")
+    return exit_code, logs, container, None
 
 
 # ===========================================================================
@@ -238,6 +405,14 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
 
     # ---- Run ----
     hd._cleanup_container(client, hd._CONTAINER_NAME)
+
+    if ctx.delivery_mode == _MODE_COMMAND:
+        return _run_command_mode(ctx, t0)
+
+    # Env base (harmless para command); manifesto pode sobrescrever/estender.
+    environment = _env_base(ctx)
+
+    # ---- Modo 'service': sobe container detached e mapeia a porta ----
     try:
         container = client.containers.run(
             image=hd._IMAGE_TAG,
@@ -245,11 +420,8 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
             detach=True,
             mem_limit=hd._MEMORY_LIMIT,
             cpu_quota=hd._CPU_QUOTA,
-            ports={"8000/tcp": ("0.0.0.0", hd._HOST_PORT)},
-            environment={
-                "DATABASE_URL": "sqlite:///./data/app.db",
-                "UPLOAD_DIR": "/app/uploads",
-            },
+            ports={f"{ctx.service_port}/tcp": ("0.0.0.0", hd._HOST_PORT)},
+            environment=environment,
         )
     except Exception as e:
         return StageResult(
@@ -300,6 +472,56 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
     )
 
 
+def _run_command_mode(ctx: _HarnessContext, t0: float) -> StageResult:
+    """Executa o artefato em modo 'command': roda até terminar e captura o exit.
+
+    Diferente do modo 'service' (container fica ouvindo e é sondado por HTTP),
+    aqui o container roda o comando de entrega (CMD do Dockerfile ou `run.cmd`
+    do manifesto) e ESPERA-SE que termine. O harness apenas coleta o exit code e
+    a saída — o julgamento (exit esperado?) fica no estágio de inicialização.
+    """
+    exit_code, logs, container, erro = _rodar_container_ate_fim(
+        ctx, ctx.run_cmd, hd._CONTAINER_NAME, _COMMAND_TIMEOUT
+    )
+    ctx.container = container
+    ctx.runtime_logs = logs
+
+    if erro is not None:
+        summary, error_code = erro
+        # Falha ao subir o container é erro de infra (ERRO); timeout é falha do
+        # próprio artefato (FALHA).
+        status = StageStatus.ERRO if error_code == "ERRO_RUN" else StageStatus.FALHA
+        return StageResult(
+            stage=StageName.IMPLANTACAO_ARTEFATO,
+            status=status,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Modo 'command': {summary}",
+            evidence={
+                "build_logs_tail": ctx.build_logs[-2000:],
+                "runtime_logs_tail": (logs or "")[-3000:],
+            },
+            error_code=error_code,
+        )
+
+    ctx.command_exit_code = exit_code
+    ctx.deploy_ok = True
+    return StageResult(
+        stage=StageName.IMPLANTACAO_ARTEFATO,
+        status=StageStatus.SUCESSO,
+        duration_seconds=round(time.time() - t0, 3),
+        summary=(
+            f"Imagem construída e comando executado até o fim "
+            f"(exit={ctx.command_exit_code})."
+        ),
+        evidence={
+            "image_tag": hd._IMAGE_TAG,
+            "container_name": hd._CONTAINER_NAME,
+            "exit_code": ctx.command_exit_code,
+        },
+        error_code=None,
+    )
+
+
 # ===========================================================================
 # Estágio 3 — Coleta dos logs de implantação (build)
 # ===========================================================================
@@ -339,10 +561,45 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
         )
     t0 = time.time()
 
+    # Modo 'command': não há servidor a sondar. O "inicializar" já aconteceu na
+    # implantação (o comando rodou até o fim); aqui só julgamos o exit code.
+    if ctx.delivery_mode == _MODE_COMMAND:
+        exit_code = ctx.command_exit_code
+        if exit_code in ctx.success_exit_codes:
+            ctx.app_ok = True
+            return StageResult(
+                stage=StageName.INICIALIZACAO_APLICACAO,
+                status=StageStatus.SUCESSO,
+                duration_seconds=round(time.time() - t0, 3),
+                summary=f"Comando terminou com exit code esperado ({exit_code}).",
+                evidence={
+                    "exit_code": exit_code,
+                    "success_exit_codes": ctx.success_exit_codes,
+                    "runtime_logs_tail": ctx.runtime_logs[-3000:],
+                },
+                error_code=None,
+            )
+        return StageResult(
+            stage=StageName.INICIALIZACAO_APLICACAO,
+            status=StageStatus.FALHA,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=(
+                f"Comando terminou com exit code {exit_code}, fora dos "
+                f"esperados {ctx.success_exit_codes}."
+            ),
+            evidence={
+                "exit_code": exit_code,
+                "success_exit_codes": ctx.success_exit_codes,
+                "runtime_logs_tail": ctx.runtime_logs[-3000:],
+            },
+            error_code="COMANDO_EXIT_NAO_ESPERADO",
+        )
+
+    # Modo 'service': healthcheck HTTP (comportamento histórico).
     # Grace period para a app subir dentro do container
     time.sleep(hd._STARTUP_GRACE_PERIOD)
 
-    healthcheck_url = f"{ctx.base_url}{hd._HEALTHCHECK_ENDPOINT}"
+    healthcheck_url = f"{ctx.base_url}{ctx.healthcheck_path}"
     alive = False
     ultimo_erro = ""
     status_code = None
@@ -393,11 +650,17 @@ def _estagio_coleta_logs_execucao(ctx: _HarnessContext) -> StageResult:
             "Abortado: nenhum container em execução para coletar logs.",
         )
     t0 = time.time()
-    try:
-        ctx.runtime_logs = ctx.container.logs(timestamps=True).decode("utf-8", errors="replace")
-    except Exception as e:
-        ctx.runtime_logs = ctx.runtime_logs or ""
-        logger.warning(f"[HARNESS] Falha ao coletar logs de runtime: {e}")
+    # Em modo 'command' os logs já foram capturados na implantação (o container
+    # terminou); ainda assim tentamos reler do container (exited → .logs() ok).
+    # Se não há container (defensivo), preservamos o que já foi coletado.
+    if ctx.container is not None:
+        try:
+            ctx.runtime_logs = ctx.container.logs(
+                timestamps=True
+            ).decode("utf-8", errors="replace")
+        except Exception as e:
+            ctx.runtime_logs = ctx.runtime_logs or ""
+            logger.warning(f"[HARNESS] Falha ao coletar logs de runtime: {e}")
 
     parsed = parse_log_text(ctx.runtime_logs)
     erros = [e for e in parsed if e.get("level") in ("ERROR", "CRITICAL", "FATAL")]
@@ -443,6 +706,10 @@ _TESTS_TIMEOUT = 60  # segundos — teto para a execução da suíte no containe
 _APP_WORKDIR = "/app"
 _REPORT_JSON_IN = f"{_APP_WORKDIR}/.harness_pytest_report.json"
 _COV_JSON_IN = f"{_APP_WORKDIR}/.harness_cov.json"
+
+# Container efêmero para a suíte em modo 'command' (o container do artefato já
+# terminou; a suíte roda numa nova instância da mesma imagem).
+_TEST_CONTAINER_NAME = f"{hd._CONTAINER_NAME}-tests"
 
 _PLAIN_PASSOU_RE = re.compile(r"(\d+) passed")
 _PLAIN_FALHOU_RE = re.compile(r"(\d+) failed")
@@ -571,17 +838,90 @@ def _parse_stdout_plain(stdout: str) -> dict:
 
 
 def _estagio_testes(ctx: _HarnessContext) -> StageResult:
-    """Estágio 6 — executa a suíte de testes DENTRO do container implantado.
+    """Estágio 6 — dispatcher da suíte de testes por modo de entrega.
 
-    Localiza a suíte no workspace do coder (host), traduz o caminho para o
-    interior do container (`/app/...`) e roda o pytest lá dentro. Apenas coleta
-    evidência: a decisão sobre o que as falhas significam é do validador.
+    'service': o container do artefato continua no ar; a suíte roda DENTRO dele
+        (exec_run), contra o código realmente implantado em /app.
+    'command': o container do artefato já terminou; a suíte declarada em
+        test.cmd roda num container efêmero recém-criado a partir da mesma imagem.
+
+    O pré-requisito (app inicializada) é comum aos dois modos e checado aqui.
     """
     if not ctx.app_ok:
         return _pulado(
             StageName.TESTES_AUTOMATIZADOS,
             "Abortado: aplicação não inicializou; testes não executados.",
         )
+    if ctx.delivery_mode == _MODE_COMMAND:
+        return _estagio_testes_command(ctx)
+    return _estagio_testes_service(ctx)
+
+
+def _estagio_testes_command(ctx: _HarnessContext) -> StageResult:
+    """Testes em modo 'command': roda test.cmd num container efêmero.
+
+    Sem test.cmd declarado no manifesto não há suíte a executar (PULADO) — o
+    harness não tenta adivinhar um runner por linguagem. Quando há, roda o
+    comando declarado numa nova instância da imagem, coleta exit code + saída e
+    classifica tecnicamente (0 = passou; ≠0 = falhou). O veredito continua sendo
+    do validador; aqui só há evidência.
+    """
+    t0 = time.time()
+    if not ctx.test_cmd:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.PULADO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary="Modo 'command' sem test.cmd declarado; testes não executados.",
+            evidence={"delivery_mode": ctx.delivery_mode},
+            error_code=None,
+        )
+
+    exit_code, logs, _container, erro = _rodar_container_ate_fim(
+        ctx, ctx.test_cmd, _TEST_CONTAINER_NAME, _TESTS_TIMEOUT
+    )
+    if erro is not None:
+        summary, error_code = erro
+        # Timeout é falha da suíte; falha ao subir o container é erro de execução.
+        if error_code == "COMANDO_TIMEOUT":
+            status, error_code = StageStatus.FALHA, "TESTES_TIMEOUT"
+        else:
+            status = StageStatus.ERRO
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=status,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Testes (command): {summary}",
+            evidence={"test_cmd": ctx.test_cmd, "saida_tail": (logs or "")[-3000:]},
+            error_code=error_code,
+        )
+
+    status = StageStatus.SUCESSO if exit_code == 0 else StageStatus.FALHA
+    error_code = None if exit_code == 0 else "TESTES_FALHARAM"
+    return StageResult(
+        stage=StageName.TESTES_AUTOMATIZADOS,
+        status=status,
+        duration_seconds=round(time.time() - t0, 3),
+        summary=(
+            f"Suíte de testes (test.cmd) executada em container efêmero "
+            f"(exit={exit_code})."
+        ),
+        evidence={
+            "test_cmd": ctx.test_cmd,
+            "exit_code": exit_code,
+            "saida_tail": (logs or "")[-3000:],
+        },
+        error_code=error_code,
+    )
+
+
+def _estagio_testes_service(ctx: _HarnessContext) -> StageResult:
+    """Estágio 6 (service) — executa a suíte de testes DENTRO do container vivo.
+
+    Localiza a suíte no workspace do coder (host), traduz o caminho para o
+    interior do container (`/app/...`) e roda o pytest lá dentro. Apenas coleta
+    evidência: a decisão sobre o que as falhas significam é do validador.
+    """
     t0 = time.time()
 
     suite = _localizar_suite(ctx.coder_dir)
@@ -748,6 +1088,30 @@ def _coletar_evidencia_criterio(
     )
 
 
+def _evidencia_criterio_command(
+    criterion: str, exit_code: Optional[int]
+) -> CriterionEvidence:
+    """Evidência de um critério em modo 'command' (sem servidor a sondar).
+
+    O harness não sobe um serviço HTTP neste modo, então não há checagem
+    determinística derivável por rota/verbo. A evidência aponta o exit code
+    observado e os logs de runtime já coletados; o julgamento de cada critério
+    cabe ao validador. Marcado como NÃO verificável — honesto por construção.
+    """
+    return CriterionEvidence(
+        criterion=criterion,
+        check_performed=(
+            "Nenhuma checagem HTTP aplicável (modo 'command'): validação do "
+            "critério cabe ao validador a partir do exit code e dos logs."
+        ),
+        observed=(
+            f"Execução em modo 'command' finalizou com exit={exit_code}; "
+            "saída disponível nos logs de runtime."
+        ),
+        checkable=False,
+    )
+
+
 def _estagio_validacoes_work_item(
     ctx: _HarnessContext,
 ) -> tuple[StageResult, list[CriterionEvidence]]:
@@ -760,10 +1124,16 @@ def _estagio_validacoes_work_item(
             [],
         )
     t0 = time.time()
-    evidencias = [
-        _coletar_evidencia_criterio(c, ctx.base_url, ctx.main_route)
-        for c in ctx.acceptance_criteria
-    ]
+    if ctx.delivery_mode == _MODE_COMMAND:
+        evidencias = [
+            _evidencia_criterio_command(c, ctx.command_exit_code)
+            for c in ctx.acceptance_criteria
+        ]
+    else:
+        evidencias = [
+            _coletar_evidencia_criterio(c, ctx.base_url, ctx.main_route)
+            for c in ctx.acceptance_criteria
+        ]
     checaveis = sum(1 for e in evidencias if e.checkable)
     result = StageResult(
         stage=StageName.VALIDACOES_WORK_ITEM,
