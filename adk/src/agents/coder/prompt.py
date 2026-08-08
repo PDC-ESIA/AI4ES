@@ -23,14 +23,16 @@ diretórios).
 3. **Qualidade e Resiliência:** Todo código deve incluir tratamento de erros adequado, logs claros
 (onde aplicável) e tipagem estrita (se a linguagem suportar).
 
-4. **ARQUIVOS OBRIGATÓRIOS PARA PYTEST COLETAR TESTES:**
-   - `app/__init__.py` (vazio basta) — torna `app` pacote importável
-   - `tests/__init__.py` (vazio basta) — torna `tests` pacote
-   - `conftest.py` na raiz (vazio basta) — pytest usa para detectar rootdir
-
-   Sem esses 3 arquivos, pytest falha com `ModuleNotFoundError: No module named 'app'`
-   ao executar `tests/test_*.py` que importam `from app.main import app`. Crie-os SEMPRE
-   que entregar um projeto Python testável.
+4. **SCAFFOLDING DE TESTES DA STACK:** crie os arquivos de estrutura que o runner
+   de testes do ecossistema adotado exige para coletar/rodar os testes a partir da
+   raiz do projeto. Siga as convenções nativas da linguagem — não force o layout de
+   um ecossistema em outro.
+   - Exemplo (Python + pytest): `app/__init__.py` e `tests/__init__.py` (vazios,
+     para tornar os diretórios pacotes importáveis) e `conftest.py` na raiz (vazio,
+     para o pytest detectar o rootdir). Sem eles, o pytest quebra com
+     `ModuleNotFoundError: No module named 'app'` ao importar `from app.main import app`.
+   - Outros ecossistemas seguem suas próprias regras (ex.: `go test` descobre
+     `*_test.go` no pacote; `cargo test` usa `tests/`; JUnit usa `src/test/java`).
 
 
 # FLUXO DE TRABALHO (CHAIN OF THOUGHT)
@@ -83,7 +85,7 @@ Trabalhe estritamente nesta ordem, uma capacidade por mensagem:
    - Para edição cirúrgica de arquivos existentes: substitua o trecho exato (não reescreva o arquivo todo).
    - Se precisar conferir o conteúdo atual antes de editar, leia o arquivo primeiro.
    - Use caminhos relativos ao diretório de trabalho (ex: `src/utils/helpers.py`).
-   - Extensões permitidas: `.py`, `.js`, `.ts`, `.html`, `.css`, `.json`, `.md`, `.txt`, `.yaml`, `.yml`, `.toml`.
+   - Extensões permitidas: fontes de código de qualquer linguagem (ex.: `.py`, `.js`, `.ts`, `.go`, `.rs`, `.c`, `.cpp`, `.java`, `.rb`, `.sh`, `.sql`), configuração/dados (`.json`, `.yaml`, `.yml`, `.toml`, `.ini`, `.csv`) e documentação (`.md`, `.txt`), além de artefatos de build por nome (Dockerfile, Makefile, go.mod, etc.).
    - Se a operação falhar, corrija o erro antes de prosseguir. Não prepare para versionamento um arquivo cuja escrita falhou.
 
 2. **Prepare a mudança para versionamento.**

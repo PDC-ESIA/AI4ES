@@ -6,27 +6,76 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+# Extensões de código-fonte, configuração e documentação aceitas para escrita.
+# O fluxo coding_review é agnóstico de linguagem (ver issue #335): além de
+# Python/web, cobre linguagens compiladas, de script e de dados para dar conta
+# dos cenários-alvo (função de benchmark, função educacional, software de
+# produção). Novas linguagens devem ser adicionadas aqui.
 EXTENSOES_PERMITIDAS = {
+    # Python / web
     ".py",
     ".js",
+    ".jsx",
     ".ts",
+    ".tsx",
     ".html",
     ".css",
+    ".scss",
+    ".vue",
+    # Linguagens compiladas / de sistema
+    ".c",
+    ".h",
+    ".cpp",
+    ".cxx",
+    ".cc",
+    ".hpp",
+    ".hh",
+    ".rs",
+    ".go",
+    ".java",
+    ".kt",
+    ".cs",
+    ".swift",
+    ".scala",
+    # Linguagens de script
+    ".rb",
+    ".php",
+    ".pl",
+    ".lua",
+    ".r",
+    ".sh",
+    ".bash",
+    # Dados / consultas / marcação
+    ".sql",
     ".json",
+    ".jsonl",
+    ".xml",
     ".md",
     ".txt",
     ".yaml",
     ".yml",
     ".toml",
+    ".ini",
+    ".cfg",
     ".csv",
+    ".proto",
     ".env.example",
 }
 
 # Nomes de arquivo sem extensão (ou com extensão não-padrão) permitidos
-# por serem artefatos legítimos de infraestrutura/build.
+# por serem artefatos legítimos de infraestrutura/build de vários ecossistemas.
 NOMES_PERMITIDOS = {
     "Dockerfile",
     ".dockerignore",
+    ".gitignore",
+    "Makefile",
+    "makefile",
+    "CMakeLists.txt",
+    "go.mod",
+    "go.sum",
+    "Gemfile",
+    "Rakefile",
+    "Cargo.lock",
 }
 
 DIRETORIOS_PROIBIDOS = {
@@ -102,8 +151,10 @@ def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: Optional[str] = No
     capacidade dedicada de substituição de trecho.
 
     Validações automáticas:
-    - Só permite extensões: .py, .js, .ts, .html, .css, .json, .md, .txt,
-      .yaml, .yml, .toml, .csv, .env.example.
+    - Só permite extensões de código-fonte, configuração e documentação
+      reconhecidas (agnóstico de linguagem: Python/web, compiladas, script e
+      dados — ver EXTENSOES_PERMITIDAS) ou nomes de build conhecidos
+      (Dockerfile, Makefile, go.mod, ... — ver NOMES_PERMITIDOS).
     - Bloqueia escrita em .git, .venv, venv, node_modules, __pycache__, .env.
 
     Args:

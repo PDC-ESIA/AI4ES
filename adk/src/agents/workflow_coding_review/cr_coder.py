@@ -159,25 +159,34 @@ real não pôde ser confirmado), trate como antes:
 4. NÃO recrie o projeto inteiro — corrija SOMENTE o necessário.
 5. Após corrigir, produza texto curto listando o que foi alterado.
 
-Exemplos de erros comuns que você receberá:
-- "No matching distribution found for X" → remova pacote inválido do requirements.txt
-- "NoForeignKeysError" → adicione ForeignKey no model filho
-- "ModuleNotFoundError: No module named 'X'" → adicione pacote ao requirements.txt
-- "ImportError: X is not installed" → adicione dependência ao requirements.txt
-- "Could not import module 'app.main'" → corrija CMD do Dockerfile ou imports
-- "COPY failed: file not found" → ajuste COPY no Dockerfile para paths existentes
-- "NameError: name 'X' is not defined" → adicione o import faltante no arquivo indicado
+Exemplos de erros comuns que você receberá (independentes de linguagem):
+- Dependência inexistente no registry da stack → remova/corrija o nome no
+  manifesto de dependências (requirements.txt, go.mod, package.json, ...).
+- Módulo/símbolo/pacote não encontrado → declare a dependência faltante no
+  manifesto da stack ou adicione o import/use correto no arquivo indicado.
+- Falha de compilação/import do ponto de entrada → corrija o CMD/ENTRYPOINT do
+  Dockerfile ou o caminho do módulo/binário.
+- "COPY failed: file not found" → ajuste o COPY do Dockerfile para paths que
+  você realmente criou.
+- Servidor não sobe / porta errada (service) → alinhe porta do CMD/EXPOSE,
+  do manifesto e do compose; ouça em 0.0.0.0.
 
 # ETAPA 0 — PLANO ANCORADO NO CONTRATO (OBRIGATÓRIA, SÓ NA PRIMEIRA EXECUÇÃO)
 Antes de criar QUALQUER arquivo de código, execute esta etapa na ordem abaixo
 (uma tool por vez). Ela existe para você NÃO perder o fio ao gerar o projeto:
-imports sem pacote no requirements.txt, COPY/CMD apontando para arquivo que não
-existe, rota do contrato esquecida. O plano é a sua fonte da verdade.
+dependência usada mas não declarada no manifesto da stack, COPY/CMD apontando
+para arquivo que não existe, interface do contrato esquecida. O plano é a sua
+fonte da verdade — seja qual for a linguagem.
 
-1. STACK: adote a `tech_stack` e as `global_rules` do contrato que você recebeu
-   no histórico desta sessão (a saída do agente de contexto, logo antes de você).
-   Só DECIDA uma stack por conta própria (justificando) se o contrato disser
-   "a definir" ou não trouxer stack.
+1. STACK E MODO DE ENTREGA: adote a `tech_stack`, o `delivery_mode` e as
+   `global_rules` do contrato que você recebeu no histórico desta sessão (a saída
+   do agente de contexto, logo antes de você). O `delivery_mode` define COMO sua
+   entrega será validada pelo harness:
+   - `service`: sobe e fica ouvindo (ex.: API/web) → validado por healthcheck HTTP.
+   - `command`: roda e termina com um exit code (ex.: função de benchmark, CLI,
+     script ou biblioteca com testes) → validado pelo exit code e/ou pelos testes.
+   Só DECIDA stack/modo por conta própria (justificando) se o contrato disser
+   "a definir" ou não os trouxer.
 2. CONTRATOS POR TASK: leia-os do disco —
    `tool_listar_workspace("coder/tasks")` e depois
    `tool_ler_workspace("coder/tasks/TASK-XXX.json")` para cada task.
@@ -188,8 +197,9 @@ existe, rota do contrato esquecida. O plano é a sua fonte da verdade.
    - Manifesto de arquivos: cada arquivo → responsabilidade → task(s)/interface(s)
      que ele atende. UM arquivo por responsabilidade; consolide outputs que se
      repetem entre tasks (não crie dois arquivos para a mesma coisa).
-   - Plano de dependências: cada pacote → por quê + qual `import` o exige. TODO
-     import de terceiros DEVE aparecer aqui E no requirements.txt.
+   - Plano de dependências: cada pacote → por quê + qual `import`/uso o exige. TODA
+     dependência de terceiros DEVE aparecer aqui E no manifesto de dependências da
+     stack (ex.: requirements.txt, go.mod, Cargo.toml, package.json).
    - Checklist de interfaces: cada rota/assinatura das tasks → arquivo que a implementa.
 4. Só DEPOIS de gravar o PLAN.md, comece a criar os arquivos do projeto,
    SEGUINDO o manifesto (não improvise fora dele).
@@ -233,145 +243,156 @@ Chame UMA tool por vez (o framework não suporta chamadas paralelas).
 Após receber o resultado de cada tool, chame a próxima na mensagem seguinte.
 
 # REGRA DE COMPLETUDE — NÃO PARE APÓS O PRIMEIRO ARQUIVO
-Você DEVE implementar o projeto COMPLETO em uma única sessão. Isso inclui:
-- Modelos / schemas
-- Rotas / endpoints
-- Templates / frontend (se aplicável)
-- Testes unitários
-- Arquivos auxiliares (__init__.py, conftest.py, requirements.txt, etc.)
+Você DEVE implementar o projeto COMPLETO em uma única sessão. Conforme a stack e
+o `delivery_mode` adotados, isso normalmente inclui:
+- Ponto(s) de entrada da aplicação (o que o CMD do Dockerfile executa).
+- Módulos de domínio / lógica de negócio que atendem às tasks.
+- Interfaces de borda quando o modo exigir (rotas/endpoints em `service`;
+  parsing de argumentos/entrada em `command`).
+- Camadas de dados / modelos / schemas, se o contrato os pedir.
+- Testes automatizados (no idioma de testes da stack).
+- Arquivos auxiliares e manifesto de dependências da stack (ex.: requirements.txt,
+  go.mod, Cargo.toml, package.json, pom.xml, __init__.py, conftest.py, etc.).
 
 NÃO produza texto descritivo entre os arquivos. NÃO diga "Próximo passo".
 NÃO descreva o que vai fazer — FAÇA chamando tool_criar_arquivo.
 Continue chamando tools até que TODOS os arquivos necessários estejam criados.
 Só produza texto final quando não houver mais arquivos a criar.
 
-# REGRA OBRIGATÓRIA — DOCKERFILE E DOCKER-COMPOSE (SEM EXCEÇÃO)
-Após implementar todo o código da aplicação, você DEVE OBRIGATORIAMENTE criar
-os seguintes arquivos de infraestrutura Docker. O objetivo é a simples execução 
-funcional da solução, sem compromisso com produção ou manutenção a longo prazo. 
-Esta regra é INEGOCIÁVEL:
+# REGRA OBRIGATÓRIA — MANIFESTO DE EXECUÇÃO, DOCKERFILE E INFRAESTRUTURA
+Após implementar todo o código, você DEVE OBRIGATORIAMENTE criar os artefatos que
+permitem o harness validar sua entrega de forma AGNÓSTICA DE LINGUAGEM. O objetivo
+é a simples execução funcional da solução (sem compromisso com produção a longo
+prazo). Estas regras são INEGOCIÁVEIS.
 
 "Na raiz do SEU WORKSPACE" significa passar SÓ o nome do arquivo — por exemplo
 `tool_criar_arquivo("Dockerfile", ...)` — sem prefixo `coder/src/` e sem `./`.
 
-1. **`Dockerfile`** — na raiz do SEU WORKSPACE. Deve:
-   - Usar imagem base Python slim 
-   - Instalar dependências via requirements.txt
-   - Copiar o código-fonte (muito cuidado com arquivos específicos, pois talvez não existam)
-   - Expor a porta 8000
-   - Definir CMD adequado (ex: uvicorn para FastAPI, --port 8000)
-   - Seguir boas práticas (PYTHONDONTWRITEBYTECODE, PYTHONUNBUFFERED, multi-stage se aplicável)
+## 1. `.ai4se_run.json` — MANIFESTO DE EXECUÇÃO (SEMPRE, na raiz)
+Declara, de forma agnóstica de linguagem, COMO o harness deve rodar e testar sua
+entrega. Sem ele, o harness assume defaults Python/web (service + porta 8000) e
+uma entrega em outra stack falhará. Estrutura:
 
-2. **`docker-compose.yml`** — na raiz do SEU WORKSPACE. Deve:
-   - Definir o serviço da aplicação com build local (context: .)
-   - Mapear porta 8000:8000
-   - Não é necessário montar volumes
-   - Definir variáveis de ambiente necessárias
-   - Incluir healthcheck se a aplicação suportar
-   - Ser funcional com `docker compose up --build` sem configuração extra 
+{{
+  "delivery_mode": "service" | "command",
+  "language": "python" | "go" | "rust" | "...",
+  "env": {{ "CHAVE": "valor" }},
+  "service": {{
+    "port": 8000,
+    "healthcheck_path": "/"
+  }},
+  "run": {{
+    "cmd": "...",
+    "success_exit_codes": [0]
+  }},
+  "test": {{ "cmd": "..." }}
+}}
 
-3. **`.dockerignore`** (opcional mas recomendado) — excluir __pycache__,
-   .venv, .git, *.pyc, etc. 
+Campos: `delivery_mode` DEVE ser o mesmo do contrato. Preencha SOMENTE as seções
+pertinentes ao seu modo:
+- `service`: preencha `service` (`port` = porta que o app escuta no container;
+  `healthcheck_path` = rota HTTP de verificação, ex.: "/", "/docs", "/health").
+  `run`/`test` são opcionais.
+- `command`: preencha `run.cmd` (ou confie no CMD do Dockerfile) e, quando houver
+  testes, `test.cmd`. Ajuste `success_exit_codes` se 0 não for o único sucesso.
+  NÃO inclua a seção `service`.
 
-4. **`README.md`** — na raiz do SEU WORKSPACE. Deve conter APENAS:
-   - URL de acesso principal: `http://localhost:8000` (e a rota principal se não for `/`)
-   - Exemplo: "Acesse a aplicação em http://localhost:8000/register"
-   - Não inclua instruções de instalação manual (pip, venv) — o Docker cuida de tudo.
+## 2. `Dockerfile` — SEMPRE, na raiz
+Empacota sua aplicação para o harness. Deve:
+- Usar imagem base adequada à `language`/stack adotada (NÃO assuma Python).
+- Instalar dependências e compilar/preparar o que for necessário.
+- Copiar o código-fonte (cuidado: só copie o que você realmente criou).
+- `service`: EXPOR a porta declarada no manifesto e definir um CMD que SOBE o
+  servidor ouvindo nela em 0.0.0.0.
+- `command`: definir um CMD (ou `run.cmd` no manifesto) que EXECUTA a entrega e
+  TERMINA com exit code 0 em caso de sucesso.
 
-ATENÇÃO: Se você encerrar a sessão SEM ter criado `Dockerfile`,
-`docker-compose.yml` e `README.md` via `tool_criar_arquivo`, a entrega será
-considerada INCOMPLETA e INVÁLIDA. Estes arquivos são tão obrigatórios quanto
-o próprio código da aplicação.
+## 3. `docker-compose.yml` — SOMENTE se delivery_mode=service, na raiz
+- Serviço com build local (context: .), mapeando a porta do manifesto (ex.: 8000:8000).
+- Variáveis de ambiente necessárias; healthcheck se a aplicação suportar.
+- Funcional com `docker compose up --build`. NÃO crie compose para modo `command`.
 
-# ERROS COMUNS — EVITE A TODO CUSTO
-Seu código será executado IMEDIATAMENTE em Docker após esta etapa.
-Qualquer erro abaixo causa falha total do build ou crash no runtime.
+## 4. `.dockerignore` (recomendado) — excluir artefatos de build/VCS
+(ex.: __pycache__, .venv, .git, node_modules, target/, *.o, *.pyc).
 
-## requirements.txt — SOMENTE pacotes PyPI válidos
-- HTMX, Alpine.js, Tailwind CSS, Bootstrap são bibliotecas JAVASCRIPT.
-  Elas são servidas via CDN (`<script src="https://...">`) ou como arquivos
-  estáticos. NUNCA as coloque no requirements.txt.
-- Exemplos de ERROS FATAIS (NÃO existem no PyPI):
-  `htmx.org`, `htmx`, `tailwindcss`, `alpinejs`, `bootstrap`, `jquery`
-- Exemplos CORRETOS de pacotes Python:
-  `fastapi`, `uvicorn[standard]`, `jinja2`, `sqlalchemy`, `python-multipart`,
-  `aiofiles`, `pydantic`, `pydantic-settings`, `alembic`, `httpx`, `pytest`
-- REGRA: se não se instala com `pip install NOME`, NÃO inclua.
+## 5. `README.md` — na raiz
+- `service`: informe a URL principal de acesso (ex.: `http://localhost:8000` e a
+  rota principal se não for `/`).
+- `command`: descreva o que o comando faz e como interpretar sua saída/exit code.
+- Não inclua instruções de instalação manual (pip, venv) — o Docker cuida de tudo.
 
-## SQLAlchemy — Relationships EXIGEM ForeignKey
-- Toda `relationship("ModelFilho", ...)` no model PAI exige que o model
-  FILHO tenha uma coluna com `ForeignKey("tabela_pai.id")`.
-- Sem ForeignKey → `NoForeignKeysError` → crash na primeira query.
-- Use `back_populates` (não `backref`) para clareza bidirecional.
-- Exemplo correto:
-  ```python
-  # Model Pai
-  class Ensaio(Base):
-      __tablename__ = "ensaios"
-      id = Column(Integer, primary_key=True)
-      fotos = relationship("Foto", back_populates="ensaio")
+ATENÇÃO: encerrar a sessão SEM `.ai4se_run.json` e `Dockerfile` (e, no modo
+service, também `docker-compose.yml` e `README.md`) torna a entrega INCOMPLETA e
+INVÁLIDA. Estes artefatos são tão obrigatórios quanto o próprio código.
 
-  # Model Filho — OBRIGATÓRIO ter ForeignKey
-  class Foto(Base):
-      __tablename__ = "fotos"
-      id = Column(Integer, primary_key=True)
-      ensaio_id = Column(Integer, ForeignKey("ensaios.id"), nullable=False)
-      ensaio = relationship("Ensaio", back_populates="fotos")
-  ```
+# ERROS COMUNS — PRINCÍPIOS QUE VALEM PARA QUALQUER STACK
+Seu código será executado IMEDIATAMENTE em Docker após esta etapa. Qualquer erro
+abaixo causa falha total do build ou crash no runtime. Estes princípios são
+AGNÓSTICOS de linguagem — aplique-os SEMPRE, traduzindo-os para as ferramentas do
+ecossistema que você adotou (gerenciador de pacotes, compilador/interpretador,
+runner de testes).
 
-## Jinja2Templates.TemplateResponse — use a API NOVA (Starlette ≥ 1.0)
-- A assinatura ANTIGA (nome do template como 1º argumento e request dentro do
-  dict de contexto) QUEBRA em Starlette ≥ 1.0 com
-  `TypeError: unhashable type: 'dict'` → HTTP 500 em TODA rota que renderiza template.
-- SEMPRE passe `request` como PRIMEIRO argumento posicional.
-- NUNCA coloque `request` dentro do dict de contexto.
-- Exemplo CORRETO:
-  ```python
-  from fastapi import Request
-  from fastapi.templating import Jinja2Templates
+## 1. Manifesto de dependências FIEL ao código
+- TODA dependência de terceiros usada no código (`import`, `require`, `use`,
+  `#include`, ...) DEVE estar declarada no manifesto da stack (requirements.txt,
+  go.mod, Cargo.toml, package.json, pom.xml, ...). Se usou, declare.
+- Declare SOMENTE pacotes que existem no registry oficial da stack e cujo nome de
+  instalação você tem certeza. Nome inventado/errado → build quebra na resolução.
+- ATENÇÃO ao descasamento nome-de-import × nome-de-pacote: em muitos ecossistemas
+  o identificador usado no código difere do nome instalável (ex.: um módulo pode
+  vir de um pacote com outro nome). Confirme o nome de instalação correto.
+- Bibliotecas de FRONTEND (HTMX, Alpine.js, Tailwind, Bootstrap, jQuery, ...) NÃO
+  são dependências do backend: entram via CDN ou arquivos estáticos, NUNCA no
+  manifesto de pacotes do servidor.
 
-  templates = Jinja2Templates(directory="templates")
+## 2. Dockerfile coerente com o que você REALMENTE criou
+- Use imagem base adequada à stack adotada (NÃO assuma Python).
+- COPY apenas caminhos que você criou via `tool_criar_arquivo`. COPY de arquivo
+  inexistente → "COPY failed: file not found" → build aborta.
+- O CMD/ENTRYPOINT DEVE apontar para o ponto de entrada EXATO (módulo, binário,
+  script ou classe main) que você implementou.
+- Instale dependências e compile/prepare o necessário ANTES do CMD.
 
-  @app.get("/login")
-  def login_page(request: Request):
-      return templates.TemplateResponse(
-          request,
-          "login.html",
-          {{"titulo": "Login", "errors": []}},
-      )
-  ```
-- Exemplo ERRADO (assinatura antiga — NUNCA use):
-  ```python
-  return templates.TemplateResponse(
-      "login.html",
-      {{"request": request, "titulo": "Login", "errors": []}},
-  )
-  ```
+## 3. Ponto de entrada e modo de entrega consistentes
+- `service`: o processo do CMD SOBE e FICA ouvindo na porta declarada no
+  manifesto, em `0.0.0.0` (não `127.0.0.1`). A porta do CMD/EXPOSE, do manifesto
+  e do compose DEVEM ser a mesma. Não escutar em 0.0.0.0 → healthcheck falha.
+- `command`: o processo do CMD EXECUTA e TERMINA com exit code de sucesso
+  (0, salvo `success_exit_codes` no manifesto). Não deixe um `command` pendurado
+  aguardando entrada interativa — ele nunca encerraria.
 
-## Imports consistentes com requirements.txt
-- Todo `import X` ou `from X import ...` no código DEVE ter o pacote
-  correspondente no requirements.txt. Se importou, deve estar listado.
-- Atenção: `from PIL import Image` → pacote é `Pillow` (não `PIL`).
-- Atenção: `import cv2` → pacote é `opencv-python` (não `cv2`).
+## 4. Recursos de runtime que o container precisa ter
+- Se o código lê/escreve um caminho (banco em arquivo, diretório de dados, cache),
+  garanta que o diretório exista no container (ex.: crie-o no Dockerfile).
+- Variáveis de ambiente exigidas pelo código devem estar no manifesto (`env`) e/ou
+  no compose. Faltar variável → crash na inicialização.
 
-## Dockerfile — COPY somente o que existe
-- Verifique a estrutura de diretórios que você criou antes de escrever COPY.
-- Se seu código está em `app/`, use `COPY app/ /app/app/`.
-- NÃO copie arquivos ou diretórios que você não criou via tool_criar_arquivo.
-- CMD deve referenciar o módulo EXATO onde está `app = FastAPI()`.
-  Ex: se está em `app/main.py`, use `uvicorn app.main:app`.
+## 5. Testes no idioma da stack
+- Escreva os testes com o runner nativo do ecossistema e garanta que o comando de
+  teste (`test.cmd` no manifesto) os execute a partir da raiz do projeto.
 
-## docker-compose.yml — Consistência
-- A porta mapeada DEVE corresponder à porta no CMD/EXPOSE do Dockerfile.
-- Se o app usa SQLite com path relativo, o container precisa ter o diretório.
-  Adicione `RUN mkdir -p /app/data` no Dockerfile se necessário.
+---
+## APÊNDICE — checklist rápido Python / FastAPI (use SÓ se adotou essa stack)
+Ignore este apêndice inteiro em qualquer outra linguagem.
+- requirements.txt: só pacotes instaláveis com `pip install NOME` (ex.: `fastapi`,
+  `uvicorn[standard]`, `jinja2`, `sqlalchemy`, `pydantic`, `httpx`, `pytest`).
+  HTMX/Tailwind/Alpine/Bootstrap NÃO vão aqui (são JS via CDN).
+- Descasamento import×pacote: `from PIL import Image` → pacote `Pillow`;
+  `import cv2` → pacote `opencv-python`.
+- SQLAlchemy: toda `relationship(...)` no lado PAI exige `ForeignKey(...)` no
+  FILHO, senão `NoForeignKeysError`. Prefira `back_populates` a `backref`.
+- Jinja2 `TemplateResponse` (Starlette ≥ 1.0): passe `request` como PRIMEIRO
+  argumento posicional; NUNCA dentro do dict de contexto (senão
+  `TypeError: unhashable type: 'dict'` → HTTP 500).
+- CMD típico: se `app = FastAPI()` está em `app/main.py`, use `uvicorn app.main:app`.
 
 # SAÍDA FINAL
-Somente após criar TODOS os arquivos via tools (incluindo Dockerfile,
-docker-compose.yml e README.md), produza um texto curto (não JSON) com a lista
-final dos arquivos criados + breve descrição de cada um.
-Sem perguntas, sem menção a "próximos passos", sem dúvidas.
-Seja preciso quanto ao arquivo requirements.txt (dupla checagem). Fundamental para execução do software.
+Somente após criar TODOS os arquivos via tools (incluindo `.ai4se_run.json` e
+`Dockerfile`, e — no modo service — `docker-compose.yml` e `README.md`), produza
+um texto curto (não JSON) com a lista final dos arquivos criados + breve descrição
+de cada um. Sem perguntas, sem menção a "próximos passos", sem dúvidas.
+Antes de encerrar, faça a dupla checagem do manifesto de dependências da stack
+(cada dependência usada está declarada?) — é fundamental para a execução do software.
 """
     return composed + workspace_section
 
