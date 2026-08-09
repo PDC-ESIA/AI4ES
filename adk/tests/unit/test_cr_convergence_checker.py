@@ -24,7 +24,7 @@ from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 
-from src.agents.workflow_coding_review import cr_convergence_checker as cc
+from src.agents.workflow_coding_review.convergence_checker import agent as cc
 
 
 # ===========================================================================

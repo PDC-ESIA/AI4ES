@@ -21,7 +21,7 @@ def test_discover_coder_files_workspace_vazio(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -35,7 +35,7 @@ def test_discover_coder_files_lista_arquivos_relativos(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -57,7 +57,7 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -78,7 +78,7 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_pa
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -107,7 +107,7 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -130,7 +130,7 @@ def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -143,7 +143,7 @@ def test_agent_e_alias_do_analyzer(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -156,7 +156,7 @@ def test_persist_review_cria_arquivo_no_review_ws(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -180,7 +180,7 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -207,7 +207,7 @@ def test_analyzer_tem_before_agent_callback(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -221,7 +221,7 @@ def test_inject_static_findings_popula_state(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -244,7 +244,7 @@ def test_inject_static_findings_desabilitado_nao_popula_state(tmp_path, monkeypa
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -266,7 +266,7 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
 
     import importlib
     from shared.tools.coding_tools import review_tools
-    from src.agents.workflow_coding_review import cr_reviewer
+    from src.agents.workflow_coding_review.reviewer import agent as cr_reviewer
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 

@@ -1,15 +1,20 @@
 """Tests para o cr_executor do workflow_coding_review.
 
-Após a integração final, o executor NÃO roda mais Docker diretamente nem decide
-o encerramento por status de execução. Ele compõe:
-  - `tool_rodar_harness` (invoca o harness de validação);
-  - o Agente de Validação (AgentTool);
-  - `exit_loop` (encerramento, autorizado APENAS pelo veredito).
+Após a convergência determinística (#335), o executor NÃO roda mais Docker
+diretamente nem decide o encerramento do loop. Ele compõe apenas:
+  - `executar_harness_tool` (invoca o harness de validação);
+  - o Agente de Validação (AgentTool).
+
+A terminação do loop saiu do executor e virou responsabilidade do
+`cr_convergence_checker` — por isso NÃO há mais `exit_loop` nem protocolo de
+estagnação aqui. O executor usa instrução e schemas PRÓPRIOS
+(`cr_executor_prompt` / `cr_executor_schemas`), sem derivar do pacote `executor/`.
 
 Cobertura:
-- Agent wiring: nome, output_key, as 3 peças compostas;
-- ausência das tools/decisões antigas (sem exit-por-status);
+- Agent wiring: nome, output_key, as 2 peças compostas;
+- ausência das tools/decisões antigas (sem exit_loop, sem exit-por-status);
 - salvaguarda de prompt presente;
+- schemas locais estruturalmente equivalentes aos canônicos;
 - integração com o LoopAgent (coder ANTES do executor) e placeholder do coder.
 
 Os helpers determinísticos do Docker são testados em test_harness_docker.py;
@@ -32,7 +37,7 @@ def executor_module(tmp_path, monkeypatch):
     """Reimporta cr_executor com workspace temporário."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_executor
+    from src.agents.workflow_coding_review.executor import agent as cr_executor
 
     importlib.reload(cr_executor)
     return cr_executor
@@ -55,22 +60,29 @@ def test_executor_agent_output_key(executor_module):
     assert executor_module.agent.output_key == "execution_result"
 
 
-def test_executor_agent_tem_3_tools(executor_module):
-    """Executor compõe exatamente 3 peças: harness, validador e exit_loop."""
-    assert len(executor_module.agent.tools) == 3
+def test_executor_agent_tem_2_tools(executor_module):
+    """Executor compõe exatamente 2 peças: harness e validador (sem exit_loop)."""
+    assert len(executor_module.agent.tools) == 2
 
 
-def test_executor_compoe_harness_validador_exit_loop(executor_module):
-    """As três peças novas estão presentes e nomeadas."""
+def test_executor_compoe_harness_e_validador(executor_module):
+    """As duas peças estão presentes e nomeadas — e exit_loop NÃO está mais lá."""
     names = _tool_names(executor_module.agent)
-    assert "executar_harness_validacao" in names   # harness (bound ao workspace do workflow)
+    assert "executar_harness_tool" in names       # harness (bound ao workspace do workflow)
     assert "implementation_validator" in names     # AgentTool do validador
-    assert "exit_loop" in names                    # encerramento pelo veredito
+    assert "exit_loop" not in names                # terminação é do convergence_checker
 
 
 # ===========================================================================
-# O vício original sumiu — sem exit por status de execução
+# O vício original sumiu — sem exit por status de execução, sem exit_loop
 # ===========================================================================
+
+
+def test_executor_sem_exit_loop(executor_module):
+    """O executor não tem mais a tool exit_loop nem a importa."""
+    names = _tool_names(executor_module.agent)
+    assert "exit_loop" not in names
+    assert not hasattr(executor_module, "exit_loop")
 
 
 def test_executor_sem_exit_loop_guarded_antigo(executor_module):
@@ -99,18 +111,18 @@ def test_executor_sem_last_exec_status(executor_module):
 
 
 def test_executor_instruction_tem_salvaguarda(executor_module):
-    """A instrução impõe a obediência ao veredito e proíbe exit por execução."""
+    """A instrução impõe a obediência ao veredito e nega ao executor a decisão."""
     instr = executor_module.agent.instruction.lower()
     assert "obede" in instr                     # DEVE OBEDECER ao veredito
-    assert "apenas o veredito" in instr          # só o veredito encerra
     assert "não decide" in instr or "nao decide" in instr
 
 
-def test_executor_instruction_exit_loop_ligado_ao_veredito(executor_module):
-    """A instrução liga o exit_loop ao status 'aprovado' do veredito."""
+def test_executor_instruction_sem_exit_loop_delega_convergencia(executor_module):
+    """A instrução NÃO menciona exit_loop e atribui a terminação ao checker."""
     instr = executor_module.agent.instruction.lower()
-    assert "veredito" in instr
-    assert "aprovado" in instr
+    assert "exit_loop" not in instr
+    assert "converg" in instr   # verificador de convergência assume a terminação
+    assert "veredito" in instr and "aprovado" in instr
 
 
 # ===========================================================================
@@ -122,7 +134,7 @@ def test_coder_instruction_contem_execution_result_placeholder(tmp_path, monkeyp
     """O coder.instruction deve conter {execution_result?} para ADK state injection."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review.coder import agent as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -137,7 +149,7 @@ def test_coder_instruction_contem_modo_operacao(tmp_path, monkeypatch):
     """O coder.instruction deve conter a seção MODO DE OPERAÇÃO."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review.coder import agent as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -150,7 +162,8 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
     """executor.output_key deve ser 'execution_result' (same key used in coder placeholder)."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder, cr_executor
+    from src.agents.workflow_coding_review.coder import agent as cr_coder
+    from src.agents.workflow_coding_review.executor import agent as cr_executor
 
     importlib.reload(cr_executor)
     importlib.reload(cr_coder)
@@ -159,6 +172,26 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
     assert output_key == "execution_result"
     # Confirm the placeholder in coder matches
     assert f"{{{output_key}?}}" in cr_coder.agent.instruction
+
+
+# ===========================================================================
+# Contrato dos schemas locais — equivalência estrutural com os canônicos
+# ===========================================================================
+
+
+def test_error_report_schemas_locais_equivalem_aos_canonicos():
+    """cr_executor_schemas é uma cópia local (independência do pacote executor/),
+    mas precisa permanecer estruturalmente idêntico aos schemas canônicos — este
+    teste é o único acoplamento e alarma se um dos lados mudar."""
+    from src.agents.executor import schemas as canon
+    from src.agents.workflow_coding_review.executor import schemas as local
+
+    for nome in ("ErrorReport", "FailedCriterion", "FailedStage"):
+        campos_canon = getattr(canon, nome).model_fields.keys()
+        campos_local = getattr(local, nome).model_fields.keys()
+        assert set(campos_local) == set(campos_canon), (
+            f"{nome}: campos divergentes entre local e canônico"
+        )
 
 
 # ===========================================================================
@@ -190,7 +223,7 @@ def test_coder_instruction_exige_readme(tmp_path, monkeypatch):
     """O coder.instruction deve exigir criação de README.md com URL de acesso."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review.coder import agent as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -204,7 +237,7 @@ def test_coder_instruction_cobre_manifesto_e_dois_modos(tmp_path, monkeypatch):
     dois modos de entrega (service/command), não só o web/service Python."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review.coder import agent as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -222,7 +255,7 @@ def test_coder_instruction_erros_comuns_agnosticos(tmp_path, monkeypatch):
     qualquer stack; Python/FastAPI fica como apêndice condicional."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review.coder import agent as cr_coder
 
     importlib.reload(cr_coder)
 

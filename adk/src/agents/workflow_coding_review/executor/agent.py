@@ -1,13 +1,13 @@
-"""Executor dedicado ao workflow coding_review — espelho do executor consolidado.
+"""Executor dedicado ao workflow coding_review — independente do pacote executor/.
 
-Instância-espelho de `src/agents/executor/` (mesma ideia de cr_reviewer → reviewer):
-- REUSA a "alma" (fluxo + salvaguarda) de `executor/prompt.py`; a instrução NÃO
-  é mais definida aqui — este espelho apenas a reusa.
-- Compõe harness + AgentTool(validador) + exit_loop, derivado do consolidado.
-- O loop encerra em DUAS condições: quando o veredito do validador é 'aprovado',
-  OU quando o protocolo de estagnação detecta que o coder não fez alterações e o
-  bloqueio se repete (encerramento por estagnação, com status `bloqueado` — NÃO é
-  aprovação). O status técnico de execução do harness, sozinho, nunca encerra.
+Módulo autônomo (instrução e schemas próprios, em `cr_executor_prompt.py` e
+`cr_executor_schemas.py`): não deriva de `executor/prompt.py` nem importa
+`executor/schemas.py`.
+- Compõe harness + AgentTool(validador). Sem `exit_loop`: a terminação do loop
+  saiu do executor e virou responsabilidade do `cr_convergence_checker`
+  (early-stopping determinístico), que roda logo após este agente.
+- O executor apenas roda o harness, obtém o veredito do validador e o registra.
+  O status técnico de execução do harness, sozinho, nunca decide nada.
 
 ## Relatório de erro ao coder (determinístico)
 
@@ -34,8 +34,8 @@ CRIA o diretório sem o marker `.ai4se_workspace`, e isso faria `init_workspace(
 recusar limpar o workspace. Resolvê-los em tempo de chamada (após init_workspace)
 evita esse efeito colateral.
 
-Vive no LoopAgent [coder → executor]; o validador é AgentTool interna do
-executor. O cr_reviewer permanece fora do loop.
+Vive no LoopAgent [coder → executor → convergence_checker]; o validador é
+AgentTool interna do executor. O cr_reviewer permanece fora do loop.
 """
 
 import json
@@ -45,25 +45,21 @@ from pathlib import Path
 from typing import Optional
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, exit_loop
+from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
-from src.agents.executor import prompt as executor_prompt
-from src.agents.executor.schemas import ErrorReport, FailedCriterion, FailedStage
 from src.agents.implementation_validator import root_agent as implementation_validator
 from src.agents.implementation_validator.agent import _report_path_valido
+
+from . import prompt as executor_prompt
+from .schemas import ErrorReport, FailedCriterion, FailedStage
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
-
-# Marcador que o prompt manda o executor emitir no encerramento por ESTAGNAÇÃO.
-# Nesse caminho o resumo `bloqueado` é destinado ao reviewer (o loop já vai
-# encerrar), então o callback NÃO o substitui pelo ErrorReport.
-_MARCADOR_ESTAGNACAO = "STATUS: bloqueado"
 
 # Estágios apenas PULADOS são consequência em cascata do que falhou antes
 # ("Abortado: ..."), não trazem evidência útil — só falha/erro entram no report.
@@ -117,9 +113,7 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
     Retorna `None` (preservando a saída original do executor) quando:
     - `state['validation']` está ausente — o mecanismo de propagação não
       disparou; degrada para a prosa do LLM em vez de emitir relatório vazio;
-    - o veredito real é 'aprovado' — não há erro a relatar;
-    - o turno é o encerramento por ESTAGNAÇÃO — o resumo `bloqueado` é destinado
-      ao reviewer e não pode ser sobrescrito.
+    - o veredito real é 'aprovado' — não há erro a relatar.
     """
     validation = callback_context.state.get("validation")
     if not validation:
@@ -130,10 +124,6 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
         return None
 
     if validation.get("status") != "reprovado":
-        return None
-
-    raw = callback_context.state.get("execution_result", "") or ""
-    if _MARCADOR_ESTAGNACAO.casefold() in raw.casefold():
         return None
 
     exec_report = _carregar_execution_report(callback_context)
@@ -180,10 +170,9 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
     return _como_content(report)
 
 
-# A instrução (fluxo + salvaguarda) é reusada VERBATIM do consolidado: não há
-# diferenças de workspace/contexto a ajustar — os nomes de tool e o fluxo já
-# valem para o workflow. (Se surgirem diferenças, adaptar aqui via .replace,
-# como o cr_reviewer faz com reviewer_prompt.)
+# Instrução e schemas são PRÓPRIOS deste workflow (cr_executor_prompt /
+# cr_executor_schemas): o executor não deriva mais do pacote executor/. Sem
+# exit_loop — a terminação do loop é do cr_convergence_checker.
 agent = LlmAgent(
     model=_model,
     name="cr_executor_agent",
@@ -196,7 +185,6 @@ agent = LlmAgent(
     tools=[
         FunctionTool(executar_harness_tool),
         AgentTool(agent=implementation_validator),
-        FunctionTool(exit_loop),
     ],
 )
 agent.after_agent_callback = montar_error_report

@@ -15,19 +15,20 @@ convergence_checker (emite escalate quando convergiu/estagnou). O
 `max_iterations` (env `AI4ES_LOOP_MAX_ITERATIONS`, default 300) é apenas a
 rede de segurança final.
 
-Cada sub-agente é definido em seu próprio módulo (cr_*.py) para manter
-este arquivo slim e facilitar manutenção independente.
+Cada sub-agente é definido em seu próprio package (context_engineer/, coder/,
+executor/, convergence_checker/, reviewer/) para manter este arquivo slim e
+facilitar manutenção independente.
 """
 
 import os
 
 from google.adk.agents import LoopAgent, SequentialAgent
 
-from .cr_context_engineer import agent as _context_engineer
-from .cr_coder import agent as _coder
-from .cr_executor import agent as _executor
-from .cr_convergence_checker import agent as _convergence_checker
-from .cr_reviewer import agent as _reviewer
+from .context_engineer.agent import agent as _context_engineer
+from .coder.agent import agent as _coder
+from .executor.agent import agent as _executor
+from .convergence_checker.agent import agent as _convergence_checker
+from .reviewer.agent import agent as _reviewer
 
 # ---------------------------------------------------------------------------
 # Loop de codificação + execução + convergência:

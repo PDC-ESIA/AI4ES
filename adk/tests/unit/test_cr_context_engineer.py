@@ -15,7 +15,7 @@ from pathlib import Path
 
 def _reload_cr_context_engineer():
     import importlib
-    from src.agents.workflow_coding_review import cr_context_engineer
+    from src.agents.workflow_coding_review.context_engineer import agent as cr_context_engineer
     importlib.reload(cr_context_engineer)
     return cr_context_engineer
 
