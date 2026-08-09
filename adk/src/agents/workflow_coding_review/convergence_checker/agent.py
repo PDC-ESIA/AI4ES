@@ -44,7 +44,6 @@ canônico e afirma a igualdade (independência em runtime, consistência em test
 import hashlib
 import json
 import logging
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -58,25 +57,12 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Configuração por ambiente (mesmo padrão de ADK_LLM_MODEL)
+# Configuração por ambiente (centralizada em ../config.py — DRY com o pipeline).
+# `_CEILING` (teto/rede de segurança) e `_PATIENCE` (janela sem progresso) são
+# apenas aliases locais das constantes já resolvidas no import-time.
 # ---------------------------------------------------------------------------
-def _int_env(nome: str, default: int) -> int:
-    """Lê um inteiro de env; valor ausente/inválido → default (com aviso)."""
-    bruto = os.environ.get(nome)
-    if bruto is None:
-        return default
-    try:
-        return int(bruto)
-    except ValueError:
-        logger.warning(
-            "cr_convergence_checker: %s=%r inválido; usando %d.", nome, bruto, default
-        )
-        return default
-
-
-# Teto do loop (rede de segurança) e paciência (janela sem progresso).
-_CEILING = _int_env("AI4ES_LOOP_MAX_ITERATIONS", 300)
-_PATIENCE = _int_env("AI4ES_LOOP_PATIENCE", 3)
+from ..config import LOOP_MAX_ITERATIONS as _CEILING
+from ..config import LOOP_PATIENCE as _PATIENCE
 
 
 # ---------------------------------------------------------------------------

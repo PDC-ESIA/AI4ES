@@ -20,10 +20,9 @@ executor/, convergence_checker/, reviewer/) para manter este arquivo slim e
 facilitar manutenção independente.
 """
 
-import os
-
 from google.adk.agents import LoopAgent, SequentialAgent
 
+from .config import LOOP_MAX_ITERATIONS
 from .context_engineer.agent import agent as _context_engineer
 from .coder.agent import agent as _coder
 from .executor.agent import agent as _executor
@@ -46,7 +45,7 @@ _code_execute_loop = LoopAgent(
         "coder produz/corrige código → executor testa em Docker → "
         "convergence_checker decide continuar ou encerrar (early-stopping)."
     ),
-    max_iterations=int(os.environ.get("AI4ES_LOOP_MAX_ITERATIONS", "300")),
+    max_iterations=LOOP_MAX_ITERATIONS,
     sub_agents=[_coder, _executor, _convergence_checker],
 )
 
