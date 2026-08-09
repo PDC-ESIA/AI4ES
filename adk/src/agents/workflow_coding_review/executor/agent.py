@@ -1,7 +1,7 @@
 """Executor dedicado ao workflow coding_review — independente do pacote executor/.
 
-Módulo autônomo (instrução e schemas próprios, em `cr_executor_prompt.py` e
-`cr_executor_schemas.py`): não deriva de `executor/prompt.py` nem importa
+Módulo autônomo (instrução e schemas próprios, em `prompt.py` e
+`schemas.py` deste package): não deriva de `executor/prompt.py` nem importa
 `executor/schemas.py`.
 - Compõe harness + AgentTool(validador). Sem `exit_loop`: a terminação do loop
   saiu do executor e virou responsabilidade do `cr_convergence_checker`
@@ -170,9 +170,9 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
     return _como_content(report)
 
 
-# Instrução e schemas são PRÓPRIOS deste workflow (cr_executor_prompt /
-# cr_executor_schemas): o executor não deriva mais do pacote executor/. Sem
-# exit_loop — a terminação do loop é do cr_convergence_checker.
+# Instrução e schemas são PRÓPRIOS deste package (prompt.py / schemas.py): o
+# executor não deriva mais do pacote executor/. Sem exit_loop — a terminação do
+# loop é do convergence_checker.
 agent = LlmAgent(
     model=_model,
     name="cr_executor_agent",

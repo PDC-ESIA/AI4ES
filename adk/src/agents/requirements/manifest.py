@@ -5,8 +5,8 @@ manifesto (não só a pasta). O consumidor (context engineer do Time 3)
 escolhe quais arquivos priorizar sem varrer o workspace inteiro.
 
 Padrão de implementação: after_agent_callback determinístico, zero LLM,
-idêntico ao cr_reviewer.py (Time 4, PR #316). Falha é logada e degradada,
-nunca derruba o pipeline.
+idêntico ao reviewer/agent.py do coding_review (Time 4, PR #316). Falha é
+logada e degradada, nunca derruba o pipeline.
 """
 
 import json

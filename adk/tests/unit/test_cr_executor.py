@@ -6,9 +6,9 @@ diretamente nem decide o encerramento do loop. Ele compõe apenas:
   - o Agente de Validação (AgentTool).
 
 A terminação do loop saiu do executor e virou responsabilidade do
-`cr_convergence_checker` — por isso NÃO há mais `exit_loop` nem protocolo de
+`convergence_checker` — por isso NÃO há mais `exit_loop` nem protocolo de
 estagnação aqui. O executor usa instrução e schemas PRÓPRIOS
-(`cr_executor_prompt` / `cr_executor_schemas`), sem derivar do pacote `executor/`.
+(`executor/prompt.py` / `executor/schemas.py`), sem derivar do pacote `executor/`.
 
 Cobertura:
 - Agent wiring: nome, output_key, as 2 peças compostas;
@@ -180,7 +180,7 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
 
 
 def test_error_report_schemas_locais_equivalem_aos_canonicos():
-    """cr_executor_schemas é uma cópia local (independência do pacote executor/),
+    """executor/schemas.py é uma cópia local (independência do pacote executor/),
     mas precisa permanecer estruturalmente idêntico aos schemas canônicos — este
     teste é o único acoplamento e alarma se um dos lados mudar."""
     from src.agents.executor import schemas as canon

@@ -5,7 +5,7 @@ de Validação de Implementação e encerra o loop de codificação quando o ver
 é 'aprovado' OU quando o protocolo de estagnação detecta que o coder não fez
 alterações e o mesmo bloqueio se repete (encerramento por estagnação, que NÃO é
 aprovação). Extraído/adaptado do fluxo e da salvaguarda que hoje vivem hardcoded
-em `workflow_coding_review/cr_executor.py`.
+em `workflow_coding_review/executor/agent.py`.
 """
 
 description = (
