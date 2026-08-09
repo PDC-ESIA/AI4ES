@@ -115,7 +115,7 @@ def _ler_md(diretorio: Path) -> list[tuple[str, str]]:
     for arquivo in sorted(diretorio.glob("*.md"), key=lambda p: _ordem(p.name)):
         try:
             conteudo = arquivo.read_text(encoding="utf-8").strip()
-        except OSError, UnicodeDecodeError:
+        except (OSError, UnicodeDecodeError):
             logger.warning(
                 "cr_feedforward: %s ilegível, fora do context_pack (esperado UTF-8)",
                 arquivo,
