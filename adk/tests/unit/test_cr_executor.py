@@ -162,25 +162,28 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
 
 
 # ===========================================================================
-# LoopAgent structure — topologia [coder → executor] intocada
+# LoopAgent structure — topologia [coder → executor → convergence_checker]
 # ===========================================================================
 
 
 def test_loop_agent_max_iterations():
-    """LoopAgent deve ter max_iterations=5."""
+    """O teto do LoopAgent é a rede de segurança (default 300); a terminação
+    real é do convergence_checker."""
     from src.agents.workflow_coding_review.agent import _code_execute_loop
 
-    assert _code_execute_loop.max_iterations == 5
+    assert _code_execute_loop.max_iterations == 300
 
 
 def test_loop_agent_sub_agents_order():
-    """LoopAgent deve ter coder ANTES de executor (validador é AgentTool interna)."""
+    """LoopAgent: coder → executor → convergence_checker (validador é AgentTool
+    interna do executor, não sub-agente do loop)."""
     from src.agents.workflow_coding_review.agent import _code_execute_loop
 
     names = [sa.name for sa in _code_execute_loop.sub_agents]
     assert names[0] == "cr_coder_agent"
     assert names[1] == "cr_executor_agent"
-    assert len(names) == 2  # o validador NÃO é sub-agente do loop
+    assert names[2] == "cr_convergence_checker"
+    assert len(names) == 3  # o validador NÃO é sub-agente do loop
 
 
 def test_coder_instruction_exige_readme(tmp_path, monkeypatch):

@@ -1,17 +1,19 @@
 """Workflow coding_review: pipeline enxuto de codificação com revisão.
 
-Pipeline: context_engineer -> LoopAgent[coder ↔ executor] -> reviewer
+Pipeline: context_engineer -> LoopAgent[coder → executor → checker] -> reviewer
   - context_engineer: fragmenta requisitos em tasks contextualizadas
   - coder: implementa código a partir das tasks (workspace isolado)
             Em re-execução: corrige código baseado no erro do executor
-  - executor: builda e roda código em Docker
-              Se sucesso: exit_loop → pipeline segue para reviewer
-              Se falha: reporta erro → loop volta ao coder
+  - executor: builda e roda código em Docker, emite ErrorReport determinístico
+  - convergence_checker: decide, sem LLM, se o loop continua ou encerra
+              (early-stopping por progresso). É a fonte REAL de terminação.
   - reviewer: analisa (4 camadas) e persiste relatório de revisão
 
 O LoopAgent garante que o código produzido é EXECUTÁVEL antes de seguir
-para revisão. O teto de iterações é o default 5 (1 tentativa + 4 retries),
-parametrizável pela env var `AI4ES_MAX_LOOP_ITERATIONS`.
+para revisão. A terminação do loop saiu do LLM: quem encerra é o
+convergence_checker (emite escalate quando convergiu/estagnou). O
+`max_iterations` (env `AI4ES_LOOP_MAX_ITERATIONS`, default 300) é apenas a
+rede de segurança final.
 
 Cada sub-agente é definido em seu próprio módulo (cr_*.py) para manter
 este arquivo slim e facilitar manutenção independente.
@@ -24,13 +26,16 @@ from google.adk.agents import LoopAgent, SequentialAgent
 from .cr_context_engineer import agent as _context_engineer
 from .cr_coder import agent as _coder
 from .cr_executor import agent as _executor
+from .cr_convergence_checker import agent as _convergence_checker
 from .cr_reviewer import agent as _reviewer
 
 # ---------------------------------------------------------------------------
-# Loop de codificação + execução: coder produz/corrige → executor testa
-# O loop encerra quando o executor chama exit_loop (aprovação ou estagnação) ou
-# após max_iterations (fallback — código segue para review mesmo com falha).
-# O teto default é 5, sobrescrevível pela env var AI4ES_MAX_LOOP_ITERATIONS
+# Loop de codificação + execução + convergência:
+#   coder produz/corrige → executor testa → checker decide continuar/encerrar.
+# O loop encerra quando o convergence_checker emite escalate (convergência,
+# estagnação dura ou sem progresso) ou, na pior das hipóteses, ao atingir o teto
+# max_iterations (rede de segurança). O executor NÃO controla mais a terminação.
+# O teto default é 300, sobrescrevível pela env var AI4ES_LOOP_MAX_ITERATIONS
 # (mesmo padrão de configuração por ambiente usado para ADK_LLM_MODEL).
 # ---------------------------------------------------------------------------
 _code_execute_loop = LoopAgent(
@@ -38,10 +43,10 @@ _code_execute_loop = LoopAgent(
     description=(
         "Loop de codificação e execução: "
         "coder produz/corrige código → executor testa em Docker → "
-        "repete até sucesso ou max_iterations."
+        "convergence_checker decide continuar ou encerrar (early-stopping)."
     ),
-    max_iterations=int(os.environ.get("AI4ES_MAX_LOOP_ITERATIONS", "5")),
-    sub_agents=[_coder, _executor],
+    max_iterations=int(os.environ.get("AI4ES_LOOP_MAX_ITERATIONS", "300")),
+    sub_agents=[_coder, _executor, _convergence_checker],
 )
 
 # ---------------------------------------------------------------------------
@@ -51,7 +56,7 @@ agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → [codificação ↔ execução Docker] → revisão."
+        "contexto → [codificação → execução Docker → convergência] → revisão."
     ),
     sub_agents=[_context_engineer, _code_execute_loop, _reviewer],
 )
