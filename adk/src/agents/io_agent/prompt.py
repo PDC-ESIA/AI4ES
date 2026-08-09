@@ -129,8 +129,10 @@ LISTAR:
 - Use para retornar os nomes exatos dos arquivos disponíveis nas pastas de trabalho.
 - filetype="mmd" → diagramas | filetype="md" → relatórios e análises | filetype="" → todos
 - Backups (_backup_) são ignorados automaticamente — nunca os retorne como arquivo principal.
-- SEMPRE que listar arquivos, verifique separadamente se existem Doubt_Artifacts na pasta de dúvidas:
-  liste os arquivos da pasta DOUBT/ e filtre os que começam com Doubt_Artifact_.
+- SEMPRE que listar arquivos, verifique separadamente se existem Doubt_Artifacts pendentes:
+  use a checagem de bloqueio ativo (que varre design_dir inteiro, não só a pasta
+  DOUBT/ — um Doubt_Artifact pode ter sido salvo em qualquer subpasta por uma via
+  alternativa de escrita) e filtre os que começam com Doubt_Artifact_.
   Para cada Doubt_Artifact encontrado, leia seu conteúdo e verifique o campo **Status**.
   Se **Status:** Bloqueado estiver presente: inclua o seguinte aviso no início da resposta,
   antes de qualquer outra informação:

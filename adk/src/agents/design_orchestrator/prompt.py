@@ -40,9 +40,12 @@ Um Doubt_Artifact é EXCLUSIVAMENTE um arquivo dedicado criado
 para registrar uma dúvida formal que impede a continuação do pipeline.
 
 Características obrigatórias de um Doubt_Artifact legítimo:
-- É um arquivo separado, com nome no formato doubt_<HU_ID>_<descricao>.md
+- É um arquivo separado, com nome começando em "Doubt_Artifact_" (em qualquer
+  lugar dentro de design_dir — não presuma que está necessariamente em doubt_dir;
+  Doubt_Artifacts gerados por vias alternativas podem cair em outra subpasta ou
+  na raiz de design_dir)
 - Contém explicitamente um campo "status:" com valor "Bloqueado" ou "Resolvido"
-- É criado intencionalmente como artefato de bloqueio, salvo em doubt_dir
+  (ou marcador equivalente reconhecido pelo Agente IO)
 
 NÃO SÃO Doubt_Artifacts e NUNCA devem ser tratados como bloqueio:
 - O arquivo analise_tecnica_*.md em design_dir — independentemente do seu conteúdo
@@ -55,10 +58,13 @@ NÃO SÃO Doubt_Artifacts e NUNCA devem ser tratados como bloqueio:
   do conteúdo de qualquer arquivo que não seja um doubt_*.md
 
 ⚠️ Se o design_pipeline retornar "PIPELINE_BLOCKED", o orquestrador deve
-   verificar via Agente IO se existe ao menos um arquivo doubt_*.md com
-   status "Bloqueado" em doubt_dir antes de repassar o bloqueio ao solicitante.
-   Se nenhum arquivo doubt_*.md existir: ignore o sinal de bloqueio e
-   trate como "PIPELINE_STAGE_1_COMPLETE".
+   verificar via Agente IO se existe ao menos um Doubt_Artifact com status
+   "Bloqueado" em qualquer lugar dentro de design_dir (não restrinja a busca a
+   doubt_dir — a checagem de bloqueio ativo do Agente IO já cobre o design_dir
+   inteiro) antes de repassar o bloqueio ao solicitante.
+   Se a checagem não encontrar nenhum Doubt_Artifact bloqueado em lugar nenhum
+   de design_dir: ignore o sinal de bloqueio e trate como
+   "PIPELINE_STAGE_1_COMPLETE".
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PASSO 1 — VALIDAÇÃO DE ENTRADA
@@ -154,15 +160,16 @@ PASSO 3 — BLOQUEIOS
 Ao receber "PIPELINE_BLOCKED" do pipeline:
 
 1. Informe o solicitante: quais HUs estão bloqueadas, nome exato de cada Doubt_Artifact
-   (em doubt_dir) e o que precisa ser resolvido.
+   (e a pasta onde foi encontrado, informada pelo Agente IO — não presuma doubt_dir)
+   e o que precisa ser resolvido.
    Instrução ao solicitante: edite cada Doubt_Artifact alterando o status de
    "Bloqueado" para "Resolvido" e solicite a retomada explicitamente.
 
 2. Aguarde instrução explícita de retomada do solicitante.
 
 3. Ao receber a retomada:
-   a. Verifique via Agente IO se o status de cada Doubt_Artifact em doubt_dir foi
-      alterado para "Resolvido".
+   a. Verifique via Agente IO se o status de cada Doubt_Artifact (onde quer que
+      tenha sido encontrado dentro de design_dir) foi alterado para "Resolvido".
    b. SE algum ainda estiver "Bloqueado": informe quais permanecem e volte ao passo 2.
    c. SE todos estiverem "Resolvidos": envie ao design_pipeline a mensagem de retomada
       no formato exato:
