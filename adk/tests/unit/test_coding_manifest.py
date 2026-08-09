@@ -103,6 +103,17 @@ def test_scan_artifacts_detecta_revisao(tmp_path):
     assert arts[0]["id"] == "verificacao_revisao"
 
 
+def test_scan_artifacts_detecta_tasks(tmp_path):
+    _make_ws(tmp_path, {
+        "tasks/TASK-001.json": '{"id": "TASK-001"}',
+        "tasks/TASK-002.json": '{"id": "TASK-002"}',
+    })
+    arts = _scan_artifacts(tmp_path, tmp_path)
+    assert all(a["tipo"] == "task" for a in arts)
+    ids = {a["id"] for a in arts}
+    assert {"TASK-001", "TASK-002"} == ids
+
+
 def test_scan_artifacts_path_usa_barra_forward(tmp_path):
     _make_ws(tmp_path, {"src/app/main.py": "# main"})
     arts = _scan_artifacts(tmp_path, tmp_path)
@@ -316,7 +327,7 @@ def test_emit_grava_state_e_arquivo(tmp_path):
     assert STATE_KEY in ctx.state
     assert ctx.state[STATE_KEY]["phase"] == PHASE_NAME
     assert ctx.state[STATE_KEY]["status"] == "ok"
-    assert (tmp_path / "coding" / "manifest.json").exists()
+    assert (coder_ws / "manifest.json").exists()
 
 
 def test_emit_manifest_json_valido(tmp_path):

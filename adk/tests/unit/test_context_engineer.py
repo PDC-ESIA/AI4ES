@@ -6,6 +6,34 @@ from pathlib import Path
 import pytest
  
  
+# -------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------
+ 
+def _manifesto_requirements(artifacts: list, status: str = "ok") -> str:
+    return json.dumps({
+        "phase": "requirements",
+        "status": status,
+        "artifacts": artifacts,
+        "doubts": [],
+        "summary": "Fase de requisitos concluída.",
+    })
+ 
+ 
+def _manifesto_design(artifacts: list, status: str = "ok") -> str:
+    return json.dumps({
+        "phase": "design",
+        "status": status,
+        "artifacts": artifacts,
+        "doubts": [],
+        "summary": "Fase de design concluída.",
+    })
+ 
+ 
+# -------------------------------------------------------------------
+# Descoberta e schema do agente
+# -------------------------------------------------------------------
+ 
 def test_context_engineer_root_agent_importavel():
     from src.agents.context_engineer import root_agent
     assert root_agent is not None
@@ -28,6 +56,10 @@ def test_context_engineer_tem_tools_esperadas():
         "tool_gerar_doubt_artifact",
     } <= tool_names
  
+ 
+# -------------------------------------------------------------------
+# Schemas
+# -------------------------------------------------------------------
  
 def test_schemas_macro_context_minimal():
     from src.agents.context_engineer.schemas import MacroContext
@@ -130,15 +162,14 @@ def test_schemas_tasks_output_completo():
     assert output.macro_context.summary == "X"
  
  
+# -------------------------------------------------------------------
+# tool_salvar_task
+# -------------------------------------------------------------------
+ 
 def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
-    """tool_salvar_task escreve JSON em workspace/tasks/<id>.json."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from shared.tools.coding_tools.context_engineer_tools import tool_salvar_task
-    task_json = json.dumps({
-        "id": "TASK-001",
-        "type": "backend",
-        "description": "Criar endpoint",
-    })
+    task_json = json.dumps({"id": "TASK-001", "type": "backend", "description": "Criar endpoint"})
     result = tool_salvar_task("TASK-001", task_json)
     assert result["sucesso"] is True
     arquivo = tmp_path / "ws" / "tasks" / "TASK-001.json"
@@ -163,8 +194,12 @@ def test_tool_salvar_task_json_invalido_rejeita(tmp_path, monkeypatch):
     assert "JSON inválido" in result["erro"] or "JSON invalido" in str(result.get("erro", ""))
  
  
-def test_tool_ler_requirements_com_hu_e_rf(tmp_path, monkeypatch):
-    """tool_ler_requirements lê com HUs e RFs — cenário completo."""
+# -------------------------------------------------------------------
+# tool_ler_requirements — via manifesto
+# -------------------------------------------------------------------
+ 
+def test_tool_ler_requirements_com_manifesto_ok(tmp_path, monkeypatch):
+    """Lê artefatos corretamente quando manifesto está ok."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     pasta_hus = tmp_path / "ws" / "requirements" / "HUs"
     pasta_rfs = tmp_path / "ws" / "requirements" / "RFs"
@@ -172,75 +207,124 @@ def test_tool_ler_requirements_com_hu_e_rf(tmp_path, monkeypatch):
     pasta_rfs.mkdir(parents=True)
     (pasta_hus / "HU-001.md").write_text("# HU-001", encoding="utf-8")
     (pasta_rfs / "RF-001.md").write_text("# RF-001", encoding="utf-8")
+ 
+    manifesto = _manifesto_requirements([
+        {"tipo": "HU", "id": "HU-001", "path": "requirements/HUs/HU-001.md"},
+        {"tipo": "RF", "id": "RF-001", "path": "requirements/RFs/RF-001.md"},
+    ])
+ 
     from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
-    result = tool_ler_requirements()
+    result = tool_ler_requirements(manifesto)
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is True
     assert result["tem_hu"] is True
     assert result["total_lidos"] == 2
  
  
-def test_tool_ler_requirements_so_rf_valido(tmp_path, monkeypatch):
-    """tool_ler_requirements aceita cenário com apenas RF — HU ausente não bloqueia sozinha."""
+def test_tool_ler_requirements_com_manifesto_blocked(tmp_path, monkeypatch):
+    """Retorna erro quando manifesto está bloqueado."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    manifesto = _manifesto_requirements([], status="blocked")
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
+    result = tool_ler_requirements(manifesto)
+    assert result["sucesso"] is False
+    assert result["status_manifesto"] == "blocked"
+    assert "bloqueada" in result["erro"]
+ 
+ 
+def test_tool_ler_requirements_com_manifesto_partial(tmp_path, monkeypatch):
+    """Segue normalmente quando manifesto está partial."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     pasta_rfs = tmp_path / "ws" / "requirements" / "RFs"
     pasta_rfs.mkdir(parents=True)
     (pasta_rfs / "RF-001.md").write_text("# RF-001", encoding="utf-8")
+ 
+    manifesto = _manifesto_requirements([
+        {"tipo": "RF", "id": "RF-001", "path": "requirements/RFs/RF-001.md"},
+    ], status="partial")
+ 
     from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
-    result = tool_ler_requirements()
+    result = tool_ler_requirements(manifesto)
     assert result["sucesso"] is True
-    assert result["artefatos_minimos_presentes"] is True
+    assert result["status_manifesto"] == "partial"
     assert result["tem_hu"] is False
  
  
+def test_tool_ler_requirements_sem_manifesto_bloqueia(tmp_path, monkeypatch):
+    """Retorna erro quando manifesto não é fornecido — sem fallback."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
+    result = tool_ler_requirements()
+    assert result["sucesso"] is False
+    assert "não fornecido" in result["erro"]
+ 
+ 
 def test_tool_ler_requirements_sem_rf_bloqueia(tmp_path, monkeypatch):
-    """tool_ler_requirements bloqueia quando não existe RF — único mínimo obrigatório."""
+    """Retorna artefatos_minimos_presentes=False quando não há RF."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     pasta_hus = tmp_path / "ws" / "requirements" / "HUs"
     pasta_hus.mkdir(parents=True)
     (pasta_hus / "HU-001.md").write_text("# HU-001", encoding="utf-8")
+ 
+    manifesto = _manifesto_requirements([
+        {"tipo": "HU", "id": "HU-001", "path": "requirements/HUs/HU-001.md"},
+    ])
+ 
     from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
-    result = tool_ler_requirements()
+    result = tool_ler_requirements(manifesto)
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is False
     assert any("RF" in msg for msg in result["artefatos_minimos_ausentes"])
  
  
-def test_tool_ler_requirements_pasta_inexistente(tmp_path, monkeypatch):
-    """tool_ler_requirements retorna erro se pasta não existe."""
-    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
-    result = tool_ler_requirements()
-    assert result["sucesso"] is False
-    assert "não encontrada" in result["erro"]
+# -------------------------------------------------------------------
+# tool_ler_design — via manifesto com fallback
+# -------------------------------------------------------------------
  
- 
-def test_tool_ler_design_com_analise(tmp_path, monkeypatch):
-    """tool_ler_design detecta analise_tecnica presente."""
+def test_tool_ler_design_com_manifesto_ok(tmp_path, monkeypatch):
+    """Lê artefatos corretamente quando manifesto está ok."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     pasta = tmp_path / "ws" / "design"
     pasta.mkdir(parents=True)
     (pasta / "analise_tecnica_HU-001.md").write_text("# Análise", encoding="utf-8")
+ 
+    manifesto = _manifesto_design([
+        {"tipo": "analise", "id": "HU-001", "path": "design/analise_tecnica_HU-001.md"},
+    ])
+ 
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
+    result = tool_ler_design(manifesto)
+    assert result["sucesso"] is True
+    assert result["artefatos_minimos_presentes"] is True
+    assert result["fallback"] is False
+ 
+ 
+def test_tool_ler_design_com_manifesto_blocked(tmp_path, monkeypatch):
+    """Retorna erro quando manifesto de design está bloqueado."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    manifesto = _manifesto_design([], status="blocked")
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
+    result = tool_ler_design(manifesto)
+    assert result["sucesso"] is False
+    assert result["status_manifesto"] == "blocked"
+ 
+ 
+def test_tool_ler_design_sem_manifesto_fallback(tmp_path, monkeypatch):
+    """Usa fallback para workspace quando manifesto não é fornecido."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    pasta = tmp_path / "ws" / "design"
+    pasta.mkdir(parents=True)
+    (pasta / "analise_tecnica_HU-001.md").write_text("# Análise", encoding="utf-8")
+ 
     from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
     result = tool_ler_design()
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is True
+    assert result["fallback"] is True
  
  
-def test_tool_ler_design_sem_analise(tmp_path, monkeypatch):
-    """tool_ler_design detecta ausência de analise_tecnica."""
-    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    pasta = tmp_path / "ws" / "design" / "diagrams"
-    pasta.mkdir(parents=True)
-    (pasta / "diagrama_HU-001.mmd").write_text("graph TD", encoding="utf-8")
-    from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
-    result = tool_ler_design()
-    assert result["sucesso"] is True
-    assert result["artefatos_minimos_presentes"] is False
- 
- 
-def test_tool_ler_design_pasta_inexistente(tmp_path, monkeypatch):
-    """tool_ler_design retorna erro se pasta não existe."""
+def test_tool_ler_design_sem_manifesto_pasta_inexistente(tmp_path, monkeypatch):
+    """Fallback retorna erro quando pasta design não existe."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
     result = tool_ler_design()
@@ -248,16 +332,34 @@ def test_tool_ler_design_pasta_inexistente(tmp_path, monkeypatch):
     assert "não encontrada" in result["erro"]
  
  
+def test_tool_ler_design_sem_manifesto_sem_analise(tmp_path, monkeypatch):
+    """Fallback detecta ausência de analise_tecnica no workspace."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    pasta = tmp_path / "ws" / "design" / "diagrams"
+    pasta.mkdir(parents=True)
+    (pasta / "diagrama_HU-001.mmd").write_text("graph TD", encoding="utf-8")
+ 
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
+    result = tool_ler_design()
+    assert result["sucesso"] is True
+    assert result["artefatos_minimos_presentes"] is False
+    assert result["fallback"] is True
+ 
+ 
+# -------------------------------------------------------------------
+# tool_gerar_doubt_artifact
+# -------------------------------------------------------------------
+ 
 def test_tool_gerar_doubt_artifact(tmp_path, monkeypatch):
-    """tool_gerar_doubt_artifact persiste arquivo .md no workspace."""
+    """Persiste arquivo .md no workspace."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     (tmp_path / "ws").mkdir(parents=True)
     from shared.tools.coding_tools.context_engineer_tools import tool_gerar_doubt_artifact
     result = tool_gerar_doubt_artifact(
-        titulo="Artefatos mínimos ausentes",
+        titulo="Manifesto de requisitos ausente",
         fase_bloqueada="requirements",
-        descricao="Nenhum RF encontrado na pasta requirements/RFs/",
-        acao_necessaria="Reprocessar a fase requirements",
+        descricao="O manifesto de requirements não foi fornecido.",
+        acao_necessaria="Reprocessar a fase requirements antes de continuar.",
     )
     assert result["sucesso"] is True
     assert result["fase_bloqueada"] == "requirements"
