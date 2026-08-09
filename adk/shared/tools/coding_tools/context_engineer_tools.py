@@ -44,6 +44,22 @@ class DoubtArtifactSchema(BaseModel):
             raise ValueError("O Doubt Artifact deve ser um arquivo .md.")
         return v
 
+def _ler_arquivo(path: Path, workspace_root: Path):
+    """Lê um arquivo do workspace e retorna seu conteúdo como dicionário."""
+    if not path.exists() or not path.is_file():
+        return None
+    try:
+        conteudo = path.read_text(encoding="utf-8", errors="replace")
+        return {
+            "path": str(path.relative_to(workspace_root)),
+            "nome": path.name,
+            "tipo": path.suffix.lstrip("."),
+            "conteudo": conteudo,
+        }
+    except Exception as e:
+        logger.error("[CONTEXT ENGINEER] Erro ao ler " + str(path) + ": " + str(e))
+        return None
+
 def tool_salvar_task(task_id: str, task_json: str) -> dict:
     """Salva uma task contextualizada como JSON em workspace/tasks/.
 
@@ -190,65 +206,98 @@ def _ler_pasta_workspace(pasta_fase: Path, workspace_root: Path, nome_fase: str)
     }
  
 
-def tool_ler_requirements() -> dict:
-    """Lê todos os artefatos de requisitos do workspace.
- 
-    Verifica obrigatoriamente a presença de:
-    - pelo menos 1 arquivo RF-*.md em requirements/RFs/ (SEMPRE obrigatório)
- 
-    Informa separadamente se HUs existem via campo tem_hu — a ausência
-    de HUs não é bloqueante aqui. O Passo 2.5 do prompt cruza essa
-    informação com o design para determinar se é bloqueante ou não.
- 
+def tool_ler_requirements(paths_json: str) -> dict:
+    """Lê artefatos de requisitos a partir dos paths extraídos do manifesto.
+
+    O LLM extrai os paths do manifesto de requirements recebido no texto
+    do prompt (repassado pelo orquestrador) e passa para esta tool como
+    JSON serializado.
+
+    Args:
+        paths_json (str): JSON serializado com lista de dicionários contendo
+                          os paths dos artefatos extraídos do manifesto.
+                          Formato: [{"path": "requirements/HUs/HU-001.md"}, ...]
+
     Returns:
-        dict: sucesso, artefatos lidos, artefatos_minimos_presentes,
+        dict: sucesso, fase, artefatos lidos, artefatos_minimos_presentes,
               tem_hu, artefatos_minimos_ausentes e erros.
     """
     workspace_root = get_workspace_root()
-    pasta_fase = workspace_root / "requirements"
- 
-    resultado = _ler_pasta_workspace(pasta_fase, workspace_root, "requirements")
-    if not resultado["sucesso"]:
-        return resultado
- 
-    pasta_hus = pasta_fase / "HUs"
-    pasta_rfs = pasta_fase / "RFs"
- 
-    artefatos_minimos_presentes = True
+
+    try:
+        paths_list = json.loads(paths_json)
+    except json.JSONDecodeError as e:
+        return {
+            "sucesso": False,
+            "fase": "requirements",
+            "erro": "paths_json inválido — JSON malformado: " + str(e),
+            "artefatos": None,
+            "artefatos_minimos_presentes": False,
+            "tem_hu": False,
+        }
+
+    if not paths_list:
+        return {
+            "sucesso": False,
+            "fase": "requirements",
+            "erro": (
+                "Nenhum path de artefato fornecido. "
+                "Extraia os paths do manifesto de requirements recebido no prompt."
+            ),
+            "artefatos": None,
+            "artefatos_minimos_presentes": False,
+            "tem_hu": False,
+        }
+
+    artefatos = []
+    erros = []
+    tem_hu = False
+    tem_rf = False
+
+    for item in paths_list:
+        path_rel = str(item.get("path", "") if isinstance(item, dict) else item)
+        rel_path = Path(path_rel)
+        if rel_path.is_absolute() or ".." in rel_path.parts:
+            erros.append("Path inválido no manifesto: " + path_rel)
+            logger.warning("[CONTEXT ENGINEER] Path inválido no manifesto: " + path_rel)
+            continue
+        path_abs = workspace_root / rel_path
+        conteudo = _ler_arquivo(path_abs, workspace_root)
+        if conteudo:
+            artefatos.append(conteudo)
+            nome = Path(path_rel).name
+            if nome.startswith("HU-") and nome.endswith(".md"):
+                tem_hu = True
+            if nome.startswith("RF-") and nome.endswith(".md"):
+                tem_rf = True
+        else:
+            erros.append("Arquivo não encontrado: " + path_rel)
+            logger.warning("[CONTEXT ENGINEER] Artefato ausente: " + path_rel)
+
+    artefatos_minimos_presentes = tem_rf
     artefatos_minimos_ausentes = []
- 
-    tem_hu = (
-        pasta_hus.exists()
-        and any(
-            f.name.startswith("HU-") and f.suffix == ".md"
-            for f in pasta_hus.iterdir()
-            if f.is_file()
+
+    if not tem_rf:
+        artefatos_minimos_ausentes.append(
+            "Nenhum arquivo RF-*.md encontrado nos paths fornecidos"
         )
-    )
     if not tem_hu:
         artefatos_minimos_ausentes.append(
-            "Nenhum arquivo HU-*.md encontrado em requirements/HUs/ "
+            "Nenhum arquivo HU-*.md encontrado nos paths fornecidos "
             "(pode ser válido — verificar consistência com design no Passo 2.5)"
         )
- 
-    tem_rf = (
-        pasta_rfs.exists()
-        and any(
-            f.name.startswith("RF-") and f.suffix == ".md"
-            for f in pasta_rfs.iterdir()
-            if f.is_file()
-        )
-    )
-    if not tem_rf:
-        artefatos_minimos_presentes = False
-        artefatos_minimos_ausentes.append(
-            "Nenhum arquivo RF-*.md encontrado em requirements/RFs/"
-        )
- 
-    resultado["artefatos_minimos_presentes"] = artefatos_minimos_presentes
-    resultado["artefatos_minimos_ausentes"] = artefatos_minimos_ausentes
-    resultado["tem_hu"] = tem_hu
-    return resultado
+
+    return {
+        "sucesso": True,
+        "fase": "requirements",
+        "erro": None,
+        "artefatos": artefatos,
+        "total_lidos": len(artefatos),
+        "artefatos_minimos_presentes": artefatos_minimos_presentes,
+        "artefatos_minimos_ausentes": artefatos_minimos_ausentes,
+        "tem_hu": tem_hu,
+        "erros_leitura": erros if erros else None,
+    }
 
  
 def tool_ler_design() -> dict:
