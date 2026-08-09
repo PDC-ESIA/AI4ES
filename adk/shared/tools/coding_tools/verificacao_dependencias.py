@@ -66,6 +66,7 @@ ALIAS_IMPORT_PARA_PACOTE: dict[str, str] = {
     "yaml": "PyYAML",
     "bs4": "beautifulsoup4",
     "sklearn": "scikit-learn",
+    "cv2": "opencv-python",
 }
 
 # ---------------------------------------------------------------------------
