@@ -264,7 +264,7 @@ def test_linha_auditoria_registra_recebido_e_selecionado():
     assert "python-fastapi" in linha
 
 
-def test_linha_auditoria_registra_stack_nao_seleciondada():
+def test_linha_auditoria_registra_stack_nao_selecionada():
     assert "None" in _linha_auditoria(["a definir"], None)
 
 
