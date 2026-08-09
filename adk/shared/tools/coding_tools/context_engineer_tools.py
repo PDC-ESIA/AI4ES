@@ -436,9 +436,13 @@ def tool_ler_design(manifesto_json: Optional[str] = None) -> dict:
     tem_analise = False
  
     for item in manifesto.get("artifacts", []):
-        path_rel = item.get("path", "")
-        path_abs = workspace_root / path_rel
- 
+        path_rel = str(item.get("path", ""))
+        rel_path = Path(path_rel)
+        if rel_path.is_absolute() or ".." in rel_path.parts:
+            erros.append("Path inválido no manifesto: " + path_rel)
+            logger.warning("[CONTEXT ENGINEER] Path inválido no manifesto: " + path_rel)
+            continue
+        path_abs = workspace_root / rel_path
         conteudo = _ler_arquivo(path_abs, workspace_root)
         if conteudo:
             artefatos.append(conteudo)
