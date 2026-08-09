@@ -115,7 +115,7 @@ def _ler_md(diretorio: Path) -> list[tuple[str, str]]:
     for arquivo in sorted(diretorio.glob("*.md"), key=lambda p: _ordem(p.name)):
         try:
             conteudo = arquivo.read_text(encoding="utf-8").strip()
-        except (OSError, UnicodeDecodeError):
+        except OSError, UnicodeDecodeError:
             logger.warning(
                 "cr_feedforward: %s ilegível, fora do context_pack (esperado UTF-8)",
                 arquivo,
@@ -168,9 +168,7 @@ def _montar_escopo(diretorio: Path, cabecalho: str, vistos: set[str]) -> str | N
 
 
 def build_context_pack(
-    tech_stack: list[str],
-    knowledge_root: Path | None = None,
-    arm: str | None = None,
+    tech_stack: list[str], knowledge_root: Path | None = None
 ) -> str:
     """Monta o `context_pack` determinístico a partir da KB em disco.
 
@@ -178,23 +176,7 @@ def build_context_pack(
     devolve o texto pronto para injeção. `core/` sempre entra; `stacks/<stack>/`
     entra se `selecionar_stack` reconhecer a stack. String vazia se a KB não tiver
     nada a oferecer (diretório ausente, ou stack desconhecida e core/ vazio).
-
-    `arm` seleciona o braço do protocolo de validação (relatório §11.2) — só para
-    o experimento A/B/C, nunca setado em produção (default é sempre `"C"`, o
-    comportamento real desta camada). Lido de `AI4ES_FEEDFORWARD_ARM` se não
-    passado explicitamente:
-
-    - **"A"** — baseline: sem KB nenhuma, devolve `""` direto, nem lê disco.
-    - **"B"** — long-context: ignora `selecionar_stack`, despeja `core/` +
-      **todas** as pastas de `stacks/`, sem filtrar por stack. É o braço que
-      testa se selecionar por stack (C) vale o esforço frente a despejar tudo.
-    - **"C"** (default) — o comportamento desta camada: `core/` + só a stack
-      reconhecida.
     """
-    modo = (arm or os.environ.get("AI4ES_FEEDFORWARD_ARM") or "C").upper()
-    if modo == "A":
-        return ""
-
     raiz = knowledge_root if knowledge_root is not None else _dir_knowledge()
     vistos: set[str] = set()
     escopos: list[str] = []
@@ -205,33 +187,23 @@ def build_context_pack(
     if core:
         escopos.append(core)
 
-    if modo == "B":
-        stacks_dir = raiz / "stacks"
-        pastas = sorted(p for p in stacks_dir.iterdir() if p.is_dir()) if stacks_dir.is_dir() else []
-        for pasta in pastas:
-            stack_md = _montar_escopo(
-                pasta, f"# Conhecimento — stack `{pasta.name}`", vistos
-            )
-            if stack_md:
-                escopos.append(stack_md)
+    stack = selecionar_stack(tech_stack)
+    if stack:
+        stack_md = _montar_escopo(
+            raiz / "stacks" / stack, f"# Conhecimento — stack `{stack}`", vistos
+        )
+        if stack_md:
+            escopos.append(stack_md)
     else:
-        stack = selecionar_stack(tech_stack)
-        if stack:
-            stack_md = _montar_escopo(
-                raiz / "stacks" / stack, f"# Conhecimento — stack `{stack}`", vistos
-            )
-            if stack_md:
-                escopos.append(stack_md)
-        else:
-            # Não é ruído: desde que o `ERROS COMUNS` saiu do prompt do cr_coder, cair
-            # em core/ significa o coder ficar sem deps.md/pitfalls.md — perda de
-            # conhecimento que antes era garantida pela instrução. Precisa ser visível.
-            logger.warning(
-                "cr_feedforward: stack não reconhecida em %r — context_pack sai só com "
-                "core/ (sem deps.md/pitfalls.md). Stacks disponíveis: %s",
-                tech_stack,
-                sorted(set(_STACK_KEYWORDS.values())),
-            )
+        # Não é ruído: desde que o `ERROS COMUNS` saiu do prompt do cr_coder, cair
+        # em core/ significa o coder ficar sem deps.md/pitfalls.md — perda de
+        # conhecimento que antes era garantida pela instrução. Precisa ser visível.
+        logger.warning(
+            "cr_feedforward: stack não reconhecida em %r — context_pack sai só com "
+            "core/ (sem deps.md/pitfalls.md). Stacks disponíveis: %s",
+            tech_stack,
+            sorted(set(_STACK_KEYWORDS.values())),
+        )
 
     return "\n\n---\n\n".join(escopos)
 
