@@ -73,7 +73,7 @@ def _normalizar_caminho_arquivo(caminho_arquivo: str | dict) -> Path:
     if isinstance(caminho_arquivo, dict):
         caminho_arquivo = caminho_arquivo.get("arquivo_gerado") or caminho_arquivo.get("arquivo") or caminho_arquivo.get("caminho_arquivo")
     
-    base_dir = get_agent_workspace("qa_agent")
+    base_dir = get_agent_workspace("receive_requirements")
     p = Path(caminho_arquivo)
 
     if p.is_absolute():
