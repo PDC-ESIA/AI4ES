@@ -1,11 +1,10 @@
 """Reviewer dedicado ao workflow coding_review.
 
-Instância ajustada do reviewer original (src/agents/reviewer/):
 - Analyzer: lê arquivos de coder/src/ (não diff git), produz análise markdown.
 - Análise estática pré-LLM via before_agent_callback (Ruff + Bandit).
 - Persistência via after_agent_callback Python puro — sem LLM no passo de escrita.
   Isso elimina o risco de "modo narrador" (LLM descreve a chamada em vez de executá-la).
-- Evita conflito de parent com o sdlc_pipeline (instância dedicada).
+- Instância dedicada com prompt próprio, evitando conflito de parent no pipeline.
 
 Variáveis de ambiente:
     REVIEWER_STATIC_ANALYSIS: "0" desabilita análise estática pré-LLM (padrão: habilitado).
@@ -28,14 +27,15 @@ from shared.tools.coding_tools.review_tools import (
     _inject_static_findings,
     _persist_review,
 )
-from src.agents.reviewer import prompt as reviewer_prompt
+
+from . import prompt as reviewer_prompt
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
-# Re-exportados para uso/teste via atributo do módulo (ex.: cr_reviewer._CODER_WS,
-# cr_reviewer._discover_coder_files) — mantém compatibilidade com quem já
-# referenciava esses nomes diretamente aqui antes da extração para review_tools.py.
+# Re-exportados para uso/teste via atributo do módulo (ex.: agent._CODER_WS,
+# agent._discover_coder_files) — mantém compatibilidade com quem referencia esses
+# nomes diretamente aqui, embora a implementação viva em review_tools.py.
 __all__ = [
     "agent",
     "_analyzer",
@@ -48,9 +48,9 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
-# Analyzer (reutiliza "alma" de src/agents/reviewer/prompt.py)
+# Analyzer (usa a "alma" do prompt local)
 # ---------------------------------------------------------------------------
-# Composição: prompt original do reviewer ajustado para:
+# Composição: prompt base ajustado para:
 # - Ler arquivos do workspace (não diff git)
 # - Produzir markdown — persistência feita via after_agent_callback
 # - Não chamar tool_salvar_relatorio — responsabilidade do callback

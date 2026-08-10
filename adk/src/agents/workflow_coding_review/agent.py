@@ -24,7 +24,7 @@ from google.adk.agents import LoopAgent, SequentialAgent
 from .context_engineer import agent as _context_engineer
 from .cr_coder import agent as _coder
 from .cr_executor import agent as _executor
-from .cr_reviewer import agent as _reviewer
+from .reviewer.agent import agent as _reviewer
 
 # ---------------------------------------------------------------------------
 # Loop de codificação + execução: coder produz/corrige → executor testa
