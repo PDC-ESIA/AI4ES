@@ -1,7 +1,8 @@
 from google.adk.tools import FunctionTool
 
 from shared.agent_factory import create_se_agent
-from shared.tools import tool_ler_diff, tool_salvar_relatorio
+from shared.tools.coding_tools.git import tool_ler_diff
+from shared.tools.coding_tools.filesystem_coding import tool_salvar_relatorio
 from . import prompt
 
 agent = create_se_agent(

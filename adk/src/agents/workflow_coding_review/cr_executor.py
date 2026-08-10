@@ -49,7 +49,7 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
-from shared.tools.harness_execucao import executar_harness_tool
+from shared.tools.coding_tools.harness_execucao import executar_harness_tool
 from src.agents.executor import prompt as executor_prompt
 from src.agents.executor.schemas import ErrorReport, FailedCriterion, FailedStage
 from src.agents.implementation_validator import root_agent as implementation_validator
