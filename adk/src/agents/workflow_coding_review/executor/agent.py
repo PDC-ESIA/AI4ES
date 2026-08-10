@@ -1,9 +1,6 @@
-"""Executor dedicado ao workflow coding_review — espelho do executor consolidado.
+"""Executor dedicado ao workflow coding_review.
 
-Instância-espelho de `src/agents/executor/` (mesma ideia de cr_reviewer → reviewer):
-- REUSA a "alma" (fluxo + salvaguarda) de `executor/prompt.py`; a instrução NÃO
-  é mais definida aqui — este espelho apenas a reusa.
-- Compõe harness + AgentTool(validador) + exit_loop, derivado do consolidado.
+- Compõe harness + AgentTool(validador) + exit_loop.
 - O loop encerra em DUAS condições: quando o veredito do validador é 'aprovado',
   OU quando o protocolo de estagnação detecta que o coder não fez alterações e o
   bloqueio se repete (encerramento por estagnação, com status `bloqueado` — NÃO é
@@ -28,14 +25,14 @@ Binding ao workspace do workflow: o harness já resolve, em tempo de CHAMADA, os
 seus base_dirs default — coder/src (get_agent_workspace("cr_coder"), entrada do
 coder), coder/execution ("cr_executor", saída da execução) e coder/tasks
 ("cr_context_engineer", a Task). Esses são exatamente os diretórios deste
-workflow; por isso compomos o harness direto, como o consolidado, sem reinjetar
-paths. NÃO resolvemos esses caminhos no import de propósito: get_agent_workspace
-CRIA o diretório sem o marker `.ai4se_workspace`, e isso faria `init_workspace()`
-recusar limpar o workspace. Resolvê-los em tempo de chamada (após init_workspace)
-evita esse efeito colateral.
+workflow; por isso compomos o harness direto, sem reinjetar paths. NÃO resolvemos
+esses caminhos no import de propósito: get_agent_workspace CRIA o diretório sem o
+marker `.ai4se_workspace`, e isso faria `init_workspace()` recusar limpar o
+workspace. Resolvê-los em tempo de chamada (após init_workspace) evita esse
+efeito colateral.
 
 Vive no LoopAgent [coder → executor]; o validador é AgentTool interna do
-executor. O cr_reviewer permanece fora do loop.
+executor. O reviewer permanece fora do loop.
 """
 
 import json
@@ -50,10 +47,11 @@ from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
-from src.agents.executor import prompt as executor_prompt
-from src.agents.executor.schemas import ErrorReport, FailedCriterion, FailedStage
 from src.agents.implementation_validator import root_agent as implementation_validator
 from src.agents.implementation_validator.agent import _report_path_valido
+
+from . import prompt as executor_prompt
+from .schemas import ErrorReport, FailedCriterion, FailedStage
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +85,7 @@ def _carregar_execution_report(callback_context) -> dict:
     """Lê o ExecutionReport do disco a partir do `report_path` do state.
 
     O caminho é validado com o mesmo helper estrito do validador (Spec C):
-    precisa ser `<task_id>.report.json` dentro do workspace do cr_executor.
+    precisa ser `<task_id>.report.json` dentro do workspace do executor.
     Em qualquer falha devolve {} — o ErrorReport ainda sai, só sem a seção de
     estágios (o veredito, que é o essencial, nunca depende do disco).
     """
@@ -180,10 +178,8 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
     return _como_content(report)
 
 
-# A instrução (fluxo + salvaguarda) é reusada VERBATIM do consolidado: não há
-# diferenças de workspace/contexto a ajustar — os nomes de tool e o fluxo já
-# valem para o workflow. (Se surgirem diferenças, adaptar aqui via .replace,
-# como o cr_reviewer faz com reviewer_prompt.)
+# A instrução (fluxo + salvaguarda) vem do prompt local: os nomes de tool e o
+# fluxo já valem para o workflow, sem ajustes de workspace/contexto.
 agent = LlmAgent(
     model=_model,
     name="cr_executor_agent",

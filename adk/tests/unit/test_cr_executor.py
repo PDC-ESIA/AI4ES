@@ -32,7 +32,7 @@ def executor_module(tmp_path, monkeypatch):
     """Reimporta cr_executor com workspace temporário."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_executor
+    import src.agents.workflow_coding_review.executor.agent as cr_executor
 
     importlib.reload(cr_executor)
     return cr_executor
@@ -63,7 +63,7 @@ def test_executor_agent_tem_3_tools(executor_module):
 def test_executor_compoe_harness_validador_exit_loop(executor_module):
     """As três peças novas estão presentes e nomeadas."""
     names = _tool_names(executor_module.agent)
-    assert "executar_harness_validacao" in names   # harness (bound ao workspace do workflow)
+    assert "executar_harness_tool" in names        # harness (bound ao workspace do workflow)
     assert "implementation_validator" in names     # AgentTool do validador
     assert "exit_loop" in names                    # encerramento pelo veredito
 
@@ -151,7 +151,7 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     from src.agents.workflow_coding_review import coder as cr_coder
-    from src.agents.workflow_coding_review import cr_executor
+    import src.agents.workflow_coding_review.executor.agent as cr_executor
 
     importlib.reload(cr_executor)
     importlib.reload(cr_coder)
