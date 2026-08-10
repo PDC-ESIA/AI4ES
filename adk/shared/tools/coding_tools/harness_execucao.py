@@ -35,15 +35,20 @@ from docker.errors import APIError, BuildError
 from google.adk.tools import ToolContext
 
 from shared.tools.coding_tools import harness_docker as hd
+from shared.tools.coding_tools.harness_schemas import (
+    CriterionEvidence,
+    ExecutionReport,
+    StageName,
+    StageResult,
+    StageStatus,
+)
 from shared.tools.log_parser_tool import parse_log_text
 from shared.workspace import get_agent_workspace
 
 logger = logging.getLogger(__name__)
 
 # Estágios críticos (por valor de StageName): se falharem, os estágios que deles
-# dependem são pulados. Mantidos como strings para NÃO exigir o import dos
-# schemas no topo do módulo — ver a nota de "import tardio" no fim do arquivo,
-# que evita um ciclo de import com o pacote `src.agents.executor`.
+# dependem são pulados. Mantidos como strings por simplicidade de comparação.
 _CRITICAL_STAGES = (
     "preparacao_ambiente",
     "implantacao_artefato",
@@ -966,24 +971,3 @@ def executar_harness_tool(
     return executar_harness_validacao(
         task_id, iteration, tool_context=tool_context,
     )
-
-
-# ---------------------------------------------------------------------------
-# Import tardio dos schemas (quebra de ciclo de import)
-# ---------------------------------------------------------------------------
-# Os schemas vivem em `src.agents.executor.schemas`, mas o pacote
-# `src.agents.executor` agora importa o agente executor no seu __init__, e esse
-# agente importa ESTE módulo (via `executar_harness_validacao`). Importar os
-# schemas no topo dispararia o __init__ do pacote antes desta função existir,
-# criando um ciclo. Fazendo o import no fim do arquivo — depois que todas as
-# funções já foram definidas — o ciclo se resolve em qualquer ordem de import:
-# quando o __init__ do executor voltar aqui, `executar_harness_validacao` já
-# estará definida. As classes ficam como globais do módulo, resolvidas em tempo
-# de chamada pelas funções acima.
-from src.agents.executor.schemas import (  # noqa: E402
-    CriterionEvidence,
-    ExecutionReport,
-    StageName,
-    StageResult,
-    StageStatus,
-)

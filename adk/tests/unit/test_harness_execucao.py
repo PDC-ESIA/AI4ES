@@ -19,7 +19,7 @@ import docker
 from docker.errors import BuildError
 
 from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
-from src.agents.executor.schemas import ExecutionReport
+from shared.tools.coding_tools.harness_schemas import ExecutionReport
 
 _STAGE_ORDER = [
     "preparacao_ambiente",
