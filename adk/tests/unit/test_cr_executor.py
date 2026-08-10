@@ -122,7 +122,7 @@ def test_coder_instruction_contem_execution_result_placeholder(tmp_path, monkeyp
     """O coder.instruction deve conter {execution_result?} para ADK state injection."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review import coder as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -137,7 +137,7 @@ def test_coder_instruction_contem_modo_operacao(tmp_path, monkeypatch):
     """O coder.instruction deve conter a seção MODO DE OPERAÇÃO."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review import coder as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -150,7 +150,8 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
     """executor.output_key deve ser 'execution_result' (same key used in coder placeholder)."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder, cr_executor
+    from src.agents.workflow_coding_review import coder as cr_coder
+    from src.agents.workflow_coding_review import cr_executor
 
     importlib.reload(cr_executor)
     importlib.reload(cr_coder)
@@ -187,7 +188,7 @@ def test_coder_instruction_exige_readme(tmp_path, monkeypatch):
     """O coder.instruction deve exigir criação de README.md com URL de acesso."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review import coder as cr_coder
 
     importlib.reload(cr_coder)
 

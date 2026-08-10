@@ -170,7 +170,7 @@ O `coding_review_pipeline` (workflow `workflow_coding_review`) é um `Sequential
 ### Melhorias aplicadas
 
 1. **Contrato de estrutura obrigatória de projeto Python no `cr_coder_agent`.** Antes a estrutura variava entre runs (`coder/main.py` vs `coder/app/main.py`) e o app não rodava como pacote (`ModuleNotFoundError: No module named 'app'`).
-   - Prompt em `adk/src/agents/coder/prompt.py` e `workflow_coding_review/agent.py` agora exige: `app/__init__.py` (vazio), `app/main.py`, `tests/__init__.py` (vazio), `tests/test_main.py`, `conftest.py` (vazio basta), `requirements.txt`. Imports de teste sempre absolutos (`from app.main import app`).
+   - Prompt em `adk/src/agents/workflow_coding_review/coder/prompt.py` e `workflow_coding_review/agent.py` agora exige: `app/__init__.py` (vazio), `app/main.py`, `tests/__init__.py` (vazio), `tests/test_main.py`, `conftest.py` (vazio basta), `requirements.txt`. Imports de teste sempre absolutos (`from app.main import app`).
    - Justificativa explícita no prompt: "OBRIGATÓRIOS mesmo que vazios — sem eles, pytest falha em coletar testes".
 
 2. **Workspace binding do `cr_coder_agent`.** O coder rodando sem binding sobrescreveu `adk/app/main.py` do repositório principal e criou branches git aleatórias na primeira run. Fix em `workflow_coding_review/agent.py`:

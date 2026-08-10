@@ -123,22 +123,7 @@ Além da tool acima, duas funções Python puras rodam como **callbacks** (não 
 
 ---
 
-# Agentes "de fora" (`src/agents/coder`, `context_engineer`, `reviewer`, `executor`)
-
-## `coder` (`src/agents/coder/agent.py`)
-
-Sem `agent_subdir` → `create_se_agent` pula todo o bloco de binding. Isso significa que `base_dir`/`cwd` **continuam parâmetros reais na assinatura** dessas funções (com default `None`) e por isso aparecem no schema exposto ao LLM — diferente dos `cr_*`, onde a closure remove o parâmetro da assinatura antes de gerar o schema.
-
-| Tool | Origem | Entrada | Retorno | Descrição |
-|---|---|---|---|---|
-| `tool_criar_arquivo` | `shared/tools/coding_tools/filesystem_coding.py` | `caminho: str`, `conteudo: str`, `base_dir: str \| None = None` | `dict {sucesso, caminho, bytes_escritos, erro}` | Igual ao `cr_coder`, mas `base_dir` não é bound — fica visível ao LLM; se omitido (`None`), grava relativo ao CWD. |
-| `tool_git_add` | `shared/tools/coding_tools/git.py` | `arquivos: str`, `cwd: str \| None = None` | `dict {sucesso, stdout, stderr, returncode}` | Executa `git add <arquivos>` ou `git add .`. |
-| `tool_git_commit` (`require_confirmation=True`) | `shared/tools/coding_tools/git.py` | `mensagem: str` , `cwd: str \| None = None` | `dict {sucesso, stdout, stderr, returncode}` ou `{sucesso: False, mensagem}` | Executa `git commit -m` diretamente após validar que há stage (`git diff --staged`). Sem stage, falha sem efeito. |
-| `tool_git_checkout` | `shared/tools/coding_tools/git.py` | `branch: str`, `criar: bool = False`, `cwd: str \| None = None` | `dict {sucesso, comando, stdout, stderr, returncode}` | `git checkout <branch>`, ou `git checkout -b <branch>` se `criar=True`. |
-| `tool_ler_arquivo` | `shared/tools/coding_tools/filesystem_coding.py` | `caminho: str`, `base_dir: str \| None = None` | `str` (conteúdo ou `"Erro: ..."`) | Igual ao `cr_coder`, mas `base_dir` visível/não bound. |
-| `tool_substituir_trecho` | `shared/tools/coding_tools/filesystem_coding.py` | `caminho: str`, `trecho_antigo: str`, `trecho_novo: str`, `base_dir: str \| None = None` | `str` (`"Sucesso: ..."` ou `"Erro: ..."`) | Igual ao `cr_coder`, mas `base_dir` visível/não bound. |
-| `tool_ask_clarification` | `shared/tools/clarification.py`, auto-injetada | `titulo, secao, descricao, impacto, sugestao, nome_arquivo: str`, `base_dir: str \| None = None` | `dict {sucesso, erro, caminho, título, status}` | Gera Doubt Artifact em Markdown e sinaliza que o agente deve parar e devolver controle ao supervisor. `base_dir` visível/não bound aqui — se omitido, grava relativo ao CWD. |
----
+# Agentes "de fora" (`context_engineer`, `reviewer`, `executor`)
 
 ## `context_engineer` (`src/agents/context_engineer/agent.py`)
 

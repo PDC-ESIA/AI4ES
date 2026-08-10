@@ -22,7 +22,7 @@ import os
 from google.adk.agents import LoopAgent, SequentialAgent
 
 from .context_engineer import agent as _context_engineer
-from .cr_coder import agent as _coder
+from .coder import agent as _coder
 from .cr_executor import agent as _executor
 from .reviewer.agent import agent as _reviewer
 
