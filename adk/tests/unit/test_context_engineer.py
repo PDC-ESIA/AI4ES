@@ -1,4 +1,4 @@
-"""Tests para src/agents/context_engineer/ — descoberta + schemas + tools."""
+"""Tests para o context_engineer do workflow coding_review (cr_context_engineer) — descoberta + schemas + tools."""
  
 import json
 from pathlib import Path
@@ -7,22 +7,22 @@ import pytest
  
  
 def test_context_engineer_root_agent_importavel():
-    from src.agents.context_engineer import root_agent
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
     assert root_agent is not None
-    assert root_agent.name == "context_engineer"
+    assert root_agent.name == "cr_context_engineer"
  
  
 def test_context_engineer_tem_output_schema():
-    from src.agents.context_engineer import root_agent
-    from src.agents.context_engineer.schemas import TasksOutput
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput
     assert root_agent.output_schema == TasksOutput
  
  
 def test_context_engineer_tem_tools_esperadas():
-    from src.agents.context_engineer import root_agent
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
     tool_names = {getattr(getattr(t, "func", t), "__name__", "") for t in root_agent.tools}
     assert {
-        "tool_salvar_task",
+        "tool_salvar_task_cr",
         "tool_ler_requirements",
         "tool_ler_design",
         "tool_gerar_doubt_artifact",
@@ -30,7 +30,7 @@ def test_context_engineer_tem_tools_esperadas():
  
  
 def test_schemas_macro_context_minimal():
-    from src.agents.context_engineer.schemas import MacroContext
+    from src.agents.workflow_coding_review.context_engineer.schemas import MacroContext
     mc = MacroContext(
         summary="Sistema de autenticação JWT",
         tech_stack=["Python", "FastAPI"],
@@ -41,7 +41,7 @@ def test_schemas_macro_context_minimal():
  
  
 def test_schemas_task_com_contract():
-    from src.agents.context_engineer.schemas import Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Task, Contract
     task = Task(
         id="TASK-001",
         type="backend",
@@ -59,7 +59,7 @@ def test_schemas_task_com_contract():
  
 def test_schemas_task_design_refs_vazio_valido():
     """design_refs pode ser lista vazia para RFs sem HU associada."""
-    from src.agents.context_engineer.schemas import Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Task, Contract
     task = Task(
         id="TASK-007",
         type="infra",
@@ -74,7 +74,7 @@ def test_schemas_task_design_refs_vazio_valido():
  
  
 def test_schemas_contract_interfaces_objeto_aceito():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Contract
     contract = Contract(
         interfaces={
             "create_ensaio": {
@@ -88,7 +88,7 @@ def test_schemas_contract_interfaces_objeto_aceito():
  
  
 def test_schemas_contract_interfaces_aceita_lista_e_string():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Contract
  
     as_list = Contract.model_validate({
         "inputs": [],
@@ -106,7 +106,7 @@ def test_schemas_contract_interfaces_aceita_lista_e_string():
  
  
 def test_schemas_tasks_output_completo():
-    from src.agents.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
     output = TasksOutput(
         macro_context=MacroContext(
             summary="X",
