@@ -25,7 +25,7 @@ collect_ignore = [
 # popular sys.modules antes que test_git_tools.py substitua pydantic.BaseModel.
 
 from src.agents.requirements import schemas as _req_schemas  # noqa: F401
-from src.agents.reviewer import schemas as _rev_schemas  # noqa: F401
+from src.agents.workflow_coding_review.reviewer import schemas as _rev_schemas  # noqa: F401
 from shared.tools.coding_tools import harness_schemas as _harness_schemas  # noqa: F401
 from src.agents.implementation_validator import schemas as _implval_schemas  # noqa: F401
 from src.agents.context_engineer import schemas as _ce_schemas  # noqa: F401

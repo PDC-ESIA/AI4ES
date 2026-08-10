@@ -1,9 +1,8 @@
-"""Schemas Pydantic para a saída estruturada do reviewer.
+"""Schemas Pydantic da saída estruturada do Reviewer do workflow coding_review.
 
 Define ReviewIssue (issue individual com severidade e camada de verificação)
 e ReviewOutput (envelope com status APROVADO/BLOQUEADO + lista de issues).
-
-Portado de feat/me2/coding_squad (Time 4) — habilita output_schema no LlmAgent.
+Autocontido para o workflow coding_review.
 """
 
 from typing import Optional
