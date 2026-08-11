@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _IMAGE_TAG = "cr-executor-app:latest"
 _CONTAINER_NAME = "cr-executor-run"
-_HOST_PORT = 8000  # porta fixa no host — permite README hardcodar URL
+_HOST_PORT = 8000  # fallback de porta interna quando o Dockerfile não declara EXPOSE
 _BUILD_TIMEOUT = 300  # segundos
 _HEALTHCHECK_TIMEOUT = 15  # segundos para container sair de "created"
 _STARTUP_GRACE_PERIOD = 5  # segundos para o app inicializar dentro do container

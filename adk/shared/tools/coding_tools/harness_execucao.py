@@ -13,7 +13,8 @@ julgamento pertence ao validador (implementation_validator). Por isso o
 Reaproveita as ferramentas já existentes do repositório:
 - `shared/tools/harness_docker.py` — build/run/cleanup de container e rota.
 - `shared/tools/log_parser_tool.py` — parsing dos logs de build e runtime.
-- `shared/tools/probe.py` — cliente HTTP injetado no container (liveness/rotas).
+- requisições HTTP diretas contra a porta publicada do container
+    (liveness/rotas), via `httpx` — sem exec, sem injeção.
 """
 
 from __future__ import annotations
@@ -29,10 +30,10 @@ from pathlib import Path
 from typing import Optional
 
 import docker
+import httpx
 from docker.errors import APIError, BuildError
 from google.adk.tools import ToolContext
 
-from shared.tools import probe
 from shared.tools.coding_tools import harness_docker as hd
 from shared.tools.log_parser_tool import parse_log_text
 from shared.workspace import get_agent_workspace
@@ -75,6 +76,8 @@ class _HarnessContext:
         self.build_dir: Optional[Path] = None
         self.docker_client = None
         self.container = None
+        self.porta_publicada: Optional[int] = None  # atribuída pelo Docker no Estágio 2
+        self.host_publicado: str = "127.0.0.1"
         self.build_logs: str = ""
         self.runtime_logs: str = ""
 
@@ -265,6 +268,7 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
 
     # ---- Run ----
     hd._cleanup_container(client, hd._CONTAINER_NAME)
+    porta_interna = _porta_interna(ctx.dockerfile)
     try:
         container = client.containers.run(
             image=hd._IMAGE_TAG,
@@ -272,6 +276,7 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
             detach=True,
             mem_limit=hd._MEMORY_LIMIT,
             cpu_quota=hd._CPU_QUOTA,
+            ports={f"{porta_interna}/tcp": (ctx.host_publicado, None)},
             environment={
                 "DATABASE_URL": "sqlite:///./data/app.db",
                 "UPLOAD_DIR": "/app/uploads",
@@ -315,13 +320,42 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
             error_code="CONTAINER_NAO_INICIOU",
         )
 
+    # Descobre a porta do host que o Docker atribuiu dinamicamente. Status
+    # "running" não garante que .attrs já reflete o binding — reload() força
+    # a releitura antes de ler NetworkSettings.
+    container.reload()
+    bindings = (container.attrs.get("NetworkSettings", {}).get("Ports", {}) or {}).get(
+        f"{porta_interna}/tcp"
+    )
+    if not bindings:
+        return StageResult(
+            stage=StageName.IMPLANTACAO_ARTEFATO,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=(
+                f"Container em execução, mas a porta {porta_interna}/tcp não "
+                f"foi publicada pelo Docker."
+            ),
+            evidence={"porta_interna": porta_interna},
+            error_code="PORTA_PUBLICADA_AUSENTE",
+        )
+    ctx.porta_publicada = int(bindings[0]["HostPort"])
+
     ctx.deploy_ok = True
     return StageResult(
         stage=StageName.IMPLANTACAO_ARTEFATO,
         status=StageStatus.SUCESSO,
         duration_seconds=round(time.time() - t0, 3),
-        summary=f"Imagem construída e container '{hd._CONTAINER_NAME}' em execução.",
-        evidence={"image_tag": hd._IMAGE_TAG, "container_name": hd._CONTAINER_NAME},
+        summary=(
+            f"Imagem construída e container '{hd._CONTAINER_NAME}' em execução "
+            f"(porta {porta_interna}/tcp publicada em "
+            f"{ctx.host_publicado}:{ctx.porta_publicada})."
+        ),
+        evidence={
+            "image_tag": hd._IMAGE_TAG,
+            "container_name": hd._CONTAINER_NAME,
+            "porta_publicada": ctx.porta_publicada,
+        },
         error_code=None,
     )
 
@@ -363,14 +397,49 @@ _EXPOSE_RE = re.compile(r"^\s*EXPOSE\s+(\d+)", re.IGNORECASE | re.MULTILINE)
 def _porta_interna(dockerfile: str) -> int:
     """Porta que a app escuta DENTRO do container, lida do EXPOSE do Dockerfile.
 
-    O probe roda de dentro do container, então a porta relevante é a interna
-    (declarada via EXPOSE), não a publicada no host. Fallback para
-    `hd._HOST_PORT` APENAS quando o Dockerfile não declara EXPOSE nenhum —
-    preserva o comportamento de hoje sem fixar de novo a suposição de 8000. Em
-    múltiplos EXPOSE, usa o primeiro (a porta HTTP primária, por convenção).
+    Essa porta é publicada dinamicamente pelo Docker para o harness acessá-la
+    via HTTP. Fallback para `hd._HOST_PORT` APENAS quando o Dockerfile não
+    declara EXPOSE nenhum — preserva o comportamento atual sem fixar novamente
+    a suposição de 8000. Em múltiplos EXPOSE, usa o primeiro (a porta HTTP
+    primária, por convenção).
     """
     m = _EXPOSE_RE.search(dockerfile or "")
     return int(m.group(1)) if m else hd._HOST_PORT
+
+
+def _requisitar_http(
+    base_url: str, metodo: str, rota: str, timeout_ms: int
+) -> dict:
+    """Faz UMA requisição HTTP contra `base_url` — sem exec, sem container.
+
+    Devolve um dict `{"status", "error", "body", "latency_ms"}`. `error` só
+    é preenchido em falha de TRANSPORTE (timeout, conexão recusada, DNS,
+    etc.) — uma resposta HTTP, mesmo 4xx/5xx, não é erro, é dado. NUNCA
+    levanta: qualquer falha de rede vira o campo `error`.
+    """
+    inicio = time.time()
+    try:
+        resposta = httpx.request(
+            metodo,
+            f"{base_url}{rota}",
+            timeout=timeout_ms / 1000,
+            follow_redirects=True,
+        )
+    except httpx.TransportError as e:
+        return {
+            "status": None,
+            "error": str(e),
+            "body": "",
+            "latency_ms": round((time.time() - inicio) * 1000),
+        }
+    return {
+        "status": resposta.status_code,
+        "error": None,
+        # Preserva o limite de evidência do cliente Go removido. O recorte evita
+        # propagar respostas enormes para extração de ID e para o relatório.
+        "body": resposta.text[:64 * 1024],
+        "latency_ms": round((time.time() - inicio) * 1000),
+    }
 
 
 def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
@@ -384,44 +453,24 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
     # Grace period para a app subir dentro do container
     time.sleep(hd._STARTUP_GRACE_PERIOD)
 
-    # Liveness DE DENTRO do container, via probe: a porta que importa é a interna
-    # (EXPOSE), não a publicada no host. "Vivo" = qualquer resposta HTTP (erro de
-    # transporte nulo), inclusive 4xx/5xx — a porta respondeu, a app subiu. Não
-    # depende mais de /docs (hd._HEALTHCHECK_ENDPOINT) existir.
-    porta = _porta_interna(ctx.dockerfile)
-    base_interno = f"http://localhost:{porta}"
-    requisicao = [{
-        "method": "GET",
-        "path": "/",
-        "timeout_ms": hd._HTTP_HEALTHCHECK_TIMEOUT * 1000,
-    }]
+    # Liveness via requisição HTTP direta contra a porta publicada (Estágio 2
+    # já descobriu e gravou ctx.porta_publicada). "Vivo" = qualquer resposta
+    # HTTP (erro de transporte nulo), inclusive 4xx/5xx — a porta respondeu, a
+    # app subiu. Não depende de /docs nem de nenhum endpoint específico.
+    base_url = f"http://{ctx.host_publicado}:{ctx.porta_publicada}"
 
     alive = False
     ultimo_erro = ""
     status_code = None
     for tentativa in range(1, hd._HEALTHCHECK_RETRIES + 1):
-        try:
-            resultados = probe.executar_probe(ctx.container, requisicao, base_interno)
-        except probe.ProbeError as e:
-            # Falha MECÂNICA do probe (binário ausente, arquitetura não suportada,
-            # put_archive recusado) — categoria DIFERENTE de "a app não subiu".
-            # Re-tentar não resolve; encerra já, com error_code próprio para a
-            # distinção ficar visível.
-            return StageResult(
-                stage=StageName.INICIALIZACAO_APLICACAO,
-                status=StageStatus.ERRO,
-                duration_seconds=round(time.time() - t0, 3),
-                summary=f"Falha ao checar liveness via probe: {e}",
-                evidence={"base_url_interno": base_interno, "erro_probe": str(e)},
-                error_code="PROBE_FALHOU",
-            )
-
-        resultado = resultados[0] if resultados else {}
+        resultado = _requisitar_http(
+            base_url, "GET", "/", hd._HTTP_HEALTHCHECK_TIMEOUT * 1000
+        )
         status_code = resultado.get("status")
         if resultado.get("error") is None:
             alive = True
             break
-        ultimo_erro = f"App não respondeu em {base_interno}/ ({resultado.get('error')})."
+        ultimo_erro = f"App não respondeu em {base_url}/ ({resultado.get('error')})."
         if tentativa < hd._HEALTHCHECK_RETRIES:
             time.sleep(hd._HEALTHCHECK_RETRY_INTERVAL)
 
@@ -431,7 +480,7 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
             status=StageStatus.FALHA,
             duration_seconds=round(time.time() - t0, 3),
             summary=f"Aplicação não inicializou corretamente. {ultimo_erro}",
-            evidence={"base_url_interno": base_interno, "ultimo_erro": ultimo_erro},
+            evidence={"base_url": base_url, "ultimo_erro": ultimo_erro},
             error_code="APP_NAO_INICIALIZOU",
         )
 
@@ -440,8 +489,8 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
         stage=StageName.INICIALIZACAO_APLICACAO,
         status=StageStatus.SUCESSO,
         duration_seconds=round(time.time() - t0, 3),
-        summary=f"Aplicação respondendo em {base_interno}/ (HTTP {status_code}).",
-        evidence={"base_url_interno": base_interno},
+        summary=f"Aplicação respondendo em {base_url}/ (HTTP {status_code}).",
+        evidence={"base_url": base_url},
         error_code=None,
     )
 
@@ -598,29 +647,17 @@ _CAMPOS_ID = ("id", "_id", "uuid")
 _EVIDENCIA_TIMEOUT_MS = hd._HTTP_HEALTHCHECK_TIMEOUT * 1000
 
 
-def _probe_uma(container, base_interno: str, metodo: str, rota: str):
-    """Dispara UMA requisição via probe (sem body/headers — nunca inventa payload).
+def _requisitar_uma(base_url: str, metodo: str, rota: str) -> dict:
+    """Dispara UMA requisição HTTP direta (sem body/headers — nunca inventa payload).
 
-    Devolve `(resultado, erro_mecanico)`:
-      - `resultado`: o dict do probe (pode ter `error` de transporte preenchido);
-      - `erro_mecanico`: str quando `probe.ProbeError` (falha do MECANISMO do
-        probe — binário/arquitetura/put_archive), categoria DIFERENTE de um erro
-        de transporte de requisição.
-    Só uma das duas posições é significativa por chamada.
+    Falhas de rede são representadas em `resultado["error"]`; respostas HTTP,
+    inclusive 4xx/5xx, retornam `error=None` e preservam status e corpo.
     """
-    try:
-        resultados = probe.executar_probe(
-            container,
-            [{"method": metodo, "path": rota, "timeout_ms": _EVIDENCIA_TIMEOUT_MS}],
-            base_interno,
-        )
-    except probe.ProbeError as e:
-        return None, str(e)
-    return (resultados[0] if resultados else {}), None
+    return _requisitar_http(base_url, metodo, rota, _EVIDENCIA_TIMEOUT_MS)
 
 
 def _coletar_evidencia_criterio(
-    criterion: str, container, base_interno: str
+    criterion: str, base_url: str
 ) -> CriterionEvidence:
     """Deriva uma checagem determinística para um critério, SEM julgá-lo.
 
@@ -633,8 +670,8 @@ def _coletar_evidencia_criterio(
     harness não faz); critérios sem path explícito não têm rota a testar — ambos
     viram NÃO verificáveis (evidência honesta), sem chutar a rota raiz.
 
-    A requisição roda DE DENTRO do container, via probe, contra a porta interna
-    (mesmo modelo do Estágio 4) — não pela porta publicada (que deixou de existir).
+    A requisição sai do harness via HTTP direto contra a porta publicada pelo
+    Docker, usando o mesmo modelo do Estágio 4.
     """
     path_match = _PATH_RE.search(criterion)
     verbos = {m.upper() for m in _VERBO_HTTP_RE.findall(criterion)}
@@ -655,16 +692,14 @@ def _coletar_evidencia_criterio(
 
     if path_match:
         rota = path_match.group(1)
-        resultado, mecanico = _probe_uma(container, base_interno, "GET", rota)
-        if mecanico is not None:
-            observed = f"GET {rota} → falha do probe: {mecanico}"
-        elif resultado.get("error"):
+        resultado = _requisitar_uma(base_url, "GET", rota)
+        if resultado.get("error"):
             observed = f"GET {rota} → falha de transporte: {resultado['error']}"
         else:
             observed = f"GET {rota} → HTTP {resultado.get('status')}"
         return CriterionEvidence(
             criterion=criterion,
-            check_performed=f"Requisição HTTP GET {rota} (via probe, porta interna).",
+            check_performed=f"Requisição HTTP GET {rota} (via HTTP direto, porta publicada).",
             observed=observed,
             checkable=True,
         )
@@ -737,12 +772,10 @@ def _id_de(dado) -> Optional[str]:
 
 
 def _evidencia_interface(
-    interface: str, ramo: str, metodo: str, rota: str, resultado, mecanico, prefixo: str = ""
+    interface: str, ramo: str, metodo: str, rota: str, resultado, prefixo: str = ""
 ) -> InterfaceEvidence:
     """Monta a InterfaceEvidence a partir do resultado bruto de UMA requisição."""
-    if mecanico is not None:
-        observed = f"{metodo} {rota} → falha do probe: {mecanico}"
-    elif resultado.get("error"):
+    if resultado.get("error"):
         observed = f"{metodo} {rota} → falha de transporte: {resultado['error']}"
     else:
         corpo = (resultado.get("body") or "")[:500]
@@ -754,7 +787,7 @@ def _evidencia_interface(
         interface=interface,
         checkable=True,
         branch=ramo,
-        check_performed=f"{pref}Requisição {metodo} {rota} (via probe, porta interna).".strip(),
+        check_performed=f"{pref}Requisição {metodo} {rota} (via HTTP direto, porta publicada).".strip(),
         observed=observed,
     )
 
@@ -770,7 +803,7 @@ def _interface_nao_checavel(interface: str, motivo: str) -> InterfaceEvidence:
 
 
 def _resolver_id_grupo(
-    container, base_interno: str, rota_pai: str, verbos: list, rotas: list
+    base_url: str, rota_pai: str, verbos: list, rotas: list
 ) -> tuple[Optional[str], Optional[str], str]:
     """Resolve UM id real da rota pai — Ramo 1 (POST/criar) ou Ramo 2 (GET/listar).
 
@@ -797,10 +830,8 @@ def _resolver_id_grupo(
 
     # Ramo 1 — criar e capturar ID (POST na rota pai, sem body inventado).
     if tem_post:
-        resultado, mecanico = _probe_uma(container, base_interno, "POST", rota_pai)
-        if mecanico is not None:
-            tentativas.append(f"POST {rota_pai}: falha do probe ({mecanico})")
-        elif resultado.get("error"):
+        resultado = _requisitar_uma(base_url, "POST", rota_pai)
+        if resultado.get("error"):
             tentativas.append(f"POST {rota_pai}: {resultado['error']}")
         else:
             ident = _extrair_id(resultado.get("body", ""))
@@ -810,10 +841,8 @@ def _resolver_id_grupo(
 
     # Ramo 2 — descobrir via listagem (GET na rota pai).
     if tem_get:
-        resultado, mecanico = _probe_uma(container, base_interno, "GET", rota_pai)
-        if mecanico is not None:
-            tentativas.append(f"GET {rota_pai}: falha do probe ({mecanico})")
-        elif resultado.get("error"):
+        resultado = _requisitar_uma(base_url, "GET", rota_pai)
+        if resultado.get("error"):
             tentativas.append(f"GET {rota_pai}: {resultado['error']}")
         else:
             ident = _extrair_id(resultado.get("body", ""))
@@ -830,7 +859,7 @@ def _resolver_id_grupo(
 
 
 def _coletar_evidencias_interfaces(
-    container, base_interno: str, interfaces: list
+    base_url: str, interfaces: list
 ) -> list[InterfaceEvidence]:
     """Evidência por interface declarada — os três ramos (spec C2c §3.3).
 
@@ -853,8 +882,8 @@ def _coletar_evidencias_interfaces(
             )
         elif not _PARAM_SEG_RE.search(rota):
             # Ramo 3 — alcançabilidade pura (qualquer verbo, sem body/headers).
-            resultado, mecanico = _probe_uma(container, base_interno, verbo, rota)
-            evid[i] = _evidencia_interface(raw, "alcancabilidade", verbo, rota, resultado, mecanico)
+            resultado = _requisitar_uma(base_url, verbo, rota)
+            evid[i] = _evidencia_interface(raw, "alcancabilidade", verbo, rota, resultado)
         elif _param_no_ultimo_segmento(rota):
             grupos.setdefault(_rota_pai(rota), []).append(i)
         else:
@@ -864,16 +893,16 @@ def _coletar_evidencias_interfaces(
             )
 
     for pai, indices in grupos.items():
-        ident, ramo, motivo = _resolver_id_grupo(container, base_interno, pai, verbos, rotas)
+        ident, ramo, motivo = _resolver_id_grupo(base_url, pai, verbos, rotas)
         # Não-destrutivos (GET/PUT/PATCH) antes de DELETE, p/ não invalidar o ID.
         for i in sorted(indices, key=lambda k: 1 if verbos[k] == "DELETE" else 0):
             if ident is None:
                 evid[i] = _interface_nao_checavel(raws[i], motivo)
             else:
                 rota_alvo = _substituir_ultimo_param(rotas[i], ident)
-                resultado, mecanico = _probe_uma(container, base_interno, verbos[i], rota_alvo)
+                resultado = _requisitar_uma(base_url, verbos[i], rota_alvo)
                 evid[i] = _evidencia_interface(
-                    raws[i], ramo, verbos[i], rota_alvo, resultado, mecanico,
+                    raws[i], ramo, verbos[i], rota_alvo, resultado,
                     prefixo=f"[ID '{ident}' via {ramo}]",
                 )
 
@@ -893,14 +922,14 @@ def _estagio_validacoes_work_item(
             [],
         )
     t0 = time.time()
-    base_interno = f"http://localhost:{_porta_interna(ctx.dockerfile)}"
+    base_url = f"http://{ctx.host_publicado}:{ctx.porta_publicada}"
 
     evidencias = [
-        _coletar_evidencia_criterio(c, ctx.container, base_interno)
+        _coletar_evidencia_criterio(c, base_url)
         for c in ctx.acceptance_criteria
     ]
     interface_evid = _coletar_evidencias_interfaces(
-        ctx.container, base_interno, ctx.contract.get("interfaces") or []
+        base_url, ctx.contract.get("interfaces") or []
     )
 
     checaveis = sum(1 for e in evidencias if e.checkable)

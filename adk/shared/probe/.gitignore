@@ -1,4 +1,0 @@
-# Binários compilados do probe — artefatos de build, NÃO versionados.
-# Gere-os com ./build.sh (Go local ou, se ausente, via imagem golang no Docker).
-# O harness (shared/tools/probe.py) os lê deste diretório em runtime.
-probe-linux-*

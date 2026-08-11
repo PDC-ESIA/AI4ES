@@ -62,7 +62,12 @@ def _mock_docker(build_raises=None):
         )
     container = MagicMock()
     container.status = "running"
-    container.attrs = {"State": {"ExitCode": 0}}
+    container.attrs = {
+        "State": {"ExitCode": 0},
+        "NetworkSettings": {
+            "Ports": {"8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "49152"}]}
+        },
+    }
     container.logs.return_value = b"2026-07-22T10:00:00 INFO [app] Uvicorn running"
     container.exec_run.side_effect = _fake_exec_run
     client.containers.run.return_value = container
@@ -78,7 +83,7 @@ class _ExecResult:
 
 def _fake_exec_run(cmd, workdir=None, demux=False):
     """Simula os comandos que o estágio 6 dispara dentro do container:
-    probe do pytest, execução da suíte (sucesso) e `cat` dos relatórios."""
+    checagem do pytest, execução da suíte (sucesso) e `cat` dos relatórios."""
     shell = cmd[-1] if isinstance(cmd, (list, tuple)) else cmd
 
     def out(s):
@@ -141,12 +146,12 @@ def _preparar_workspace(tmp_path, criteria, com_suite=False):
 
 
 def _rodar_harness(coder, execution, tasks, client, comando_teste=None):
-    probe_result = [{"status": 200, "error": None, "body": "OK"}]
+    http_result = {"status": 200, "error": None, "body": "OK", "latency_ms": 1}
     with (
         patch("docker.from_env", return_value=client),
         patch(
-            "shared.tools.coding_tools.harness_execucao.probe.executar_probe",
-            return_value=probe_result,
+            "shared.tools.coding_tools.harness_execucao._requisitar_http",
+            return_value=http_result,
         ),
         patch("shared.tools.coding_tools.harness_execucao.time.sleep"),
     ):

@@ -20,9 +20,9 @@ from docker.errors import BuildError
 
 from shared.tools.coding_tools.harness_execucao import (
     _coletar_evidencias_interfaces,
+    _requisitar_http,
     executar_harness_validacao,
 )
-from shared.tools.probe import ProbeError
 from src.agents.executor.schemas import ExecutionReport
 
 _STAGE_ORDER = [
@@ -100,7 +100,12 @@ def _mock_docker(
 
     container = MagicMock()
     container.status = container_status
-    container.attrs = {"State": {"ExitCode": 0}}
+    container.attrs = {
+        "State": {"ExitCode": 0},
+        "NetworkSettings": {
+            "Ports": {"8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "49152"}]}
+        },
+    }
     container.logs.return_value = (
         b"2026-07-21T10:00:00 INFO [app] Uvicorn running on http://0.0.0.0:8000"
     )
@@ -155,10 +160,15 @@ def _run(task_id, coder, execution, tasks, client, comando_teste=None):
     `container.exec_run`, mockado em `_mock_docker` — nenhum container real é
     subido nem comando real é executado.
     """
-    probe_result = [{"status": 200, "error": None, "body": "OK"}]
-    with patch("docker.from_env", return_value=client), \
-         patch("shared.tools.coding_tools.harness_execucao.probe.executar_probe", return_value=probe_result), \
-         patch("shared.tools.coding_tools.harness_execucao.time.sleep"):
+    http_result = {"status": 200, "error": None, "body": "OK", "latency_ms": 1}
+    with (
+        patch("docker.from_env", return_value=client),
+        patch(
+            "shared.tools.coding_tools.harness_execucao._requisitar_http",
+            return_value=http_result,
+        ),
+        patch("shared.tools.coding_tools.harness_execucao.time.sleep"),
+    ):
         return executar_harness_validacao(
             task_id, 1,
             coder_base_dir=coder,
@@ -189,6 +199,31 @@ def test_caminho_feliz_nove_estagios_sucesso(tmp_path):
     assert result["overall_status"] == "sucesso"
     # Report bem-formado (revalida contra o schema Pydantic)
     ExecutionReport(**result)
+    assert client.containers.run.call_args.kwargs["ports"] == {
+        "8000/tcp": ("127.0.0.1", None)
+    }
+    implantacao = next(s for s in result["stages"] if s["stage"] == "implantacao_artefato")
+    assert implantacao["evidence"]["porta_publicada"] == 49152
+
+
+def test_requisitar_http_preserva_redirects_e_limita_corpo():
+    resposta = MagicMock(status_code=200, text="x" * (64 * 1024 + 10))
+
+    with patch(
+        "shared.tools.coding_tools.harness_execucao.httpx.request",
+        return_value=resposta,
+    ) as request:
+        resultado = _requisitar_http("http://127.0.0.1:49152", "GET", "/docs", 2000)
+
+    request.assert_called_once_with(
+        "GET",
+        "http://127.0.0.1:49152/docs",
+        timeout=2.0,
+        follow_redirects=True,
+    )
+    assert resultado["status"] == 200
+    assert resultado["error"] is None
+    assert len(resultado["body"]) == 64 * 1024
 
 
 def test_caminho_feliz_report_persistido(tmp_path):
@@ -360,32 +395,30 @@ def test_estagio7_uma_evidencia_por_criterio_sem_veredito(tmp_path):
 
 def test_interface_sem_verbo_ou_rota_nao_e_checavel():
     with patch(
-        "shared.tools.coding_tools.harness_execucao.probe.executar_probe"
-    ) as executar_probe:
+        "shared.tools.coding_tools.harness_execucao._requisitar_http"
+    ) as requisitar_http:
         [evidencia] = _coletar_evidencias_interfaces(
-            MagicMock(), "http://localhost:8000", ["Interface de usuários"]
+            "http://127.0.0.1:49152", ["Interface de usuários"]
         )
 
     assert evidencia.checkable is False
     assert evidencia.branch is None
     assert "verbo e/ou rota não identificáveis" in evidencia.check_performed
-    executar_probe.assert_not_called()
+    requisitar_http.assert_not_called()
 
 
 def test_interface_parametrizada_resolve_id_via_get_do_pai():
-    def probe_por_rota(_container, requisicoes, _base_url):
-        rota = requisicoes[0]["path"]
+    def http_por_rota(_base_url, _metodo, rota, _timeout_ms):
         if rota == "/itens":
-            return [{"status": 200, "error": None, "body": '[{"id": 42}]'}]
-        return [{"status": 200, "error": None, "body": '{"id": 42}'}]
+            return {"status": 200, "error": None, "body": '[{"id": 42}]'}
+        return {"status": 200, "error": None, "body": '{"id": 42}'}
 
     with patch(
-        "shared.tools.coding_tools.harness_execucao.probe.executar_probe",
-        side_effect=probe_por_rota,
-    ) as executar_probe:
+        "shared.tools.coding_tools.harness_execucao._requisitar_http",
+        side_effect=http_por_rota,
+    ) as requisitar_http:
         evidencias = _coletar_evidencias_interfaces(
-            MagicMock(),
-            "http://localhost:8000",
+            "http://127.0.0.1:49152",
             ["GET /itens", "GET /itens/{id}"],
         )
 
@@ -396,17 +429,16 @@ def test_interface_parametrizada_resolve_id_via_get_do_pai():
     assert "GET /itens/42" in alvo.check_performed
     assert alvo.observed == "GET /itens/42 → HTTP 200; corpo: {\"id\": 42}"
     assert [
-        chamada.args[1][0]["path"] for chamada in executar_probe.call_args_list
+        chamada.args[2] for chamada in requisitar_http.call_args_list
     ] == ["/itens", "/itens", "/itens/42"]
 
 
 def test_interface_com_rota_pai_ainda_parametrizada_nao_e_checavel():
     with patch(
-        "shared.tools.coding_tools.harness_execucao.probe.executar_probe"
-    ) as executar_probe:
+        "shared.tools.coding_tools.harness_execucao._requisitar_http"
+    ) as requisitar_http:
         [evidencia] = _coletar_evidencias_interfaces(
-            MagicMock(),
-            "http://localhost:8000",
+            "http://127.0.0.1:49152",
             ["GET /usuarios/{usuario_id}/comentarios/{comentario_id}"],
         )
 
@@ -414,26 +446,29 @@ def test_interface_com_rota_pai_ainda_parametrizada_nao_e_checavel():
     assert evidencia.branch is None
     assert "rota pai '/usuarios/{usuario_id}/comentarios'" in evidencia.check_performed
     assert "parâmetro aninhado" in evidencia.check_performed
-    executar_probe.assert_not_called()
+    requisitar_http.assert_not_called()
 
 
-def test_interface_registra_probe_error_como_falha_mecanica():
+def test_interface_registra_erro_de_transporte_http():
     with patch(
-        "shared.tools.coding_tools.harness_execucao.probe.executar_probe",
-        side_effect=ProbeError("binário incompatível com a arquitetura"),
+        "shared.tools.coding_tools.harness_execucao._requisitar_http",
+        return_value={
+            "status": None,
+            "error": "conexão recusada",
+            "body": "",
+            "latency_ms": 1,
+        },
     ):
         [evidencia] = _coletar_evidencias_interfaces(
-            MagicMock(), "http://localhost:8000", ["GET /status"]
+            "http://127.0.0.1:49152", ["GET /status"]
         )
 
     assert evidencia.checkable is True
     assert evidencia.branch == "alcancabilidade"
     assert evidencia.check_performed == (
-        "Requisição GET /status (via probe, porta interna)."
+        "Requisição GET /status (via HTTP direto, porta publicada)."
     )
-    assert evidencia.observed == (
-        "GET /status → falha do probe: binário incompatível com a arquitetura"
-    )
+    assert evidencia.observed == "GET /status → falha de transporte: conexão recusada"
 
 
 # ===========================================================================
