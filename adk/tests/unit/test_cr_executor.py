@@ -74,14 +74,20 @@ def test_executor_aceita_comandos_de_teste(comando):
 
 
 def test_cache_de_comando_roundtrip(tmp_path):
-    path = tmp_path / "TASK-1.test_command.json"
-    ExecutorOrchestrator._atualizar_cache_comando(path, "pytest -q", {"error_code": None})
+    path = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+    ExecutorOrchestrator._atualizar_cache_comando(
+        path,
+        "pytest -q",
+        {"error_code": None, "evidence": {"exit_code": 0}},
+    )
     assert ExecutorOrchestrator._ler_cache_comando(path) == "pytest -q"
     assert json.loads(path.read_text(encoding="utf-8")) == {"comando": "pytest -q"}
+    assert path.name == "project.test_command.json"
+    assert not path.with_suffix(path.suffix + ".tmp").exists()
 
 
 def test_cache_invalido_ou_comando_nao_encontrado(tmp_path):
-    path = tmp_path / "TASK-1.test_command.json"
+    path = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
     path.write_text("não é json", encoding="utf-8")
     assert ExecutorOrchestrator._ler_cache_comando(path) is None
 
@@ -89,6 +95,89 @@ def test_cache_invalido_ou_comando_nao_encontrado(tmp_path):
     ExecutorOrchestrator._atualizar_cache_comando(
         path, "pytest", {"error_code": "COMANDO_NAO_ENCONTRADO"}
     )
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("error_code", [None, "TESTES_FALHARAM", "TESTES_TIMEOUT"])
+def test_cache_persiste_quando_comando_foi_executado(tmp_path, error_code):
+    path = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+    exit_code = {None: 0, "TESTES_FALHARAM": 1, "TESTES_TIMEOUT": 124}[error_code]
+
+    ExecutorOrchestrator._atualizar_cache_comando(
+        path,
+        "python -m pytest",
+        {"error_code": error_code, "evidence": {"exit_code": exit_code}},
+    )
+
+    assert ExecutorOrchestrator._ler_cache_comando(path) == "python -m pytest"
+
+
+@pytest.mark.parametrize("error_code", ["EXEC_FALHOU", "ERRO_DESCONHECIDO"])
+def test_cache_nao_e_criado_quando_execucao_nao_comprova_comando(
+    tmp_path, error_code
+):
+    path = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+
+    ExecutorOrchestrator._atualizar_cache_comando(
+        path,
+        "python -m pytest",
+        {"error_code": error_code, "evidence": {}},
+    )
+
+    assert not path.exists()
+
+
+def test_cache_rejeita_comando_perigoso_persistido(tmp_path):
+    path = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+    path.write_text('{"comando": "pip install malware && pytest"}', encoding="utf-8")
+
+    assert ExecutorOrchestrator._ler_cache_comando(path) is None
+
+
+def test_cache_e_compartilhado_por_tasks_e_substitui_comando_quebrado(tmp_path):
+    path_task_1 = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+    path_task_2 = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+    assert path_task_1 == path_task_2
+
+    ExecutorOrchestrator._atualizar_cache_comando(
+        path_task_1,
+        "pytest",
+        {"error_code": "TESTES_FALHARAM", "evidence": {"exit_code": 1}},
+    )
+    assert ExecutorOrchestrator._ler_cache_comando(path_task_2) == "pytest"
+
+    ExecutorOrchestrator._atualizar_cache_comando(
+        path_task_2, "pytest", {"error_code": "COMANDO_NAO_ENCONTRADO"}
+    )
+    assert ExecutorOrchestrator._ler_cache_comando(path_task_1) is None
+
+    ExecutorOrchestrator._atualizar_cache_comando(
+        path_task_2,
+        "python -m pytest",
+        {"error_code": None, "evidence": {"exit_code": 0}},
+    )
+    assert ExecutorOrchestrator._ler_cache_comando(path_task_1) == "python -m pytest"
+
+
+def test_cache_legado_por_task_nao_e_reutilizado(tmp_path):
+    legado = tmp_path / "TASK-001.test_command.json"
+    legado.write_text('{"comando": "pytest"}', encoding="utf-8")
+
+    projeto = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+
+    assert not projeto.exists()
+    assert ExecutorOrchestrator._ler_cache_comando(projeto) is None
+
+
+def test_cache_nao_grava_quando_estagio_de_testes_foi_pulado(tmp_path):
+    path = ExecutorOrchestrator._caminho_cache_comando(tmp_path)
+
+    ExecutorOrchestrator._atualizar_cache_comando(
+        path,
+        "pytest",
+        {"status": "pulado", "error_code": None, "evidence": {}},
+    )
+
     assert not path.exists()
 
 
@@ -112,10 +201,46 @@ def test_coder_instruction_contem_execution_result_placeholder(tmp_path, monkeyp
     assert "SOMENTE a task corrente" in cr_coder.agent.instruction
 
 
-def test_loop_agent_configuracao():
-    from src.agents.workflow_coding_review.agent import _code_execute_loop
+def test_coder_inicial_e_clone_sem_alterar_prompt_do_coder():
+    from src.agents.workflow_coding_review.agent import (
+        _initial_coder,
+        _preparar_construcao_inicial,
+    )
+    from src.agents.workflow_coding_review.cr_coder import agent as coder
 
-    assert _code_execute_loop.max_iterations == 5
+    assert _initial_coder is not coder
+    assert "SOMENTE a task corrente" in _initial_coder.instruction
+    assert "SOMENTE a task corrente" in coder.instruction
+    assert "CORREÇÃO ORIENTADA PELO HARNESS" not in coder.instruction
+    assert _initial_coder.before_agent_callback is not None
+    assert _initial_coder.after_agent_callback is not None
+
+    class _Context:
+        state = {
+            "tasks": {
+                "macro_context": {"summary": "Projeto"},
+                "tasks": [{"id": "TASK-001"}, {"id": "TASK-002"}],
+            }
+        }
+
+    contexto = _Context()
+    _preparar_construcao_inicial(contexto)
+    assert contexto.state["current_task"]["id"] == "PROJECT-INITIAL"
+    assert contexto.state["current_task"]["tasks"] == [
+        {"id": "TASK-001"},
+        {"id": "TASK-002"},
+    ]
+    assert contexto.state["project_initialized"] is False
+
+
+def test_loop_agent_configuracao():
+    from src.agents.workflow_coding_review.agent import (
+        _code_execute_loop,
+        _max_executor_attempts,
+    )
+
+    assert _max_executor_attempts == 5
+    assert _code_execute_loop.max_iterations == 4
     assert [agent.name for agent in _code_execute_loop.sub_agents] == [
         "cr_coder_agent",
         "cr_executor_agent",

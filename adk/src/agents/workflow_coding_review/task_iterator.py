@@ -11,9 +11,9 @@ task é esta camada. O executor não sabe que existe uma fila.
 
 Determinístico, sem LLM — mesmo espírito do `ExecutorOrchestrator`. Para cada task,
 em ordem topológica estável a partir da ordem canônica: prepara o state (seta
-`task_id` e `current_task`, zera as chaves de
-ciclo-de-task) e roda o `code_execute_loop` UMA vez — o teto de iterações do
-LoopAgent passa a valer por-task naturalmente. Lê `state['validation']['status']`:
+`task_id` e `current_task`, zera as chaves de ciclo-de-task) e chama primeiro o
+executor sobre o sistema completo já construído. Apenas após reprovação roda o
+`code_execute_loop[coder de correção, executor]`. Lê `state['validation']['status']`:
 `aprovado` segue para a próxima; qualquer outro (teto/estagnação) interrompe o
 processamento das tasks e entrega o resultado parcial ao reviewer.
 
@@ -44,7 +44,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
 from google.genai import types
-from pydantic import ConfigDict
+from pydantic import ConfigDict, PrivateAttr
 
 from shared.workspace import get_agent_workspace
 
@@ -56,6 +56,17 @@ _CHAVE_RESULTADOS = "task_results"
 _CHAVE_RESUMO = "task_iteration_summary"
 _POLITICAS_FALHA = {"fail_fast", "continue_independent"}
 _TASK_ID_RE = re.compile(r"^TASK-\d{3,}$")
+_MARCADOR_CONTEXTO_TASK = "[AI4ES_TASK_CONTEXT_START]"
+_DIRETORIOS_IGNORADOS_SNAPSHOT = {
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "node_modules",
+}
+_LIMITE_ARQUIVOS_SNAPSHOT = 200
 
 # Chaves planas legadas de ciclo de task, limpas ao avançar (`task_id` é setada,
 # não limpa). O runtime canônico é substituído integralmente; esta lista existe
@@ -134,6 +145,72 @@ def _resultado_da_task(runtime: dict[str, Any]) -> dict[str, Any]:
         "report_path": runtime.get("report_path"),
         "blocking_reason": validation.get("blocking_reason"),
     }
+
+
+def _snapshot_workspace(workspace: Path) -> dict[str, Any]:
+    """Lista o estado estrutural atual sem serializar conteúdo de arquivos."""
+    if not workspace.exists():
+        return {"root": str(workspace), "files": [], "omitted": 0}
+
+    arquivos = sorted(
+        str(path.relative_to(workspace))
+        for path in workspace.rglob("*")
+        if path.is_file()
+        and not any(
+            parte in _DIRETORIOS_IGNORADOS_SNAPSHOT
+            for parte in path.relative_to(workspace).parts
+        )
+    )
+    return {
+        "root": str(workspace),
+        "files": arquivos[:_LIMITE_ARQUIVOS_SNAPSHOT],
+        "omitted": max(len(arquivos) - _LIMITE_ARQUIVOS_SNAPSHOT, 0),
+    }
+
+
+def _contexto_compacto_task(
+    state: Any,
+    task: dict[str, Any],
+    tasks: list[dict[str, Any]],
+) -> str:
+    """Monta a âncora explícita que substitui a conversa de tasks anteriores."""
+    saida = _como_dict(state.get("tasks")) or {}
+    resultados = list(state.get(_CHAVE_RESULTADOS) or [])
+    tasks_por_id = {item["id"]: item for item in tasks}
+    anteriores = []
+    for resultado in resultados:
+        contrato = tasks_por_id.get(resultado.get("task_id"), {})
+        anteriores.append(
+            {
+                **resultado,
+                "description": contrato.get("description"),
+                "outputs": (contrato.get("contract") or {}).get("outputs", []),
+                "interfaces": (contrato.get("contract") or {}).get(
+                    "interfaces", []
+                ),
+            }
+        )
+
+    contexto = {
+        "current_task_contract": task,
+        "previous_tasks_summary": anteriores,
+        "workspace_snapshot": _snapshot_workspace(
+            get_agent_workspace("cr_coder")
+        ),
+        "last_error_report_for_current_task": None,
+        "architectural_context": {
+            "macro_context": saida.get("macro_context") or {},
+            "plan_file": "PLAN.md",
+            "guidance": (
+                "O workspace persiste entre tasks. Leia PLAN.md e somente os "
+                "arquivos relevantes usando as tools disponíveis."
+            ),
+        },
+    }
+    return (
+        f"{_MARCADOR_CONTEXTO_TASK}\n"
+        + json.dumps(contexto, ensure_ascii=False, sort_keys=True)
+    )
 
 
 def _resumo(total: int, resultados: list[dict[str, Any]], outcome: str) -> dict[str, Any]:
@@ -271,15 +348,33 @@ def _resolver_politica_falha(state: Any) -> str:
 
 
 class TaskIterator(BaseAgent):
-    """Itera a fila canônica, rodando o loop de correção uma vez por task."""
+    """Itera a fila: executor primeiro; coder só entra após reprovação."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    _initial_executor: BaseAgent = PrivateAttr()
+    _max_executor_attempts: int = PrivateAttr()
 
-    def __init__(self, *, code_execute_loop: BaseAgent, **kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        code_execute_loop: BaseAgent,
+        initial_executor: BaseAgent,
+        max_executor_attempts: int = 5,
+        **kwargs,
+    ) -> None:
         """`code_execute_loop`: o `LoopAgent[coder, executor]` já montado, INJETADO
         (não reconstruído). Vira o único sub-agente desta camada — o parent único
-        que o ADK exige é satisfeito porque só esta camada o adota."""
+        que o ADK exige é satisfeito porque só esta camada o adota.
+
+        `initial_executor` é a mesma instância do executor dentro do loop, usada
+        diretamente para que cada task seja validada antes de qualquer correção.
+        Ela não é readotada em `sub_agents`, preservando o parent único do ADK.
+        """
+        if max_executor_attempts < 1:
+            raise ValueError("max_executor_attempts deve ser pelo menos 1")
         super().__init__(sub_agents=[code_execute_loop], **kwargs)
+        self._initial_executor = initial_executor
+        self._max_executor_attempts = max_executor_attempts
 
     @property
     def code_execute_loop(self) -> BaseAgent:
@@ -382,15 +477,32 @@ class TaskIterator(BaseAgent):
                 )
                 continue
             yield self._evento(
-                ctx, f"Task {i}/{total}: {task_id} — iniciando loop de correção.", cb
+                self._contexto_da_task(ctx, task_id),
+                (
+                    f"Task {i}/{total}: {task_id} — iniciando loop de correção.\n"
+                    + _contexto_compacto_task(ctx.session.state, task, tasks)
+                ),
+                cb,
+                role="user",
             )
 
-            # --- roda o loop de correção (coder ↔ executor) UMA vez ---
-            # O escalate do executor encerra ESTE loop (desejado); consumir os
-            # eventos aqui contém o efeito ao loop — o que fazer a seguir é decisão
-            # desta camada.
-            async for event in self.code_execute_loop.run_async(ctx):
+            # Primeira tentativa: o sistema já foi construído pelo coder inicial.
+            # O harness precisa produzir evidência antes que o coder de correção
+            # faça qualquer mudança.
+            task_ctx = self._contexto_da_task(ctx, task_id)
+            async for event in self._initial_executor.run_async(task_ctx):
                 yield event
+
+            # Reprovou: agora o ErrorReport orienta o coder. Cada iteração do
+            # loop executa coder → executor; aprovação/estagnação do executor
+            # emite escalate e encerra somente este loop interno.
+            validation = ctx.session.state.get("validation") or {}
+            if (
+                validation.get("status") != "aprovado"
+                and self._max_executor_attempts > 1
+            ):
+                async for event in self.code_execute_loop.run_async(task_ctx):
+                    yield event
 
             # --- desfecho: só o veredito decide (como no executor) ---
             validation = ctx.session.state.get("validation") or {}
@@ -468,11 +580,27 @@ class TaskIterator(BaseAgent):
         cb.actions.state_delta.clear()
         return EventActions(state_delta=delta)
 
-    def _evento(self, ctx: InvocationContext, texto: str, cb: CallbackContext) -> Event:
+    def _evento(
+        self,
+        ctx: InvocationContext,
+        texto: str,
+        cb: CallbackContext,
+        *,
+        role: str = "model",
+    ) -> Event:
         return Event(
             author=self.name,
             invocation_id=ctx.invocation_id,
             branch=ctx.branch,
-            content=types.Content(role="model", parts=[types.Part(text=texto)]),
+            content=types.Content(role=role, parts=[types.Part(text=texto)]),
             actions=self._drenar_state_delta(cb),
         )
+
+    @staticmethod
+    def _contexto_da_task(
+        ctx: InvocationContext, task_id: str
+    ) -> InvocationContext:
+        """Cria uma branch irmã por task mantendo sessão e state compartilhados."""
+        sufixo = f"task_iterator.task_{task_id.replace('-', '_')}"
+        branch = f"{ctx.branch}.{sufixo}" if ctx.branch else sufixo
+        return ctx.model_copy(update={"branch": branch})

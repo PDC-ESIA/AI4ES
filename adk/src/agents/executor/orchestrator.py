@@ -65,6 +65,8 @@ _CHAVE_CHAVE_ESTAGNACAO = "stagnation_key"
 # Estágio de testes no payload do harness (StageName.TESTES_AUTOMATIZADOS.value —
 # usado como literal para não importar StageName daqui e reabrir o ciclo).
 _STAGE_TESTES = "testes_automatizados"
+_ARQUIVO_CACHE_COMANDO = "project.test_command.json"
+_ERROS_COMANDO_FUNCIONAL = {None, "TESTES_FALHARAM", "TESTES_TIMEOUT"}
 
 # Filtro leve do comando de teste resolvido: recusa se contiver qualquer um destes
 # como substring (instalar dependência é do Dockerfile/build, nunca do teste).
@@ -161,37 +163,66 @@ class ExecutorOrchestrator(BaseAgent):
         alvo = " ".join(comando.lower().split())
         return not any(padrao in alvo for padrao in _PADROES_PERIGOSOS)
 
-    @staticmethod
-    def _ler_cache_comando(cache_path) -> Optional[str]:
-        """Comando cacheado por Task (`{task_id}.test_command.json`), ou None."""
+    @classmethod
+    def _ler_cache_comando(cls, cache_path) -> Optional[str]:
+        """Lê o comando funcional do projeto e reaplica o filtro de segurança."""
         try:
             dados = json.loads(cache_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return None
         comando = dados.get("comando") if isinstance(dados, dict) else None
-        return comando if isinstance(comando, str) and comando.strip() else None
+        if not isinstance(comando, str) or not comando.strip():
+            return None
+        comando = comando.strip()
+        if not cls._comando_seguro(comando):
+            logger.warning(
+                "executor: comando inseguro ignorado no cache do projeto: %r",
+                comando,
+            )
+            return None
+        return comando
 
     @staticmethod
     def _atualizar_cache_comando(
         cache_path, comando: Optional[str], estagio6: Optional[dict]
     ) -> None:
-        """Grava o cache quando o comando final RODOU (mesmo com testes falhando de
-        verdade); invalida (remove) quando ainda deu COMANDO_NAO_ENCONTRADO — assim
-        a próxima iteração resolve do zero."""
+        """Mantém somente comandos que o container conseguiu iniciar.
+
+        Aprovação, falha real dos testes e timeout comprovam que o executável foi
+        encontrado. `COMANDO_NAO_ENCONTRADO` invalida o cache; falhas internas ou
+        estágios ausentes não criam nem sobrescrevem o arquivo.
+        """
         error_code = (estagio6 or {}).get("error_code")
-        if comando and estagio6 is not None and error_code != "COMANDO_NAO_ENCONTRADO":
+        evidence = (estagio6 or {}).get("evidence") or {}
+        comando_foi_executado = isinstance(evidence.get("exit_code"), int)
+        if (
+            comando
+            and comando_foi_executado
+            and error_code in _ERROS_COMANDO_FUNCIONAL
+        ):
+            temporario = cache_path.with_suffix(cache_path.suffix + ".tmp")
             try:
                 cache_path.parent.mkdir(parents=True, exist_ok=True)
-                cache_path.write_text(
+                temporario.write_text(
                     json.dumps({"comando": comando}, ensure_ascii=False), encoding="utf-8"
                 )
+                temporario.replace(cache_path)
             except OSError:
                 logger.warning("executor: falha ao gravar cache de comando em %s", cache_path)
+                try:
+                    temporario.unlink(missing_ok=True)
+                except OSError:
+                    pass
         elif error_code == "COMANDO_NAO_ENCONTRADO":
             try:
                 cache_path.unlink(missing_ok=True)
             except OSError:
                 pass
+
+    @staticmethod
+    def _caminho_cache_comando(exec_dir):
+        """Caminho único do comando funcional no workspace do projeto corrente."""
+        return exec_dir / _ARQUIVO_CACHE_COMANDO
 
     @staticmethod
     def _stage(payload: dict, nome: str) -> Optional[dict]:
@@ -259,11 +290,11 @@ class ExecutorOrchestrator(BaseAgent):
             origem_dockerfile = "llm" if dockerfile_resolvido else None
 
         # ---- 1. Comando de teste + Harness (com 1 retry se o comando não rodar) --
-        # O comando é resolvido FORA do harness (aqui) e entregue pronto. Cache por
-        # Task no workspace do executor: "qual ferramenta roda os testes" é estável
-        # entre iterações do loop.
+        # O comando é resolvido FORA do harness (aqui) e entregue pronto. O cache
+        # é único no workspace do projeto: tasks seguintes reaproveitam o primeiro
+        # comando funcional até que o container informe que ele deixou de existir.
         exec_dir = get_agent_workspace("cr_executor")
-        cache_path = exec_dir / f"{task_id}.test_command.json"
+        cache_path = self._caminho_cache_comando(exec_dir)
 
         comando = self._ler_cache_comando(cache_path)
         if comando:

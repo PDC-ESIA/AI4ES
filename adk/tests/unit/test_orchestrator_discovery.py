@@ -1,7 +1,5 @@
 """Smoke test: orchestrator é descoberto pelo ADK e expõe root_agent."""
 
-import pytest
-
 
 def test_orchestrator_root_agent_importavel():
     from src.agents.orchestrator import root_agent
@@ -30,18 +28,19 @@ def test_orchestrator_pipelines_esperados():
     ], f"Pipelines em ordem inesperada: {nomes}"
 
 
-def test_workflow_coding_review_inclui_context_engineer():
-    """Workflow deve conter iterator entre o context engineer e o reviewer."""
+def test_workflow_coding_review_constroi_antes_de_validar():
+    """Workflow deve construir tudo antes do iterator de validação."""
     from src.agents.workflow_coding_review.agent import agent as coding_review
 
     nomes_subagents = [sa.name for sa in coding_review.sub_agents]
     assert nomes_subagents == [
         "cr_context_engineer",
+        "cr_initial_coder_agent",
         "task_iterator",
         "cr_review_analyzer",
     ]
 
-    iterator = coding_review.sub_agents[1]
+    iterator = coding_review.sub_agents[2]
     assert len(iterator.sub_agents) == 1
     loop_agent = iterator.sub_agents[0]
     assert loop_agent.name == "code_execute_loop"

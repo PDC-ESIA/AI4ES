@@ -141,6 +141,7 @@ class _LoopAprovador(BaseAgent):
                 "total_tasks": ctx.session.state.get("total_tasks"),
                 "project_initialized": ctx.session.state.get("project_initialized"),
                 "stagnation_count": ctx.session.state.get("stagnation_count"),
+                "branch": ctx.branch,
             }
         )
         task_id = ctx.session.state["task_id"]
@@ -168,7 +169,11 @@ async def test_runner_processa_duas_tasks_e_contem_escalate(tmp_path, monkeypatc
     _persistir_tasks(get_agent_workspace("cr_context_engineer"), tasks)
     _LoopAprovador.observacoes = []
     loop = _LoopAprovador(name="loop_aprovador")
-    iterator = TaskIterator(name="task_iterator_test", code_execute_loop=loop)
+    iterator = TaskIterator(
+        name="task_iterator_test",
+        code_execute_loop=loop,
+        initial_executor=loop,
+    )
     sessions = InMemorySessionService()
     runner = Runner(app_name="task_iterator_test", agent=iterator, session_service=sessions)
     session = await sessions.create_session(
@@ -199,6 +204,12 @@ async def test_runner_processa_duas_tasks_e_contem_escalate(tmp_path, monkeypatc
     assert _LoopAprovador.observacoes[1]["stagnation_count"] is None
     assert [item["current_task_index"] for item in _LoopAprovador.observacoes] == [1, 2]
     assert all(item["total_tasks"] == 2 for item in _LoopAprovador.observacoes)
+    branches = [item["branch"] for item in _LoopAprovador.observacoes]
+    assert branches == [
+        "task_iterator.task_TASK_001",
+        "task_iterator.task_TASK_002",
+    ]
+    assert not branches[1].startswith(branches[0] + ".")
     assert any(
         event.content
         and event.content.parts
@@ -239,6 +250,20 @@ async def test_runner_processa_duas_tasks_e_contem_escalate(tmp_path, monkeypatc
     ]
     assert atualizado.state["task_runtime"]["task_id"] == "TASK-002"
     assert atualizado.state["task_runtime"]["stagnation"]["count"] == 2
+    contextos = [
+        event.content.parts[0].text
+        for event in events
+        if event.content
+        and event.content.role == "user"
+        and event.content.parts
+        and "[AI4ES_TASK_CONTEXT_START]" in (event.content.parts[0].text or "")
+    ]
+    assert len(contextos) == 2
+    contexto_segunda = json.loads(contextos[1].split("\n", 2)[2])
+    assert contexto_segunda["current_task_contract"]["id"] == "TASK-002"
+    assert contexto_segunda["previous_tasks_summary"][0]["task_id"] == "TASK-001"
+    assert contexto_segunda["last_error_report_for_current_task"] is None
+    assert contexto_segunda["architectural_context"]["plan_file"] == "PLAN.md"
 
 
 class _LoopReprovador(BaseAgent):
@@ -261,6 +286,93 @@ class _LoopReprovador(BaseAgent):
         )
 
 
+class _ExecutorFalhaComEvidencia(BaseAgent):
+    async def _run_async_impl(self, ctx):
+        yield Event(
+            author=self.name,
+            invocation_id=ctx.invocation_id,
+            actions=EventActions(
+                state_delta={
+                    "validation": {
+                        "status": "reprovado",
+                        "blocking_reason": "falha observada pelo harness",
+                    },
+                    "execution_result": '{"error_code": "FALHA_BUILD"}',
+                    "executor_iteration": 1,
+                }
+            ),
+        )
+
+
+class _LoopCorrecaoObservador(BaseAgent):
+    observacoes: ClassVar[list[dict]] = []
+
+    async def _run_async_impl(self, ctx):
+        self.observacoes.append(
+            {
+                "execution_result": ctx.session.state.get("execution_result"),
+                "validation": ctx.session.state.get("validation"),
+            }
+        )
+        yield Event(
+            author=self.name,
+            invocation_id=ctx.invocation_id,
+            actions=EventActions(
+                state_delta={
+                    "validation": {"status": "aprovado"},
+                    "executor_iteration": 2,
+                },
+                escalate=True,
+            ),
+        )
+
+
+async def test_coder_de_correcao_so_entra_depois_do_error_report(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "workspace"))
+    tasks = [_task("TASK-001")]
+    _persistir_tasks(get_agent_workspace("cr_context_engineer"), tasks)
+    _LoopCorrecaoObservador.observacoes = []
+    iterator = TaskIterator(
+        name="task_iterator_correcao",
+        initial_executor=_ExecutorFalhaComEvidencia(name="executor_primeiro"),
+        code_execute_loop=_LoopCorrecaoObservador(name="loop_correcao"),
+    )
+    sessions = InMemorySessionService()
+    runner = Runner(
+        app_name="task_iterator_correcao",
+        agent=iterator,
+        session_service=sessions,
+    )
+    session = await sessions.create_session(
+        app_name="task_iterator_correcao",
+        user_id="user",
+        state={"tasks": {"tasks": tasks}, "project_initialized": True},
+    )
+
+    _ = [
+        event
+        async for event in runner.run_async(
+            user_id="user",
+            session_id=session.id,
+            new_message=types.Content(
+                role="user", parts=[types.Part(text="validar")]
+            ),
+        )
+    ]
+
+    assert _LoopCorrecaoObservador.observacoes == [
+        {
+            "execution_result": '{"error_code": "FALHA_BUILD"}',
+            "validation": {
+                "status": "reprovado",
+                "blocking_reason": "falha observada pelo harness",
+            },
+        }
+    ]
+
+
 async def test_runner_para_na_primeira_reprovacao(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "workspace"))
     tasks = [_task("TASK-001"), _task("TASK-002")]
@@ -269,6 +381,8 @@ async def test_runner_para_na_primeira_reprovacao(tmp_path, monkeypatch):
     iterator = TaskIterator(
         name="task_iterator_reprovacao",
         code_execute_loop=_LoopReprovador(name="loop_reprovador"),
+        initial_executor=_LoopReprovador(name="executor_inicial_reprovador"),
+        max_executor_attempts=1,
     )
     sessions = InMemorySessionService()
     runner = Runner(app_name="task_iterator_reprovacao", agent=iterator, session_service=sessions)
@@ -343,6 +457,8 @@ async def test_continue_independent_bloqueia_dependente_e_executa_independente(
     iterator = TaskIterator(
         name="task_iterator_continue",
         code_execute_loop=_LoopPorTask(name="loop_por_task"),
+        initial_executor=_LoopPorTask(name="executor_inicial_por_task"),
+        max_executor_attempts=1,
     )
     sessions = InMemorySessionService()
     runner = Runner(app_name="task_iterator_continue", agent=iterator, session_service=sessions)
@@ -399,6 +515,7 @@ async def test_runner_sem_tasks_registra_bloqueio_observavel(tmp_path, monkeypat
     iterator = TaskIterator(
         name="task_iterator_vazio",
         code_execute_loop=_LoopNuncaChamado(name="loop_nunca_chamado"),
+        initial_executor=_LoopNuncaChamado(name="executor_nunca_chamado"),
     )
     sessions = InMemorySessionService()
     runner = Runner(app_name="task_iterator_vazio", agent=iterator, session_service=sessions)

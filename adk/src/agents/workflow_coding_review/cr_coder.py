@@ -10,6 +10,7 @@ import os
 import re
 
 from google.adk.agents import LlmAgent
+from google.adk.models.llm_request import LlmRequest
 from google.adk.tools import FunctionTool
 from google.genai import types
 
@@ -31,10 +32,31 @@ _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
 _WORKSPACE_ROOT = str(get_workspace_root())
 _CODER_WS = str(get_agent_workspace("cr_coder"))
+_MARCADOR_CONTEXTO_TASK = "[AI4ES_TASK_CONTEXT_START]"
 
 
 def _bind(tool):
     return _bind_tool_to_workspace(tool, _CODER_WS, _WORKSPACE_ROOT)
+
+
+def _compactar_historico_entre_tasks(callback_context, llm_request: LlmRequest):
+    """Remove apenas conteúdos anteriores à âncora da task corrente.
+
+    A mutação é efêmera no request. Eventos da sessão permanecem intactos para
+    o front do ADK, e conteúdos gerados depois da âncora continuam disponíveis
+    nos retries da própria task.
+    """
+    del callback_context
+    inicio = None
+    for indice, content in enumerate(llm_request.contents):
+        if any(
+            part.text and _MARCADOR_CONTEXTO_TASK in part.text
+            for part in (content.parts or [])
+        ):
+            inicio = indice
+    if inicio is not None:
+        llm_request.contents[:] = llm_request.contents[inicio:]
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -402,6 +424,7 @@ agent = LlmAgent(
     generate_content_config=types.GenerateContentConfig(
         max_output_tokens=16384,
     ),
+    before_model_callback=_compactar_historico_entre_tasks,
     tools=[
         _bind(FunctionTool(tool_criar_arquivo)),
         _bind(FunctionTool(tool_ler_arquivo)),
