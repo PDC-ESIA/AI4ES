@@ -1,3 +1,11 @@
+"""Prompt do Reviewer do workflow coding_review.
+
+Instrução autocontida de verificação técnica em 4 camadas (completude,
+arquitetura, corretude, testes). O agente do workflow adapta esta "alma" em
+runtime para ler arquivos do workspace (em vez de diff git) e delegar a
+persistência ao callback — ver agent.py.
+"""
+
 description = "Verifica a qualidade técnica do código produzido: completude, arquitetura, corretude e testes."
 
 instruction = """
