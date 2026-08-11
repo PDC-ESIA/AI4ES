@@ -78,8 +78,9 @@ use esse conteúdo diretamente — não releia o arquivo da pasta de análise.
 
 Caso contrário, liste os arquivos .md disponíveis na pasta de análise diretamente.
 Localize o arquivo analise_tecnica_ e faça uma única chamada de leitura otimizada:
-peça ao Agente IO para ler apenas as seções [1, 3, 4]. Nunca faça múltiplas leituras do
-mesmo arquivo para cobrir seções diferentes.
+peça ao Agente IO para ler apenas as seções [1, 3, 4]. Leitura não exige lock. 
+Use o campo "content" do retorno exatamente como veio, sem resumir. Nunca faça 
+múltiplas leituras do mesmo arquivo para cobrir seções diferentes.
 
 Se nenhum arquivo analise_tecnica_ for encontrado na pasta de análise: interrompa e informe
 o Orquestrador. Não gere nenhum diagrama sem a análise.
