@@ -14,6 +14,7 @@ from shared.tools import (
     run_search,
     check_glossary,
     add_to_glossary,
+    ler_artefatos_gerados,
 )
 from shared.workspace import get_agent_workspace, get_workspace_root
 from . import prompt, schemas
@@ -113,6 +114,25 @@ glossario_agent = LlmAgent(
     ],
 )
 
+# ── Sub-Agente de Validação ──────────────────────────────────────────────────
+
+validacao_agent = LlmAgent(
+    name="validacao_agent",
+    model=_DEFAULT_MODEL,
+    description=(
+        "Sub-agente especializado em validação de requisitos. "
+        "Analisa os artefatos gerados (HUs, RFs, RNFs, RNs, UCs) em busca de "
+        "ambiguidades, contradições, inconsistências e violações dos critérios SMART."
+    ),
+    instruction=prompt.validacao_instruction,
+    output_key="validation_result",
+    tools=[
+        _bind(FunctionTool(ler_artefatos_gerados), _REQ_WS),
+        FunctionTool(check_glossary),
+        _bind(FunctionTool(gerar_doubt_artifact), _REQ_WS),
+    ],
+)
+
 # ── Agente Principal de Requisitos ───────────────────────────────────────────
 
 agent = LlmAgent(
@@ -127,5 +147,6 @@ agent = LlmAgent(
         _bind(FunctionTool(gerar_doubt_artifact), _REQ_WS),
         _bind(FunctionTool(tool_salvar_artefato_requisito), _REQ_WS),
         AgentTool(agent=glossario_agent),
+        AgentTool(agent=validacao_agent),
     ],
 )

@@ -1,12 +1,15 @@
-from .git import tool_git_add, tool_git_commit, tool_git_checkout, tool_ler_diff, tool_preparar_commit, tool_confirmar_commit
-from .filesystem import (
+from .coding_tools.git import tool_git_add, tool_git_commit, tool_git_checkout, tool_ler_diff, tool_preparar_commit, tool_confirmar_commit
+from .coding_tools.filesystem_coding import (
     tool_criar_arquivo,
     tool_salvar_relatorio,
     tool_ler_arquivo,
     tool_substituir_trecho,
+)
+from .filesystem import (
     tool_salvar_artefato_requisito,
     tool_ler_workspace,
     tool_listar_workspace,
+    ler_artefatos_gerados,
 )
 # NOTE: `gerar_doubt_artifact` é reexportado de `doubt_generator_analista` para manter compatibilidade.
 from .hitl_tool import aguardar_aprovacao_humana
@@ -49,6 +52,7 @@ __all__ = [
     "run_search",
     "check_glossary",
     "add_to_glossary",
+    "ler_artefatos_gerados",
     "tool_ask_clarification_adk",
     "coletar_doubts_pendentes",
     "responder_doubt",
