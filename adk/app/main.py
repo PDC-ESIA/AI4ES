@@ -8,7 +8,9 @@ from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.registry import LLMRegistry
 
-LLMRegistry._register(r"github_copilot/.*", LiteLlm)
+from shared.llm import GithubCopilotLiteLlm
+
+LLMRegistry._register(r"github_copilot/.*", GithubCopilotLiteLlm)
 LLMRegistry._register(r"github/.*", LiteLlm)
 
 
