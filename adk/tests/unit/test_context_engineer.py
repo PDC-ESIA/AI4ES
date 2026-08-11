@@ -38,6 +38,30 @@ def test_schemas_macro_context_minimal():
     )
     assert mc.summary.startswith("Sistema")
     assert len(mc.tech_stack) == 2
+
+
+def test_schemas_macro_context_product_type_default():
+    """product_type é aditivo: default 'a definir' quando não informado."""
+    from src.agents.workflow_coding_review.context_engineer.schemas import MacroContext
+    mc = MacroContext(
+        summary="Biblioteca de parsing",
+        tech_stack=["Python"],
+        global_rules=["Seguir padrões do projeto"],
+    )
+    assert mc.product_type == "a definir"
+
+
+def test_schemas_macro_context_product_type_explicito():
+    """product_type aceita valor explícito não-web (ex.: library, cli)."""
+    from src.agents.workflow_coding_review.context_engineer.schemas import MacroContext
+    mc = MacroContext(
+        summary="CLI de migração de dados",
+        product_type="cli",
+        tech_stack=["Go"],
+        global_rules=["Sem dependências externas"],
+    )
+    assert mc.product_type == "cli"
+    assert mc.tech_stack == ["Go"]
  
  
 def test_schemas_task_com_contract():
