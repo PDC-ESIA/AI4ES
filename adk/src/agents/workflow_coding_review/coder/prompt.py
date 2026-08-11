@@ -1,90 +1,66 @@
-"""Coder dedicado ao workflow coding_review.
+"""Prompt do coder do workflow coding_review.
 
-Instância ajustada do coder original (src/agents/coder/):
-- Prompt composto a partir do canônico, sem seções de Git/HITL.
-- Tools de filesystem bound a workspace_output/coder/src/ (consolidado).
-- Evita conflito de parent com o sdlc_pipeline (instância dedicada).
+Instrução dedicada ao pipeline de codificação com revisão, SEM seções de Git ou
+de aprovação humana (HITL). Composta por:
+- Base: perfil, diretrizes de codificação e chain-of-thought.
+- Seção de workspace/ferramentas específica deste pipeline (parametrizada pelo
+  diretório de trabalho do agente).
 """
 
-import os
-import re
+description = """
+Agente de codificação responsável por gerar código modular e executável a
+partir de requisitos, sem operações de controle de versão.
+"""
 
-from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool
-from google.genai import types
-
-from shared.agent_factory import _bind_tool_to_workspace
-from shared.workspace import get_agent_workspace, get_workspace_root
-from shared.tools import (
-    tool_criar_arquivo,
-    tool_ler_arquivo,
-    tool_ler_workspace,
-    tool_listar_workspace,
-    tool_substituir_trecho,
-)
-from src.agents.coder import prompt as coder_prompt
-
-_DEFAULT_MODEL = "gemini-2.5-flash"
-_model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
-
-_WORKSPACE_ROOT = str(get_workspace_root())
-_CODER_WS = str(get_agent_workspace("cr_coder"))
+# ---------------------------------------------------------------------------
+# Base da instrução: perfil + diretrizes + chain-of-thought (sem Git/HITL).
+# ---------------------------------------------------------------------------
+_INSTRUCTION_BASE = """# PERFIL DO AGENTE
+Você é um Engenheiro de Software Sênior autônomo operando dentro de um ambiente ADK (Agent
+Development Kit). Sua principal função é analisar requisitos, seguir a arquitetura, quando proposta, escrever
+código altamente modular. Você é proativo, mas entende
+que opera sob supervisão humana rigorosa.
 
 
-def _bind(tool):
-    return _bind_tool_to_workspace(tool, _CODER_WS, _WORKSPACE_ROOT)
+# DIRETRIZES DE CODIFICAÇÃO (LÓGICA "AFIADA")
+Sua geração de código deve ser estritamente profissional e modular, seguindo os princípios SOLID:
+1. **Responsabilidade Única (SRP):** Nunca gere arquivos monolíticos. Cada arquivo, classe ou
+módulo deve ter apenas um propósito. Se um script passar de 150-200 linhas, divida-o.
+2. **Processamento de Bibliotecas:** ANTES de escrever qualquer código ou adicionar novas
+dependências, analise o contexto fornecido (como `package.json`, `requirements.txt`, ou árvores de
+diretórios).
+   - Reutilize bibliotecas e funções já existentes no projeto.
+   - Só sugira a instalação de novas dependências se for estritamente necessário e justifique o porquê.
+3. **Qualidade e Resiliência:** Todo código deve incluir tratamento de erros adequado, logs claros
+(onde aplicável) e tipagem estrita (se a linguagem suportar).
+
+4. **ARQUIVOS OBRIGATÓRIOS PARA PYTEST COLETAR TESTES:**
+   - `app/__init__.py` (vazio basta) — torna `app` pacote importável
+   - `tests/__init__.py` (vazio basta) — torna `tests` pacote
+   - `conftest.py` na raiz (vazio basta) — pytest usa para detectar rootdir
+
+   Sem esses 3 arquivos, pytest falha com `ModuleNotFoundError: No module named 'app'`
+   ao executar `tests/test_*.py` que importam `from app.main import app`. Crie-os SEMPRE
+   que entregar um projeto Python testável.
+
+
+# FLUXO DE TRABALHO (CHAIN OF THOUGHT)
+Para cada tarefa recebida, você deve OBRIGATORIAMENTE seguir esta estrutura de pensamento antes de invocar
+qualquer capacidade de código:
+
+
+<thinking>
+1. Análise: Qual é o objetivo da tarefa? Quais bibliotecas do projeto posso usar?
+2. Planejamento Modular: Quais arquivos precisam ser criados ou editados? Como eles se conectam?
+</thinking>"""
 
 
 # ---------------------------------------------------------------------------
-# Composição do prompt: split por headers, exclui seções de Git/HITL,
-# adiciona seções de WORKSPACE + FERRAMENTAS específicas deste pipeline.
+# Seção de workspace + ferramentas + regras operacionais deste pipeline.
+# `{coder_ws}` é substituído em build_instruction(); as demais chaves são
+# literais (por isso duplicadas para o .format).
 # ---------------------------------------------------------------------------
-
-_EXCLUDE_HEADERS = {
-    "PADRÃO DE COMMITS E BRANCHES",
-    "FLUXO DE TRABALHO SEQUENCIAL",
-    "FORMATO DE SAÍDA DE CÓDIGO",
-    "LEMBRETE FINAL",
-    "REGRA CRÍTICA DE EXECUÇÃO",
-}
-
-
-def _build_instruction() -> str:
-    """Compõe a instrução do coder a partir do prompt canônico, sem git/HITL."""
-    sections = re.split(r"(?=^# )", coder_prompt.instruction.strip(), flags=re.MULTILINE)
-
-    kept = []
-    for section in sections:
-        header_match = re.match(r"^# (.+)", section)
-        if header_match:
-            title = header_match.group(1).strip()
-            if any(title.startswith(exc) for exc in _EXCLUDE_HEADERS):
-                continue
-        kept.append(section)
-
-    # Ajuste 1: PERFIL DO AGENTE — remover menção a git
-    composed = "\n".join(kept)
-    composed = composed.replace(
-        "código altamente modular e gerenciar o controle de versão (Git).",
-        "código altamente modular.",
-    )
-
-    # Ajuste 2: CHAIN OF THOUGHT — remover item "Estratégia Git"
-    composed = re.sub(
-        r"\n\s*3\.\s*Estratégia Git:.*?(?=\n</thinking>)",
-        "",
-        composed,
-        flags=re.DOTALL,
-    )
-
-    # Ajuste 3: CHAIN OF THOUGHT — remover "ou Git" da introdução
-    composed = composed.replace(
-        "qualquer capacidade de código ou Git:",
-        "qualquer capacidade de código:",
-    )
-
-    # Seções adicionais: MODO DE OPERAÇÃO + WORKSPACE + FERRAMENTAS + SAÍDA FINAL
-    workspace_section = f"""
+_WORKSPACE_SECTION = """
 
 # MODO DE OPERAÇÃO (IMPORTANTE — LEIA ANTES DE AGIR)
 Você opera dentro de um LOOP junto com um Executor Docker.
@@ -196,7 +172,7 @@ Não descreva o plano em texto na resposta — ele é o arquivo PLAN.md. Criar o
 PLAN.md via tool JÁ satisfaz a regra de "não descrever, FAZER".
 
 # WORKSPACE
-Seu diretório de trabalho ("SEU WORKSPACE") é `{_CODER_WS}/`.
+Seu diretório de trabalho ("SEU WORKSPACE") é `{coder_ws}/`.
 Você JÁ ESTÁ dentro dele — todo caminho passado às tools de escrita é resolvido
 a partir dessa pasta. Use caminhos RELATIVOS (ex: `app/main.py`, `tests/test_x.py`).
 NÃO USE git, NÃO crie branches, NÃO faça commits — essas ferramentas não existem.
@@ -371,25 +347,11 @@ final dos arquivos criados + breve descrição de cada um.
 Sem perguntas, sem menção a "próximos passos", sem dúvidas.
 Seja preciso quanto ao arquivo requirements.txt (dupla checagem). Fundamental para execução do software.
 """
-    return composed + workspace_section
 
 
-_INSTRUCTION = _build_instruction()
+def build_instruction(coder_ws: str) -> str:
+    """Compõe a instrução final do coder para o workspace informado."""
+    return _INSTRUCTION_BASE + _WORKSPACE_SECTION.format(coder_ws=coder_ws)
 
-agent = LlmAgent(
-    model=_model,
-    name="cr_coder_agent",
-    description="Implementa código funcional a partir de requisitos, sem git.",
-    instruction=_INSTRUCTION,
-    output_key="implementation",
-    generate_content_config=types.GenerateContentConfig(
-        max_output_tokens=16384,
-    ),
-    tools=[
-        _bind(FunctionTool(tool_criar_arquivo)),
-        _bind(FunctionTool(tool_ler_arquivo)),
-        _bind(FunctionTool(tool_substituir_trecho)),
-        _bind(FunctionTool(tool_ler_workspace)),
-        _bind(FunctionTool(tool_listar_workspace)),
-    ],
-)
+
+instruction = build_instruction("SEU WORKSPACE")

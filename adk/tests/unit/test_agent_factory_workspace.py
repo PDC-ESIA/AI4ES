@@ -58,7 +58,7 @@ def test_create_se_agent_com_subdir_arbitrario(monkeypatch, tmp_path):
 
 def test_bind_tool_filesystem_injeta_base_dir(monkeypatch, tmp_path):
     """_bind_tool_to_workspace injeta base_dir em filesystem tools."""
-    from shared.tools.filesystem import tool_criar_arquivo
+    from shared.tools.coding_tools.filesystem_coding import tool_criar_arquivo
     agent_ws = tmp_path / "ws" / "coder"
     agent_ws.mkdir(parents=True)
     bound = _bind_tool_to_workspace(
@@ -94,7 +94,7 @@ def test_bind_tool_workspace_read_injeta_workspace_root(tmp_path):
 
 def test_bind_tool_git_injeta_cwd(monkeypatch, tmp_path):
     """Git tools recebem cwd=agent_workspace."""
-    from shared.tools.git import tool_git_add
+    from shared.tools.coding_tools.git import tool_git_add
     agent_ws = tmp_path / "ws" / "coder"
     agent_ws.mkdir(parents=True)
     bound = _bind_tool_to_workspace(
@@ -112,7 +112,7 @@ def test_bind_tool_git_injeta_cwd(monkeypatch, tmp_path):
             stderr = ""
             returncode = 0
         return R()
-    monkeypatch.setattr("shared.tools.git.run", fake_run)
+    monkeypatch.setattr("shared.tools.coding_tools.git.run", fake_run)
     underlying(arquivos="file.py")
     assert captured[0] == str(agent_ws)
 

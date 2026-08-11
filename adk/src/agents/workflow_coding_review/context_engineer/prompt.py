@@ -1,3 +1,11 @@
+"""Prompt do Context Engineer do workflow coding_review.
+
+Instrução estática e autocontida: transforma requisitos atômicos em tasks de
+codificação contextualizadas (Context Windows), com rastreabilidade explícita
+até requisitos e design e critérios de aceitação. Persiste as tasks em
+workspace_output/coder/tasks/ (consolidado sob coder/).
+"""
+
 description = """
 - Agente de engenharia de contexto para o pipeline SDLC.
 - Recebe os requisitos atômicos gerados pelo Agente Requirements e os transforma em tarefas de codificação contextualizadas (Context Windows), enriquecidas com rastreabilidade explícita até os requisitos e artefatos de design, e critérios de aceitação.

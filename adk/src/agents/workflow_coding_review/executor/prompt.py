@@ -1,11 +1,10 @@
-"""prompt.py — Agente Executor (consolidado).
+"""Prompt do Executor do workflow coding_review.
 
-A "alma" reutilizável do executor: orquestra o harness de validação e o Agente
-de Validação de Implementação e encerra o loop de codificação quando o veredito
-é 'aprovado' OU quando o protocolo de estagnação detecta que o coder não fez
-alterações e o mesmo bloqueio se repete (encerramento por estagnação, que NÃO é
-aprovação). Extraído/adaptado do fluxo e da salvaguarda que hoje vivem hardcoded
-em `workflow_coding_review/cr_executor.py`.
+A "alma" do executor: orquestra o harness de validação e o Agente de Validação
+de Implementação, encerrando o loop de codificação quando o veredito é 'aprovado'
+OU quando o protocolo de estagnação é atingido (o coder não fez alterações e o
+mesmo bloqueio se repete — encerramento que NÃO é aprovação). O status técnico
+de execução do harness, sozinho, nunca encerra.
 """
 
 description = (

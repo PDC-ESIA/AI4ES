@@ -1,4 +1,4 @@
-"""Tests para src/agents/context_engineer/ — descoberta + schemas + tools."""
+"""Tests para o context_engineer do workflow coding_review (cr_context_engineer) — descoberta + schemas + tools."""
  
 import json
 from pathlib import Path
@@ -7,22 +7,22 @@ import pytest
  
  
 def test_context_engineer_root_agent_importavel():
-    from src.agents.context_engineer import root_agent
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
     assert root_agent is not None
-    assert root_agent.name == "context_engineer"
+    assert root_agent.name == "cr_context_engineer"
  
  
 def test_context_engineer_tem_output_schema():
-    from src.agents.context_engineer import root_agent
-    from src.agents.context_engineer.schemas import TasksOutput
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput
     assert root_agent.output_schema == TasksOutput
  
  
 def test_context_engineer_tem_tools_esperadas():
-    from src.agents.context_engineer import root_agent
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
     tool_names = {getattr(getattr(t, "func", t), "__name__", "") for t in root_agent.tools}
     assert {
-        "tool_salvar_task",
+        "tool_salvar_task_cr",
         "tool_ler_requirements",
         "tool_ler_design",
         "tool_gerar_doubt_artifact",
@@ -30,7 +30,7 @@ def test_context_engineer_tem_tools_esperadas():
  
  
 def test_schemas_macro_context_minimal():
-    from src.agents.context_engineer.schemas import MacroContext
+    from src.agents.workflow_coding_review.context_engineer.schemas import MacroContext
     mc = MacroContext(
         summary="Sistema de autenticação JWT",
         tech_stack=["Python", "FastAPI"],
@@ -41,7 +41,7 @@ def test_schemas_macro_context_minimal():
  
  
 def test_schemas_task_com_contract():
-    from src.agents.context_engineer.schemas import Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Task, Contract
     task = Task(
         id="TASK-001",
         type="backend",
@@ -59,7 +59,7 @@ def test_schemas_task_com_contract():
  
 def test_schemas_task_design_refs_vazio_valido():
     """design_refs pode ser lista vazia para RFs sem HU associada."""
-    from src.agents.context_engineer.schemas import Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Task, Contract
     task = Task(
         id="TASK-007",
         type="infra",
@@ -74,7 +74,7 @@ def test_schemas_task_design_refs_vazio_valido():
  
  
 def test_schemas_contract_interfaces_objeto_aceito():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Contract
     contract = Contract(
         interfaces={
             "create_ensaio": {
@@ -88,7 +88,7 @@ def test_schemas_contract_interfaces_objeto_aceito():
  
  
 def test_schemas_contract_interfaces_aceita_lista_e_string():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Contract
  
     as_list = Contract.model_validate({
         "inputs": [],
@@ -106,7 +106,7 @@ def test_schemas_contract_interfaces_aceita_lista_e_string():
  
  
 def test_schemas_tasks_output_completo():
-    from src.agents.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
     output = TasksOutput(
         macro_context=MacroContext(
             summary="X",
@@ -133,7 +133,7 @@ def test_schemas_tasks_output_completo():
 def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
     """tool_salvar_task escreve JSON em workspace/tasks/<id>.json."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
+    from shared.tools.coding_tools.context_engineer_tools import tool_salvar_task
     task_json = json.dumps({
         "id": "TASK-001",
         "type": "backend",
@@ -149,7 +149,7 @@ def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
  
 def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
+    from shared.tools.coding_tools.context_engineer_tools import tool_salvar_task
     result = tool_salvar_task("INVALID-001", json.dumps({"x": 1}))
     assert result["sucesso"] is False
     assert "TASK-" in result["erro"]
@@ -157,7 +157,7 @@ def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
  
 def test_tool_salvar_task_json_invalido_rejeita(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_salvar_task
+    from shared.tools.coding_tools.context_engineer_tools import tool_salvar_task
     result = tool_salvar_task("TASK-002", "not a json")
     assert result["sucesso"] is False
     assert "JSON inválido" in result["erro"] or "JSON invalido" in str(result.get("erro", ""))
@@ -172,7 +172,7 @@ def test_tool_ler_requirements_com_hu_e_rf(tmp_path, monkeypatch):
     pasta_rfs.mkdir(parents=True)
     (pasta_hus / "HU-001.md").write_text("# HU-001", encoding="utf-8")
     (pasta_rfs / "RF-001.md").write_text("# RF-001", encoding="utf-8")
-    from src.agents.context_engineer.tools import tool_ler_requirements
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
     result = tool_ler_requirements()
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is True
@@ -186,7 +186,7 @@ def test_tool_ler_requirements_so_rf_valido(tmp_path, monkeypatch):
     pasta_rfs = tmp_path / "ws" / "requirements" / "RFs"
     pasta_rfs.mkdir(parents=True)
     (pasta_rfs / "RF-001.md").write_text("# RF-001", encoding="utf-8")
-    from src.agents.context_engineer.tools import tool_ler_requirements
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
     result = tool_ler_requirements()
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is True
@@ -199,7 +199,7 @@ def test_tool_ler_requirements_sem_rf_bloqueia(tmp_path, monkeypatch):
     pasta_hus = tmp_path / "ws" / "requirements" / "HUs"
     pasta_hus.mkdir(parents=True)
     (pasta_hus / "HU-001.md").write_text("# HU-001", encoding="utf-8")
-    from src.agents.context_engineer.tools import tool_ler_requirements
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
     result = tool_ler_requirements()
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is False
@@ -209,7 +209,7 @@ def test_tool_ler_requirements_sem_rf_bloqueia(tmp_path, monkeypatch):
 def test_tool_ler_requirements_pasta_inexistente(tmp_path, monkeypatch):
     """tool_ler_requirements retorna erro se pasta não existe."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_ler_requirements
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_requirements
     result = tool_ler_requirements()
     assert result["sucesso"] is False
     assert "não encontrada" in result["erro"]
@@ -221,7 +221,7 @@ def test_tool_ler_design_com_analise(tmp_path, monkeypatch):
     pasta = tmp_path / "ws" / "design"
     pasta.mkdir(parents=True)
     (pasta / "analise_tecnica_HU-001.md").write_text("# Análise", encoding="utf-8")
-    from src.agents.context_engineer.tools import tool_ler_design
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
     result = tool_ler_design()
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is True
@@ -233,7 +233,7 @@ def test_tool_ler_design_sem_analise(tmp_path, monkeypatch):
     pasta = tmp_path / "ws" / "design" / "diagrams"
     pasta.mkdir(parents=True)
     (pasta / "diagrama_HU-001.mmd").write_text("graph TD", encoding="utf-8")
-    from src.agents.context_engineer.tools import tool_ler_design
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
     result = tool_ler_design()
     assert result["sucesso"] is True
     assert result["artefatos_minimos_presentes"] is False
@@ -242,7 +242,7 @@ def test_tool_ler_design_sem_analise(tmp_path, monkeypatch):
 def test_tool_ler_design_pasta_inexistente(tmp_path, monkeypatch):
     """tool_ler_design retorna erro se pasta não existe."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    from src.agents.context_engineer.tools import tool_ler_design
+    from shared.tools.coding_tools.context_engineer_tools import tool_ler_design
     result = tool_ler_design()
     assert result["sucesso"] is False
     assert "não encontrada" in result["erro"]
@@ -252,7 +252,7 @@ def test_tool_gerar_doubt_artifact(tmp_path, monkeypatch):
     """tool_gerar_doubt_artifact persiste arquivo .md no workspace."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     (tmp_path / "ws").mkdir(parents=True)
-    from src.agents.context_engineer.tools import tool_gerar_doubt_artifact
+    from shared.tools.coding_tools.context_engineer_tools import tool_gerar_doubt_artifact
     result = tool_gerar_doubt_artifact(
         titulo="Artefatos mínimos ausentes",
         fase_bloqueada="requirements",

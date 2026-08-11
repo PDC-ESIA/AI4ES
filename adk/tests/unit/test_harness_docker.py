@@ -8,7 +8,7 @@ executor deixou de rodar Docker diretamente (passou a compor o harness).
 
 from unittest.mock import MagicMock
 
-from shared.tools import harness_docker as hd
+from shared.tools.coding_tools import harness_docker as hd
 
 
 # ===========================================================================
