@@ -38,6 +38,15 @@ TEMPLATE_DIR = ADK_DIR / "shared" / "templates"
 LOG_FILENAME = "io_operations.log"
 STATUS_IN_REVIEW = "**Status:** Em análise"
 STATUS_BLOCKED = "**Status:** Bloqueado"
+#: Qualquer um destes marcadores, presente no conteúdo de um Doubt_Artifact,
+#: indica bloqueio ativo. "EXECUÇÃO PAUSADA" cobre Doubt_Artifacts gerados por
+#: vias que não seguem a convenção de status do design (ex.: a capacidade
+#: genérica de esclarecimento injetada em todo agente por agent_factory —
+#: ver save_artifact/append_artifact para o roteamento de pasta desses casos).
+#: Única fonte de verdade: reexportado por manifest.py para que
+#: check_active_blocks e o Manifesto de Fase nunca divirjam sobre o que
+#: conta como bloqueio.
+BLOCK_MARKERS = (STATUS_BLOCKED, "EXECUÇÃO PAUSADA")
 BACKUP_PREFIX = "_backup_"
 _SECTION_SEPARATOR = "\n<<<FIM_SECAO>>>\n"
 
@@ -866,9 +875,11 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
 
     Além do contrato canônico acima (mantido intacto), esta função agora
     também:
-    (a) varre analysis/diagrams/prototype/report/validation além de
-        doubts/ — Doubt_Artifacts salvos na pasta errada por um agente
-        continuam sendo detectados como bloqueio;
+    (a) varre design_dir inteiro, recursivamente, a partir da raiz — não
+        depende de uma lista fixa de pastas de primeiro nível. Um
+        Doubt_Artifact salvo em qualquer subpasta (mapeada ou não, nova ou
+        antiga) continua sendo detectado como bloqueio. Espelha o mesmo
+        padrão já usado por manifest.py::_collect_doubts();
     (b) reconhece o cabeçalho "EXECUÇÃO PAUSADA" como marcador de bloqueio
         equivalente a "**Status:** Bloqueado" — cobre Doubt_Artifacts que
         usam outra convenção de status (ex.: "Status: Pendente") mas que
@@ -884,38 +895,40 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
     Returns:
         Sem bloqueios: {"status": "ok", "has_blocks": false, "blocks": []}
         Com bloqueios: {"status": "ok", "has_blocks": true,
-                        "blocks": [{"filename": "<nome>", "hu_id": "<HU_ID>", "folder": "<pasta>"}, ...]}
+                        "blocks": [{"filename": "<nome>", "hu_id": "<HU_ID>", "folder": "<caminho relativo>"}, ...]}
+                        "folder" é o caminho relativo à raiz de design/ onde o
+                        arquivo foi encontrado (ex.: "." para a raiz, "doubts"
+                        para a pasta de dúvidas, "algum/lugar/novo" para
+                        qualquer subpasta não prevista) — deixou de ser
+                        restrito aos nomes canônicos de pasta.
         Falha:         {"status": "error", "error": "<motivo>"}
     """
-    _BLOCK_MARKERS = (STATUS_BLOCKED, "EXECUÇÃO PAUSADA")
-    _SCAN_FOLDERS = ("doubt", "analysis", "diagrams", "prototype", "report", "validation", "root")
-
     try:
         dirs = _resolve_dirs(base_dir)
         _ensure_dirs(dirs)
+        root = dirs["root"]
         blocks = []
         seen_paths: set[Path] = set()
-        for folder_key in _SCAN_FOLDERS:
-            folder_path = dirs.get(folder_key)
-            if folder_path is None or not folder_path.exists():
+        for f in sorted(root.rglob("*")):
+            if not f.is_file():
                 continue
-            for f in sorted(folder_path.iterdir()):
-                if not f.is_file():
+            if LOCKS_DIR.resolve() in f.resolve().parents:
+                continue
+            if f.name.startswith("Doubt_Artifact") and BACKUP_PREFIX not in f.name:
+                resolved = f.resolve()
+                if resolved in seen_paths:
                     continue
-                if f.name.startswith("Doubt_Artifact") and BACKUP_PREFIX not in f.name:
-                    resolved = f.resolve()
-                    if resolved in seen_paths:
-                        continue
-                    seen_paths.add(resolved)
-                    content = f.read_text(encoding="utf-8")
-                    if any(marker in content for marker in _BLOCK_MARKERS):
-                        parts = f.stem.split("_")
-                        hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
-                        blocks.append({
-                            "filename": f.name,
-                            "hu_id": hu_id,
-                            "folder": folder_key,
-                        })
+                seen_paths.add(resolved)
+                content = f.read_text(encoding="utf-8")
+                if any(marker in content for marker in BLOCK_MARKERS):
+                    parts = f.stem.split("_")
+                    hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
+                    rel_folder = f.parent.relative_to(root)
+                    blocks.append({
+                        "filename": f.name,
+                        "hu_id": hu_id,
+                        "folder": rel_folder.as_posix() if str(rel_folder) != "." else ".",
+                    })
 
         IOLogger.read("[check_active_blocks]", caller=caller)
         return {"status": "ok", "has_blocks": len(blocks) > 0, "blocks": blocks}
