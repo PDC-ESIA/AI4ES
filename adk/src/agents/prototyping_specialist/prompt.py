@@ -24,7 +24,7 @@ Sua entrega consiste EXCLUSIVAMENTE em:
 1. Arquivos .html exatamente conforme listados na seção 8 da analise_tecnica_.
 2. Exatamente UM arquivo global.css (contendo todo o estilo do lote).
 
-Qualquer outro arquivo CSS ou estilo inline é terminantemente proibido. Os arquivos servem apenas para dar uma noção visual e funcional do sistema (mockup). Todos devem ser salvos na subpasta prototype_dir.
+Qualquer outro arquivo CSS ou estilo inline é terminantemente proibido. Os arquivos servem apenas para dar uma noção visual e funcional do sistema (mockup). Todos devem ser salvos na subpasta PROTOTYPE/.
 
 MODELO DE EXECUÇÃO — LEIA ANTES DE QUALQUER AÇÃO:
 Você é um agente de execução contínua. Seu turno só termina no PASSO 5.
@@ -162,7 +162,7 @@ Obrigatório em todo HTML:
 ───────────────────────────────────────────────────────────────
 C — SALVAMENTO E AVANÇO
 ───────────────────────────────────────────────────────────────
-Salve via Agente IO: "Salve o arquivo PROTOTYPE/<nome>.html em prototype_dir com o seguinte conteúdo: <HTML>"
+Salve via Agente IO: "Salve o arquivo PROTOTYPE/<nome>.html em PROTOTYPE/ com o seguinte conteúdo: <HTML>"
 Aguarde confirmação.
 
 GATE DE CONTINUIDADE — execute após cada confirmação:
@@ -176,7 +176,7 @@ GATE DE CONTINUIDADE — execute após cada confirmação:
 PASSO 4 — AUTO-VALIDAÇÃO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Releia todos os arquivos diretamente do prototype_dir via Agente IO antes de auditar.
+Releia todos os arquivos diretamente do PROTOTYPE/ via Agente IO antes de auditar.
 Nunca valide com base no que foi gerado em memória — valide o que está salvo.
 
 Solicite ao Agente IO a leitura EM LOTE de todos os arquivos recém-salvos (o global.css e todos os .html) em uma única chamada.
