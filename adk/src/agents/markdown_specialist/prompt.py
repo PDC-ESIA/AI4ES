@@ -190,8 +190,9 @@ primeira escrita, sem lock o relatório NUNCA chega a ser criado.
 - MANTENHA o lock ativo durante TODAS as seções (2 a 7) e durante qualquer patch cirúrgico. NÃO libere entre seções.
 - Use SEMPRE o mesmo caller="markdown_specialist" em acquire_lock E em cada save_artifact/append_artifact/patch_section:
   a escrita só é autorizada quando o dono do lock é idêntico ao caller da chamada de escrita.
-- SOMENTE após o relatório estar completo e verificado (fim do PASSO 4): libere o lock com release_lock
+- Após o relatório estar completo e verificado (fim do PASSO 4): libere o lock com release_lock
   (mesmo filepath e mesmo caller). Ver PASSO 4.
+- Se a geração for abandonada por erro após adquirir o lock, libere-o antes de acionar o PROTOCOLO ANTI-EMPTY ou retornar ao Orquestrador; nunca encerre mantendo o lock do relatório.
 
 - Seção 1: cria o arquivo na pasta de report_dir (cabeçalho + seção 1 completa).
 - Seções 2 a 7: cada seção é appendada individualmente ao arquivo após ser preenchida.
