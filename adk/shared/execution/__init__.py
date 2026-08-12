@@ -14,6 +14,7 @@ from shared.execution.profile import (
 from shared.execution.sandbox import (
     CommandResult,
     DirectSandbox,
+    DockerSandbox,
     Sandbox,
     create_sandbox,
 )
@@ -33,6 +34,7 @@ __all__ = [
     # sandbox
     "CommandResult",
     "DirectSandbox",
+    "DockerSandbox",
     "Sandbox",
     "create_sandbox",
 ]
