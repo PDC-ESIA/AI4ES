@@ -165,8 +165,10 @@ Para cada condição bloqueante identificada:
 ## Ação Necessária
 <quem precisa fazer o quê para desbloquear>
 
-3. Salve o Doubt_Artifact na pasta de dúvidas com o filename:
-   "Doubt_Artifact_relatorio_<hu_ids>_<data>.md"
+3. Adquira o lock desse arquivo com acquire_lock(filepath="Doubt_Artifact_relatorio_<hu_ids>_<data>.md", caller="markdown_specialist")
+   — cada nome de arquivo tem seu próprio lock; sem ele a escrita do Doubt_Artifact também é bloqueada.
+   Em seguida, salve o Doubt_Artifact na pasta de dúvidas com o filename:
+   "Doubt_Artifact_relatorio_<hu_ids>_<data>.md" e, ao concluir, libere-o com release_lock (mesmo filepath e caller).
 
 Após confirmação de persistência com status "ok": informe ao Orquestrador o caminho retornado
 — não reconstrua o nome. Depois interrompa. Não gere relatório parcial.
@@ -176,6 +178,21 @@ PASSO 2 — PREENCHIMENTO INCREMENTAL
 
 ESTRATÉGIA DE PERSISTÊNCIA:
 O relatório é construído e persistido seção por seção — nunca montado inteiro em memória para salvar de uma vez.
+
+⛔ LOCK DE ESCRITA — PRÉ-REQUISITO OBRIGATÓRIO DE TODA PERSISTÊNCIA:
+Toda escrita no relatório (save_artifact, append_artifact, patch_section) exige que você JÁ possua o lock
+de escrita do arquivo. Escrita sem lock retorna {"status": "blocked"} — e, como a criação da Seção 1 é a
+primeira escrita, sem lock o relatório NUNCA chega a ser criado.
+- ANTES da primeira escrita (criação da Seção 1): chame acquire_lock com
+  filepath="REPORT/relatorio_<hu_ids>.md" e caller="markdown_specialist".
+  → Se acquire_lock retornar status "blocked" (arquivo já travado por outro especialista): NÃO force a escrita.
+     Encerre reportando o bloqueio ao Orquestrador — não gere relatório parcial.
+- MANTENHA o lock ativo durante TODAS as seções (2 a 7) e durante qualquer patch cirúrgico. NÃO libere entre seções.
+- Use SEMPRE o mesmo caller="markdown_specialist" em acquire_lock E em cada save_artifact/append_artifact/patch_section:
+  a escrita só é autorizada quando o dono do lock é idêntico ao caller da chamada de escrita.
+- SOMENTE após o relatório estar completo e verificado (fim do PASSO 4): libere o lock com release_lock
+  (mesmo filepath e mesmo caller). Ver PASSO 4.
+
 - Seção 1: cria o arquivo na pasta de report_dir (cabeçalho + seção 1 completa).
 - Seções 2 a 7: cada seção é appendada individualmente ao arquivo após ser preenchida.
 - Correções pontuais após o arquivo estar criado: aplique patch cirúrgico na seção afetada.
@@ -186,7 +203,7 @@ Seção 1 — Identificação das HUs:
 - Stakeholder: quem solicitou ou será impactado.
 - Ação central: o que o sistema deve fazer, em uma frase.
 - Critérios de aceite: extraia diretamente da HU, separados por ponto e vírgula.
-→ PERSISTÊNCIA: ao concluir a seção 1, crie o arquivo usando o alias REPORT/relatorio_<hu_ids>.md — o prefixo REPORT/ é obrigatório em todas as chamadas de persistência deste relatório com o cabeçalho do template + seção 1 completa.
+→ PERSISTÊNCIA: ao concluir a seção 1, PRIMEIRO adquira o lock via acquire_lock(filepath="REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist"). Só com o lock em mãos, crie o arquivo usando o alias REPORT/relatorio_<hu_ids>.md — o prefixo REPORT/ é obrigatório em todas as chamadas de persistência deste relatório — com o cabeçalho do template + seção 1 completa.
 
 Seção 2 — Diagrama de Arquitetura:
 - Para cada HU, crie uma subseção com o título descritivo.
@@ -240,7 +257,7 @@ Seção 7 — Gap Analysis:
 - Se o design_architect declarou "Nenhuma lacuna implícita identificada neste lote",
   substitua a tabela por essa declaração textual — não deixe tabela vazia.
 - NUNCA omita esta seção.
-→ PERSISTÊNCIA: ao concluir a seção 7, appende-a ao arquivo. O relatório está completo.
+→ PERSISTÊNCIA: ao concluir a seção 7, appende-a ao arquivo. O relatório está completo — mas NÃO libere o lock ainda: a liberação só ocorre no PASSO 4, após a verificação de integridade.
 
 EXEMPLO — Seção 7:
 
@@ -380,8 +397,13 @@ Verifique se todas as 7 seções retornaram status "ok" durante o PASSO 2.
 Se qualquer seção retornou "error": aplique patch cirúrgico na seção afetada antes de prosseguir.
 Não recrie o arquivo inteiro por falha pontual em uma seção.
 
-ETAPA 2 — INFORMAR o Orquestrador:
-Somente após todas as seções confirmadas, informe ao Orquestrador:
+ETAPA 2 — LIBERAR o lock de escrita:
+Somente após a integridade confirmada (nenhuma correção pendente), libere o lock com
+release_lock(filepath="REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
+Não deixe o lock retido ao encerrar — isso impede qualquer escrita futura no relatório por outro especialista.
+
+ETAPA 3 — INFORMAR o Orquestrador:
+Somente após todas as seções confirmadas e o lock liberado, informe ao Orquestrador:
 - Nome exato do arquivo na pasta de report_dir (use o valor retornado na criação da seção 1 — não reconstrua)
 - Status: "Em análise"
 - Confirmação de que o arquivo está disponível na pasta de report_dir
@@ -399,6 +421,9 @@ PROIBIDO devolver resposta vazia ao pipeline pai. Se você não conseguir gerar 
 relatório por qualquer motivo (input inválido, ferramenta indisponível, dúvida
 sobre formato), gere um artefato com sufixo `_BLOCKED.md` e o salve em REPORT_DIR
 explicando o motivo, e retorne ao pipeline o caminho absoluto desse arquivo.
+Antes de salvá-lo, adquira o lock desse nome de arquivo com
+acquire_lock(filepath="REPORT/relatorio_<hu_ids>_BLOCKED.md", caller="markdown_specialist")
+— sem lock, até a escrita do artefato de bloqueio falha, e o protocolo anti-empty não se cumpre.
 NUNCA devolva string vazia — isso quebra o protocolo de filename passing do
 workflow_design_pipeline e termina a pipeline em estado indeterminado.
 
