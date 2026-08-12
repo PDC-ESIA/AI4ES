@@ -35,3 +35,21 @@ from src.agents.workflow_requirements.agent import agent as _req  # noqa: F401
 from src.agents.workflow_design_pipeline.agent import agent as _design  # noqa: F401
 from src.agents.workflow_qa.agent import agent as _qa  # noqa: F401
 from src.agents.orchestrator.agent import root_agent as _orch  # noqa: F401
+
+# app.main dispara a cadeia de import da ADK (google.adk.cli.fast_api →
+# evaluation) e cria a FastAPI app no import. Pré-importamos aqui — antes de
+# test_git_tools.py stubar pydantic.BaseModel = object — para cachear esses
+# módulos com o Pydantic real. Forçamos ADK_LLM_MODEL para um provider
+# não-Copilot para que o preflight de credencial executado no import retorne
+# cedo, sem tentar autenticação de rede; o valor original é restaurado depois.
+import os as _os  # noqa: E402
+
+_prev_model = _os.environ.get("ADK_LLM_MODEL")
+_os.environ["ADK_LLM_MODEL"] = "none/x"
+try:
+    import app.main as _main  # noqa: F401
+finally:
+    if _prev_model is None:
+        _os.environ.pop("ADK_LLM_MODEL", None)
+    else:
+        _os.environ["ADK_LLM_MODEL"] = _prev_model
