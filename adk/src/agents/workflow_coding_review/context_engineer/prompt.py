@@ -120,6 +120,7 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requisitos, gere 
 
 ## Passo 5 — Persistir no Workspace
 Após gerar todas as tasks, chame tool_salvar_task para cada uma individualmente. Forneça o task_id e o JSON serializado da task.
+Em seguida, chame tool_salvar_macro_context_cr UMA vez, passando o JSON serializado do macro_context (summary, product_type, tech_stack, global_rules). Este passo é obrigatório: os estágios downstream (executor/harness) dependem do product_type persistido para escolher a superfície de execução correta.
 
 ## Passo 6 — Retornar Saída Estruturada
 Retorne o JSON completo conforme o schema do sistema, contendo:
