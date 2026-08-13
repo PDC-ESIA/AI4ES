@@ -6,7 +6,6 @@ from google.adk.tools.agent_tool import AgentTool
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.tools import (
     run_slicer,
-    ler_chunk,
     extract_text,
     gerar_doubt_artifact,
     listar_duvidas_pendentes,
@@ -37,7 +36,11 @@ _GLOS_WS = str(get_agent_workspace("glossario_agent"))
 def _bind(tool, agent_ws):
     return _bind_tool_to_workspace(tool, agent_ws, _WS_ROOT)
 
-# ── Sub-Agente de Glossário ──────────────────────────────────────────────────
+# ── Sub-Agente de Glossário (DESLIGADO DO PIPELINE) ──────────────────────────
+# Fora do fluxo temporariamente: as ETAPAS 1 e 3 dependem de `data/matrix/`, que
+# não existe no layout atual, e o erro delas fazia o agente pai abortar a análise
+# antes de gravar qualquer artefato. Definição preservada — para religar, basta
+# devolver `AgentTool(agent=glossario_agent)` à lista de tools do agente.
 
 glossario_agent = LlmAgent(
     name="glossario_agent",
@@ -157,12 +160,13 @@ agent = LlmAgent(
     # C3 monta a matriz em código; C4 injeta o resultado e audita o conjunto.
     # A ordem importa: inverter faria a auditoria rodar sem a matriz.
     after_agent_callback=[gerar_matriz_rastreabilidade, auditar_saida_final],
+    # `run_slicer` e `ler_chunk` ficaram de fora: resolvem caminho contra
+    # ADK_AGENT_DATA_DIR, que aponta para um layout inexistente, e devolvem
+    # string de erro em vez de exceção — falha silenciosa que o agente lia como
+    # "documento indisponível" e usava para abortar a análise.
     tools=[
-        FunctionTool(run_slicer),
-        FunctionTool(ler_chunk),
         _bind(FunctionTool(gerar_doubt_artifact), _REQ_WS),
         _bind(FunctionTool(tool_salvar_artefato_requisito), _REQ_WS),
-        AgentTool(agent=glossario_agent),
         AgentTool(agent=validacao_agent),
     ],
 )
