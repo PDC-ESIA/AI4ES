@@ -221,9 +221,8 @@ def tool_ler_requirements(paths_json: str) -> dict:
     se é bloqueante.
 
     Args:
-        paths_json (str): JSON serializado com lista de dicionários contendo
-                          os paths dos artefatos extraídos do manifesto.
-                          Formato: [{"path": "requirements/HUs/HU-001.md"}, ...]
+        paths_json (str): JSON serializado com lista de paths (strings) ou itens com chave `path`.
+                          Formatos aceitos: ["requirements/HUs/HU-001.md", ...] ou [{"path": "requirements/HUs/HU-001.md"}, ...]
 
     Returns:
         dict: sucesso, fase, artefatos lidos, artefatos_minimos_presentes,
