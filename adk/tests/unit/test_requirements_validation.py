@@ -438,7 +438,85 @@ def test_saida_vazia_nao_sobrescreve_auditoria_anterior():
     assert ctx.state[STATE_AUDITORIA] is anterior
 
 
+@pytest.mark.parametrize("saida", ["", "PASSO 1: raciocinei e não emiti JSON."])
+def test_saida_ilegivel_nao_sobrescreve_auditoria_anterior(saida):
+    """Sem JSON os cruzamentos não rodam — o relatório não tem o que reportar."""
+    anterior = {"schema_status": "ok", "coerente": True}
+    ctx = _ctx({
+        "analysis_result": saida,
+        STATE_ARTEFATOS: [],
+        STATE_AUDITORIA: anterior,
+    })
+    auditar_saida_final(callback_context=ctx)
+    assert ctx.state[STATE_AUDITORIA] is anterior
+
+
+def test_saida_ilegivel_preserva_o_status_de_diagnostico():
+    """`parse_error` é mais informativo que `sem_analise` e deve prevalecer."""
+    ctx = _ctx({"analysis_result": "texto sem json", STATE_ARTEFATOS: []})
+    auditar_saida_final(callback_context=ctx)
+    assert ctx.state[STATE_AUDITORIA]["schema_status"] == "parse_error"
+    assert ctx.state[STATE_AUDITORIA]["coerente"] is False
+
+
+def test_saida_ilegivel_com_artefato_gravado_e_reportada():
+    """Arquivo em disco sem declaração no JSON é achado concreto, não esterilidade."""
+    anterior = {"schema_status": "ok", "coerente": True}
+    ctx = _ctx({
+        "analysis_result": "texto sem json",
+        STATE_ARTEFATOS: PERSISTIDOS,
+        STATE_AUDITORIA: anterior,
+    })
+    auditar_saida_final(callback_context=ctx)
+    assert ctx.state[STATE_AUDITORIA] is not anterior
+    assert ctx.state[STATE_AUDITORIA]["schema_status"] == "parse_error"
+
+
 def test_auditar_saida_final_nao_propaga_excecao():
     ctx = MagicMock()
     type(ctx).state = property(lambda self: (_ for _ in ()).throw(RuntimeError("boom")))
     assert auditar_saida_final(callback_context=ctx) is None
+
+
+# ---------------------------------------------------------------------------
+# C4 — o log não pode confundir "não verificado" com "verificado e limpo"
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("saida", ["", "PASSO 1: analisei, mas não emiti JSON."])
+def test_log_de_saida_ilegivel_nao_exibe_cruzamentos(saida, caplog):
+    """Sem JSON os cruzamentos não rodam; logá-los sugeriria rodada limpa."""
+    ctx = _ctx({"analysis_result": saida, STATE_ARTEFATOS: []})
+    with caplog.at_level("WARNING"):
+        auditar_saida_final(callback_context=ctx)
+
+    texto = caplog.text
+    assert "cruzamentos NÃO executados" in texto
+    assert "sem arquivo=" not in texto
+    assert "órfãs=" not in texto
+
+
+def test_log_de_incoerencia_real_exibe_cruzamentos(caplog):
+    """Quando os cruzamentos rodam, seus resultados vão para o log."""
+    saida = _saida(functional_requirements=[
+        {
+            "id": "RF-005", "title": "Execução em Sandbox",
+            "description": "Executar o código submetido em ambiente isolado.",
+            "priority": "Alta", "hu_parent": "HU-001",
+        },
+        {
+            "id": "RF-404", "title": "Requisito fantasma",
+            "description": "Declarado no JSON e jamais persistido em disco.",
+            "priority": "Alta", "hu_parent": "HU-001",
+        },
+    ])
+    ctx = _ctx({
+        "analysis_result": saida,
+        STATE_ARTEFATOS: PERSISTIDOS,
+        STATE_MATRIZ: _matriz(saida),
+    })
+    with caplog.at_level("WARNING"):
+        auditar_saida_final(callback_context=ctx)
+
+    assert "incoerências detectadas" in caplog.text
+    assert "RF-404" in caplog.text
+

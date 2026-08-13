@@ -347,6 +347,24 @@ _COLECAO_TIPO: dict[str, str] = {
     "business_rules": "RN",
 }
 
+# Chaves do relatório preenchidas pelos cruzamentos. Definem tanto a coerência
+# quanto o que se loga — manter as duas leituras na mesma tupla evita que uma
+# nova verificação entre no relatório e fique de fora de uma delas.
+_CHAVES_CRUZAMENTO: tuple[str, ...] = (
+    "colecoes_vazias",
+    "ids_duplicados",
+    "referencias_orfas",
+    "matriz_rastreabilidade",
+    "declarados_sem_arquivo",
+    "arquivos_sem_declaracao",
+)
+
+# Status em que `auditar_analise` retorna ANTES dos cruzamentos. Nesses casos as
+# listas acima continuam com o valor inicial — vazias porque nada foi examinado,
+# e não porque nada foi encontrado. Logá-las junto das demais faria uma rodada
+# ilegível parecer uma rodada limpa.
+_STATUS_SEM_CRUZAMENTO: tuple[str, ...] = ("sem_saida", "parse_error")
+
 
 def extrair_bloco_json(texto: str) -> str | None:
     """Extrai o bloco JSON do texto livre produzido pelo agente.
@@ -594,15 +612,7 @@ def auditar_analise(
     relatorio["arquivos_sem_declaracao"] = sorted(ids_em_arquivo - ids_em_json)
 
     relatorio["coerente"] = relatorio["schema_status"] == "ok" and not any(
-        relatorio[chave]
-        for chave in (
-            "colecoes_vazias",
-            "ids_duplicados",
-            "referencias_orfas",
-            "matriz_rastreabilidade",
-            "declarados_sem_arquivo",
-            "arquivos_sem_declaracao",
-        )
+        relatorio[chave] for chave in _CHAVES_CRUZAMENTO
     )
     return relatorio
 
@@ -610,14 +620,23 @@ def auditar_analise(
 def _nada_examinado(relatorio: dict) -> bool:
     """Indica auditoria que não teve o que auditar.
 
-    Uma saída bem formada porém totalmente vazia valida contra `AnalystOutput`
-    (todas as coleções têm default). Reportar isso como `schema_status=ok`
-    transformaria uma rodada estéril em manifesto limpo.
+    São duas formas de esterilidade, e ambas apagariam os achados de uma passada
+    boa se o relatório fosse gravado como se fosse resultado:
+
+    - **saída válida e vazia** — valida contra `AnalystOutput`, porque todas as
+      coleções têm default, e seria reportada como `schema_status=ok`;
+    - **saída ilegível** — os cruzamentos nem chegam a rodar, então
+      `colecoes_vazias` fica vazia por não ter sido calculada, e não por estar
+      limpa. Foi essa a brecha: a contagem só reconhecia a primeira forma.
+
+    Ter artefato gravado descarta as duas: aí há fato concreto a reportar, e o
+    desencontro entre disco e declaração é exatamente o que se quer registrar.
     """
-    return (
-        relatorio["total_persistido"] == 0
-        and len(relatorio["colecoes_vazias"]) == len(_COLECOES_ESPERADAS)
-    )
+    if relatorio["total_persistido"] != 0:
+        return False
+    if relatorio["schema_status"] in _STATUS_SEM_CRUZAMENTO:
+        return True
+    return len(relatorio["colecoes_vazias"]) == len(_COLECOES_ESPERADAS)
 
 
 def auditar_saida_final(callback_context: CallbackContext) -> None:
@@ -637,14 +656,19 @@ def auditar_saida_final(callback_context: CallbackContext) -> None:
         # O callback dispara a cada invocação do agente. Uma passada final sem
         # artefatos não pode apagar os achados da passada que produziu tudo.
         if _nada_examinado(relatorio):
-            relatorio["schema_status"] = "sem_analise"
-            relatorio["erros_schema"] = [
-                "a saída final não declarou nenhum artefato"
-            ]
+            # `parse_error` e `sem_saida` já explicam por que nada foi examinado.
+            # Trocá-los por `sem_analise` perderia o diagnóstico mais preciso.
+            if relatorio["schema_status"] not in _STATUS_SEM_CRUZAMENTO:
+                relatorio["schema_status"] = "sem_analise"
+                relatorio["erros_schema"] = [
+                    "a saída final não declarou nenhum artefato"
+                ]
             relatorio["coerente"] = False
             if state.get(STATE_AUDITORIA):
                 logger.warning(
-                    "[AUDITORIA] saída sem artefatos; preservando auditoria anterior"
+                    "[AUDITORIA] passada estéril (schema=%s); preservando "
+                    "auditoria anterior",
+                    relatorio["schema_status"],
                 )
                 return None
 
@@ -657,18 +681,21 @@ def auditar_saida_final(callback_context: CallbackContext) -> None:
             )
             return None
 
-        logger.warning(
-            "[AUDITORIA] incoerências detectadas | schema=%s | "
-            "vazias=%s | duplicados=%s | órfãs=%s | matriz=%s | "
-            "sem arquivo=%s | sem JSON=%s",
-            relatorio["schema_status"],
-            relatorio["colecoes_vazias"],
-            relatorio["ids_duplicados"],
-            relatorio["referencias_orfas"],
-            relatorio["matriz_rastreabilidade"],
-            relatorio["declarados_sem_arquivo"],
-            relatorio["arquivos_sem_declaracao"],
-        )
+        if relatorio["schema_status"] in _STATUS_SEM_CRUZAMENTO:
+            logger.warning(
+                "[AUDITORIA] saída ilegível | schema=%s | cruzamentos NÃO "
+                "executados (nada foi verificado) | %d artefato(s) gravado(s)",
+                relatorio["schema_status"],
+                relatorio["total_persistido"],
+            )
+        else:
+            logger.warning(
+                "[AUDITORIA] incoerências detectadas | schema=%s | "
+                "vazias=%s | duplicados=%s | órfãs=%s | matriz=%s | "
+                "sem arquivo=%s | sem JSON=%s",
+                relatorio["schema_status"],
+                *(relatorio[chave] for chave in _CHAVES_CRUZAMENTO),
+            )
         for erro in relatorio["erros_schema"]:
             logger.warning("[AUDITORIA] schema: %s", erro)
     except Exception as exc:  # noqa: BLE001
