@@ -1,157 +1,42 @@
-"""Helpers determinísticos do harness de execução em Docker.
+"""Helpers HTTP determinísticos do harness de execução.
 
-Concentra a lógica pura de build/run/cleanup de container e descoberta de rota
-usada pelo executor do workflow coding_review. Extraído de
-`src/agents/workflow_coding_review/cr_executor.py` (refatoração sem mudança de
-comportamento) para permitir reuso pelas próximas fatias do harness.
+Após o desacoplamento de tecnologias (issue #370), o build/run/cleanup do
+artefato passou a ser responsabilidade da abstração de sandbox
+(`shared/execution/sandbox.py`), dirigida pelo manifesto `run.json`. Este módulo
+retém apenas os helpers de *homologação HTTP* de um serviço já no ar:
+constantes de healthcheck e a descoberta best-effort da rota principal.
 
 As funções aqui são determinísticas e não conhecem o agente/LLM: recebem
-caminhos/clientes e retornam dados. Nenhuma lógica foi alterada na extração.
+URL/módulo HTTP e retornam dados.
 """
 
 import logging
-from pathlib import Path
 from typing import Optional
-
-import docker
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Constantes Docker
+# Constantes de homologação HTTP (perfil service)
 # ---------------------------------------------------------------------------
-_IMAGE_TAG = "cr-executor-app:latest"
-_CONTAINER_NAME = "cr-executor-run"
-_HOST_PORT = 8000  # porta fixa no host — permite README hardcodar URL
-_BUILD_TIMEOUT = 300  # segundos
-_HEALTHCHECK_TIMEOUT = 15  # segundos para container sair de "created"
-_STARTUP_GRACE_PERIOD = 5  # segundos para o app inicializar dentro do container
+_STARTUP_GRACE_PERIOD = 5  # segundos para o serviço inicializar antes do 1º GET
 _HTTP_HEALTHCHECK_TIMEOUT = 10  # timeout do GET de homologação
 _HEALTHCHECK_RETRIES = 3  # tentativas de healthcheck HTTP
 _HEALTHCHECK_RETRY_INTERVAL = 2  # segundos entre retries
-_HEALTHCHECK_ENDPOINT = "/docs"  # FastAPI sempre gera /docs (Swagger UI)
-_OPENAPI_ENDPOINT = "/openapi.json"  # Schema de rotas para descobrir rota principal
-_MEMORY_LIMIT = "512m"
-_CPU_QUOTA = 50000  # 50 % de 1 core
+_OPENAPI_ENDPOINT = "/openapi.json"  # schema de rotas p/ descobrir rota principal
 
 
 # ===========================================================================
-# Helpers internos
+# Descoberta de rota principal (best-effort, via OpenAPI quando disponível)
 # ===========================================================================
-
-def _detect_entrypoint(src_dir: Path) -> str:
-    """Detecta o entrypoint principal da aplicação no workspace do coder."""
-    candidates = [
-        "app/main.py",
-        "main.py",
-        "src/main.py",
-        "src/app/main.py",
-        "app.py",
-        "server.py",
-        "run.py",
-        "manage.py",
-    ]
-    for c in candidates:
-        if (src_dir / c).is_file():
-            return c
-    for py in src_dir.rglob("*.py"):
-        try:
-            content = py.read_text(encoding="utf-8", errors="ignore")
-            if "FastAPI" in content or "uvicorn" in content:
-                return str(py.relative_to(src_dir))
-        except Exception:
-            continue
-    return "main.py"
-
-
-def _detect_requirements(src_dir: Path) -> Optional[str]:
-    """Retorna caminho relativo do requirements.txt se existir."""
-    for name in ("requirements.txt", "requirements/base.txt", "requirements/prod.txt"):
-        if (src_dir / name).is_file():
-            return name
-    return None
-
-
-def _has_pyproject(src_dir: Path) -> bool:
-    return (src_dir / "pyproject.toml").is_file()
-
-
-def _generate_dockerfile(src_dir: Path) -> str:
-    """Gera Dockerfile fallback otimizado para a stack detectada."""
-    entrypoint = _detect_entrypoint(src_dir)
-    req_file = _detect_requirements(src_dir)
-    has_pyproject = _has_pyproject(src_dir)
-
-    module = entrypoint.replace("/", ".").removesuffix(".py")
-
-    lines = [
-        "FROM python:3.12-slim",
-        "",
-        "WORKDIR /app",
-        "",
-        "ENV PYTHONDONTWRITEBYTECODE=1 \\",
-        "    PYTHONUNBUFFERED=1 \\",
-        "    PIP_NO_CACHE_DIR=1",
-        "",
-    ]
-
-    if req_file:
-        lines += [
-            f"COPY {req_file} /app/{req_file}",
-            f"RUN pip install --no-cache-dir -r {req_file}",
-            "",
-        ]
-    elif has_pyproject:
-        lines += [
-            "COPY pyproject.toml /app/",
-            "RUN pip install --no-cache-dir .",
-            "",
-        ]
-    else:
-        lines += [
-            "RUN pip install --no-cache-dir fastapi uvicorn[standard] jinja2 python-multipart aiofiles sqlalchemy",
-            "",
-        ]
-
-    lines += [
-        "COPY . /app/",
-        "",
-        "RUN mkdir -p /app/data /app/uploads",
-        "",
-        "EXPOSE 8000",
-        "",
-        f'CMD ["python", "-m", "uvicorn", "{module}:app", "--host", "0.0.0.0", "--port", "8000"]',
-    ]
-
-    return "\n".join(lines) + "\n"
-
-
-def _write_report(report_path: Path, content: str) -> None:
-    """Persiste relatório de execução."""
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(content, encoding="utf-8")
-    logger.info(f"[CR EXECUTOR] Relatório salvo: {report_path}")
-
-
-def _cleanup_container(client: docker.DockerClient, name: str) -> None:
-    """Remove container existente (se houver) para evitar conflitos."""
-    try:
-        old = client.containers.get(name)
-        old.remove(force=True)
-    except docker.errors.NotFound:
-        pass
-    except Exception as e:
-        logger.warning(f"[CR EXECUTOR] Falha ao remover container '{name}': {e}")
-
 
 def _discover_main_route(base_url: str, http_mod) -> Optional[str]:
     """Descobre a rota principal da app via /openapi.json.
 
-    Estratégia:
-    1. Busca /openapi.json (FastAPI sempre gera)
+    Estratégia (best-effort, degrada para "/" quando o schema não existe):
+    1. Busca /openapi.json (serviços que o expõem — ex.: FastAPI)
     2. Filtra rotas GET excluindo /docs, /openapi.json, /redoc
     3. Prioriza "/" (raiz), depois a primeira rota com GET
-    4. Retorna None se não encontrar rota candidata (API pura sem HTML)
+    4. Retorna None se não encontrar rota GET candidata (API pura sem HTML)
     """
     _SKIP_ROUTES = {"/docs", "/docs/oauth2-redirect", "/openapi.json", "/redoc"}
 
@@ -161,7 +46,7 @@ def _discover_main_route(base_url: str, http_mod) -> Optional[str]:
             timeout=_HTTP_HEALTHCHECK_TIMEOUT,
         )
         if resp.status_code != 200:
-            logger.warning("[CR EXECUTOR] Não foi possível obter /openapi.json")
+            logger.warning("[HARNESS] Não foi possível obter /openapi.json")
             return "/"  # fallback: tenta raiz
 
         schema = resp.json()
@@ -186,5 +71,5 @@ def _discover_main_route(base_url: str, http_mod) -> Optional[str]:
         return get_routes[0]
 
     except Exception as e:
-        logger.warning(f"[CR EXECUTOR] Erro ao descobrir rota principal: {e}")
+        logger.warning(f"[HARNESS] Erro ao descobrir rota principal: {e}")
         return "/"  # fallback: tenta raiz

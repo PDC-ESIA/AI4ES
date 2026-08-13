@@ -1,9 +1,9 @@
-"""Tests para src/agents/reviewer/schemas.py — schemas Pydantic do reviewer."""
+"""Tests para o reviewer do workflow coding_review — schemas Pydantic (ReviewIssue/ReviewOutput)."""
 
 import pytest
 from pydantic import ValidationError
 
-from src.agents.reviewer.schemas import ReviewIssue, ReviewOutput
+from src.agents.workflow_coding_review.reviewer.schemas import ReviewIssue, ReviewOutput
 
 
 def test_review_issue_minimal():

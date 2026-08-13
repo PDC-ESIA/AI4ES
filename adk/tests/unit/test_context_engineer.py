@@ -1,28 +1,26 @@
-"""Tests para src/agents/context_engineer/ — descoberta + schemas + tools."""
+"""Tests para o context_engineer do workflow coding_review (cr_context_engineer) — descoberta + schemas + tools."""
  
 import json
-from pathlib import Path
- 
-import pytest
  
  
 def test_context_engineer_root_agent_importavel():
-    from src.agents.context_engineer import root_agent
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
     assert root_agent is not None
-    assert root_agent.name == "context_engineer"
+    assert root_agent.name == "cr_context_engineer"
  
  
 def test_context_engineer_tem_output_schema():
-    from src.agents.context_engineer import root_agent
-    from src.agents.context_engineer.schemas import TasksOutput
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput
     assert root_agent.output_schema == TasksOutput
  
  
 def test_context_engineer_tem_tools_esperadas():
-    from src.agents.context_engineer import root_agent
+    from src.agents.workflow_coding_review.context_engineer import agent as root_agent
     tool_names = {getattr(getattr(t, "func", t), "__name__", "") for t in root_agent.tools}
     assert {
-        "tool_salvar_task",
+        "tool_salvar_task_cr",
+        "tool_salvar_macro_context_cr",
         "tool_ler_requirements",
         "tool_ler_design",
         "tool_gerar_doubt_artifact",
@@ -30,7 +28,7 @@ def test_context_engineer_tem_tools_esperadas():
  
  
 def test_schemas_macro_context_minimal():
-    from src.agents.context_engineer.schemas import MacroContext
+    from src.agents.workflow_coding_review.context_engineer.schemas import MacroContext
     mc = MacroContext(
         summary="Sistema de autenticação JWT",
         tech_stack=["Python", "FastAPI"],
@@ -38,10 +36,34 @@ def test_schemas_macro_context_minimal():
     )
     assert mc.summary.startswith("Sistema")
     assert len(mc.tech_stack) == 2
+
+
+def test_schemas_macro_context_product_type_default():
+    """product_type é aditivo: default 'a definir' quando não informado."""
+    from src.agents.workflow_coding_review.context_engineer.schemas import MacroContext
+    mc = MacroContext(
+        summary="Biblioteca de parsing",
+        tech_stack=["Python"],
+        global_rules=["Seguir padrões do projeto"],
+    )
+    assert mc.product_type == "a definir"
+
+
+def test_schemas_macro_context_product_type_explicito():
+    """product_type aceita valor explícito não-web (ex.: library, cli)."""
+    from src.agents.workflow_coding_review.context_engineer.schemas import MacroContext
+    mc = MacroContext(
+        summary="CLI de migração de dados",
+        product_type="cli",
+        tech_stack=["Go"],
+        global_rules=["Sem dependências externas"],
+    )
+    assert mc.product_type == "cli"
+    assert mc.tech_stack == ["Go"]
  
  
 def test_schemas_task_com_contract():
-    from src.agents.context_engineer.schemas import Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Task, Contract
     task = Task(
         id="TASK-001",
         type="backend",
@@ -59,7 +81,7 @@ def test_schemas_task_com_contract():
  
 def test_schemas_task_design_refs_vazio_valido():
     """design_refs pode ser lista vazia para RFs sem HU associada."""
-    from src.agents.context_engineer.schemas import Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Task, Contract
     task = Task(
         id="TASK-007",
         type="infra",
@@ -74,7 +96,7 @@ def test_schemas_task_design_refs_vazio_valido():
  
  
 def test_schemas_contract_interfaces_objeto_aceito():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Contract
     contract = Contract(
         interfaces={
             "create_ensaio": {
@@ -88,7 +110,7 @@ def test_schemas_contract_interfaces_objeto_aceito():
  
  
 def test_schemas_contract_interfaces_aceita_lista_e_string():
-    from src.agents.context_engineer.schemas import Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import Contract
  
     as_list = Contract.model_validate({
         "inputs": [],
@@ -106,7 +128,7 @@ def test_schemas_contract_interfaces_aceita_lista_e_string():
  
  
 def test_schemas_tasks_output_completo():
-    from src.agents.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput, MacroContext, Task, Contract
     output = TasksOutput(
         macro_context=MacroContext(
             summary="X",
@@ -153,8 +175,56 @@ def test_tool_salvar_task_id_invalido_rejeita(tmp_path, monkeypatch):
     result = tool_salvar_task("INVALID-001", json.dumps({"x": 1}))
     assert result["sucesso"] is False
     assert "TASK-" in result["erro"]
- 
- 
+
+
+def test_tool_salvar_macro_context_persiste_json(tmp_path, monkeypatch):
+    """tool_salvar_macro_context_cr grava _macro_context.json em coder/tasks/."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.tools.coding_tools.context_engineer_tools import (
+        MACRO_CONTEXT_FILENAME,
+        tool_salvar_macro_context_cr,
+    )
+    macro_json = json.dumps({
+        "summary": "CLI de migração",
+        "product_type": "cli",
+        "tech_stack": ["Go"],
+        "global_rules": ["Sem dependências externas"],
+    })
+    result = tool_salvar_macro_context_cr(macro_json)
+    assert result["sucesso"] is True
+    assert result["product_type"] == "cli"
+    arquivo = tmp_path / "ws" / "coder" / "tasks" / MACRO_CONTEXT_FILENAME
+    assert arquivo.is_file()
+    conteudo = json.loads(arquivo.read_text(encoding="utf-8"))
+    assert conteudo["product_type"] == "cli"
+    assert conteudo["tech_stack"] == ["Go"]
+
+
+def test_tool_salvar_macro_context_default_product_type(tmp_path, monkeypatch):
+    """product_type ausente/vazio degrada para 'a definir' (default do schema)."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.tools.coding_tools.context_engineer_tools import tool_salvar_macro_context_cr
+    result = tool_salvar_macro_context_cr(json.dumps({"summary": "X", "tech_stack": []}))
+    assert result["sucesso"] is True
+    assert result["product_type"] == "a definir"
+
+
+def test_tool_salvar_macro_context_json_invalido_rejeita(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.tools.coding_tools.context_engineer_tools import tool_salvar_macro_context_cr
+    result = tool_salvar_macro_context_cr("not a json")
+    assert result["sucesso"] is False
+    assert "JSON inválido" in result["erro"]
+
+
+def test_tool_salvar_macro_context_nao_objeto_rejeita(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.tools.coding_tools.context_engineer_tools import tool_salvar_macro_context_cr
+    result = tool_salvar_macro_context_cr(json.dumps(["não", "é", "objeto"]))
+    assert result["sucesso"] is False
+    assert "objeto JSON" in result["erro"]
+
+
 def test_tool_salvar_task_json_invalido_rejeita(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
     from shared.tools.coding_tools.context_engineer_tools import tool_salvar_task

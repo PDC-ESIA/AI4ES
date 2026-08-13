@@ -37,6 +37,7 @@ from src.agents.workflow_coding_review.agent import agent as coding_review_pipel
 from src.agents.workflow_qa.agent import agent as qa_pipeline
 
 from shared.workspace import init_workspace
+from shared.preflight import ensure_llm_ready
 
 from src.agents.orchestrator._helpers import (
     _build_function_response_payload,
@@ -77,6 +78,14 @@ class _PipelineOrchestrator(BaseAgent):
         outer_sid = ctx.session.id
         user_text = _extract_user_text(ctx)
         if not user_text:
+            return
+
+        # Health-check rápido do LLM (1x por prompt): valida credencial + ping,
+        # renova token em caso de falha; se o provedor estiver indisponível,
+        # aborta cedo com mensagem acionável em vez de travar por minutos.
+        preflight = await ensure_llm_ready()
+        if not preflight.ok:
+            yield self._make_text_event(self.name, preflight.message)
             return
 
         paused = state.get("paused_pipeline")

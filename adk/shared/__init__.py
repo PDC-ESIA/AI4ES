@@ -5,12 +5,23 @@ no momento do import, garantindo que qualquer agente (via factory ou direto)
 tenha acesso ao provider github_copilot.
 """
 
+import os
+
 import litellm
 from google.adk.models.registry import LLMRegistry
 
 # github_copilot (e outros providers) não suportam response_format.
 # drop_params faz o LiteLLM remover silenciosamente params não suportados.
 litellm.drop_params = True
+
+# Fail-fast: o read-timeout default do LiteLLM é 600s (COMPLETION_HTTP_FALLBACK_SECONDS).
+# Com chamadas de LLM aninhadas (orchestrator → pipelines → sub-agentes), um
+# endpoint travado (ex.: credencial Copilot expirada) empilha timeouts de 10min
+# e pode pendurar o pipeline por dezenas de minutos. Limitamos globalmente o
+# timeout e o nº de retries (com backoff nativo do litellm) para falhar rápido
+# com erro claro. Ambos são sobrescrevíveis por variável de ambiente.
+litellm.request_timeout = float(os.environ.get("AI4ES_LLM_TIMEOUT", "120"))
+litellm.num_retries = int(os.environ.get("AI4ES_LLM_NUM_RETRIES", "1"))
 
 # Registra github_copilot como provider LiteLLM no ADK (não incluso por padrão).
 LLMRegistry._register_lazy(
