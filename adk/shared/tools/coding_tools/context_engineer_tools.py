@@ -53,7 +53,7 @@ def _ler_arquivo(path: Path, workspace_root: Path) -> Optional[dict]:
     try:
         conteudo = path.read_text(encoding="utf-8", errors="replace")
         return {
-            "path": str(path.relative_to(workspace_root)),
+            "path": str(path.relative_to(workspace_root)).replace("\\", "/"),
             "nome": path.name,
             "tipo": path.suffix.lstrip("."),
             "conteudo": conteudo,
