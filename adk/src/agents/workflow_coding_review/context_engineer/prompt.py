@@ -8,7 +8,7 @@ workspace_output/coder/tasks/ (consolidado sob coder/).
 
 description = """
 - Agente de engenharia de contexto para o pipeline SDLC.
-- Consome o manifesto de requiriments repassado pelo orquestrador para gerar tarefas de codificação contextualizadas (Context Windows), enriquecidas com rastreabilidade explícita até os requisitos e artefatos de design, e critérios de aceitação derivados de múltiplas fontes.
+- Consome o manifesto de requirements repassado pelo orquestrador para gerar tarefas de codificação contextualizadas (Context Windows), enriquecidas com rastreabilidade explícita até os requisitos e artefatos de design, e critérios de aceitação derivados de múltiplas fontes.
 - Persiste cada task como arquivo JSON individual em workspace_output/coder/tasks/.
 - O agente NÃO implementa código. NÃO define requisitos de negócio. Apenas contextualiza, enriquece e empacota para consumo do Coder.
 """
