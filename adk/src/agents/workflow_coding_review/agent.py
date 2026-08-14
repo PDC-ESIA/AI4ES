@@ -1,13 +1,16 @@
 """Workflow coding_review: pipeline enxuto de codificação com revisão.
 
-Pipeline: context_engineer -> LoopAgent[coder ↔ executor] -> reviewer
+Pipeline: context_engineer -> memory_feedforward -> LoopAgent[coder ↔ executor] -> reviewer
   - context_engineer: fragmenta requisitos em tasks contextualizadas
+  - memory_feedforward: [PoC] consulta o mem0 por lições de execuções
+            passadas para a mesma stack, injeta em state["memory_context"]
   - coder: implementa código a partir das tasks (workspace isolado)
             Em re-execução: corrige código baseado no erro do executor
   - executor: builda e roda código em Docker
               Se sucesso: exit_loop → pipeline segue para reviewer
               Se falha: reporta erro → loop volta ao coder
-  - reviewer: analisa (4 camadas) e persiste relatório de revisão
+  - reviewer: analisa (4 camadas), persiste relatório de revisão e
+            [PoC] grava no mem0 as lições desta execução
 
 O LoopAgent garante que o código produzido é EXECUTÁVEL antes de seguir
 para revisão. O teto de iterações é o default 5 (1 tentativa + 4 retries),
@@ -22,6 +25,7 @@ import os
 from google.adk.agents import LoopAgent, SequentialAgent
 
 from .context_engineer import agent as _context_engineer
+from .memory_feedforward import agent as _memory_feedforward
 from .coder import agent as _coder
 from .executor.agent import agent as _executor
 from .reviewer.agent import agent as _reviewer
@@ -53,5 +57,5 @@ agent = SequentialAgent(
         "Pipeline enxuto de codificação com revisão: "
         "contexto → [codificação ↔ execução Docker] → revisão."
     ),
-    sub_agents=[_context_engineer, _code_execute_loop, _reviewer],
+    sub_agents=[_context_engineer, _memory_feedforward, _code_execute_loop, _reviewer],
 )

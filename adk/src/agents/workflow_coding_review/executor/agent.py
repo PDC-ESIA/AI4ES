@@ -175,6 +175,15 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
         return None
 
     callback_context.state["error_report"] = report.model_dump()
+
+    # PoC mem0: acumula TODAS as reprovações desta run (não só a última) —
+    # é a partir desse histórico completo que o reviewer grava uma lição no
+    # mem0 ao final. Reatribuição explícita da lista (não mutação in-place)
+    # para não depender de como callback_context.state rastreia mudanças.
+    historico = list(callback_context.state.get("error_history") or [])
+    historico.append(report.model_dump())
+    callback_context.state["error_history"] = historico
+
     return _como_content(report)
 
 

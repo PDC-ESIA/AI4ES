@@ -84,7 +84,16 @@ Analise os logs abaixo para identificar a causa raiz e corrija o código.
 {{execution_result?}}
 --- FIM DO RESULTADO ---
 
-Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
+--- LIÇÕES DE EXECUÇÕES ANTERIORES PARA ESTA STACK (mem0, PoC) ---
+{{memory_context?}}
+--- FIM DAS LIÇÕES ---
+
+Se o bloco de lições acima não estiver vazio, são erros que já ocorreram em
+OUTRAS execuções desta mesma stack (não necessariamente deste projeto) e como
+foram resolvidos. Use como referência preventiva — não é garantido que se
+apliquem a esta tarefa especificamente.
+
+Se o bloco de resultado da execução estiver VAZIO, significa que é a primeira execução: siga o
 fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
 PRIMEIRO e só depois a implementação completa.
 
