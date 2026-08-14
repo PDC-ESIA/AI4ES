@@ -1,7 +1,9 @@
 """Workflow coding_review: pipeline enxuto de codificação com revisão.
 
-Pipeline: context_engineer -> TaskIterator[LoopAgent[coder ↔ executor]] -> reviewer
+Pipeline: context_engineer -> memory_feedforward -> TaskIterator[LoopAgent[coder ↔ executor]] -> reviewer
   - context_engineer: fragmenta requisitos em tasks contextualizadas
+  - memory_feedforward: consulta o mem0 por lições de execuções
+            passadas para a mesma stack, injeta em state["memory_context"]
   - task_iterator: itera as tasks POR CÓDIGO, escopando `state['task_id']` a
             cada uma e invocando o loop uma vez por task (issue #369). Agrega o
             desfecho em `state['task_iteration_summary']`.
@@ -10,7 +12,7 @@ Pipeline: context_engineer -> TaskIterator[LoopAgent[coder ↔ executor]] -> rev
   - executor: roda o harness e obedece ao veredito do validador
               Se aprovado (ou estagnação): exit_loop → encerra o loop da task
               Se reprovado: ErrorReport → loop volta ao coder
-  - reviewer: analisa (4 camadas) e persiste relatório de revisão
+  - reviewer: analisa (4 camadas), persiste relatório de revisão e grava no mem0 as lições desta execução
 
 O LoopAgent garante que o código produzido é EXECUTÁVEL antes de seguir
 para revisão. O teto de iterações é o default 5 (1 tentativa + 4 retries),
@@ -26,6 +28,7 @@ import os
 from google.adk.agents import LoopAgent, SequentialAgent
 
 from .context_engineer import agent as _context_engineer
+from .memory_feedforward import agent as _memory_feedforward
 from .coder import agent as _coder
 from .executor.agent import agent as _executor
 from .reviewer.agent import agent as _reviewer
@@ -75,6 +78,6 @@ agent = SequentialAgent(
         "Pipeline enxuto de codificação com revisão: "
         "contexto → [por task: codificação ↔ execução] → revisão → manifesto."
     ),
-    sub_agents=[_context_engineer, _task_iterator, _reviewer],
+    sub_agents=[_context_engineer, _memory_feedforward, _task_iterator, _reviewer],
     after_agent_callback=emit_coding_manifest,
 )

@@ -143,7 +143,13 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
 
 
 def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
-    """_analyzer.after_agent_callback está configurado com _persist_review."""
+    """_analyzer.after_agent_callback inclui _persist_review.
+
+    Desde o PoC de memória (mem0), o callback é uma lista — ADK roda cada
+    item em ordem (google/adk/agents/base_agent.py::_handle_after_agent_callback)
+    — e _persist_review continua sendo o primeiro, responsável pela
+    persistência do relatório em disco.
+    """
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
@@ -152,7 +158,9 @@ def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    assert cr_reviewer._analyzer.after_agent_callback is cr_reviewer._persist_review
+    callbacks = cr_reviewer._analyzer.after_agent_callback
+    assert isinstance(callbacks, list)
+    assert callbacks[0] is cr_reviewer._persist_review
 
 
 def test_agent_e_alias_do_analyzer(tmp_path, monkeypatch):

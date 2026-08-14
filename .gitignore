@@ -272,3 +272,14 @@ docs/superpowers/
 adk.zip
 AI4ES/
 Orientacoes.md
+
+# mem0 PoC — índice vetorial local (Chroma on-disk) + histórico SQLite.
+# Dado acumulado em runtime, não conteúdo curado (diferente de adk/knowledge/).
+adk/memory_store/
+
+# Kit de validação do PoC de memória — cópias de código gerado por execução,
+# pra comparar runs com/sem memória. Dado de teste, não versionado.
+adk/run_archive/
+
+
+adk/.ai4es_history/
