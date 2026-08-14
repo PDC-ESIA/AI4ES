@@ -1,0 +1,131 @@
+"""Factory de configuração do mem0 (OSS) — PoC de memória entre execuções.
+
+Usa `AsyncMemory` (não `MemoryClient`): roda 100% localmente, sem depender do
+serviço hospedado da Mem0 Platform (`MEM0_API_KEY`). LLM e embedder apontam
+para Gemini via `GOOGLE_API_KEY` — mesma env var que `.env.example` já
+documenta para "modelos Gemini nativos", nenhuma chave nova precisa ser
+provisionada.
+
+## Vector store: Postgres/pgvector quando configurado, Chroma local se não
+
+Se `AI4ES_MEMORY_DATABASE_URL` estiver configurado, a memória vive em
+Postgres — banco não-local, sobrevive a redeploys, compartilhável entre
+instâncias. Sem essa variável, cai para Chroma em arquivo local
+(`memory_store/chroma/`), pra continuar funcionando sem exigir infra extra em
+ambiente de desenvolvimento. `mem0` cria a extensão `vector` sozinho
+(`CREATE EXTENSION IF NOT EXISTS vector`) — só precisa estar disponível no
+servidor Postgres de destino (ex.: imagem `pgvector/pgvector`).
+
+Deliberadamente SEM fallback para outro Postgres já configurado no projeto:
+mesmo que a URL resolvesse, aquele banco provavelmente não teria a extensão
+`pgvector` disponível (imagem comum, não `pgvector/pgvector`) — o
+`CREATE EXTENSION` falharia. E mesmo que tivesse, compartilhar a mesma
+instância entre features diferentes acopla as duas sem necessidade (mudança
+de credencial/capacidade feita por um lado afeta o outro sem aviso). Cada
+feature com seu próprio banco, cada uma com seu ciclo de vida.
+
+O caminho local, quando usado, fica fora de `WORKSPACE_OUTPUT_DIR` porque
+`init_workspace()` apaga esse diretório a cada prompt novo (ver
+`shared/workspace.py`); a memória precisa sobreviver a isso independente do
+backend.
+
+Nota sobre Chroma em vez de Qdrant (o default do mem0 e já dependência do
+projeto) no caminho local: o provider Qdrant do mem0 (v3, busca híbrida BM25)
+carrega `fastembed`, que usa ONNX Runtime nativo — e esse runtime SEGFAULTA
+(`SIGSEGV`) neste ambiente Python 3.14, isolado e reproduzido chamando só o
+`fastembed` sozinho, fora do mem0. Chroma não usa fastembed/ONNX.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+# Precisa rodar ANTES do `from mem0 import ...` — a env var é lida uma única
+# vez, no import do módulo de telemetria do mem0. Desabilitado por padrão
+# neste PoC: o conteúdo que passa por aqui é código gerado de um projeto
+# universitário, sem necessidade de sair enviando eventos para o PostHog da
+# Mem0 por padrão.
+os.environ.setdefault("MEM0_TELEMETRY", "False")
+
+from mem0 import AsyncMemory  # noqa: E402  (import após o setdefault acima, de propósito)
+
+_LLM_MODEL = "gemini-2.5-flash"
+_EMBEDDER_MODEL = "gemini-embedding-001"
+# mem0's GeminiLLM embedder faz fallback pra 768 quando embedding_dims não é
+# especificado (mem0/embeddings/gemini.py). O pgvector precisa dessa dimensão
+# declarada na criação da tabela — sem isso o default do provider é 1536
+# (dimensão da OpenAI) e a escrita quebra por incompatibilidade de shape.
+_EMBEDDING_DIMS = 768
+
+_memory: AsyncMemory | None = None
+
+
+def _database_url() -> str | None:
+    """URL de conexão Postgres pro mem0 — exclusiva desta feature.
+
+    Só lê `AI4ES_MEMORY_DATABASE_URL`, de propósito: sem fallback para outro
+    Postgres do projeto (ver docstring do módulo).
+    """
+    return os.environ.get("AI4ES_MEMORY_DATABASE_URL") or None
+
+
+def _dir_memory_store() -> Path:
+    """Raiz do armazenamento local do mem0 — fora do workspace_output/.
+
+    Mesmo idioma de `cr_feedforward.py::_dir_knowledge()` (override por env
+    var + resolução relativa ao próprio arquivo para chegar em `adk/`).
+    """
+    override = os.environ.get("AI4ES_MEMORY_DIR")
+    if override:
+        return Path(override)
+    # .../adk/shared/memory/config.py → parents[2] == adk/
+    return Path(__file__).resolve().parents[2] / "memory_store"
+
+
+def _vector_store_config() -> dict:
+    """`pgvector` quando há URL de banco configurada; `chroma` local senão."""
+    database_url = _database_url()
+    if database_url:
+        return {
+            "provider": "pgvector",
+            "config": {
+                "collection_name": "ai4es_mem0_poc",
+                "connection_string": database_url,
+                "embedding_model_dims": _EMBEDDING_DIMS,
+            },
+        }
+    raiz = _dir_memory_store()
+    raiz.mkdir(parents=True, exist_ok=True)
+    return {
+        "provider": "chroma",
+        "config": {
+            "collection_name": "ai4es_mem0_poc",
+            "path": str(raiz / "chroma"),
+        },
+    }
+
+
+def get_memory() -> AsyncMemory:
+    """Devolve a instância (singleton de módulo) do `AsyncMemory` do PoC.
+
+    Criada sob demanda na primeira chamada — evita custo de inicialização
+    (cliente Gemini, conexão com o vector store) em processos que nunca
+    exercitam o caminho de memória (ex.: testes de outras partes do sistema).
+    """
+    global _memory
+    if _memory is None:
+        _memory = AsyncMemory.from_config(
+            {
+                "llm": {
+                    "provider": "gemini",
+                    "config": {"model": _LLM_MODEL, "temperature": 0.1},
+                },
+                "embedder": {
+                    "provider": "gemini",
+                    "config": {"model": _EMBEDDER_MODEL},
+                },
+                "vector_store": _vector_store_config(),
+            }
+        )
+    return _memory

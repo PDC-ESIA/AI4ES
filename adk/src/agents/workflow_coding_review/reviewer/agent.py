@@ -13,11 +13,13 @@ Os callbacks/helpers de análise estática (Ruff+Bandit) e persistência vivem e
 shared/tools/coding_tools/review_tools.py.
 """
 
+import logging
 import os
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
+from shared.memory.config import get_memory
 from shared.tools.coding_tools.filesystem_coding import tool_ler_arquivo
 from shared.tools.coding_tools.review_tools import (
     _CODER_WS,
@@ -28,7 +30,10 @@ from shared.tools.coding_tools.review_tools import (
     _persist_review,
 )
 
+from ..memory_feedforward import stack_key
 from . import prompt as reviewer_prompt
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
@@ -148,8 +153,80 @@ _analyzer = LlmAgent(
         _bind(FunctionTool(tool_ler_arquivo), _CODER_WS),
     ],
 )
+
+
+def _resolver_stack_key(state) -> str:
+    """`memory_stack_key` gravado pelo `memory_feedforward` — com fallback.
+
+    O fallback recalcula a partir de `tasks.macro_context.tech_stack` (mesma
+    função `stack_key`) só para o caso raro de `memory_feedforward` ter
+    falhado silenciosamente antes de gravar o state_delta.
+    """
+    chave = state.get("memory_stack_key")
+    if chave:
+        return chave
+    tasks = state.get("tasks") or {}
+    macro_context = tasks.get("macro_context") if isinstance(tasks, dict) else None
+    return stack_key((macro_context or {}).get("tech_stack") or [])
+
+
+def _formatar_licao(error_history: list[dict], review_analysis: str) -> str:
+    """Resume o histórico de reprovações desta run numa mensagem legível.
+
+    O mem0 faz sua própria extração de fatos em cima deste texto — só precisa
+    dar contexto suficiente para essa extração funcionar bem; não precisa ser
+    o ErrorReport bruto (JSON denso, ruim de "ler" para o LLM de extração).
+    """
+    partes = []
+    for i, erro in enumerate(error_history, start=1):
+        estagios = "; ".join(
+            f"{e.get('stage')}: {e.get('error_code') or e.get('summary')}"
+            for e in erro.get("failed_stages", [])
+        )
+        partes.append(
+            f"Iteração {i}: motivo do bloqueio = {erro.get('blocking_reason')}. "
+            f"Estágios com falha: {estagios or 'nenhum registrado'}."
+        )
+    status_final = (
+        "APROVADO" if "APROVADO" in (review_analysis or "") else "revisão concluída"
+    )
+    partes.append(f"Status final após revisão: {status_final}.")
+    return "\n".join(partes)
+
+
+async def _escrever_memoria(callback_context) -> None:
+    """`after_agent_callback` adicional do reviewer — PoC mem0.
+
+    Roda em conjunto com `_persist_review` (via lista em `after_agent_callback`
+    — o runtime do ADK chama cada callback da lista em ordem; nenhum dos dois
+    produz conteúdo de override, então os dois sempre executam). Só grava no
+    mem0 quando houve pelo menos uma reprovação no loop (`error_history`
+    não-vazio) — não há lição a aprender de uma run que passou de primeira.
+
+    Mesma filosofia de degradação do `memory_feedforward`: falha do mem0 aqui
+    nunca deve derrubar o pipeline nem invalidar a persistência do relatório
+    de revisão (que já aconteceu antes, via `_persist_review`).
+    """
+    error_history = callback_context.state.get("error_history") or []
+    if not error_history:
+        return
+
+    chave = _resolver_stack_key(callback_context.state)
+    review_analysis = str(callback_context.state.get("review_analysis") or "")
+    licao = _formatar_licao(error_history, review_analysis)
+
+    try:
+        await get_memory().add(messages=licao, agent_id=chave)
+    except Exception:
+        logger.exception(
+            "reviewer: falha ao gravar lição no mem0 (stack=%r) — relatório "
+            "de revisão já persistido normalmente, sem impacto no pipeline",
+            chave,
+        )
+
+
 _analyzer.before_agent_callback = _inject_static_findings
-_analyzer.after_agent_callback = _persist_review
+_analyzer.after_agent_callback = [_persist_review, _escrever_memoria]
 
 # agent é exportado como LlmAgent (not SequentialAgent) — a persistência acontece
 # via after_agent_callback, sem necessidade de um segundo agente no pipeline.

@@ -10,12 +10,30 @@ services:
       - "8081:8081"
     env_file:
       - .env
+    depends_on:
+      - memory_postgres
     volumes:
       - .:/app:ro
       - adk-venv-docker:/venv
       - copilot-tokens:/root/.config/litellm/github_copilot
     restart: unless-stopped
 
+  # Postgres/pgvector do PoC de memória (mem0, workflow coding_review).
+  # Container local — decisão do tech lead: manter simples enquanto é PoC,
+  # dados de conexão via AI4ES_MEMORY_DATABASE_URL no .env.
+  memory_postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_USER=ai4es
+      - POSTGRES_PASSWORD=ai4es_poc_local
+      - POSTGRES_DB=ai4es_memory
+    ports:
+      - "5433:5432"
+    volumes:
+      - ai4es-memory-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
 volumes:
   adk-venv-docker:
   copilot-tokens:
+  ai4es-memory-pgdata:
