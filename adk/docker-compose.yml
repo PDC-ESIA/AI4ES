@@ -20,8 +20,7 @@ services:
     restart: unless-stopped
 
   # Postgres/pgvector do PoC de memória (mem0, workflow coding_review).
-  # Container local — decisão do tech lead: manter simples enquanto é PoC,
-  # dados de conexão via AI4ES_MEMORY_DATABASE_URL no .env.
+  # Container local - dados de conexão via AI4ES_MEMORY_DATABASE_URL no .env.
   memory_postgres:
     image: pgvector/pgvector:pg16
     environment:
