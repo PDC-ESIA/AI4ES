@@ -4,6 +4,7 @@ services:
     working_dir: /app
     environment:
       - UV_PROJECT_ENVIRONMENT=/venv
+      - AI4ES_MEMORY_DATABASE_URL=postgresql://ai4es:ai4es_poc_local@memory_postgres:5432/ai4es_memory
     command: >
       sh -c "uv sync --no-dev && uv run uvicorn app.main:app --host 0.0.0.0 --port 8081"
     ports:
