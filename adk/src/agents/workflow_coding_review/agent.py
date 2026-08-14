@@ -1,13 +1,16 @@
 """Workflow coding_review: pipeline enxuto de codificação com revisão.
 
-Pipeline: context_engineer -> LoopAgent[coder ↔ executor] -> reviewer
+Pipeline: context_engineer -> LoopAgent[coder ↔ executor] -> reviewer -> memory_writer
   - context_engineer: fragmenta requisitos em tasks contextualizadas
   - coder: implementa código a partir das tasks (workspace isolado)
             Em re-execução: corrige código baseado no erro do executor
-  - executor: builda e roda código em Docker
+            Recebe no prompt a memória destilada de runs anteriores
+  - executor: executa o artefato conforme o manifesto run.json
               Se sucesso: exit_loop → pipeline segue para reviewer
               Se falha: reporta erro → loop volta ao coder
   - reviewer: analisa (4 camadas) e persiste relatório de revisão
+  - memory_writer: destila a trajetória desta run em itens de memória e os
+              grava FORA do repositório, para as runs seguintes (issue #303)
 
 O LoopAgent garante que o código produzido é EXECUTÁVEL antes de seguir
 para revisão. O teto de iterações é o default 5 (1 tentativa + 4 retries),
@@ -25,6 +28,7 @@ from .context_engineer import agent as _context_engineer
 from .coder import agent as _coder
 from .executor.agent import agent as _executor
 from .reviewer.agent import agent as _reviewer
+from .memory_writer.agent import agent as _memory_writer
 
 # ---------------------------------------------------------------------------
 # Loop de codificação + execução: coder produz/corrige → executor testa
@@ -51,7 +55,7 @@ agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → [codificação ↔ execução Docker] → revisão."
+        "contexto → [codificação ↔ execução] → revisão → memória."
     ),
-    sub_agents=[_context_engineer, _code_execute_loop, _reviewer],
+    sub_agents=[_context_engineer, _code_execute_loop, _reviewer, _memory_writer],
 )

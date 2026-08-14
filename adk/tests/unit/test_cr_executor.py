@@ -18,8 +18,26 @@ test_implementation_validator.py.
 """
 
 import importlib
+from types import SimpleNamespace
 
 import pytest
+
+
+def _instrucao_efetiva(agent) -> str:
+    """Resolve a instrução que o LLM realmente recebe.
+
+    Desde a camada de memória incremental (#303) o `cr_coder` monta a instrução
+    em runtime por um InstructionProvider, para prefixar as lições destiladas de
+    runs anteriores — o mesmo padrão que o `cr_review_analyzer` já usava para
+    injetar achados de análise estática.
+
+    Os testes abaixo continuam checando o prompt EFETIVO, e não o atributo cru:
+    é o prompt efetivo que precisa carregar o `{execution_result?}` e as regras
+    obrigatórias, e resolvê-lo aqui também pega uma eventual regressão em que a
+    injeção de memória sobrescrevesse a instrução base em vez de prefixá-la.
+    """
+    instr = agent.instruction
+    return instr(SimpleNamespace(state={})) if callable(instr) else instr
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +144,7 @@ def test_coder_instruction_contem_execution_result_placeholder(tmp_path, monkeyp
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = _instrucao_efetiva(cr_coder.agent)
     assert "{execution_result?}" in instr, (
         "Placeholder {execution_result?} ausente na instrução do coder. "
         "O LoopAgent não conseguirá injetar logs de erro do executor."
@@ -141,7 +159,7 @@ def test_coder_instruction_contem_modo_operacao(tmp_path, monkeypatch):
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = _instrucao_efetiva(cr_coder.agent)
     assert "MODO DE OPERAÇÃO" in instr
     assert "RESULTADO DA EXECUÇÃO ANTERIOR" in instr
 
@@ -159,7 +177,7 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
     output_key = cr_executor.agent.output_key
     assert output_key == "execution_result"
     # Confirm the placeholder in coder matches
-    assert f"{{{output_key}?}}" in cr_coder.agent.instruction
+    assert f"{{{output_key}?}}" in _instrucao_efetiva(cr_coder.agent)
 
 
 # ===========================================================================
@@ -192,7 +210,7 @@ def test_coder_instruction_exige_readme(tmp_path, monkeypatch):
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = _instrucao_efetiva(cr_coder.agent)
     assert "README.md" in instr
     assert "http://localhost:8000" in instr
 
@@ -205,7 +223,7 @@ def test_coder_instruction_exige_run_json(tmp_path, monkeypatch):
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = _instrucao_efetiva(cr_coder.agent)
     # run.json é o novo artefato de execução obrigatório (substitui Docker).
     assert "run.json" in instr
     # A superfície (service/command/none) deriva o comportamento do harness.

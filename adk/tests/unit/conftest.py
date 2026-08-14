@@ -60,6 +60,21 @@ from shared.preflight import PreflightResult  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
+def _memoria_isolada(tmp_path, monkeypatch):
+    """Aponta o banco de memória (#303) para um diretório temporário.
+
+    Sem isto, qualquer teste que exercite o coder leria — e o `registrar_uso`
+    ESCREVERIA — no banco real do desenvolvedor em `~/.ai4es/memory/`, tornando
+    a suíte dependente do histórico da máquina e corrompendo dados de verdade.
+
+    Vale para a suíte inteira, não só para os testes de memória: o
+    `_instruction_provider` do `cr_coder` consulta o banco em toda montagem de
+    prompt.
+    """
+    monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "memoria"))
+
+
+@pytest.fixture(autouse=True)
 def _stub_llm_preflight(monkeypatch):
     """Neutraliza o health-check de LLM do orchestrator nos testes unitários.
 
