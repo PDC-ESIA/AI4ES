@@ -86,7 +86,11 @@ def _ping(model: str, timeout: float) -> None:
     litellm.completion(
         model=model,
         messages=[{"role": "user", "content": "ping"}],
-        max_tokens=1,
+        # 16 é o mínimo aceito pelos modelos de raciocínio do Copilot (gpt-5.x,
+        # codex): com max_tokens=1 eles respondem 400 "Invalid 'max_output_tokens':
+        # integer below minimum value. Expected a value >= 16". O preflight então
+        # falhava sempre e culpava a credencial, que estava válida.
+        max_tokens=16,
         timeout=timeout,
     )
 
