@@ -266,7 +266,15 @@ próprio código.
   ex.: `/`, `/docs`, `/health`).
 - `workdir`: diretório relativo à raiz do artefato onde os comandos rodam (default `.`).
 - `env`: objeto com variáveis de ambiente extras para build/run/test (default `{{}}`).
-- NÃO defina `sandbox`: o padrão (`direct`) é o único suportado por ora.
+- `sandbox`: `"direct"` (default) ou `"docker"`. Em `direct` os comandos rodam no
+  shell da máquina do harness; em `docker`, dentro de um container. Omita o campo
+  a menos que tenha um motivo — `direct` é o caminho validado.
+  ⚠️ Em `direct`, o shell tem o interpretador da stack no PATH, mas **não
+  necessariamente o gerenciador de pacotes**. Se o seu `build` instala
+  dependências, faça-o pelo interpretador em vez de chamar o binário do
+  gerenciador direto — por exemplo, prefira
+  `python -m ensurepip --upgrade && python -m pip install -r requirements.txt`
+  a `pip install -r requirements.txt`, que falha com `pip: not found`.
 
 ## Superfície derivada do `product_type`
 - `web_app`, `api_service` → `service` (sobe e escuta em rede; exige `run` + `port`).
@@ -285,7 +293,7 @@ Serviço (ex.: FastAPI):
 {{
   "schema_version": "1",
   "surface": "service",
-  "build": ["pip install -r requirements.txt"],
+  "build": ["python -m ensurepip --upgrade && python -m pip install -r requirements.txt"],
   "run": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
   "test": ["python -m pytest"],
   "port": 8000,
@@ -297,7 +305,7 @@ Comando (ex.: CLI/pipeline):
 {{
   "schema_version": "1",
   "surface": "command",
-  "build": ["pip install -r requirements.txt"],
+  "build": ["python -m ensurepip --upgrade && python -m pip install -r requirements.txt"],
   "run": "python -m meupacote --input data.csv",
   "test": ["python -m pytest"]
 }}
@@ -307,7 +315,7 @@ Sem superfície (ex.: biblioteca):
 {{
   "schema_version": "1",
   "surface": "none",
-  "build": ["pip install -e ."],
+  "build": ["python -m ensurepip --upgrade && python -m pip install -e ."],
   "test": ["python -m pytest"]
 }}
 ```
