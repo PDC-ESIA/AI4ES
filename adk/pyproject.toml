@@ -49,17 +49,9 @@ dev = [
     "debugpy>=1.8.0",
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-asyncio_mode = "auto"
-addopts = "-v --tb=short"
-markers = [
-    "integration: testes que executam ferramentas externas (ruff, bandit) — requerem instalação no ambiente",
-]
-pythonpath = ["."]
+# Configuração do pytest agora vive em pytest.ini (raiz do repo), não aqui —
+# pytest.ini tem prioridade sobre pyproject.toml, então manter as duas fontes
+# divergiria silenciosamente. Ver tests/README.md para o racional das 2 camadas.
 
 [tool.coverage.run]
 source = ["agents"]
