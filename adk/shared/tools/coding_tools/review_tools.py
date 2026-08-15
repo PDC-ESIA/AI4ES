@@ -115,6 +115,8 @@ _NOTA_SUMMARY_INVALIDO = (
     "Cobertura bloqueada automaticamente: o resumo de iteração está ausente "
     "ou inválido; não foi possível determinar com segurança as tasks pendentes."
 )
+
+
 def _normalizar_summary(summary: Any) -> Optional[dict]:
     """Valida e copia o contrato do `task_iteration_summary`.
 
