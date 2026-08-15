@@ -8,11 +8,18 @@ from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.models.registry import LLMRegistry
 
+from shared.observability import resolved_plugins, setup_logging
+
 LLMRegistry._register(r"github_copilot/.*", LiteLlm)
 LLMRegistry._register(r"github/.*", LiteLlm)
 
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
+# Liga o logging NATIVO do ADK (basicConfig com timestamp + nível + file:lineno
+# no namespace google_adk), controlado por LOG_LEVEL. Deve rodar cedo, antes de
+# qualquer log dos módulos importados abaixo.
+setup_logging()
 
 # github_copilot não suporta response_format (usado pelo output_schema do ADK).
 # Com drop_params o LiteLLM remove silenciosamente parâmetros não suportados.
@@ -25,8 +32,9 @@ litellm.drop_params = True
 litellm.request_timeout = float(os.environ.get("AI4ES_LLM_TIMEOUT", "120"))
 litellm.num_retries = int(os.environ.get("AI4ES_LLM_NUM_RETRIES", "1"))
 
+# Logger do módulo. Nível/handler herdados do setup_logging() nativo do ADK;
+# não reconfiguramos aqui para não sobrescrever LOG_LEVEL.
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def _preflight_copilot_credential() -> None:
@@ -63,4 +71,8 @@ app = get_fast_api_app(
     agents_dir=os.environ.get("ADK_AGENTS_DIR", _DEFAULT_AGENTS_DIR),
     web=True,
     allow_origins=["*"],
+    # Plugins nativos de observabilidade (console/file), controlados por
+    # ADK_LOG_PLUGIN. Registrados no nível do app, cascateiam para os Runners
+    # internos dos 4 sub-pipelines via ctx.plugin_manager.plugins.
+    extra_plugins=resolved_plugins(),
 )
