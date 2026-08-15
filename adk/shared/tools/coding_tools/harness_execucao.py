@@ -769,6 +769,45 @@ def _serializar_json_atomico(path: Path, data: dict) -> None:
     os.replace(tmp, path)
 
 
+# Subpasta com uma cópia do report por iteração. O nome é compartilhado com
+# `shared/memory/trajectory.py::_HISTORICO_DIRNAME`, que é quem lê daqui.
+_HISTORICO_DIRNAME = "historico"
+
+
+def _arquivar_report_da_iteracao(
+    exec_dir: Path, task_id: str, iteration: int, payload: dict
+) -> Optional[Path]:
+    """Guarda uma cópia deste report, além do `<task_id>.report.json` canônico.
+
+    O nome canônico não carrega a iteração, então cada passagem do loop
+    sobrescreve a anterior. Numa run que converge, o que sobra no fim é só o
+    report que passou — e quem for destilar a lição depois fica sem o que a run
+    tem de mais instrutivo, que é o caminho da falha até a correção.
+
+    A cópia fica dentro do `workspace_output/`, que `init_workspace()` apaga a
+    cada fresh run: o conteúdo da pasta é, por construção, só desta run. É o
+    oposto da escolha feita para o banco de memória, e pelo mesmo motivo — lá se
+    quer sobreviver ao apagamento, aqui se quer ser apagado junto.
+
+    A ordem vem de um contador de arquivos, **não** do parâmetro `iteration`:
+    ele é auto-relatado pelo LLM executor (é argumento da tool) e não se pode
+    confiar que seja único nem crescente. O valor relatado fica no nome, para
+    auditoria, mas não decide nada.
+
+    Nunca levanta: arquivar é acessório da execução.
+    """
+    try:
+        destino = exec_dir / _HISTORICO_DIRNAME
+        destino.mkdir(parents=True, exist_ok=True)
+        seq = len(list(destino.glob(f"{task_id}.*.report.json"))) + 1
+        alvo = destino / f"{task_id}.{seq:02d}_iter{iteration}.report.json"
+        _serializar_json_atomico(alvo, payload)
+        return alvo
+    except Exception as e:
+        logger.warning(f"[HARNESS] Falha ao arquivar o report da iteração: {e}")
+        return None
+
+
 def _render_markdown(report: ExecutionReport) -> str:
     """Renderiza o ExecutionReport em markdown legível (sem veredito)."""
     linhas = [
@@ -912,6 +951,10 @@ def executar_harness_validacao(
         _serializar_json_atomico(report_json_path, payload)
         report_md_path.parent.mkdir(parents=True, exist_ok=True)
         report_md_path.write_text(_render_markdown(report), encoding="utf-8")
+
+        # Cópia por iteração — o canônico acima será sobrescrito na próxima
+        # passagem do loop. Ver a docstring de `_arquivar_report_da_iteracao`.
+        _arquivar_report_da_iteracao(exec_dir, task_id, iteration, payload)
 
         # Grava o caminho do report no session state (fonte determinística para o
         # validador). Só quando há contexto — chamadas diretas (testes/PoC) o omitem.

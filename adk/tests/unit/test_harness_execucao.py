@@ -573,6 +573,46 @@ def test_serializacao_json_markdown_e_sobrescrita_atomica(tmp_path):
 
 
 # ===========================================================================
+# Histórico por iteração — o canônico é sobrescrito, a cópia não
+# ===========================================================================
+
+def test_cada_passagem_deixa_uma_copia_em_historico(tmp_path):
+    """Sem isto, numa run que converge só resta o report que passou.
+
+    E aí quem for destilar a lição depois perde o caminho da falha até a
+    correção, que é o que uma run convergente tem de mais instrutivo.
+    """
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_manifest(coder, _manifest_service())
+
+    _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    copias = sorted((execution / "historico").glob("TASK-001.*.report.json"))
+
+    assert (execution / "TASK-001.report.json").exists()  # canônico segue lá
+    assert len(copias) == 2  # e as duas passagens ficaram guardadas
+    # A sequência vem do contador de arquivos, não da iteração — que é
+    # auto-relatada pelo LLM executor e aqui vale 1 nas duas passagens.
+    assert [p.name for p in copias] == [
+        "TASK-001.01_iter1.report.json",
+        "TASK-001.02_iter1.report.json",
+    ]
+
+
+def test_falha_ao_arquivar_nao_propaga(tmp_path):
+    """Arquivar é acessório da execução: nunca pode derrubá-la."""
+    from shared.tools.coding_tools.harness_execucao import (
+        _arquivar_report_da_iteracao,
+    )
+
+    ocupado = tmp_path / "execution"
+    ocupado.write_text("sou um arquivo, não um diretório", encoding="utf-8")
+
+    assert _arquivar_report_da_iteracao(ocupado, "TASK-001", 1, {"a": 1}) is None
+
+
+# ===========================================================================
 # Task ausente — estágio 1 ERRO antes de tocar no manifesto/sandbox
 # ===========================================================================
 

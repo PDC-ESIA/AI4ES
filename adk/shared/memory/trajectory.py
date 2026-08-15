@@ -14,6 +14,23 @@ Duas decisões de recorte:
 - **A evidência bruta é truncada por campo.** Um `runtime_logs_tail` pode ter
   dezenas de KB; sem teto, a trajetória estoura o contexto e a destilação falha
   justamente nas runs mais interessantes, que são as que produziram mais log.
+
+## O que a run de SUCESSO precisa carregar (corrigido em 14/08)
+
+Uma primeira versão desta montagem só trazia objetivo, veredito e **os estágios
+que falharam**. Numa run aprovada esse último bloco vira literalmente *"Nenhum —
+todos os estágios passaram"*, e o destilador recebia cinco linhas sem conteúdo:
+nada do que foi construído, nada do caminho até a correção. O resultado medido
+em 13/08 foram lições de sucesso vazias — *"trabalhar em ciclos curtos até
+convergir"* —, em que o modelo se agarrava ao único fato quantitativo
+disponível, a contagem de iterações.
+
+Daí os dois blocos acrescentados aqui:
+
+- **a entrega** (`montar_manifesto`) — os arquivos produzidos e o `run.json`;
+- **as tentativas anteriores** (`resumir_tentativas` sobre `carregar_historico`)
+  — o que quebrou em cada passagem do loop antes da que passou. É o insumo mais
+  instrutivo que uma run convergente tem, e era o que se perdia inteiro.
 """
 
 from __future__ import annotations
@@ -27,6 +44,18 @@ from typing import Optional
 # vários estágios somados ainda caberem no contexto.
 _MAX_EVIDENCIA_CHARS = 2000
 _MAX_ESTAGIOS = 6
+
+# Tentativas anteriores: só o resumo do que falhou, nunca a evidência bruta —
+# essa já está no report da tentativa corrente quando é ela que falha. Oito
+# tentativas cobrem folgadamente o teto de iterações do loop (default 5).
+_MAX_TENTATIVAS = 8
+_MAX_SUMMARY_TENTATIVA = 300
+
+_MAX_ARQUIVOS_MANIFESTO = 60
+
+# Subpasta em `coder/execution/` com uma cópia do report por iteração. Escrita
+# por `harness_execucao._arquivar_report_da_iteracao`; o nome é compartilhado.
+_HISTORICO_DIRNAME = "historico"
 
 _STATUS_COM_EVIDENCIA = ("falha", "erro")
 
@@ -80,6 +109,128 @@ def error_codes_do_report(report: dict) -> list[str]:
     return codigos
 
 
+def carregar_historico(report_path: Optional[str]) -> list[dict]:
+    """Carrega os reports arquivados das iterações desta run, em ordem.
+
+    O harness grava `<task_id>.report.json` **sem a iteração no nome**, então
+    cada passagem do loop sobrescreve a anterior: no fim de uma run aprovada só
+    resta o report que passou, com zero estágios em falha. A cópia por iteração
+    vive em `historico/`, ao lado dele.
+
+    A pasta é desta run por construção — está dentro do `workspace_output/`, que
+    `init_workspace()` apaga a cada fresh run. O filtro por `task_id` isola a
+    task quando a run produz mais de uma.
+
+    Devolve `[]` em qualquer falha: sem histórico a trajetória fica mais pobre,
+    nunca quebrada.
+    """
+    if not report_path:
+        return []
+
+    try:
+        alvo = Path(report_path)
+        task_id = alvo.name.split(".", 1)[0]
+        pasta = alvo.parent / _HISTORICO_DIRNAME
+        if not task_id or not pasta.is_dir():
+            return []
+
+        reports: list[dict] = []
+        for arquivo in sorted(pasta.glob(f"{task_id}.*.report.json")):
+            try:
+                reports.append(json.loads(arquivo.read_text(encoding="utf-8")))
+            except Exception:
+                continue  # um arquivo ilegível não invalida os outros
+        return reports
+    except Exception:
+        return []
+
+
+def resumir_tentativas(historico: list[dict], report_atual: dict) -> str:
+    """Uma linha por tentativa anterior desta run: o que falhou e com que código.
+
+    É o insumo que faltava à trajetória de **sucesso**. Uma run que passou na 4ª
+    iteração só tem lição a dar se disser o que quebrou nas três primeiras.
+
+    A tentativa corrente sai da lista — os blocos seguintes já a trazem com
+    evidência bruta. A comparação é por `generated_at`, e não por posição: se o
+    arquivamento da corrente tiver falhado, nada é descartado por engano.
+    """
+    if not historico:
+        return ""
+
+    atual_em = str(report_atual.get("generated_at") or "")
+    anteriores = [
+        r
+        for r in historico
+        if not atual_em or str(r.get("generated_at") or "") != atual_em
+    ][:_MAX_TENTATIVAS]
+
+    if not anteriores:
+        return ""
+
+    linhas = []
+    for r in anteriores:
+        falhos = [
+            s for s in r.get("stages", []) if s.get("status") in _STATUS_COM_EVIDENCIA
+        ][:_MAX_ESTAGIOS]
+        if falhos:
+            detalhe = "; ".join(
+                f"`{s.get('stage')}` ({s.get('error_code') or 'sem código'}): "
+                f"{_truncar(s.get('summary', ''), _MAX_SUMMARY_TENTATIVA)}"
+                for s in falhos
+            )
+        else:
+            detalhe = "nenhum estágio falhou"
+        linhas.append(
+            f"- iteração {r.get('iteration', '?')} — "
+            f"{r.get('overall_status', 'desconhecido')}: {detalhe}"
+        )
+
+    return "\n".join(linhas)
+
+
+def montar_manifesto(src_dir) -> str:
+    """Lista o que a run entregou, mais o conteúdo do `run.json` se existir.
+
+    Numa run aprovada é o único conteúdo concreto que a trajetória tem — sem
+    isto o destilador de sucesso não vê nada do que foi construído.
+
+    Só caminhos e o manifesto de execução: o código em si estouraria o contexto
+    e não é o que gera lição generalizável.
+    """
+    try:
+        raiz = Path(src_dir)
+        if not raiz.is_dir():
+            return ""
+        arquivos = sorted(
+            p.relative_to(raiz).as_posix()
+            for p in raiz.rglob("*")
+            if p.is_file() and "__pycache__" not in p.parts
+        )
+    except Exception:
+        return ""
+
+    if not arquivos:
+        return ""
+
+    linhas = [f"- {a}" for a in arquivos[:_MAX_ARQUIVOS_MANIFESTO]]
+    if len(arquivos) > _MAX_ARQUIVOS_MANIFESTO:
+        linhas.append(f"- … e mais {len(arquivos) - _MAX_ARQUIVOS_MANIFESTO} arquivo(s)")
+
+    bloco = "\n".join(linhas)
+
+    run_json = raiz / "run.json"
+    if run_json.is_file():
+        try:
+            bloco += "\n\nManifesto `run.json`:\n" + _truncar(
+                run_json.read_text(encoding="utf-8")
+            )
+        except Exception:
+            pass  # o manifesto é bônus; a lista de arquivos já vale
+
+    return bloco
+
+
 def _truncar(valor, limite: int = _MAX_EVIDENCIA_CHARS) -> str:
     texto = valor if isinstance(valor, str) else json.dumps(valor, ensure_ascii=False)
     if len(texto) <= limite:
@@ -93,13 +244,20 @@ def montar_trajetoria(
     *,
     tech_stack: str = "",
     objetivo: str = "",
+    historico: Optional[list[dict]] = None,
+    manifesto: str = "",
 ) -> str:
     """Formata a evidência da run como o texto de entrada da destilação.
 
-    A ordem é deliberada — objetivo, veredito, estágios em falha, evidência —
-    para que o modelo leia o *que se queria*, depois o *que a máquina decidiu*,
-    e só então o material bruto. Assim ele ancora a lição no veredito
-    determinístico em vez de reinterpretar logs livremente.
+    A ordem é deliberada — objetivo, veredito, entrega, caminho percorrido,
+    evidência bruta — para que o modelo leia o *que se queria*, o *que a máquina
+    decidiu*, o *que foi construído*, o *que se tentou antes*, e só então o
+    material bruto. Assim ele ancora a lição no veredito determinístico em vez
+    de reinterpretar logs livremente.
+
+    `historico` e `manifesto` são o que dá conteúdo à trajetória de sucesso —
+    ver o cabeçalho do módulo. Ambos são opcionais: ausentes, a montagem degrada
+    para a forma anterior em vez de falhar.
     """
     partes: list[str] = []
 
@@ -135,6 +293,18 @@ def montar_trajetoria(
         f"{report.get('overall_status', 'desconhecido')} "
         f"(iteração {report.get('iteration', 'n/a')})"
     )
+
+    if manifesto:
+        partes.append("# O que esta run entregou\n" + manifesto)
+
+    tentativas = resumir_tentativas(historico or [], report)
+    if tentativas:
+        partes.append(
+            "# Tentativas anteriores nesta run\n"
+            "O caminho até o resultado acima. Cada linha é uma passagem pelo loop "
+            "coder⇄executor que NÃO passou; o que as separa do resultado final é "
+            "exatamente o que se aprendeu.\n" + tentativas
+        )
 
     falhos = [
         s for s in report.get("stages", []) if s.get("status") in _STATUS_COM_EVIDENCIA
