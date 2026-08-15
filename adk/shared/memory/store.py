@@ -7,11 +7,11 @@ feedforward: *"não há separação real de conhecimento e código"*. Lá a base
 conhecimento vivia no mesmo repositório, entrava no mesmo PR e viajava na mesma
 imagem Docker — evoluir o conhecimento exigia um ciclo de deploy.
 
-O `LEVANTAMENTO_TRABALHOS_MEMORIA_EXPERIENCIA.md` (§2a) mostra que somos o caso
-fora da curva: em praticamente todo o campo — EvoLib, ReasoningBank, ArcMemo,
-Memp, Voyager — a biblioteca é **estado de runtime**. As únicas exceções, ReGAL
-e Leroy, são exceções por serem *library learning* clássico, onde a biblioteca
-literalmente **é** código-fonte.
+Em praticamente todo o campo — EvoLib, ReasoningBank, ArcMemo, Memp, Voyager —
+a biblioteca é **estado de runtime**, não artefato versionado; o desenho
+recusado é que era o caso fora da curva. As únicas exceções, ReGAL e Leroy, são
+exceções por serem *library learning* clássico, onde a biblioteca literalmente
+**é** código-fonte.
 
 Aqui o banco vive em `AI4ES_MEMORY_DIR` (default `~/.ai4es/memory/`), que:
 
@@ -75,10 +75,11 @@ class MemoryStore:
     """Banco append-only de `MemoryItem`, em JSONL.
 
     Deduplicação por `id` (hash do título normalizado). É deliberadamente o
-    caso degenerado da consolidação: consolidar semanticamente exigiria
-    embeddings no caminho de escrita, e o levantamento (§7, item 7) trata isso
-    como evolução posterior, não como requisito desta PoC. O que a PoC precisa
-    garantir é que rodar duas vezes não duplique a mesma lição.
+    caso degenerado da consolidação: consolidar semanticamente — como o EvoLib
+    (fusão por embedding) e o AutoRefine (pontua, poda e funde) — exigiria
+    embeddings no caminho de escrita, e fica como evolução posterior, não como
+    requisito desta PoC. O que a PoC precisa garantir é que rodar duas vezes não
+    duplique a mesma lição.
     """
 
     def __init__(self, path: Optional[Path] = None) -> None:
@@ -147,10 +148,10 @@ class MemoryStore:
         """Registra que os itens foram injetados no prompt da run `run_id`.
 
         Guarda o **run_id**, não um contador. A diferença não é de estilo: para
-        rankear por utilidade medida em vez de por similaridade (levantamento,
-        §7 "Não fazer") é preciso cruzar "injetado na run R" com "a run R
-        passou", e um inteiro já perdeu essa informação no instante em que foi
-        incrementado.
+        rankear por **utilidade medida** em vez de por similaridade — a terceira
+        via que o EvoLib sugere — é preciso cruzar "injetado na run R" com "a
+        run R passou", e um inteiro já perdeu essa informação no instante em que
+        foi incrementado.
 
         A repetição é idempotente por construção — o mesmo run_id não entra duas
         vezes —, então chamar isto a cada turno do coder é seguro e **não exige

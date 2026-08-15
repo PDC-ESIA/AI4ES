@@ -5,7 +5,7 @@
 Os dois system instructions abaixo são **reproduzidos verbatim** de
 `third_party/src/minisweagent/memory/instruction.py` do repositório
 `google-research/reasoning-bank`, que é a implementação de referência do
-ReasoningBank para SWE-Bench — o trabalho do levantamento mais próximo do nosso
+ReasoningBank para SWE-Bench — o trabalho publicado mais próximo do nosso
 domínio. Mantê-los sem edição é deliberado: é o que faz esta PoC ser uma
 integração do trabalho publicado, e não uma reinvenção com o nome dele.
 

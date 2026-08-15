@@ -2,10 +2,10 @@
 
 ## O algoritmo é o do ReasoningBank; o backend, não
 
-De `third_party/src/minisweagent/memory/memory_management.py` preservamos o
-procedimento de `select_memory`/`screening`: embutir a consulta, normalizar em
-L2, ranquear os itens do banco por **similaridade de cosseno** e devolver o
-**top-k**.
+De `third_party/src/minisweagent/memory/memory_management.py`, no repositório
+`google-research/reasoning-bank`, preservamos o procedimento de
+`select_memory`/`screening`: embutir a consulta, normalizar em L2, ranquear os
+itens do banco por **similaridade de cosseno** e devolver o **top-k**.
 
 O que trocamos é só o backend de embedding, e por impossibilidade concreta: o
 original importa `torch` + `transformers` (Qwen3-Embedding-8B) ou `vertexai` /
@@ -20,12 +20,12 @@ esta camada passa a justificar esse custo.
 ## Um pré-filtro que o ReasoningBank não podia ter
 
 Antes do cosseno roda um filtro **determinístico** por `error_code` e por
-`tech_stack`. Isso não é um atalho para economizar embedding: é o uso do sinal
-que o levantamento (§2b) identifica como nossa vantagem sobre o campo. Se a run
-anterior morreu com `FALHA_BUILD`, o item que fala de `FALHA_BUILD` é relevante
-por construção, não por proximidade de vetores. A similaridade entra depois,
-para ordenar o que sobrou e para cobrir o caso em que não há `error_code`
-algum — que é justamente a primeira run.
+`tech_stack`. Isso não é um atalho para economizar embedding: é o uso da verdade
+de campo que o ReasoningBank não tem e que aqui existe — ver `judge.py`. Se a
+run anterior morreu com `FALHA_BUILD`, o item que fala de `FALHA_BUILD` é
+relevante por construção, não por proximidade de vetores. A similaridade entra
+depois, para ordenar o que sobrou e para cobrir o caso em que não há
+`error_code` algum — que é justamente a primeira run.
 
 Degradação: se o `fastembed` não estiver disponível ou o modelo não puder ser
 baixado, a recuperação **não falha** — cai para o pré-filtro determinístico mais

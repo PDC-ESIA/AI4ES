@@ -25,9 +25,8 @@ prompt até alguém olhar.
 ## O sinal que usamos
 
 O ReasoningBank julga por **auto-avaliação do LLM**, porque no domínio dele não
-há verdade de campo. Nós temos — e é a vantagem que o
-`LEVANTAMENTO_TRABALHOS_MEMORIA_EXPERIENCIA.md` (§2b) aponta como nosso
-diferencial sobre quase todo o campo:
+há verdade de campo — e o mesmo vale para ArcMemo e Dynamic Cheatsheet. Aqui há,
+e é o que separa este desenho de quase todo o campo:
 
 - `ExecutionReport` — 10 estágios determinísticos, com `error_code` por estágio;
 - `ValidationVerdict` — `montar_veredito()`, sem LLM no caminho.
