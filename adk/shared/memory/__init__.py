@@ -23,7 +23,7 @@ reexporta `sandbox.py`, que faz `import resource` (POSIX-only) e derrubaria a
 memória em Windows junto com o resto do pipeline.
 """
 
-from .extract import destilar, parse_memory_items
+from .extract import destilar, modelo_de_destilacao, parse_memory_items
 from .judge import julgar, julgar_lote
 from .retrieve import recuperar, render_bloco
 from .schemas import (
@@ -34,10 +34,13 @@ from .schemas import (
 )
 from .store import MemoryStore, get_memory_dir, memoria_habilitada
 from .trajectory import (
+    carregar_historico,
     carregar_report,
     error_codes_do_report,
+    montar_manifesto,
     montar_trajetoria,
     normalizar_status,
+    resumir_tentativas,
 )
 
 __all__ = [
@@ -46,6 +49,7 @@ __all__ = [
     "MemoryProvenance",
     "MemoryStatus",
     "MemoryStore",
+    "carregar_historico",
     "carregar_report",
     "destilar",
     "error_codes_do_report",
@@ -53,9 +57,12 @@ __all__ = [
     "julgar",
     "julgar_lote",
     "memoria_habilitada",
+    "modelo_de_destilacao",
+    "montar_manifesto",
     "montar_trajetoria",
     "normalizar_status",
     "parse_memory_items",
     "recuperar",
     "render_bloco",
+    "resumir_tentativas",
 ]

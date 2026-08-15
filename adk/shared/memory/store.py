@@ -143,21 +143,36 @@ class MemoryStore:
         logger.info("[MEMORY] %d item(ns) novo(s) gravado(s) em %s", len(novos), self.path)
         return novos
 
-    def registrar_uso(self, ids: Iterable[str]) -> None:
-        """Incrementa `times_retrieved` dos itens injetados num prompt.
+    def registrar_uso(self, ids: Iterable[str], run_id: str) -> bool:
+        """Registra que os itens foram injetados no prompt da run `run_id`.
 
-        É o contador de utilidade bruta. Não pondera nada hoje — mas é o dado
-        mínimo sem o qual não dá para, mais adiante, rankear por utilidade
-        medida em vez de por similaridade (levantamento, §7 "Não fazer").
+        Guarda o **run_id**, não um contador. A diferença não é de estilo: para
+        rankear por utilidade medida em vez de por similaridade (levantamento,
+        §7 "Não fazer") é preciso cruzar "injetado na run R" com "a run R
+        passou", e um inteiro já perdeu essa informação no instante em que foi
+        incrementado.
+
+        A repetição é idempotente por construção — o mesmo run_id não entra duas
+        vezes —, então chamar isto a cada turno do coder é seguro e **não exige
+        deduplicação por invocação do lado de fora**. Só reescreve o arquivo
+        quando algo de fato mudou, para não pagar I/O em todo turno.
+
+        Devolve `True` se registrou algo novo (serve para logar uma vez por run).
         """
         alvos = set(ids)
-        if not alvos:
-            return
+        if not alvos or not run_id:
+            return False
+
         itens = self.load()
+        mudou = False
         for item in itens:
-            if item.id in alvos:
-                item.times_retrieved += 1
-        self._escrever(itens)
+            if item.id in alvos and run_id not in item.used_in_runs:
+                item.used_in_runs.append(run_id)
+                mudou = True
+
+        if mudou:
+            self._escrever(itens)
+        return mudou
 
     def _escrever(self, itens: list[MemoryItem]) -> None:
         """Serializa o banco inteiro atomicamente (tmp + os.replace)."""

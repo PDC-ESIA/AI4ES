@@ -24,6 +24,9 @@ determinísticos. É a mesma escolha que o `cr_reviewer` já fez ao persistir po
 - `state['validation']` — `ValidationVerdict` do `implementation_validator`
 - `state['report_path']` — `ExecutionReport` gravado pelo harness
 - `coder/tasks/_macro_context.json` — de onde sai a `tech_stack` (escopo do item)
+- `coder/execution/historico/` — uma cópia do report por iteração; é o caminho
+  da falha até a correção, que o report canônico perde por ser sobrescrito
+- `coder/src/` — o manifesto do que a run entregou
 """
 
 from __future__ import annotations
@@ -41,11 +44,14 @@ from shared.memory import (
     MemoryOutcome,
     MemoryProvenance,
     MemoryStore,
+    carregar_historico,
     carregar_report,
     destilar,
     error_codes_do_report,
     julgar_lote,
     memoria_habilitada,
+    modelo_de_destilacao,
+    montar_manifesto,
     montar_trajetoria,
     normalizar_status,
 )
@@ -217,8 +223,20 @@ class _MemoryWriter(BaseAgent):
         criterios = _criterios_reprovados(validation)
         stack, objetivo = _tech_stack_e_objetivo(state)
 
+        # O caminho percorrido e o que foi entregue. Sem os dois, a trajetória de
+        # uma run APROVADA é um recibo — veredito + "nenhum estágio falhou" — e a
+        # destilação devolve platitude (medido em 13/08). Ver o cabeçalho de
+        # `shared/memory/trajectory.py`.
+        historico = carregar_historico(report_path)
+        manifesto = montar_manifesto(get_agent_workspace("cr_coder"))
+
         trajetoria = montar_trajetoria(
-            report, validation, tech_stack=stack, objetivo=objetivo
+            report,
+            validation,
+            tech_stack=stack,
+            objetivo=objetivo,
+            historico=historico,
+            manifesto=manifesto,
         )
 
         provenance = MemoryProvenance(
@@ -226,7 +244,7 @@ class _MemoryWriter(BaseAgent):
             task_id=str(state.get("task_id") or report.get("work_item_id") or ""),
             iteration=report.get("iteration"),
             report_path=str(report_path) if report_path else None,
-            model=str(state.get("_memory_model") or ""),
+            model=modelo_de_destilacao(),
         )
 
         # Única chamada de LLM do passo. Prompts verbatim do ReasoningBank.

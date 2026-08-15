@@ -137,6 +137,77 @@ def test_proveniencia_registra_a_run_e_o_report(ambiente, monkeypatch):
     assert item.provenance.report_path == str(ambiente.report_path)
 
 
+def test_proveniencia_registra_o_modelo_que_destilou(ambiente, monkeypatch):
+    """Sem isto não dá para comparar bancos gerados por modelos diferentes.
+
+    O campo saía vazio em TODO item: era lido de um `state['_memory_model']` que
+    nenhuma parte do projeto escrevia.
+    """
+    monkeypatch.setenv("ADK_LLM_MODEL", "github_copilot/gpt-4")
+    _stub_destilacao(monkeypatch)
+    state = {"validation": VALIDATION, "report_path": str(ambiente.report_path)}
+
+    memory_writer_mod.agent._executar(_ctx(state))
+
+    (item,) = MemoryStore().load()
+    assert item.provenance.model == "github_copilot/gpt-4"
+
+
+def test_trajetoria_de_sucesso_carrega_a_entrega_e_o_caminho(ambiente, monkeypatch):
+    """Numa run APROVADA, é isto que impede a destilação de virar platitude.
+
+    O bloco de estágios em falha é vazio por definição quando tudo passou; o que
+    sobra de instrutivo é o que foi entregue e o que quebrou antes de passar.
+    Sem os dois, o destilador recebia cinco linhas (medido em 13/08).
+    """
+    from shared.workspace import get_agent_workspace
+
+    src = get_agent_workspace("cr_coder")
+    (src / "app").mkdir(parents=True, exist_ok=True)
+    (src / "app" / "main.py").write_text("app = ...", encoding="utf-8")
+    (src / "run.json").write_text('{"surface": "service"}', encoding="utf-8")
+
+    historico = ambiente.report_path.parent / "historico"
+    historico.mkdir()
+    (historico / "TASK-001.01_iter1.report.json").write_text(
+        json.dumps(
+            {
+                "iteration": 1,
+                "generated_at": "2026-08-14T10:00:00Z",
+                "overall_status": "falha",
+                "stages": [
+                    {
+                        "stage": "implantacao_artefato",
+                        "status": "falha",
+                        "error_code": "FALHA_BUILD",
+                        "summary": "pip: not found",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    capturado = {}
+
+    def _captura(si, trajetoria, model):
+        capturado["trajetoria"] = trajetoria
+        return SAIDA_LLM
+
+    monkeypatch.setattr("shared.memory.extract._completar", _captura)
+    aprovado = {**VALIDATION, "status": "aprovado", "criteria_verdicts": []}
+    state = {"validation": aprovado, "report_path": str(ambiente.report_path)}
+
+    memory_writer_mod.agent._executar(_ctx(state))
+
+    trajetoria = capturado["trajetoria"]
+    assert "app/main.py" in trajetoria  # o que foi entregue
+    assert "run.json" in trajetoria
+    assert "iteração 1" in trajetoria  # o caminho até aqui
+    assert "FALHA_BUILD" in trajetoria
+    assert "pip: not found" in trajetoria
+
+
 def test_a_trajetoria_enviada_ao_llm_carrega_a_evidencia_bruta(ambiente, monkeypatch):
     """O destilador precisa ver o log, não só o nome do estágio."""
     capturado = {}
@@ -478,15 +549,24 @@ def test_contra_evidencia_funciona_com_o_enum(ambiente):
     assert "contradiz a evidência" in julgado.judge_reason
 
 
-# --- contagem de uso: uma vez por RUN, não por turno ----------------------
+# --- registro de uso: por RUN, e com a chave que dá join ------------------
 #
 # Regressão do A/B de 13/08: o ADK chama o InstructionProvider a cada turno do
-# LLM, e `times_retrieved` chegou a 92 numa única run — medindo chamadas de
-# modelo, não runs em que a lição serviu.
+# LLM, e o contador chegou a 92 numa única run — medindo chamadas de modelo, não
+# runs em que a lição serviu. Hoje o registro é `used_in_runs`, uma lista de
+# run_ids: a repetição é idempotente por construção, e o dado cruza com o
+# desfecho da run em vez de só contar exposição.
 
 
-def _ctx_leitura(state, invocation_id="inv-A"):
-    return SimpleNamespace(state=state, invocation_id=invocation_id)
+def _ctx_leitura(state, run_id="sess-A", invocation_id="inv-A"):
+    """Contexto de leitura como o ADK entrega ao InstructionProvider.
+
+    `session.id` é a chave que o `memory_writer` grava em
+    `MemoryProvenance.run_id`; é ela que o `used_in_runs` tem de espelhar para
+    que "criado na run R" e "injetado na run R" sejam cruzáveis.
+    """
+    sessao = SimpleNamespace(id=run_id) if run_id is not None else None
+    return SimpleNamespace(state=state, invocation_id=invocation_id, session=sessao)
 
 
 def _semear_promovido(titulo="Lição promovida"):
@@ -506,54 +586,55 @@ def _semear_promovido(titulo="Lição promovida"):
     )
 
 
-def test_varios_turnos_da_mesma_run_contam_uma_vez(ambiente, monkeypatch):
+def test_varios_turnos_da_mesma_run_registram_uma_vez(ambiente, monkeypatch):
     monkeypatch.setattr("shared.memory.retrieve._get_embedder", lambda: None)
-    coder_mod._invocacoes_contabilizadas.clear()
     _semear_promovido()
-    ctx = _ctx_leitura({"tasks": "Cadastro"}, invocation_id="inv-1")
+    ctx = _ctx_leitura({"tasks": "Cadastro"}, run_id="sess-1")
 
-    for _ in range(5):  # 5 turnos do coder dentro da MESMA invocação
+    for _ in range(5):  # 5 turnos do coder dentro da MESMA run
         instrucao = coder_mod._instruction_provider(ctx)
 
     assert "MEMÓRIA DE RUNS ANTERIORES" in instrucao  # injeta em TODOS os turnos
-    assert MemoryStore().load()[0].times_retrieved == 1  # mas conta uma vez
+    assert MemoryStore().load()[0].used_in_runs == ["sess-1"]  # registra uma vez
 
 
-def test_runs_diferentes_contam_separado(ambiente, monkeypatch):
+def test_runs_diferentes_sao_registradas_separado(ambiente, monkeypatch):
     monkeypatch.setattr("shared.memory.retrieve._get_embedder", lambda: None)
-    coder_mod._invocacoes_contabilizadas.clear()
     _semear_promovido()
 
-    coder_mod._instruction_provider(_ctx_leitura({"tasks": "Cadastro"}, invocation_id="inv-1"))
-    coder_mod._instruction_provider(_ctx_leitura({"tasks": "Cadastro"}, invocation_id="inv-2"))
+    coder_mod._instruction_provider(_ctx_leitura({"tasks": "Cadastro"}, run_id="sess-1"))
+    coder_mod._instruction_provider(_ctx_leitura({"tasks": "Cadastro"}, run_id="sess-2"))
 
-    assert MemoryStore().load()[0].times_retrieved == 2
+    assert MemoryStore().load()[0].used_in_runs == ["sess-1", "sess-2"]
 
 
-def test_sem_invocation_id_conta_normalmente(ambiente, monkeypatch):
-    """Degradação segura: sem chave de dedup, o comportamento antigo vale."""
+def test_registro_usa_o_id_da_sessao_que_e_a_chave_do_writer(ambiente, monkeypatch):
+    """O `used_in_runs` tem de casar com o `provenance.run_id` do writer.
+
+    Se aqui gravasse o `invocation_id` e lá o id da sessão, o cruzamento
+    "item criado na run R" × "item injetado na run R" não fecharia — e é ele o
+    motivo de a lista existir.
+    """
     monkeypatch.setattr("shared.memory.retrieve._get_embedder", lambda: None)
-    coder_mod._invocacoes_contabilizadas.clear()
     _semear_promovido()
 
-    coder_mod._instruction_provider(SimpleNamespace(state={"tasks": "Cadastro"}))
-    coder_mod._instruction_provider(SimpleNamespace(state={"tasks": "Cadastro"}))
-
-    assert MemoryStore().load()[0].times_retrieved == 2
-
-
-def test_lista_de_invocacoes_nao_cresce_sem_limite(ambiente, monkeypatch):
-    monkeypatch.setattr("shared.memory.retrieve._get_embedder", lambda: None)
-    coder_mod._invocacoes_contabilizadas.clear()
-    _semear_promovido()
-
-    for n in range(coder_mod._MAX_INVOCACOES_LEMBRADAS + 50):
-        coder_mod._instruction_provider(_ctx_leitura({"tasks": "Cadastro"}, invocation_id=f"inv-{n}"))
-
-    assert (
-        len(coder_mod._invocacoes_contabilizadas)
-        == coder_mod._MAX_INVOCACOES_LEMBRADAS
+    coder_mod._instruction_provider(
+        _ctx_leitura({"tasks": "Cadastro"}, run_id="sess-X", invocation_id="inv-Y")
     )
+
+    assert MemoryStore().load()[0].used_in_runs == ["sess-X"]
+
+
+def test_sem_sessao_cai_no_invocation_id(ambiente, monkeypatch):
+    """Degradação: contexto sem sessão (teste, chamada direta) ainda registra."""
+    monkeypatch.setattr("shared.memory.retrieve._get_embedder", lambda: None)
+    _semear_promovido()
+
+    coder_mod._instruction_provider(
+        _ctx_leitura({"tasks": "Cadastro"}, run_id=None, invocation_id="inv-1")
+    )
+
+    assert MemoryStore().load()[0].used_in_runs == ["inv-1"]
 
 
 # --- registro no pipeline --------------------------------------------------

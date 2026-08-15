@@ -49,6 +49,7 @@ from .schemas import MemoryItem, MemoryOutcome, MemoryProvenance
 logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMEOUT = 90.0
+_DEFAULT_MODEL = "gemini-2.5-flash"
 _MAX_ITENS = 3  # teto do ReasoningBank: "at most 3 memory items"
 
 # ---------------------------------------------------------------------------
@@ -219,6 +220,18 @@ def _timeout() -> float:
         return _DEFAULT_TIMEOUT
 
 
+def modelo_de_destilacao() -> str:
+    """O modelo que `destilar` vai usar, resolvido do ambiente.
+
+    Existe para que a proveniência do item registre **o mesmo** valor que a
+    chamada usou, sem duplicar a regra de resolução em dois lugares. Antes disso
+    `MemoryProvenance.model` era preenchido a partir de um `state` que ninguém
+    escrevia, e saía vazio em todo item — o banco não sabia dizer que modelo
+    tinha destilado o quê, o que inviabiliza comparar bancos entre modelos.
+    """
+    return os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
+
+
 def _completar(system_instruction: str, trajetoria: str, model: str) -> str:
     """Uma chamada de completion. Padrão de `shared/preflight.py:86`."""
     import litellm
@@ -253,7 +266,7 @@ def destilar(
     Nunca levanta: falha de rede, timeout ou saída ininteligível devolvem lista
     vazia. Memória é acessório do prompt; sua ausência não pode derrubar a run.
     """
-    model = model or os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
+    model = model or modelo_de_destilacao()
     si = SUCCESSFUL_SI if outcome == MemoryOutcome.SUCESSO else FAILED_SI
 
     try:

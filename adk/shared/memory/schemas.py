@@ -115,8 +115,16 @@ class MemoryItem(BaseModel):
     # --- Metadados ---------------------------------------------------------
     id: str = Field(default="", description="Identificador estável, derivado do título")
     created_at: str = Field(default="", description="Timestamp ISO-8601 UTC da criação")
-    times_retrieved: int = Field(
-        default=0, description="Quantas vezes o item já foi injetado num prompt"
+    used_in_runs: list[str] = Field(
+        default_factory=list,
+        description=(
+            "run_ids em que o item foi injetado no prompt do coder. É uma LISTA, "
+            "e não um contador, de propósito: o que se quer medir é utilidade, e "
+            "utilidade só existe cruzando 'foi injetado na run R' com 'a run R "
+            "passou'. Um inteiro conta exposição e não se reinterpreta depois — "
+            "o dado que não foi gravado não se recupera. Mesma chave do "
+            "`MemoryProvenance.run_id`, para que o cruzamento seja um join."
+        ),
     )
     provenance: Optional[MemoryProvenance] = Field(
         default=None, description="Rastro até a run e a evidência de origem"

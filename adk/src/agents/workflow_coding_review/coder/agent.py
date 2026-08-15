@@ -89,27 +89,17 @@ def _consulta_de_recuperacao(state) -> tuple[str, list[str], str]:
     return consulta.strip(), codigos, stack
 
 
-# Invocações cujo uso de memória já foi contabilizado. O ADK chama o
-# InstructionProvider a CADA turno do LLM, não uma vez por run: no A/B de 13/08
-# isso levou `times_retrieved` a 92 numa única run, medindo chamadas de modelo
-# em vez de runs em que a lição serviu. O `invocation_id` é estável para a
-# invocação inteira do pipeline, então serve de chave de deduplicação.
-#
-# Limitado para não crescer sem fim num servidor de vida longa; perder a marca
-# de uma invocação antiga só custaria uma contagem a mais, nunca correção.
-_MAX_INVOCACOES_LEMBRADAS = 256
-_invocacoes_contabilizadas: list[str] = []
+def _run_id(ctx) -> str:
+    """Identificador da run, na MESMA chave que o `memory_writer` grava.
 
+    O `memory_writer` usa o id da sessão em `MemoryProvenance.run_id`; usar o
+    mesmo aqui é o que faz "item criado na run R" e "item injetado na run R"
+    serem cruzáveis por join — que é o ponto do `used_in_runs`.
 
-def _ja_contabilizou(invocation_id: str) -> bool:
-    """Marca a invocação como contabilizada; devolve se ela já era conhecida."""
-    if not invocation_id:
-        return False  # sem id não há como deduplicar: conta, como antes
-    if invocation_id in _invocacoes_contabilizadas:
-        return True
-    _invocacoes_contabilizadas.append(invocation_id)
-    del _invocacoes_contabilizadas[:-_MAX_INVOCACOES_LEMBRADAS]
-    return False
+    O `invocation_id` é reserva para contexto sem sessão (testes).
+    """
+    sessao = getattr(ctx, "session", None)
+    return str(getattr(sessao, "id", "") or getattr(ctx, "invocation_id", "") or "")
 
 
 def _instruction_provider(ctx) -> str:
@@ -121,7 +111,8 @@ def _instruction_provider(ctx) -> str:
 
     Chamado uma vez por TURNO do coder (várias vezes por run, uma por iteração
     do loop e por chamada de tool). A injeção se repete a cada turno, como deve;
-    só a CONTAGEM de uso é deduplicada por invocação.
+    o REGISTRO de uso é idempotente por run — `registrar_uso` guarda o run_id e
+    não o reinsere, então não é preciso deduplicar por invocação aqui.
 
     Nunca levanta: se a memória falhar, o coder recebe exatamente o prompt de
     `develop`.
@@ -137,10 +128,9 @@ def _instruction_provider(ctx) -> str:
         if not itens:
             return _INSTRUCTION
 
-        # Contador de utilidade bruta — uma vez por run. Sem isso não há como,
-        # mais adiante, rankear por utilidade medida em vez de similaridade.
-        if not _ja_contabilizou(str(getattr(ctx, "invocation_id", "") or "")):
-            MemoryStore().registrar_uso([i.id for i in itens])
+        # Registro de uso — o dado que, cruzado com o desfecho da run, permite
+        # mais adiante rankear por utilidade medida em vez de por similaridade.
+        if MemoryStore().registrar_uso([i.id for i in itens], _run_id(ctx)):
             logger.info(
                 "[MEMORY] %d item(ns) injetado(s) no prompt do coder: %s",
                 len(itens),

@@ -179,15 +179,40 @@ def test_stats_conta_por_status(store):
     }
 
 
-def test_registrar_uso_incrementa_so_os_itens_citados(store):
+def test_registrar_uso_guarda_o_run_id_so_nos_itens_citados(store):
     store.append([_item("Usada"), _item("Não usada")])
     alvo = next(i for i in store.load() if i.title == "Usada")
 
-    store.registrar_uso([alvo.id])
-    store.registrar_uso([alvo.id])
+    store.registrar_uso([alvo.id], "run-1")
 
-    por_titulo = {i.title: i.times_retrieved for i in store.load()}
-    assert por_titulo == {"Usada": 2, "Não usada": 0}
+    por_titulo = {i.title: i.used_in_runs for i in store.load()}
+    assert por_titulo == {"Usada": ["run-1"], "Não usada": []}
+
+
+def test_registrar_uso_e_idempotente_dentro_da_mesma_run(store):
+    """O provider do coder roda a cada TURNO; repetir não pode inflar o dado.
+
+    É esta idempotência que dispensa deduplicar por invocação do lado de fora —
+    o que antes era um contador escalar mais uma lista de invocações em memória
+    de processo.
+    """
+    store.append([_item("Usada")])
+    alvo = store.load()[0]
+
+    assert store.registrar_uso([alvo.id], "run-1") is True
+    assert store.registrar_uso([alvo.id], "run-1") is False  # nada novo a gravar
+    assert store.registrar_uso([alvo.id], "run-2") is True
+
+    assert store.load()[0].used_in_runs == ["run-1", "run-2"]
+
+
+def test_registrar_uso_sem_run_id_nao_grava(store):
+    """Sem chave de run o registro seria inútil — não dá para cruzar com nada."""
+    store.append([_item("Usada")])
+    alvo = store.load()[0]
+
+    assert store.registrar_uso([alvo.id], "") is False
+    assert store.load()[0].used_in_runs == []
 
 
 # --- kill switch -----------------------------------------------------------
