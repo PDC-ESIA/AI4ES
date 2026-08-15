@@ -46,7 +46,10 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
+from shared.execution.completude import verificar_completude
+from shared.tools.coding_tools.context_engineer_tools import resolver_task
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
+from shared.workspace import get_agent_workspace
 from src.agents.implementation_validator import root_agent as implementation_validator
 from src.agents.implementation_validator.agent import _report_path_valido
 
@@ -105,6 +108,115 @@ def _carregar_execution_report(callback_context) -> dict:
     except Exception:
         logger.warning("cr_executor: falha ao ler o ExecutionReport em %s", caminho)
         return {}
+
+
+# Chave do contador de recusas BRANDAS na task corrente. Zerada pelo
+# TaskIterator entre tasks (ver `_CHAVES_CICLO_REMOVIDAS`) — o teto vale por
+# task, não pela run.
+CHAVE_BLOQUEIOS_PREFLIGHT = "preflight_bloqueios_brandos"
+
+# Teto de recusas BRANDAS por task. A camada branda é indício (contratos são
+# escritos por LLM e divergem de nomenclatura na prática), então precisa ceder:
+# sem teto, uma divergência de nome bloquearia a task até esgotar o orçamento —
+# a correção seria pior que o problema. A camada DURA não tem teto: nela o
+# harness falharia no estágio 1 de qualquer forma.
+_MAX_BLOQUEIOS_BRANDOS = 2
+
+# Quantos arquivos do workspace o relatório de recusa lista (evidência para o
+# coder e para quem lê o log; não precisa ser a árvore inteira).
+_MAX_ARQUIVOS_NA_RECUSA = 40
+
+_CABECALHO_RECUSA = (
+    "IMPLEMENTAÇÃO INCOMPLETA — o harness NÃO foi executado (não há o que "
+    "validar ainda)."
+)
+
+
+def _mensagem_de_recusa(motivos, arquivos) -> str:
+    """Relatório determinístico devolvido ao coder no lugar do ErrorReport.
+
+    NÃO pode começar com o marcador de estagnação (`STATUS: bloqueado`): o
+    TaskIterator classificaria a task como encerrada por estagnação, e isto é o
+    oposto — é um pedido para continuar implementando.
+    """
+    listados = list(arquivos[:_MAX_ARQUIVOS_NA_RECUSA])
+    excedente = len(arquivos) - len(listados)
+    inventario = "\n".join(f"- {a}" for a in listados) or "- (workspace vazio)"
+    if excedente > 0:
+        inventario += f"\n- ...[+{excedente} arquivo(s)]"
+
+    return (
+        f"{_CABECALHO_RECUSA}\n\n"
+        "Faltando:\n"
+        + "\n".join(f"- {motivo}" for motivo in motivos)
+        + "\n\nArquivos hoje no seu workspace:\n"
+        + inventario
+        + "\n\nComplete a implementação AGORA, no mesmo turno: crie os arquivos "
+        "que faltam com `tool_criar_arquivo`, um por vez, e NÃO responda com "
+        "texto até terminar. Texto sem chamada de ferramenta encerra o seu "
+        "turno e gasta uma iteração do loop sem produzir nada."
+    )
+
+
+def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
+    """`before_agent_callback` do `cr_executor_agent` — gate estrutural.
+
+    Recusa a rodada quando o artefato ainda não tem o mínimo para ser executado,
+    ANTES de gastar as chamadas de LLM do executor e do validador e a execução
+    do sandbox. Numa run real, ~13 das 37 execuções do harness aconteceram sobre
+    um workspace com um arquivo novo ou nenhum.
+
+    ATENÇÃO — `state["execution_result"]` é escrito AQUI, na mão: quando um
+    `before_agent_callback` devolve Content, o ADK marca `end_invocation=True` e
+    retorna antes do `_run_async_impl`, que é onde o `output_key` seria gravado
+    (`llm_agent.py::__maybe_save_output_to_state`). Sem esta escrita, o coder
+    receberia de volta o ErrorReport da rodada ANTERIOR e não saberia o que
+    falta.
+
+    Returns:
+        None para deixar o executor rodar; o Content da recusa caso contrário.
+    """
+    state = callback_context.state
+    task = resolver_task(state, state.get("task_id"))
+    contrato = (task or {}).get("contract")
+    outputs = contrato.get("outputs") if isinstance(contrato, dict) else None
+
+    resultado = verificar_completude(
+        get_agent_workspace("cr_coder"), outputs or ()
+    )
+    if resultado.completo:
+        return None
+
+    if resultado.bloqueios_duros:
+        logger.warning(
+            "[PREFLIGHT] Execução recusada para %s: %s",
+            state.get("task_id"),
+            "; ".join(resultado.bloqueios_duros),
+        )
+    else:
+        usados = state.get(CHAVE_BLOQUEIOS_PREFLIGHT) or 0
+        if not isinstance(usados, int) or usados >= _MAX_BLOQUEIOS_BRANDOS:
+            # Teto atingido: o contrato pode simplesmente divergir na
+            # nomenclatura. Deixa o harness rodar e o validador decidir.
+            logger.info(
+                "[PREFLIGHT] Pendências brandas persistem em %s após %s "
+                "recusa(s); liberando a execução.",
+                state.get("task_id"),
+                usados,
+            )
+            return None
+        state[CHAVE_BLOQUEIOS_PREFLIGHT] = usados + 1
+        logger.info(
+            "[PREFLIGHT] Execução adiada para %s (%d/%d): %s",
+            state.get("task_id"),
+            usados + 1,
+            _MAX_BLOQUEIOS_BRANDOS,
+            "; ".join(resultado.pendencias_brandas),
+        )
+
+    mensagem = _mensagem_de_recusa(resultado.motivos, resultado.arquivos)
+    state["execution_result"] = mensagem
+    return types.Content(role="model", parts=[types.Part(text=mensagem)])
 
 
 def montar_error_report(callback_context) -> Optional[types.Content]:
@@ -195,4 +307,5 @@ agent = LlmAgent(
         FunctionTool(exit_loop),
     ],
 )
+agent.before_agent_callback = recusar_execucao_incompleta
 agent.after_agent_callback = montar_error_report

@@ -40,6 +40,67 @@ DIRETORIOS_PROIBIDOS = {
 
 ID_REQ_PATTERN = re.compile(r"^[A-Z]{1,4}-\d{3}$")
 
+# Diretórios ignorados ao listar um workspace para dentro de um prompt: são
+# artefatos gerados/dependências, não código a revisar ou implementar. Reusa
+# DIRETORIOS_PROIBIDOS (escrita) e acrescenta saídas de build.
+DIRETORIOS_NAO_LISTADOS = DIRETORIOS_PROIBIDOS | {
+    "dist",
+    "build",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "site-packages",
+}
+
+# Teto padrão de arquivos listados num prompt. Listagens entram em instrução de
+# agente — que é reenviada a cada requisição do turno —, então precisam de um
+# limite que independa do tamanho do projeto gerado.
+MAX_ARQUIVOS_LISTADOS = 200
+
+
+def arquivos_do_workspace(raiz: Path) -> list[str]:
+    """Caminhos relativos (posix) dos arquivos de `raiz`, já filtrados.
+
+    Fonte única do que conta como "arquivo do workspace": listagem para prompt
+    (`listar_arquivos`) e checagem de completude do artefato consomem a MESMA
+    definição, para não divergirem sobre o que é código e o que é gerado.
+    """
+    if not raiz.exists():
+        return []
+    return sorted(
+        caminho.relative_to(raiz).as_posix()
+        for caminho in raiz.rglob("*")
+        if caminho.is_file()
+        and not DIRETORIOS_NAO_LISTADOS.intersection(caminho.parts)
+    )
+
+
+def listar_arquivos(
+    raiz: Path,
+    teto: int = MAX_ARQUIVOS_LISTADOS,
+    vazio: str = "- (workspace vazio)",
+    inexistente: str = "- (diretório ainda não existe)",
+) -> str:
+    """Lista, em bullets, os arquivos de `raiz` — pronto para injeção em prompt.
+
+    Caminhos são relativos a `raiz` e ordenados. Diretórios de dependência e de
+    build são omitidos (`DIRETORIOS_NAO_LISTADOS`), e o total é limitado por
+    `teto`, com uma linha final informando quantos ficaram de fora.
+
+    Compartilhada entre coder e reviewer de propósito: são duas listagens com o
+    mesmo contrato, e mantê-las em dois lugares faria os tetos divergirem.
+    """
+    if not raiz.exists():
+        return inexistente
+    arquivos = arquivos_do_workspace(raiz)
+    if not arquivos:
+        return vazio
+    linhas = [f"- {arquivo}" for arquivo in arquivos[:teto]]
+    excedente = len(arquivos) - teto
+    if excedente > 0:
+        linhas.append(f"- ...[+{excedente} arquivo(s) não listado(s)]")
+    return "\n".join(linhas)
+
 
 class RelatorioSchema(BaseModel):
     conteudo: str = Field(..., description="Conteúdo em Markdown do relatório")

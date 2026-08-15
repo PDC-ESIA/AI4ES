@@ -9,6 +9,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
@@ -392,6 +393,35 @@ tool_ler_design_adk = FunctionTool(tool_ler_design)
 tool_gerar_doubt_artifact_adk = FunctionTool(tool_gerar_doubt_artifact)
 
 
+def resolver_task(
+    state, task_id: str | None, tasks_dir: Optional[Path] = None
+) -> Optional[dict]:
+    """Task pelo id: `state["tasks"]` (canônico) e, em falta, o arquivo em disco.
+
+    Uma precedência só, num lugar só. `state["tasks"]` é escrito pelo ADK a
+    partir do `output_key` do context_engineer e validado pelo `output_schema`:
+    existe sempre que aquele agente terminou, e traz o `id` DENTRO de cada
+    objeto — imune à divergência entre nome de arquivo e conteúdo. Os arquivos
+    em `coder/tasks/` são redundância, e dependem de o LLM ter chamado
+    `tool_salvar_task_cr` para cada task.
+    """
+    if not task_id:
+        return None
+
+    envelope = state.get("tasks") if hasattr(state, "get") else None
+    if isinstance(envelope, dict) and isinstance(envelope.get("tasks"), list):
+        for item in envelope["tasks"]:
+            if isinstance(item, dict) and item.get("id") == task_id:
+                return item
+
+    diretorio = tasks_dir or get_agent_workspace("cr_context_engineer")
+    try:
+        dado = json.loads((diretorio / f"{task_id}.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — task ilegível é task ausente
+        return None
+    return dado if isinstance(dado, dict) else None
+
+
 def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
     """Salva task contextualizada em workspace_output/coder/tasks/.
 
@@ -407,6 +437,22 @@ def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
         task_data = json.loads(dados.task_json)
     except json.JSONDecodeError as e:
         return {"sucesso": False, "erro": "JSON inválido: " + str(e), "caminho": None}
+
+    # O nome do arquivo vem de `task_id` e o conteúdo de `task_json`, que são
+    # argumentos independentes. Sem esta checagem, TASK-003.json poderia conter
+    # a TASK-004 — e quem resolve a task pelo nome do arquivo (o coder) leria o
+    # contrato errado sem nenhum sinal de erro.
+    id_no_conteudo = task_data.get("id") if isinstance(task_data, dict) else None
+    if id_no_conteudo is not None and id_no_conteudo != dados.task_id:
+        return {
+            "sucesso": False,
+            "erro": (
+                "Divergência de id: task_id='" + dados.task_id + "' mas o JSON "
+                "contém id='" + str(id_no_conteudo) + "'. Salve cada task com o "
+                "task_id correspondente ao seu conteúdo."
+            ),
+            "caminho": None,
+        }
 
     output_dir = get_agent_workspace("cr_context_engineer")
     output_file = output_dir / (dados.task_id + ".json")
