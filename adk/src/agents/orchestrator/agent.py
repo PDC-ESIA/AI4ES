@@ -21,6 +21,9 @@ Estado em memória do processo (NÃO persistido — limitação documentada):
 
 from typing import Any, AsyncGenerator, ClassVar, Dict, List, Tuple
 
+import logging
+import time
+
 from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
@@ -55,6 +58,14 @@ from src.agents.orchestrator._helpers import (
 )
 
 
+# Logger da narrativa de alto nível do orchestrator. Herda handler/nível do
+# setup_adk_logger nativo (namespace google_adk). O orchestrator é um BaseAgent
+# custom e não passa pelos callbacks de LlmAgent, então os plugins nativos
+# capturam os sub-pipelines mas não a linha do tempo por estágio — este logger
+# cobre exatamente esse gap (início/fim/duração/desfecho de cada pipeline).
+logger = logging.getLogger("google_adk.orchestrator")
+
+
 class _PipelineOrchestrator(BaseAgent):
     """Roda pipelines em sequência, com pausa HITL no qa_pipeline."""
 
@@ -85,6 +96,12 @@ class _PipelineOrchestrator(BaseAgent):
         # aborta cedo com mensagem acionável em vez de travar por minutos.
         preflight = await ensure_llm_ready()
         if not preflight.ok:
+            logger.warning(
+                "[ORCHESTRATOR] Preflight de LLM falhou, abortando prompt "
+                "(session=%s): %s",
+                outer_sid,
+                preflight.message,
+            )
             yield self._make_text_event(self.name, preflight.message)
             return
 
@@ -92,11 +109,21 @@ class _PipelineOrchestrator(BaseAgent):
 
         # === Branch RESUME ===
         if paused:
+            logger.info(
+                "[ORCHESTRATOR] Retomando pipeline pausado '%s' (session=%s)",
+                paused,
+                outer_sid,
+            )
             async for ev in self._handle_resume(ctx, outer_sid, user_text):
                 yield ev
             return
 
         # === Branch FRESH RUN ===
+        logger.info(
+            "[ORCHESTRATOR] Fresh run iniciado: %d pipelines (session=%s)",
+            len(self._pipelines),
+            outer_sid,
+        )
         async for ev in self._handle_fresh_run(ctx, outer_sid, user_text):
             yield ev
 
@@ -221,6 +248,14 @@ class _PipelineOrchestrator(BaseAgent):
             await legacy[0].close()
 
         for idx, pipeline in enumerate(self._pipelines):
+            stage_started_at = time.perf_counter()
+            logger.info(
+                "[STAGE %d/%d] Iniciando pipeline '%s' (session=%s)",
+                idx + 1,
+                len(self._pipelines),
+                pipeline.name,
+                outer_sid,
+            )
             # Dispatcher fino: repassa só os manifestos das fases anteriores.
             prior_manifests = phase_manifests[:idx]
             manifest_context = _build_manifest_input(prior_manifests)
@@ -299,9 +334,26 @@ class _PipelineOrchestrator(BaseAgent):
                         f"[orchestrator] pipeline {pipeline.name} "
                         "retornou empty após retry"
                     )
+                    logger.warning(
+                        "[STAGE %d/%d] Pipeline '%s' retornou empty após retry "
+                        "(%.2fs)",
+                        idx + 1,
+                        len(self._pipelines),
+                        pipeline.name,
+                        time.perf_counter() - stage_started_at,
+                    )
 
             if pending_pause is not None:
                 # Salva estado, MANTÉM runner vivo (não fecha).
+                logger.info(
+                    "[STAGE %d/%d] Pipeline '%s' PAUSADO para HITL (call=%s, "
+                    "%.2fs)",
+                    idx + 1,
+                    len(self._pipelines),
+                    pipeline.name,
+                    pending_pause.name,
+                    time.perf_counter() - stage_started_at,
+                )
                 self._live_runners[outer_sid] = (runner, inner_session.id)
                 _set_pause_state(
                     state,
@@ -322,11 +374,24 @@ class _PipelineOrchestrator(BaseAgent):
                 return  # NÃO roda pipelines subsequentes
 
             # Pipeline concluiu sem pausa.
+            logger.info(
+                "[STAGE %d/%d] Pipeline '%s' concluído (%.2fs)",
+                idx + 1,
+                len(self._pipelines),
+                pipeline.name,
+                time.perf_counter() - stage_started_at,
+            )
             accumulated.append((pipeline.name, last_text))
             # Atualiza manifestos locais para a próxima iteração.
             phase_manifests = _load_phase_manifests(state)
             await runner.close()
 
+        logger.info(
+            "[ORCHESTRATOR] Fresh run concluído: %d/%d pipelines (session=%s)",
+            len(accumulated),
+            len(self._pipelines),
+            outer_sid,
+        )
         state["accumulated_outputs"] = accumulated
         yield self._make_state_event({
             "accumulated_outputs": accumulated,
