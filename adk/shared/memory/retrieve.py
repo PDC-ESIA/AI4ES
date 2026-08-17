@@ -50,6 +50,7 @@ _DEFAULT_EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12
 _DEFAULT_TOP_K = 5
 
 _embedder = None  # cache de processo: carregar o ONNX a cada run é caro
+_INDISPONIVEL = object()  # sentinela: falha já diagnosticada, não retentar
 
 
 def _get_embedder():
@@ -57,8 +58,17 @@ def _get_embedder():
 
     Toda falha — pacote ausente, download bloqueado, modelo desconhecido — vira
     `None` e ativa o caminho degradado. Nunca propaga.
+
+    A falha também é cacheada, e isso importa: esta função roda uma vez por
+    TURNO do coder (ver `_instruction_provider` em `coder/agent.py`), então um
+    download bloqueado sem cache seria retentado — com timeout de rede — antes
+    de cada requisição ao LLM. O preço é que a primeira falha desliga o ranking
+    semântico até o processo reiniciar; aceitável, porque o fallback por
+    recência é funcional.
     """
     global _embedder
+    if _embedder is _INDISPONIVEL:
+        return None
     if _embedder is not None:
         return _embedder
 
@@ -75,6 +85,7 @@ def _get_embedder():
             "pré-filtro determinístico sem ranking semântico.",
             exc,
         )
+        _embedder = _INDISPONIVEL
         return None
 
 

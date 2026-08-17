@@ -6,6 +6,8 @@ teste que dependesse de rede seria justamente o tipo de teste que não roda no
 dia da apresentação.
 """
 
+import sys
+
 import pytest
 
 from shared.memory import retrieve
@@ -44,6 +46,11 @@ def store(tmp_path):
 def _sem_download(monkeypatch):
     """Nenhum teste deste arquivo pode tentar baixar o modelo ONNX."""
     monkeypatch.setattr(retrieve, "_get_embedder", lambda: FakeEmbedder())
+
+
+# A fixture acima sequestra o `_get_embedder` em todo teste; quem quiser testar
+# a própria função precisa da referência capturada antes disso.
+_REAL_GET_EMBEDDER = retrieve._get_embedder
 
 
 def _item(titulo, *, conteudo="", codigos=("FALHA_BUILD",), stack="python-fastapi",
@@ -203,6 +210,29 @@ def test_falha_do_embedder_nao_propaga(store, monkeypatch):
     itens = recuperar("x", tech_stack="python-fastapi", store=store)
 
     assert [i.title for i in itens] == ["Sobrevivente"]
+
+
+def test_falha_do_embedder_e_cacheada(monkeypatch):
+    """Download bloqueado não pode ser retentado a cada turno do coder.
+
+    Sem o cache da falha, `_get_embedder` reinstancia o `TextEmbedding` antes de
+    cada requisição ao LLM — e uma tentativa de download com timeout de rede em
+    todo turno é justamente o custo que o caminho degradado existe para evitar.
+    """
+    tentativas = []
+
+    class FastembedQuebrado:
+        @staticmethod
+        def TextEmbedding(**kwargs):
+            tentativas.append(kwargs)
+            raise RuntimeError("download bloqueado")
+
+    monkeypatch.setitem(sys.modules, "fastembed", FastembedQuebrado)
+    monkeypatch.setattr(retrieve, "_embedder", None)
+
+    assert _REAL_GET_EMBEDDER() is None
+    assert _REAL_GET_EMBEDDER() is None
+    assert len(tentativas) == 1
 
 
 # --- renderização do bloco -------------------------------------------------
