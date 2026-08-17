@@ -33,8 +33,8 @@ dependencies = [
     "docker>=7.1.0,<8.0.0",
     "ruff>=0.4.0",
     "bandit>=1.9.4",
-    "mem0ai",
-    "chromadb",
+    "mem0ai>=2.0,<3.0",
+    "chromadb>=1.5,<2.0",
 ]
 
 [build-system]

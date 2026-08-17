@@ -363,3 +363,95 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
         "verificacao_revisao.md não foi criado"
     )
     assert "APROVADO" in relatorio.read_text(encoding="utf-8")
+
+
+def _reload_reviewer(tmp_path, monkeypatch):
+    """Helper comum aos testes abaixo — mesmo padrão de import/reload do resto do arquivo."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from shared.tools.coding_tools import review_tools
+    import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+    importlib.reload(review_tools)
+    importlib.reload(cr_reviewer)
+    return cr_reviewer
+
+
+class TestResolverStackKey:
+    """`_resolver_stack_key` — PoC de memória (mem0)."""
+
+    def test_usa_memory_stack_key_quando_presente(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        state = {"memory_stack_key": "python"}
+        assert cr_reviewer._resolver_stack_key(state) == "python"
+
+    def test_fallback_recalcula_a_partir_do_tech_stack(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        state = {"tasks": {"macro_context": {"tech_stack": ["Python", "FastAPI"]}}}
+        assert cr_reviewer._resolver_stack_key(state) == "python"
+
+    def test_fallback_bate_com_stack_key_original(self, tmp_path, monkeypatch):
+        """O fallback tem que gerar a MESMA chave que memory_feedforward.stack_key
+        usou na leitura — senão a escrita erra o agent_id e a lição nunca é achada."""
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        tech_stack = ["FastAPI", "Python"]
+        state = {"tasks": {"macro_context": {"tech_stack": tech_stack}}}
+        assert cr_reviewer._resolver_stack_key(state) == cr_reviewer.stack_key(
+            tech_stack
+        )
+
+    def test_state_vazio_devolve_stack_desconhecida(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        assert cr_reviewer._resolver_stack_key({}) == "stack-desconhecida"
+
+
+class TestFormatarLicao:
+    """`_formatar_licao` — PoC de memória (mem0)."""
+
+    def test_sem_erros_so_o_status_final(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        resultado = cr_reviewer._formatar_licao([], "")
+        assert resultado == "Status final após revisão: revisão concluída."
+
+    def test_uma_iteracao_com_estagio_falho(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        error_history = [
+            {
+                "blocking_reason": "dependência ausente",
+                "failed_stages": [
+                    {"stage": "implantacao_artefato", "error_code": "FALHA_BUILD"}
+                ],
+            }
+        ]
+        resultado = cr_reviewer._formatar_licao(error_history, "")
+        assert "Iteração 1: motivo do bloqueio = dependência ausente." in resultado
+        assert "implantacao_artefato: FALHA_BUILD" in resultado
+        assert "Status final após revisão: revisão concluída." in resultado
+
+    def test_status_final_aprovado_quando_review_menciona(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        resultado = cr_reviewer._formatar_licao([], "## Status: APROVADO")
+        assert "Status final após revisão: APROVADO." in resultado
+
+    def test_estagio_sem_error_code_usa_summary(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        error_history = [
+            {
+                "blocking_reason": "erro genérico",
+                "failed_stages": [
+                    {"stage": "preparacao_ambiente", "summary": "task não encontrada"}
+                ],
+            }
+        ]
+        resultado = cr_reviewer._formatar_licao(error_history, "")
+        assert "preparacao_ambiente: task não encontrada" in resultado
+
+    def test_multiplas_iteracoes_numeradas_em_ordem(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        error_history = [
+            {"blocking_reason": "erro 1", "failed_stages": []},
+            {"blocking_reason": "erro 2", "failed_stages": []},
+        ]
+        resultado = cr_reviewer._formatar_licao(error_history, "")
+        assert "Iteração 1: motivo do bloqueio = erro 1." in resultado
+        assert "Iteração 2: motivo do bloqueio = erro 2." in resultado
