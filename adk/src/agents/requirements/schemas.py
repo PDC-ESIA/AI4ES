@@ -274,37 +274,7 @@ class TraceabilityMatrix(_Base):
         default_factory=list,
         description="Lista de lacunas de rastreabilidade detectadas (ex: 'RF-005 sem HU de origem'), reportadas como candidatas a Doubt_Artifact"
     )
-    markdown: str = Field(..., description="Representação completa da matriz em formato Markdown (tabela), para persistência em Outros/")
-
-class TraceabilityRationale(_Base):
-    """Parte da matriz que exige julgamento e não pode ser derivada em código.
-
-    Os demais campos de `TraceabilityMatrixItem` são função determinística dos
-    artefatos já produzidos e por isso são montados por
-    `traceability.construir_matriz`, não pelo LLM.
-    """
-
-    id_artefato: str = Field(
-        ...,
-        pattern=PADRAO_ID_QUALQUER,
-        description="ID do artefato ao qual esta justificativa se refere (ex: RF-005)",
-    )
-    origem: str = Field(
-        ...,
-        min_length=3,
-        description=(
-            "Trecho, seção do documento ou stakeholder que originou o artefato "
-            "na entrada. Use 'Não identificado' se a entrada não permitir determinar."
-        ),
-    )
-    motivo_inclusao: str = Field(
-        ...,
-        min_length=3,
-        description=(
-            "Justificativa extraída da entrada e do CoT para a criação do artefato. "
-            "Nunca invente: use 'Não identificado' quando não for fundamentável."
-        ),
-    )
+    markdown: str = Field(..., description="Representação completa da matriz em formato Markdown (tabela), persistida via tool_salvar_artefato_requisito com tipo RASTREABILIDADE (não mapeado explicitamente pela tool, será salvo em Outros/ do repositório estruturado)")
 
 
 class AnalystOutput(_Base):
@@ -325,20 +295,11 @@ class AnalystOutput(_Base):
         ),
     )
     glossary: List[GlossaryTerm] = Field(default_factory=list)
-    traceability_rationale: List[TraceabilityRationale] = Field(
-        default_factory=list,
+    traceability_matrix: Optional[TraceabilityMatrix] = Field(
+        None,
         description=(
-            "Uma entrada por artefato gerado, com `origem` e `motivo_inclusao`. "
-            "É a única parte da matriz que o LLM produz."
-        ),
-    )
-    traceability_matrix: TraceabilityMatrix = Field(
-        ...,
-        description=(
-            "Matriz de rastreabilidade bidirecional. Obrigatória. NÃO é escrita "
-            "pelo LLM: é montada deterministicamente por "
-            "`traceability.construir_matriz` a partir dos artefatos persistidos "
-            "e de `traceability_rationale`, e injetada antes da validação."
+            "Matriz de rastreabilidade bidirecional (forward/backward) gerada ao "
+            "final do fluxo pelo próprio agente, persistida em MD e JSON"
         ),
     )
     doubt_generated: bool = Field(False, description="Indica se houve geração de Doubt Artifact")

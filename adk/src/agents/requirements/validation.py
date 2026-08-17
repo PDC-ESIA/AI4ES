@@ -14,18 +14,15 @@ C2 — `registrar_artefato_persistido` (`after_tool_callback`)
      Essa lista é construída por Python, não pelo LLM, e serve de verdade
      de referência para a auditoria final.
 
-C3 — `traceability.gerar_matriz_rastreabilidade` (`after_agent_callback`)
-     Monta a matriz de rastreabilidade em código, a partir dos artefatos já
-     produzidos. Roda antes de C4, que injeta o resultado no JSON antes de
-     validar. É a única camada com garantia total: não depende de adesão do
-     modelo a nada.
-
-C4 — `auditar_saida_final` (`after_agent_callback`)
+C3 — `auditar_saida_final` (`after_agent_callback`)
      Valida o JSON final contra `AnalystOutput` e o cruza com C2. É a única
      camada capaz de detectar a alucinação mais grave: o agente afirmar no
      resumo que criou um artefato que nunca chegou a criar. Aqui só se
      audita e registra — nesse ponto o agente já terminou e não há como
      pedir correção.
+
+A matriz de rastreabilidade fica fora destas camadas: ela é escrita pelo
+próprio LLM e não é auditada aqui.
 """
 
 from __future__ import annotations
@@ -38,7 +35,6 @@ from typing import TYPE_CHECKING, Any
 from pydantic import ValidationError
 
 from .schemas import AnalystOutput, chave_normalizada
-from .traceability import STATE_MATRIZ
 
 if TYPE_CHECKING:
     from google.adk.agents.callback_context import CallbackContext
@@ -354,7 +350,6 @@ _CHAVES_CRUZAMENTO: tuple[str, ...] = (
     "colecoes_vazias",
     "ids_duplicados",
     "referencias_orfas",
-    "matriz_rastreabilidade",
     "declarados_sem_arquivo",
     "arquivos_sem_declaracao",
 )
@@ -445,36 +440,6 @@ def _referencias_orfas(dados: dict, ids: dict[str, str]) -> list[str]:
                 f"{origem}.hu_parent aponta para {pai}, que é um {ids[pai]} e não uma HU"
             )
 
-    matriz = dados.get("traceability_matrix")
-    if not isinstance(matriz, dict):
-        return orfas
-
-    for item in _itens(matriz, "itens"):
-        artefato = item.get("id_artefato")
-        if isinstance(artefato, str) and artefato not in ids:
-            orfas.append(
-                f"matriz: item {artefato} não corresponde a nenhum artefato declarado"
-            )
-        for chave in ("rastreabilidade_backward", "rastreabilidade_forward"):
-            for link in _itens(item, chave):
-                alvo = link.get("id_artefato_relacionado")
-                if not isinstance(alvo, str):
-                    continue
-                if alvo not in ids:
-                    orfas.append(
-                        f"matriz: {artefato} referencia {alvo}, que não foi declarado"
-                    )
-                    continue
-                tipo_alegado = link.get("tipo_artefato_relacionado")
-                if (
-                    isinstance(tipo_alegado, str)
-                    and tipo_alegado.strip()
-                    and tipo_alegado.strip() != ids[alvo]
-                ):
-                    orfas.append(
-                        f"matriz: {artefato} referencia {alvo} como "
-                        f"{tipo_alegado.strip()}, mas {alvo} foi declarado como {ids[alvo]}"
-                    )
     return orfas
 
 
@@ -493,46 +458,9 @@ def _ids_duplicados(dados: dict) -> list[str]:
     return duplicados
 
 
-def _problemas_matriz(dados: dict, ids: dict[str, str]) -> list[str]:
-    """Verifica a matriz de rastreabilidade, obrigatória segundo o prompt.
-
-    A matriz é montada por `traceability.construir_matriz` e injetada em `dados`
-    antes desta auditoria. Ausência aqui significa que o builder determinístico
-    falhou — e não que o LLM esqueceu.
-    """
-    problemas: list[str] = []
-    matriz = dados.get("traceability_matrix")
-
-    if not isinstance(matriz, dict):
-        # Só se cobra a matriz de uma rodada que de fato produziu artefatos.
-        if ids:
-            problemas.append("traceability_matrix ausente na saída final")
-        return problemas
-
-    itens = _itens(matriz, "itens")
-    if not itens:
-        problemas.append("traceability_matrix declarada sem itens")
-
-    if not str(matriz.get("markdown") or "").strip():
-        problemas.append("traceability_matrix sem a versão markdown")
-
-    # Cobertura: a matriz deve consolidar TODOS os artefatos da fase.
-    rastreados = {
-        str(item.get("id_artefato") or "").strip()
-        for item in itens
-    }
-    ausentes = sorted(id_ for id_ in ids if id_ not in rastreados)
-    if ausentes:
-        problemas.append(
-            "traceability_matrix não rastreia: " + ", ".join(ausentes)
-        )
-    return problemas
-
-
 def auditar_analise(
     raw_output: str,
     persistidos: list[dict],
-    matriz: dict | None = None,
 ) -> dict:
     """Audita a saída final do agente contra os artefatos realmente gravados.
 
@@ -549,7 +477,6 @@ def auditar_analise(
         "colecoes_vazias":         [],
         "ids_duplicados":          [],
         "referencias_orfas":       [],
-        "matriz_rastreabilidade":  [],
         "declarados_sem_arquivo":  [],
         "arquivos_sem_declaracao": [],
         "total_persistido":        len(persistidos),
@@ -579,12 +506,6 @@ def auditar_analise(
         relatorio["erros_schema"] = ["a saída final não é um objeto JSON"]
         return relatorio
 
-    # A matriz é construída deterministicamente, não escrita pelo LLM. Injetá-la
-    # antes da validação é o que permite exigi-la no schema sem transformar cada
-    # rodada num erro de campo obrigatório ausente.
-    if matriz is not None:
-        dados["traceability_matrix"] = matriz
-
     # Conformidade estrutural com o schema.
     try:
         AnalystOutput.model_validate(dados)
@@ -600,7 +521,6 @@ def auditar_analise(
     ids = _ids_declarados(dados)
     relatorio["ids_duplicados"] = _ids_duplicados(dados)
     relatorio["referencias_orfas"] = _referencias_orfas(dados, ids)
-    relatorio["matriz_rastreabilidade"] = _problemas_matriz(dados, ids)
 
     # Cruzamento com o que C2 registrou. Só compara tipos que são persistidos
     # como arquivo individual — UC e Glossário seguem outro caminho.
@@ -650,7 +570,6 @@ def auditar_saida_final(callback_context: CallbackContext) -> None:
         relatorio = auditar_analise(
             raw_output=str(state.get("analysis_result", "") or ""),
             persistidos=list(state.get(STATE_ARTEFATOS, []) or []),
-            matriz=state.get(STATE_MATRIZ),
         )
 
         # O callback dispara a cada invocação do agente. Uma passada final sem
@@ -691,7 +610,7 @@ def auditar_saida_final(callback_context: CallbackContext) -> None:
         else:
             logger.warning(
                 "[AUDITORIA] incoerências detectadas | schema=%s | "
-                "vazias=%s | duplicados=%s | órfãs=%s | matriz=%s | "
+                "vazias=%s | duplicados=%s | órfãs=%s | "
                 "sem arquivo=%s | sem JSON=%s",
                 relatorio["schema_status"],
                 *(relatorio[chave] for chave in _CHAVES_CRUZAMENTO),

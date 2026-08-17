@@ -17,7 +17,6 @@ from shared.tools import (
 )
 from shared.workspace import get_agent_workspace, get_workspace_root
 from . import prompt
-from .traceability import gerar_matriz_rastreabilidade
 from .validation import (
     auditar_saida_final,
     rebaixar_duvida_de_glossario,
@@ -157,9 +156,8 @@ agent = LlmAgent(
     before_tool_callback=[rebaixar_duvida_de_glossario, validar_antes_de_salvar],
     # C2: registra em state o que foi realmente gravado.
     after_tool_callback=registrar_artefato_persistido,
-    # C3 monta a matriz em código; C4 injeta o resultado e audita o conjunto.
-    # A ordem importa: inverter faria a auditoria rodar sem a matriz.
-    after_agent_callback=[gerar_matriz_rastreabilidade, auditar_saida_final],
+    # C4: audita a saída final contra o que foi persistido.
+    after_agent_callback=auditar_saida_final,
     # `run_slicer` e `ler_chunk` ficaram de fora: resolvem caminho contra
     # ADK_AGENT_DATA_DIR, que aponta para um layout inexistente, e devolvem
     # string de erro em vez de exceção — falha silenciosa que o agente lia como

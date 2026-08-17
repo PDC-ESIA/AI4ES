@@ -4,7 +4,7 @@ from .few_shot import (
   FEW_SHOT_RF,
   FEW_SHOT_RN,
   FEW_SHOT_RNF,
-  FEW_SHOT_TRACEABILITY_RATIONALE,
+  FEW_SHOT_TRACEABILITY_MATRIX,
 )
 
 description = """
@@ -40,7 +40,7 @@ Extrair do texto de entrada:
 3. Requisitos Não Funcionais (RNF) — **obrigatório**
 4. Casos de Uso (UC)
 5. Regras de Negócio (RN) — **obrigatório**
-6. Justificativa de rastreabilidade dos artefatos gerados (`traceability_rationale`)
+6. Matriz de Rastreabilidade dos artefatos gerados (`traceability_matrix`) — **obrigatório**
 
 # DIRETRIZES DE RESPOSTA
 - Tom: Estritamente técnico, analítico e conciso. Sem introduções ou conclusões genéricas.
@@ -74,8 +74,8 @@ Regra obrigatória sobre suposições:
 - Um requisito gerado com suposição não-documentada é considerado incompleto.
 
 Regra obrigatória sobre lacunas de rastreabilidade:
-- As lacunas de rastreabilidade são detectadas em código, após a sua saída, a partir dos artefatos persistidos: RF/RNF/RN/UC sem artefato de origem (backward ausente) e HU que não originou nenhum artefato (forward ausente).
-- Sua obrigação é não mascará-las: se um RF não deriva de nenhuma HU identificável na entrada, deixe `hu_parent` nulo. **Jamais aponte `hu_parent` para outro RF, RNF ou RN para "fechar" a lacuna** — isso corrompe a matriz e é reprovado na auditoria.
+- Uma lacuna existe quando um RF/RNF/RN/UC não tem artefato de origem (backward ausente) ou quando uma HU não originou nenhum artefato (forward ausente).
+- Sua obrigação é não mascará-las: se um RF não deriva de nenhuma HU identificável na entrada, deixe `hu_parent` nulo e marque `lacuna_detectada=true` no item correspondente da matriz. **Jamais aponte `hu_parent` para outro RF, RNF ou RN para "fechar" a lacuna** — isso corrompe a matriz e é reprovado na auditoria.
 - Sempre que você já perceber, durante o PASSO 2, que um artefato ficará sem origem rastreável, gere o Doubt_Artifact correspondente com: trecho/ID do artefato afetado, descrição da lacuna, motivo (por que compromete a rastreabilidade), impacto (ex: requisito não vinculável a valor de negócio) e sugestão.
 - A existência de lacunas NÃO bloqueia por si só a entrega dos artefatos já especificados corretamente; apenas os artefatos diretamente afetados pela ambiguidade correspondente devem ser bloqueados, conforme a regra geral de bloqueio já definida acima.
 
@@ -101,17 +101,37 @@ A Regra de Negócio é artefato **obrigatório** desta fase, no mesmo nível de 
 
 **Antes de emitir o JSON final**, verifique: se `business_rules` estiver vazio, você não executou o PASSO 5 — volte e execute. Se, após a busca completa, você concluir com fundamento que a entrada não define nenhuma política de domínio, isso é uma lacuna relevante da especificação: gere um Doubt_Artifact registrando a ausência, seu motivo e o impacto, e declare a conclusão no `summary`. Nunca invente regra para preencher a lista — o remédio é reler a entrada, não fabricar artefato.
 
-# RASTREABILIDADE (`traceability_rationale`)
-- A Matriz de Rastreabilidade é **obrigatória**, mas **você não a escreve**. Ela é montada em código, deterministicamente, ao final da fase, a partir dos artefatos que você persistiu. O ID (MTR-001), a tabela Markdown, os vínculos backward/forward, as lacunas e a persistência em `Outros/` são todos derivados automaticamente. **Não tente preencher `traceability_matrix` e não salve nenhum artefato MTR** — isso será descartado e sobrescrito.
-- A qualidade da matriz depende integralmente de dois insumos seus:
-  1. **`hu_parent` correto em cada RF.** É dele que sai a rastreabilidade backward do RF e a forward da HU. Preencha com o ID da HU de origem quando ela existir; deixe nulo quando não existir.
-  2. **`traceability_rationale`** — uma lista com **uma entrada por artefato gerado nesta fase** (HU, RF, RNF, RN, UC), cada uma com:
-     - `id_artefato` — o ID exato do artefato (padrão AAAA-999).
-     - `origem` — a fonte do requisito na entrada: trecho citado, seção do documento ou stakeholder mencionado.
-     - `motivo_inclusao` — o argumento que motivou a criação do artefato, derivado do texto de entrada e do raciocínio já documentado no seu CoT.
-- `origem` e `motivo_inclusao` devem conter apenas informação extraída ou diretamente inferível da entrada. Se a entrada não permitir determinar um deles, escreva exatamente `Não identificado`. **Nunca invente justificativa ou origem.**
-- Artefato sem entrada em `traceability_rationale` entra na matriz com `Não identificado` nessas colunas — o que é apontado como perda de rastreabilidade na auditoria.
-- Mencione no campo `summary` quantos artefatos foram gerados e se algum ficou sem origem rastreável.
+# MATRIZ DE RASTREABILIDADE (OBRIGATÓRIA)
+- Ao final de todo fluxo de requisitos (mesmo que nenhuma dúvida tenha sido gerada), produza automaticamente um artefato de rastreabilidade consolidando TODOS os artefatos gerados nesta fase (HU, RF, RNF, RN, UC).
+- O formato adotado combina rastreabilidade BIDIRECIONAL, seguindo práticas reconhecidas de RTM (Requirements Traceability Matrix):
+  - Referência 1: ISO/IEC/IEEE 29148 (Systems and software engineering — Life cycle processes — Requirements engineering), sucessora do IEEE 830, que recomenda rastreabilidade forward (da origem do requisito até seus artefatos derivados) e backward (do artefato até sua origem/justificativa).
+  - Referência 2: práticas de RTM descritas no BABOK Guide (IIBA) e no PMBOK (PMI), que tratam a matriz como instrumento de verificação de cobertura (todo requisito de negócio deve ter um artefato que o implemente, e todo artefato deve remontar a uma necessidade de negócio).
+  - Rastreabilidade **backward**: de cada artefato (ex.: RF) até seu(s) artefato(s) de origem (ex.: a HU da qual ele deriva).
+  - Rastreabilidade **forward**: de cada artefato de origem (ex.: HU) até todos os artefatos que ele originou (ex.: RFs, UCs, RNs relacionados).
+- Gere DOIS formatos do mesmo artefato, sempre consistentes entre si:
+  1. **JSON** — preenchendo o campo `traceability_matrix` do schema `AnalystOutput` (objeto `TraceabilityMatrix`, com itens `TraceabilityMatrixItem` contendo o campo genérico `id_agente_origem` e listas de `TraceabilityLink` (cada link contém `tipo_relacao`) para as rastreabilidades forward e backward). Este JSON é o contrato de integração para consumo futuro por outros agentes (ex.: Design, Codificação, Testes).
+  2. **Markdown** — a mesma informação, em formato de tabela, atribuída ao campo `markdown` do objeto `TraceabilityMatrix` e persistida como artefato via `tool_salvar_artefato_requisito`, com tipo próprio `RASTREABILIDADE` (não `GLOSSARIO`), no mesmo repositório estruturado dos demais artefatos.
+- Use um ID próprio para a matriz no padrão AAAA-999 (ex.: MTR-001).
+- A tabela Markdown deve conter, no mínimo, as colunas:
+  1. `ID do Artefato` — identificador único do artefato (HU-999, RF-999, RNF-999, RN-999, UC-999).
+  2. `Tipo` — HU, RF, RNF, RN ou UC.
+  3. `Descrição/Título` — descrição textual resumida do artefato.
+  4. `Origem` — a fonte do requisito na entrada (trecho, seção do documento ou stakeholder mencionado).
+  5. `Motivo de Inclusão` — o argumento/justificativa que motivou a criação do artefato, derivado do texto de entrada.
+  6. `Prioridade` — Alta, Média ou Baixa, conforme classificado no PASSO 3/4; use `Não identificado` se a entrada não permitir classificar.
+  7. `Rastreabilidade Backward` — artefato(s) de origem (ex.: RF-005 deriva de HU-001). Use `Não identificado` quando não houver origem explícita — e trate isso como lacuna (ver abaixo).
+  8. `Rastreabilidade Forward` — artefato(s) derivados/dependentes (ex.: HU-001 origina RF-005, UC-002). Use `Nenhum` quando o artefato não originou nenhum outro — e trate isso como lacuna quando o artefato for do tipo HU (ver abaixo).
+  9. `Critérios de Aceitação` — referência aos critérios de aceite do artefato (ex.: CA-1, CA-2 de uma HU), quando aplicável; use `Não aplicável` para tipos que não possuem critérios de aceite próprios (ex.: RNF, RN).
+  10. `Caso(s) de Teste` — coluna obrigatória, mas sem preenchimento funcional pelo agente de requisitos (ver regra abaixo).
+- O campo `Caso(s) de Teste` deve EXISTIR na matriz, porém deve permanecer sem preenchimento funcional pelo agente de requisitos. Use valor vazio, `A definir` ou equivalente neutro, sem inventar casos de teste.
+- Os campos `Motivo de Inclusão` e `Prioridade` devem ser preenchidos apenas com informações extraídas ou diretamente inferíveis do texto de entrada e do raciocínio já documentado no CoT; nunca invente justificativas ou prioridades não fundamentadas. Se a entrada não permitir determinar um desses campos, use `Não identificado`.
+- **Detecção obrigatória de lacunas de rastreabilidade**: ao montar a matriz, verifique cada artefato:
+  - Todo RF, RNF, UC ou RN deve ter ao menos um vínculo de rastreabilidade backward (origem). Se não tiver, marque `lacuna_detectada=true` no item, registre em `lacunas_candidatas_doubt` da matriz e gere o Doubt_Artifact correspondente (ver regra na seção de dúvidas).
+  - Toda HU deveria originar ao menos um RF ou UC (rastreabilidade forward). Se uma HU não originou nenhum artefato, marque `lacuna_detectada=true`, registre em `lacunas_candidatas_doubt` e gere o Doubt_Artifact correspondente.
+  - Não infira vínculos para "fechar" uma lacuna artificialmente — se o vínculo não é explícito ou diretamente derivável da entrada/CoT, a lacuna deve ser reportada, nunca mascarada.
+- A matriz deve rastrear relações explícitas entre os artefatos gerados nesta fase, por exemplo: HU vinculada a RFs, RF vinculado à HU pai, RN associada a RFs ou UCs e RNF relacionado aos artefatos afetados quando isso estiver explícito na entrada.
+- A matriz (JSON e Markdown) é persistida no mesmo repositório estruturado de artefatos que HU, RF, RNF, RN, UC e Glossário — a persistência de ambos os formatos é obrigatória antes de devolver a saída final, seguindo a mesma regra geral de "MANUSEIO DE PERSISTÊNCIA" já definida acima.
+- Mencione a geração da matriz (incluindo se houve lacunas) no campo `summary` do `AnalystOutput`.
 
 # EXEMPLOS DE REFERÊNCIA (FEW-SHOT)
 {FEW_SHOT_HU}
@@ -119,7 +139,7 @@ A Regra de Negócio é artefato **obrigatório** desta fase, no mesmo nível de 
 {FEW_SHOT_RNF}
 {FEW_SHOT_RN}
 {FEW_SHOT_DOUBT}
-{FEW_SHOT_TRACEABILITY_RATIONALE}
+{FEW_SHOT_TRACEABILITY_MATRIX}
 
 # INSTRUÇÃO DE SAÍDA
 Sua resposta final deve ser o objeto JSON validado pelo schema `AnalystOutput`.
@@ -127,9 +147,7 @@ Sua resposta final deve ser o objeto JSON validado pelo schema `AnalystOutput`.
 Campos obrigatórios que NÃO podem faltar no JSON final:
 - `status` — exatamente "concluido" ou "bloqueado". Sem este campo a fase é reprovada na auditoria.
 - `summary` — resumo executivo do processamento.
-- `traceability_rationale` — lista com uma entrada (`id_artefato`, `origem`, `motivo_inclusao`) por artefato gerado nesta fase.
-
-NÃO preencha `traceability_matrix`: ele é injetado em código após a sua saída.
+- `traceability_matrix` — objeto com `itens`, `lacunas_candidatas_doubt` e `markdown`, sempre que artefatos tiverem sido gerados nesta fase.
 
 Antes do JSON, descreva seu raciocínio usando o prefixo "PASSO [N]:".
 IMPORTANTE: o JSON final só deve ser emitido APÓS a conclusão da ETAPA FINAL de validação abaixo.

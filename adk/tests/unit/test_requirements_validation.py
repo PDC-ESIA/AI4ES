@@ -3,11 +3,9 @@
 Cobre:
 - C1: rejeição de artefato Markdown malformado antes da gravação
 - C2: registro determinístico do que foi realmente gravado
-- C4: auditoria cruzando o JSON declarado com os arquivos gravados
+- C3: auditoria cruzando o JSON declarado com os arquivos gravados
 
-A matriz de rastreabilidade (C3) tem suíte própria em
-`test_requirements_traceability.py`; aqui ela entra apenas como insumo
-injetado na auditoria, exatamente como o callback faz em produção.
+A matriz de rastreabilidade é escrita pelo próprio LLM e não é auditada aqui.
 """
 
 import json
@@ -15,7 +13,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.agents.requirements.traceability import STATE_MATRIZ, construir_matriz
 from src.agents.requirements.validation import (
     STATE_ARTEFATOS,
     STATE_AUDITORIA,
@@ -252,23 +249,10 @@ def _saida(**overrides) -> str:
         "business_rules": [{
             "id": "RN-001", "description": "Aceitar exclusivamente arquivos .py.",
         }],
-        "traceability_rationale": [
-            {
-                "id_artefato": id_artefato,
-                "origem": "Descrição inicial do professor",
-                "motivo_inclusao": "Necessidade explicitada no texto de entrada",
-            }
-            for id_artefato in ("HU-001", "RF-005", "RNF-001", "RN-001")
-        ],
         "summary": "Resumo executivo do processamento realizado.",
     }
     dados.update(overrides)
     return "Raciocínio do agente.\n```json\n" + json.dumps(dados, ensure_ascii=False) + "\n```"
-
-
-def _matriz(saida: str | None = None) -> dict | None:
-    """Reproduz o que o callback C3 entrega à auditoria."""
-    return construir_matriz(json.loads(extrair_bloco_json(saida or _saida())))
 
 
 PERSISTIDOS = [
@@ -281,7 +265,7 @@ PERSISTIDOS = [
 
 def test_saida_coerente():
     saida = _saida()
-    relatorio = auditar_analise(saida, PERSISTIDOS, matriz=_matriz(saida))
+    relatorio = auditar_analise(saida, PERSISTIDOS)
     assert relatorio["schema_status"] == "ok"
     assert relatorio["coerente"] is True
 
@@ -354,34 +338,6 @@ def test_business_rules_vazio_reprova_no_schema():
     assert relatorio["coerente"] is False
 
 
-def test_matriz_ausente_reprova_a_fase():
-    """A matriz é obrigatória: ausência = o builder determinístico falhou."""
-    relatorio = auditar_analise(_saida(), PERSISTIDOS, matriz=None)
-    assert relatorio["schema_status"] == "validation_error"
-    assert any("ausente" in p for p in relatorio["matriz_rastreabilidade"])
-    assert relatorio["coerente"] is False
-
-
-def test_matriz_que_nao_cobre_todos_os_artefatos_e_detectada():
-    parcial = _matriz()
-    parcial["itens"] = [i for i in parcial["itens"] if i["id_artefato"] == "RF-005"]
-    relatorio = auditar_analise(_saida(), PERSISTIDOS, matriz=parcial)
-    assert any(
-        "não rastreia" in p and "HU-001" in p
-        for p in relatorio["matriz_rastreabilidade"]
-    )
-    assert relatorio["coerente"] is False
-
-
-def test_matriz_sem_itens_ou_sem_markdown_e_detectada():
-    vazia = {"id": "MTR-001", "itens": [], "lacunas_candidatas_doubt": [], "markdown": ""}
-    problemas = auditar_analise(_saida(), PERSISTIDOS, matriz=vazia)[
-        "matriz_rastreabilidade"
-    ]
-    assert any("sem itens" in p for p in problemas)
-    assert any("markdown" in p for p in problemas)
-
-
 def test_campo_inventado_e_reprovado_pelo_schema():
     saida = _saida(business_rules=[{
         "id": "RN-001", "description": "Aceitar exclusivamente arquivos .py.",
@@ -410,7 +366,6 @@ def test_auditar_saida_final_grava_relatorio_em_state():
     ctx = _ctx({
         "analysis_result": saida,
         STATE_ARTEFATOS: PERSISTIDOS,
-        STATE_MATRIZ: _matriz(saida),
     })
     assert auditar_saida_final(callback_context=ctx) is None
     assert ctx.state[STATE_AUDITORIA]["coerente"] is True
@@ -512,7 +467,6 @@ def test_log_de_incoerencia_real_exibe_cruzamentos(caplog):
     ctx = _ctx({
         "analysis_result": saida,
         STATE_ARTEFATOS: PERSISTIDOS,
-        STATE_MATRIZ: _matriz(saida),
     })
     with caplog.at_level("WARNING"):
         auditar_saida_final(callback_context=ctx)
