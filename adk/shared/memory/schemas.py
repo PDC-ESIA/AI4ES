@@ -143,7 +143,9 @@ def normalizar_titulo(titulo: str) -> str:
 
     Casefold + colapso de espaços + remoção de pontuação de borda. É o mesmo
     grau de normalização do dedup por título da KB anterior, aqui usado só para
-    gerar o `id` — a deduplicação real é semântica (ver `store.py`).
+    gerar o `id` — e é por esse `id` que o banco deduplica. Consolidação
+    semântica (fusão por embedding) NÃO existe nesta PoC e está declarada como
+    evolução posterior: ver a docstring de `MemoryStore`.
     """
     t = re.sub(r"\s+", " ", titulo or "").strip().casefold()
     return t.strip(" .:;-–—\"'`")
