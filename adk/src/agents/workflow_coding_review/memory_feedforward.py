@@ -80,10 +80,11 @@ class _MemoryProvisioner(BaseAgent):
         memory_context = ""
         try:
             memoria = get_memory()
+            termos_busca = [t for t in tech_stack if isinstance(t, str) and t.strip()]
             resultado = await memoria.search(
-                query=" ".join(tech_stack) or chave,
+                query=" ".join(termos_busca) or chave,
                 filters={"agent_id": chave},
-                limit=_TOP_K,
+                top_k=_TOP_K,
             )
             memory_context = _formatar_memory_context(resultado.get("results", []))
         except Exception:

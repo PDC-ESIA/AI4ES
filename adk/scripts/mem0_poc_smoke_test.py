@@ -47,7 +47,7 @@ async def _run() -> int:
         resultado_busca = await memoria.search(
             query="dependência ausente requests",
             filters={"agent_id": _STACK_KEY},
-            limit=5,
+            top_k=5,
         )
         memorias = resultado_busca.get("results", [])
         if not memorias:
