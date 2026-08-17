@@ -156,7 +156,9 @@ def _pre_filtrar(
     stack = tech_stack.strip().casefold()
     if stack:
         itens = [
-            i for i in itens if not i.tech_stack.strip() or i.tech_stack.casefold() == stack
+            i
+            for i in itens
+            if not i.tech_stack.strip() or i.tech_stack.strip().casefold() == stack
         ]
     else:
         genericos = [i for i in itens if not i.tech_stack.strip()]

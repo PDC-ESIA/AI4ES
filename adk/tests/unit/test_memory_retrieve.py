@@ -114,6 +114,20 @@ def test_item_generico_passa_em_qualquer_stack(store):
     assert titulos == ["Genérica"]
 
 
+def test_item_com_stack_espacada_continua_recuperavel(store):
+    """Banco editado à mão é o caso real: `MemoryItem` não normaliza tech_stack.
+
+    O único caminho de escrita do pipeline passa por `_normalizar_stack`, que já
+    faz strip — mas o `MemoryStore` lê o JSONL de `~/.ai4es/memory/` direto para
+    o schema, e semear ou depurar o banco à mão é operação normal na PoC.
+    """
+    store.append([_item("Semeada", stack="  python-fastapi  ")])
+
+    titulos = [i.title for i in recuperar("x", tech_stack="python-fastapi", store=store)]
+
+    assert titulos == ["Semeada"]
+
+
 def test_stack_desconhecida_retem_itens_com_escopo(store):
     """Sem saber a stack da run, o filtro fica MAIS restritivo, não menos."""
     store.append([_item("Com escopo"), _item("Genérica", stack="")])
