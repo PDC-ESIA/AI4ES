@@ -31,7 +31,6 @@ PADRAO_ID_RF = r"^RF-\d{3}$"
 PADRAO_ID_RNF = r"^RNF-\d{3}$"
 PADRAO_ID_RN = r"^RN-\d{3}$"
 PADRAO_ID_UC = r"^UC-\d{3}$"
-PADRAO_ID_MATRIZ = r"^[A-Z]{2,4}-\d{3}$"
 PADRAO_ID_QUALQUER = r"^(HU|RF|RNF|RN|UC)-\d{3}$"
 
 Prioridade = Literal["Alta", "Média", "Baixa", "Não identificado"]
@@ -51,21 +50,6 @@ CategoriaRNF = Literal[
     "Implantação",
     "Adequação Funcional",
 ]
-
-# Vocabulário de relações da matriz de rastreabilidade. Os valores são
-# emitidos por `traceability.py`, não pelo LLM; a lista permanece aberta a
-# `sustentado_por` e afins para não reprovar matrizes de execuções anteriores.
-TipoRelacao = Literal[
-    "deriva_de",
-    "origina",
-    "depende_de",
-    "sustenta",
-    "sustentado_por",
-    "relaciona_com",
-    "restringe",
-]
-
-TipoArtefato = Literal["HU", "RF", "RNF", "RN", "UC"]
 
 StatusExecucao = Literal["concluido", "bloqueado"]
 
@@ -116,34 +100,11 @@ _MAPA_CATEGORIA = {
     "adequacao funcional": "Adequação Funcional",
 }
 
-_MAPA_RELACAO = {
-    "deriva de": "deriva_de",
-    "origina": "origina",
-    "depende de": "depende_de",
-    "sustenta": "sustenta",
-    "sustentado por": "sustentado_por",
-    "relaciona com": "relaciona_com",
-    "restringe": "restringe",
-}
-
 _MAPA_STATUS = {
     "concluido": "concluido",
     "bloqueado": "bloqueado",
     "completo": "concluido",
     "finalizado": "concluido",
-}
-
-_MAPA_TIPO = {
-    "hu": "HU",
-    "rf": "RF",
-    "rnf": "RNF",
-    "rn": "RN",
-    "uc": "UC",
-    "historia de usuario": "HU",
-    "requisito funcional": "RF",
-    "requisito nao funcional": "RNF",
-    "regra de negocio": "RN",
-    "caso de uso": "UC",
 }
 
 
@@ -219,36 +180,29 @@ class UseCase(_Base):
     post_conditions: List[str] = Field(default_factory=list, description="Estados finais esperados")
 
 
-class TraceabilityLink(_Base):
-    id_artefato_relacionado: str = Field(
-        ...,
-        pattern=PADRAO_ID_QUALQUER,
-        description="ID do artefato relacionado (ex: RF-005, HU-001, UC-002)",
-    )
-    tipo_artefato_relacionado: TipoArtefato = Field(
-        ..., description="Tipo do artefato relacionado: HU, RF, RNF, RN ou UC"
-    )
-    tipo_relacao: TipoRelacao = Field(
+# A matriz é escrita livremente pelo LLM: nenhum campo abaixo é restringido, para
+# não reprovar a fase inteira por um vocabulário que o modelo enriqueceu.
+class TraceabilityLink(BaseModel):
+    id_artefato_relacionado: str = Field(..., description="ID do artefato relacionado (ex: RF-005, HU-001, UC-002)")
+    tipo_artefato_relacionado: str = Field(..., description="Tipo do artefato relacionado: HU, RF, RNF, RN ou UC")
+    tipo_relacao: str = Field(
         ...,
         description=(
-            "Natureza do relacionamento entre os dois artefatos. Valores aceitos: "
+            "Natureza do relacionamento entre os dois artefatos. Valores esperados: "
             "'deriva_de' (rastreabilidade backward, ex: RF deriva de HU), "
             "'origina' (rastreabilidade forward, ex: HU origina RF/UC), "
-            "'depende_de', 'sustenta', 'sustentado_por', 'relaciona_com', 'restringe'."
+            "'depende_de', 'sustenta', 'relaciona_com', 'restringe'."
         ),
     )
 
-    _norm_tipo = field_validator("tipo_artefato_relacionado", mode="before")(_normalizador(_MAPA_TIPO))
-    _norm_relacao = field_validator("tipo_relacao", mode="before")(_normalizador(_MAPA_RELACAO))
 
-
-class TraceabilityMatrixItem(_Base):
-    id_artefato: str = Field(..., pattern=PADRAO_ID_QUALQUER, description="ID único do artefato (HU-999, RF-999, RNF-999, RN-999, UC-999)")
-    tipo: TipoArtefato = Field(..., description="Tipo do artefato: HU, RF, RNF, RN ou UC")
-    descricao: str = Field(..., min_length=3, description="Descrição/título resumido do artefato")
+class TraceabilityMatrixItem(BaseModel):
+    id_artefato: str = Field(..., description="ID único do artefato (HU-999, RF-999, RNF-999, RN-999, UC-999)")
+    tipo: str = Field(..., description="Tipo do artefato: HU, RF, RNF, RN ou UC")
+    descricao: str = Field(..., description="Descrição/título resumido do artefato")
     origem: str = Field(..., description="Trecho, seção do documento ou stakeholder que originou o artefato na entrada")
     motivo_inclusao: str = Field(..., description="Justificativa extraída/inferível da entrada e do CoT para a criação do artefato, ou 'Não identificado'")
-    prioridade: Prioridade = Field(..., description="Alta, Média, Baixa ou 'Não identificado'")
+    prioridade: str = Field(..., description="Alta, Média, Baixa ou 'Não identificado'")
     rastreabilidade_backward: List[TraceabilityLink] = Field(
         default_factory=list,
         description="Artefatos de origem deste artefato (ex: de qual HU este RF/UC/RN deriva). Vazio se não houver origem explícita."
@@ -263,12 +217,9 @@ class TraceabilityMatrixItem(_Base):
     lacuna_detectada: bool = Field(default=False, description="True se este artefato apresenta lacuna de rastreabilidade (ex: RF sem HU de origem, HU sem RF associado)")
     lacuna_descricao: Optional[str] = Field(None, description="Descrição da lacuna encontrada, quando lacuna_detectada=True")
 
-    _norm_tipo = field_validator("tipo", mode="before")(_normalizador(_MAPA_TIPO))
-    _norm_prioridade = field_validator("prioridade", mode="before")(_normalizador(_MAPA_PRIORIDADE))
 
-
-class TraceabilityMatrix(_Base):
-    id: str = Field(..., pattern=PADRAO_ID_MATRIZ, description="ID da matriz (padrão PREFIXO-999, ex: MTR-001)")
+class TraceabilityMatrix(BaseModel):
+    id: str = Field(..., description="ID da matriz (padrão PREFIXO-999, ex: MTR-001)")
     itens: List[TraceabilityMatrixItem] = Field(default_factory=list, description="Linhas da matriz, uma por artefato rastreado")
     lacunas_candidatas_doubt: List[str] = Field(
         default_factory=list,
