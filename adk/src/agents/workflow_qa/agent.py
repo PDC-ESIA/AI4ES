@@ -11,9 +11,11 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
+from src.agents.qa_agent.subagents.integration_tests_agent.agent import agent as integration_tests_agent
 from src.agents.qa_agent.subagents.code_fix_agent.agent import agent as code_fix_agent
 from src.agents.qa_agent.subagents.receive_requirements import agent as receber_requisitos_agent
 from shared.tools.hitl_tool import aguardar_aprovacao_humana
+from shared.tools.integration_pytest_runner import executar_testes_de_integracao
 from shared.tools.pytest_runner import executar_pytest_tool
 from shared.tools.doubt_tool import DoubtArtifactGenerator
 from src.agents.workflow_qa.tools.planner_wrapper import invocar_planejamento_qa
@@ -116,12 +118,12 @@ FLUXO OBRIGATÓRIO:
                                   solicitante; não gere testes.
 
 2. GERAÇÃO DE TESTES
-   Encaminhe o(s) artefato(s) ao receber_requisitos_agent.
-   Esse subagente:
-   - normaliza a entrada em JSON com id_artefato, tipo, conteúdo, módulo, criticidade;
-   - inclui anexos no campo `arquivos_apoio` quando houver código-fonte;
-   - gera arquivos pytest em artefactsTests/<slug>/test_<slug>.py;
-   - retorna {status, resumo, detalhes} com sucessos, bloqueados e falhas.
+   Encaminhe o(s) artefato(s) ao receber_requisitos_agent e também ao integration_tests_agent.
+   Esses subagentes:
+   - normalizam a entrada em JSON com id_artefato, tipo, conteúdo, módulo, criticidade;
+   - incluem anexos no campo `arquivos_apoio` quando houver código-fonte;
+   - geram arquivos pytest em artefactsTests/<slug>/test_<slug>.py;
+   - retornam {status, resumo, detalhes} com sucessos, bloqueados e falhas.
    → Para cada artefato bloqueado (status "bloqueado"): registre o Doubt_Artifact
      gerado e prossiga com os demais.
 
@@ -168,12 +170,23 @@ agent = LlmAgent(
         "requisitos, execução e autocorreção. Compõe action_planner, "
         "receber_requisitos e code_fix sobre as tools do qa_agent."
     ),
-    instruction=_INSTRUCTION,
+    instruction=_INSTRUCTION + """
+
+EXECUÇÃO OBRIGATÓRIA DE TESTES DE INTEGRAÇÃO:
+Após chamar integration_tests_agent, leia `detalhes` do resultado e selecione
+o campo `arquivo_gerado` de cada item com status `sucesso`. Chame
+`executar_testes_de_integracao(arquivos_gerados=<lista desses caminhos>)`.
+Essa ferramenta executa cada arquivo de integration_tests com pytest e retorna
+um resumo consolidado e os resultados individuais completos. Analise esses
+resultados antes da resposta final ou de qualquer encaminhamento ao code_fix.
+""",
     tools=[
         FunctionTool(invocar_planejamento_qa),
         AgentTool(agent=receber_requisitos_agent),
+        AgentTool(agent=integration_tests_agent),
         AgentTool(agent=code_fix_agent),
         FunctionTool(executar_pytest_tool),
+        FunctionTool(executar_testes_de_integracao),
         FunctionTool(DoubtArtifactGenerator.generate),
         LongRunningFunctionTool(aguardar_aprovacao_humana),
     ],
