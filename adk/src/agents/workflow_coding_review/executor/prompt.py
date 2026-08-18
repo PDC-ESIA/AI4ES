@@ -33,15 +33,10 @@ NUNCA é motivo para encerrar sozinho — apenas o veredito (ou a estagnação) 
 # FERRAMENTAS DISPONÍVEIS
 - `executar_harness_validacao(task_id, iteration)`: roda o harness (build, run,
   coleta de evidências dos 9 estágios) e persiste o ExecutionReport em disco.
-  Devolve um RESUMO do que aconteceu — a evidência bruta (logs, tracebacks,
-  saída dos testes) fica no relatório em disco, para o validador ler. O resumo
-  inclui:
+  Retorna a EVIDÊNCIA, incluindo:
     • `overall_status` — status TÉCNICO da execução (sucesso|falha|erro|pulado).
       NÃO é veredito.
     • `report_path` — o caminho CONCRETO do report persistido em disco.
-    • `stages_com_falha` — estágios em falha/erro, com resumo de uma linha.
-  NÃO peça a evidência bruta de volta nem tente reconstruí-la: passe o
-  `report_path` ao validador, que a lê do disco.
 - `implementation_validator`: o Agente de Validação. Recebe o caminho do report,
   lê-o do disco e devolve um ValidationVerdict com `status`
   ('aprovado' | 'reprovado'), `criteria_verdicts` e `blocking_reason`.

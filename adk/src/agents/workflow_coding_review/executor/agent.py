@@ -47,7 +47,6 @@ from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
 from shared.execution.completude import verificar_completude
-from shared.tools.coding_tools.context_engineer_tools import resolver_task
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
 from shared.workspace import get_agent_workspace
 from src.agents.implementation_validator import root_agent as implementation_validator
@@ -110,45 +109,24 @@ def _carregar_execution_report(callback_context) -> dict:
         return {}
 
 
-# Chave do contador de recusas BRANDAS na task corrente. Zerada pelo
-# TaskIterator entre tasks (ver `_CHAVES_CICLO_REMOVIDAS`) — o teto vale por
-# task, não pela run.
-CHAVE_BLOQUEIOS_PREFLIGHT = "preflight_bloqueios_brandos"
-
-# Teto de recusas BRANDAS por task. A camada branda é indício (contratos são
-# escritos por LLM e divergem de nomenclatura na prática), então precisa ceder:
-# sem teto, uma divergência de nome bloquearia a task até esgotar o orçamento —
-# a correção seria pior que o problema. A camada DURA não tem teto: nela o
-# harness falharia no estágio 1 de qualquer forma.
-_MAX_BLOQUEIOS_BRANDOS = 2
-
-# Quantos arquivos do workspace o relatório de recusa lista (evidência para o
-# coder e para quem lê o log; não precisa ser a árvore inteira).
-_MAX_ARQUIVOS_NA_RECUSA = 40
-
 _CABECALHO_RECUSA = (
     "IMPLEMENTAÇÃO INCOMPLETA — o harness NÃO foi executado (não há o que "
     "validar ainda)."
 )
 
 
-def _mensagem_de_recusa(motivos, arquivos) -> str:
+def _mensagem_de_recusa(bloqueios, arquivos) -> str:
     """Relatório determinístico devolvido ao coder no lugar do ErrorReport.
 
     NÃO pode começar com o marcador de estagnação (`STATUS: bloqueado`): o
     TaskIterator classificaria a task como encerrada por estagnação, e isto é o
     oposto — é um pedido para continuar implementando.
     """
-    listados = list(arquivos[:_MAX_ARQUIVOS_NA_RECUSA])
-    excedente = len(arquivos) - len(listados)
-    inventario = "\n".join(f"- {a}" for a in listados) or "- (workspace vazio)"
-    if excedente > 0:
-        inventario += f"\n- ...[+{excedente} arquivo(s)]"
-
+    inventario = "\n".join(f"- {a}" for a in arquivos) or "- (workspace vazio)"
     return (
         f"{_CABECALHO_RECUSA}\n\n"
         "Faltando:\n"
-        + "\n".join(f"- {motivo}" for motivo in motivos)
+        + "\n".join(f"- {bloqueio}" for bloqueio in bloqueios)
         + "\n\nArquivos hoje no seu workspace:\n"
         + inventario
         + "\n\nComplete a implementação AGORA, no mesmo turno: crie os arquivos "
@@ -166,6 +144,11 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
     do sandbox. Numa run real, ~13 das 37 execuções do harness aconteceram sobre
     um workspace com um arquivo novo ou nenhum.
 
+    A checagem cobre apenas condições que o harness TAMBÉM reprovaria no estágio
+    1 — sem `run.json`, manifesto incoerente, nenhum código. Como falso positivo
+    é impossível nesse conjunto, o gate não precisa de teto de tentativas: nunca
+    trava uma implementação legítima.
+
     ATENÇÃO — `state["execution_result"]` é escrito AQUI, na mão: quando um
     `before_agent_callback` devolve Content, o ADK marca `end_invocation=True` e
     retorna antes do `_run_async_impl`, que é onde o `output_key` seria gravado
@@ -177,44 +160,17 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
         None para deixar o executor rodar; o Content da recusa caso contrário.
     """
     state = callback_context.state
-    task = resolver_task(state, state.get("task_id"))
-    contrato = (task or {}).get("contract")
-    outputs = contrato.get("outputs") if isinstance(contrato, dict) else None
-
-    resultado = verificar_completude(
-        get_agent_workspace("cr_coder"), outputs or ()
-    )
+    resultado = verificar_completude(get_agent_workspace("cr_coder"))
     if resultado.completo:
         return None
 
-    if resultado.bloqueios_duros:
-        logger.warning(
-            "[PREFLIGHT] Execução recusada para %s: %s",
-            state.get("task_id"),
-            "; ".join(resultado.bloqueios_duros),
-        )
-    else:
-        usados = state.get(CHAVE_BLOQUEIOS_PREFLIGHT) or 0
-        if not isinstance(usados, int) or usados >= _MAX_BLOQUEIOS_BRANDOS:
-            # Teto atingido: o contrato pode simplesmente divergir na
-            # nomenclatura. Deixa o harness rodar e o validador decidir.
-            logger.info(
-                "[PREFLIGHT] Pendências brandas persistem em %s após %s "
-                "recusa(s); liberando a execução.",
-                state.get("task_id"),
-                usados,
-            )
-            return None
-        state[CHAVE_BLOQUEIOS_PREFLIGHT] = usados + 1
-        logger.info(
-            "[PREFLIGHT] Execução adiada para %s (%d/%d): %s",
-            state.get("task_id"),
-            usados + 1,
-            _MAX_BLOQUEIOS_BRANDOS,
-            "; ".join(resultado.pendencias_brandas),
-        )
+    logger.warning(
+        "[PREFLIGHT] Execução recusada para %s: %s",
+        state.get("task_id"),
+        "; ".join(resultado.bloqueios),
+    )
 
-    mensagem = _mensagem_de_recusa(resultado.motivos, resultado.arquivos)
+    mensagem = _mensagem_de_recusa(resultado.bloqueios, resultado.arquivos)
     state["execution_result"] = mensagem
     return types.Content(role="model", parts=[types.Part(text=mensagem)])
 

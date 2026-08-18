@@ -12,27 +12,20 @@ Este módulo responde, em Python puro, a uma pergunta anterior à do harness:
 nem critério de aceite — isso é do validador — e não descreve execução — isso é
 do harness. Só recusa o que não tem como rodar.
 
-Duas camadas, por confiabilidade da evidência:
-
-- **dura**: condições que o harness também reprovaria no estágio 1 (sem
-  `run.json`, manifesto incoerente, nenhum código). Falso positivo é impossível
-  por construção: são exatamente as pré-condições da execução.
-- **branda**: arquivos declarados em `contract.outputs` que não aparecem no
-  workspace. É indício, não prova — contratos são escritos por LLM e os
-  caminhos divergem na prática (`models/ensaio.py` declarado,
-  `app/models/ensaio.py` criado). Por isso a comparação é por NOME de arquivo,
-  e por isso quem consome esta camada deve limitar quantas vezes a respeita.
+Escopo deliberadamente restrito: apenas condições que o harness TAMBÉM
+reprovaria no estágio 1 (sem `run.json`, manifesto incoerente, nenhum código).
+Falso positivo é impossível por construção — são exatamente as pré-condições da
+execução —, e por isso a checagem não precisa de teto de tentativas nem de
+nenhum parâmetro de tolerância.
 """
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from shared.execution.manifest import ManifestError, load_manifest
-from shared.tools.coding_tools.filesystem_coding import arquivos_do_workspace
+from shared.tools.coding_tools.filesystem_coding import DIRETORIOS_PROIBIDOS
 
 _MANIFEST_FILENAME = "run.json"
 
@@ -69,27 +62,31 @@ _ARQUIVOS_META = frozenset(
     }
 )
 
-# Entradas de `contract.outputs` que não descrevem um arquivo verificável:
-# diretórios de runtime (`ensaios/<id>/fotos/`) e caminhos com placeholder.
-_PLACEHOLDER_RE = re.compile(r"[<>{}*]")
-
 
 @dataclass(frozen=True)
 class ResultadoCompletude:
-    """O que impede a execução agora, separado por confiabilidade da evidência."""
+    """O que impede a execução agora, com o inventário que embasa a decisão."""
 
-    bloqueios_duros: tuple[str, ...] = ()
-    pendencias_brandas: tuple[str, ...] = ()
+    bloqueios: tuple[str, ...] = ()
     arquivos: tuple[str, ...] = ()
 
     @property
     def completo(self) -> bool:
-        return not self.bloqueios_duros and not self.pendencias_brandas
+        return not self.bloqueios
 
-    @property
-    def motivos(self) -> tuple[str, ...]:
-        """Duros têm precedência: sem eles, não há execução possível."""
-        return self.bloqueios_duros or self.pendencias_brandas
+
+def _arquivos(raiz: Path) -> tuple[str, ...]:
+    """Caminhos relativos dos arquivos do workspace, ignorando gerados."""
+    if not raiz.exists():
+        return ()
+    return tuple(
+        sorted(
+            caminho.relative_to(raiz).as_posix()
+            for caminho in raiz.rglob("*")
+            if caminho.is_file()
+            and not DIRETORIOS_PROIBIDOS.intersection(caminho.parts)
+        )
+    )
 
 
 def _e_meta(caminho: str) -> bool:
@@ -97,34 +94,21 @@ def _e_meta(caminho: str) -> bool:
     return nome.startswith(".") or nome.casefold() in _ARQUIVOS_META
 
 
-def _verificavel(saida: str) -> bool:
-    """False para diretórios e caminhos com placeholder — não são arquivos."""
-    texto = str(saida).strip()
-    if not texto or texto.endswith("/"):
-        return False
-    return not _PLACEHOLDER_RE.search(texto)
-
-
-def verificar_completude(
-    coder_dir: Path,
-    outputs_esperados: Sequence[str] = (),
-) -> ResultadoCompletude:
+def verificar_completude(coder_dir: Path) -> ResultadoCompletude:
     """Diz se o artefato tem o mínimo para ser executado pelo harness.
 
     Args:
         coder_dir: Raiz do código do coder (`coder/src/`).
-        outputs_esperados: `contract.outputs` da task da vez. Opcional — sem
-            eles, só a camada dura se aplica.
 
     Returns:
-        ResultadoCompletude com os motivos, separados por camada.
+        ResultadoCompletude com os bloqueios encontrados e o inventário atual.
     """
-    arquivos = tuple(arquivos_do_workspace(coder_dir))
-    duros: list[str] = []
+    arquivos = _arquivos(coder_dir)
+    bloqueios: list[str] = []
 
     manifesto = coder_dir / _MANIFEST_FILENAME
     if not manifesto.is_file():
-        duros.append(
+        bloqueios.append(
             f"`{_MANIFEST_FILENAME}` ausente na raiz do seu workspace — sem ele "
             "o harness não sabe como construir, executar nem testar o artefato."
         )
@@ -132,35 +116,13 @@ def verificar_completude(
         try:
             load_manifest(manifesto)
         except ManifestError as exc:
-            duros.append(f"`{_MANIFEST_FILENAME}` inválido ou incoerente: {exc}")
+            bloqueios.append(f"`{_MANIFEST_FILENAME}` inválido ou incoerente: {exc}")
 
-    codigo = [caminho for caminho in arquivos if not _e_meta(caminho)]
-    if not codigo:
+    if not [caminho for caminho in arquivos if not _e_meta(caminho)]:
         presentes = ", ".join(arquivos) if arquivos else "nenhum"
-        duros.append(
+        bloqueios.append(
             "nenhum arquivo de código no workspace — só há arquivos de "
             f"plano/manifesto ({presentes}). Não há o que executar."
         )
 
-    if duros:
-        # A camada branda não é calculada quando a dura já reprovou: listar
-        # outputs faltando junto com "não há código" é ruído, não informação.
-        return ResultadoCompletude(bloqueios_duros=tuple(duros), arquivos=arquivos)
-
-    nomes_existentes = {caminho.rsplit("/", 1)[-1] for caminho in arquivos}
-    faltando = [
-        str(saida)
-        for saida in outputs_esperados or ()
-        if _verificavel(saida)
-        and str(saida).strip().rsplit("/", 1)[-1] not in nomes_existentes
-    ]
-    if faltando:
-        return ResultadoCompletude(
-            pendencias_brandas=(
-                "arquivos declarados em `contract.outputs` desta task que não "
-                "existem no workspace: " + ", ".join(faltando),
-            ),
-            arquivos=arquivos,
-        )
-
-    return ResultadoCompletude(arquivos=arquivos)
+    return ResultadoCompletude(bloqueios=tuple(bloqueios), arquivos=arquivos)

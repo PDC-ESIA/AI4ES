@@ -24,10 +24,7 @@ from google.genai import types
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.review import run_capabilities
 from shared.workspace import get_agent_workspace, get_workspace_root
-from shared.tools.coding_tools.filesystem_coding import (
-    listar_arquivos,
-    tool_salvar_relatorio,
-)
+from shared.tools.coding_tools.filesystem_coding import tool_salvar_relatorio
 
 if TYPE_CHECKING:
     from google.adk.agents.callback_context import CallbackContext
@@ -50,14 +47,19 @@ def _discover_coder_files() -> str:
     """Lista arquivos no _CODER_WS (relativo), formato bullet.
 
     Executado no momento da invocação do agente (via InstructionProvider).
-    Usa o mesmo helper (e o mesmo teto) do coder: a lista entra na instrução,
-    que é reenviada a cada requisição, então um projeto grande não pode inflá-la
-    sem limite.
+    Quando o coder ainda não rodou, retorna marker informativo.
     """
-    return listar_arquivos(
-        Path(_CODER_WS),
-        inexistente="- (nenhum arquivo ainda — coder será executado antes de você)",
+    coder_dir = Path(_CODER_WS)
+    if not coder_dir.exists():
+        return "- (nenhum arquivo ainda — coder será executado antes de você)"
+    files = sorted(
+        p.relative_to(coder_dir).as_posix()
+        for p in coder_dir.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
     )
+    if not files:
+        return "- (workspace vazio)"
+    return "\n".join(f"- {f}" for f in files)
 
 
 def _format_findings_block(findings) -> str:

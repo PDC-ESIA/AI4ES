@@ -9,7 +9,6 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from google.adk.tools import FunctionTool
@@ -391,35 +390,6 @@ tool_salvar_task_adk = FunctionTool(tool_salvar_task)
 tool_ler_requirements_adk = FunctionTool(tool_ler_requirements)
 tool_ler_design_adk = FunctionTool(tool_ler_design)
 tool_gerar_doubt_artifact_adk = FunctionTool(tool_gerar_doubt_artifact)
-
-
-def resolver_task(
-    state, task_id: str | None, tasks_dir: Optional[Path] = None
-) -> Optional[dict]:
-    """Task pelo id: `state["tasks"]` (canônico) e, em falta, o arquivo em disco.
-
-    Uma precedência só, num lugar só. `state["tasks"]` é escrito pelo ADK a
-    partir do `output_key` do context_engineer e validado pelo `output_schema`:
-    existe sempre que aquele agente terminou, e traz o `id` DENTRO de cada
-    objeto — imune à divergência entre nome de arquivo e conteúdo. Os arquivos
-    em `coder/tasks/` são redundância, e dependem de o LLM ter chamado
-    `tool_salvar_task_cr` para cada task.
-    """
-    if not task_id:
-        return None
-
-    envelope = state.get("tasks") if hasattr(state, "get") else None
-    if isinstance(envelope, dict) and isinstance(envelope.get("tasks"), list):
-        for item in envelope["tasks"]:
-            if isinstance(item, dict) and item.get("id") == task_id:
-                return item
-
-    diretorio = tasks_dir or get_agent_workspace("cr_context_engineer")
-    try:
-        dado = json.loads((diretorio / f"{task_id}.json").read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001 — task ilegível é task ausente
-        return None
-    return dado if isinstance(dado, dict) else None
 
 
 def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:

@@ -958,53 +958,6 @@ def _resolver_task_id(task_id: str, tool_context: ToolContext | None) -> str:
     return do_state
 
 
-# Campos do ExecutionReport que o executor realmente consome: o status técnico
-# (que ele NÃO usa para decidir, mas reporta) e o caminho do relatório, que ele
-# repassa ao validador. O resto é evidência para quem lê o report — não para o
-# turno do LLM.
-_CHAVES_RESUMO = ("work_item_id", "iteration", "overall_status", "report_path")
-
-# Status de estágio que carregam evidência de falha (os PULADOS são cascata).
-_STATUS_DE_FALHA = ("falha", "erro")
-
-# Teto defensivo por resumo de estágio — os resumos do harness são de uma linha,
-# mas nada garante isso para estágios futuros.
-_MAX_RESUMO_ESTAGIO = 500
-
-
-def _resumir_report(payload: dict) -> dict:
-    """Reduz o ExecutionReport ao que o executor precisa VER no turno.
-
-    O relatório completo carrega a evidência bruta de cada estágio (logs,
-    tracebacks, saída de testes) e chega facilmente a dezenas de milhares de
-    caracteres. Dentro do LoopAgent esse texto entra no contexto e é reenviado
-    a CADA iteração da task, crescendo de forma multiplicativa.
-
-    Nada se perde: o relatório íntegro continua persistido em
-    `coder/execution/<task_id>.report.json`, e é de lá — não do eco do LLM —
-    que o validador o lê e que o `ErrorReport` do coder é montado. Este resumo
-    existe só para o turno do executor.
-    """
-    resumo = {chave: payload.get(chave) for chave in _CHAVES_RESUMO}
-    resumo["stages_com_falha"] = [
-        {
-            "stage": estagio.get("stage"),
-            "status": estagio.get("status"),
-            "error_code": estagio.get("error_code"),
-            "summary": str(estagio.get("summary") or "")[:_MAX_RESUMO_ESTAGIO],
-        }
-        for estagio in payload.get("stages") or []
-        if estagio.get("status") in _STATUS_DE_FALHA
-    ]
-    resumo["total_criterios_com_evidencia"] = len(payload.get("criteria_evidence") or [])
-    resumo["nota"] = (
-        "Resumo do turno. A evidência bruta completa (logs, tracebacks, saída "
-        "dos testes) está no relatório em `report_path` — passe esse caminho ao "
-        "implementation_validator, que o lê do disco."
-    )
-    return resumo
-
-
 def executar_harness_tool(
     task_id: str,
     iteration: int = 1,
@@ -1019,15 +972,9 @@ def executar_harness_tool(
     Pelo mesmo princípio, `task_id` não é escolha do LLM quando há um valor
     escopado no state: ver `_resolver_task_id`.
 
-    E, pela mesma lógica, o LLM não recebe o ExecutionReport inteiro: a tool
-    devolve o resumo de `_resumir_report`. Chamadas diretas a
-    `executar_harness_validacao` (testes/PoC/validador) seguem recebendo o
-    relatório completo.
     """
-    return _resumir_report(
-        executar_harness_validacao(
-            _resolver_task_id(task_id, tool_context),
-            iteration,
-            tool_context=tool_context,
-        )
+    return executar_harness_validacao(
+        _resolver_task_id(task_id, tool_context),
+        iteration,
+        tool_context=tool_context,
     )

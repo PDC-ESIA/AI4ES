@@ -31,7 +31,7 @@ from google.adk.events.event_actions import EventActions
 
 from src.agents.implementation_validator.agent import _report_path_valido
 
-from .executor.agent import CHAVE_BLOQUEIOS_PREFLIGHT, _MARCADOR_ESTAGNACAO
+from .executor.agent import _MARCADOR_ESTAGNACAO
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +43,7 @@ _ID_TASK_RE = re.compile(r"^TASK-[0-9]{3,}$")
 # Chaves de ciclo do loop coder ↔ executor, removidas entre tasks para que uma
 # task nunca herde o desfecho da anterior. Removidas (pop) e não zeradas: quem
 # as consome checa ausência, e `None` não representa ausência sem ambiguidade.
-_CHAVES_CICLO_REMOVIDAS = (
-    "validation",
-    "report_path",
-    "error_report",
-    # Contador do gate estrutural do executor: o teto de recusas brandas vale
-    # POR TASK. Sem zerar aqui, a segunda task herdaria o teto já gasto pela
-    # primeira e o gate deixaria de agir justamente onde ainda faz falta.
-    CHAVE_BLOQUEIOS_PREFLIGHT,
-)
+_CHAVES_CICLO_REMOVIDAS = ("validation", "report_path", "error_report")
 
 # Marcador do 3º ramo do coder (ver coder/prompt.py): a partir da 2ª task,
 # `execution_result` nunca fica ausente — se ficasse, o coder entenderia
