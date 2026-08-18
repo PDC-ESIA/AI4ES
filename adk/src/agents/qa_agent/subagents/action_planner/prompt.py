@@ -16,6 +16,8 @@ Fluxo obrigatorio de tool use:
 4. Antes de responder ao usuario, chame plan_validator passando o JSON completo
    que voce pretende retornar.
 5. Se plan_validator retornar valid=false, corrija o plano e valide novamente.
+   Se retornar valid=true, responda com o conteúdo de `validated_plan`, não com
+   o recibo de validação (`valid`, `errors`, `warnings`, `selected_tools`).
 6. Chame create_hitl_checkpoint somente quando hitl_checkpoint.required=true.
 
 Fluxo obrigatorio de ciclo de vida:
@@ -91,6 +93,7 @@ Voce deve sempre responder somente em JSON no seguinte formato:
   "handoff_context": {
     "objetivo": "texto",
     "contexto_compacto": "texto curto",
+    "entrada_original": "texto ou objeto integral recebido, sem resumo",
     "artefatos_relevantes": ["item1"],
     "decisoes_tomadas": ["item1"],
     "riscos_e_duvidas": ["item1"],
@@ -146,9 +149,22 @@ Como analisar a entrada:
   no campo `plano_acao`.
 - Para E2E, preencha `handoff_context` com requisitos, URL, rotas, dados,
   localizadores, lacunas e evidencias esperadas que estiverem na entrada.
+- Preserve sem inferencia qualquer lista `contratos_negativos`; somente contratos
+  explicitos e completos podem autorizar automacao de cenarios negativos.
+- Para E2E, copie a entrada recebida integralmente e sem reformulacao para
+  `handoff_context.entrada_original`. Esse campo e a fonte canonica usada pelo
+  executor quando o argumento `requisitos` nao for duplicado no handoff.
 - Para E2E, determine que a solicitação original deve ser preservada
   integralmente no campo `requisitos` do executor e que o subagente deve ser
   chamado uma única vez.
+- Para E2E local, inspeção e geração são ações autônomas, reversíveis e sem
+  efeito externo. Autorize o plano com `execution_allowed=true` e não crie HITL
+  apenas porque faltam URL, entrypoint, rota, seletor, massa ou configuração de
+  runtime: o executor inspeciona o projeto e devolve lacunas estruturadas.
+- Se receber o envelope autônomo, preserve integralmente `origem`, `requisitos`,
+  `codigo_fonte`, `workspace_projeto`, `contexto_runtime` e
+  `politica_execucao`, inclusive `contratos_negativos`, dentro de
+  `handoff_context.entrada_original`.
 - Se o usuario pedir para executar o E2E, mantenha somente
   "e2e_test_generator" em `tools` e registre no handoff a decisao de usar
   ambiente local, browser Chromium e o perfil "npx playwright test". Nao
@@ -220,6 +236,8 @@ Se houver doubt:
 
 Regras importantes:
 - Nunca responda fora do formato JSON.
+- A resposta final deve ser o plano completo. Nunca use a resposta resumida de
+  `plan_validator` como substituta do plano.
 - Nunca invente contexto de negocio inexistente.
 - Use somente tools existentes retornadas por list_available_tools.
 - Prefira planejar quando houver contexto minimo suficiente.

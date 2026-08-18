@@ -1,4 +1,4 @@
-"""Renderização determinística de uma jornada web para Playwright/TypeScript."""
+"""Renderização determinística de jornadas web/API para Playwright/TypeScript."""
 
 import json
 import re
@@ -10,10 +10,12 @@ from ..schemas import (
     AcaoAutomacao,
     CategoriaCenario,
     CenarioE2E,
+    ContratoNegativoE2E,
     EntradaE2ENormalizada,
     LocalizadorPlaywright,
     PassoAutomacao,
     ResultadoGeracaoPlaywright,
+    SuperficieContratoNegativo,
     TipoLocalizador,
 )
 
@@ -53,8 +55,11 @@ def _localizador(localizador: LocalizadorPlaywright) -> str:
 def _resolver_valor(
     passo: PassoAutomacao,
     entrada: EntradaE2ENormalizada,
+    dados_adicionais: dict[str, object] | None = None,
 ) -> object | None:
     if passo.chave_dado:
+        if dados_adicionais and passo.chave_dado in dados_adicionais:
+            return dados_adicionais[passo.chave_dado]
         for conjunto in entrada.dados_teste:
             if passo.chave_dado in conjunto:
                 return conjunto[passo.chave_dado]
@@ -62,11 +67,80 @@ def _resolver_valor(
     return passo.valor
 
 
+def _valor_contrato(contrato: dict, *chaves: str) -> object | None:
+    for chave in chaves:
+        valor = contrato.get(chave)
+        if valor not in (None, "", [], {}):
+            return valor
+    return None
+
+
+def _renderizar_contrato_api(
+    contrato: dict,
+    entrada: EntradaE2ENormalizada,
+    indice: int,
+) -> list[str]:
+    rota = str(
+        _valor_contrato(contrato, "rota", "endpoint", "path", "url") or ""
+    )
+    url = (
+        rota
+        if rota.startswith(("http://", "https://"))
+        else urljoin(entrada.base_url.rstrip("/") + "/", rota.lstrip("/"))
+    )
+    metodo = str(
+        _valor_contrato(contrato, "metodo", "method") or "GET"
+    ).upper()
+    status = int(
+        _valor_contrato(
+            contrato,
+            "status_esperado",
+            "expected_status",
+            "status",
+        )
+    )
+    payload = _valor_contrato(
+        contrato,
+        "payload",
+        "body",
+        "request",
+        "dados",
+        "data",
+    )
+    resposta_esperada = _valor_contrato(
+        contrato,
+        "resposta_esperada",
+        "expected_response",
+        "response",
+    )
+    opcoes = [f"method: {_literal_ts(metodo)}"]
+    if payload is not None:
+        opcoes.append(f"data: {_literal_ts(payload)}")
+    titulo = f"E2E-API-{indice:03d} - {metodo} {rota}"
+    linhas = [
+        "",
+        f"  test({_literal_ts(titulo)}, async ({{ request }}) => {{",
+        (
+            f"    const response = await request.fetch({_literal_ts(url)}, "
+            f"{{ {', '.join(opcoes)} }});"
+        ),
+        f"    expect(response.status()).toBe({status});",
+    ]
+    if resposta_esperada is not None:
+        linhas.append(
+            "    expect(await response.json()).toEqual("
+            f"{_literal_ts(resposta_esperada)});"
+        )
+    linhas.append("  });")
+    return linhas
+
+
 def _renderizar_passo(
     passo: PassoAutomacao,
     entrada: EntradaE2ENormalizada,
+    dados_adicionais: dict[str, object] | None = None,
 ) -> str:
-    valor = _resolver_valor(passo, entrada)
+    valor = _resolver_valor(passo, entrada, dados_adicionais)
     alvo = _localizador(passo.localizador) if passo.localizador else None
 
     if passo.acao == AcaoAutomacao.PREENCHER:
@@ -95,6 +169,102 @@ def _renderizar_passo(
     raise ValueError(f"Ação não suportada: {passo.acao}")
 
 
+def _url_relativa_alvo(base_url: str | None, rota: str | None) -> str:
+    if not base_url or not rota or not rota.startswith("/") or rota.startswith("//"):
+        raise ValueError("Contrato negativo possui URL ausente ou fora do sistema alvo.")
+    return urljoin(base_url.rstrip("/") + "/", rota.lstrip("/"))
+
+
+def _renderizar_contrato_negativo(
+    contrato: ContratoNegativoE2E,
+    entrada: EntradaE2ENormalizada,
+    titulo: str,
+) -> list[str]:
+    """Renderiza apenas operações tipadas pelo contrato negativo validado."""
+
+    rota = _url_relativa_alvo(entrada.base_url, contrato.rota)
+    if contrato.superficie == SuperficieContratoNegativo.API:
+        opcoes = [f"method: {_literal_ts(contrato.metodo)}"]
+        if "payload" in contrato.model_fields_set:
+            opcoes.append(f"data: {_literal_ts(contrato.payload)}")
+        if contrato.categoria == CategoriaCenario.TIMEOUT_LATENCIA:
+            opcoes.append(f"timeout: {contrato.timeout_ms}")
+            return [
+                "",
+                f"  test({_literal_ts(titulo)}, async ({{ request }}) => {{",
+                "    await expect(",
+                (
+                    f"      request.fetch({_literal_ts(rota)}, "
+                    f"{{ {', '.join(opcoes)} }})"
+                ),
+                "    ).rejects.toThrow();",
+                "  });",
+            ]
+
+        linhas = [
+            "",
+            f"  test({_literal_ts(titulo)}, async ({{ request }}) => {{",
+            (
+                f"    const response = await request.fetch({_literal_ts(rota)}, "
+                f"{{ {', '.join(opcoes)} }});"
+            ),
+            f"    expect(response.status()).toBe({contrato.status_esperado});",
+        ]
+        if "resposta_esperada" in contrato.model_fields_set:
+            linhas.append(
+                "    expect(await response.json()).toEqual("
+                f"{_literal_ts(contrato.resposta_esperada)});"
+            )
+        linhas.append("  });")
+        return linhas
+
+    linhas = [
+        "",
+        f"  test({_literal_ts(titulo)}, async ({{ page }}) => {{",
+    ]
+    if contrato.mock_rede is not None:
+        mock = contrato.mock_rede
+        url_mock = _url_relativa_alvo(entrada.base_url, mock.rota)
+        linhas.extend(
+            [
+                f"    await page.route({_literal_ts(url_mock)}, async (route) => {{",
+                (
+                    "      if (route.request().method() !== "
+                    f"{_literal_ts(mock.metodo)}) {{"
+                ),
+                "        await route.fallback();",
+                "        return;",
+                "      }",
+            ]
+        )
+        if mock.atraso_ms:
+            linhas.append(
+                "      await new Promise((resolve) => "
+                f"setTimeout(resolve, {mock.atraso_ms}));"
+            )
+        opcoes_mock = [f"status: {mock.status_simulado}"]
+        if "resposta_simulada" in mock.model_fields_set:
+            opcoes_mock.extend(
+                [
+                    "contentType: 'application/json'",
+                    f"body: JSON.stringify({_literal_ts(mock.resposta_simulada)})",
+                ]
+            )
+        linhas.extend(
+            [
+                f"      await route.fulfill({{ {', '.join(opcoes_mock)} }});",
+                "    });",
+            ]
+        )
+    linhas.append(f"    await page.goto({_literal_ts(rota)});")
+    for passo in contrato.passos_automacao:
+        linhas.append(
+            f"    {_renderizar_passo(passo, entrada, contrato.dados_teste)}"
+        )
+    linhas.append("  });")
+    return linhas
+
+
 def renderizar_playwright_spec(
     entrada: EntradaE2ENormalizada,
     cenarios: list[CenarioE2E],
@@ -110,29 +280,71 @@ def renderizar_playwright_spec(
     ]
 
     testes_ativos = 0
-    for indice, alvo in enumerate(entrada.rotas_ou_telas, start=1):
-        rota = alvo.rota or ""
-        url = (
-            rota
-            if rota.startswith(("http://", "https://"))
-            else urljoin(entrada.base_url.rstrip("/") + "/", rota.lstrip("/"))
-        )
-        titulo = f"E2E-WEB-{indice:03d} - {alvo.nome}"
-        linhas.extend(
-            [
-                "",
-                f"  test({_literal_ts(titulo)}, async ({{ page }}) => {{",
-                f"    await page.goto({_literal_ts(url)});",
-            ]
-        )
-        for passo in alvo.passos_automacao:
-            linhas.append(f"    {_renderizar_passo(passo, entrada)}")
-        linhas.append("  });")
-        testes_ativos += 1
+    alvos_web = [
+        alvo for alvo in entrada.rotas_ou_telas if alvo.passos_automacao
+    ]
+    if alvos_web:
+        for indice, alvo in enumerate(alvos_web, start=1):
+            rota = alvo.rota or ""
+            url = (
+                rota
+                if rota.startswith(("http://", "https://"))
+                else urljoin(
+                    entrada.base_url.rstrip("/") + "/",
+                    rota.lstrip("/"),
+                )
+            )
+            titulo = f"E2E-WEB-{indice:03d} - {alvo.nome}"
+            linhas.extend(
+                [
+                    "",
+                    f"  test({_literal_ts(titulo)}, async ({{ page }}) => {{",
+                    f"    await page.goto({_literal_ts(url)});",
+                ]
+            )
+            for passo in alvo.passos_automacao:
+                linhas.append(f"    {_renderizar_passo(passo, entrada)}")
+            linhas.append("  });")
+            testes_ativos += 1
+    else:
+        for indice, contrato in enumerate(entrada.contratos_api, start=1):
+            linhas.extend(_renderizar_contrato_api(contrato, entrada, indice))
+            testes_ativos += 1
 
+    contratos_negativos = {
+        contrato.id: contrato
+        for contrato in entrada.contratos_negativos
+        if contrato.id is not None
+    }
+    testes_felizes_ativos = testes_ativos
     testes_pulados = 0
     for cenario in cenarios:
         if cenario.categoria == CategoriaCenario.FLUXO_FELIZ:
+            if testes_felizes_ativos:
+                continue
+            motivo = "; ".join(cenario.lacunas) or (
+                "Fluxo feliz sem contrato estruturado para automação."
+            )
+            titulo = f"{cenario.id} - {cenario.nome}"
+            linhas.extend(
+                [
+                    "",
+                    f"  test.skip({_literal_ts(titulo)}, async () => {{",
+                    f"    // Bloqueado: {_comentario(motivo)}",
+                    "  });",
+                ]
+            )
+            testes_pulados += 1
+            continue
+        contrato = (
+            contratos_negativos.get(cenario.contrato_negativo_id)
+            if cenario.contrato_negativo_id
+            else None
+        )
+        if cenario.pronto_para_automacao and contrato is not None:
+            titulo = f"{cenario.id} - {cenario.nome}"
+            linhas.extend(_renderizar_contrato_negativo(contrato, entrada, titulo))
+            testes_ativos += 1
             continue
         motivo = "; ".join(cenario.lacunas) or (
             "Cenário sem passos estruturados neste incremento."

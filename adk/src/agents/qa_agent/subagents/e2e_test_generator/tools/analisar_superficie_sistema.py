@@ -2,7 +2,12 @@
 
 import re
 
-from ..schemas import AnaliseSuperficie, EntradaE2ENormalizada, TipoSistema
+from ..schemas import (
+    AnaliseSuperficie,
+    EntradaE2ENormalizada,
+    SuperficieContratoNegativo,
+    TipoSistema,
+)
 
 _TERMOS_WEB = (
     "tela",
@@ -94,8 +99,22 @@ def analisar_superficie_sistema(
     sinais_cli = _encontrar_termos(texto, _TERMOS_CLI)
     sinais_agenticos = _encontrar_termos(texto, _TERMOS_AGENTICOS)
 
-    tem_web = bool(entrada.rotas_ou_telas or sinais_web)
-    tem_api = bool(entrada.contratos_api or sinais_api)
+    tem_web = bool(
+        entrada.rotas_ou_telas
+        or sinais_web
+        or any(
+            contrato.superficie == SuperficieContratoNegativo.WEB
+            for contrato in entrada.contratos_negativos
+        )
+    )
+    tem_api = bool(
+        entrada.contratos_api
+        or sinais_api
+        or any(
+            contrato.superficie == SuperficieContratoNegativo.API
+            for contrato in entrada.contratos_negativos
+        )
+    )
     if entrada.base_url and not tem_api:
         tem_web = True
 
@@ -104,6 +123,8 @@ def analisar_superficie_sistema(
         sinais.append("rotas_ou_telas fornecidas")
     if entrada.contratos_api:
         sinais.append("contratos_api fornecidos")
+    if entrada.contratos_negativos:
+        sinais.append("contratos_negativos explícitos fornecidos")
     if entrada.base_url:
         sinais.append("base_url fornecida")
     sinais.extend(f"termo web: {termo}" for termo in sinais_web)

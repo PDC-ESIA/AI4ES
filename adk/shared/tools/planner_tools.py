@@ -36,12 +36,14 @@ QA_AGENT_TOOLS = [
             "quando seguro, gera um spec Playwright."
         ),
         "input_contract": (
-            "Plano de ação validado do action_planner, requisitos em texto/JSON "
-            "e contexto de sistema, rotas, dados e passos estruturados."
+            "Plano validado com handoff_context.entrada_original preservado; "
+            "opcionalmente, requisitos em texto/JSON ou envelope autônomo "
+            "também podem ser enviados como argumento direto."
         ),
         "output_contract": (
-            "Plano E2E com cenários, confiança e bloqueios; para jornadas web "
-            "completas, arquivo `.spec.ts` gerado e execução local controlada "
+            "Inspeção de framework/entrypoint/rotas, plano E2E e bloqueios; "
+            "para jornadas web ou contratos API verificáveis, arquivo `.spec.ts` "
+            "gerado e execução local controlada "
             "quando ambiente e perfil de comando forem autorizados."
         ),
         "use_when": [
@@ -206,6 +208,59 @@ def describe_tools(
     }
 
 
+def _completar_campos_administrativos_e2e(
+    plan: dict[str, Any],
+) -> list[str]:
+    """Completa somente boilerplate fixo que não altera a estratégia do plano."""
+
+    selected_tools = plan.get("tools", [])
+    if (
+        not isinstance(selected_tools, list)
+        or "e2e_test_generator" not in selected_tools
+    ):
+        return []
+
+    campos_completados: list[str] = []
+    if "doubt" not in plan:
+        plan["doubt"] = None
+        campos_completados.append("doubt")
+
+    relatorio = plan.get("relatorio_conformidade_esperado")
+    if relatorio is None:
+        relatorio = {}
+        plan["relatorio_conformidade_esperado"] = relatorio
+    if isinstance(relatorio, dict):
+        padroes = {
+            "comparar_planejado_vs_executado": True,
+            "incluir_divergencias": True,
+            "incluir_evidencias": True,
+            "status_possiveis": [
+                "conforme",
+                "nao_conforme",
+                "parcialmente_conforme",
+            ],
+        }
+        for campo, valor in padroes.items():
+            if campo not in relatorio:
+                relatorio[campo] = valor
+                campos_completados.append(
+                    f"relatorio_conformidade_esperado.{campo}"
+                )
+
+    handoff_context = plan.get("handoff_context")
+    if isinstance(handoff_context, dict):
+        for campo in (
+            "artefatos_relevantes",
+            "decisoes_tomadas",
+            "evidencias_necessarias",
+            "riscos_e_duvidas",
+        ):
+            if campo not in handoff_context:
+                handoff_context[campo] = []
+                campos_completados.append(f"handoff_context.{campo}")
+    return campos_completados
+
+
 def plan_validator(plan_json: str) -> dict[str, Any]:
     """Valida plano do action_planner verificando completude e coerência.
 
@@ -222,8 +277,17 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
             "valid": False,
             "errors": [f"JSON invalido: {exc}"],
             "warnings": [],
+            "validated_plan": None,
+        }
+    if not isinstance(plan, dict):
+        return {
+            "valid": False,
+            "errors": ["O plano deve ser um objeto JSON."],
+            "warnings": [],
+            "validated_plan": None,
         }
 
+    campos_normalizados = _completar_campos_administrativos_e2e(plan)
     errors = []
     warnings = []
     required_fields = [
@@ -326,6 +390,15 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
             errors.append(
                 "autonomy_decision.less_prompt_more_action deve ser booleano."
             )
+
+    if (
+        "e2e_test_generator" in selected_tools
+        and autonomy_decision.get("mode") != "autonomous"
+    ):
+        errors.append(
+            "Planos E2E devem ser autonomos. Lacunas tecnicas devem retornar "
+            "como bloqueios estruturados, sem checkpoint HITL."
+        )
 
     if doubt and lifecycle is None:
         lifecycle = {}
@@ -452,6 +525,18 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
             ):
                 errors.append(f"handoff_context.{list_field} deve ser lista.")
 
+    if "e2e_test_generator" in selected_tools:
+        entrada_original = (
+            handoff_context.get("entrada_original")
+            if isinstance(handoff_context, dict)
+            else None
+        )
+        if entrada_original in (None, "", [], {}):
+            errors.append(
+                "Planos E2E devem preservar a entrada integral em "
+                "handoff_context.entrada_original."
+            )
+
     if doubt and relatorio_conformidade is None:
         relatorio_conformidade = {}
     elif not isinstance(relatorio_conformidade, dict):
@@ -496,11 +581,14 @@ def plan_validator(plan_json: str) -> dict[str, Any]:
                     + ", ".join(sorted(required_statuses))
                 )
 
+    valid = not errors
     return {
-        "valid": not errors,
+        "valid": valid,
         "errors": errors,
         "warnings": warnings,
         "selected_tools": selected_tools,
+        "normalized_fields": campos_normalizados,
+        "validated_plan": plan if valid else None,
     }
 
 
