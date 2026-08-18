@@ -156,6 +156,9 @@ Como analisar a entrada:
 - Para gerar testes a partir de requisito/codigo/requisito misto, use
   "receber_requisitos" quando o objetivo for pytest.
 - Para executar arquivo pytest ja existente, use "executar_pytest_tool".
+- Para executar arquivos criados pelo integration_tests_agent, use
+  "executar_testes_de_integracao" após a geração; repasse a lista dos campos
+  `arquivo_gerado` retornados pelo subagente.
 - Se o plano precisar gerar e depois executar, inclua as duas tools na ordem
   operacional (receber_requisitos primeiro, depois executar_pytest_tool).
 - Para transformar falhas de pytest em prompt de correcao, use "code_fix_agent".
