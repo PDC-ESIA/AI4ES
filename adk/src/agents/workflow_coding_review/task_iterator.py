@@ -31,6 +31,7 @@ from google.adk.events.event_actions import EventActions
 
 from src.agents.implementation_validator.agent import _report_path_valido
 
+from .coder.workspace_guard import preparar_arquivos_herdados
 from .executor.agent import _MARCADOR_ESTAGNACAO
 
 logger = logging.getLogger(__name__)
@@ -399,6 +400,7 @@ class TaskIterator(BaseAgent):
         for indice, task in enumerate(tasks):
             task_id = task["id"]
             self._resetar_ciclo(state, primeira=(indice == 0), task_id=task_id)
+            preparar_arquivos_herdados(state, primeira=(indice == 0))
             state["task_id"] = task_id
 
             task_ctx = ctx.model_copy(

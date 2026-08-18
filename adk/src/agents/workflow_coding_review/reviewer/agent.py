@@ -1,8 +1,6 @@
 """Reviewer dedicado ao workflow coding_review.
 
 - Analyzer: lê arquivos de coder/src/ (não diff git), produz análise markdown.
-- Gate de cobertura pré-LLM: tasks pendentes encerram sem consumir o modelo,
-  mas a análise estática ainda roda e entra no relatório bloqueado.
 - Análise estática pré-LLM via before_agent_callback (Ruff + Bandit).
 - Persistência via after_agent_callback Python puro — sem LLM no passo de escrita.
   Isso elimina o risco de "modo narrador" (LLM descreve a chamada em vez de executá-la).
@@ -28,7 +26,6 @@ from shared.tools.coding_tools.review_tools import (
     _discover_coder_files,
     _inject_static_findings,
     _persist_review,
-    _preflight_coverage_gate,
 )
 
 from . import prompt as reviewer_prompt
@@ -47,7 +44,6 @@ __all__ = [
     "_discover_coder_files",
     "_inject_static_findings",
     "_persist_review",
-    "_preflight_coverage_gate",
 ]
 
 
@@ -128,6 +124,7 @@ _ANALYZER_INSTRUCTION_TEMPLATE = (
     "__FILES__\n"
 )
 
+
 def _analyzer_instruction_provider(ctx) -> str:
     """InstructionProvider: injeta findings estáticos e lista de arquivos em runtime."""
     static_block = ""
@@ -151,15 +148,7 @@ _analyzer = LlmAgent(
         _bind(FunctionTool(tool_ler_arquivo), _CODER_WS),
     ],
 )
-# Ordem importa: o ADK para no primeiro callback que devolve Content.
-# `_inject_static_findings` sempre devolve None, então nunca interrompe a
-# cadeia — roda primeiro para que a análise estática (determinística, sem LLM)
-# aconteça MESMO quando a cobertura bloqueia, e entre no relatório final. É
-# justamente quando a implementação reprova que o diagnóstico tem mais valor.
-_analyzer.before_agent_callback = [
-    _inject_static_findings,
-    _preflight_coverage_gate,
-]
+_analyzer.before_agent_callback = _inject_static_findings
 _analyzer.after_agent_callback = _persist_review
 
 # agent é exportado como LlmAgent (not SequentialAgent) — a persistência acontece

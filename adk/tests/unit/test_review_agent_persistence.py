@@ -234,12 +234,7 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
 
 
 def test_analyzer_tem_before_agent_callback(tmp_path, monkeypatch):
-    """before_agent_callback encadeia a análise estática e o gate de cobertura.
-
-    A ordem faz parte do contrato: a análise estática vem PRIMEIRO (devolve
-    None, nunca interrompe) para que o diagnóstico determinístico exista mesmo
-    quando o gate bloqueia a chamada ao modelo.
-    """
+    """_analyzer.before_agent_callback está configurado com _inject_static_findings."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
@@ -248,10 +243,7 @@ def test_analyzer_tem_before_agent_callback(tmp_path, monkeypatch):
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    assert cr_reviewer._analyzer.before_agent_callback == [
-        cr_reviewer._inject_static_findings,
-        cr_reviewer._preflight_coverage_gate,
-    ]
+    assert cr_reviewer._analyzer.before_agent_callback is cr_reviewer._inject_static_findings
 
 
 def test_inject_static_findings_popula_state(tmp_path, monkeypatch):
@@ -333,9 +325,8 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
     cr_reviewer._analyzer.before_model_callback = _stub_llm
     try:
         session_svc = InMemorySessionService()
-        # A cobertura precisa estar comprovada já no state inicial: o
-        # _preflight_coverage_gate roda ANTES do modelo e encerraria a invocação
-        # se faltasse, impedindo este teste de chegar ao after_agent_callback.
+        # Cobertura comprovada no state inicial: sem ela, o after_agent_callback
+        # (_persist_review) sobrescreveria a análise fake com o texto BLOQUEADO.
         session_svc.create_session_sync(
             app_name="test_persist",
             user_id="test_user",

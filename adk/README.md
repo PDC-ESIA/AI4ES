@@ -171,51 +171,7 @@ Você verá um chat com o título "orchestrator".
 Cole o texto abaixo na caixa de mensagem do Dev UI e envie:
 
 ````markdown
-Sou fotógrafo profissional (retratos e casamentos) e preciso de um site simples para organizar minhas fotos e montar álbuns para entregar aos clientes. Hoje uso pastas no Drive e é uma bagunça — quero algo onde eu carregue as fotos de uma sessão e consiga curar um álbum final.
-
-## O que preciso (use seu bom senso para o resto)
-
-**Fluxo principal (caso de uso real):**
-1. Crio um novo "Ensaio" (ex: "Casamento Joana & Pedro - Mai/2026") com data e cliente.
-2. Faço upload em lote das fotos brutas do ensaio (JPEG/PNG, dezenas a centenas).
-3. Visualizo as fotos do ensaio em galeria (thumbnails, clicáveis para ver maior).
-4. Marco fotos como "selecionada para álbum" (favoritar/curar).
-5. Crio um "Álbum" a partir do ensaio, contendo só as fotos selecionadas, com título e ordem.
-6. Vejo a página final do álbum montado (capa + grid das fotos escolhidas) — essa é a entrega ao cliente.
-
-**Stack — fique à vontade, mas tente algo simples e moderno:**
-- Backend Python (FastAPI é minha preferência por ser leve)
-- Frontend pode ser server-side rendering (Jinja2 + HTMX) OU SPA leve — você decide o que entrega mais valor com menos código
-- Armazenamento local em disco para as imagens (não preciso de S3 nessa primeira versão)
-- SQLite para metadados (ensaios, fotos, álbuns) — sem precisar subir Postgres
-
-**Requisitos não-funcionais que importam pra mim:**
-- Tem que rodar localmente com `uvicorn` em um comando
-- Upload tem que aguentar pelo menos 50 fotos de uma vez sem travar
-- Thumbnails gerados automaticamente (não quero carregar full-res na galeria)
-- Visual minimalista e elegante (sou fotógrafo, o produto é a foto — interface não pode competir)
-
-**O que NÃO preciso nessa versão:**
-- Autenticação de usuário (só eu uso, localhost)
-- Compartilhamento por link público
-- Edição de imagem (corte/filtro)
-- Marca d'água
-
-## Critérios de aceite
-
-- Consigo criar um Ensaio via interface web
-- Consigo subir múltiplas fotos para esse Ensaio
-- Vejo a galeria com thumbnails das fotos
-- Marco fotos como selecionadas (toggle visível)
-- Crio um Álbum a partir das fotos selecionadas
-- Vejo a página final do álbum renderizada
-
-## Como quero que vocês trabalhem
-
-Passem pelo SDLC completo: requisitos → arquitetura/design → planejamento de testes → código → review → QA → finalização. Sejam criativos no design da arquitetura, mas mantenham simples — não preciso de microserviços nem de message broker. Quero um app monolítico bem feito.
-
-Se vocês tiverem alguma dúvida estrutural, decidam vocês mesmos pelo caminho mais pragmático — confio no julgamento de vocês. O que eu preciso é que ao final eu tenha um repositório funcional que eu consiga subir e usar.
-````
+Soute````
 
 ### 5. Acompanhar a execução
 

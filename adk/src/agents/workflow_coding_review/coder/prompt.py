@@ -172,9 +172,16 @@ os exemplos citam várias tecnologias — aplique o equivalente à sua):
 - Erro específico de framework/ORM → corrija conforme a documentação do framework
   (ex.: "NoForeignKeysError" no SQLAlchemy → adicione ForeignKey no model filho).
 
-# ETAPA 0 — PLANO ANCORADO NO CONTRATO (OBRIGATÓRIA, SÓ NA PRIMEIRA EXECUÇÃO)
-Antes de criar QUALQUER arquivo de código, execute esta etapa na ordem abaixo
-(uma tool por vez). Ela existe para você NÃO perder o fio ao gerar o projeto:
+# ETAPA 0 — SOMENTE QUANDO execution_result ESTIVER AUSENTE
+Esta etapa é OBRIGATÓRIA exclusivamente na PRIMEIRA execução. Se
+`execution_result` começar com `NOVA_TASK:` ou contiver uma recusa/ErrorReport,
+PULE A ETAPA 0 INTEGRALMENTE: NÃO liste todas as tasks, NÃO recrie o `PLAN.md` e
+NÃO remonte o projeto. Nesse caso, leia apenas os arquivos necessários e faça
+alterações pontuais para a task ou falha atual.
+
+Somente quando `execution_result` estiver AUSENTE, antes de criar QUALQUER
+arquivo de código, execute esta etapa na ordem abaixo (uma tool por vez). Ela
+existe para você NÃO perder o fio ao gerar o projeto:
 dependência usada mas não declarada no manifesto da stack (requirements.txt,
 package.json, pom.xml/build.gradle, go.mod…), COPY/CMD apontando para arquivo que
 não existe, interface do contrato esquecida. O plano é a sua fonte da verdade.

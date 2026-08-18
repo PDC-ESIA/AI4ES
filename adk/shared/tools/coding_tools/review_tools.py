@@ -1,7 +1,5 @@
 """Callbacks e helpers de análise estática do cr_reviewer (workflow_coding_review).
 
-- _preflight_coverage_gate (before_agent_callback): encerra deterministicamente,
-  SEM chamar o LLM, quando a cobertura das tasks já impede aprovação.
 - _inject_static_findings (before_agent_callback): roda Ruff + Bandit sobre o
   workspace do coder e injeta os findings no state para o prompt do analyzer.
 - _persist_review (after_agent_callback): aplica o gate determinístico de
@@ -275,57 +273,12 @@ def _salvar_relatorio(conteudo: str) -> None:
         )
 
 
-def _preflight_coverage_gate(
-    callback_context: CallbackContext,
-) -> Optional[types.Content]:
-    """Interrompe o reviewer ANTES do LLM quando a cobertura é incompleta.
-
-    Sem cobertura comprovada o veredito final já está decidido, então gastar uma
-    chamada de modelo é desperdício — e arriscado: o reviewer recebe o histórico
-    da invocação, que cresce com o nº de tasks e pode estourar a janela de
-    contexto do provedor. Bloquear aqui também torna o gate resistente a uma
-    falha do próprio LLM, que deixaria o `after_agent_callback` sem rodar.
-
-    Qualquer `review_analysis` remanescente no state é ignorado de propósito:
-    sem cobertura, o relatório deve depender só do summary determinístico desta
-    execução, nunca de uma análise sobrevivente de outra invocação.
-
-    ATENÇÃO — o relatório é gravado AQUI, e não em `_persist_review`: quando um
-    `before_agent_callback` devolve Content, o ADK marca `end_invocation=True` e
-    retorna antes de `_handle_after_agent_callback` (ver base_agent.py). Se este
-    callback não persistisse, o bloqueio existiria como evento mas não haveria
-    `verificacao_revisao.md` em disco.
-
-    Returns:
-        None quando a cobertura está comprovada (o reviewer roda normalmente);
-        o Content bloqueado caso contrário, encerrando a invocação.
-    """
-    state = callback_context.state
-    if cobertura_comprovada(state):
-        return None
-
-    # A análise estática já rodou (`_inject_static_findings` vem antes na
-    # cadeia) e entra como corpo do relatório: bloquear a chamada ao LLM não
-    # deve custar o diagnóstico determinístico sobre o código reprovado.
-    findings = state.get("static_findings_block") or ""
-    corpo = f"## Análise estática (determinística)\n\n{findings}" if findings else ""
-    texto_final = aplicar_gate_de_cobertura(corpo, state.get("task_iteration_summary"))
-    state["review_analysis"] = texto_final
-    _salvar_relatorio(texto_final)
-    return types.Content(role="model", parts=[types.Part(text=texto_final)])
-
-
 def _persist_review(callback_context: CallbackContext) -> Optional[types.Content]:
     """Aplica o gate de cobertura e persiste o relatório — zero LLM na escrita.
 
     Executado pelo runtime do ADK após _analyzer terminar. Lê review_analysis
     do state e chama tool_salvar_relatorio diretamente em Python, eliminando o
     risco de modo narrador.
-
-    Com `_preflight_coverage_gate` ligado no `before`, o caminho bloqueado aqui
-    só é alcançado se aquele callback for removido do wiring — ele permanece
-    como defesa em profundidade, para que o gate nunca dependa de um único
-    ponto de aplicação.
 
     Com cobertura comprovada, o comportamento é idêntico ao histórico
     (inclusive o retorno cedo silencioso quando não há análise) e nada é
