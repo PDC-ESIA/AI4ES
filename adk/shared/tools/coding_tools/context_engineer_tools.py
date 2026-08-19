@@ -426,4 +426,68 @@ def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
     except Exception as e:
         return {"sucesso": False, "erro": "Erro ao salvar task: " + str(e), "caminho": None}
 
+
+# Nome do arquivo que carrega o contexto macro para os estágios downstream
+# (harness/executor). Prefixo '_' evita colisão com os arquivos TASK-*.json.
+MACRO_CONTEXT_FILENAME = "_macro_context.json"
+
+
+def tool_salvar_macro_context_cr(macro_context_json: str) -> dict:
+    """Persiste o contexto macro em workspace_output/coder/tasks/_macro_context.json.
+
+    O contexto macro (summary, product_type, tech_stack, global_rules) é global
+    à sessão e vive fora das tasks individuais. O harness precisa do
+    `product_type` para escolher a superfície/perfil de execução, mas apenas as
+    Tasks são persistidas por tool_salvar_task_cr. Esta tool grava o contexto
+    macro num arquivo separado (NÃO denormalizado na Task), tornando o
+    product_type resolvível pelos estágios downstream.
+
+    Args:
+        macro_context_json: JSON serializado do MacroContext.
+
+    Returns:
+        dict: {sucesso, erro, caminho, product_type}
+    """
+    try:
+        macro = json.loads(macro_context_json)
+    except json.JSONDecodeError as e:
+        return {"sucesso": False, "erro": "JSON inválido: " + str(e), "caminho": None}
+
+    if not isinstance(macro, dict):
+        return {
+            "sucesso": False,
+            "erro": "macro_context deve ser um objeto JSON.",
+            "caminho": None,
+        }
+
+    # Garante product_type sempre presente para o harness (default do schema).
+    product_type = macro.get("product_type") or "a definir"
+    macro["product_type"] = product_type
+
+    output_dir = get_agent_workspace("cr_context_engineer")
+    output_file = output_dir / MACRO_CONTEXT_FILENAME
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(
+            json.dumps(macro, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        logger.info(
+            "[CR CONTEXT ENGINEER] Macro context salvo: " + str(output_file.resolve())
+        )
+        return {
+            "sucesso": True,
+            "erro": None,
+            "caminho": str(output_file.resolve()),
+            "product_type": product_type,
+        }
+    except Exception as e:
+        return {
+            "sucesso": False,
+            "erro": "Erro ao salvar macro context: " + str(e),
+            "caminho": None,
+        }
+
+
 tool_salvar_task_cr_adk = FunctionTool(tool_salvar_task_cr)
+tool_salvar_macro_context_cr_adk = FunctionTool(tool_salvar_macro_context_cr)

@@ -15,6 +15,7 @@ from google.adk.agents import LlmAgent
 
 from shared.tools.coding_tools.context_engineer_tools import (
     tool_salvar_task_cr_adk,
+    tool_salvar_macro_context_cr_adk,
     tool_ler_requirements_adk,
     tool_ler_design_adk,
     tool_gerar_doubt_artifact_adk,
@@ -34,6 +35,7 @@ agent = LlmAgent(
     output_schema=schemas.TasksOutput,
     tools=[
         tool_salvar_task_cr_adk,
+        tool_salvar_macro_context_cr_adk,
         tool_ler_requirements_adk,
         tool_ler_design_adk,
         tool_gerar_doubt_artifact_adk,
