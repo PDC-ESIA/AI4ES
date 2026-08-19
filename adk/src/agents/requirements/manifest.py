@@ -8,12 +8,12 @@ Padrão de implementação: after_agent_callback determinístico, zero LLM,
 idêntico ao cr_reviewer.py (Time 4, PR #316). Falha é logada e degradada,
 nunca derruba o pipeline.
 
-Alinhamento inter-times (reunião 2026-08-13, feedback do Time 4/QA):
-- o manifesto é anexado a state["phase_manifests"] (lista consumida pelo
-  orquestrador e pelos demais times), mantendo state["requirements_manifest"]
-  por compatibilidade;
-- paths são normalizados com barras "/" (consumidores em qualquer SO);
-- quando status=blocked, o summary inclui o motivo do bloqueio.
+Contrato inter-times:
+- o manifesto é anexado a state["phase_manifests"], lista padronizada
+  consumida pelo orquestrador e pelas demais fases; state["requirements_manifest"]
+  é mantido por compatibilidade;
+- paths usam separador "/" independentemente do SO de origem;
+- quando status=blocked, o summary explicita o motivo do bloqueio.
 """
 
 import json
@@ -35,11 +35,10 @@ PHASE_NAME = "requirements"
 
 
 def _rel_path(f: Path, ws_root: Path) -> str:
-    """Path relativo ao workspace root, com barras normalizadas ("/").
+    """Path relativo ao workspace root, com separador normalizado ("/").
 
-    Consumidores do manifesto (Time 3/QA, Time 4/Coding) rodam em SOs
-    distintos; barras invertidas do Windows quebravam a leitura dos
-    artefatos (feedback da reunião de 2026-08-13).
+    O manifesto é consumido por agentes que podem rodar em SOs distintos;
+    barras invertidas (Windows) quebram a resolução dos paths no consumidor.
     """
     return str(f.relative_to(ws_root)).replace("\\", "/")
 
@@ -127,10 +126,10 @@ def _derive_status(artifacts: list[dict], doubts: list[dict]) -> str:
 
 
 def _blocked_reason(artifacts: list[dict], doubts: list[dict]) -> str | None:
-    """Motivo do bloqueio, quando status=blocked (feedback do Time 4).
+    """Motivo do bloqueio, quando status=blocked.
 
-    Evita que o consumidor precise abrir os Doubt_Artifacts para
-    entender por que a fase parou.
+    Permite ao consumidor entender por que a fase parou sem precisar
+    abrir os Doubt_Artifacts.
     """
     bloqueantes = [d for d in doubts if d["bloqueante"]]
     if bloqueantes:
@@ -160,10 +159,10 @@ def emit_requirements_manifest(callback_context: CallbackContext) -> None:
     """after_agent_callback — emite manifesto de saída da fase de requisitos.
 
     Anexa o manifesto a callback_context.state["phase_manifests"] — lista
-    padronizada entre os times, consumida pelo orquestrador e pelas fases
-    seguintes (padrão estabelecido pelo Time 3/QA). Mantém também
-    state["requirements_manifest"] por compatibilidade e persiste
-    requirements/manifest.json no workspace para rastreabilidade e debug.
+    padronizada entre as fases, consumida pelo orquestrador e pelos agentes
+    seguintes. Mantém também state["requirements_manifest"] por
+    compatibilidade e persiste requirements/manifest.json no workspace
+    para rastreabilidade e debug.
 
     Retorna None para não sobrescrever a saída do agente.
     """
@@ -186,7 +185,7 @@ def emit_requirements_manifest(callback_context: CallbackContext) -> None:
         # Valida o contrato comum antes de publicar no state.
         manifest = PhaseManifest.model_validate(manifest).model_dump()
 
-        # Handoff padronizado inter-times: lista phase_manifests
+        # Handoff padronizado entre fases: lista phase_manifests
         # (substitui entrada anterior da própria fase, se houver).
         manifests = [
             m for m in (callback_context.state.get("phase_manifests") or [])
