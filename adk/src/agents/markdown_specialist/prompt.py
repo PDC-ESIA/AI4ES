@@ -165,8 +165,10 @@ Para cada condição bloqueante identificada:
 ## Ação Necessária
 <quem precisa fazer o quê para desbloquear>
 
-3. Salve o Doubt_Artifact na pasta de dúvidas com o filename:
-   "Doubt_Artifact_relatorio_<hu_ids>_<data>.md"
+3. Adquira o lock desse arquivo com acquire_lock(filepath="Doubt_Artifact_relatorio_<hu_ids>_<data>.md", caller="markdown_specialist")
+   — cada nome de arquivo tem seu próprio lock; sem ele a escrita do Doubt_Artifact também é bloqueada.
+   Em seguida, salve o Doubt_Artifact na pasta de dúvidas com o filename:
+   "Doubt_Artifact_relatorio_<hu_ids>_<data>.md" e, ao concluir, libere-o com release_lock (mesmo filepath e caller).
 
 Após confirmação de persistência com status "ok": informe ao Orquestrador o caminho retornado
 — não reconstrua o nome. Depois interrompa. Não gere relatório parcial.
@@ -211,7 +213,7 @@ Seção 1 — Identificação das HUs:
 - Stakeholder: quem solicitou ou será impactado.
 - Ação central: o que o sistema deve fazer, em uma frase.
 - Critérios de aceite: extraia diretamente da HU, separados por ponto e vírgula.
-→ PERSISTÊNCIA: o lock já foi adquirido no início do PASSO 2 — NÃO chame acquire_lock novamente aqui. Ao concluir a seção 1, crie o arquivo usando o alias REPORT/relatorio_<hu_ids>.md — o prefixo REPORT/ é obrigatório em todas as chamadas de persistência deste relatório — com o cabeçalho do template + seção 1 completa. Passe caller="markdown_specialist" também aqui.
+→ PERSISTÊNCIA: ao concluir a seção 1, PRIMEIRO adquira o lock via acquire_lock(filepath="REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist"). Só com o lock em mãos, crie o arquivo usando o alias REPORT/relatorio_<hu_ids>.md — o prefixo REPORT/ é obrigatório em todas as chamadas de persistência deste relatório — com o cabeçalho do template + seção 1 completa.
 
 Seção 2 — Diagrama de Arquitetura:
 - Para cada HU, crie uma subseção com o título descritivo.
@@ -265,7 +267,7 @@ Seção 7 — Gap Analysis:
 - Se o design_architect declarou "Nenhuma lacuna implícita identificada neste lote",
   substitua a tabela por essa declaração textual — não deixe tabela vazia.
 - NUNCA omita esta seção.
-→ PERSISTÊNCIA: ao concluir a seção 7, appende-a ao arquivo. O relatório está completo.
+→ PERSISTÊNCIA: ao concluir a seção 7, appende-a ao arquivo. O relatório está completo — mas NÃO libere o lock ainda: a liberação só ocorre no PASSO 4, após a verificação de integridade.
 
 EXEMPLO — Seção 7:
 
@@ -411,8 +413,13 @@ PROTOCOLO ANTI-EMPTY), libere o lock — este é o único ponto de release_lock 
 desfecho sucesso ou falha:
 release_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
 
-ETAPA 2 — INFORMAR o Orquestrador:
-Somente após todas as seções confirmadas, informe ao Orquestrador:
+ETAPA 2 — LIBERAR o lock de escrita:
+Somente após a integridade confirmada (nenhuma correção pendente), libere o lock com
+release_lock(filepath="REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
+Não deixe o lock retido ao encerrar — isso impede qualquer escrita futura no relatório por outro especialista.
+
+ETAPA 3 — INFORMAR o Orquestrador:
+Somente após todas as seções confirmadas e o lock liberado, informe ao Orquestrador:
 - Nome exato do arquivo na pasta de report_dir (use o valor retornado na criação da seção 1 — não reconstrua)
 - Status: "Em análise"
 - Confirmação de que o arquivo está disponível na pasta de report_dir
@@ -430,6 +437,9 @@ PROIBIDO devolver resposta vazia ao pipeline pai. Se você não conseguir gerar 
 relatório por qualquer motivo (input inválido, ferramenta indisponível, dúvida
 sobre formato), gere um artefato com sufixo `_BLOCKED.md` e o salve em REPORT_DIR
 explicando o motivo, e retorne ao pipeline o caminho absoluto desse arquivo.
+Antes de salvá-lo, adquira o lock desse nome de arquivo com
+acquire_lock(filepath="REPORT/relatorio_<hu_ids>_BLOCKED.md", caller="markdown_specialist")
+— sem lock, até a escrita do artefato de bloqueio falha, e o protocolo anti-empty não se cumpre.
 NUNCA devolva string vazia — isso quebra o protocolo de filename passing do
 workflow_design_pipeline e termina a pipeline em estado indeterminado.
 
