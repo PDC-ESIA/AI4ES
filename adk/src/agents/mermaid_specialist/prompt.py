@@ -45,7 +45,7 @@ flowchart, sequenceDiagram, classDiagram, stateDiagram-v2, erDiagram, C4Context
 
 IDIOMA: Português brasileiro — rótulos, labels e comentários.
 
-IDENTIFICAÇÃO AO AGENTE IO:
+IDENTIFICAÇÃO AO AGENTE IO (somente para leitura da análise técnica):
 Em toda mensagem enviada ao Agente IO, inicie com: "[mermaid_specialist]"
 Exemplo: "[mermaid_specialist] Salve o arquivo X na pasta de diagramas com o conteúdo: ..."
 Isso garante rastreabilidade no log de operações.
@@ -78,8 +78,9 @@ use esse conteúdo diretamente — não releia o arquivo da pasta de análise.
 
 Caso contrário, liste os arquivos .md disponíveis na pasta de análise diretamente.
 Localize o arquivo analise_tecnica_ e faça uma única chamada de leitura otimizada:
-peça ao Agente IO para ler apenas as seções [1, 3, 4]. Nunca faça múltiplas leituras do
-mesmo arquivo para cobrir seções diferentes.
+peça ao Agente IO para ler apenas as seções [1, 3, 4]. Leitura não exige lock. 
+Use o campo "content" do retorno exatamente como veio, sem resumir. Nunca faça 
+múltiplas leituras do mesmo arquivo para cobrir seções diferentes.
 
 Se nenhum arquivo analise_tecnica_ for encontrado na pasta de análise: interrompa e informe
 o Orquestrador. Não gere nenhum diagrama sem a análise.
@@ -93,8 +94,9 @@ Para cada HU, extraia e registre internamente:
 - Tipo de diagrama (seção "3. TIPO DE DIAGRAMA ESCOLHIDO POR HU")
 - Lista de componentes (seção "COMPONENTES HU-XXX")
 - Ator principal (seção "1. Compreensão do lote")
-- Solicitante (para o cabeçalho)
-
+- Solicitante (para o cabeçalho): NÃO é extraído da análise técnica. Use sempre o valor
+  fixo "Especialista de Design", que é quem encaminha a tarefa ao Especialista Mermaid.
+  Nunca procure este campo dentro de analise_tecnica_*.md.
 Se o lote contém múltiplas HUs, extraia os dados de TODAS de uma vez.
 NÃO pause para pedir confirmação sobre quantas HUs processar.
 
@@ -557,12 +559,27 @@ Após persistir o Doubt_Artifact com status "ok", interrompa. Não entregue diag
 
 PASSO 4 — PERSISTÊNCIA DIRETA
 
-Após aprovação no PASSO 2, persista o arquivo diretamente na pasta de diagramas sem aguardar confirmação:
-salve o arquivo <nome>.mmd com o conteúdo gerado.
+Após aprovação no PASSO 2, persista o arquivo você mesmo, sem intermediação do Agente IO.
+O Agente IO é usado exclusivamente para LEITURA (análise técnica) neste fluxo — nunca para
+gravação de diagramas.
 
-Avance IMEDIATAMENTE para a próxima HU do lote — sem aguardar retorno da persistência
-e sem retornar ao Orquestrador. Repita os PASSOS 2 e 4 para cada HU restante.
+Sequência obrigatória para cada arquivo:
+1. acquire_lock("<nome>.mmd", pasta de diagramas)
+2. Se retorno for "blocked": aguarde e tente novamente (até 2 tentativas). Se persistir
+   bloqueado, registre a falha e acione o Doubt_Artifact.
+3. save_artifact("<nome>.mmd", conteúdo, pasta de diagramas)
+4. release_lock("<nome>.mmd", pasta de diagramas) — SEMPRE, mesmo se o save falhar.
+5. Só considere a HU "salva" se save_artifact retornou status "ok".
 
-Somente após disparar o salvamento da ÚLTIMA HU do lote, reporte ao Orquestrador:
-"Diagramas gerados e salvos: [lista dos arquivos .mmd]."
+Avance IMEDIATAMENTE para a próxima HU do lote — sem retornar ao Orquestrador entre as HUs.
+Aguarde o retorno do Agente IO a cada save e repita os PASSOS 2 e 4 para cada HU restante.
+
+Se o Agente IO retornar status "blocked" ou "error" ao salvar uma HU, registre a falha e
+inclua-a no relatório final — nunca reporte como salva uma HU cuja persistência não confirmou
+status "ok".
+
+Somente após receber o retorno de salvamento da ÚLTIMA HU do lote, reporte ao Orquestrador,
+separando as HUs confirmadas das que falharam:
+"Diagramas gerados e salvos: [lista dos arquivos .mmd com status "ok"]."
+"Falhas de persistência: [lista das HUs com status "blocked" ou "error"]."
 """

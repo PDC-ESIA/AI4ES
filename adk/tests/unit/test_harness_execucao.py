@@ -1,25 +1,30 @@
-"""Tests para o harness de execução (shared/tools/harness_execucao.py).
+"""Tests para o harness de execução (shared/tools/coding_tools/harness_execucao.py).
 
-Docker e requests são MOCKADOS — nenhum container real é subido. O estágio 6
-roda pytest DENTRO do container via `container.exec_run`, também mockado
-(ver `_make_exec_run`), então nenhuma suíte real é executada. Cobre:
-- caminho feliz: 9 estágios concluem, overall_status=sucesso, report bem-formado;
-- abort crítico: falha na implantação (estágio 2) aborta 4–7, overall=falha;
-- estágio de testes PULADO quando não há suíte;
-- testes que FALHAM viram FALHA no estágio, mas o harness não emite veredito;
-- fallback para modo 'plain' quando os plugins de report/cov não estão na imagem;
+Após o desacoplamento de tecnologias (issue #370), o harness é dirigido por três
+contratos declarativos — manifesto `run.json`, perfil de execução e sandbox — e
+não conhece mais Docker/FastAPI diretamente. Estes testes são herméticos: o
+sandbox é substituído por um `FakeSandbox` (via patch em `create_sandbox`) e o
+`requests.get` é mockado. Nenhum processo/container real é iniciado.
+
+Cobre:
+- caminho feliz nos três perfis (S=service, C=command, B=none);
+- manifesto ausente / inválido → estágio 1 ERRO, estágios seguintes pulados;
+- falha de build (estágio 2) aborta 4–7, overall=falha;
+- healthcheck/execução que falham marcam o estágio, sem veredito;
+- estágio de testes: sucesso, falha, timeout e PULADO (sem comandos);
+- estágio 7 produz uma evidência por critério e NUNCA um veredito;
+- perfis sem HTTP produzem evidência textual (checkable=False);
 - serialização JSON + markdown com sobrescrita atômica;
-- estágio 7 produz um CriterionEvidence por critério e NUNCA um veredito.
+- o sandbox é sempre encerrado (cleanup) ao final.
 """
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import docker
-from docker.errors import BuildError
-
-from shared.tools.harness_execucao import executar_harness_validacao
-from src.agents.executor.schemas import ExecutionReport
+from shared.execution.sandbox import CommandResult
+from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
+from shared.tools.coding_tools.harness_schemas import ExecutionReport
 
 _STAGE_ORDER = [
     "preparacao_ambiente",
@@ -35,7 +40,54 @@ _STAGE_ORDER = [
 
 
 # ---------------------------------------------------------------------------
-# Helpers de mock
+# Fake sandbox — implementa a interface Sandbox de forma determinística
+# ---------------------------------------------------------------------------
+
+class FakeSandbox:
+    """Sandbox de teste: registra chamadas e devolve resultados configuráveis.
+
+    `exec_results` mapeia uma substring do comando → CommandResult. O primeiro
+    match vence; sem match, usa `default_exec` (sucesso vazio).
+    """
+
+    def __init__(self, *, exec_results=None, default_exec=None, logs_text=""):
+        self.exec_results = exec_results or {}
+        self.default_exec = default_exec or CommandResult(
+            exit_code=0, stdout="", stderr="", timed_out=False
+        )
+        self.logs_text = logs_text
+        self._root = Path("/tmp/fake-sandbox")
+        self.setup_called = False
+        self.cleanup_called = False
+        self.started_service = None
+        self.exec_calls: list[str] = []
+
+    @property
+    def root(self) -> Path:
+        return self._root
+
+    def setup(self, source_dir: Path) -> None:
+        self.setup_called = True
+
+    def exec(self, command, *, timeout, env=None):
+        self.exec_calls.append(command)
+        for key, res in self.exec_results.items():
+            if key in command:
+                return res
+        return self.default_exec
+
+    def start_service(self, command, *, env=None) -> None:
+        self.started_service = command
+
+    def logs(self) -> str:
+        return self.logs_text
+
+    def cleanup(self) -> None:
+        self.cleanup_called = True
+
+
+# ---------------------------------------------------------------------------
+# Helpers de fixtures em disco
 # ---------------------------------------------------------------------------
 
 def _mock_response(status_code=200, json_data=None):
@@ -46,90 +98,13 @@ def _mock_response(status_code=200, json_data=None):
     return r
 
 
-class _ExecResult:
-    """Imita o ExecResult do docker-py (exit_code + output)."""
-
-    def __init__(self, exit_code, output):
-        self.exit_code = exit_code
-        self.output = output
-
-
-def _make_exec_run(pytest_exit=0, has_pytest=True, json_plugin=True, report=None, cov=None):
-    """Fabrica um `exec_run` que simula os comandos que o estágio 6 dispara no
-    container: probe do pytest, execução da suíte e `cat` dos relatórios.
-
-    - pytest_exit: exit code do pytest (0 ok, 1 falhas, 5 nada coletado, 124 timeout).
-    - has_pytest: se False, o probe falha e a instalação em runtime não resolve.
-    - json_plugin: se False, `--json-report` é rejeitado (exit 4) → fallback plain.
-    """
-    report = report or {
-        "summary": {"passed": 1, "failed": 0, "error": 0, "skipped": 0, "total": 1},
-        "tests": [],
-    }
-    cov = cov or {"totals": {"percent_covered": 100.0, "covered_lines": 3, "num_statements": 3}}
-
-    def exec_run(cmd, workdir=None, demux=False):
-        shell = cmd[-1] if isinstance(cmd, (list, tuple)) else cmd
-
-        def out(s):
-            b = s.encode()
-            return (b, b"") if demux else b
-
-        if "pytest --version" in shell:
-            return _ExecResult(0 if has_pytest else 1, out("pytest 8.2.0" if has_pytest else ""))
-        if shell.startswith("pip install"):
-            return _ExecResult(0, out("installed"))
-        if shell.startswith("cat ") and "report.json" in shell:
-            return _ExecResult(0, out(json.dumps(report)))
-        if shell.startswith("cat ") and "cov.json" in shell:
-            return _ExecResult(0, out(json.dumps(cov)))
-        if "python -m pytest" in shell:
-            if "--json-report" in shell and not json_plugin:
-                return _ExecResult(4, out("error: unrecognized arguments: --json-report"))
-            texto = "1 passed in 0.01s" if pytest_exit == 0 else "1 failed in 0.01s"
-            return _ExecResult(pytest_exit, out(texto))
-        return _ExecResult(0, out(""))
-
-    return exec_run
-
-
-def _mock_docker(
-    container_status="running",
-    build_raises=None,
-    pytest_exit=0,
-    has_pytest=True,
-    json_plugin=True,
-    report=None,
-):
-    """Cria um client Docker mockado (build/run/cleanup) cujo container expõe
-    um `exec_run` que simula a execução do pytest dentro do container."""
-    client = MagicMock()
-    if build_raises is not None:
-        client.images.build.side_effect = build_raises
-    else:
-        image = MagicMock()
-        log_gen = [
-            {"stream": "Step 1/5 : FROM python:3.12-slim"},
-            {"stream": "Successfully built abc123"},
-        ]
-        client.images.build.return_value = (image, log_gen)
-
-    container = MagicMock()
-    container.status = container_status
-    container.attrs = {"State": {"ExitCode": 0}}
-    container.logs.return_value = (
-        b"2026-07-21T10:00:00 INFO [app] Uvicorn running on http://0.0.0.0:8000"
-    )
-    container.exec_run.side_effect = _make_exec_run(
-        pytest_exit=pytest_exit,
-        has_pytest=has_pytest,
-        json_plugin=json_plugin,
-        report=report,
-    )
-    client.containers.run.return_value = container
-    # _cleanup_container: sem container antigo → NotFound (fluxo limpo)
-    client.containers.get.side_effect = docker.errors.NotFound("sem container")
-    return client, container
+def _dirs(tmp_path):
+    coder = tmp_path / "coder" / "src"
+    execution = tmp_path / "coder" / "execution"
+    tasks = tmp_path / "coder" / "tasks"
+    for d in (coder, execution, tasks):
+        d.mkdir(parents=True, exist_ok=True)
+    return coder, execution, tasks
 
 
 def _write_task(tasks_dir, task_id="TASK-001", criteria=None):
@@ -148,102 +123,268 @@ def _write_task(tasks_dir, task_id="TASK-001", criteria=None):
     )
 
 
-def _write_src(coder_dir, with_suite=False):
-    (coder_dir / "main.py").write_text(
-        "from fastapi import FastAPI\napp = FastAPI()\n", encoding="utf-8"
+def _write_macro(tasks_dir, product_type="api_service"):
+    (tasks_dir / "_macro_context.json").write_text(
+        json.dumps({"product_type": product_type}), encoding="utf-8"
     )
-    (coder_dir / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
-    if with_suite:
-        (coder_dir / "test_app.py").write_text(
-            "def test_ok():\n    assert True\n", encoding="utf-8"
-        )
 
 
-def _dirs(tmp_path):
-    coder = tmp_path / "coder" / "src"
-    execution = tmp_path / "coder" / "execution"
-    tasks = tmp_path / "coder" / "tasks"
-    for d in (coder, execution, tasks):
-        d.mkdir(parents=True, exist_ok=True)
-    return coder, execution, tasks
+def _manifest_service(**over):
+    m = {
+        "schema_version": "1",
+        "surface": "service",
+        "build": ["pip install -r requirements.txt"],
+        "run": "uvicorn main:app --port 8000",
+        "test": ["pytest -q"],
+        "port": 8000,
+        "healthcheck": "/",
+        "sandbox": "direct",
+    }
+    m.update(over)
+    return m
 
 
-def _run(task_id, coder, execution, tasks, client):
-    """Executa o harness com Docker, requests e time.sleep mockados.
+def _manifest_command(**over):
+    m = {
+        "surface": "command",
+        "build": ["pip install -r requirements.txt"],
+        "run": "python pipeline.py",
+        "test": ["pytest -q"],
+        "sandbox": "direct",
+    }
+    m.update(over)
+    return m
 
-    O pytest do estágio 6 roda "dentro do container" via `container.exec_run`,
-    também mockado em `_mock_docker` — nenhum container real é subido nem
-    suíte real é executada.
-    """
-    with patch("docker.from_env", return_value=client), \
-         patch("requests.get", return_value=_mock_response()), \
-         patch("shared.tools.harness_execucao.time.sleep"):
+
+def _manifest_none(**over):
+    m = {
+        "surface": "none",
+        "build": ["pip install ."],
+        "test": ["pytest -q"],
+        "sandbox": "direct",
+    }
+    m.update(over)
+    return m
+
+
+def _write_manifest(coder_dir, manifest: dict):
+    (coder_dir / "run.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def _run(task_id, coder, execution, tasks, sandbox, *, response=None):
+    resp = response if response is not None else _mock_response()
+    with patch(
+        "shared.tools.coding_tools.harness_execucao.create_sandbox",
+        return_value=sandbox,
+    ), patch("requests.get", return_value=resp), patch(
+        "shared.tools.coding_tools.harness_execucao.time.sleep"
+    ):
         return executar_harness_validacao(
-            task_id, 1,
+            task_id,
+            1,
             coder_base_dir=coder,
             execution_base_dir=execution,
             tasks_base_dir=tasks,
         )
 
 
+def _sandbox_ok(tests_passed=1):
+    """FakeSandbox de caminho feliz: build ok e testes que passam."""
+    return FakeSandbox(
+        exec_results={
+            "pytest": CommandResult(
+                exit_code=0,
+                stdout=f"{tests_passed} passed in 0.01s",
+                stderr="",
+                timed_out=False,
+            ),
+        },
+        logs_text="INFO [app] serviço no ar",
+    )
+
+
 # ===========================================================================
-# Caminho feliz
+# Caminho feliz — perfil S (service)
 # ===========================================================================
 
-def test_caminho_feliz_nove_estagios_sucesso(tmp_path):
+def test_caminho_feliz_service_nove_estagios_sucesso(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
-    _write_src(coder, with_suite=True)
-    client, _ = _mock_docker()
+    _write_macro(tasks, "api_service")
+    _write_manifest(coder, _manifest_service())
+    sandbox = _sandbox_ok()
 
-    result = _run("TASK-001", coder, execution, tasks, client)
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
 
-    # Ordem e completude dos 9 estágios
     nomes = [s["stage"] for s in result["stages"]]
     assert nomes == _STAGE_ORDER
-    # Todos os estágios concluíram com sucesso
     assert all(s["status"] == "sucesso" for s in result["stages"])
     assert result["overall_status"] == "sucesso"
-    # Report bem-formado (revalida contra o schema Pydantic)
     ExecutionReport(**result)
 
+    # O serviço foi iniciado em segundo plano e o sandbox foi encerrado.
+    assert sandbox.started_service == "uvicorn main:app --port 8000"
+    assert sandbox.setup_called is True
+    assert sandbox.cleanup_called is True
 
-def test_caminho_feliz_report_persistido(tmp_path):
+
+def test_caminho_feliz_service_report_persistido(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
-    _write_src(coder, with_suite=True)
-    client, _ = _mock_docker()
+    _write_manifest(coder, _manifest_service())
+    sandbox = _sandbox_ok()
 
-    result = _run("TASK-001", coder, execution, tasks, client)
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
 
     assert result["report_path"].endswith("TASK-001.report.json")
     assert result["work_item_id"] == "TASK-001"
     assert result["iteration"] == 1
 
-    # O estágio 6 rodou a suíte DENTRO do container: o alvo é o path /app,
-    # não um path reescrito para o workspace do qa_agent (regressão do bug).
     testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
     assert testes["status"] == "sucesso"
-    assert testes["evidence"]["alvo_container"] == "/app/test_app.py"
-    assert testes["evidence"]["modo"] == "json"
+    resultados = testes["evidence"]["resultados"]
+    assert resultados[0]["resumo"]["passaram"] == 1
+    assert resultados[0]["comando"] == "pytest -q"
 
 
 # ===========================================================================
-# Abort crítico — falha na implantação (estágio 2) aborta 4–7
+# Caminho feliz — perfil C (command): estágio 4 executa o `run` (exit-code)
 # ===========================================================================
 
-def test_abort_critico_implantacao_pula_estagios_seguintes(tmp_path):
+def test_caminho_feliz_command_executa_run(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=["O pipeline processa o arquivo de entrada"])
+    _write_macro(tasks, "data_pipeline")
+    _write_manifest(coder, _manifest_command())
+    sandbox = FakeSandbox(
+        exec_results={
+            "pipeline.py": CommandResult(
+                exit_code=0, stdout="processado", stderr="", timed_out=False
+            ),
+            "pytest": CommandResult(
+                exit_code=0, stdout="2 passed", stderr="", timed_out=False
+            ),
+        }
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
+    # Não sobe serviço; o `run` é executado como comando único no estágio 4.
+    assert sandbox.started_service is None
+    assert "python pipeline.py" in sandbox.exec_calls
+    init = by_name["inicializacao_aplicacao"]
+    assert init["status"] == "sucesso"
+    assert init["evidence"]["exit_code"] == 0
+    assert result["overall_status"] == "sucesso"
+
+    # Perfil sem HTTP → evidências textuais (não verificáveis automaticamente).
+    for e in result["criteria_evidence"]:
+        assert e["checkable"] is False
+
+
+def test_command_run_falha_marca_estagio4(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=["O pipeline processa o arquivo"])
+    _write_manifest(coder, _manifest_command())
+    sandbox = FakeSandbox(
+        exec_results={
+            "pipeline.py": CommandResult(
+                exit_code=2, stdout="", stderr="boom", timed_out=False
+            ),
+        }
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
+    init = by_name["inicializacao_aplicacao"]
+    assert init["status"] == "falha"
+    assert init["error_code"] == "EXECUCAO_FALHOU"
+    assert init["evidence"]["exit_code"] == 2
+
+
+# ===========================================================================
+# Caminho feliz — perfil B (none): estágio 4 pulado; foco em build+testes
+# ===========================================================================
+
+def test_caminho_feliz_none_pula_inicializacao(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=["A biblioteca expõe a função parse()"])
+    _write_macro(tasks, "library")
+    _write_manifest(coder, _manifest_none())
+    sandbox = _sandbox_ok()
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
+    assert sandbox.started_service is None
+    # Sem superfície de topo: inicialização é pulada, mas isso NÃO derruba o overall.
+    assert by_name["inicializacao_aplicacao"]["status"] == "pulado"
+    assert by_name["testes_automatizados"]["status"] == "sucesso"
+    assert result["overall_status"] == "sucesso"
+    for e in result["criteria_evidence"]:
+        assert e["checkable"] is False
+
+
+# ===========================================================================
+# Manifesto ausente / inválido — estágio 1 ERRO, seguintes pulados
+# ===========================================================================
+
+def test_manifesto_ausente_erro_estagio1(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
-    _write_src(coder)
-    client, _ = _mock_docker(build_raises=BuildError("erro de build simulado", build_log=[]))
+    # NÃO escreve run.json
+    sandbox = _sandbox_ok()
 
-    result = _run("TASK-001", coder, execution, tasks, client)
-
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
     by_name = {s["stage"]: s for s in result["stages"]}
-    # Estágio 2 falhou
+
+    prep = by_name["preparacao_ambiente"]
+    assert prep["status"] == "erro"
+    assert prep["error_code"] == "MANIFESTO_AUSENTE"
+    assert by_name["implantacao_artefato"]["status"] == "pulado"
+    assert result["overall_status"] == "erro"
+    # Sandbox nem chegou a ser criado/usado.
+    assert sandbox.setup_called is False
+
+
+def test_manifesto_invalido_erro_estagio1(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    # surface=service sem port/run → incoerente (ManifestError na carga).
+    _write_manifest(coder, {"surface": "service"})
+    sandbox = _sandbox_ok()
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    prep = next(s for s in result["stages"] if s["stage"] == "preparacao_ambiente")
+
+    assert prep["status"] == "erro"
+    assert prep["error_code"] == "MANIFESTO_INVALIDO"
+    assert result["overall_status"] == "erro"
+
+
+# ===========================================================================
+# Falha de build (estágio 2) aborta 4–7
+# ===========================================================================
+
+def test_falha_build_pula_estagios_seguintes(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+    sandbox = FakeSandbox(
+        exec_results={
+            "pip install": CommandResult(
+                exit_code=1, stdout="", stderr="ERROR: no matching distribution", timed_out=False
+            ),
+        }
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    by_name = {s["stage"]: s for s in result["stages"]}
+
     assert by_name["implantacao_artefato"]["status"] == "falha"
-    # Estágios 4–7 foram pulados (dependem da implantação)
+    assert by_name["implantacao_artefato"]["error_code"] == "FALHA_BUILD"
     for nome in (
         "inicializacao_aplicacao",
         "coleta_logs_execucao",
@@ -251,64 +392,104 @@ def test_abort_critico_implantacao_pula_estagios_seguintes(tmp_path):
         "validacoes_work_item",
     ):
         assert by_name[nome]["status"] == "pulado", nome
-    # Estágio 3 (coleta logs de build) ainda roda — logs existem mesmo em falha
+    # Estágio 3 (coleta logs de build) ainda roda — logs existem mesmo em falha.
     assert by_name["coleta_logs_implantacao"]["status"] == "sucesso"
-    # overall reflete a falha
     assert result["overall_status"] == "falha"
-    # Consolidação e geração de relatório sempre acontecem
     assert by_name["consolidacao_evidencias"]["status"] == "sucesso"
     assert by_name["geracao_relatorio"]["status"] == "sucesso"
+    # Serviço nunca foi iniciado; sandbox foi encerrado mesmo assim.
+    assert sandbox.started_service is None
+    assert sandbox.cleanup_called is True
 
 
 # ===========================================================================
-# Estágio de testes PULADO quando não há suíte
+# Healthcheck do serviço falha → estágio 4 FALHA
 # ===========================================================================
 
-def test_testes_pulado_quando_nao_ha_suite(tmp_path):
+def test_healthcheck_falha_marca_inicializacao(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
-    _write_src(coder, with_suite=False)  # sem test_*.py
-    client, _ = _mock_docker()
+    _write_manifest(coder, _manifest_service())
+    sandbox = _sandbox_ok()
 
-    result = _run("TASK-001", coder, execution, tasks, client)
-
+    # requests.get retorna 500 no healthcheck → app não sobe.
+    result = _run(
+        "TASK-001", coder, execution, tasks, sandbox, response=_mock_response(500)
+    )
     by_name = {s["stage"]: s for s in result["stages"]}
-    # Sem suíte → PULADO (não é erro)
-    assert by_name["testes_automatizados"]["status"] == "pulado"
-    # Ausência de suíte NÃO derruba o overall
+
+    init = by_name["inicializacao_aplicacao"]
+    assert init["status"] == "falha"
+    assert init["error_code"] == "APP_NAO_INICIALIZOU"
+    # Testes ainda rodam (gatilham em deploy_ok, não em app_ok).
+    assert by_name["testes_automatizados"]["status"] == "sucesso"
+    # Estágio 7: app não subiu → evidências não verificáveis.
+    for e in result["criteria_evidence"]:
+        assert e["checkable"] is False
+    # Inicialização é crítica no perfil S → overall falha.
+    assert result["overall_status"] == "falha"
+
+
+# ===========================================================================
+# Estágio de testes: sucesso, falha, timeout, pulado
+# ===========================================================================
+
+def test_testes_falharam_marcam_falha_sem_veredito(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+    sandbox = FakeSandbox(
+        exec_results={
+            "pytest": CommandResult(
+                exit_code=1, stdout="1 failed in 0.02s", stderr="", timed_out=False
+            ),
+        },
+        logs_text="INFO no ar",
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
+
+    assert testes["status"] == "falha"
+    assert testes["error_code"] == "TESTES_FALHARAM"
+    assert testes["evidence"]["resultados"][0]["resumo"]["falharam"] == 1
+    # Nenhum campo de veredito vazou.
+    assert not ({"verdict", "aprovado", "veredito", "approved"} & set(testes["evidence"].keys()))
+    # Testes não são estágio crítico: a falha deles NÃO derruba o overall.
     assert result["overall_status"] == "sucesso"
 
 
-# ===========================================================================
-# Serialização JSON + markdown + sobrescrita atômica
-# ===========================================================================
-
-def test_serializacao_json_markdown_e_sobrescrita_atomica(tmp_path):
+def test_testes_timeout_marca_falha(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
-    _write_src(coder)
-    client, _ = _mock_docker()
+    _write_manifest(coder, _manifest_service())
+    sandbox = FakeSandbox(
+        exec_results={
+            "pytest": CommandResult(
+                exit_code=None, stdout="", stderr="", timed_out=True
+            ),
+        },
+        logs_text="INFO no ar",
+    )
 
-    json_path = execution / "TASK-001.report.json"
-    md_path = execution / "TASK-001.report.md"
-    tmp_path_json = execution / "TASK-001.report.json.tmp"
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
 
-    _run("TASK-001", coder, execution, tasks, client)
+    assert testes["status"] == "falha"
+    assert testes["error_code"] == "TESTES_TIMEOUT"
 
-    # Ambos os artefatos existem e o JSON é válido
-    assert json_path.is_file()
-    assert md_path.is_file()
-    data = json.loads(json_path.read_text(encoding="utf-8"))
-    assert data["work_item_id"] == "TASK-001"
-    assert "# Relatório de Execução" in md_path.read_text(encoding="utf-8")
-    # Nenhum arquivo temporário deixado para trás (escrita atômica)
-    assert not tmp_path_json.exists()
 
-    # Reexecução sobrescreve atomicamente no mesmo path, sem lixo temporário
-    _run("TASK-001", coder, execution, tasks, client)
-    data2 = json.loads(json_path.read_text(encoding="utf-8"))
-    assert data2["work_item_id"] == "TASK-001"
-    assert not tmp_path_json.exists()
+def test_testes_pulado_quando_manifesto_sem_test(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service(test=[]))
+    sandbox = _sandbox_ok()
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
+
+    assert testes["status"] == "pulado"
+    assert result["overall_status"] == "sucesso"
 
 
 # ===========================================================================
@@ -319,130 +500,90 @@ def test_estagio7_uma_evidencia_por_criterio_sem_veredito(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     criteria = ["A rota GET / responde 200", "O sistema deve ser intuitivo"]
     _write_task(tasks, criteria=criteria)
-    _write_src(coder)
-    client, _ = _mock_docker()
+    _write_manifest(coder, _manifest_service())
+    sandbox = _sandbox_ok()
 
-    result = _run("TASK-001", coder, execution, tasks, client)
-
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
     evidencias = result["criteria_evidence"]
-    # Exatamente uma evidência por critério, na mesma ordem
+
     assert len(evidencias) == len(criteria)
     assert [e["criterion"] for e in evidencias] == criteria
 
-    # NENHUM campo de veredito vazou para a evidência
     chaves_veredito = {"status", "verdict", "approved", "aprovado", "atendido", "veredito"}
     for e in evidencias:
         assert not (chaves_veredito & set(e.keys()))
 
-    # Critério com rota é verificável; critério semântico não é
+    # Critério com rota GET é verificável; critério semântico não é.
     assert evidencias[0]["checkable"] is True
     assert evidencias[1]["checkable"] is False
 
 
-# ===========================================================================
-# Testes que FALHAM → estágio FALHA, mas o harness NÃO emite veredito
-# ===========================================================================
-
-def test_testes_falharam_marcam_falha_sem_veredito(tmp_path):
-    coder, execution, tasks = _dirs(tmp_path)
-    _write_task(tasks)
-    _write_src(coder, with_suite=True)
-    # pytest sai com 1 (houve falhas); report reflete 1 falha
-    client, _ = _mock_docker(
-        pytest_exit=1,
-        report={
-            "summary": {"passed": 0, "failed": 1, "error": 0, "skipped": 0, "total": 1},
-            "tests": [
-                {
-                    "nodeid": "test_app.py::test_ok",
-                    "outcome": "failed",
-                    "call": {"crash": {"lineno": 2, "message": "AssertionError"}},
-                }
-            ],
-        },
-    )
-
-    result = _run("TASK-001", coder, execution, tasks, client)
-    by_name = {s["stage"]: s for s in result["stages"]}
-    testes = by_name["testes_automatizados"]
-
-    # O estágio marca FALHA e registra o código, mas continua sendo só evidência
-    assert testes["status"] == "falha"
-    assert testes["error_code"] == "TESTES_FALHARAM"
-    assert testes["evidence"]["resumo"]["falharam"] == 1
-    # Nenhum campo de veredito vazou para a evidência do estágio
-    assert not ({"verdict", "aprovado", "veredito", "approved"} & set(testes["evidence"].keys()))
-    # Testes não são estágio crítico: a falha deles NÃO derruba o status agregado
-    # (o julgamento é do implementation_validator, não do harness).
-    assert result["overall_status"] == "sucesso"
-
-
-# ===========================================================================
-# Sem plugins de report/cov na imagem → fallback para modo 'plain'
-# ===========================================================================
-
-def test_fallback_plain_quando_sem_plugin_json(tmp_path):
-    coder, execution, tasks = _dirs(tmp_path)
-    _write_task(tasks)
-    _write_src(coder, with_suite=True)
-    # pytest existe, mas --json-report/--cov não são reconhecidos (exit 4)
-    client, _ = _mock_docker(pytest_exit=0, json_plugin=False)
-
-    result = _run("TASK-001", coder, execution, tasks, client)
-    testes = next(s for s in result["stages"] if s["stage"] == "testes_automatizados")
-
-    # Caiu para o modo texto, mas ainda classificou o resultado a partir do exit code
-    assert testes["status"] == "sucesso"
-    assert testes["evidence"]["modo"] == "plain"
-    assert testes["evidence"]["resumo"]["passaram"] == 1
-
-
-# ===========================================================================
-# Estágio 7 — critérios com POST/PUT/PATCH/DELETE não são checados via GET
-# ===========================================================================
-
 def test_estagio7_verbo_com_payload_nao_e_checado_via_get(tmp_path):
-    """Critério que exige POST/PUT/PATCH/DELETE não pode ser 'verificado' com um
-    GET desalinhado: deve sair como checkable=False, com o motivo registrado,
-    para não induzir o validador (ex.: 405 num endpoint POST é o esperado para
-    um GET, não uma falha do critério)."""
     coder, execution, tasks = _dirs(tmp_path)
     criteria = [
-        "POST /usuarios deve retornar 201",                      # verbo com payload
-        "Após o POST /itens, o GET /itens deve listar o item",   # verbos mistos
-        "A rota GET /status responde 200",                       # GET puro → checável
+        "POST /usuarios deve retornar 201",
+        "Após o POST /itens, o GET /itens deve listar o item",
+        "A rota GET /status responde 200",
     ]
     _write_task(tasks, criteria=criteria)
-    _write_src(coder)
-    client, _ = _mock_docker()
+    _write_manifest(coder, _manifest_service())
+    sandbox = _sandbox_ok()
 
-    result = _run("TASK-001", coder, execution, tasks, client)
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
     ev = {e["criterion"]: e for e in result["criteria_evidence"]}
 
-    # POST puro: não checável, e o motivo cita o verbo não derivável
     assert ev[criteria[0]]["checkable"] is False
     assert "POST" in ev[criteria[0]]["check_performed"]
-    # Nenhuma requisição desalinhada foi registrada como checagem
     assert not ev[criteria[0]]["check_performed"].startswith("Requisição HTTP GET")
 
-    # Verbos mistos (GET + POST): a parte não-executável contamina o todo → não checável
     assert ev[criteria[1]]["checkable"] is False
     assert "POST" in ev[criteria[1]]["check_performed"]
 
-    # GET puro continua checável, com a requisição registrada
     assert ev[criteria[2]]["checkable"] is True
     assert ev[criteria[2]]["check_performed"].startswith("Requisição HTTP GET")
 
-    
-def test_container_nao_inicia_preserva_logs_na_evidence(tmp_path):
+
+# ===========================================================================
+# Serialização JSON + markdown + sobrescrita atômica
+# ===========================================================================
+
+def test_serializacao_json_markdown_e_sobrescrita_atomica(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
-    _write_src(coder)
-    client, _ = _mock_docker(container_status="exited")
+    _write_manifest(coder, _manifest_service())
 
-    result = _run("TASK-001", coder, execution, tasks, client)
-    implant = next(s for s in result["stages"] if s["stage"] == "implantacao_artefato")
+    json_path = execution / "TASK-001.report.json"
+    md_path = execution / "TASK-001.report.md"
+    tmp_path_json = execution / "TASK-001.report.json.tmp"
 
-    assert implant["status"] == "falha"
-    assert implant["error_code"] == "CONTAINER_NAO_INICIOU"
-    assert "Uvicorn running" in implant["evidence"]["runtime_logs_tail"]
+    _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    assert json_path.is_file()
+    assert md_path.is_file()
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data["work_item_id"] == "TASK-001"
+    assert "# Relatório de Execução" in md_path.read_text(encoding="utf-8")
+    assert not tmp_path_json.exists()
+
+    # Reexecução sobrescreve atomicamente no mesmo path, sem lixo temporário.
+    _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    data2 = json.loads(json_path.read_text(encoding="utf-8"))
+    assert data2["work_item_id"] == "TASK-001"
+    assert not tmp_path_json.exists()
+
+
+# ===========================================================================
+# Task ausente — estágio 1 ERRO antes de tocar no manifesto/sandbox
+# ===========================================================================
+
+def test_task_ausente_erro_estagio1(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_manifest(coder, _manifest_service())
+    sandbox = _sandbox_ok()
+
+    result = _run("TASK-404", coder, execution, tasks, sandbox)
+    prep = next(s for s in result["stages"] if s["stage"] == "preparacao_ambiente")
+
+    assert prep["status"] == "erro"
+    assert prep["error_code"] == "TASK_NAO_ENCONTRADA"
+    assert sandbox.setup_called is False

@@ -7,6 +7,8 @@ from pathlib import Path
 import litellm
 from litellm import completion
 
+from shared.llm import copilot_completion_kwargs
+
 # Garante compatibilidade com providers que não suportam response_format
 # (ex.: github_copilot). Precisa estar antes de qualquer chamada a completion().
 litellm.drop_params = True
@@ -20,7 +22,7 @@ Identifique os tipos (RF, RNF, HU, UC, RN). Se não houver ID claro, gere um seq
 Texto bruto: {raw_input}
 """
     model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
-    llm_kwargs = {}
+    llm_kwargs = copilot_completion_kwargs(model_name)
     if "/" not in model_name:
         model_name = f"gemini/{model_name}"
         llm_kwargs["api_key"] = os.environ.get("GOOGLE_API_KEY")
@@ -63,7 +65,7 @@ def _gerar_pytest_via_llm(
         ValueError: Se o modelo retornar conteúdo vazio.
     """
     model_name = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
-    llm_kwargs = {}
+    llm_kwargs = copilot_completion_kwargs(model_name)
     if "/" not in model_name:
         model_name = f"gemini/{model_name}"
         llm_kwargs["api_key"] = os.environ.get("GOOGLE_API_KEY")

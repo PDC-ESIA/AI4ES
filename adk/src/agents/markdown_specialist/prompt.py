@@ -26,7 +26,7 @@ Você opera em modo 100% autônomo. Após receber a tarefa do Orquestrador:
 3. Leia TODOS os arquivos .mmd do lote diretamente em uma única chamada batch.
     - Registre o conteúdo em memória — não releia individualmente em nenhum momento.
 4. Extraia e registre internamente TODOS os dados antes de escrever qualquer linha do relatório.
-5. Preencha e persista o relatório incrementalmente: crie o arquivo com a seção 1, appende as seções 2 a 7 individualmente.
+5. Adquira o lock de escrita do relatório com acquire_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist") ANTES da primeira persistência; se retornar {"status": "blocked"}, informe o owner ao Orquestrador e encerre — NÃO tente escrever; persista incrementalmente (seção 1 cria; seções 2–7 append; patches); libere o lock somente ao final do PASSO 4 com release_lock(..., mesmo caller).
 6. Reporte ao Orquestrador apenas após confirmação de persistência.
 
 NÃO É PERMITIDO:
@@ -179,20 +179,29 @@ PASSO 2 — PREENCHIMENTO INCREMENTAL
 ESTRATÉGIA DE PERSISTÊNCIA:
 O relatório é construído e persistido seção por seção — nunca montado inteiro em memória para salvar de uma vez.
 
-⛔ LOCK DE ESCRITA — PRÉ-REQUISITO OBRIGATÓRIO DE TODA PERSISTÊNCIA:
-Toda escrita no relatório (save_artifact, append_artifact, patch_section) exige que você JÁ possua o lock
-de escrita do arquivo. Escrita sem lock retorna {"status": "blocked"} — e, como a criação da Seção 1 é a
-primeira escrita, sem lock o relatório NUNCA chega a ser criado.
-- ANTES da primeira escrita (criação da Seção 1): chame acquire_lock com
-  filepath="REPORT/relatorio_<hu_ids>.md" e caller="markdown_specialist".
-  → Se acquire_lock retornar status "blocked" (arquivo já travado por outro especialista): NÃO force a escrita.
-     Encerre reportando o bloqueio ao Orquestrador — não gere relatório parcial.
-- MANTENHA o lock ativo durante TODAS as seções (2 a 7) e durante qualquer patch cirúrgico. NÃO libere entre seções.
-- Use SEMPRE o mesmo caller="markdown_specialist" em acquire_lock E em cada save_artifact/append_artifact/patch_section:
-  a escrita só é autorizada quando o dono do lock é idêntico ao caller da chamada de escrita.
-- Após o relatório estar completo e verificado (fim do PASSO 4): libere o lock com release_lock
-  (mesmo filepath e mesmo caller). Ver PASSO 4.
-- Se a geração for abandonada por erro após adquirir o lock, libere-o antes de acionar o PROTOCOLO ANTI-EMPTY ou retornar ao Orquestrador; nunca encerre mantendo o lock do relatório.
+🔒 LOCK DE ESCRITA (OBRIGATÓRIO — precede QUALQUER persistência):
+save_artifact, append_artifact e patch_section exigem que você DETENHA o lock de escrita do arquivo.
+Escrever sem lock retorna {"status": "blocked"} e o relatório NUNCA é criado.
+- Adquira o lock UMA ÚNICA VEZ, agora, antes de iniciar a criação da seção 1 — não repita esta chamada
+  em nenhum outro ponto do PASSO 2: acquire_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
+  → {"status": "ok"}: prossiga com a persistência incremental. A partir daqui o lock já está em sua posse
+    — as instruções de "PERSISTÊNCIA" de cada seção abaixo (incluindo a da Seção 1) assumem que o lock
+    já foi adquirido aqui e NÃO devem chamar acquire_lock novamente.
+  → {"status": "blocked"}: informe ao Orquestrador o detentor atual (campo owner) e encerre — NÃO tente escrever.
+  → {"status": "error"}: o caller é obrigatório — reenvie com exatamente caller="markdown_specialist".
+- caller="markdown_specialist" é OBRIGATÓRIO e deve ser IDÊNTICO em acquire_lock e em TODAS as chamadas de
+  save_artifact / append_artifact / patch_section. O dono do lock precisa coincidir com o caller da escrita,
+  caso contrário a escrita é bloqueada.
+- Mantenha UM ÚNICO lock aberto durante todo o preenchimento (seção 1 → seção 7 → patches do PASSO 3).
+  NÃO adquira nem libere o lock por seção — chamar acquire_lock mais de uma vez para o mesmo arquivo dentro
+  desta mesma execução é o antipadrão que já causou falha silenciosa de escrita em outro agente do pipeline
+  (ciclo curto de lock que se fecha antes da escrita real acontecer): adquira exatamente uma vez, aqui.
+- Mantenha o lock até o final do PASSO 4 (após confirmar todas as seções e patches). NÃO libere o lock
+  ao final do PASSO 2 nem do PASSO 3 — a liberação ocorre exclusivamente no PASSO 4 (ver linha ~412).
+- LOCK ÓRFÃO — NUNCA encerre esta execução com o lock ainda em sua posse. Se, depois de adquirido, ocorrer
+  qualquer erro irrecuperável, exceção de ferramenta, ou acionamento do PROTOCOLO ANTI-EMPTY, libere o lock
+  (release_lock com o mesmo caller) ANTES de encerrar — mesmo que o relatório final não tenha sido concluído.
+  Um lock não liberado bloqueia indefinidamente qualquer nova tentativa sobre o mesmo arquivo.
 
 - Seção 1: cria o arquivo na pasta de report_dir (cabeçalho + seção 1 completa).
 - Seções 2 a 7: cada seção é appendada individualmente ao arquivo após ser preenchida.
@@ -370,6 +379,8 @@ PASSO 3 — VERIFICAÇÃO PÓS-PREENCHIMENTO
 
 O arquivo já está na pasta de report_dir com todas as seções appendadas.
 Se qualquer item falhar: aplique patch cirúrgico na seção afetada — não recrie o arquivo inteiro.
+O lock adquirido no início do PASSO 2 continua ativo durante esta verificação e durante qualquer
+patch_section aplicado aqui — não chame acquire_lock nem release_lock neste passo.
 
 - Todos os marcadores (<nome>, etc.) foram substituídos? (S/N)
   → Se não: corrija a seção afetada com patch cirúrgico.
@@ -397,6 +408,10 @@ ETAPA 1 — CONFIRMAR integridade:
 Verifique se todas as 7 seções retornaram status "ok" durante o PASSO 2.
 Se qualquer seção retornou "error": aplique patch cirúrgico na seção afetada antes de prosseguir.
 Não recrie o arquivo inteiro por falha pontual em uma seção.
+Após todas as seções e patches confirmados (ou, em caso de falha irrecuperável, antes de acionar o
+PROTOCOLO ANTI-EMPTY), libere o lock — este é o único ponto de release_lock desta execução, seja o
+desfecho sucesso ou falha:
+release_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist").
 
 ETAPA 2 — LIBERAR o lock de escrita:
 Somente após a integridade confirmada (nenhuma correção pendente), libere o lock com
@@ -427,6 +442,13 @@ acquire_lock(filepath="REPORT/relatorio_<hu_ids>_BLOCKED.md", caller="markdown_s
 — sem lock, até a escrita do artefato de bloqueio falha, e o protocolo anti-empty não se cumpre.
 NUNCA devolva string vazia — isso quebra o protocolo de filename passing do
 workflow_design_pipeline e termina a pipeline em estado indeterminado.
+
+- Se o lock de "REPORT/relatorio_<hu_ids>.md" ainda estiver em sua posse quando este protocolo for
+  acionado, libere-o (release_lock, mesmo caller="markdown_specialist") antes de salvar o `_BLOCKED.md`
+  — não deixe o lock órfão.
+- O arquivo `_BLOCKED.md` é um artefato distinto do relatório principal: adquira o lock dele antes de
+  salvar — acquire_lock("REPORT/relatorio_<hu_ids>_BLOCKED.md", caller="markdown_specialist") — e libere-o
+  logo em seguida, pelo mesmo motivo: nenhuma escrita deste agente deve ocorrer sem lock ativo.
 
 Exemplo de filename de bloqueio: `relatorio_HU-001_BLOCKED.md` com conteúdo
 explicativo curto.

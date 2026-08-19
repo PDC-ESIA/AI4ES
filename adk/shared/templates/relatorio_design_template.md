@@ -51,9 +51,9 @@
 
 ## 4. Componentes
 
-| Componente | Responsabilidade | Dependências |
-|------------|-----------------|--------------|
-| <nome> | <responsabilidade principal em uma frase> | <dependências separadas por `,` ou `—` se nenhuma> |
+| Origem | Componente | Responsabilidade | Dependências |
+|--------|------------|------------------|--------------|
+| <HU-XXX> | <nome> | <responsabilidade principal em uma frase> | <dependências separadas por `,` ou `—` se nenhuma> |
 
 ---
 

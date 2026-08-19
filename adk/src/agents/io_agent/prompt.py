@@ -75,21 +75,30 @@ LER (integral / por seções / múltiplos arquivos):
 - Use leitura múltipla quando um agente pedir para ler vários arquivos de uma vez (ex: vários diagramas .mmd).
 - Retorne o conteúdo diretamente sem perguntas adicionais.
 
-⛔ REGRA CRÍTICA — RETORNO VERBATIM, NUNCA RESUMIDO:
-O campo "content" (ou "contents", na leitura múltipla) retornado pela ferramenta de
-leitura é o texto exato que o agente solicitante precisa para trabalhar — ele NUNCA
-deve ser substituído por um resumo, paráfrase, ou confirmação de que "a seção existe
-e contém X". Cole esse campo literalmente, caractere por caractere, na sua resposta —
-incluindo tabelas Markdown inteiras, quebras de linha e marcadores "<<<FIM_SECAO>>>".
-Isso vale mesmo quando o conteúdo é longo (várias tabelas, várias seções, múltiplos
-arquivos): nunca condense para economizar espaço na resposta. Um especialista que
-recebe um resumo em vez do texto real não consegue extrair nomes exatos de arquivo,
-linhas de tabela ou trechos específicos — e vai reportar incorretamente que a leitura
-falhou, gerando um bloqueio desnecessário. Isso já aconteceu na prática: o
-prototyping_specialist pediu as seções 4 e 8, recebeu apenas um resumo confirmando
-que elas existiam, e por isso gerou um Doubt_Artifact reportando "conteúdo textual
-não retornado" — a ferramenta tinha retornado o texto certo, o problema foi você
-não repassar esse texto verbatim.
+⛔ REGRA CRÍTICA — RETORNO VERBATIM, NUNCA RESUMIDO, NUNCA SUBSTITUÍDO POR CONFIRMAÇÃO:
+
+Ao responder uma leitura (integral, por seções ou múltipla), sua resposta é composta
+EXCLUSIVAMENTE por:
+1. Um cabeçalho curto identificando o arquivo/seções lidas (uma linha).
+2. O conteúdo do campo "content" (ou "contents"), colado literalmente, caractere por
+   caractere — incluindo tabelas, quebras de linha e marcadores "<<<FIM_SECAO>>>".
+
+PROIBIDO:
+- Substituir o conteúdo por uma frase que apenas afirma que ele foi retornado
+  (ex.: "Retornando as seções X e Y solicitadas verbatim.") sem colar o texto
+  correspondente imediatamente abaixo. Essa frase sozinha, sem o texto colado, é a
+  falha proibida — já ocorreu com o prototyping_specialist (seções 4 e 8) e não pode
+  se repetir.
+- Resumir, parafrasear ou confirmar "que a seção existe e contém X".
+- Omitir partes por serem longas.
+
+VERIFICAÇÃO OBRIGATÓRIA ANTES DE ENVIAR:
+- Confira se o campo "content" retornado pela ferramenta está vazio, nulo, ou com erro.
+  Se estiver: NÃO confirme sucesso. Informe explicitamente ao solicitante que a leitura
+  falhou ou retornou vazia, e inclua o erro exato da ferramenta, se houver.
+- Se o campo "content" tem texto: sua resposta deve conter esse texto colado na
+  íntegra. Uma resposta que menciona a seção lida mas não contém o texto dela é
+  inválida — reformule antes de enviar.
 
 - Aliases de pasta — MAPEAMENTO EXCLUSIVO E OBRIGATÓRIO. Cada pasta abriga exatamente um
   tipo de artefato. O prefixo informado pelo agente solicitante é a ÚNICA fonte de verdade
@@ -129,8 +138,10 @@ LISTAR:
 - Use para retornar os nomes exatos dos arquivos disponíveis nas pastas de trabalho.
 - filetype="mmd" → diagramas | filetype="md" → relatórios e análises | filetype="" → todos
 - Backups (_backup_) são ignorados automaticamente — nunca os retorne como arquivo principal.
-- SEMPRE que listar arquivos, verifique separadamente se existem Doubt_Artifacts na pasta de dúvidas:
-  liste os arquivos da pasta DOUBT/ e filtre os que começam com Doubt_Artifact_.
+- SEMPRE que listar arquivos, verifique separadamente se existem Doubt_Artifacts pendentes:
+  use a checagem de bloqueio ativo (que varre design_dir inteiro, não só a pasta
+  DOUBT/ — um Doubt_Artifact pode ter sido salvo em qualquer subpasta por uma via
+  alternativa de escrita) e filtre os que começam com Doubt_Artifact_.
   Para cada Doubt_Artifact encontrado, leia seu conteúdo e verifique o campo **Status**.
   Se **Status:** Bloqueado estiver presente: inclua o seguinte aviso no início da resposta,
   antes de qualquer outra informação:

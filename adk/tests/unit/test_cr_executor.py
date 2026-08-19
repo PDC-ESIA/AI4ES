@@ -32,7 +32,7 @@ def executor_module(tmp_path, monkeypatch):
     """Reimporta cr_executor com workspace temporário."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_executor
+    import src.agents.workflow_coding_review.executor.agent as cr_executor
 
     importlib.reload(cr_executor)
     return cr_executor
@@ -63,7 +63,7 @@ def test_executor_agent_tem_3_tools(executor_module):
 def test_executor_compoe_harness_validador_exit_loop(executor_module):
     """As três peças novas estão presentes e nomeadas."""
     names = _tool_names(executor_module.agent)
-    assert "executar_harness_validacao" in names   # harness (bound ao workspace do workflow)
+    assert "executar_harness_tool" in names        # harness (bound ao workspace do workflow)
     assert "implementation_validator" in names     # AgentTool do validador
     assert "exit_loop" in names                    # encerramento pelo veredito
 
@@ -122,7 +122,7 @@ def test_coder_instruction_contem_execution_result_placeholder(tmp_path, monkeyp
     """O coder.instruction deve conter {execution_result?} para ADK state injection."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review import coder as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -137,7 +137,7 @@ def test_coder_instruction_contem_modo_operacao(tmp_path, monkeypatch):
     """O coder.instruction deve conter a seção MODO DE OPERAÇÃO."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review import coder as cr_coder
 
     importlib.reload(cr_coder)
 
@@ -150,7 +150,8 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
     """executor.output_key deve ser 'execution_result' (same key used in coder placeholder)."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder, cr_executor
+    from src.agents.workflow_coding_review import coder as cr_coder
+    import src.agents.workflow_coding_review.executor.agent as cr_executor
 
     importlib.reload(cr_executor)
     importlib.reload(cr_coder)
@@ -187,10 +188,27 @@ def test_coder_instruction_exige_readme(tmp_path, monkeypatch):
     """O coder.instruction deve exigir criação de README.md com URL de acesso."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
-    from src.agents.workflow_coding_review import cr_coder
+    from src.agents.workflow_coding_review import coder as cr_coder
 
     importlib.reload(cr_coder)
 
     instr = cr_coder.agent.instruction
     assert "README.md" in instr
     assert "http://localhost:8000" in instr
+
+
+def test_coder_instruction_exige_run_json(tmp_path, monkeypatch):
+    """O coder.instruction deve exigir o manifesto run.json dirigido pela surface."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    from src.agents.workflow_coding_review import coder as cr_coder
+
+    importlib.reload(cr_coder)
+
+    instr = cr_coder.agent.instruction
+    # run.json é o novo artefato de execução obrigatório (substitui Docker).
+    assert "run.json" in instr
+    # A superfície (service/command/none) deriva o comportamento do harness.
+    assert "surface" in instr
+    for surface in ("service", "command", "none"):
+        assert surface in instr, f"superfície ausente no prompt: {surface}"
