@@ -114,12 +114,12 @@ def _scan_doubts(req_ws: Path, ws_root: Path) -> list[dict]:
 def _derive_status(artifacts: list[dict], doubts: list[dict]) -> str:
     """Deriva o status da fase a partir dos artefatos e dúvidas coletados.
 
-    Invariante: status=ok ⟹ sem dúvidas bloqueantes e ao menos um artefato.
+    Invariante: status=blocked ⟹ existe ao menos uma dúvida bloqueante.
     """
     if any(d["bloqueante"] for d in doubts):
         return "blocked"
     if not artifacts:
-        return "blocked"
+        return "partial"
     if doubts:
         return "partial"
     return "ok"

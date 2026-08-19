@@ -133,8 +133,8 @@ def test_status_partial_doubt_nao_bloqueante():
     assert _derive_status(arts, doubts) == "partial"
 
 
-def test_status_blocked_sem_artefatos():
-    assert _derive_status([], []) == "blocked"
+def test_status_partial_sem_artefatos():
+    assert _derive_status([], []) == "partial"
 
 
 def test_status_blocked_sem_artefatos_com_doubt():
