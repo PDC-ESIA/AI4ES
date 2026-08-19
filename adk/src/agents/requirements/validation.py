@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 TOOL_SALVAR = "tool_salvar_artefato_requisito"
 TOOL_DUVIDA = "gerar_doubt_artifact"
 
-# Chave de state onde C2 acumula o que foi gravado e C4 lê.
+# Chave de state onde C2 acumula o que foi gravado e C3 lê.
 STATE_ARTEFATOS = "artefatos_persistidos"
 STATE_AUDITORIA = "requirements_audit"
 
