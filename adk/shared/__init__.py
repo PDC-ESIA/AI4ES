@@ -24,8 +24,10 @@ litellm.request_timeout = float(os.environ.get("AI4ES_LLM_TIMEOUT", "120"))
 litellm.num_retries = int(os.environ.get("AI4ES_LLM_NUM_RETRIES", "1"))
 
 # Registra github_copilot como provider LiteLLM no ADK (não incluso por padrão).
+# Usa subclasse que injeta X-Initiator: user e retries — evita cair na cota
+# reduzida de "utility models" do GitHub Copilot (429 user_global_rate_limited).
 LLMRegistry._register_lazy(
     ["github_copilot/.*"],
-    "google.adk.models.lite_llm",
-    "LiteLlm",
+    "shared.llm",
+    "GithubCopilotLiteLlm",
 )
