@@ -141,11 +141,12 @@ do workspace enquanto o Time 2 não implementar seu manifesto.
 
 | Tipo | Path no workspace | Descrição |
 |---|---|---|
-| `codigo` | `workspace_output/coder/src/app/**` | Código-fonte da aplicação (qualquer extensão) |
+| `source` | `workspace_output/coder/src/app/**` | Código-fonte da aplicação (qualquer extensão; demais arquivos em `src/` são catalogados como `config`) |
 | `teste` | `workspace_output/coder/src/tests/**` | Testes automatizados |
 | `config` | `workspace_output/coder/src/**` (demais arquivos) | Infraestrutura Docker, dependências e outros |
 | `revisao` | `workspace_output/coder/review/*.md` | Relatório do reviewer (APROVADO/BLOQUEADO) |
-| `task` | `workspace_output/coder/tasks/*.json` | Tasks geradas pelo context_engineer |
+| `macro_context` | `workspace_output/coder/tasks/_macro_context.json` | Contexto macro gerado pelo context_engineer |
+| `task` | `workspace_output/coder/tasks/TASK-*.json` | Tasks geradas pelo context_engineer |
 
 > **Nota:** O `_scan_artifacts` varre `src/` inteiro sem filtro de extensão — arquivos
 > `.html`, `.md`, `.json` e outros gerados pelo coder são catalogados corretamente.
