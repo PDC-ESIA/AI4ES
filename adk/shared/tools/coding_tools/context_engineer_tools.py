@@ -486,7 +486,24 @@ def tool_emitir_manifesto_bloqueado(
     coder_ws = get_agent_workspace("coder")
 
     artifacts = _scan_artifacts(coder_ws, ws_root)
-    doubts    = _scan_doubts(coder_ws, ws_root)
+    doubts = _scan_doubts(coder_ws, ws_root)
+
+    # Invariante do PhaseManifest: status=blocked exige ao menos uma dúvida bloqueante.
+    if not any(d.get("bloqueante") for d in doubts):
+        synthetic_path = coder_ws / "Doubt_Artifact_manifesto_bloqueado.md"
+        synthetic_path.parent.mkdir(parents=True, exist_ok=True)
+        synthetic_path.write_text(
+            "# Doubt Artifact — Bloqueio do context_engineer\n\n"
+            "> EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA\n\n"
+            "## Fase Bloqueada\n**coding**\n\n"
+            "## Descrição do Problema\n"
+            f"{motivo}\n\n"
+            "## Ação Necessária\n"
+            "Resolver o bloqueio e reprocessar a fase.\n\n"
+            "**Bloqueante:** Sim\n",
+            encoding="utf-8",
+        )
+        doubts = _scan_doubts(coder_ws, ws_root)
 
     manifest: dict = {
         "phase":     PHASE_NAME,
