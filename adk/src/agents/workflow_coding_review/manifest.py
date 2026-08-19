@@ -11,7 +11,7 @@ context engineer.
 
 Layout do workspace (ver shared/workspace.py::AGENT_DIRS):
 
-    workspace_output/coder/src/app/      → tipo "codigo"
+    workspace_output/coder/src/app/      → tipo "source" (padrão: app/)
     workspace_output/coder/src/tests/    → tipo "teste"
     workspace_output/coder/src/          → tipo "config"  (Dockerfile, etc.)
     workspace_output/coder/review/       → tipo "revisao"
@@ -47,10 +47,12 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
     """Varre o workspace de coding e classifica artefatos por tipo.
     Cataloga todos os arquivos gerados pelo coder — não apenas .py ou
     arquivos de configuração pré-definidos. O tipo é determinado pela
-    subpasta dentro de src/:
-      - app/    → codigo
-      - tests/  → teste
-      - demais  → config
+    subpasta dentro de src/ ou pela pasta de destino:
+      - src/app/    → source
+      - src/tests/  → teste
+      - src/demais  → config
+      - review/     → revisao
+      - tasks/      → task (exceto _macro_context.json → macro_context)
     """
     artifacts: list[dict] = []
 
@@ -64,12 +66,12 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
                 or f.suffix in _IGNORED_SUFFIXES
             ):
                 continue
- 
+
             partes = f.relative_to(src).parts
             subdir = partes[0] if partes else ""
- 
+
             if subdir == "app":
-                tipo = "codigo"
+                tipo = "source"
                 id_val = str(
                     f.relative_to(src / "app").with_suffix("")
                 ).replace("\\", "/")
@@ -81,7 +83,7 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
             else:
                 tipo = "config"
                 id_val = f.name
- 
+
             artifacts.append({
                 "tipo": tipo,
                 "id": id_val,
@@ -106,8 +108,9 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
     if tasks_dir.exists():
         for f in sorted(tasks_dir.glob("*.json")):
             if f.name not in _IGNORED:
+                tipo = "macro_context" if f.stem == "_macro_context" else "task"
                 artifacts.append({
-                    "tipo": "task",
+                    "tipo": tipo,
                     "id": f.stem,
                     "path": str(f.relative_to(ws_root)).replace("\\", "/"),
                 })
@@ -177,16 +180,22 @@ def _derive_status(
 
     Precedência:
     1. Doubt bloqueante            → blocked
-    2. Nenhum artefato de código   → blocked
-    3. Doubt não-bloqueante        → partial
-    4. Reviewer aprovado           → ok
-    5. Reviewer falhou / ausente   → partial
+    2. Nenhum artefato produzido   → partial (na prática nunca ocorre sem
+                                    doubt — emit_coding_manifest insere
+                                    doubt sintético bloqueante nesse caso,
+                                    resultando em blocked via regra 1)
+    3. Reviewer reprovou           → partial (na prática nunca ocorre sem
+                                    doubt — emit_coding_manifest insere
+                                    doubt sintético bloqueante nesse caso,
+                                    resultando em blocked via regra 1)
+    4. Doubt não-bloqueante        → partial
+    5. Reviewer aprovado           → ok
+    6. Qualquer outro caso         → partial
     """
     if any(d["bloqueante"] for d in doubts):
         return "blocked"
-    code_artifacts = [a for a in artifacts if a["tipo"] == "codigo"]
-    if not code_artifacts:
-        return "blocked"
+    if not artifacts:
+        return "partial"
     if doubts:
         return "partial"
     if validation == "pass":
@@ -229,6 +238,40 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         artifacts  = _scan_artifacts(coder_ws, ws_root)
         doubts     = _scan_doubts(coder_ws, ws_root)
         validation = _validation_verdict(coder_ws)
+
+        # Gera doubt sintético se nenhum artefato foi produzido
+        if not artifacts:
+            doubt_path = coder_ws / "Doubt_Artifact_sem_artefatos.md"
+            doubt_path.parent.mkdir(parents=True, exist_ok=True)
+            doubt_path.write_text(
+                "# Doubt Artifact — Nenhum artefato produzido\n\n"
+                "> EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA\n\n"
+                "## Fase Bloqueada\n**coding**\n\n"
+                "## Descrição do Problema\n"
+                "O coder não produziu nenhum artefato.\n\n"
+                "## Ação Necessária\n"
+                "Reprocessar a fase de codificação.\n\n"
+                "**Bloqueante:** Sim\n",
+                encoding="utf-8",
+            )
+            doubts = _scan_doubts(coder_ws, ws_root)
+
+        if validation == "fail":
+            doubt_path = coder_ws / "Doubt_Artifact_reviewer_bloqueou.md"
+            doubt_path.parent.mkdir(parents=True, exist_ok=True)
+            doubt_path.write_text(
+                "# Doubt Artifact — Reviewer bloqueou a entrega\n\n"
+                "> EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA\n\n"
+                "## Fase Bloqueada\n**coding**\n\n"
+                "## Descrição do Problema\n"
+                "O reviewer reprovou a entrega. Verifique o relatório de revisão em coder/review/.\n\n"
+                "## Ação Necessária\n"
+                "Corrigir os problemas apontados pelo reviewer e reprocessar.\n\n"
+                "**Bloqueante:** Sim\n",
+                encoding="utf-8",
+            )
+            doubts = _scan_doubts(coder_ws, ws_root)
+
         status     = _derive_status(artifacts, doubts, validation)
 
 
@@ -241,7 +284,7 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         }
 
         callback_context.state[STATE_KEY] = manifest
-
+        
         manifest_path = coder_ws / "manifest.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(
@@ -253,5 +296,10 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             "[MANIFEST] coding → %s | %d artefato(s) | %d dúvida(s) | revisão: %s",
             status, len(artifacts), len(doubts), validation,
         )
+
+        existing = list(callback_context.state.get("phase_manifests", []) or [])
+        existing.append(manifest)
+        callback_context.state["phase_manifests"] = existing
+
     except Exception as exc:
         logger.warning("[MANIFEST] Falha ao emitir manifesto de coding: %s", exc)

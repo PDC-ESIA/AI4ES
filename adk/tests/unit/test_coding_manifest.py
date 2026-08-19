@@ -2,7 +2,7 @@
  
 Cobre:
 - Constantes: PHASE_NAME, STATE_KEY
-- _scan_artifacts: classificação por subpasta (codigo, teste, config, revisao, task),
+- _scan_artifacts: classificação por subpasta (source, teste, config, revisao, task),
   filtros (__pycache__, .pyc, manifest.json), path com barra forward
 - _scan_doubts: detecção de Doubt_Artifact_*.md e marcador de bloqueante
 - _validation_verdict: pass / fail / absent a partir de arquivos do reviewer
@@ -63,13 +63,13 @@ def test_scan_artifacts_workspace_vazio(tmp_path):
     assert _scan_artifacts(tmp_path, tmp_path) == []
  
  
-def test_scan_artifacts_detecta_codigo(tmp_path):
+def test_scan_artifacts_detecta_source(tmp_path):
     _make_ws(tmp_path, {
         "src/app/main.py": "# main",
         "src/app/models.py": "# models",
     })
     arts = _scan_artifacts(tmp_path, tmp_path)
-    assert all(a["tipo"] == "codigo" for a in arts)
+    assert all(a["tipo"] == "source" for a in arts)
     ids = {a["id"] for a in arts}
     assert {"main", "models"} == ids
  
@@ -144,7 +144,7 @@ def test_scan_artifacts_ignora_manifest_json_em_review(tmp_path):
  
  
 def test_scan_artifacts_detecta_html_e_md(tmp_path):
-    """Arquivos não-.py dentro de src/ também são catalogados como config."""
+    """Arquivos em subpastas que não são source_dir nem test_dir viram config."""
     _make_ws(tmp_path, {
         "src/public/hello-world.html": "<html>hello world</html>",
         "src/PLAN.md": "# Plano",
@@ -253,64 +253,100 @@ def test_validation_verdict_fail_tem_prioridade(tmp_path):
 # _derive_status
 # ---------------------------------------------------------------------------
  
- 
 def _art(tipo: str) -> dict:
     return {"tipo": tipo, "id": "x", "path": "p"}
- 
  
 def _blocking() -> dict:
     return {"id": "D-001", "severidade": "alta", "bloqueante": True, "path": "p"}
  
- 
 def _nonblocking() -> dict:
     return {"id": "D-002", "severidade": "media", "bloqueante": False, "path": "p"}
  
- 
 def test_status_ok():
-    assert _derive_status([_art("codigo")], [], "pass") == "ok"
- 
- 
-def test_status_blocked_sem_codigo():
-    assert _derive_status([], [], "pass") == "blocked"
- 
- 
+    assert _derive_status([_art("source")], [], "pass") == "ok"
+
+def test_status_partial_sem_artefatos():
+    """Na prática nunca ocorre — emit_coding_manifest gera doubt sintético antes."""
+    assert _derive_status([], [], "pass") == "partial"
+
 def test_status_blocked_doubt_bloqueante():
-    assert _derive_status([_art("codigo")], [_blocking()], "pass") == "blocked"
- 
- 
+    assert _derive_status([_art("source")], [_blocking()], "pass") == "blocked"
+
 def test_status_partial_doubt_nao_bloqueante():
-    assert _derive_status([_art("codigo")], [_nonblocking()], "pass") == "partial"
- 
- 
+    assert _derive_status([_art("source")], [_nonblocking()], "pass") == "partial"
+
 def test_status_partial_validation_fail():
-    assert _derive_status([_art("codigo")], [], "fail") == "partial"
- 
- 
+    """Na prática nunca ocorre — emit_coding_manifest gera doubt sintético antes."""
+    assert _derive_status([_art("source")], [], "fail") == "partial"
+
 def test_status_partial_validation_absent():
-    assert _derive_status([_art("codigo")], [], "absent") == "partial"
- 
- 
+    assert _derive_status([_art("source")], [], "absent") == "partial"
+
+def test_status_partial_reviewer_ausente():
+    assert _derive_status([_art("config")], [], "absent") == "partial"
+
+def test_status_ok_com_config():
+    assert _derive_status([_art("config")], [], "pass") == "ok"
+
+
+def test_emit_gera_doubt_quando_sem_artefatos(tmp_path):
+    coder_ws = tmp_path / "coder"
+    coder_ws.mkdir(parents=True)
+
+    ctx = MagicMock()
+    ctx.state = {}
+    ctx.session = MagicMock(id=None)
+    ctx.session_id = None
+
+    with patch("src.agents.workflow_coding_review.manifest.get_agent_workspace", return_value=coder_ws), \
+         patch("src.agents.workflow_coding_review.manifest.get_workspace_root", return_value=tmp_path):
+        emit_coding_manifest(callback_context=ctx)
+
+    assert ctx.state[STATE_KEY]["status"] == "blocked"
+    assert (coder_ws / "Doubt_Artifact_sem_artefatos.md").exists()
+    assert any(d["bloqueante"] for d in ctx.state[STATE_KEY]["doubts"])
+
+def test_emit_gera_doubt_quando_reviewer_reprovou(tmp_path):
+    coder_ws = tmp_path / "coder"
+    _make_ws(coder_ws, {
+        "src/app/main.py": "# main",  # usa estrutura padrão Python (fallback)
+        "review/revisao.md": "## Status: BLOQUEADO\nErros encontrados.",
+    })
+
+    ctx = MagicMock()
+    ctx.state = {}
+    ctx.session = MagicMock(id=None)
+    ctx.session_id = None
+
+    with patch("src.agents.workflow_coding_review.manifest.get_agent_workspace", return_value=coder_ws), \
+         patch("src.agents.workflow_coding_review.manifest.get_workspace_root", return_value=tmp_path):
+        emit_coding_manifest(callback_context=ctx)
+
+    assert ctx.state[STATE_KEY]["status"] == "blocked"
+    assert (coder_ws / "Doubt_Artifact_reviewer_bloqueou.md").exists()
+    assert any(d["bloqueante"] for d in ctx.state[STATE_KEY]["doubts"])
+
 # ---------------------------------------------------------------------------
 # _build_summary
 # ---------------------------------------------------------------------------
  
  
 def test_summary_conta_tipos():
-    arts = [_art("codigo"), _art("codigo"), _art("config")]
+    arts = [_art("source"), _art("source"), _art("config")]
     s = _build_summary(arts, [], "pass")
-    assert "2 codigo(s)" in s
+    assert "2 source(s)" in s
     assert "1 config(s)" in s
  
  
 def test_summary_menciona_doubts():
-    arts = [_art("codigo")]
+    arts = [_art("source")]
     doubts = [_nonblocking()]
     s = _build_summary(arts, doubts, "pass")
     assert "dúvida" in s
  
  
 def test_summary_menciona_revisao():
-    s = _build_summary([_art("codigo")], [], "pass")
+    s = _build_summary([_art("source")], [], "pass")
     assert "pass" in s
  
  
@@ -339,7 +375,8 @@ def test_emit_grava_state_e_arquivo(tmp_path):
     assert ctx.state[STATE_KEY]["phase"] == PHASE_NAME
     assert ctx.state[STATE_KEY]["status"] == "ok"
     assert (coder_ws / "manifest.json").exists()
- 
+    assert "phase_manifests" in ctx.state
+    assert any(m["phase"] == "coding" for m in ctx.state["phase_manifests"])
  
 def test_emit_manifest_json_valido(tmp_path):
     coder_ws = tmp_path / "coder"
@@ -374,7 +411,19 @@ def test_emit_nao_quebra_pipeline_em_falha():
  
     assert STATE_KEY not in ctx.state
  
- 
+def test_scan_artifacts_detecta_macro_context(tmp_path):
+    _make_ws(tmp_path, {
+        "tasks/_macro_context.json": '{"summary": "contexto"}',
+        "tasks/TASK-001.json": '{"id": "TASK-001"}',
+    })
+    arts = _scan_artifacts(tmp_path, tmp_path)
+    tipos = {a["tipo"] for a in arts}
+    assert "macro_context" in tipos
+    assert "task" in tipos
+    ids = {a["id"] for a in arts}
+    assert "_macro_context" in ids
+    assert "TASK-001" in ids
+
 # ---------------------------------------------------------------------------
 # Wiring — after_agent_callback no SequentialAgent
 # ---------------------------------------------------------------------------

@@ -498,6 +498,9 @@ def tool_emitir_manifesto_bloqueado(
 
     if tool_context is not None:
         tool_context.state[STATE_KEY] = manifest
+        manifests = list(tool_context.state.get("phase_manifests", []) or [])
+        manifests.append(manifest)
+        tool_context.state["phase_manifests"] = manifests
 
     manifest_path = coder_ws / "manifest.json"
     try:

@@ -211,7 +211,32 @@ Retorne o JSON completo conforme o schema do sistema, contendo:
 - Cada task deve caber em aproximadamente 1500 tokens.
 
 # SAÍDA OBRIGATÓRIA
-Responda APENAS com JSON válido conforme o schema definido pelo sistema.
+Responda APENAS com JSON válido seguindo esta estrutura:
+{
+  "macro_context": {
+    "summary": "string",
+    "product_type": "string",
+    "tech_stack": ["string"],
+    "global_rules": ["string"]
+  },
+  "tasks": [
+    {
+      "id": "TASK-XXX",
+      "type": "string",
+      "complexity": "low|medium|high",
+      "description": "string",
+      "business_rules": ["string"],
+      "acceptance_criteria": ["string"],
+      "contract": {
+        "inputs": ["string"],
+        "outputs": ["string"],
+        "interfaces": ["string"]
+      },
+      "requirement_id": "string",
+      "design_refs": ["string"]
+    }
+  ]
+}
 Nenhum texto adicional. Nenhum comentário. Apenas o JSON.
 Sem markdown, sem blocos de código.
 """
