@@ -187,9 +187,13 @@ def emit_requirements_manifest(callback_context: CallbackContext) -> None:
 
         # Handoff padronizado entre fases: lista phase_manifests
         # (substitui entrada anterior da própria fase, se houver).
+        raw_manifests = callback_context.state.get("phase_manifests") or []
+        if not isinstance(raw_manifests, list):
+            raw_manifests = []
+
         manifests = [
-            m for m in (callback_context.state.get("phase_manifests") or [])
-            if m.get("phase") != PHASE_NAME
+            m for m in raw_manifests
+            if isinstance(m, dict) and m.get("phase") != PHASE_NAME
         ]
         manifests.append(manifest)
         callback_context.state["phase_manifests"] = manifests
