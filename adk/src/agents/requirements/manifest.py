@@ -7,6 +7,13 @@ escolhe quais arquivos priorizar sem varrer o workspace inteiro.
 Padrão de implementação: after_agent_callback determinístico, zero LLM,
 idêntico ao cr_reviewer.py (Time 4, PR #316). Falha é logada e degradada,
 nunca derruba o pipeline.
+
+Alinhamento inter-times (reunião 2026-08-13, feedback do Time 4/QA):
+- o manifesto é anexado a state["phase_manifests"] (lista consumida pelo
+  orquestrador e pelos demais times), mantendo state["requirements_manifest"]
+  por compatibilidade;
+- paths são normalizados com barras "/" (consumidores em qualquer SO);
+- quando status=blocked, o summary inclui o motivo do bloqueio.
 """
 
 import json
@@ -14,6 +21,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from shared.manifest import PhaseManifest
 from shared.workspace import get_agent_workspace, get_workspace_root
 
 if TYPE_CHECKING:
@@ -22,6 +30,18 @@ else:
     CallbackContext = Any  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)
+
+PHASE_NAME = "requirements"
+
+
+def _rel_path(f: Path, ws_root: Path) -> str:
+    """Path relativo ao workspace root, com barras normalizadas ("/").
+
+    Consumidores do manifesto (Time 3/QA, Time 4/Coding) rodam em SOs
+    distintos; barras invertidas do Windows quebravam a leitura dos
+    artefatos (feedback da reunião de 2026-08-13).
+    """
+    return str(f.relative_to(ws_root)).replace("\\", "/")
 
 # Mapeamento subpasta → tipo de artefato.
 # Espelha os subdirs criados por tool_salvar_artefato_requisito (filesystem.py).
@@ -50,7 +70,7 @@ def _scan_artifacts(req_ws: Path, ws_root: Path) -> list[dict]:
             artifacts.append({
                 "tipo": tipo,
                 "id":   f.stem,
-                "path": str(f.relative_to(ws_root)),
+                "path": _rel_path(f, ws_root),
             })
 
     # Glossário: glossario_agent grava em requirements/glossario/Glossario.md
@@ -63,7 +83,7 @@ def _scan_artifacts(req_ws: Path, ws_root: Path) -> list[dict]:
             artifacts.append({
                 "tipo": "Glossario",
                 "id":   "Glossario",
-                "path": str(candidate.relative_to(ws_root)),
+                "path": _rel_path(candidate, ws_root),
             })
             break
 
@@ -87,7 +107,7 @@ def _scan_doubts(req_ws: Path, ws_root: Path) -> list[dict]:
             "id":         f.stem,
             "severidade": "alta" if bloqueante else "media",
             "bloqueante": bloqueante,
-            "path":       str(f.relative_to(ws_root)),
+            "path":       _rel_path(f, ws_root),
         })
     return doubts
 
@@ -106,7 +126,22 @@ def _derive_status(artifacts: list[dict], doubts: list[dict]) -> str:
     return "ok"
 
 
-def _build_summary(artifacts: list[dict], doubts: list[dict]) -> str:
+def _blocked_reason(artifacts: list[dict], doubts: list[dict]) -> str | None:
+    """Motivo do bloqueio, quando status=blocked (feedback do Time 4).
+
+    Evita que o consumidor precise abrir os Doubt_Artifacts para
+    entender por que a fase parou.
+    """
+    bloqueantes = [d for d in doubts if d["bloqueante"]]
+    if bloqueantes:
+        ids = ", ".join(d["id"] for d in bloqueantes)
+        return f"Motivo do bloqueio: dúvida(s) bloqueante(s): {ids}."
+    if not artifacts:
+        return "Motivo do bloqueio: nenhum artefato de requisitos foi gerado."
+    return None
+
+
+def _build_summary(artifacts: list[dict], doubts: list[dict], status: str) -> str:
     counts: dict[str, int] = {}
     for a in artifacts:
         counts[a["tipo"]] = counts.get(a["tipo"], 0) + 1
@@ -114,14 +149,20 @@ def _build_summary(artifacts: list[dict], doubts: list[dict]) -> str:
     base = "Fase de requisitos concluída. " + ", ".join(partes) + "."
     if doubts:
         base += f" {len(doubts)} dúvida(s) registrada(s)."
+    if status == "blocked":
+        reason = _blocked_reason(artifacts, doubts)
+        if reason:
+            base += f" {reason}"
     return base
 
 
 def emit_requirements_manifest(callback_context: CallbackContext) -> None:
     """after_agent_callback — emite manifesto de saída da fase de requisitos.
 
-    Grava em callback_context.state["requirements_manifest"] para o
-    orquestrador usar como handoff (in-memory) e persiste
+    Anexa o manifesto a callback_context.state["phase_manifests"] — lista
+    padronizada entre os times, consumida pelo orquestrador e pelas fases
+    seguintes (padrão estabelecido pelo Time 3/QA). Mantém também
+    state["requirements_manifest"] por compatibilidade e persiste
     requirements/manifest.json no workspace para rastreabilidade e debug.
 
     Retorna None para não sobrescrever a saída do agente.
@@ -135,14 +176,26 @@ def emit_requirements_manifest(callback_context: CallbackContext) -> None:
         status    = _derive_status(artifacts, doubts)
 
         manifest: dict = {
-            "phase":     "requirements",
+            "phase":     PHASE_NAME,
             "status":    status,
             "artifacts": artifacts,
             "doubts":    doubts,
-            "summary":   _build_summary(artifacts, doubts),
+            "summary":   _build_summary(artifacts, doubts, status),
         }
 
-        # Handoff in-memory para o orquestrador
+        # Valida o contrato comum antes de publicar no state.
+        manifest = PhaseManifest.model_validate(manifest).model_dump()
+
+        # Handoff padronizado inter-times: lista phase_manifests
+        # (substitui entrada anterior da própria fase, se houver).
+        manifests = [
+            m for m in (callback_context.state.get("phase_manifests") or [])
+            if m.get("phase") != PHASE_NAME
+        ]
+        manifests.append(manifest)
+        callback_context.state["phase_manifests"] = manifests
+
+        # Compatibilidade com consumidores legados.
         callback_context.state["requirements_manifest"] = manifest
 
         # Cópia persistida para rastreabilidade
