@@ -1,6 +1,9 @@
 # Pastas do design
-adk/temp/
-adk/artifacts
+adk/artifacts/
+
+# Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
+adk/workspace_output/
+workspace_output/
 
 # Workspace com prefixo alternativo (gerado por configuração de ambiente anterior)
 adk/pdc_workspace_output/
@@ -259,3 +262,10 @@ docs/superpowers/
 
 .abacusai/
 .abacusai/*
+
+# JetBrains IDEs
+.idea/
+# Artefatos locais fora do escopo do repositório (mantidos fora do commit)
+adk.zip
+AI4ES/
+Orientacoes.md
