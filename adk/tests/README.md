@@ -15,8 +15,8 @@ comportamento do sistema. O desenho segue três referências (ver
 
 | # | Camada | Pergunta que responde | Pasta |
 |---|--------|------------------------|-------|
-| 1 | Infraestrutura | "O código faz o que deveria?" | [`1_infraestrutura/`](1_infraestrutura/) |
-| 2 | Trajetória | "O agente decidiu as coisas certas, na ordem certa?" | [`2_trajetoria/`](2_trajetoria/) |
+| 1 | Infraestrutura | "O código faz o que deveria?" | [`infraestrutura/`](infraestrutura/) |
+| 2 | Trajetória | "O agente decidiu as coisas certas, na ordem certa?" | [`trajetoria/`](trajetoria/) |
 
 ## Camada 1 — Infraestrutura
 
@@ -63,7 +63,7 @@ organizados em duas camadas (`tests/fixtures/trace_helpers.py`):
   (`agente`, `acao`, `status`, `timestamp`, `metadata`), independente do
   SDK de origem. As asserções de trajetória são feitas sobre esta camada.
 
-A fixture `trace_collector` (em `2_trajetoria/conftest.py`) grava
+A fixture `trace_collector` (em `trajetoria/conftest.py`) grava
 automaticamente o trace completo (`canonical` + `raw`) em JSON ao final de
 cada teste, em `<tmp_path>/traces/<nome_do_teste>.json` — útil para
 depurar uma trajetória inesperada sem precisar reproduzir o teste com
@@ -99,7 +99,7 @@ pytest -m infraestrutura
 pytest -m trajetoria
 
 # um arquivo/teste específico, como sempre
-pytest tests/1_infraestrutura/test_workspace.py -k til_expandido
+pytest tests/infraestrutura/test_workspace.py -k til_expandido
 ```
 
 ### CI/CD
@@ -127,9 +127,9 @@ Exemplo de step de CI (adaptar ao seu workflow):
    for útil para mais de uma camada, mova para `tests/fixtures/`.
 3. Marque a classe/módulo com o marker da camada quando não for óbvio pela
    pasta — normalmente não é necessário, pois `pytest -m` também pode
-   selecionar por caminho (`pytest tests/1_infraestrutura/`), mas o marker
+   selecionar por caminho (`pytest tests/infraestrutura/`), mas o marker
    ajuda quando se roda a suite inteira com `-m`.
-4. Rode a suite completa antes de commitar — `1_infraestrutura/conftest.py`
+4. Rode a suite completa antes de commitar — `infraestrutura/conftest.py`
    pré-carrega módulos para evitar que `test_git_tools.py` (que substitui
    `pydantic.BaseModel` em `sys.modules` para isolar testes de git)
    corrompa imports de outros testes; se adicionar um módulo de agente

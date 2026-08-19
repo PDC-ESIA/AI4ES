@@ -5,10 +5,10 @@ A suite é organizada em 2 camadas de validação de sistemas agênticos
 na survey da ACL 2026 sobre avaliação de agentes LLM e em "Testing
 LLM-Based Agents"):
 
-    1. `1_infraestrutura/` — testes determinísticos (unit + integração leve)
+    1. `infraestrutura/` — testes determinísticos (unit + integração leve)
        que NÃO dependem de julgamento de qualidade: schemas Pydantic,
        ferramentas, workspace, harness Docker, orquestração.
-    2. `2_trajetoria/`      — validam a SEQUÊNCIA de decisões dos agentes
+    2. `trajetoria/`      — validam a SEQUÊNCIA de decisões dos agentes
        (trajectory evaluation): quem chamou o quê, em que ordem, com
        coleta de trace estruturado (canonical + raw layer).
     
@@ -52,16 +52,16 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
     Sem isso, `pytest -m infraestrutura`/`-m trajetoria` só selecionaria
     testes marcados manualmente — o que a suite hoje não faz, contando com
-    seleção por caminho (`pytest tests/1_infraestrutura/`). Este hook deriva
-    o marker automaticamente de `1_infraestrutura/` ou `2_trajetoria/` no
+    seleção por caminho (`pytest tests/infraestrutura/`). Este hook deriva
+    o marker automaticamente de `infraestrutura/` ou `trajetoria/` no
     caminho do arquivo, para que a seleção por marker (usada no exemplo de
     CI do README) funcione sem exigir marcação manual em cada teste.
     """
     for item in items:
         partes = item.path.parts
-        if "1_infraestrutura" in partes:
+        if "infraestrutura" in partes:
             item.add_marker(pytest.mark.infraestrutura)
-        elif "2_trajetoria" in partes:
+        elif "trajetoria" in partes:
             item.add_marker(pytest.mark.trajetoria)
 
 
@@ -70,7 +70,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 # ---------------------------------------------------------------------------
 # Nenhum destes imports é exercitado diretamente pelos testes — servem
 # apenas para popular `sys.modules` com o Pydantic real ANTES que
-# `1_infraestrutura/test_git_tools.py` o substitua por um stub.
+# `infraestrutura/test_git_tools.py` o substitua por um stub.
 
 from src.agents.requirements import schemas as _req_schemas  # noqa: F401,E402
 from src.agents.workflow_coding_review.reviewer import schemas as _rev_schemas  # noqa: F401,E402
@@ -93,7 +93,7 @@ from src.agents.orchestrator.agent import root_agent as _orch_agent  # noqa: F40
 def trace_collector():
     """`TraceCollector` vazio, disponível para qualquer camada.
 
-    A Camada 2 (`2_trajetoria/conftest.py`) expõe uma versão mais completa
+    A Camada 2 (`trajetoria/conftest.py`) expõe uma versão mais completa
     (com dump automático em JSON ao final do teste); esta fixture global
     serve para testes fora dessa camada que só precisam registrar alguns
     eventos pontualmente (ex.: um teste de infraestrutura que quer

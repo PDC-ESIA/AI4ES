@@ -8,7 +8,7 @@ Serve de referência para novos testes desta camada — ver
 
 Reaproveita os stubs de Docker/HTTP de `test_harness_poc.py`
 (agora expostos como fixtures `docker_mock`/`mock_response` em
-`tests/2_trajetoria/conftest.py`) e a fixture `workspace_fixture`.
+`tests/trajetoria/conftest.py`) e a fixture `workspace_fixture`.
 """
 
 from __future__ import annotations
