@@ -325,7 +325,7 @@ def registrar_artefato_persistido(
 
 
 # ---------------------------------------------------------------------------
-# C4 — Auditoria final: JSON declarado × arquivos gravados
+# C3 — Auditoria final: JSON declarado × arquivos gravados
 # ---------------------------------------------------------------------------
 
 _COLECOES_ESPERADAS: tuple[str, ...] = (
