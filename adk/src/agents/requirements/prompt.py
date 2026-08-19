@@ -30,7 +30,7 @@ O texto do prompt é a única fonte de verdade. Toda a análise abaixo se apoia 
 
 # GLOSSÁRIO DE TERMOS TÉCNICOS — FORA DE ESCOPO NESTA FASE
 - Não há especialista de glossário disponível para delegação. Não tente acionar um.
-- Deixe o campo `glossary` do `AnalystOutput` vazio. Termo sem fonte verificável na entrada é invenção e reprova a fase na auditoria.
+- Deixe o campo `glossary` do `AnalystOutput` vazio. Não invente termos: use exclusivamente o texto de entrada como referência terminológica.
 - Para manter terminologia consistente entre os requisitos, use o próprio texto de entrada como referência.
 
 # OBJETIVO
