@@ -169,7 +169,7 @@ def _ler_pasta_workspace(pasta_fase: Path, workspace_root: Path, nome_fase: str)
 
 
 def tool_salvar_task(task_id: str, task_json: str) -> dict:
-    """Salva uma task contextualizada como JSON em workspace_output/coder/tasks/.
+    """Salva uma task contextualizada como JSON em workspace_output/tasks/."""
 
     Args:
         task_id (str): Identificador da task (ex: 'TASK-001').
