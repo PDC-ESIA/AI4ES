@@ -11,9 +11,9 @@ LLM-Based Agents"):
     2. `trajetoria/`      — validam a SEQUÊNCIA de decisões dos agentes
        (trajectory evaluation): quem chamou o quê, em que ordem, com
        coleta de trace estruturado (canonical + raw layer).
-    
+
 Este conftest é carregado antes de qualquer coleta de teste e cuida de
-duas responsabilidades transversais às 2 camadas:
+três responsabilidades transversais às 2 camadas:
 
 - registrar os markers usados para selecionar camadas via
   `pytest -m <marker>`;
@@ -22,10 +22,16 @@ duas responsabilidades transversais às 2 camadas:
   (Camada 1), que substitui `pydantic.BaseModel` por `object` em
   `sys.modules` para isolar testes de git. Sem o pré-cache, qualquer
   teste coletado *depois* dele — em qualquer camada — poderia importar
-  módulos de agente com um `BaseModel` corrompido.
+  módulos de agente com um `BaseModel` corrompido;
+- neutralizar o health-check de LLM do orchestrator (`ensure_llm_ready`)
+  durante toda a suite, para que nenhum teste dependa de rede real ou
+  credencial configurada — o comportamento do preflight em si é coberto
+  isoladamente por `tests/infraestrutura/test_preflight_healthcheck.py`.
 """
 
 from __future__ import annotations
+
+import os as _os
 
 import pytest
 
@@ -46,25 +52,6 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers", "trajetoria: Camada 2 — validação da sequência de decisões dos agentes"
     )
 
-
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Marca cada teste coletado com a camada correspondente à sua pasta.
-
-    Sem isso, `pytest -m infraestrutura`/`-m trajetoria` só selecionaria
-    testes marcados manualmente — o que a suite hoje não faz, contando com
-    seleção por caminho (`pytest tests/infraestrutura/`). Este hook deriva
-    o marker automaticamente de `infraestrutura/` ou `trajetoria/` no
-    caminho do arquivo, para que a seleção por marker (usada no exemplo de
-    CI do README) funcione sem exigir marcação manual em cada teste.
-    """
-    for item in items:
-        partes = item.path.parts
-        if "infraestrutura" in partes:
-            item.add_marker(pytest.mark.infraestrutura)
-        elif "trajetoria" in partes:
-            item.add_marker(pytest.mark.trajetoria)
-
-
 # ---------------------------------------------------------------------------
 # Pré-cache de módulos ADK/Pydantic
 # ---------------------------------------------------------------------------
@@ -83,6 +70,49 @@ from src.agents.workflow_requirements.agent import agent as _req_agent  # noqa: 
 from src.agents.workflow_design_pipeline.agent import agent as _design_agent  # noqa: F401,E402
 from src.agents.workflow_qa.agent import agent as _qa_agent  # noqa: F401,E402
 from src.agents.orchestrator.agent import root_agent as _orch_agent  # noqa: F401,E402
+
+# app.main dispara a cadeia de import da ADK (google.adk.cli.fast_api →
+# evaluation) e cria a FastAPI app no import. Pré-importamos aqui — antes de
+# infraestrutura/test_git_tools.py stubar pydantic.BaseModel = object — para
+# cachear esses módulos com o Pydantic real. Forçamos ADK_LLM_MODEL para um
+# provider não-Copilot para que o preflight de credencial executado no
+# import retorne cedo, sem tentar autenticação de rede; o valor original é
+# restaurado logo em seguida.
+_prev_model = _os.environ.get("ADK_LLM_MODEL")
+_os.environ["ADK_LLM_MODEL"] = "none/x"
+try:
+    import app.main as _main  # noqa: F401
+finally:
+    if _prev_model is None:
+        _os.environ.pop("ADK_LLM_MODEL", None)
+    else:
+        _os.environ["ADK_LLM_MODEL"] = _prev_model
+
+
+# ---------------------------------------------------------------------------
+# Neutraliza chamadas de rede reais (preflight de LLM)
+# ---------------------------------------------------------------------------
+
+from shared.preflight import PreflightResult  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _stub_llm_preflight(monkeypatch: pytest.MonkeyPatch):
+    """Neutraliza o health-check de LLM do orchestrator em toda a suite.
+
+    `ensure_llm_ready` faria chamadas de rede reais (validação de credencial
+    + ping ao endpoint). Substituímos por um no-op ok=True para manter os
+    testes determinísticos e offline, nas 2 camadas; o comportamento do
+    preflight em si é coberto isoladamente por
+    `tests/infraestrutura/test_preflight_healthcheck.py`.
+    """
+
+    async def _ok(model=None):
+        return PreflightResult(ok=True)
+
+    monkeypatch.setattr(
+        "src.agents.orchestrator.agent.ensure_llm_ready", _ok, raising=False
+    )
 
 
 # ---------------------------------------------------------------------------

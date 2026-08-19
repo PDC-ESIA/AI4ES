@@ -254,6 +254,7 @@ playwright-report/
 #  code-assintant
 .claude/
 CLAUDE.md
+.opencode/
 docs/superpowers/
 
 .abacusai/

@@ -157,3 +157,4 @@ def _fake_exec_run(cmd: Any, workdir: str | None = None, demux: bool = False) ->
     if "python -m pytest" in shell:
         return _ExecResult(0, out("1 passed in 0.01s"))
     return _ExecResult(0, out(""))
+

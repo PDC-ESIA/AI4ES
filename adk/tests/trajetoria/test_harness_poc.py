@@ -1,24 +1,24 @@
 """PoC de integração — harness → report → validador → veredito → (exit_loop).
 
-Demonstra, ponta a ponta e com Docker stubbado, o contrato final da feature:
+Demonstra, ponta a ponta e com o sandbox stubbado, o contrato final da feature:
 
-  1. o harness RODA sobre uma Task de exemplo (app FastAPI mínima);
+  1. o harness RODA sobre uma Task de exemplo, dirigido pelo manifesto run.json;
   2. PERSISTE o ExecutionReport (apenas evidência) em disco;
   3. o validador LÊ o report do disco e EMITE um ValidationVerdict;
   4. o executor SÓ encerraria o loop (exit_loop) se o veredito for 'aprovado' —
      nunca pelo status técnico de execução do harness.
 
-Não sobe container real nem chama LLM: a decisão de execução é determinística
-(harness) e a política de veredito é exercida via `montar_veredito` (a mesma
-regra que o Agente de Validação deve obedecer).
+Não sobe processo/container real nem chama LLM: o sandbox é substituído por um
+`FakeSandbox` (via patch em `create_sandbox`) e o `requests.get` é mockado. A
+decisão de execução é determinística (harness) e a política de veredito é
+exercida via `montar_veredito` (a mesma regra que o Agente de Validação obedece).
 """
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import docker
-from docker.errors import BuildError
-
+from shared.execution.sandbox import CommandResult
 from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
 from src.agents.implementation_validator.agent import montar_veredito
 from src.agents.implementation_validator.schemas import (
@@ -40,7 +40,7 @@ def _executor_encerraria(verdict) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Stubs de Docker / HTTP
+# Stubs de sandbox / HTTP
 # ---------------------------------------------------------------------------
 
 def _mock_response():
@@ -51,59 +51,80 @@ def _mock_response():
     return r
 
 
-def _mock_docker(build_raises=None):
-    client = MagicMock()
-    if build_raises is not None:
-        client.images.build.side_effect = build_raises
-    else:
-        client.images.build.return_value = (
-            MagicMock(),
-            [{"stream": "Successfully built abc123"}],
+class _FakeSandbox:
+    """Sandbox de teste determinístico: build/testes configuráveis por substring."""
+
+    def __init__(self, *, exec_results=None, default_exec=None, logs_text=""):
+        self.exec_results = exec_results or {}
+        self.default_exec = default_exec or CommandResult(
+            exit_code=0, stdout="", stderr="", timed_out=False
         )
-    container = MagicMock()
-    container.status = "running"
-    container.attrs = {"State": {"ExitCode": 0}}
-    container.logs.return_value = b"2026-07-22T10:00:00 INFO [app] Uvicorn running"
-    container.exec_run.side_effect = _fake_exec_run
-    client.containers.run.return_value = container
-    client.containers.get.side_effect = docker.errors.NotFound("sem container")
-    return client
+        self.logs_text = logs_text
+        self._root = Path("/tmp/fake-poc-sandbox")
+        self.started_service = None
+
+    @property
+    def root(self) -> Path:
+        return self._root
+
+    def setup(self, source_dir):
+        pass
+
+    def exec(self, command, *, timeout, env=None):
+        for key, res in self.exec_results.items():
+            if key in command:
+                return res
+        return self.default_exec
+
+    def start_service(self, command, *, env=None):
+        self.started_service = command
+
+    def logs(self):
+        return self.logs_text
+
+    def cleanup(self):
+        pass
 
 
-class _ExecResult:
-    def __init__(self, exit_code, output):
-        self.exit_code = exit_code
-        self.output = output
+def _sandbox_sucesso():
+    """Build ok + suíte que passa."""
+    return _FakeSandbox(
+        exec_results={
+            "pytest": CommandResult(
+                exit_code=0, stdout="1 passed in 0.01s", stderr="", timed_out=False
+            ),
+        },
+        logs_text="2026-07-22T10:00:00 INFO [app] serviço no ar",
+    )
 
 
-def _fake_exec_run(cmd, workdir=None, demux=False):
-    """Simula os comandos que o estágio 6 dispara dentro do container:
-    probe do pytest, execução da suíte (sucesso) e `cat` dos relatórios."""
-    shell = cmd[-1] if isinstance(cmd, (list, tuple)) else cmd
-
-    def out(s):
-        b = s.encode()
-        return (b, b"") if demux else b
-
-    if "pytest --version" in shell:
-        return _ExecResult(0, out("pytest 8.2.0"))
-    if shell.startswith("cat ") and "report.json" in shell:
-        return _ExecResult(0, out(json.dumps(
-            {"summary": {"passed": 1, "failed": 0, "error": 0, "skipped": 0, "total": 1},
-             "tests": []}
-        )))
-    if shell.startswith("cat ") and "cov.json" in shell:
-        return _ExecResult(0, out(json.dumps(
-            {"totals": {"percent_covered": 100.0, "covered_lines": 5, "num_statements": 5}}
-        )))
-    if "python -m pytest" in shell:
-        return _ExecResult(0, out("1 passed in 0.01s"))
-    return _ExecResult(0, out(""))
+def _sandbox_build_falha():
+    """Comando de build retorna erro → estágio 2 FALHA_BUILD."""
+    return _FakeSandbox(
+        exec_results={
+            "pip install": CommandResult(
+                exit_code=1, stdout="", stderr="ERROR: build simulado", timed_out=False
+            ),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
-# Task de exemplo + app FastAPI mínima
+# Task de exemplo + manifesto run.json
 # ---------------------------------------------------------------------------
+
+def _manifest_service(com_suite=False):
+    return {
+        "schema_version": "1",
+        "surface": "service",
+        "build": ["pip install -r requirements.txt"],
+        "run": "uvicorn main:app --port 8000",
+        "test": ["pytest -q"] if com_suite else [],
+        "port": 8000,
+        "healthcheck": "/",
+        "sandbox": "direct",
+    }
+
 
 def _preparar_workspace(tmp_path, criteria, com_suite=False):
     coder = tmp_path / "coder" / "src"
@@ -120,7 +141,9 @@ def _preparar_workspace(tmp_path, criteria, com_suite=False):
         "    return {'ok': True}\n",
         encoding="utf-8",
     )
-    (coder / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+    (coder / "run.json").write_text(
+        json.dumps(_manifest_service(com_suite=com_suite)), encoding="utf-8"
+    )
     if com_suite:
         (coder / "test_main.py").write_text(
             "def test_home():\n    assert True\n", encoding="utf-8"
@@ -140,9 +163,12 @@ def _preparar_workspace(tmp_path, criteria, com_suite=False):
     return coder, execution, tasks
 
 
-def _rodar_harness(coder, execution, tasks, client):
+def _rodar_harness(coder, execution, tasks, sandbox):
     with (
-        patch("docker.from_env", return_value=client),
+        patch(
+            "shared.tools.coding_tools.harness_execucao.create_sandbox",
+            return_value=sandbox,
+        ),
         patch("requests.get", return_value=_mock_response()),
         patch("shared.tools.coding_tools.harness_execucao.time.sleep"),
     ):
@@ -164,7 +190,7 @@ def test_poc_fluxo_aprovado_encerra(tmp_path):
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria)
 
     # (1) harness RODA
-    report = _rodar_harness(coder, execution, tasks, _mock_docker())
+    report = _rodar_harness(coder, execution, tasks, _sandbox_sucesso())
     assert report["overall_status"] == "sucesso"
 
     # (2) report PERSISTIDO em disco
@@ -198,8 +224,7 @@ def test_poc_fluxo_execucao_falha_nao_encerra(tmp_path):
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria)
 
     # (1) harness RODA, mas o build falha → overall_status técnico = 'falha'
-    client = _mock_docker(build_raises=BuildError("erro de build simulado", build_log=[]))
-    report = _rodar_harness(coder, execution, tasks, client)
+    report = _rodar_harness(coder, execution, tasks, _sandbox_build_falha())
     assert report["overall_status"] == "falha"
 
     # (2) report PERSISTIDO mesmo em falha
@@ -227,7 +252,7 @@ def test_poc_status_execucao_sozinho_nao_encerra(tmp_path):
     criteria = ["A rota GET / responde 200", "O relatório de auditoria é gerado"]
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria)
 
-    report = _rodar_harness(coder, execution, tasks, _mock_docker())
+    report = _rodar_harness(coder, execution, tasks, _sandbox_sucesso())
     assert report["overall_status"] == "sucesso"  # execução tecnicamente OK
 
     report_file = execution / f"{_TASK_ID}.report.json"
@@ -249,25 +274,24 @@ def test_poc_status_execucao_sozinho_nao_encerra(tmp_path):
 
 
 # ===========================================================================
-# PoC 4 — a suíte roda DENTRO do container (cobre a costura harness↔pytest)
+# PoC 4 — a suíte roda no sandbox (cobre a costura harness↔testes do manifesto)
 # ===========================================================================
 
-def test_poc_suite_executada_no_container(tmp_path):
-    """Com uma suíte no workspace do coder, o estágio 6 executa o pytest DENTRO
-    do container (/app), não via a tool do QA. É exatamente a costura que, antes,
-    reescrevia o path para o workspace do qa_agent e devolvia ERR_MODULO_NAO_ENCONTRADO.
+def test_poc_suite_executada_no_sandbox(tmp_path):
+    """Com comandos de teste no manifesto, o estágio 6 executa a suíte no sandbox
+    e coleta evidência estruturada — sem inferir stack nem reescrever paths.
     """
     criteria = ["A rota GET / deve responder 200"]
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria, com_suite=True)
 
-    report = _rodar_harness(coder, execution, tasks, _mock_docker())
+    report = _rodar_harness(coder, execution, tasks, _sandbox_sucesso())
 
     testes = next(s for s in report["stages"] if s["stage"] == "testes_automatizados")
-    # Executou no container, contra o path /app — sem rebase para o qa_agent
+    # Executou os comandos de teste do manifesto e coletou o resumo.
     assert testes["status"] == "sucesso"
-    assert testes["evidence"]["alvo_container"] == "/app/test_main.py"
-    assert testes["evidence"]["modo"] == "json"
-    assert testes["evidence"]["resumo"]["passaram"] == 1
+    resultados = testes["evidence"]["resultados"]
+    assert resultados[0]["comando"] == "pytest -q"
+    assert resultados[0]["resumo"]["passaram"] == 1
     assert report["overall_status"] == "sucesso"
 
     # E o fluxo segue normalmente até o veredito (aprovado) → executor encerraria

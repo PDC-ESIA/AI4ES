@@ -195,3 +195,20 @@ def test_coder_instruction_exige_readme(tmp_path, monkeypatch):
     instr = cr_coder.agent.instruction
     assert "README.md" in instr
     assert "http://localhost:8000" in instr
+
+
+def test_coder_instruction_exige_run_json(tmp_path, monkeypatch):
+    """O coder.instruction deve exigir o manifesto run.json dirigido pela surface."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    from src.agents.workflow_coding_review import coder as cr_coder
+
+    importlib.reload(cr_coder)
+
+    instr = cr_coder.agent.instruction
+    # run.json é o novo artefato de execução obrigatório (substitui Docker).
+    assert "run.json" in instr
+    # A superfície (service/command/none) deriva o comportamento do harness.
+    assert "surface" in instr
+    for surface in ("service", "command", "none"):
+        assert surface in instr, f"superfície ausente no prompt: {surface}"

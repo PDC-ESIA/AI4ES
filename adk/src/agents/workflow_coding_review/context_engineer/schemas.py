@@ -13,13 +13,29 @@ class MacroContext(BaseModel):
     """Contexto global — compartilhado por todas as tasks da sessão."""
 
     summary: str = Field(description="Resumo de 1 linha do objetivo maior")
+    product_type: str = Field(
+        default="a definir",
+        description=(
+            "Tipo de produto final inferido dos artefatos, orienta stack e "
+            "critérios do Coder. Vocabulário recomendado (aberto): "
+            "web_app | api_service | cli | library | mobile_app | "
+            "desktop_app | data_pipeline | outro. Use 'a definir' se não "
+            "for possível inferir. Outro valor é permitido quando o produto "
+            "não se encaixar na lista."
+        ),
+    )
     tech_stack: list[str] = Field(
-        description="Stack obrigatória (ex: ['Python', 'FastAPI', 'PostgreSQL'])"
+        description=(
+            "Stack obrigatória inferida dos artefatos, coerente com o "
+            "product_type (ex: Java/Spring, Node/Express, Python/FastAPI, "
+            "Go). Use ['a definir'] se não for possível inferir."
+        )
     )
     global_rules: list[str] = Field(
         description=(
-            "Restrições arquiteturais que o Coder DEVE respeitar "
-            "(ex: ['Usar SQLAlchemy', 'API RESTful'])"
+            "Restrições arquiteturais que o Coder DEVE respeitar, derivadas "
+            "dos artefatos (ex: convenções de camadas, padrão de API, "
+            "estratégia de persistência). Neutras quanto à tecnologia."
         )
     )
 
@@ -38,9 +54,10 @@ class Contract(BaseModel):
     interfaces: list[str] = Field(
         default_factory=list,
         description=(
-            "Assinatura(s) de interface/contrato que devem ser respeitadas. "
-            "Aceita str única, dict (chave: valor) ou list[str] na entrada; "
-            "sempre normalizado para list[str] internamente."
+            "Pontos de contato públicos que devem ser respeitados, conforme o "
+            "product_type (rota HTTP, comando CLI, assinatura de função/módulo, "
+            "evento…). Aceita str única, dict (chave: valor) ou list[str] na "
+            "entrada; sempre normalizado para list[str] internamente."
         ),
     )
 
@@ -82,7 +99,13 @@ class Task(BaseModel):
     """Uma tarefa de codificação contextualizada (Context Window) para o Coder."""
 
     id: str = Field(description="Identificador da task (ex: TASK-001)")
-    type: str = Field(description="Tipo: frontend | backend | database | infra | test")
+    type: str = Field(
+        description=(
+            "Categoria da task, coerente com o product_type. Vocabulário "
+            "recomendado (aberto): component | interface | data | infra | "
+            "test | docs. Outro valor é permitido quando o produto exigir."
+        )
+    )
     complexity: str = Field(description="Complexidade: low | medium | high")
     description: str = Field(description="Descrição clara do que codificar")
     business_rules: list[str] = Field(
