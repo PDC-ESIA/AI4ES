@@ -10,10 +10,17 @@ evidências**. Ele nunca decide se um critério de aceite foi atendido — esse
 julgamento pertence ao validador (implementation_validator). Por isso o
 `ExecutionReport` não carrega nenhum campo de decisão.
 
-Reaproveita as ferramentas já existentes do repositório:
-- `shared/tools/harness_docker.py` — build/run/cleanup de container e rota.
-- `shared/tools/log_parser_tool.py` — parsing dos logs de build e runtime.
-- `shared/tools/pytest_runner.py` — execução da suíte de testes automatizados.
+Arquitetura agnóstica de tecnologia (issue #370): o harness deixou de inferir
+stack/entrypoint e de assumir Docker/FastAPI. Agora consome três contratos
+declarativos e delega a execução a uma abstração de sandbox plugável:
+
+- `run.json` (manifesto): descreve *comandos* (build/run/test) e a *superfície*
+  do produto (service/command/none). Carregado por `shared.execution.manifest`.
+- Perfil de execução (`shared.execution.profile`): traduz a superfície em
+  comportamento do harness (sobe serviço? valida HTTP? quais estágios são
+  críticos?), sem `if product_type == ...` espalhados pelos estágios.
+- Sandbox (`shared.execution.sandbox`): executa os comandos de forma isolada —
+  `direct` (subprocess efêmero, padrão) ou `docker` (opt-in).
 """
 
 from __future__ import annotations
@@ -22,18 +29,17 @@ import json
 import logging
 import os
 import re
-import shlex
-import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-import docker
 import requests
-from docker.errors import APIError, BuildError
 from google.adk.tools import ToolContext
 
+from shared.execution.manifest import ManifestError, RunManifest, load_manifest
+from shared.execution.profile import ExecutionProfile, select_profile
+from shared.execution.sandbox import Sandbox, create_sandbox
 from shared.tools.coding_tools import harness_docker as hd
 from shared.tools.coding_tools.harness_schemas import (
     CriterionEvidence,
@@ -47,12 +53,22 @@ from shared.workspace import get_agent_workspace
 
 logger = logging.getLogger(__name__)
 
-# Estágios críticos (por valor de StageName): se falharem, os estágios que deles
-# dependem são pulados. Mantidos como strings por simplicidade de comparação.
-_CRITICAL_STAGES = (
+# Nome do manifesto de execução emitido pelo coder na raiz do artefato.
+_MANIFEST_FILENAME = "run.json"
+# Nome do arquivo de contexto macro persistido pelo context_engineer (product_type).
+_MACRO_CONTEXT_FILENAME = "_macro_context.json"
+
+# Tetos de tempo (segundos) por classe de comando do manifesto. Cada comando é
+# executado sob o timeout do sandbox; estourá-lo é evidência, não exceção.
+_BUILD_TIMEOUT = 300  # build/preparação (pip install, npm ci, compilação…)
+_RUN_COMMAND_TIMEOUT = 120  # execução única do `run` no perfil command
+_TESTS_TIMEOUT = 120  # cada comando da suíte de testes do manifesto
+
+# Estágios críticos usados quando não há perfil resolvido (falha antes do
+# estágio 1 concluir). Perfis fornecem seus próprios `critical_stages`.
+_DEFAULT_CRITICAL_STAGES = (
     "preparacao_ambiente",
     "implantacao_artefato",
-    "inicializacao_aplicacao",
 )
 
 
@@ -72,13 +88,13 @@ class _HarnessContext:
         # Preenchidos ao longo dos estágios
         self.acceptance_criteria: list[str] = []
         self.contract: dict = {}
-        self.dockerfile: str = ""
-        self.build_dir: Optional[Path] = None
-        self.docker_client = None
-        self.container = None
+        self.product_type: str = "a definir"
+        self.manifest: Optional[RunManifest] = None
+        self.profile: Optional[ExecutionProfile] = None
+        self.sandbox: Optional[Sandbox] = None
         self.build_logs: str = ""
         self.runtime_logs: str = ""
-        self.base_url: str = f"http://localhost:{hd._HOST_PORT}"
+        self.base_url: str = ""
         self.main_route: Optional[str] = None
 
         # Flags de dependência entre estágios
@@ -101,6 +117,13 @@ def _pulado(stage: StageName, motivo: str) -> StageResult:
         evidence={},
         error_code=None,
     )
+
+
+def _cmd_env(ctx: _HarnessContext) -> Optional[dict[str, str]]:
+    """Env adicional dos comandos, a partir do manifesto (None quando vazio)."""
+    if ctx.manifest and ctx.manifest.env:
+        return dict(ctx.manifest.env)
+    return None
 
 
 # ===========================================================================
@@ -136,25 +159,69 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     ctx.acceptance_criteria = list(task.get("acceptance_criteria", []))
     ctx.contract = task.get("contract", {}) or {}
 
-    # Valida o workspace do coder (deve conter código Python)
-    if not ctx.coder_dir.exists() or not any(ctx.coder_dir.rglob("*.py")):
+    # ---- Manifesto de execução (run.json) — contrato coder→harness ----
+    manifest_path = ctx.coder_dir / _MANIFEST_FILENAME
+    if not manifest_path.is_file():
         return StageResult(
             stage=StageName.PREPARACAO_AMBIENTE,
             status=StageStatus.ERRO,
             duration_seconds=round(time.time() - t0, 3),
-            summary="Nenhum arquivo Python encontrado no workspace do coder.",
-            evidence={"coder_dir": str(ctx.coder_dir)},
-            error_code="SRC_VAZIO",
+            summary=(
+                f"Manifesto de execução '{_MANIFEST_FILENAME}' ausente no "
+                f"workspace do coder ({ctx.coder_dir}). O coder deve emiti-lo."
+            ),
+            evidence={"manifest_path": str(manifest_path)},
+            error_code="MANIFESTO_AUSENTE",
+        )
+    try:
+        ctx.manifest = load_manifest(manifest_path)
+    except ManifestError as e:
+        return StageResult(
+            stage=StageName.PREPARACAO_AMBIENTE,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Manifesto de execução inválido/incoerente: {e}",
+            evidence={"manifest_path": str(manifest_path)},
+            error_code="MANIFESTO_INVALIDO",
         )
 
-    # Resolve Dockerfile (do coder ou fallback determinístico via harness_docker)
-    dockerfile_path = ctx.coder_dir / "Dockerfile"
-    if dockerfile_path.is_file():
-        ctx.dockerfile = dockerfile_path.read_text(encoding="utf-8")
-        origem_dockerfile = "coder"
-    else:
-        ctx.dockerfile = hd._generate_dockerfile(ctx.coder_dir)
-        origem_dockerfile = "fallback"
+    # ---- Contexto macro (product_type), best-effort ----
+    ctx.product_type = _carregar_product_type(ctx.tasks_dir)
+
+    # ---- Perfil de execução derivado da superfície declarada ----
+    try:
+        ctx.profile = select_profile(ctx.manifest.surface)
+    except ValueError as e:
+        return StageResult(
+            stage=StageName.PREPARACAO_AMBIENTE,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Não foi possível selecionar perfil de execução: {e}",
+            evidence={"surface": ctx.manifest.surface},
+            error_code="PERFIL_DESCONHECIDO",
+        )
+
+    # ---- URL base do serviço (só relevante quando surface=service) ----
+    if ctx.manifest.port is not None:
+        ctx.base_url = f"http://localhost:{ctx.manifest.port}"
+
+    # ---- Sandbox de execução (direct/docker) preparado com o artefato ----
+    try:
+        ctx.sandbox = create_sandbox(
+            ctx.manifest.sandbox,
+            port=ctx.manifest.port,
+            workdir_subpath=ctx.manifest.workdir,
+        )
+        ctx.sandbox.setup(ctx.coder_dir)
+    except Exception as e:
+        return StageResult(
+            stage=StageName.PREPARACAO_AMBIENTE,
+            status=StageStatus.ERRO,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Falha ao inicializar o sandbox '{ctx.manifest.sandbox}': {e}",
+            evidence={"sandbox": ctx.manifest.sandbox},
+            error_code="SANDBOX_INDISPONIVEL",
+        )
 
     ctx.env_ok = True
     return StageResult(
@@ -163,144 +230,112 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
         duration_seconds=round(time.time() - t0, 3),
         summary=(
             f"Ambiente preparado: Task carregada ({len(ctx.acceptance_criteria)} "
-            f"critérios), Dockerfile de origem '{origem_dockerfile}'."
+            f"critérios), manifesto surface='{ctx.manifest.surface}' "
+            f"(perfil {ctx.profile.name}), sandbox '{ctx.manifest.sandbox}'."
         ),
         evidence={
             "task_file": str(task_file),
             "acceptance_criteria": ctx.acceptance_criteria,
-            "dockerfile_origem": origem_dockerfile,
+            "surface": ctx.manifest.surface,
+            "profile": ctx.profile.name,
+            "sandbox": ctx.manifest.sandbox,
+            "product_type": ctx.product_type,
+            "build_commands": list(ctx.manifest.build),
+            "run_command": ctx.manifest.run,
+            "test_commands": list(ctx.manifest.test),
         },
         error_code=None,
     )
 
 
+def _carregar_product_type(tasks_dir: Path) -> str:
+    """Lê o product_type do `_macro_context.json` (best-effort; 'a definir' se ausente)."""
+    macro_path = tasks_dir / _MACRO_CONTEXT_FILENAME
+    if not macro_path.is_file():
+        return "a definir"
+    try:
+        macro = json.loads(macro_path.read_text(encoding="utf-8"))
+        if isinstance(macro, dict):
+            return macro.get("product_type") or "a definir"
+    except Exception as e:
+        logger.warning(f"[HARNESS] Falha ao ler macro_context: {e}")
+    return "a definir"
+
+
 # ===========================================================================
-# Estágio 2 — Implantação do artefato [crítico]
+# Estágio 2 — Implantação do artefato (build + subida de serviço) [crítico]
 # ===========================================================================
 
 def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
     t0 = time.time()
+    assert ctx.manifest is not None and ctx.profile is not None and ctx.sandbox is not None
 
-    # Diretório de build isolado (cópia do workspace do coder)
-    build_dir = ctx.exec_dir / "build"
-    if build_dir.exists():
-        shutil.rmtree(build_dir)
-    shutil.copytree(ctx.coder_dir, build_dir, dirs_exist_ok=True)
-    (build_dir / "Dockerfile").write_text(ctx.dockerfile, encoding="utf-8")
-    ctx.build_dir = build_dir
+    env = _cmd_env(ctx)
+    linhas: list[str] = []
 
-    try:
-        client = docker.from_env()
-    except Exception as e:
-        return StageResult(
-            stage=StageName.IMPLANTACAO_ARTEFATO,
-            status=StageStatus.ERRO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Não foi possível conectar ao Docker daemon: {e}",
-            evidence={},
-            error_code="DOCKER_INDISPONIVEL",
-        )
-    ctx.docker_client = client
+    # ---- Build: executa cada comando do manifesto, em ordem ----
+    for cmd in ctx.manifest.build:
+        linhas.append(f"$ {cmd}")
+        res = ctx.sandbox.exec(cmd, timeout=_BUILD_TIMEOUT, env=env)
+        if res.stdout:
+            linhas.append(res.stdout)
+        if res.stderr:
+            linhas.append(res.stderr)
+        if res.timed_out or (res.exit_code not in (0, None)):
+            ctx.build_logs = "\n".join(linhas)
+            motivo = (
+                f"Comando de build excedeu {_BUILD_TIMEOUT}s (timeout)."
+                if res.timed_out
+                else f"Comando de build retornou exit={res.exit_code}."
+            )
+            return StageResult(
+                stage=StageName.IMPLANTACAO_ARTEFATO,
+                status=StageStatus.FALHA,
+                duration_seconds=round(time.time() - t0, 3),
+                summary=f"Falha no build: {motivo} Comando: {cmd!r}.",
+                evidence={
+                    "comando_falho": cmd,
+                    "exit_code": res.exit_code,
+                    "timed_out": res.timed_out,
+                    "build_logs_tail": ctx.build_logs[-2000:],
+                },
+                error_code="FALHA_BUILD",
+            )
 
-    # ---- Build ----
-    try:
-        _image, build_log_gen = client.images.build(
-            path=str(build_dir),
-            tag=hd._IMAGE_TAG,
-            rm=True,
-            forcerm=True,
-            timeout=hd._BUILD_TIMEOUT,
-        )
-        linhas = []
-        for chunk in build_log_gen:
-            stream = chunk.get("stream", "").strip()
-            if stream:
-                linhas.append(stream)
-            err = chunk.get("error", "")
-            if err:
-                linhas.append(f"ERROR: {err}")
-        ctx.build_logs = "\n".join(linhas)
-    except BuildError as e:
-        ctx.build_logs = str(e)
-        return StageResult(
-            stage=StageName.IMPLANTACAO_ARTEFATO,
-            status=StageStatus.FALHA,
-            duration_seconds=round(time.time() - t0, 3),
-            summary="Falha ao construir a imagem Docker.",
-            evidence={"build_logs_tail": ctx.build_logs[-2000:]},
-            error_code="FALHA_BUILD",
-        )
-    except APIError as e:
-        ctx.build_logs = str(e)
-        return StageResult(
-            stage=StageName.IMPLANTACAO_ARTEFATO,
-            status=StageStatus.ERRO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Erro da API Docker no build: {e}",
-            evidence={},
-            error_code="ERRO_API_BUILD",
-        )
+    ctx.build_logs = "\n".join(linhas)
 
-    # ---- Run ----
-    hd._cleanup_container(client, hd._CONTAINER_NAME)
-    try:
-        container = client.containers.run(
-            image=hd._IMAGE_TAG,
-            name=hd._CONTAINER_NAME,
-            detach=True,
-            mem_limit=hd._MEMORY_LIMIT,
-            cpu_quota=hd._CPU_QUOTA,
-            ports={"8000/tcp": ("0.0.0.0", hd._HOST_PORT)},
-            environment={
-                "DATABASE_URL": "sqlite:///./data/app.db",
-                "UPLOAD_DIR": "/app/uploads",
-            },
-        )
-    except Exception as e:
-        return StageResult(
-            stage=StageName.IMPLANTACAO_ARTEFATO,
-            status=StageStatus.ERRO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Erro ao subir o container: {e}",
-            evidence={"build_logs_tail": ctx.build_logs[-2000:]},
-            error_code="ERRO_RUN",
-        )
-    ctx.container = container
-
-    # Aguarda o container sair de "created" e ficar "running"
-    deadline = time.time() + hd._HEALTHCHECK_TIMEOUT
-    started = False
-    while time.time() < deadline:
-        container.reload()
-        if container.status == "running":
-            started = True
-            break
-        if container.status in ("exited", "dead"):
-            break
-        time.sleep(0.5)
-
-    if not started:
-        exit_code = container.attrs.get("State", {}).get("ExitCode", "?")
-        ctx.runtime_logs = container.logs(timestamps=True).decode("utf-8", errors="replace")
-        return StageResult(
-            stage=StageName.IMPLANTACAO_ARTEFATO,
-            status=StageStatus.FALHA,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Container não iniciou (status={container.status}, exit={exit_code}).",
-            evidence={"container_status": container.status, 
-                      "exit_code": exit_code,
-                       "runtime_logs_tail": ctx.runtime_logs[-3000:], 
-                       },
-            error_code="CONTAINER_NAO_INICIOU",
-        )
+    # ---- Subida de serviço (só perfil S) ----
+    servico_iniciado = False
+    if ctx.profile.starts_service and ctx.manifest.run:
+        try:
+            ctx.sandbox.start_service(ctx.manifest.run, env=env)
+            servico_iniciado = True
+        except Exception as e:
+            return StageResult(
+                stage=StageName.IMPLANTACAO_ARTEFATO,
+                status=StageStatus.ERRO,
+                duration_seconds=round(time.time() - t0, 3),
+                summary=f"Erro ao iniciar o serviço: {e}",
+                evidence={"run_command": ctx.manifest.run,
+                          "build_logs_tail": ctx.build_logs[-2000:]},
+                error_code="ERRO_START_SERVICE",
+            )
 
     ctx.deploy_ok = True
+    resumo = (
+        f"Artefato implantado: {len(ctx.manifest.build)} comando(s) de build "
+        f"concluído(s)"
+    )
+    resumo += "; serviço iniciado em segundo plano." if servico_iniciado else "."
     return StageResult(
         stage=StageName.IMPLANTACAO_ARTEFATO,
         status=StageStatus.SUCESSO,
         duration_seconds=round(time.time() - t0, 3),
-        summary=f"Imagem construída e container '{hd._CONTAINER_NAME}' em execução.",
-        evidence={"image_tag": hd._IMAGE_TAG, "container_name": hd._CONTAINER_NAME},
+        summary=resumo,
+        evidence={
+            "build_commands": list(ctx.manifest.build),
+            "servico_iniciado": servico_iniciado,
+        },
         error_code=None,
     )
 
@@ -333,7 +368,7 @@ def _estagio_coleta_logs_implantacao(ctx: _HarnessContext) -> StageResult:
 
 
 # ===========================================================================
-# Estágio 4 — Inicialização da aplicação [crítico]
+# Estágio 4 — Inicialização da aplicação [crítico p/ perfil S]
 # ===========================================================================
 
 def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
@@ -342,12 +377,29 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
             StageName.INICIALIZACAO_APLICACAO,
             "Abortado: implantação do artefato não foi bem-sucedida.",
         )
-    t0 = time.time()
+    assert ctx.manifest is not None and ctx.profile is not None and ctx.sandbox is not None
 
-    # Grace period para a app subir dentro do container
+    # Perfil B (surface=none): não há comando/serviço de topo a inicializar.
+    if ctx.manifest.surface == "none":
+        return _pulado(
+            StageName.INICIALIZACAO_APLICACAO,
+            "Sem superfície de execução de topo (surface=none): nada a inicializar.",
+        )
+
+    # Perfil S (service): healthcheck HTTP contra o serviço em segundo plano.
+    if ctx.profile.starts_service:
+        return _inicializacao_servico(ctx)
+
+    # Perfil C (command): executa o `run` que roda e termina; exit-code é o sinal.
+    return _inicializacao_comando(ctx)
+
+
+def _inicializacao_servico(ctx: _HarnessContext) -> StageResult:
+    t0 = time.time()
     time.sleep(hd._STARTUP_GRACE_PERIOD)
 
-    healthcheck_url = f"{ctx.base_url}{hd._HEALTHCHECK_ENDPOINT}"
+    healthcheck = ctx.manifest.healthcheck or "/"
+    healthcheck_url = f"{ctx.base_url}{healthcheck}"
     alive = False
     ultimo_erro = ""
     status_code = None
@@ -387,6 +439,54 @@ def _estagio_inicializacao(ctx: _HarnessContext) -> StageResult:
     )
 
 
+def _inicializacao_comando(ctx: _HarnessContext) -> StageResult:
+    t0 = time.time()
+    res = ctx.sandbox.exec(
+        ctx.manifest.run, timeout=_RUN_COMMAND_TIMEOUT, env=_cmd_env(ctx)
+    )
+    # Guarda a saída do comando como log de runtime (coletado no estágio 5).
+    ctx.runtime_logs = "\n".join(
+        p for p in (res.stdout, res.stderr) if p
+    )
+
+    if res.timed_out:
+        return StageResult(
+            stage=StageName.INICIALIZACAO_APLICACAO,
+            status=StageStatus.FALHA,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Comando de execução excedeu {_RUN_COMMAND_TIMEOUT}s (timeout).",
+            evidence={"run_command": ctx.manifest.run, "timed_out": True},
+            error_code="EXECUCAO_TIMEOUT",
+        )
+    if res.exit_code not in (0, None):
+        return StageResult(
+            stage=StageName.INICIALIZACAO_APLICACAO,
+            status=StageStatus.FALHA,
+            duration_seconds=round(time.time() - t0, 3),
+            summary=f"Comando de execução retornou exit={res.exit_code}.",
+            evidence={
+                "run_command": ctx.manifest.run,
+                "exit_code": res.exit_code,
+                "saida_tail": ctx.runtime_logs[-3000:],
+            },
+            error_code="EXECUCAO_FALHOU",
+        )
+
+    ctx.app_ok = True
+    return StageResult(
+        stage=StageName.INICIALIZACAO_APLICACAO,
+        status=StageStatus.SUCESSO,
+        duration_seconds=round(time.time() - t0, 3),
+        summary=f"Comando de execução concluído com sucesso (exit={res.exit_code}).",
+        evidence={
+            "run_command": ctx.manifest.run,
+            "exit_code": res.exit_code,
+            "saida_tail": ctx.runtime_logs[-3000:],
+        },
+        error_code=None,
+    )
+
+
 # ===========================================================================
 # Estágio 5 — Coleta dos logs de execução (runtime)
 # ===========================================================================
@@ -395,14 +495,19 @@ def _estagio_coleta_logs_execucao(ctx: _HarnessContext) -> StageResult:
     if not ctx.deploy_ok:
         return _pulado(
             StageName.COLETA_LOGS_EXECUCAO,
-            "Abortado: nenhum container em execução para coletar logs.",
+            "Abortado: nada em execução para coletar logs.",
         )
+    assert ctx.manifest is not None and ctx.profile is not None and ctx.sandbox is not None
     t0 = time.time()
-    try:
-        ctx.runtime_logs = ctx.container.logs(timestamps=True).decode("utf-8", errors="replace")
-    except Exception as e:
-        ctx.runtime_logs = ctx.runtime_logs or ""
-        logger.warning(f"[HARNESS] Falha ao coletar logs de runtime: {e}")
+
+    # Serviço (S): logs vêm do processo em segundo plano do sandbox. Comando (C):
+    # a saída já foi capturada na inicialização (ctx.runtime_logs).
+    if ctx.profile.starts_service:
+        try:
+            ctx.runtime_logs = ctx.sandbox.logs()
+        except Exception as e:
+            logger.warning(f"[HARNESS] Falha ao coletar logs de runtime: {e}")
+            ctx.runtime_logs = ctx.runtime_logs or ""
 
     parsed = parse_log_text(ctx.runtime_logs)
     erros = [e for e in parsed if e.get("level") in ("ERROR", "CRITICAL", "FATAL")]
@@ -421,143 +526,19 @@ def _estagio_coleta_logs_execucao(ctx: _HarnessContext) -> StageResult:
 
 
 # ===========================================================================
-# Estágio 6 — Execução dos testes automatizados
+# Estágio 6 — Execução dos testes automatizados (comandos do manifesto)
 # ===========================================================================
-
-def _localizar_suite(coder_dir: Path) -> Optional[Path]:
-    """Localiza um arquivo de suíte de testes no workspace do coder."""
-    candidatos = sorted(
-        p for p in coder_dir.rglob("test_*.py") if "__pycache__" not in p.parts
-    )
-    candidatos += sorted(
-        p for p in coder_dir.rglob("*_test.py") if "__pycache__" not in p.parts
-    )
-    return candidatos[0] if candidatos else None
-
-
-# --- Execução da suíte DENTRO do container implantado ---------------------
-#
-# A versão anterior delegava ao `executar_pytest_tool` do QA, que enclausurava
-# o path da suíte no workspace do qa_agent (rebase → ERR_MODULO_NAO_ENCONTRADO)
-# e acoplava o harness ao estado global daquela tool. Agora o harness roda o
-# pytest ele mesmo, contra o artefato realmente implantado em /app (ver
-# Dockerfile: WORKDIR /app + COPY . /app/). Continua apenas coletando
-# evidência — nenhum veredito, nenhum contador global, nenhum doubt artifact.
-
-_TESTS_TIMEOUT = 60  # segundos — teto para a execução da suíte no container
-_APP_WORKDIR = "/app"
-_REPORT_JSON_IN = f"{_APP_WORKDIR}/.harness_pytest_report.json"
-_COV_JSON_IN = f"{_APP_WORKDIR}/.harness_cov.json"
 
 _PLAIN_PASSOU_RE = re.compile(r"(\d+) passed")
 _PLAIN_FALHOU_RE = re.compile(r"(\d+) failed")
 _PLAIN_ERRO_RE = re.compile(r"(\d+) error")
 
 
-def _exec_no_container(container, comando: str) -> tuple[Optional[int], str, str]:
-    """Executa um comando shell dentro do container; retorna (exit_code, stdout, stderr).
-
-    Usa `/bin/sh -c` para habilitar `timeout`, redirecionamento e encadeamento.
-    Não trata exceções: quem chama decide como reportá-las (o estágio as
-    converte num StageResult de ERRO).
-    """
-    res = container.exec_run(
-        ["/bin/sh", "-c", comando], workdir=_APP_WORKDIR, demux=True
-    )
-    saida = res.output if isinstance(res.output, tuple) else (res.output, None)
-    stdout = (saida[0] or b"").decode("utf-8", errors="replace")
-    stderr = (saida[1] or b"").decode("utf-8", errors="replace")
-    return res.exit_code, stdout, stderr
-
-
-def _pytest_disponivel(container) -> bool:
-    """Garante `pytest` executável no container; tenta instalar se ausente.
-
-    A instalação em runtime depende de rede no container. Se falhar, retorna
-    False e o estágio degrada de forma honesta (PULADO/PYTEST_INDISPONIVEL) —
-    NÃO cai para o host, para não reintroduzir a divergência host↔container.
-    """
-    code, _, _ = _exec_no_container(container, "python -m pytest --version")
-    if code == 0:
-        return True
-    _exec_no_container(
-        container, "pip install --no-cache-dir pytest pytest-json-report pytest-cov"
-    )
-    code, _, _ = _exec_no_container(container, "python -m pytest --version")
-    return code == 0
-
-
-def _rodar_pytest_no_container(
-    container, alvo: str
-) -> tuple[Optional[int], str, str, str]:
-    """Roda a suíte no container. Tenta o modo 'json' (com plugins de report/cov);
-    se as opções não forem reconhecidas (pytest exit 4 = erro de uso, plugins
-    ausentes), cai para o modo 'plain' (só stdout).
-
-    Retorna (exit_code, stdout, stderr, modo).
-    """
-    alvo_q = shlex.quote(alvo)
-    cmd_json = (
-        f"timeout {_TESTS_TIMEOUT} python -m pytest {alvo_q} "
-        f"--json-report --json-report-file={_REPORT_JSON_IN} "
-        f"--cov={_APP_WORKDIR} --cov-report=json:{_COV_JSON_IN} "
-        f"-q -p no:cacheprovider"
-    )
-    code, out, err = _exec_no_container(container, cmd_json)
-    if code == 4:  # opção desconhecida → plugins ausentes → fallback texto
-        cmd_plain = (
-            f"timeout {_TESTS_TIMEOUT} python -m pytest {alvo_q} -q -p no:cacheprovider"
-        )
-        code, out, err = _exec_no_container(container, cmd_plain)
-        return code, out, err, "plain"
-    return code, out, err, "json"
-
-
-def _parse_report_json(container) -> dict:
-    """Lê e resume o report.json do pytest-json-report de dentro do container."""
-    _, raw, _ = _exec_no_container(container, f"cat {_REPORT_JSON_IN}")
-    data = json.loads(raw)
-    summary = data.get("summary", {}) or {}
-    testes = data.get("tests", []) or []
-    falhas = [
-        {
-            "nodeid": t.get("nodeid"),
-            "outcome": t.get("outcome"),
-            "linha": (t.get("call", {}) or {}).get("crash", {}).get("lineno"),
-            "mensagem": (t.get("call", {}) or {}).get("crash", {}).get("message"),
-        }
-        for t in testes
-        if t.get("outcome") not in ("passed", "skipped")
-    ]
-    return {
-        "passaram": summary.get("passed", 0),
-        "falharam": summary.get("failed", 0),
-        "erros": summary.get("error", 0),
-        "pulados": summary.get("skipped", 0),
-        "total": summary.get("total", summary.get("collected", 0)),
-        "falhas": falhas[:20],
-    }
-
-
-def _parse_cobertura_json(container) -> dict:
-    """Lê o coverage.json de dentro do container (best-effort)."""
-    try:
-        _, raw, _ = _exec_no_container(container, f"cat {_COV_JSON_IN}")
-        totals = json.loads(raw).get("totals", {}) or {}
-        return {
-            "percentual": round(totals.get("percent_covered", 0.0), 2),
-            "linhas_cobertas": totals.get("covered_lines", 0),
-            "linhas_totais": totals.get("num_statements", 0),
-        }
-    except Exception:
-        return {"percentual": 0.0, "linhas_cobertas": 0, "linhas_totais": 0}
-
-
-def _parse_stdout_plain(stdout: str) -> dict:
-    """Resumo mínimo a partir do stdout do pytest quando não há JSON report."""
+def _resumo_saida_testes(saida: str) -> dict:
+    """Extrai contadores best-effort da saída dos testes (formato pytest-like)."""
 
     def _n(rx: re.Pattern) -> int:
-        m = rx.search(stdout)
+        m = rx.search(saida)
         return int(m.group(1)) if m else 0
 
     passaram, falharam, erros = (
@@ -569,119 +550,80 @@ def _parse_stdout_plain(stdout: str) -> dict:
         "passaram": passaram,
         "falharam": falharam,
         "erros": erros,
-        "pulados": 0,
         "total": passaram + falharam + erros,
-        "falhas": [],
     }
 
 
 def _estagio_testes(ctx: _HarnessContext) -> StageResult:
-    """Estágio 6 — executa a suíte de testes DENTRO do container implantado.
+    """Estágio 6 — executa os comandos `test` do manifesto no sandbox.
 
-    Localiza a suíte no workspace do coder (host), traduz o caminho para o
-    interior do container (`/app/...`) e roda o pytest lá dentro. Apenas coleta
-    evidência: a decisão sobre o que as falhas significam é do validador.
+    Gatilha em `deploy_ok` (build concluído): a suíte roda contra o artefato
+    implantado, independentemente da inicialização da aplicação. Apenas coleta
+    evidência — a decisão sobre o que as falhas significam é do validador.
     """
-    if not ctx.app_ok:
+    if not ctx.deploy_ok:
         return _pulado(
             StageName.TESTES_AUTOMATIZADOS,
-            "Abortado: aplicação não inicializou; testes não executados.",
+            "Abortado: implantação não concluída; testes não executados.",
         )
+    assert ctx.manifest is not None and ctx.sandbox is not None
+
+    if not ctx.manifest.test:
+        return StageResult(
+            stage=StageName.TESTES_AUTOMATIZADOS,
+            status=StageStatus.PULADO,
+            duration_seconds=0.0,
+            summary="Manifesto não declara comandos de teste ('test' vazio).",
+            evidence={"test_commands": []},
+            error_code=None,
+        )
+
     t0 = time.time()
+    env = _cmd_env(ctx)
+    resultados: list[dict] = []
+    any_timeout = False
+    any_fail = False
+    linhas: list[str] = []
 
-    suite = _localizar_suite(ctx.coder_dir)
-    if suite is None:
-        return StageResult(
-            stage=StageName.TESTES_AUTOMATIZADOS,
-            status=StageStatus.PULADO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary="Nenhuma suíte de testes encontrada no workspace do coder.",
-            evidence={"suite": None},
-            error_code=None,
+    for cmd in ctx.manifest.test:
+        res = ctx.sandbox.exec(cmd, timeout=_TESTS_TIMEOUT, env=env)
+        saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
+        linhas.append(f"$ {cmd}\n{saida}")
+        resultados.append(
+            {
+                "comando": cmd,
+                "exit_code": res.exit_code,
+                "timed_out": res.timed_out,
+                "resumo": _resumo_saida_testes(saida),
+                "saida_tail": saida[-2000:],
+            }
         )
+        if res.timed_out:
+            any_timeout = True
+        elif res.exit_code not in (0, None):
+            any_fail = True
 
-    # Path host → path no container (Dockerfile: WORKDIR /app + COPY . /app/).
-    rel = suite.relative_to(ctx.coder_dir)
-    alvo = f"{_APP_WORKDIR}/{rel.as_posix()}"
-
-    try:
-        if not _pytest_disponivel(ctx.container):
-            return StageResult(
-                stage=StageName.TESTES_AUTOMATIZADOS,
-                status=StageStatus.PULADO,
-                duration_seconds=round(time.time() - t0, 3),
-                summary=(
-                    "pytest indisponível no container e não foi possível "
-                    "instalá-lo (sem rede?). Testes não executados."
-                ),
-                evidence={"suite": str(suite), "alvo_container": alvo},
-                error_code="PYTEST_INDISPONIVEL",
-            )
-
-        exit_code, stdout, stderr, modo = _rodar_pytest_no_container(ctx.container, alvo)
-    except Exception as e:
-        return StageResult(
-            stage=StageName.TESTES_AUTOMATIZADOS,
-            status=StageStatus.ERRO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Falha ao executar pytest no container: {e}",
-            evidence={"suite": str(suite), "alvo_container": alvo},
-            error_code="EXEC_FALHOU",
-        )
-
-    # Resumo estruturado (JSON report quando disponível; stdout como fallback).
-    if modo == "json":
-        try:
-            resumo = _parse_report_json(ctx.container)
-        except Exception:
-            resumo = _parse_stdout_plain(stdout)
-        cobertura = _parse_cobertura_json(ctx.container)
-    else:
-        resumo = _parse_stdout_plain(stdout)
-        cobertura = {"percentual": 0.0, "linhas_cobertas": 0, "linhas_totais": 0}
-
-    # Classificação técnica (SEM veredito) a partir do exit code do pytest:
-    #   0 = tudo passou | 1 = houve falhas | 5 = nada coletado
-    #   124 = timeout (coreutils) | 2/3/4 = interrompido/erro interno/uso incorreto
-    if exit_code == 5:
-        return StageResult(
-            stage=StageName.TESTES_AUTOMATIZADOS,
-            status=StageStatus.PULADO,
-            duration_seconds=round(time.time() - t0, 3),
-            summary=f"Suíte '{suite.name}' não coletou nenhum teste.",
-            evidence={"suite": str(suite), "alvo_container": alvo, "modo": modo},
-            error_code=None,
-        )
-    if exit_code == 0:
-        status, error_code = StageStatus.SUCESSO, None
-    elif exit_code == 124:
+    if any_timeout:
         status, error_code = StageStatus.FALHA, "TESTES_TIMEOUT"
-    elif exit_code == 1:
+    elif any_fail:
         status, error_code = StageStatus.FALHA, "TESTES_FALHARAM"
     else:
-        status, error_code = StageStatus.ERRO, "PYTEST_ERRO_EXECUCAO"
+        status, error_code = StageStatus.SUCESSO, None
 
-    tail = (stdout or "")[-3000:]
-    if stderr:
-        tail += f"\n--- stderr ---\n{stderr[-1000:]}"
-
+    tot_pass = sum(r["resumo"]["passaram"] for r in resultados)
+    tot_fail = sum(r["resumo"]["falharam"] for r in resultados)
+    tot_err = sum(r["resumo"]["erros"] for r in resultados)
     return StageResult(
         stage=StageName.TESTES_AUTOMATIZADOS,
         status=status,
         duration_seconds=round(time.time() - t0, 3),
         summary=(
-            f"Suíte '{suite.name}' executada no container "
-            f"(modo={modo}, exit={exit_code}): {resumo['passaram']} passaram, "
-            f"{resumo['falharam']} falharam, {resumo['erros']} erros."
+            f"{len(resultados)} comando(s) de teste executado(s): "
+            f"{tot_pass} passaram, {tot_fail} falharam, {tot_err} erros."
         ),
         evidence={
-            "suite": str(suite),
-            "alvo_container": alvo,
-            "modo": modo,
-            "exit_code": exit_code,
-            "resumo": resumo,
-            "cobertura": cobertura,
-            "saida_tail": tail,
+            "resultados": resultados,
+            "saida_tail": "\n".join(linhas)[-3000:],
         },
         error_code=error_code,
     )
@@ -695,27 +637,20 @@ _PATH_RE = re.compile(r"(/[\w\-/{}]*)")
 _VERBO_HTTP_RE = re.compile(r"\b(GET|POST|PUT|DELETE|PATCH)\b", re.IGNORECASE)
 
 
-def _coletar_evidencia_criterio(
+def _evidencia_http(
     criterion: str, base_url: str, main_route: Optional[str]
 ) -> CriterionEvidence:
-    """Deriva uma checagem determinística para um critério, SEM julgá-lo.
-
-    Nunca decide se o critério foi atendido — apenas registra o que foi
-    verificado e o que foi observado. A conclusão é do validador.
+    """Deriva uma checagem HTTP determinística para um critério, SEM julgá-lo.
 
     A única checagem que o harness sabe derivar com segurança é um GET sem
     payload. Critérios que mencionam POST/PUT/PATCH/DELETE exigiriam inventar
     corpo/headers — adivinhação que o harness não faz. Nesses casos o critério
-    é marcado como NÃO verificável (evidência honesta), em vez de executar um
-    GET desalinhado e rotulá-lo de verificável, o que poderia induzir o
-    validador a conclusões erradas (ex.: um 405 em rota POST é o comportamento
-    esperado para um GET, não uma falha do critério).
+    é marcado como NÃO verificável (evidência honesta).
     """
     path_match = _PATH_RE.search(criterion)
     verbos = {m.upper() for m in _VERBO_HTTP_RE.findall(criterion)}
     verbos_nao_checaveis = verbos - {"GET"}
 
-    # Verbo com payload/efeito colateral → sem checagem determinística derivável.
     if verbos_nao_checaveis:
         listado = ", ".join(sorted(verbos_nao_checaveis))
         return CriterionEvidence(
@@ -744,7 +679,6 @@ def _coletar_evidencia_criterio(
             checkable=True,
         )
 
-    # Critério semântico demais para checagem determinística
     return CriterionEvidence(
         criterion=criterion,
         check_performed="Nenhuma checagem determinística derivável (critério semântico).",
@@ -753,22 +687,48 @@ def _coletar_evidencia_criterio(
     )
 
 
+def _evidencia_nao_http(criterion: str, motivo: str) -> CriterionEvidence:
+    """Evidência textual (não verificável automaticamente) para perfis sem HTTP."""
+    return CriterionEvidence(
+        criterion=criterion,
+        check_performed=f"Nenhuma checagem HTTP derivável ({motivo}).",
+        observed=(
+            "Requer avaliação do validador a partir das evidências de build, "
+            "execução e testes coletadas."
+        ),
+        checkable=False,
+    )
+
+
 def _estagio_validacoes_work_item(
     ctx: _HarnessContext,
 ) -> tuple[StageResult, list[CriterionEvidence]]:
-    if not ctx.app_ok:
+    if not ctx.deploy_ok or ctx.profile is None:
         return (
             _pulado(
                 StageName.VALIDACOES_WORK_ITEM,
-                "Abortado: aplicação não inicializou; evidências não coletadas.",
+                "Abortado: implantação não concluída; evidências não coletadas.",
             ),
             [],
         )
     t0 = time.time()
-    evidencias = [
-        _coletar_evidencia_criterio(c, ctx.base_url, ctx.main_route)
-        for c in ctx.acceptance_criteria
-    ]
+
+    # Só o perfil S deriva checagens HTTP, e apenas quando a app está no ar.
+    http_ok = ctx.profile.validates_http and ctx.app_ok
+    if ctx.profile.validates_http and not ctx.app_ok:
+        motivo = "aplicação não inicializou"
+    elif not ctx.profile.validates_http:
+        motivo = f"perfil {ctx.profile.name} não expõe superfície HTTP"
+    else:
+        motivo = ""
+
+    evidencias: list[CriterionEvidence] = []
+    for c in ctx.acceptance_criteria:
+        if http_ok:
+            evidencias.append(_evidencia_http(c, ctx.base_url, ctx.main_route))
+        else:
+            evidencias.append(_evidencia_nao_http(c, motivo))
+
     checaveis = sum(1 for e in evidencias if e.checkable)
     result = StageResult(
         stage=StageName.VALIDACOES_WORK_ITEM,
@@ -788,12 +748,14 @@ def _estagio_validacoes_work_item(
 # Estágios 8 e 9 — Consolidação e geração do relatório
 # ===========================================================================
 
-def _agregar_status(stages: list[StageResult]) -> StageStatus:
+def _agregar_status(
+    stages: list[StageResult], critical_stages: tuple[str, ...]
+) -> StageStatus:
     """Deriva o status técnico agregado (não é veredito de aprovação)."""
     por_estagio = {s.stage.value: s.status for s in stages}
     if any(s.status == StageStatus.ERRO for s in stages):
         return StageStatus.ERRO
-    for critico in _CRITICAL_STAGES:
+    for critico in critical_stages:
         if por_estagio.get(critico) in (StageStatus.FALHA, StageStatus.PULADO):
             return StageStatus.FALHA
     return StageStatus.SUCESSO
@@ -859,9 +821,9 @@ def executar_harness_validacao(
 
     A orquestração é determinística: a ordem e as decisões de aborto NÃO
     dependem de nenhum LLM. Cada estágio produz um `StageResult`; estágios
-    críticos (preparação, implantação, inicialização) abortam os estágios que
-    deles dependem quando falham. O harness apenas coleta evidências — nunca
-    decide se um critério de aceite foi atendido (isso cabe ao validador).
+    críticos (definidos pelo perfil de execução) abortam os estágios que deles
+    dependem quando falham. O harness apenas coleta evidências — nunca decide se
+    um critério de aceite foi atendido (isso cabe ao validador).
 
     Args:
         task_id: Identificador da Task/Work Item a validar.
@@ -890,71 +852,82 @@ def executar_harness_validacao(
     stages: list[StageResult] = []
     criteria_evidence: list[CriterionEvidence] = []
 
-    # ---- Estágios 1..5 ----
-    stages.append(_estagio_preparacao(ctx))
-    stages.append(_estagio_implantacao(ctx) if ctx.env_ok
-                  else _pulado(StageName.IMPLANTACAO_ARTEFATO,
-                               "Abortado: preparação do ambiente falhou."))
-    stages.append(_estagio_coleta_logs_implantacao(ctx))
-    stages.append(_estagio_inicializacao(ctx))
-    stages.append(_estagio_coleta_logs_execucao(ctx))
+    try:
+        # ---- Estágios 1..5 ----
+        stages.append(_estagio_preparacao(ctx))
+        stages.append(_estagio_implantacao(ctx) if ctx.env_ok
+                      else _pulado(StageName.IMPLANTACAO_ARTEFATO,
+                                   "Abortado: preparação do ambiente falhou."))
+        stages.append(_estagio_coleta_logs_implantacao(ctx))
+        stages.append(_estagio_inicializacao(ctx))
+        stages.append(_estagio_coleta_logs_execucao(ctx))
 
-    # ---- Estágio 6 ----
-    stages.append(_estagio_testes(ctx))
+        # ---- Estágio 6 ----
+        stages.append(_estagio_testes(ctx))
 
-    # ---- Estágio 7 ----
-    r7, criteria_evidence = _estagio_validacoes_work_item(ctx)
-    stages.append(r7)
+        # ---- Estágio 7 ----
+        r7, criteria_evidence = _estagio_validacoes_work_item(ctx)
+        stages.append(r7)
 
-    # ---- Estágio 8 — Consolidação ----
-    t8 = time.time()
-    overall = _agregar_status(stages)
-    stages.append(StageResult(
-        stage=StageName.CONSOLIDACAO_EVIDENCIAS,
-        status=StageStatus.SUCESSO,
-        duration_seconds=round(time.time() - t8, 3),
-        summary=f"Evidências consolidadas de {len(stages)} estágios anteriores.",
-        evidence={"overall_status": overall.value},
-        error_code=None,
-    ))
+        # ---- Estágio 8 — Consolidação ----
+        t8 = time.time()
+        critical = ctx.profile.critical_stages if ctx.profile else _DEFAULT_CRITICAL_STAGES
+        overall = _agregar_status(stages, critical)
+        stages.append(StageResult(
+            stage=StageName.CONSOLIDACAO_EVIDENCIAS,
+            status=StageStatus.SUCESSO,
+            duration_seconds=round(time.time() - t8, 3),
+            summary=f"Evidências consolidadas de {len(stages)} estágios anteriores.",
+            evidence={"overall_status": overall.value,
+                      "critical_stages": list(critical)},
+            error_code=None,
+        ))
 
-    # ---- Estágio 9 — Geração do relatório ----
-    t9 = time.time()
-    report_json_path = exec_dir / f"{task_id}.report.json"
-    report_md_path = exec_dir / f"{task_id}.report.md"
-    stages.append(StageResult(
-        stage=StageName.GERACAO_RELATORIO,
-        status=StageStatus.SUCESSO,
-        duration_seconds=round(time.time() - t9, 3),
-        summary=f"Relatório serializado em {report_json_path.name} e {report_md_path.name}.",
-        evidence={"report_json": str(report_json_path), "report_md": str(report_md_path)},
-        error_code=None,
-    ))
+        # ---- Estágio 9 — Geração do relatório ----
+        t9 = time.time()
+        report_json_path = exec_dir / f"{task_id}.report.json"
+        report_md_path = exec_dir / f"{task_id}.report.md"
+        stages.append(StageResult(
+            stage=StageName.GERACAO_RELATORIO,
+            status=StageStatus.SUCESSO,
+            duration_seconds=round(time.time() - t9, 3),
+            summary=f"Relatório serializado em {report_json_path.name} e {report_md_path.name}.",
+            evidence={"report_json": str(report_json_path), "report_md": str(report_md_path)},
+            error_code=None,
+        ))
 
-    report = ExecutionReport(
-        work_item_id=task_id,
-        iteration=iteration,
-        generated_at=_now_iso(),
-        acceptance_criteria=ctx.acceptance_criteria,
-        overall_status=overall,
-        stages=stages,
-        criteria_evidence=criteria_evidence,
-        report_path=str(report_json_path),
-        total_duration_seconds=round(time.time() - t_inicio, 3),
-    )
+        report = ExecutionReport(
+            work_item_id=task_id,
+            iteration=iteration,
+            generated_at=_now_iso(),
+            acceptance_criteria=ctx.acceptance_criteria,
+            overall_status=overall,
+            stages=stages,
+            criteria_evidence=criteria_evidence,
+            report_path=str(report_json_path),
+            total_duration_seconds=round(time.time() - t_inicio, 3),
+        )
 
-    payload = report.model_dump(mode="json")
-    _serializar_json_atomico(report_json_path, payload)
-    report_md_path.parent.mkdir(parents=True, exist_ok=True)
-    report_md_path.write_text(_render_markdown(report), encoding="utf-8")
+        payload = report.model_dump(mode="json")
+        _serializar_json_atomico(report_json_path, payload)
+        report_md_path.parent.mkdir(parents=True, exist_ok=True)
+        report_md_path.write_text(_render_markdown(report), encoding="utf-8")
 
-    # Grava o caminho do report no session state (fonte determinística para o
-    # validador). Só quando há contexto — chamadas diretas (testes/PoC) o omitem.
-    if tool_context is not None:
-        tool_context.state["report_path"] = str(report_json_path.resolve())
-        tool_context.state["task_id"] = task_id
+        # Grava o caminho do report no session state (fonte determinística para o
+        # validador). Só quando há contexto — chamadas diretas (testes/PoC) o omitem.
+        if tool_context is not None:
+            tool_context.state["report_path"] = str(report_json_path.resolve())
+            tool_context.state["task_id"] = task_id
 
-    return payload
+        return payload
+    finally:
+        # O sandbox é sempre encerrado, mesmo em caso de exceção inesperada:
+        # encerra processos em segundo plano e remove diretórios/containers temp.
+        if ctx.sandbox is not None:
+            try:
+                ctx.sandbox.cleanup()
+            except Exception as e:
+                logger.warning(f"[HARNESS] Falha ao limpar o sandbox: {e}")
 
 
 def executar_harness_tool(

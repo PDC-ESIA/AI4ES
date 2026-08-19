@@ -1,6 +1,6 @@
 import re
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, is_dataclass
 from typing import Optional
 
 @dataclass
@@ -349,6 +349,10 @@ def parse_pytest_log(traceback_text: str) -> dict:
     return result
 
 
+# IMPORTANTE: todos os itens de PARSERS devem obedecer ao contrato
+# ``Optional[LogEntry]`` (retornam LogEntry ou None). ``parse_pytest_log`` NÃO
+# entra nesta lista: ela parseia um traceback inteiro e retorna ``dict`` (nunca
+# None), o que quebraria ``asdict()`` em ``parse_log_line`` para linhas em branco.
 PARSERS = [
     parse_json_log,
     parse_log4j,
@@ -357,7 +361,6 @@ PARSERS = [
     parse_syslog,
     parse_python,
     parse_raw,
-    parse_pytest_log,
 ]
 
 
@@ -366,7 +369,7 @@ def parse_line(raw: str) -> Optional[LogEntry]:
 
     Use como ponto de entrada único quando o formato da linha não é conhecido
     antecipadamente. Itera sobre a lista ordenada ``PARSERS`` (json → log4j →
-    padrao → nginx → syslog → python → raw → parse_pytest_log) e retorna o
+    padrao → nginx → syslog → python → raw) e retorna o
     resultado do primeiro parser bem-sucedido. A ordem garante que formatos mais
     específicos são tentados antes do fallback ``raw``, evitando que linhas JSON
     ou Log4j sejam tratadas como texto livre. É a função chamada internamente por
@@ -401,7 +404,9 @@ def parse_log_line(line: str) -> dict:
         Suporta formatos: padrão, log4j, syslog, python logging, nginx/apache, JSON e raw.
     """
     entry = parse_line(line)
-    if entry is None:
+    if entry is None or not is_dataclass(entry):
+        # Contrato: PARSERS retornam LogEntry (dataclass). Se algo violar o
+        # contrato (ex.: retornar dict), degrada em vez de derrubar o pipeline.
         return None
     return asdict(entry)
 
@@ -438,7 +443,8 @@ def execute_tool(tool_name: str, tool_input: dict):
     """Executa tool de log parser pelo nome.
 
     Args:
-        tool_name: Nome da tool (parse_log_line, parse_log_lines, parse_pytest_log).
+        tool_name: Nome da tool (parse_log_line, parse_log_lines, parse_log_text,
+            parse_pytest_log).
         tool_input: Dicionário de parâmetros para a tool.
 
     Returns:
@@ -447,7 +453,13 @@ def execute_tool(tool_name: str, tool_input: dict):
     Raises:
         ValueError: Se o nome da tool não for encontrado.
     """
-    for tool in PARSERS:
-        if tool.__name__ == tool_name:
-            return tool(**tool_input)
-    raise ValueError(f"Tool '{tool_name}' não encontrada.")
+    dispatchable = {
+        "parse_log_line": parse_log_line,
+        "parse_log_lines": parse_log_lines,
+        "parse_log_text": parse_log_text,
+        "parse_pytest_log": parse_pytest_log,
+    }
+    tool = dispatchable.get(tool_name)
+    if tool is None:
+        raise ValueError(f"Tool '{tool_name}' não encontrada.")
+    return tool(**tool_input)

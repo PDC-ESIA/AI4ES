@@ -406,3 +406,44 @@ async def test_resume_com_pausa_encadeada_mantem_runner_e_atualiza_state():
     # Runner permanece vivo, close NÃO chamado
     assert "outer-1" in orch._live_runners
     runner.close.assert_not_awaited()
+
+
+# --- U8: preflight ok=False aborta sem rodar pipelines ---
+
+
+@pytest.mark.asyncio
+async def test_preflight_falha_aborta_sem_rodar_pipelines(monkeypatch):
+    """Se o health-check de LLM falhar, o orchestrator emite a mensagem de
+    abort e NÃO instancia nenhum Runner (nenhum pipeline roda)."""
+    from src.agents.orchestrator.agent import _PipelineOrchestrator
+    from shared.preflight import PreflightResult
+
+    async def _fail(model=None):
+        return PreflightResult(
+            ok=False,
+            message="[preflight] LLM indisponível. Rode adk/scripts/copilot_auth.py",
+        )
+
+    # Sobrescreve o stub autouse (que devolve ok=True) só neste teste.
+    monkeypatch.setattr("src.agents.orchestrator.agent.ensure_llm_ready", _fail)
+
+    def _runner_proibido(**kwargs):
+        raise AssertionError("Runner não deve ser criado quando o preflight falha")
+
+    monkeypatch.setattr("src.agents.orchestrator.agent.Runner", _runner_proibido)
+
+    orch = _PipelineOrchestrator(name="orchestrator", description="test")
+    ctx = _FakeCtx("prompt inicial do usuário")
+
+    events = [e async for e in orch._run_async_impl(ctx)]
+
+    texts = [
+        p.text
+        for e in events if e.content
+        for p in e.content.parts if p.text
+    ]
+    assert any("preflight" in t.lower() for t in texts)
+    assert any("copilot_auth.py" in t for t in texts)
+    # Abortou antes de _handle_fresh_run → state intacto (sem accumulated_outputs).
+    assert "accumulated_outputs" not in ctx.session.state
+
