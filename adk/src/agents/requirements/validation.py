@@ -112,7 +112,11 @@ def _tabela_metadados(corpo: str) -> dict[str, str]:
         campo = match.group("campo").strip()
         valor = match.group("valor").strip()
         # Ignora cabeçalho e linha separadora (|---|---|).
-        if set(campo) <= {"-", ":"} or not campo:
+        if (
+            set(campo) <= {"-", ":"}
+            or not campo
+            or (chave_normalizada(campo) == "campo" and chave_normalizada(valor) == "valor")
+        ):
             continue
         linhas[chave_normalizada(campo)] = valor
     return linhas
