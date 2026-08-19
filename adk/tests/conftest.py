@@ -132,3 +132,23 @@ def trace_collector():
     from tests.fixtures.trace_helpers import TraceCollector
 
     return TraceCollector()
+
+# ---------------------------------------------------------------------------
+# Aplicação automática dos markers de camada, por pasta
+# ---------------------------------------------------------------------------
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Marca cada teste com `infraestrutura` ou `trajetoria` conforme a pasta.
+
+    Os arquivos de teste não precisam de `@pytest.mark.infraestrutura` (ou
+    `trajetoria`) explícito — este hook aplica o marker correspondente com
+    base nas partes do caminho do teste, permitindo selecionar a camada
+    inteira via `pytest -m infraestrutura` / `pytest -m trajetoria` mesmo
+    quando a suite completa é coletada a partir da raiz.
+    """
+    for item in items:
+        partes = item.nodeid.replace("\\", "/").split("/")
+        if "infraestrutura" in partes:
+            item.add_marker(pytest.mark.infraestrutura)
+        elif "trajetoria" in partes:
+            item.add_marker(pytest.mark.trajetoria)
