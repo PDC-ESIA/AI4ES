@@ -14,6 +14,22 @@ from shared.llm import copilot_completion_kwargs
 litellm.drop_params = True
 
 
+DEFAULT_SYSTEM_PROMPT = "Você gera exclusivamente código de teste pytest executável."
+
+DEFAULT_GENERATION_RULES = """Regras obrigatórias:
+- Retorne apenas código Python, sem markdown.
+- Use pytest.
+- O teste deve ser executável mesmo sem instalação de módulos externos ao diretório local.
+- Se houver arquivo-fonte local, faça import relativo via pathlib/sys.path usando a própria pasta do teste.
+- Se não houver código-fonte importável, gere testes de contrato (validações e comportamentos inferíveis) sem import quebrado.
+- Cubra cenários feliz, inválido e borda.
+- Inclua asserts objetivos.
+- Cada função de teste deve ter corpo NÃO-VAZIO: ou uma docstring (modo
+  esqueleto), ou asserts objetivos (modo completo). Nunca emita 'pass'
+  isolado, 'TODO', placeholders entre <>, ou caracteres fora da gramática Python.
+"""
+
+
 def _parse_fragmented_requirements(raw_input: str) -> list:
     """Converte texto livre/fragmentado em uma lista estruturada de artefatos."""
     prompt = f"""Extraia os requisitos do texto abaixo e retorne um JSON array estrito no formato:
@@ -47,6 +63,8 @@ def _gerar_pytest_via_llm(
     modulo: str,
     arquivos_apoio: list[Path],
     nome_teste: str,
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+    generation_rules: str = DEFAULT_GENERATION_RULES,
 ) -> str:
     """Gera código pytest usando LLM a partir de artefato de requisito.
 
@@ -57,6 +75,8 @@ def _gerar_pytest_via_llm(
         modulo: Módulo alvo do teste.
         arquivos_apoio: Lista de paths de arquivos de apoio.
         nome_teste: Nome do arquivo de teste a gerar.
+        system_prompt: Mensagem de sistema enviada ao LLM.
+        generation_rules: Bloco de regras injetado no final do prompt.
 
     Returns:
         str: Código Python do teste pytest.
@@ -114,17 +134,7 @@ Requisito: {conteudo}
 DIRETRIZ DE GERAÇÃO CONDICIONAL:
 {instrucao_geracao}
 
-Regras obrigatórias:
-- Retorne apenas código Python, sem markdown.
-- Use pytest.
-- O teste deve ser executável mesmo sem instalação de módulos externos ao diretório local.
-- Se houver arquivo-fonte local, faça import relativo via pathlib/sys.path usando a própria pasta do teste.
-- Se não houver código-fonte importável, gere testes de contrato (validações e comportamentos inferíveis) sem import quebrado.
-- Cubra cenários feliz, inválido e borda.
-- Inclua asserts objetivos.
-- Cada função de teste deve ter corpo NÃO-VAZIO: ou uma docstring (modo
-  esqueleto), ou asserts objetivos (modo completo). Nunca emita 'pass'
-  isolado, 'TODO', placeholders entre <>, ou caracteres fora da gramática Python.
+{generation_rules}
 """
 
     response = completion(
@@ -132,7 +142,7 @@ Regras obrigatórias:
         messages=[
             {
                 "role": "system",
-                "content": "Você gera exclusivamente código de teste pytest executável.",
+                "content": system_prompt,
             },
             {
                 "role": "user",

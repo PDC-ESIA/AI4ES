@@ -6,7 +6,12 @@ import logging
 import os
 
 from .io import _gerar_doubt_artifact, _salvar_arquivos_apoio, _slugify, _tests_dir
-from .llm_generation import _gerar_pytest_via_llm, _parse_fragmented_requirements
+from .llm_generation import (
+    DEFAULT_GENERATION_RULES,
+    DEFAULT_SYSTEM_PROMPT,
+    _gerar_pytest_via_llm,
+    _parse_fragmented_requirements,
+)
 from .normalizer import _normalizar_anexos_inline
 from .sanitizer import _validar_e_sanitizar_codigo
 
@@ -61,6 +66,18 @@ def receber_requisitos(artefatos_json: str) -> dict:
             "detalhes": [ ... ]
         }
     """
+    return _receber_requisitos_impl(artefatos_json)
+
+
+def _receber_requisitos_impl(
+    artefatos_json: str,
+    *,
+    workspace_agent: str = "receive_requirements",
+    agent_label: str = "qa_agent",
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+    generation_rules: str = DEFAULT_GENERATION_RULES,
+) -> dict:
+    """Implementação parametrizável reutilizada por outros subagentes."""
     try:
         lista = json.loads(artefatos_json)
         if isinstance(lista, dict):
@@ -71,7 +88,12 @@ def receber_requisitos(artefatos_json: str) -> dict:
             lista = _parse_fragmented_requirements(artefatos_json)
         except Exception as fallback_e:
             caminho = _run_async(
-                _gerar_doubt_artifact("ERR_ENTRADA_JSON", f"Erro ao parsear JSON de entrada: {e}")
+                _gerar_doubt_artifact(
+                    "ERR_ENTRADA_JSON",
+                    f"Erro ao parsear JSON de entrada: {e}",
+                    workspace_agent=workspace_agent,
+                    agent_label=agent_label,
+                )
             )
             return {
                 "status": "erro",
@@ -81,7 +103,15 @@ def receber_requisitos(artefatos_json: str) -> dict:
 
     lista = _normalizar_anexos_inline(lista)
     lista = _ordenar_por_criticidade(lista)
-    resultados = _run_async(_processar_todos_em_paralelo(lista))
+    resultados = _run_async(
+        _processar_todos_em_paralelo(
+            lista,
+            workspace_agent=workspace_agent,
+            agent_label=agent_label,
+            system_prompt=system_prompt,
+            generation_rules=generation_rules,
+        )
+    )
 
     total     = len(resultados)
     sucessos  = sum(1 for r in resultados if r["status"] == "sucesso")
@@ -103,6 +133,11 @@ def receber_requisitos(artefatos_json: str) -> dict:
 async def _processar_todos_em_paralelo(
     lista_artefatos: list,
     max_paralelos: int | None = None,
+    *,
+    workspace_agent: str = "receive_requirements",
+    agent_label: str = "qa_agent",
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+    generation_rules: str = DEFAULT_GENERATION_RULES,
 ) -> list:
     """Processa múltiplos artefatos em paralelo com limite de concorrência.
 
@@ -120,12 +155,25 @@ async def _processar_todos_em_paralelo(
 
     async def processar_com_limite(artefato):
         async with semaforo:
-            return await _processar_artefato(artefato)
+            return await _processar_artefato(
+                artefato,
+                workspace_agent=workspace_agent,
+                agent_label=agent_label,
+                system_prompt=system_prompt,
+                generation_rules=generation_rules,
+            )
 
     return await asyncio.gather(*[processar_com_limite(a) for a in lista_artefatos])
 
 
-async def _processar_artefato(artefato: dict) -> dict:
+async def _processar_artefato(
+    artefato: dict,
+    *,
+    workspace_agent: str = "receive_requirements",
+    agent_label: str = "qa_agent",
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+    generation_rules: str = DEFAULT_GENERATION_RULES,
+) -> dict:
     """Processa um único artefato de requisito gerando teste pytest.
 
     Args:
@@ -144,7 +192,12 @@ async def _processar_artefato(artefato: dict) -> dict:
     # Valida antes de gerar
     bloqueio = _validar_artefato(artefato)
     if bloqueio:
-        caminho = await _gerar_doubt_artifact(id_artefato, bloqueio)
+        caminho = await _gerar_doubt_artifact(
+            id_artefato,
+            bloqueio,
+            workspace_agent=workspace_agent,
+            agent_label=agent_label,
+        )
         logger.warning(f"[QA] Bloqueado: {id_artefato} → {caminho}")
         return {
             "id_artefato": id_artefato,
@@ -156,7 +209,7 @@ async def _processar_artefato(artefato: dict) -> dict:
 
     try:
         slug = _slugify(id_artefato)
-        artefato_dir = _tests_dir() / slug
+        artefato_dir = _tests_dir(workspace_agent) / slug
         artefato_dir.mkdir(parents=True, exist_ok=True)
         (artefato_dir / "__init__.py").touch(exist_ok=True)
 
@@ -179,6 +232,8 @@ async def _processar_artefato(artefato: dict) -> dict:
             modulo=modulo,
             arquivos_apoio=anexos_salvos,
             nome_teste=nome_teste,
+            system_prompt=system_prompt,
+            generation_rules=generation_rules,
         )
         codigo_valido = _validar_e_sanitizar_codigo(codigo, id_artefato)
         caminho.write_text(codigo_valido, encoding="utf-8")

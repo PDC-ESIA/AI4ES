@@ -8,41 +8,48 @@ from pathlib import Path
 from shared.workspace import get_agent_workspace
 
 
-def _tests_dir() -> Path:
-    """workspace_output/tests/inputs/ resolvido em runtime.
+def _tests_dir(workspace_agent: str = "receive_requirements") -> Path:
+    """workspace_output/tests/<agent>/ resolvido em runtime.
 
     Centraliza o destino dos arquivos pytest gerados pelo subagente.
     Resolvido em runtime para respeitar WORKSPACE_OUTPUT_DIR env var.
     """
-    return get_agent_workspace("receive_requirements")
+    return get_agent_workspace(workspace_agent)
 
 
-def _doubt_dir() -> Path:
+def _doubt_dir(workspace_agent: str = "receive_requirements") -> Path:
     """Sibling 'doubt_artifacts' dentro do diretório de testes."""
-    return _tests_dir() / "doubt_artifacts"
+    return _tests_dir(workspace_agent) / "doubt_artifacts"
 
 
-async def _gerar_doubt_artifact(id_artefato: str, motivo: str) -> str:
+async def _gerar_doubt_artifact(
+    id_artefato: str,
+    motivo: str,
+    workspace_agent: str = "receive_requirements",
+    agent_label: str = "qa_agent",
+) -> str:
     """Gera arquivo de doubt artifact para artefato bloqueado.
 
     Args:
         id_artefato: Identificador do artefato.
         motivo: Motivo do bloqueio.
+        workspace_agent: Chave do workspace do subagente que chamou.
+        agent_label: Rótulo do agente registrado no artefato.
 
     Returns:
         str: Caminho do arquivo gerado.
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    _doubt_dir().mkdir(parents=True, exist_ok=True)
+    _doubt_dir(workspace_agent).mkdir(parents=True, exist_ok=True)
 
     nome = f"Doubt_Artifact_{id_artefato}_{timestamp}.md"
-    caminho = _doubt_dir() / nome
+    caminho = _doubt_dir(workspace_agent) / nome
 
     conteudo = f"""# Doubt Artifact — QA Agent
 
 **ID do Artefato:** {id_artefato}
 **Data/Hora:** {timestamp}
-**Agente:** qa_agent
+**Agente:** {agent_label}
 **Status:** BLOQUEADO — aguardando intervenção humana
 
 ---

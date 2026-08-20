@@ -3,26 +3,13 @@ import os
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
-from shared.tools.test_builder_common import (
-    TestBuilder,
-    TestBuilderConfig,
-    _extrair_de_parts,
-    _normalizar_anexos_inline,
-    _ordenar_por_criticidade,
-    _parse_fragmented_requirements,
-    _run_async,
-    _safe_filename,
-    _salvar_arquivos_apoio,
-    _slugify,
-    _validar_artefato,
-    _validar_e_sanitizar_codigo,
+from ..receive_requirements.orchestration import _receber_requisitos_impl
+
+_INTEGRATION_SYSTEM_PROMPT = (
+    "Você gera exclusivamente código pytest executável de testes de integração."
 )
 
-_CONFIG = TestBuilderConfig(
-    workspace_agent="integration_tests_agent",
-    agent_label="integration_tests_agent",
-    system_prompt="Você gera exclusivamente código pytest executável de testes de integração.",
-    generation_rules="""Você é um gerador de TESTES DE INTEGRAÇÃO. Os testes devem validar a colaboração
+_INTEGRATION_GENERATION_RULES = """Você é um gerador de TESTES DE INTEGRAÇÃO. Os testes devem validar a colaboração
 entre dois ou mais componentes reais do sistema — por exemplo, API/serviço,
 serviço/repositório, persistência, filas ou adaptadores — conforme o requisito e
 os arquivos fornecidos. Não produza testes unitários isolados de uma única função.
@@ -45,9 +32,20 @@ Regras obrigatórias:
 - Cubra cenário feliz, inválido e de borda, quando aplicáveis ao fluxo integrado.
 - Cada função de teste deve ter corpo NÃO-VAZIO: docstring no modo esqueleto,
   ou fixtures/asserts objetivos no modo completo. Nunca emita 'pass' isolado,
-  'TODO', placeholders entre <>, ou caracteres fora da gramática Python.""",
-)
-_builder = TestBuilder(_CONFIG)
+  'TODO', placeholders entre <>, ou caracteres fora da gramática Python.
+"""
+
+
+def receber_requisitos(artefatos_json: str) -> dict:
+    """Gera testes de integração pytest a partir de artefatos de requisito em JSON."""
+    return _receber_requisitos_impl(
+        artefatos_json,
+        workspace_agent="integration_tests_agent",
+        agent_label="integration_tests_agent",
+        system_prompt=_INTEGRATION_SYSTEM_PROMPT,
+        generation_rules=_INTEGRATION_GENERATION_RULES,
+    )
+
 
 agent = LlmAgent(
     name="integration_tests_agent",
@@ -65,7 +63,7 @@ agent = LlmAgent(
         "No campo conteudo, inclua apenas o texto do requisito. "
         "Chame a tool receber_requisitos com o JSON gerado e retorne o resultado."
     ),
-    tools=[FunctionTool(_builder.receber_requisitos)],
+    tools=[FunctionTool(receber_requisitos)],
 )
 
 integration_tests_agent = agent
