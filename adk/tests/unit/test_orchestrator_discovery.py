@@ -1,7 +1,5 @@
 """Smoke test: orchestrator é descoberto pelo ADK e expõe root_agent."""
 
-import pytest
-
 
 def test_orchestrator_root_agent_importavel():
     from src.agents.orchestrator import root_agent
@@ -31,7 +29,7 @@ def test_orchestrator_pipelines_esperados():
 
 
 def test_workflow_coding_review_inclui_context_engineer():
-    """workflow_coding_review deve ter context_engineer antes do loop coder+executor."""
+    """context_engineer vem antes do task_iterator, que encapsula o loop coder+executor."""
     from src.agents.workflow_coding_review.agent import agent as coding_review
 
     nomes_subagents = [sa.name for sa in coding_review.sub_agents]
@@ -40,21 +38,29 @@ def test_workflow_coding_review_inclui_context_engineer():
         f"cr_context_engineer ausente. Sub_agents: {nomes_subagents}"
     )
 
-    # O coder agora vive DENTRO do LoopAgent "code_execute_loop"
-    assert "code_execute_loop" in nomes_subagents, (
-        f"code_execute_loop ausente. Sub_agents: {nomes_subagents}"
+    # O loop deixou de ser sub_agent do topo: quem o invoca (uma vez por task)
+    # é o task_iterator, seu único parent.
+    assert "task_iterator" in nomes_subagents, (
+        f"task_iterator ausente. Sub_agents: {nomes_subagents}"
     )
 
-    # Verifica que context_engineer vem ANTES do loop (que contém o coder)
+    # Verifica que context_engineer vem ANTES do iterator (que contém o loop)
     idx_context = nomes_subagents.index("cr_context_engineer")
-    idx_loop = nomes_subagents.index("code_execute_loop")
+    idx_iterator = nomes_subagents.index("task_iterator")
 
-    assert idx_context < idx_loop, (
-        f"Ordem errada: context_engineer={idx_context}, code_execute_loop={idx_loop}"
+    assert idx_context < idx_iterator, (
+        f"Ordem errada: context_engineer={idx_context}, task_iterator={idx_iterator}"
     )
 
-    # Verifica que o coder está de fato dentro do loop
-    loop_agent = coding_review.sub_agents[idx_loop]
+    # Verifica que o loop está dentro do iterator, e o coder dentro do loop
+    iterator_agent = coding_review.sub_agents[idx_iterator]
+    iterator_sub_names = [sa.name for sa in iterator_agent.sub_agents]
+    assert iterator_sub_names == ["code_execute_loop"], (
+        f"task_iterator deve ter o loop como único sub_agent. "
+        f"Sub_agents: {iterator_sub_names}"
+    )
+
+    loop_agent = iterator_agent.sub_agents[0]
     loop_sub_names = [sa.name for sa in loop_agent.sub_agents]
     assert any("coder" in n.lower() for n in loop_sub_names), (
         f"coder não encontrado dentro do loop. Sub_agents do loop: {loop_sub_names}"

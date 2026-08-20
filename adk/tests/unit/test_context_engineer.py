@@ -152,6 +152,80 @@ def test_schemas_tasks_output_completo():
     assert output.macro_context.summary == "X"
  
  
+def test_schemas_tasks_output_aceita_caminho_bloqueado():
+    """O prompt manda PARAR sem gerar task — isso é resultado válido, não erro.
+
+    Regressão real: com macro_context e tasks obrigatórios, a resposta de
+    bloqueio violava o schema e a ValidationError levantada pelo ADK em
+    __maybe_save_output_to_state derrubava a invocação inteira.
+    """
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput
+
+    saida = TasksOutput(
+        status="bloqueado",
+        bloqueio="Análise técnica ausente; a fase design deve ser reprocessada.",
+    )
+
+    assert saida.tasks == []
+    assert saida.macro_context is None
+    assert saida.bloqueado
+
+
+def test_schemas_tasks_output_aceita_resposta_livre_do_modelo():
+    """O modelo NÃO enxerga o schema (o provedor descarta response_format).
+
+    Esta é a resposta literal que derrubou uma run: recusá-la por não usar o
+    vocabulário esperado recriaria exatamente o crash que o desenho evita.
+    """
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput
+
+    saida = TasksOutput.model_validate_json(
+        json.dumps({
+            "status": "EXECUÇÃO PARALISADA",
+            "motivo": "Análise técnica ausente no workspace de design",
+            "acao": "A fase design deve ser reprocessada antes de continuar",
+        })
+    )
+
+    assert saida.status == "EXECUÇÃO PARALISADA"
+    assert saida.bloqueado
+
+
+def test_envelope_bloqueado_vira_input_invalido_no_iterator():
+    """O bloqueio segue o caminho fail-closed em vez de derrubar o pipeline."""
+    from src.agents.workflow_coding_review.context_engineer.schemas import TasksOutput
+    from src.agents.workflow_coding_review.task_iterator import (
+        calcular_cobertura,
+        validar_envelope_de_tasks,
+    )
+
+    envelope = TasksOutput(status="bloqueado", bloqueio="sem design").model_dump(
+        exclude_none=True
+    )
+
+    tasks, erros = validar_envelope_de_tasks(envelope)
+
+    assert tasks == []
+    assert [erro["type"] for erro in erros] == ["lista_vazia"]
+    assert calcular_cobertura(False, [], [], []) is False
+
+
+def test_schemas_tasks_output_status_default_no_caminho_normal():
+    """Quem gera tasks não precisa declarar status — o default cobre."""
+    from src.agents.workflow_coding_review.context_engineer.schemas import (
+        Contract, MacroContext, Task, TasksOutput,
+    )
+
+    saida = TasksOutput(
+        macro_context=MacroContext(summary="X", tech_stack=["Python"], global_rules=["Y"]),
+        tasks=[Task(id="TASK-001", type="component", complexity="low", description="Z",
+                    acceptance_criteria=["A"], contract=Contract(), requirement_id="RF-001")],
+    )
+
+    assert saida.status == "concluido"
+    assert not saida.bloqueado
+
+
 def test_tool_salvar_task_persiste_json(tmp_path, monkeypatch):
     """tool_salvar_task escreve JSON em workspace/tasks/<id>.json."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))

@@ -138,8 +138,27 @@ Retorne o JSON completo conforme o schema do sistema, contendo:
 - Cada task deve caber em aproximadamente 1500 tokens para otimizar a janela de contexto do Coder.
 
 # SAÍDA OBRIGATÓRIA
-Responda APENAS com JSON válido conforme o schema definido pelo sistema.
-Nenhum texto adicional. Nenhum comentário. Apenas o JSON.
-Sem markdown, sem blocos de código.
+Responda APENAS com JSON válido. Nenhum texto adicional. Nenhum comentário.
+Sem markdown, sem blocos de código. Há DUAS formas válidas:
+
+## Caminho normal — tasks geradas
+{
+  "status": "concluido",
+  "macro_context": { "summary": ..., "product_type": ..., "tech_stack": [...], "global_rules": [...] },
+  "tasks": [ { ...contrato completo de cada task... } ]
+}
+
+## Caminho bloqueado — algum passo mandou PARAR
+{
+  "status": "bloqueado",
+  "bloqueio": "<o que faltou e qual fase precisa ser reprocessada>",
+  "tasks": []
+}
+
+A lista VAZIA é a resposta CORRETA quando você foi instruído a parar. NUNCA
+invente macro_context ou tasks para "preencher" a saída: o pipeline reconhece o
+bloqueio pela lista vazia e reporta o motivo ao solicitante. Inventar tasks a
+partir de artefatos que não existem produz código sem requisito e desperdiça
+todo o ciclo de codificação.
 """
 )

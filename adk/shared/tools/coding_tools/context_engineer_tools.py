@@ -408,6 +408,22 @@ def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
     except json.JSONDecodeError as e:
         return {"sucesso": False, "erro": "JSON inválido: " + str(e), "caminho": None}
 
+    # O nome do arquivo vem de `task_id` e o conteúdo de `task_json`, que são
+    # argumentos independentes. Sem esta checagem, TASK-003.json poderia conter
+    # a TASK-004 — e quem resolve a task pelo nome do arquivo (o coder) leria o
+    # contrato errado sem nenhum sinal de erro.
+    id_no_conteudo = task_data.get("id") if isinstance(task_data, dict) else None
+    if id_no_conteudo is not None and id_no_conteudo != dados.task_id:
+        return {
+            "sucesso": False,
+            "erro": (
+                "Divergência de id: task_id='" + dados.task_id + "' mas o JSON "
+                "contém id='" + str(id_no_conteudo) + "'. Salve cada task com o "
+                "task_id correspondente ao seu conteúdo."
+            ),
+            "caminho": None,
+        }
+
     output_dir = get_agent_workspace("cr_context_engineer")
     output_file = output_dir / (dados.task_id + ".json")
     try:
