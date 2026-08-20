@@ -30,6 +30,8 @@ from .coder import agent as _coder
 from .executor.agent import agent as _executor
 from .reviewer.agent import agent as _reviewer
 from .task_iterator import TaskIterator
+from .manifest import emit_coding_manifest
+
 
 # ---------------------------------------------------------------------------
 # Loop de codificação + execução: coder produz/corrige → executor testa
@@ -71,7 +73,8 @@ agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → [por task: codificação ↔ execução] → revisão."
+        "contexto → [por task: codificação ↔ execução] → revisão → manifesto."
     ),
     sub_agents=[_context_engineer, _task_iterator, _reviewer],
+    after_agent_callback=emit_coding_manifest,
 )
