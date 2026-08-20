@@ -8,7 +8,8 @@ Uso (vector store local, Chroma — não exige nada rodando):
     GOOGLE_API_KEY=... uv run python scripts/mem0_poc_smoke_test.py
 
 Uso (vector store Postgres/pgvector):
-    GOOGLE_API_KEY=... AI4ES_MEMORY_DATABASE_URL=postgresql://user:pass@host:port/db \\
+    GOOGLE_API_KEY=... AI4ES_MEMORY_USE_POSTGRES=true \\
+        AI4ES_MEMORY_DATABASE_URL=postgresql://user:pass@host:port/db \\
         uv run python scripts/mem0_poc_smoke_test.py
 """
 
