@@ -1,6 +1,8 @@
 """Tools do Agente Context Engineer.
 
-Persistência de tasks contextualizadas como JSON no workspace centralizado em workspace_output/coder/tasks/.
+Persistência de tasks contextualizadas como JSON no workspace:
+  - tool_salvar_task    → workspace_output/tasks/ (canônico)
+  - tool_salvar_task_cr → workspace_output/coder/tasks/ (workflow coding_review)
 Leitura de artefatos de requisitos via paths extraídos do manifesto pelo LLM.
 Leitura de artefatos de design diretamente do workspace (fallback enquanto o Time 2 não produz manifesto).
 Geração de Doubt Artifact e pausa HITL em caso de bloqueio.
