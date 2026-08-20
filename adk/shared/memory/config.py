@@ -6,13 +6,27 @@ para Gemini via `GOOGLE_API_KEY` — mesma env var que `.env.example` já
 documenta para "modelos Gemini nativos", nenhuma chave nova precisa ser
 provisionada.
 
+## Interruptor geral: `AI4ES_MEMORY_ENABLED`
+
+A feature inteira é desligada por padrão — precisa de `AI4ES_MEMORY_ENABLED=true`
+explícito pra ligar. Nenhum time (nem o nosso) deve ter esse mecanismo
+rodando por padrão; quem quiser usar, liga de propósito. Com a flag
+desligada, `memory_feedforward` (leitura) e `reviewer` (escrita) nem chamam
+`get_memory()` — zero atividade, nenhum banco é sequer inicializado. Ver
+`memoria_habilitada()` abaixo.
+
 ## Vector store: Postgres/pgvector quando configurado, Chroma local se não
 
-Se `AI4ES_MEMORY_DATABASE_URL` estiver configurado, a memória vive em
-Postgres — banco não-local, sobrevive a redeploys, compartilhável entre
-instâncias. Sem essa variável, cai para Chroma em arquivo local
-(`memory_store/chroma/`), pra continuar funcionando sem exigir infra extra em
-ambiente de desenvolvimento. `mem0` cria a extensão `vector` sozinho
+Postgres só é considerado quando `AI4ES_MEMORY_USE_POSTGRES=true` — sem essa
+flag (ausente, vazia, ou qualquer valor diferente de "true"), a feature
+ignora totalmente Postgres e cai para Chroma em arquivo local
+(`memory_store/chroma/`), mesmo que `AI4ES_MEMORY_DATABASE_URL` esteja
+preenchida. Nenhuma equipe deve precisar rodar um banco de dados (Postgres
+ou qualquer outro) só para executar o fluxo dos agentes — a flag garante
+que isso nunca acontece por acidente (ex.: URL deixada preenchida num
+`.env` copiado de outra máquina). Com a flag `true`,
+a memória vive em Postgres — banco não-local, sobrevive a redeploys,
+compartilhável entre instâncias. `mem0` cria a extensão `vector` sozinho
 (`CREATE EXTENSION IF NOT EXISTS vector`) — só precisa estar disponível no
 servidor Postgres de destino (ex.: imagem `pgvector/pgvector`).
 
@@ -61,12 +75,36 @@ _EMBEDDING_DIMS = 768
 _memory: AsyncMemory | None = None
 
 
+def memoria_habilitada() -> bool:
+    """Interruptor geral da feature — precisa estar "true", literalmente.
+
+    Falsa por padrão: `memory_feedforward` (leitura) e `reviewer` (escrita)
+    checam isso antes de qualquer chamada a `get_memory()`. Pública, de
+    propósito — chamada de fora deste módulo. Ver docstring do módulo.
+    """
+    return os.environ.get("AI4ES_MEMORY_ENABLED", "").strip().lower() == "true"
+
+
+def _usar_postgres() -> bool:
+    """Gate explícito pro uso de Postgres — precisa estar "true", literalmente.
+
+    Separado de `_database_url()` de propósito: uma URL preenchida sozinha
+    NÃO basta pra usar Postgres (ex.: `.env` copiado de outra máquina/pessoa
+    com a URL ainda lá) — precisa da flag explícita também. Ver docstring do
+    módulo.
+    """
+    return os.environ.get("AI4ES_MEMORY_USE_POSTGRES", "").strip().lower() == "true"
+
+
 def _database_url() -> str | None:
     """URL de conexão Postgres pro mem0 — exclusiva desta feature.
 
     Só lê `AI4ES_MEMORY_DATABASE_URL`, de propósito: sem fallback para outro
-    Postgres do projeto (ver docstring do módulo).
+    Postgres do projeto (ver docstring do módulo). Ignorada por completo se
+    `_usar_postgres()` for False.
     """
+    if not _usar_postgres():
+        return None
     return os.environ.get("AI4ES_MEMORY_DATABASE_URL") or None
 
 

@@ -1,13 +1,15 @@
 """Testes da lógica pura do PoC de memória (mem0) em memory_feedforward.py.
 
-Cobre só as funções determinísticas, sem I/O nem rede — `stack_key` e
-`_formatar_memory_context`. O agente (`_MemoryProvisioner`) em si depende do
-mem0/Postgres de verdade e é validado via `scripts/mem0_poc_smoke_test.py` e
-teste manual, não aqui.
+Cobre as funções determinísticas, sem I/O nem rede — `stack_key` e
+`_formatar_memory_context` — e o interruptor geral (`AI4ES_MEMORY_ENABLED`)
+do `_MemoryProvisioner`, que também não exige mem0/Postgres de verdade (o
+gate impede a chamada de existir). O resto do agente (busca de verdade no
+mem0) é validado via `scripts/mem0_poc_smoke_test.py` e teste manual, não aqui.
 """
 
 from src.agents.workflow_coding_review.memory_feedforward import (
     _formatar_memory_context,
+    agent as memory_feedforward_agent,
     stack_key,
 )
 
@@ -58,3 +60,40 @@ class TestFormatarMemoryContext:
             [{"memory": "lição A"}, {"memory": ""}, {"memory": "lição B"}]
         )
         assert resultado == "- lição A\n- lição B"
+
+
+class _FakeSession:
+    def __init__(self, state):
+        self.state = state
+
+
+class _FakeInvocationContext:
+    def __init__(self, state):
+        self.session = _FakeSession(state)
+        self.invocation_id = "test-invocation"
+
+
+class TestMemoryProvisionerDesabilitado:
+    """Interruptor geral (`AI4ES_MEMORY_ENABLED`) — não chama o mem0 quando desligado."""
+
+    async def test_desabilitado_nao_chama_get_memory(self, monkeypatch):
+        monkeypatch.delenv("AI4ES_MEMORY_ENABLED", raising=False)
+
+        import src.agents.workflow_coding_review.memory_feedforward as mf
+
+        def _explode():
+            raise AssertionError(
+                "get_memory() não deveria ser chamado (flag desligada)"
+            )
+
+        monkeypatch.setattr(mf, "get_memory", _explode)
+
+        ctx = _FakeInvocationContext(
+            {"tasks": {"macro_context": {"tech_stack": ["Python"]}}}
+        )
+        eventos = [e async for e in memory_feedforward_agent._run_async_impl(ctx)]
+
+        assert len(eventos) == 1
+        state_delta = eventos[0].actions.state_delta
+        assert state_delta["memory_context"] == ""
+        assert state_delta["memory_stack_key"] == "python"
