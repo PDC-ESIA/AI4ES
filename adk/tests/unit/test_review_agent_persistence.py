@@ -248,6 +248,7 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
         {"review_analysis": "   \n"},  # só whitespace
     ]:
         state["task_iteration_summary"] = cobertura_ok
+
         class _FakeCtx:
             pass
 
