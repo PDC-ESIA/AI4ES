@@ -5,14 +5,12 @@ services:
       - "8081:8081"
     env_file:
       - .env
-    depends_on:
-      - memory_postgres
     volumes:
       - copilot-tokens:/root/.config/litellm/github_copilot
     restart: unless-stopped
 
   # Postgres/pgvector do PoC de memória (mem0, workflow coding_review).
-  # Mesmo serviço de docker-compose.yml — ver comentário lá.
+  # Opcional — mesmo serviço de docker-compose.yml, ver comentário lá.
   memory_postgres:
     image: pgvector/pgvector:pg16
     environment:
