@@ -11,6 +11,39 @@ def _reload_error_log(tmp_path, monkeypatch):
     return error_log
 
 
+class TestArquivoStackSanitiza:
+    """`_arquivo_stack` — sanitização contra path traversal / subpastas quebradas.
+
+    `stack_key` vem de texto livre gerado por LLM (pode conter "/", "..").
+    """
+
+    def test_barra_vira_traco_nao_cria_subpasta(self, tmp_path, monkeypatch):
+        error_log = _reload_error_log(tmp_path, monkeypatch)
+        caminho = error_log._arquivo_stack("Python/FastAPI/SQLAlchemy")
+        assert caminho.parent == error_log._dir_error_log()
+        assert caminho.name == "python-fastapi-sqlalchemy.jsonl"
+
+    def test_dois_pontos_nao_escapa_diretorio(self, tmp_path, monkeypatch):
+        error_log = _reload_error_log(tmp_path, monkeypatch)
+        caminho = error_log._arquivo_stack("../../etc/passwd")
+        assert caminho.parent == error_log._dir_error_log()
+        assert ".." not in caminho.name
+
+    def test_string_vazia_apos_sanitizar_usa_fallback(self, tmp_path, monkeypatch):
+        error_log = _reload_error_log(tmp_path, monkeypatch)
+        caminho = error_log._arquivo_stack("///...")
+        assert caminho.name == "stack-desconhecida.jsonl"
+
+    def test_registrar_com_chave_suja_funciona_de_ponta_a_ponta(
+        self, tmp_path, monkeypatch
+    ):
+        """Regressão: sem sanitizar, isso quebrava com FileNotFoundError
+        (subpasta "python/fastapi/" nunca era criada)."""
+        error_log = _reload_error_log(tmp_path, monkeypatch)
+        error_log.registrar_erros("Python/FastAPI", [{"stage": "a"}])
+        assert error_log.ler_erros_pendentes("Python/FastAPI") == [{"stage": "a"}]
+
+
 class TestRegistrarELer:
     def test_sem_arquivo_retorna_lista_vazia(self, tmp_path, monkeypatch):
         error_log = _reload_error_log(tmp_path, monkeypatch)

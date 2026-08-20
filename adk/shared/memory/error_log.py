@@ -30,9 +30,20 @@ def _dir_error_log() -> Path:
 
 
 def _arquivo_stack(stack_key: str) -> Path:
+    """Sanitiza `stack_key` antes de usar como nome de arquivo.
+
+    `stack_key` vem de texto livre gerado por LLM (ver docstring de
+    `memory_feedforward.stack_key` — pode conter "/", como em
+    "Python/FastAPI/SQLAlchemy"). Sem sanitizar, isso cria subpastas
+    inexistentes (a escrita quebra, só `_dir_error_log()` é criada) ou
+    permite escapar do diretório (".."). Mantém só alfanumérico/"-"/"_".
+    """
     diretorio = _dir_error_log()
     diretorio.mkdir(parents=True, exist_ok=True)
-    return diretorio / f"{stack_key}.jsonl"
+    chave = (stack_key or "").strip().casefold()
+    chave = "".join(c if c.isalnum() or c in ("-", "_") else "-" for c in chave)
+    chave = chave.strip("-") or "stack-desconhecida"
+    return diretorio / f"{chave}.jsonl"
 
 
 def registrar_erros(stack_key: str, entradas: list[dict]) -> None:
