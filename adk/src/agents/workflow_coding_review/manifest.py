@@ -15,6 +15,7 @@ Layout do workspace (ver shared/workspace.py::AGENT_DIRS):
     workspace_output/coder/src/tests/    → tipo "teste"
     workspace_output/coder/src/          → tipo "config"  (Dockerfile, etc.)
     workspace_output/coder/review/       → tipo "revisao"
+    workspace_output/coder/tasks/        → tipo "task"
     workspace_output/coder/**/Doubt_*    → doubts
 """
 
@@ -38,56 +39,75 @@ STATE_KEY = "coding_manifest"
 _REVIEW_PASS_MARKERS = ("## Status: APROVADO", "Status: APROVADO")
 _REVIEW_FAIL_MARKERS = ("## Status: BLOQUEADO", "Status: BLOQUEADO")
 
-_CONFIG_FILES = {
-    "requirements.txt", "Dockerfile", "docker-compose.yml",
-    "docker-compose.yaml", "conftest.py", ".dockerignore",
-    "pyproject.toml", "setup.py", "setup.cfg",
-}
-
 _IGNORED = {"manifest.json", ".ai4se_workspace", "io_operations.log"}
 _IGNORED_SUFFIXES = {".pyc", ".pyo"}
 
 
 def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
-    """Varre o workspace de coding e classifica artefatos por tipo."""
+    """Varre o workspace de coding e classifica artefatos por tipo.
+    Cataloga todos os arquivos gerados pelo coder — não apenas .py ou
+    arquivos de configuração pré-definidos. O tipo é determinado pela
+    subpasta dentro de src/:
+      - app/    → codigo
+      - tests/  → teste
+      - demais  → config
+    """
     artifacts: list[dict] = []
-
-    app_dir = coder_ws / "src" / "app"
-    if app_dir.exists():
-        for f in sorted(app_dir.rglob("*.py")):
-            if "__pycache__" not in f.parts and f.name not in _IGNORED:
-                artifacts.append({
-                    "tipo": "codigo",
-                    "id": str(f.relative_to(app_dir).with_suffix("")).replace("\\", "/"),
-                    "path": str(f.relative_to(ws_root)).replace("\\", "/"),
-                })
-
-    tests_dir = coder_ws / "src" / "tests"
-    if tests_dir.exists():
-        for f in sorted(tests_dir.rglob("*.py")):
-            if "__pycache__" not in f.parts and f.name not in _IGNORED:
-                artifacts.append({
-                    "tipo": "teste",
-                    "id": str(f.relative_to(tests_dir).with_suffix("")).replace("\\", "/"),
-                    "path": str(f.relative_to(ws_root)).replace("\\", "/"),
-                })
 
     src = coder_ws / "src"
     if src.exists():
-        for f in sorted(src.iterdir()):
-            if f.is_file() and f.name in _CONFIG_FILES:
-                artifacts.append({
-                    "tipo": "config",
-                    "id": f.name,
-                    "path": str(f.relative_to(ws_root)).replace("\\", "/"),
-                })
+        for f in sorted(src.rglob("*")):
+            if (
+                not f.is_file()
+                or "__pycache__" in f.parts
+                or f.name in _IGNORED
+                or f.suffix in _IGNORED_SUFFIXES
+            ):
+                continue
+ 
+            partes = f.relative_to(src).parts
+            subdir = partes[0] if partes else ""
+ 
+            if subdir == "app":
+                tipo = "codigo"
+                id_val = str(
+                    f.relative_to(src / "app").with_suffix("")
+                ).replace("\\", "/")
+            elif subdir == "tests":
+                tipo = "teste"
+                id_val = str(
+                    f.relative_to(src / "tests").with_suffix("")
+                ).replace("\\", "/")
+            else:
+                tipo = "config"
+                id_val = f.name
+ 
+            artifacts.append({
+                "tipo": tipo,
+                "id": id_val,
+                "path": str(f.relative_to(ws_root)).replace("\\", "/"),
+            })
 
     review_dir = coder_ws / "review"
     if review_dir.exists():
         for f in sorted(review_dir.iterdir()):
-            if f.is_file() and f.name not in _IGNORED and f.suffix not in _IGNORED_SUFFIXES:
+            if (
+                f.is_file()
+                and f.name not in _IGNORED
+                and f.suffix not in _IGNORED_SUFFIXES
+            ):
                 artifacts.append({
                     "tipo": "revisao",
+                    "id": f.stem,
+                    "path": str(f.relative_to(ws_root)).replace("\\", "/"),
+                })
+
+    tasks_dir = coder_ws / "tasks"
+    if tasks_dir.exists():
+        for f in sorted(tasks_dir.glob("*.json")):
+            if f.name not in _IGNORED:
+                artifacts.append({
+                    "tipo": "task",
                     "id": f.stem,
                     "path": str(f.relative_to(ws_root)).replace("\\", "/"),
                 })
@@ -101,8 +121,7 @@ def _scan_doubts(coder_ws: Path, ws_root: Path) -> list[dict]:
     tool_gerar_doubt_artifact_adk escreve em ws_root/Doubt_Artifact_*.md
     (raiz do workspace). O scan cobre a raiz (não recursivo) e o interior
     de coder/ (recursivo), evitando capturar doubts de outras fases
-    (requirements/, design/, etc.). O marcador de bloqueante é
-    '**Bloqueante:** Sim' (mesmo padrão do Time 1).
+    (requirements/, design/, etc.).
     """
     candidates = set(ws_root.glob("Doubt_Artifact_*.md"))
     candidates |= set(coder_ws.rglob("Doubt_Artifact_*.md"))
@@ -127,8 +146,7 @@ def _scan_doubts(coder_ws: Path, ws_root: Path) -> list[dict]:
 def _validation_verdict(coder_ws: Path) -> str:
     """Lê o veredicto do cr_reviewer em coder/review/.
 
-    Retorna 'pass', 'fail' ou 'absent'. Exclusivo da fase de coding —
-    o reviewer emite um relatório explícito que vai além dos doubts.
+    Retorna 'pass', 'fail' ou 'absent'.
     """
     review_dir = coder_ws / "review"
     if not review_dir.exists():
@@ -150,7 +168,11 @@ def _validation_verdict(coder_ws: Path) -> str:
     return "pass" if saw_pass else "absent"
 
 
-def _derive_status(artifacts: list[dict], doubts: list[dict], validation: str) -> str:
+def _derive_status(
+    artifacts: list[dict],
+    doubts: list[dict],
+    validation: str,
+) -> str:
     """Deriva o status da fase coding.
 
     Precedência:
@@ -172,7 +194,11 @@ def _derive_status(artifacts: list[dict], doubts: list[dict], validation: str) -
     return "partial"
 
 
-def _build_summary(artifacts: list[dict], doubts: list[dict], validation: str) -> str:
+def _build_summary(
+    artifacts: list[dict],
+    doubts: list[dict],
+    validation: str,
+) -> str:
     counts: dict[str, int] = {}
     for a in artifacts:
         counts[a["tipo"]] = counts.get(a["tipo"], 0) + 1
@@ -191,7 +217,7 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
     """after_agent_callback — emite o manifesto da fase de codificação.
 
     Grava em callback_context.state["coding_manifest"] (handoff in-memory
-    para o orquestrador) e persiste coding/manifest.json no workspace para
+    para o orquestrador) e persiste coder/manifest.json no workspace para
     rastreabilidade e consumo pelo pipeline de QA.
 
     Retorna None para não sobrescrever a saída do agente (contrato ADK).
@@ -205,11 +231,6 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         validation = _validation_verdict(coder_ws)
         status     = _derive_status(artifacts, doubts, validation)
 
-        session_id = (
-            getattr(getattr(callback_context, "session", None), "id", None)
-            or getattr(callback_context, "session_id", None)
-            or callback_context.state.get("session_id")
-        )
 
         manifest: dict = {
             "phase":      PHASE_NAME,
@@ -217,12 +238,11 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             "artifacts":  artifacts,
             "doubts":     doubts,
             "summary":    _build_summary(artifacts, doubts, validation),
-            "session_id": session_id,
         }
 
         callback_context.state[STATE_KEY] = manifest
 
-        manifest_path = ws_root / "coding" / "manifest.json"
+        manifest_path = coder_ws / "manifest.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",

@@ -1,7 +1,7 @@
 # Manifesto de Fase — Time 4 (Codificação)
 
 > **Issue de origem:** [#334 — Levantamento da Necessidade do Manifesto](https://github.com/PDC-ESIA/AI4ES/issues/334)
-> **Versão:** 1.1 | **Data:** 2026-08-04 | **Autor:** Time 4 — Codificação
+> **Versão:** 1.2 | **Data:** 2026-08-13 | **Autor:** Time 4 — Codificação
 
 ---
 
@@ -9,30 +9,28 @@
 
 Este estudo analisa os manifestos dos times adjacentes para identificar a estrutura
 mínima recomendada e garantir consistência entre fases. A tabela reflete o estado
-**verificado em código** após merge com `origin/develop` em 2026-07-23, e
-**confirmado em execução real do pipeline SDLC completo** em 2026-08-04
-(`workspace_output/coding/manifest.json` gerado com 20 artefatos, `status: partial`).
+**verificado em código** após merge com `origin/develop` em 2026-08-13.
 
-> **Nota sobre fonte dos dados:** após o merge com `origin/develop`, os arquivos de
-> código de Times 1 e 3 foram inspecionados diretamente — os valores abaixo refletem
-> implementações reais, não apenas especificações de PR. Time 2 (Design) ainda não
-> possui `after_agent_callback` implementado em `workflow_design_pipeline/agent.py`.
+> **Nota sobre fonte dos dados:** os arquivos de código de Times 1 e 3 foram
+> inspecionados diretamente — os valores abaixo refletem implementações reais,
+> não apenas especificações de PR. Time 2 (Design) ainda não possui
+> `after_agent_callback` implementado em `workflow_design_pipeline/agent.py`.
 
 ### 1.1 Estrutura Comum Identificada
 
 | Dimensão | Time 1 — Requisitos | Time 2 — Design | Time 3 — QA | Time 4 — Codificação |
 |---|---|---|---|---|
 | Fase (nome canônico) | `requirements` | `design` | `qa` | `coding` |
-| Tipos de artefato | HU, RF, RNF, Glossário | analise, diagrama, prototipo, relatorio, validacao | input, teste | codigo, teste, config, revisao |
-| Detecção de doubts | `**Bloqueante:** Sim` no arquivo | `**Status:** Bloqueado` no arquivo ¹ | — (sem scan de doubts) | `**Bloqueante:** Sim` no arquivo (mesmo padrão Time 1) |
+| Tipos de artefato | HU, RF, RNF, Glossário | analise, diagrama, prototipo, relatorio, validacao | input, teste | codigo, teste, config, revisao, task |
+| Detecção de doubts | `**Bloqueante:** Sim` no arquivo | `**Status:** Bloqueado` no arquivo ¹ | — (sem scan de doubts) | `**Bloqueante:** Sim` ou `EXECUÇÃO PAUSADA` no arquivo |
 | Veredicto de validação | — (sem validator separado) | `design/validation/` (validator agent) ¹ | pytest runner (via `executar_pytest_tool`) | `coder/review/` (cr_reviewer) |
 | Status canônicos | ok / partial / blocked | ok / partial / blocked | ok / partial | ok / partial / blocked |
 | Chave no `session.state` | `requirements_manifest` | `design_manifest` ¹ | `phase_manifests` (lista) ² | `coding_manifest` |
-| Arquivo em disco | `requirements/manifest.json` | `design/manifest.json` ¹ | — (somente state) ² | `coding/manifest.json` |
-| Consumidor primário | `cr_context_engineer` (Time 4) | `cr_context_engineer` (Time 4) | orquestrador SDLC | `qa_pipeline` (Time 3) |
-| Testes unitários | **18 testes** ✅ | 14 testes ¹ | — (sem testes de manifest) | **32 testes** ✅ |
+| Arquivo em disco | `requirements/manifest.json` | `design/manifest.json` ¹ | — (somente state) ² | `coder/manifest.json` |
+| Consumidor primário | `context_engineer` (Time 4) | `context_engineer` (Time 4) | orquestrador SDLC | `qa_pipeline` (Time 3) |
+| Testes unitários | **18 testes** ✅ | 14 testes ¹ | — (sem testes de manifesto) | **36 testes** ✅ |
 | Padrão de emissão | `after_agent_callback` determinístico, zero LLM ✅ | `after_agent_callback` determinístico, zero LLM ¹ | `after_agent_callback` → `EventActions` ² | `after_agent_callback` determinístico, zero LLM ✅ |
-| Estado da implementação | ✅ Implementado e validado (PR #320) | ⚠️ Pendente (especificado em PR #315) | ✅ Implementado (sem testes dedicados) | ✅ Implementado, testado e validado em pipeline real |
+| Estado da implementação | ✅ Implementado e validado (PR #320) | ⚠️ Pendente (especificado em PR #315) | ✅ Implementado (sem testes dedicados) | ✅ Implementado e testado |
 
 > ¹ Time 2 — Design: valores baseados na especificação do PR #315. Inspeção do
 > código confirma que `workflow_design_pipeline/agent.py` ainda **não possui**
@@ -52,7 +50,6 @@ Com base nos três times analisados, um manifesto de fase DEVE conter:
 - **`artifacts`** — lista de `{tipo, id, path}` (path relativo ao workspace root, nunca conteúdo)
 - **`doubts`** — lista de `{id, severidade, bloqueante, path}` (vazio se a fase não gera doubts)
 - **`summary`** — texto legível derivado dos dados acima, sem inventar informação
-- **`session_id`** — opcional, para rastreabilidade entre sessões
 
 **Invariantes obrigatórias** (comuns a todos os times):
 - `doubt.bloqueante == true` ⇒ `status == "blocked"`
@@ -68,7 +65,7 @@ Com base nos três times analisados, um manifesto de fase DEVE conter:
 **Justificativas:**
 
 1. **Isolamento de sessão.** O ADK usa `InMemorySessionService` — o estado não flui
-   entre sessões. O `coding/manifest.json` em disco é o ÚNICO canal confiável de
+   entre sessões. O `coder/manifest.json` em disco é o ÚNICO canal confiável de
    handoff entre o pipeline de codificação e o pipeline de QA, que roda em sessão
    isolada.
 
@@ -102,30 +99,41 @@ pronto para ser testado pelo Time 3 (QA).
 ```
 Requisitos → Design → [Codificação] → QA
                             ↑
-               coding/manifest.json (consumido pelo QA)
+               coder/manifest.json (consumido pelo QA)
 ```
 
 Sub-agentes internos:
 
 | Agente | Responsabilidade |
 |---|---|
-| `cr_context_engineer` | Lê manifestos de Requisitos e Design; fragmenta em tasks contextualizadas |
-| `cr_coder` | Implementa código a partir das tasks (tools de filesystem, sem git) |
-| `cr_executor` | Builda e executa em Docker; loop de correção automática (máx. 5 iterações) |
-| `cr_reviewer` | Revisão em 4 camadas; persiste relatório com `## Status: APROVADO/BLOQUEADO` |
+| `context_engineer` | Lê manifesto de Requisitos via orquestrador; lê artefatos de Design do workspace; fragmenta em tasks contextualizadas |
+| `coder` | Implementa código a partir das tasks (tools de filesystem, sem git) |
+| `executor` | Builda e executa em Docker; loop de correção automática (máx. 5 iterações) |
+| `reviewer` | Revisão em 4 camadas; persiste relatório com `## Status: APROVADO/BLOQUEADO` |
 | `emit_coding_manifest` | `after_agent_callback` — emite manifesto determinístico ao final |
 
 ### 3.2 Entradas Esperadas
 
 | Fonte | Formato | Lida por |
 |---|---|---|
-| `workspace_output/requirements/` | Diretório de artefatos (HUs, RFs, RNFs) | `cr_context_engineer` via `tool_ler_requirements_adk` |
-| `workspace_output/design/` | Diretório de artefatos (análise técnica, diagramas) | `cr_context_engineer` via `tool_ler_design_adk` |
-| Prompt do usuário | Texto livre (via orchestrator) | `cr_context_engineer` (mensagem de entrada) |
+| Manifesto de requirements | Texto estruturado no prompt (repassado pelo orquestrador via `_build_manifest_input`) | `context_engineer` — extrai paths dos artefatos e chama `tool_ler_requirements` |
+| `workspace_output/design/` | Diretório de artefatos (análise técnica, diagramas) | `context_engineer` via `tool_ler_design` (fallback direto enquanto Time 2 não produz manifesto) |
+| Prompt do usuário | Texto livre (via orchestrator) | `context_engineer` (mensagem de entrada) |
 
-O `cr_context_engineer` lê o **conteúdo completo dos artefatos** de cada diretório via `rglob` — não apenas um manifesto de resumo. Se os manifestos de requirements (`requirements/manifest.json`) ou design (`design/manifest.json`) existirem, são lidos como mais um arquivo do diretório e o LLM usa as informações junto com os demais artefatos.
+O `context_engineer` lê o manifesto de requirements **a partir do texto do prompt**
+repassado pelo orquestrador — extrai os paths dos artefatos declarados e os lê do
+workspace via `tool_ler_requirements`. Para o design, usa fallback de leitura direta
+do workspace enquanto o Time 2 não implementar seu manifesto.
 
-> **Nota:** Os manifestos de requirements e design têm como principal consumidor o **orquestrador SDLC** — que os usa para decidir deterministicamente se pode avançar para a próxima fase. O context engineer, por ser um LLM com tools de leitura, não depende deles como entrada primária.
+**Cenários de bloqueio tratados pelo `context_engineer`:**
+
+| Cenário | Comportamento |
+|---|---|
+| Manifesto de requirements ausente no prompt | Gera Doubt Artifact + emite manifesto `blocked` + pausa via HITL |
+| Manifesto de requirements com `status=blocked` | Idem |
+| RF-*.md ausente nos artefatos de requirements | Idem |
+| `analise_tecnica_*.md` ausente no workspace de design | Idem |
+| `analise_tecnica_HU-*.md` existe no design mas não há HUs em requirements | Idem (inconsistência entre times) |
 
 ### 3.3 Saídas Produzidas
 
@@ -133,15 +141,16 @@ O `cr_context_engineer` lê o **conteúdo completo dos artefatos** de cada diret
 
 | Tipo | Path no workspace | Descrição |
 |---|---|---|
-| `codigo` | `workspace_output/coder/src/app/**/*.py` | Código-fonte Python da aplicação |
-| `teste` | `workspace_output/coder/src/tests/**/*.py` | Testes automatizados |
-| `config` | `workspace_output/coder/src/{Dockerfile,requirements.txt,…}` | Infraestrutura Docker e dependências |
+| `codigo` | `workspace_output/coder/src/app/**` | Código-fonte da aplicação (qualquer extensão) |
+| `teste` | `workspace_output/coder/src/tests/**` | Testes automatizados |
+| `config` | `workspace_output/coder/src/**` (demais arquivos) | Infraestrutura Docker, dependências e outros |
 | `revisao` | `workspace_output/coder/review/*.md` | Relatório do reviewer (APROVADO/BLOQUEADO) |
+| `task` | `workspace_output/coder/tasks/*.json` | Tasks geradas pelo context_engineer |
 
-Arquivos de config reconhecidos: `requirements.txt`, `Dockerfile`, `docker-compose.yml`,
-`docker-compose.yaml`, `conftest.py`, `.dockerignore`, `pyproject.toml`, `setup.py`, `setup.cfg`.
+> **Nota:** O `_scan_artifacts` varre `src/` inteiro sem filtro de extensão — arquivos
+> `.html`, `.md`, `.json` e outros gerados pelo coder são catalogados corretamente.
 
-#### 3.3.2 Manifesto de saída (`coding/manifest.json`)
+#### 3.3.2 Manifesto de saída (`coder/manifest.json`)
 
 ```json
 {
@@ -151,11 +160,11 @@ Arquivos de config reconhecidos: `requirements.txt`, `Dockerfile`, `docker-compo
     { "tipo": "codigo",  "id": "main",      "path": "coder/src/app/main.py" },
     { "tipo": "teste",   "id": "test_main", "path": "coder/src/tests/test_main.py" },
     { "tipo": "config",  "id": "Dockerfile","path": "coder/src/Dockerfile" },
-    { "tipo": "revisao", "id": "verificacao_revisao", "path": "coder/review/verificacao_revisao.md" }
+    { "tipo": "revisao", "id": "verificacao_revisao", "path": "coder/review/verificacao_revisao.md" },
+    { "tipo": "task",    "id": "TASK-001",  "path": "coder/tasks/TASK-001.json" }
   ],
   "doubts": [],
-  "summary": "Fase coding concluída com status 'ok'. Artefatos: 3 codigo, 1 config, 1 revisao, 1 teste. Revisão: pass. sem doubts.",
-  "session_id": "<session-id-opcional>"
+  "summary": "Fase coding concluída com status 'ok'. Artefatos: 3 codigo, 1 config, 1 revisao, 1 task, 1 teste. Revisão: pass."
 }
 ```
 
@@ -175,15 +184,23 @@ Arquivos de config reconhecidos: `requirements.txt`, `Dockerfile`, `docker-compo
 > tratar `status != "ok"` como sinal de atenção e decidir se prossegue ou
 > aguarda re-execução.
 
+**Emissão em caso de bloqueio do context_engineer:**
+
+Quando o `context_engineer` detecta um bloqueio antes de gerar tasks, o manifesto
+é emitido pela `tool_emitir_manifesto_bloqueado` diretamente no state e em disco,
+**antes** da pausa HITL via `aguardar_resolucao_bloqueio`. Isso garante que o
+manifesto com `status=blocked` esteja disponível mesmo com o pipeline pausado.
+
 ### 3.4 Limites de Atuação
 
 O Time de Codificação:
 
-- ✅ Implementa código funcional conforme tasks geradas pelo `cr_context_engineer`
+- ✅ Implementa código funcional conforme tasks geradas pelo `context_engineer`
 - ✅ Valida execução em container Docker (build + runtime + rota principal)
 - ✅ Corrige erros de execução automaticamente (máximo 5 iterações)
-- ✅ Produz relatório de revisão em 4 camadas via `cr_reviewer`
+- ✅ Produz relatório de revisão em 4 camadas via `reviewer`
 - ✅ Emite manifesto de fase estruturado ao final
+- ✅ Bloqueia o pipeline via HITL quando artefatos mínimos estão ausentes
 
 - ❌ Não decide arquitetura (responsabilidade do Time 2 — Design)
 - ❌ Não executa testes de QA (responsabilidade do Time 3)
@@ -195,7 +212,7 @@ O Time de Codificação:
 
 #### Regras de integridade do workspace
 
-- Todas as tools do `cr_coder` são bound ao path `workspace_output/coder/src/` — escrita fora desse escopo é bloqueada por `_bind_tool_to_workspace`
+- Todas as tools do `coder` são bound ao path `workspace_output/coder/src/` — escrita fora desse escopo é bloqueada por `_bind_tool_to_workspace`
 - O `WORKSPACE_OUTPUT_DIR` é configurável via variável de ambiente; caminhos relativos são resolvidos a partir do CWD
 - O workspace é limpo a cada nova sessão (`init_workspace`) — sem herança de estado entre execuções
 
@@ -210,6 +227,7 @@ O Time de Codificação:
 
 - O conteúdo dos artefatos NUNCA entra no manifesto — apenas `tipo`, `id` e `path`
 - `path` é sempre relativo à raiz do workspace (`workspace_output/`) (nunca absoluto)
+- Paths sempre usam forward slashes (`/`) — normalizado via `.replace("\\", "/")`
 - O manifesto é best-effort: qualquer falha na emissão é logada, nunca propaga exceção
 
 ---
@@ -218,15 +236,10 @@ O Time de Codificação:
 
 ### 4.1 Para o Time 2 — Design (produtor de entrada)
 
-O `cr_context_engineer` lê os artefatos de design via `tool_ler_design_adk`, que
-atualmente varre o diretório `workspace_output/design/` por completo (`rglob`). O
-`design/manifest.json`, quando presente, é lido como mais um arquivo do diretório —
-não como guia estrutural de quais arquivos ler.
-
-O objetivo arquitetural (descrito em `TIME_4_CODIFICACAO.md` seção 2) é evoluir para
-leitura manifest-guided: a tool consultaria `artifacts[].path` do manifesto de design
-para ler exatamente os artefatos declarados, sem varredura cega. Essa adaptação está
-registrada como melhoria pendente na seção 6.
+O `context_engineer` lê os artefatos de design via `tool_ler_design`, que
+atualmente varre o diretório `workspace_output/design/` por completo (fallback
+enquanto o Time 2 não produz manifesto). Quando o Time 2 implementar seu manifesto,
+a tool será atualizada para leitura manifest-guided via `artifacts[].path`.
 
 **O que o Time 2 deve garantir (situação atual):**
 - Artefatos de design acessíveis em `workspace_output/design/` ao final do pipeline
@@ -236,17 +249,18 @@ registrada como melhoria pendente na seção 6.
 
 ### 4.2 Para o Time 3 — QA (consumidor de saída)
 
-O pipeline de QA deve ler `workspace_output/coding/manifest.json` antes de rodar.
+O pipeline de QA deve ler `workspace_output/coder/manifest.json` antes de rodar.
 Os paths em `artifacts` apontam para o código produzido — o QA pode usar esses
 paths para gerar testes targetados em vez de varrer o workspace.
 
 **O que o Time 4 garante:**
-- `coding/manifest.json` sempre presente ao final do pipeline (mesmo em `blocked`)
-- Artefatos do tipo `codigo` têm paths válidos para arquivos `.py` existentes
+- `coder/manifest.json` sempre presente ao final do pipeline (mesmo em `blocked`)
+- Artefatos do tipo `codigo` têm paths válidos para arquivos existentes
 - `status == "ok"` apenas quando reviewer explicitamente aprovou
+- `coding_manifest` gravado em `session.state` para handoff via orquestrador
 
 **O que o Time 3 deve implementar:**
-- Leitura de `coding/manifest.json` no início do pipeline QA
+- Leitura de `coder/manifest.json` no início do pipeline QA
 - Gating: se `status == "blocked"`, decidir se aborta ou continua com código parcial
 - Usar `artifacts` para determinar quais módulos testar
 
@@ -259,7 +273,7 @@ Este manifesto é versionado em duas formas complementares:
 | Forma | Path | Descrição |
 |---|---|---|
 | Código (runtime) | `adk/src/agents/workflow_coding_review/manifest.py` | Implementação do emissor + schema + invariantes |
-| Testes unitários | `adk/tests/unit/test_coding_manifest.py` | 32 testes cobrindo scan de artefatos, doubts, veredicto de revisão e emissão |
+| Testes unitários | `adk/tests/unit/test_coding_manifest.py` | 36 testes cobrindo scan de artefatos, doubts, veredicto de revisão e emissão |
 | Este documento | `docs/Time_4_Codificacao/Manifesto_Fase_Coding.md` | Especificação formal (critérios, entradas, saídas, limites) |
 
 ---
@@ -277,23 +291,19 @@ tokens e produzindo testes inválidos.
 antes de invocar `qa_pipeline`. Se `blocked`, sinalizar ao usuário e aguardar
 re-execução.
 
-### 6.2 Leitura manifest-guided nas tools de entrada (prioridade: média)
+### 6.2 Leitura manifest-guided para design (prioridade: média)
 
-As tools `tool_ler_requirements_adk` e `tool_ler_design_adk` atualmente varrem os
-diretórios das fases anteriores via `rglob`, sem usar os manifestos como guia
-estrutural. O manifesto de requirements ou design, quando presente, é lido como
-mais um arquivo — não como índice de quais artefatos foram produzidos.
+A tool `tool_ler_design` atualmente usa fallback de leitura direta do workspace
+enquanto o Time 2 não produz manifesto. Quando o manifesto de design for
+implementado, a tool deve ser atualizada para leitura manifest-guided via
+`artifacts[].path`, seguindo o mesmo padrão já adotado para requirements.
 
-**Problema:** A leitura via rglob funciona na prática, mas não segue o contrato
-definido em `TIME_4_CODIFICACAO.md` (seção 2): o context engineer deveria usar
-`artifacts[].path` do manifesto para saber exatamente o que foi produzido pela
-fase anterior, sem assumir a estrutura do diretório.
+### 6.3 Integração com phase_manifests do orquestrador (prioridade: alta)
 
-**Sugestão:** Adaptar as tools para tentar leitura manifest-guided primeiro
-(`manifest.json` → `artifacts[].path`), com fallback para rglob quando o manifesto
-não existir. Isso alinha o mecanismo de entrada ao padrão já adotado na saída
-(`emit_coding_manifest`) e prepara o pipeline para a refatoração do orquestrador
-descrita em `ORQUESTRADOR.md`.
+O Time 1 grava o manifesto em `state["requirements_manifest"]` mas o orquestrador
+lê de `state["phase_manifests"]` (lista acumulada). Para o manifesto de requirements
+chegar ao `context_engineer` via prompt, o Time 1 precisa também adicionar o
+manifesto em `phase_manifests`. Isso está sendo tratado como pendência do Time 1.
 
 ---
 
@@ -304,3 +314,4 @@ descrita em `ORQUESTRADOR.md`.
 - Issue #334 — Levantamento da Necessidade do Manifesto
 - `adk/src/agents/workflow_coding_review/manifest.py` — implementação
 - `adk/shared/workspace.py` — AGENT_DIRS e paths do workspace
+
