@@ -158,7 +158,7 @@ do workspace enquanto o Time 2 não implementar seu manifesto.
   "phase": "coding",
   "status": "ok | partial | blocked",
   "artifacts": [
-    { "tipo": "codigo",  "id": "main",      "path": "coder/src/app/main.py" },
+    { "tipo": "source",  "id": "main",      "path": "coder/src/app/main.py" },
     { "tipo": "teste",   "id": "test_main", "path": "coder/src/tests/test_main.py" },
     { "tipo": "config",  "id": "Dockerfile","path": "coder/src/Dockerfile" },
     { "tipo": "revisao", "id": "verificacao_revisao", "path": "coder/review/verificacao_revisao.md" },
@@ -174,7 +174,8 @@ do workspace enquanto o Time 2 não implementar seu manifesto.
 | Condição (avaliada nesta ordem) | Status |
 |---|---|
 | Há doubt com `bloqueante == true` | `blocked` |
-| Nenhum artefato do tipo `codigo` produzido | `blocked` |
+| Nenhum artefato produzido (doubt sintético gerado automaticamente) | `blocked` |
+| Reviewer reprovou (doubt sintético gerado automaticamente) | `blocked` |
 | Há qualquer doubt não-bloqueante | `partial` |
 | Reviewer retornou `## Status: APROVADO` | `ok` |
 | Qualquer outro caso (reviewer ausente, BLOQUEADO, falha) | `partial` |
