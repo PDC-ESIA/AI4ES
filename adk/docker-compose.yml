@@ -4,15 +4,12 @@ services:
     working_dir: /app
     environment:
       - UV_PROJECT_ENVIRONMENT=/venv
-      - AI4ES_MEMORY_DATABASE_URL=postgresql://ai4es:ai4es_poc_local@memory_postgres:5432/ai4es_memory
     command: >
       sh -c "uv sync --no-dev && uv run uvicorn app.main:app --host 0.0.0.0 --port 8081"
     ports:
       - "8081:8081"
     env_file:
       - .env
-    depends_on:
-      - memory_postgres
     volumes:
       - .:/app:ro
       - adk-venv-docker:/venv
@@ -20,7 +17,10 @@ services:
     restart: unless-stopped
 
   # Postgres/pgvector do PoC de memória (mem0, workflow coding_review).
-  # Container local - dados de conexão via AI4ES_MEMORY_DATABASE_URL no .env.
+  # Opcional — o serviço `adk` não depende deste (sem depends_on, de
+  # propósito): ninguém precisa subir isso pra rodar o fluxo dos agentes.
+  # Só é usado se AI4ES_MEMORY_USE_POSTGRES=true no .env; sobe com
+  # `docker compose up memory_postgres` quando alguém quiser testar com ele.
   memory_postgres:
     image: pgvector/pgvector:pg16
     environment:
