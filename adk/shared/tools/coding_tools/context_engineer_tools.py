@@ -461,7 +461,7 @@ def tool_gerar_doubt_artifact(
 
 def tool_emitir_manifesto_bloqueado(
     motivo: str,
-    tool_context: ToolContext,
+    tool_context: Optional[ToolContext] = None,
 ) -> dict:
     """Emite manifesto com status=blocked no state e em disco.
 
