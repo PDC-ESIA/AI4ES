@@ -46,7 +46,7 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
-from shared.execution.completude import verificar_completude
+from shared.execution.verificador_executabilidade import verificar_executabilidade
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
 from shared.workspace import get_agent_workspace
 from src.agents.implementation_validator import root_agent as implementation_validator
@@ -160,12 +160,12 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
         None para deixar o executor rodar; o Content da recusa caso contrário.
     """
     state = callback_context.state
-    resultado = verificar_completude(get_agent_workspace("cr_coder"))
-    if resultado.completo:
+    resultado = verificar_executabilidade(get_agent_workspace("cr_coder"))
+    if resultado.executavel:
         return None
 
     logger.warning(
-        "[PREFLIGHT] Execução recusada para %s: %s",
+        "[EXECUTABILIDADE] Execução recusada para %s: %s",
         state.get("task_id"),
         "; ".join(resultado.bloqueios),
     )

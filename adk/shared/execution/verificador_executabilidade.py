@@ -64,14 +64,14 @@ _ARQUIVOS_META = frozenset(
 
 
 @dataclass(frozen=True)
-class ResultadoCompletude:
+class ResultadoExecutabilidade:
     """O que impede a execução agora, com o inventário que embasa a decisão."""
 
     bloqueios: tuple[str, ...] = ()
     arquivos: tuple[str, ...] = ()
 
     @property
-    def completo(self) -> bool:
+    def executavel(self) -> bool:
         return not self.bloqueios
 
 
@@ -94,14 +94,14 @@ def _e_meta(caminho: str) -> bool:
     return nome.startswith(".") or nome.casefold() in _ARQUIVOS_META
 
 
-def verificar_completude(coder_dir: Path) -> ResultadoCompletude:
+def verificar_executabilidade(coder_dir: Path) -> ResultadoExecutabilidade:
     """Diz se o artefato tem o mínimo para ser executado pelo harness.
 
     Args:
         coder_dir: Raiz do código do coder (`coder/src/`).
 
     Returns:
-        ResultadoCompletude com os bloqueios encontrados e o inventário atual.
+        ResultadoExecutabilidade com os bloqueios encontrados e o inventário atual.
     """
     arquivos = _arquivos(coder_dir)
     bloqueios: list[str] = []
@@ -125,4 +125,4 @@ def verificar_completude(coder_dir: Path) -> ResultadoCompletude:
             f"plano/manifesto ({presentes}). Não há o que executar."
         )
 
-    return ResultadoCompletude(bloqueios=tuple(bloqueios), arquivos=arquivos)
+    return ResultadoExecutabilidade(bloqueios=tuple(bloqueios), arquivos=arquivos)

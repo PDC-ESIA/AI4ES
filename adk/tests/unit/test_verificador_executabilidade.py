@@ -15,7 +15,7 @@ import json
 
 import pytest
 
-from shared.execution.completude import verificar_completude
+from shared.execution.verificador_executabilidade import verificar_executabilidade
 
 
 def _workspace(tmp_path, arquivos: dict[str, str]):
@@ -42,9 +42,9 @@ _RUN_JSON_VALIDO = json.dumps(
 def test_run_json_ausente_bloqueia(tmp_path):
     raiz = _workspace(tmp_path, {"app/main.py": "print('x')"})
 
-    resultado = verificar_completude(raiz)
+    resultado = verificar_executabilidade(raiz)
 
-    assert not resultado.completo
+    assert not resultado.executavel
     assert any("run.json" in bloqueio for bloqueio in resultado.bloqueios)
 
 
@@ -58,7 +58,7 @@ def test_run_json_incoerente_bloqueia(tmp_path):
         },
     )
 
-    resultado = verificar_completude(raiz)
+    resultado = verificar_executabilidade(raiz)
 
     assert any(
         "incoerente" in bloqueio or "inválido" in bloqueio
@@ -78,7 +78,7 @@ def test_apenas_arquivos_meta_bloqueia(tmp_path):
         },
     )
 
-    resultado = verificar_completude(raiz)
+    resultado = verificar_executabilidade(raiz)
 
     assert any("código" in bloqueio for bloqueio in resultado.bloqueios)
 
@@ -89,14 +89,14 @@ def test_workspace_implementavel_passa(tmp_path):
         {"run.json": _RUN_JSON_VALIDO, "PLAN.md": "# plano", "app/main.py": "print('x')"},
     )
 
-    assert verificar_completude(raiz).completo
+    assert verificar_executabilidade(raiz).executavel
 
 
 def test_workspace_inexistente_bloqueia(tmp_path):
     """Antes do primeiro turno do coder não há nada a executar."""
-    resultado = verificar_completude(tmp_path / "nao_existe")
+    resultado = verificar_executabilidade(tmp_path / "nao_existe")
 
-    assert not resultado.completo
+    assert not resultado.executavel
     assert resultado.arquivos == ()
 
 

@@ -263,6 +263,9 @@ docs/superpowers/
 .abacusai/
 .abacusai/*
 
+# Logs
+*.log
+
 # JetBrains IDEs
 .idea/
 # Artefatos locais fora do escopo do repositório (mantidos fora do commit)
