@@ -40,6 +40,7 @@ def test_discover_coder_files_workspace_vazio(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -54,6 +55,7 @@ def test_discover_coder_files_lista_arquivos_relativos(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -76,6 +78,7 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -90,13 +93,16 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     assert ".pyc" not in result
 
 
-def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_path, monkeypatch):
+def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(
+    tmp_path, monkeypatch
+):
     """O instruction provider do _analyzer chama _discover_coder_files e injeta no template."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -107,11 +113,14 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_pa
 
     instr = cr_reviewer._analyzer.instruction
     if callable(instr):
+
         class _FakeCtx:
             pass
+
         rendered = instr(_FakeCtx())
         if hasattr(rendered, "__await__"):
             import asyncio
+
             rendered = asyncio.get_event_loop().run_until_complete(rendered)
     else:
         rendered = instr
@@ -126,6 +135,7 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -155,6 +165,7 @@ def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -170,6 +181,7 @@ def test_agent_e_alias_do_analyzer(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -187,6 +199,7 @@ def test_persist_review_cria_arquivo_no_review_ws(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -219,6 +232,7 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -229,13 +243,14 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
 
     cobertura_ok = _summary_cobertura_completa()
     for state in [
-        {},           # key ausente
-        {"review_analysis": None},   # None explícito
+        {},  # key ausente
+        {"review_analysis": None},  # None explícito
         {"review_analysis": "   \n"},  # só whitespace
     ]:
         state["task_iteration_summary"] = cobertura_ok
         class _FakeCtx:
             pass
+
         _FakeCtx.state = state
         cr_reviewer._persist_review(_FakeCtx())
         assert not relatorio.exists(), f"Não deveria criar arquivo para state={state}"
@@ -248,10 +263,14 @@ def test_analyzer_tem_before_agent_callback(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    assert cr_reviewer._analyzer.before_agent_callback is cr_reviewer._inject_static_findings
+    assert (
+        cr_reviewer._analyzer.before_agent_callback
+        is cr_reviewer._inject_static_findings
+    )
 
 
 def test_inject_static_findings_popula_state(tmp_path, monkeypatch):
@@ -262,6 +281,7 @@ def test_inject_static_findings_popula_state(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -285,6 +305,7 @@ def test_inject_static_findings_desabilitado_nao_popula_state(tmp_path, monkeypa
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -307,6 +328,7 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
@@ -346,14 +368,16 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
             app_name="test_persist",
             session_service=session_svc,
         )
-        list(runner.run(
-            user_id="test_user",
-            session_id="test_session",
-            new_message=genai_types.Content(
-                role="user",
-                parts=[genai_types.Part(text="revisar")],
-            ),
-        ))
+        list(
+            runner.run(
+                user_id="test_user",
+                session_id="test_session",
+                new_message=genai_types.Content(
+                    role="user",
+                    parts=[genai_types.Part(text="revisar")],
+                ),
+            )
+        )
     finally:
         cr_reviewer._analyzer.before_model_callback = _original_cb
 
@@ -372,6 +396,7 @@ def _reload_reviewer(tmp_path, monkeypatch):
     import importlib
     from shared.tools.coding_tools import review_tools
     import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
     return cr_reviewer
@@ -405,53 +430,301 @@ class TestResolverStackKey:
         assert cr_reviewer._resolver_stack_key({}) == "stack-desconhecida"
 
 
-class TestFormatarLicao:
-    """`_formatar_licao` — PoC de memória (mem0)."""
+class TestEntradasBrutas:
+    """`_entradas_brutas` — achata error_history em entradas por estágio."""
 
-    def test_sem_erros_so_o_status_final(self, tmp_path, monkeypatch):
+    def test_sem_estagios_falhos_retorna_vazio(self, tmp_path, monkeypatch):
         cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
-        resultado = cr_reviewer._formatar_licao([], "")
-        assert resultado == "Status final após revisão: revisão concluída."
+        error_history = [{"blocking_reason": "erro genérico", "failed_stages": []}]
+        assert cr_reviewer._entradas_brutas(error_history, "python") == []
 
-    def test_uma_iteracao_com_estagio_falho(self, tmp_path, monkeypatch):
+    def test_uma_entrada_por_estagio_falho(self, tmp_path, monkeypatch):
         cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
         error_history = [
             {
+                "work_item_id": "wi-1",
+                "iteration": 2,
                 "blocking_reason": "dependência ausente",
                 "failed_stages": [
                     {"stage": "implantacao_artefato", "error_code": "FALHA_BUILD"}
                 ],
             }
         ]
-        resultado = cr_reviewer._formatar_licao(error_history, "")
-        assert "Iteração 1: motivo do bloqueio = dependência ausente." in resultado
-        assert "implantacao_artefato: FALHA_BUILD" in resultado
-        assert "Status final após revisão: revisão concluída." in resultado
+        entradas = cr_reviewer._entradas_brutas(error_history, "python")
+        assert len(entradas) == 1
+        entrada = entradas[0]
+        assert entrada["stack_key"] == "python"
+        assert entrada["work_item_id"] == "wi-1"
+        assert entrada["iteration"] == 2
+        assert entrada["stage"] == "implantacao_artefato"
+        assert entrada["error_code"] == "FALHA_BUILD"
+        assert entrada["blocking_reason"] == "dependência ausente"
+        assert "created_at" in entrada
 
-    def test_status_final_aprovado_quando_review_menciona(self, tmp_path, monkeypatch):
-        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
-        resultado = cr_reviewer._formatar_licao([], "## Status: APROVADO")
-        assert "Status final após revisão: APROVADO." in resultado
-
-    def test_estagio_sem_error_code_usa_summary(self, tmp_path, monkeypatch):
+    def test_multiplos_estagios_na_mesma_iteracao_geram_multiplas_entradas(
+        self, tmp_path, monkeypatch
+    ):
         cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
         error_history = [
             {
-                "blocking_reason": "erro genérico",
+                "blocking_reason": "vários problemas",
                 "failed_stages": [
-                    {"stage": "preparacao_ambiente", "summary": "task não encontrada"}
+                    {"stage": "testes_automatizados", "error_code": "FALHA_TESTE"},
+                    {"stage": "inicializacao_aplicacao", "summary": "porta ocupada"},
                 ],
             }
         ]
-        resultado = cr_reviewer._formatar_licao(error_history, "")
-        assert "preparacao_ambiente: task não encontrada" in resultado
+        entradas = cr_reviewer._entradas_brutas(error_history, "python")
+        assert len(entradas) == 2
+        assert entradas[1]["error_code"] is None
+        assert entradas[1]["summary"] == "porta ocupada"
 
-    def test_multiplas_iteracoes_numeradas_em_ordem(self, tmp_path, monkeypatch):
+
+class TestAssinaturaErro:
+    """`_assinatura_erro` — identifica erro repetido entre entradas."""
+
+    def test_mesmo_estagio_e_codigo_gera_mesma_assinatura(self, tmp_path, monkeypatch):
         cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
-        error_history = [
-            {"blocking_reason": "erro 1", "failed_stages": []},
-            {"blocking_reason": "erro 2", "failed_stages": []},
+        a = {"stage": "testes_automatizados", "error_code": "FALHA_TESTE"}
+        b = {"stage": "TESTES_AUTOMATIZADOS", "error_code": "falha_teste"}
+        assert cr_reviewer._assinatura_erro(a) == cr_reviewer._assinatura_erro(b)
+
+    def test_estagios_diferentes_geram_assinaturas_diferentes(
+        self, tmp_path, monkeypatch
+    ):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        a = {"stage": "testes_automatizados", "error_code": "X"}
+        b = {"stage": "implantacao_artefato", "error_code": "X"}
+        assert cr_reviewer._assinatura_erro(a) != cr_reviewer._assinatura_erro(b)
+
+    def test_usa_summary_quando_nao_ha_error_code(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        a = {"stage": "preparacao_ambiente", "summary": "task não encontrada"}
+        b = {"stage": "preparacao_ambiente", "summary": "task não encontrada"}
+        assert cr_reviewer._assinatura_erro(a) == cr_reviewer._assinatura_erro(b)
+
+
+class TestFiltrarRecorrentes:
+    """`_filtrar_recorrentes` — só mantém erro que se repetiu no lote."""
+
+    def test_erro_isolado_e_descartado(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        entradas = [
+            {"stage": "a", "error_code": "X"},
+            {"stage": "b", "error_code": "Y"},
+            {"stage": "c", "error_code": "Z"},
         ]
-        resultado = cr_reviewer._formatar_licao(error_history, "")
-        assert "Iteração 1: motivo do bloqueio = erro 1." in resultado
-        assert "Iteração 2: motivo do bloqueio = erro 2." in resultado
+        assert cr_reviewer._filtrar_recorrentes(entradas) == []
+
+    def test_erro_repetido_e_mantido(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        entradas = [
+            {"stage": "a", "error_code": "X"},
+            {"stage": "b", "error_code": "Y"},
+            {"stage": "a", "error_code": "X"},
+        ]
+        resultado = cr_reviewer._filtrar_recorrentes(entradas)
+        assert len(resultado) == 2
+        assert all(cr_reviewer._assinatura_erro(e) == "a:x" for e in resultado)
+
+    def test_lista_vazia_retorna_vazio(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        assert cr_reviewer._filtrar_recorrentes([]) == []
+
+
+class TestFormatarLicaoLote:
+    """`_formatar_licao_lote` — texto de entrada pro mem0, a partir do lote filtrado."""
+
+    def test_lista_vazia(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        assert cr_reviewer._formatar_licao_lote([]) == ""
+
+    def test_uma_entrada(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        entradas = [
+            {
+                "stage": "implantacao_artefato",
+                "error_code": "FALHA_BUILD",
+                "blocking_reason": "dependência ausente",
+            }
+        ]
+        resultado = cr_reviewer._formatar_licao_lote(entradas)
+        assert resultado == (
+            "Erro recorrente: estágio=implantacao_artefato, "
+            "motivo=FALHA_BUILD, bloqueio=dependência ausente."
+        )
+
+    def test_varias_entradas_uma_por_linha(self, tmp_path, monkeypatch):
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        entradas = [
+            {"stage": "a", "error_code": "X", "blocking_reason": "r1"},
+            {"stage": "b", "error_code": "Y", "blocking_reason": "r2"},
+        ]
+        resultado = cr_reviewer._formatar_licao_lote(entradas)
+        assert len(resultado.split("\n")) == 2
+
+
+class TestEscreverMemoriaLote:
+    """`_escrever_memoria` — fluxo completo de acúmulo + processamento em lote."""
+
+    def _ctx(self, error_history, stack_key="python"):
+        class _FakeCtx:
+            state = {
+                "error_history": error_history,
+                "memory_stack_key": stack_key,
+            }
+
+        return _FakeCtx()
+
+    def _erro(self, stage, error_code):
+        return {
+            "blocking_reason": "erro de teste",
+            "failed_stages": [{"stage": stage, "error_code": error_code}],
+        }
+
+    async def test_abaixo_do_limite_so_acumula_nao_chama_mem0(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("AI4ES_MEMORY_ENABLED", "true")
+        monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
+        monkeypatch.setenv("AI4ES_MEMORY_BATCH_THRESHOLD", "3")
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+
+        chamado = {"add": False}
+
+        class _FakeMemory:
+            async def add(self, **kwargs):
+                chamado["add"] = True
+
+        monkeypatch.setattr(cr_reviewer, "get_memory", lambda: _FakeMemory())
+
+        ctx = self._ctx([self._erro("a", "X")])
+        await cr_reviewer._escrever_memoria(ctx)
+
+        assert chamado["add"] is False
+        assert len(cr_reviewer.ler_erros_pendentes("python")) == 1
+
+    async def test_atinge_limite_sem_repeticao_descarta_lote_sem_chamar_mem0(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("AI4ES_MEMORY_ENABLED", "true")
+        monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
+        monkeypatch.setenv("AI4ES_MEMORY_BATCH_THRESHOLD", "3")
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+
+        chamado = {"add": False}
+
+        class _FakeMemory:
+            async def add(self, **kwargs):
+                chamado["add"] = True
+
+        monkeypatch.setattr(cr_reviewer, "get_memory", lambda: _FakeMemory())
+
+        for stage, code in [("a", "X"), ("b", "Y"), ("c", "Z")]:
+            await cr_reviewer._escrever_memoria(self._ctx([self._erro(stage, code)]))
+
+        assert chamado["add"] is False
+        assert cr_reviewer.ler_erros_pendentes("python") == []
+
+    async def test_atinge_limite_com_repeticao_grava_no_mem0_e_limpa_lote(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("AI4ES_MEMORY_ENABLED", "true")
+        monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
+        monkeypatch.setenv("AI4ES_MEMORY_BATCH_THRESHOLD", "3")
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+
+        recebido = {}
+
+        class _FakeMemory:
+            async def add(self, **kwargs):
+                recebido.update(kwargs)
+
+        monkeypatch.setattr(cr_reviewer, "get_memory", lambda: _FakeMemory())
+
+        for stage, code in [("a", "X"), ("b", "Y"), ("a", "X")]:
+            await cr_reviewer._escrever_memoria(self._ctx([self._erro(stage, code)]))
+
+        assert recebido.get("agent_id") == "python"
+        assert "estágio=a" in recebido.get("messages", "")
+        assert cr_reviewer.ler_erros_pendentes("python") == []
+
+    async def test_falha_no_mem0_preserva_lote_pendente(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("AI4ES_MEMORY_ENABLED", "true")
+        monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
+        monkeypatch.setenv("AI4ES_MEMORY_BATCH_THRESHOLD", "3")
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+
+        class _FakeMemory:
+            async def add(self, **kwargs):
+                raise RuntimeError("mem0 indisponível")
+
+        monkeypatch.setattr(cr_reviewer, "get_memory", lambda: _FakeMemory())
+
+        for stage, code in [("a", "X"), ("b", "Y"), ("a", "X")]:
+            await cr_reviewer._escrever_memoria(self._ctx([self._erro(stage, code)]))
+
+        assert len(cr_reviewer.ler_erros_pendentes("python")) == 3
+
+    async def test_sem_error_history_nao_grava_nada(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("AI4ES_MEMORY_ENABLED", "true")
+        monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+
+        await cr_reviewer._escrever_memoria(self._ctx([]))
+
+        assert cr_reviewer.ler_erros_pendentes("python") == []
+
+    async def test_falha_inesperada_no_processamento_nao_derruba_pipeline(
+        self, tmp_path, monkeypatch
+    ):
+        """Regressão: um bug em `limite_lote()` (ex.: env var vazia) chegou a
+        derrubar a run inteira antes — agora fica contido aqui dentro."""
+        monkeypatch.setenv("AI4ES_MEMORY_ENABLED", "true")
+        monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+
+        def _explode():
+            raise ValueError("invalid literal for int() with base 10: ''")
+
+        monkeypatch.setattr(cr_reviewer, "limite_lote", _explode)
+
+        await cr_reviewer._escrever_memoria(self._ctx([self._erro("a", "X")]))
+
+
+class TestEscreverMemoriaDesabilitada:
+    """`_escrever_memoria` — interruptor geral (`AI4ES_MEMORY_ENABLED`)."""
+
+    def _ctx(self, error_history, stack_key="python"):
+        class _FakeCtx:
+            state = {
+                "error_history": error_history,
+                "memory_stack_key": stack_key,
+            }
+
+        return _FakeCtx()
+
+    async def test_desabilitada_nao_grava_erro_nem_chama_mem0(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.delenv("AI4ES_MEMORY_ENABLED", raising=False)
+        monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
+        monkeypatch.setenv("AI4ES_MEMORY_BATCH_THRESHOLD", "1")
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+
+        chamado = {"add": False}
+
+        class _FakeMemory:
+            async def add(self, **kwargs):
+                chamado["add"] = True
+
+        monkeypatch.setattr(cr_reviewer, "get_memory", lambda: _FakeMemory())
+
+        erro = {
+            "blocking_reason": "erro de teste",
+            "failed_stages": [{"stage": "a", "error_code": "X"}],
+        }
+        await cr_reviewer._escrever_memoria(self._ctx([erro]))
+
+        assert chamado["add"] is False
+        assert cr_reviewer.ler_erros_pendentes("python") == []

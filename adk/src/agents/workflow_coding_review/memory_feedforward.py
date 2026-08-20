@@ -34,7 +34,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
 
-from shared.memory.config import get_memory
+from shared.memory.config import get_memory, memoria_habilitada
 
 logger = logging.getLogger(__name__)
 
@@ -78,24 +78,27 @@ class _MemoryProvisioner(BaseAgent):
         chave = stack_key(tech_stack)
 
         memory_context = ""
-        try:
-            memoria = get_memory()
-            termos_busca = [t for t in tech_stack if isinstance(t, str) and t.strip()]
-            resultado = await memoria.search(
-                query=" ".join(termos_busca) or chave,
-                filters={"agent_id": chave},
-                top_k=_TOP_K,
-            )
-            memory_context = _formatar_memory_context(resultado.get("results", []))
-        except Exception:
-            # Mesma filosofia do cr_feedforward original: nada que venha do
-            # mem0 justifica abortar o pipeline de codificação inteiro. Pior
-            # caso aceitável é o coder rodar sem memory_context.
-            logger.exception(
-                "memory_feedforward: falha ao consultar o mem0 (stack=%r) — "
-                "o coder segue sem memory_context (degradação, não interrupção)",
-                chave,
-            )
+        if memoria_habilitada():
+            try:
+                memoria = get_memory()
+                termos_busca = [
+                    t for t in tech_stack if isinstance(t, str) and t.strip()
+                ]
+                resultado = await memoria.search(
+                    query=" ".join(termos_busca) or chave,
+                    filters={"agent_id": chave},
+                    top_k=_TOP_K,
+                )
+                memory_context = _formatar_memory_context(resultado.get("results", []))
+            except Exception:
+                # Mesma filosofia do cr_feedforward original: nada que venha do
+                # mem0 justifica abortar o pipeline de codificação inteiro. Pior
+                # caso aceitável é o coder rodar sem memory_context.
+                logger.exception(
+                    "memory_feedforward: falha ao consultar o mem0 (stack=%r) — "
+                    "o coder segue sem memory_context (degradação, não interrupção)",
+                    chave,
+                )
 
         yield Event(
             author=self.name,
