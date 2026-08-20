@@ -2,6 +2,7 @@ import os
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
+from src.agents.workflow_design_pipeline.agent import agent as design_pipeline
 from src.agents.design_architect.agent import agent as design_architect
 from src.agents.mermaid_specialist.agent import agent as mermaid_specialist
 from src.agents.markdown_specialist.agent import agent as markdown_specialist
@@ -17,6 +18,7 @@ root_agent = LlmAgent(
     description=prompt.description,
     instruction=prompt.instruction,
     tools=[
+        AgentTool(agent=design_pipeline),
         AgentTool(agent=design_architect),
         AgentTool(agent=mermaid_specialist),
         AgentTool(agent=markdown_specialist),

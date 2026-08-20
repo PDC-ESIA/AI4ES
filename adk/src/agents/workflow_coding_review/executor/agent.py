@@ -46,7 +46,9 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
+from shared.execution.verificador_executabilidade import verificar_executabilidade
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
+from shared.workspace import get_agent_workspace
 from src.agents.implementation_validator import root_agent as implementation_validator
 from src.agents.implementation_validator.agent import _report_path_valido
 
@@ -105,6 +107,72 @@ def _carregar_execution_report(callback_context) -> dict:
     except Exception:
         logger.warning("cr_executor: falha ao ler o ExecutionReport em %s", caminho)
         return {}
+
+
+_CABECALHO_RECUSA = (
+    "IMPLEMENTAÇÃO INCOMPLETA — o harness NÃO foi executado (não há o que "
+    "validar ainda)."
+)
+
+
+def _mensagem_de_recusa(bloqueios, arquivos) -> str:
+    """Relatório determinístico devolvido ao coder no lugar do ErrorReport.
+
+    NÃO pode começar com o marcador de estagnação (`STATUS: bloqueado`): o
+    TaskIterator classificaria a task como encerrada por estagnação, e isto é o
+    oposto — é um pedido para continuar implementando.
+    """
+    inventario = "\n".join(f"- {a}" for a in arquivos) or "- (workspace vazio)"
+    return (
+        f"{_CABECALHO_RECUSA}\n\n"
+        "Faltando:\n"
+        + "\n".join(f"- {bloqueio}" for bloqueio in bloqueios)
+        + "\n\nArquivos hoje no seu workspace:\n"
+        + inventario
+        + "\n\nComplete a implementação AGORA, no mesmo turno: crie os arquivos "
+        "que faltam com `tool_criar_arquivo`, um por vez, e NÃO responda com "
+        "texto até terminar. Texto sem chamada de ferramenta encerra o seu "
+        "turno e gasta uma iteração do loop sem produzir nada."
+    )
+
+
+def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
+    """`before_agent_callback` do `cr_executor_agent` — gate estrutural.
+
+    Recusa a rodada quando o artefato ainda não tem o mínimo para ser executado,
+    ANTES de gastar as chamadas de LLM do executor e do validador e a execução
+    do sandbox. Numa run real, ~13 das 37 execuções do harness aconteceram sobre
+    um workspace com um arquivo novo ou nenhum.
+
+    A checagem cobre apenas condições que o harness TAMBÉM reprovaria no estágio
+    1 — sem `run.json`, manifesto incoerente, nenhum código. Como falso positivo
+    é impossível nesse conjunto, o gate não precisa de teto de tentativas: nunca
+    trava uma implementação legítima.
+
+    ATENÇÃO — `state["execution_result"]` é escrito AQUI, na mão: quando um
+    `before_agent_callback` devolve Content, o ADK marca `end_invocation=True` e
+    retorna antes do `_run_async_impl`, que é onde o `output_key` seria gravado
+    (`llm_agent.py::__maybe_save_output_to_state`). Sem esta escrita, o coder
+    receberia de volta o ErrorReport da rodada ANTERIOR e não saberia o que
+    falta.
+
+    Returns:
+        None para deixar o executor rodar; o Content da recusa caso contrário.
+    """
+    state = callback_context.state
+    resultado = verificar_executabilidade(get_agent_workspace("cr_coder"))
+    if resultado.executavel:
+        return None
+
+    logger.warning(
+        "[EXECUTABILIDADE] Execução recusada para %s: %s",
+        state.get("task_id"),
+        "; ".join(resultado.bloqueios),
+    )
+
+    mensagem = _mensagem_de_recusa(resultado.bloqueios, resultado.arquivos)
+    state["execution_result"] = mensagem
+    return types.Content(role="model", parts=[types.Part(text=mensagem)])
 
 
 def montar_error_report(callback_context) -> Optional[types.Content]:
@@ -195,4 +263,5 @@ agent = LlmAgent(
         FunctionTool(exit_loop),
     ],
 )
+agent.before_agent_callback = recusar_execucao_incompleta
 agent.after_agent_callback = montar_error_report

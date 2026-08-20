@@ -5,7 +5,7 @@ de cada task) e Task (Context Window completo para o coder), além de TasksOutpu
 (saída estruturada do agente). Autocontido para o workflow coding_review.
 """
 
-from typing import Any
+from typing import Any, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -146,11 +146,56 @@ class Task(BaseModel):
 
 
 class TasksOutput(BaseModel):
-    """Saída completa do Context Engineer."""
+    """Saída completa do Context Engineer — inclui o caminho BLOQUEADO.
 
-    macro_context: MacroContext = Field(
-        description="Contexto global do épico — compartilhado por todas as tasks"
+    O prompt manda PARAR e gerar Doubt Artifact quando faltam artefatos mínimos
+    de requisitos ou design ("PARE IMEDIATAMENTE. Não gere nenhuma task"). Com
+    `macro_context` e `tasks` obrigatórios, essa resposta legítima violava o
+    schema, e a `ValidationError` levantada pelo ADK em
+    `__maybe_save_output_to_state` derrubava a invocação inteira — o pipeline
+    morria com stack trace em vez de reportar o bloqueio.
+
+    Por isso todos os campos têm default: uma resposta bloqueada é um resultado
+    VÁLIDO. O envelope vazio é então tratado a jusante pelo TaskIterator, que o
+    classifica como `lista_vazia` (input inválido), zera a cobertura e faz o
+    reviewer bloquear com relatório — o mesmo caminho fail-closed de qualquer
+    outra entrada insuficiente.
+
+    `status` é texto livre de propósito: o modelo não enxerga este schema
+    (o provedor descarta `response_format`), então recusar um valor fora de um
+    enum apenas recriaria o crash que este desenho existe para eliminar.
+    """
+
+    status: str = Field(
+        default="concluido",
+        description=(
+            "'concluido' quando há tasks; 'bloqueado' quando o fluxo parou por "
+            "falta de artefatos. Texto livre — nunca invalida a resposta."
+        ),
+    )
+    bloqueio: Optional[str] = Field(
+        default=None,
+        description=(
+            "Quando bloqueado: o que faltou e qual fase precisa ser reprocessada."
+        ),
+    )
+    macro_context: Optional[MacroContext] = Field(
+        default=None,
+        description=(
+            "Contexto global do épico — compartilhado por todas as tasks. "
+            "Ausente quando o fluxo foi bloqueado antes de gerar tasks."
+        ),
     )
     tasks: list[Task] = Field(
-        description="Lista de tasks contextualizadas para o Agente Coder"
+        default_factory=list,
+        description=(
+            "Tasks contextualizadas para o Agente Coder. Lista VAZIA é a "
+            "resposta correta no caminho bloqueado — não invente tasks para "
+            "preencher o schema."
+        ),
     )
+
+    @property
+    def bloqueado(self) -> bool:
+        """Sem tasks não há o que codificar, qualquer que seja o `status`."""
+        return not self.tasks
