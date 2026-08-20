@@ -105,7 +105,7 @@ Leia o manifesto de requirements no texto recebido do orquestrador.
   * Chame tool_gerar_doubt_artifact informando:
     - titulo: se sucesso=False use 'Pasta de design ausente ou inacessível' senão use 'Análise técnica ausente no workspace de design'
     - fase_bloqueada: 'design'
-    - descricao: use o campo erro do retorno
+    - descricao: se sucesso=False use o campo erro; senão use artefatos_minimos_ausentes
     - acao_necessaria: 'A fase design deve ser reprocessada antes de continuar'
     - subdir: 'coder'
   * Chame tool_emitir_manifesto_bloqueado informando:
