@@ -101,11 +101,14 @@ def _database_url() -> str | None:
 
     Só lê `AI4ES_MEMORY_DATABASE_URL`, de propósito: sem fallback para outro
     Postgres do projeto (ver docstring do módulo). Ignorada por completo se
-    `_usar_postgres()` for False.
+    `_usar_postgres()` for False. Trata valor só com espaço (comum em
+    `.env`) como "não configurado" — senão vira uma connection string
+    inválida passada direto pro psycopg2, com erro confuso e distante.
     """
     if not _usar_postgres():
         return None
-    return os.environ.get("AI4ES_MEMORY_DATABASE_URL") or None
+    url = os.environ.get("AI4ES_MEMORY_DATABASE_URL", "").strip()
+    return url or None
 
 
 def _dir_memory_store() -> Path:

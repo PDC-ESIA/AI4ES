@@ -105,6 +105,22 @@ class TestDatabaseUrl:
         config = _reload_config(monkeypatch)
         assert config._database_url() is None
 
+    def test_url_so_com_espaco_e_none(self, monkeypatch):
+        """Regressão: `.env` com valor só de espaço (comum por acidente) não
+        deve virar uma connection string inválida passada pro psycopg2."""
+        monkeypatch.setenv("AI4ES_MEMORY_USE_POSTGRES", "true")
+        monkeypatch.setenv("AI4ES_MEMORY_DATABASE_URL", "   ")
+        config = _reload_config(monkeypatch)
+        assert config._database_url() is None
+
+    def test_url_com_espacos_nas_pontas_e_removida(self, monkeypatch):
+        monkeypatch.setenv("AI4ES_MEMORY_USE_POSTGRES", "true")
+        monkeypatch.setenv(
+            "AI4ES_MEMORY_DATABASE_URL", "  postgresql://user:pass@host:5432/db  "
+        )
+        config = _reload_config(monkeypatch)
+        assert config._database_url() == "postgresql://user:pass@host:5432/db"
+
 
 class TestVectorStoreConfig:
     def test_sem_flag_usa_chroma(self, tmp_path, monkeypatch):
