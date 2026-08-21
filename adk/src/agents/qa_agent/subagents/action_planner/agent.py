@@ -2,6 +2,7 @@ import os
 import logging
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
+from google.genai import types
 
 from .prompt import SYSTEM_PROMPT
 from shared.tools import (
@@ -31,5 +32,6 @@ agent = LlmAgent(
         FunctionTool(register_human_validation),
         FunctionTool(generate_compliance_report),
     ],
+    output_key="last_action_plan",
+    generate_content_config=types.GenerateContentConfig(temperature=0.1),
 )
-
