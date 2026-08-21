@@ -6,7 +6,6 @@ from google.adk.tools.agent_tool import AgentTool
 from shared.agent_factory import _bind_tool_to_workspace
 from shared.tools import (
     run_slicer,
-    ler_chunk,
     extract_text,
     gerar_doubt_artifact,
     listar_duvidas_pendentes,
@@ -17,7 +16,13 @@ from shared.tools import (
     ler_artefatos_gerados,
 )
 from shared.workspace import get_agent_workspace, get_workspace_root
-from . import prompt, schemas
+from . import prompt
+from .validation import (
+    auditar_saida_final,
+    rebaixar_duvida_de_glossario,
+    registrar_artefato_persistido,
+    validar_antes_de_salvar,
+)
 
 _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
 
@@ -30,7 +35,11 @@ _GLOS_WS = str(get_agent_workspace("glossario_agent"))
 def _bind(tool, agent_ws):
     return _bind_tool_to_workspace(tool, agent_ws, _WS_ROOT)
 
-# ── Sub-Agente de Glossário ──────────────────────────────────────────────────
+# ── Sub-Agente de Glossário (DESLIGADO DO PIPELINE) ──────────────────────────
+# Fora do fluxo temporariamente: as ETAPAS 1 e 3 dependem de `data/matrix/`, que
+# não existe no layout atual, e o erro delas fazia o agente pai abortar a análise
+# antes de gravar qualquer artefato. Definição preservada — para religar, basta
+# devolver `AgentTool(agent=glossario_agent)` à lista de tools do agente.
 
 glossario_agent = LlmAgent(
     name="glossario_agent",
@@ -141,12 +150,21 @@ agent = LlmAgent(
     description=prompt.description,
     instruction=prompt.instruction,
     output_key="analysis_result",
+    # C1: rejeita artefato malformado antes de ele tocar o disco e impede que
+    # uma dúvida sobre o glossário nasça bloqueante. Ambos retornam None para
+    # as tools que não lhes dizem respeito, então a ordem é indiferente.
+    before_tool_callback=[rebaixar_duvida_de_glossario, validar_antes_de_salvar],
+    # C2: registra em state o que foi realmente gravado.
+    after_tool_callback=registrar_artefato_persistido,
+    # C3: audita a saída final contra o que foi persistido.
+    after_agent_callback=auditar_saida_final,
+    # `run_slicer` e `ler_chunk` ficaram de fora: resolvem caminho contra
+    # ADK_AGENT_DATA_DIR, que aponta para um layout inexistente, e devolvem
+    # string de erro em vez de exceção — falha silenciosa que o agente lia como
+    # "documento indisponível" e usava para abortar a análise.
     tools=[
-        FunctionTool(run_slicer),
-        FunctionTool(ler_chunk),
         _bind(FunctionTool(gerar_doubt_artifact), _REQ_WS),
         _bind(FunctionTool(tool_salvar_artefato_requisito), _REQ_WS),
-        AgentTool(agent=glossario_agent),
         AgentTool(agent=validacao_agent),
     ],
 )
