@@ -2,11 +2,11 @@
 
 Uso típico (a partir da raiz do repositório):
 
-    python -m benchmarks.humaneval.run --limit 5 --samples 1
+    python -m benchmarks.coding_review.humaneval.run --limit 5 --samples 1
 
 Ou diretamente:
 
-    python benchmarks/humaneval/run.py --limit 5
+    python benchmarks/coding_review/humaneval/run.py --limit 5
 
 Fluxo:
 1. `bootstrap.prepare_environment` fixa `sys.path`, `.env` e o workspace do coder
@@ -26,16 +26,16 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Este arquivo pode ser executado como script (python benchmarks/humaneval/run.py)
-# ou como módulo (python -m benchmarks.humaneval.run). O bloco abaixo garante que
+# Este arquivo pode ser executado como script (python benchmarks/coding_review/humaneval/run.py)
+# ou como módulo (python -m benchmarks.coding_review.humaneval.run). O bloco abaixo garante que
 # o import do pacote `benchmarks` funcione no modo script.
 if __package__ in (None, ""):
     import sys as _sys
 
-    _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from benchmarks.humaneval import bootstrap
-from benchmarks.humaneval.dataset import DEFAULT_DATASET_URL
+from benchmarks.coding_review.humaneval import bootstrap
+from benchmarks.coding_review.humaneval.dataset import DEFAULT_DATASET_URL
 
 _DEFAULT_OUTPUT = Path(__file__).resolve().parent / "results"
 _DEFAULT_DATASET = Path(__file__).resolve().parent / "datasets" / "HumanEval.jsonl.gz"
@@ -43,7 +43,7 @@ _DEFAULT_DATASET = Path(__file__).resolve().parent / "datasets" / "HumanEval.jso
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        prog="benchmarks.humaneval.run",
+        prog="benchmarks.coding_review.humaneval.run",
         description="Executa o benchmark HumanEval usando o Coder Agent do AI4ES.",
     )
     p.add_argument(
@@ -142,10 +142,10 @@ def _append_progresso(progress_path: Path, detalhe: dict) -> None:
 async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
     """Executa o loop principal do benchmark e devolve o relatório consolidado."""
     # Imports tardios: só após o bootstrap ter fixado o ambiente.
-    from benchmarks.humaneval import coder_runner, grading
-    from benchmarks.humaneval.contract import task_id_for
-    from benchmarks.humaneval.dataset import load_problems
-    from benchmarks.humaneval.metrics import aggregate_pass_at_k
+    from benchmarks.coding_review.humaneval import coder_runner, grading
+    from benchmarks.coding_review.humaneval.contract import task_id_for
+    from benchmarks.coding_review.humaneval.dataset import load_problems
+    from benchmarks.coding_review.humaneval.metrics import aggregate_pass_at_k
 
     problemas = load_problems(
         args.dataset_path,

@@ -27,16 +27,16 @@ A partir da raiz do repositório:
 
 ```bash
 # Smoke test: 3 problemas, 1 amostra cada (pass@1)
-python -m benchmarks.humaneval.run --limit 3
+python -m benchmarks.coding_review.humaneval.run --limit 3
 
 # Problemas específicos
-python -m benchmarks.humaneval.run --task-ids HumanEval/0 HumanEval/2
+python -m benchmarks.coding_review.humaneval.run --task-ids HumanEval/0 HumanEval/2
 
 # pass@k com múltiplas amostras
-python -m benchmarks.humaneval.run --limit 20 --samples 5 --k 1 5
+python -m benchmarks.coding_review.humaneval.run --limit 20 --samples 5 --k 1 5
 
 # Sobrescrever o modelo
-python -m benchmarks.humaneval.run --limit 5 --model github_copilot/gpt-4
+python -m benchmarks.coding_review.humaneval.run --limit 5 --model github_copilot/gpt-4
 ```
 
 ### Principais flags

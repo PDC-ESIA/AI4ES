@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 # Raiz do repositório (…/AI4ES) e diretório da aplicação ADK (…/AI4ES/adk).
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 _ADK_DIR = _REPO_ROOT / "adk"
 
 
