@@ -170,7 +170,10 @@ async def _processar_artefato(artefato: dict) -> dict:
         (artefato_dir / "__init__.py").touch(exist_ok=True)
 
         anexos_salvos = _salvar_arquivos_apoio(artefato, artefato_dir)
-        tem_codigo = any(p.suffix in ['.py', '.java', '.js', '.c'] for p in anexos_salvos)
+        tem_codigo = any(
+            p.suffix.casefold() in {".py", ".java", ".js", ".ts", ".c", ".cpp"}
+            for p in anexos_salvos
+        )
         bootstrap_pytest = None
         if any(p.suffix.casefold() == ".py" for p in anexos_salvos):
             bootstrap_pytest = _salvar_bootstrap_pytest(artefato_dir)
