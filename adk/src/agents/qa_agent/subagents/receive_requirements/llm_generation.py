@@ -14,6 +14,23 @@ from shared.llm import copilot_completion_kwargs
 litellm.drop_params = True
 
 
+DEFAULT_SYSTEM_PROMPT = "Você gera exclusivamente código de teste pytest executável."
+
+DEFAULT_GENERATION_RULES = """Regras obrigatórias:
+- Retorne apenas código Python, sem markdown.
+- Use pytest.
+- O teste deve ser executável mesmo sem instalação de módulos externos ao diretório local.
+- Se houver arquivo-fonte local, importe exclusivamente da cópia materializada
+  junto ao teste. Não manipule sys.path; o conftest.py do QA faz isso.
+- Se não houver código-fonte importável, gere testes de contrato (validações e comportamentos inferíveis) sem import quebrado.
+- Cubra cenários feliz, inválido e borda.
+- Inclua asserts objetivos.
+- Cada função de teste deve ter corpo NÃO-VAZIO: ou uma docstring (modo
+  esqueleto), ou asserts objetivos (modo completo). Nunca emita 'pass'
+  isolado, 'TODO', placeholders entre <>, ou caracteres fora da gramática Python.
+"""
+
+
 def _parse_fragmented_requirements(raw_input: str) -> list:
     """Converte texto livre/fragmentado em uma lista estruturada de artefatos."""
     prompt = f"""Extraia os requisitos do texto abaixo e retorne um JSON array estrito no formato:
@@ -47,6 +64,8 @@ def _gerar_pytest_via_llm(
     modulo: str,
     arquivos_apoio: list[Path],
     nome_teste: str,
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+    generation_rules: str = DEFAULT_GENERATION_RULES,
 ) -> str:
     """Gera código pytest usando LLM a partir de artefato de requisito.
 
@@ -57,6 +76,8 @@ def _gerar_pytest_via_llm(
         modulo: Módulo alvo do teste.
         arquivos_apoio: Lista de paths de arquivos de apoio.
         nome_teste: Nome do arquivo de teste a gerar.
+        system_prompt: Mensagem de sistema enviada ao LLM.
+        generation_rules: Bloco de regras injetado no final do prompt.
 
     Returns:
         str: Código Python do teste pytest.
@@ -73,7 +94,7 @@ def _gerar_pytest_via_llm(
     for p in arquivos_apoio:
         try:
             texto = p.read_text(encoding="utf-8")
-            arquivos_textos.append(f"--- {p.name} ---\n{texto}\n")
+            arquivos_textos.append(f"--- {p.as_posix()} ---\n{texto}\n")
         except Exception:
             arquivos_textos.append(f"- {p.name} (Arquivo binário ou ilegível)")
 
@@ -91,8 +112,9 @@ def _gerar_pytest_via_llm(
             "O usuário forneceu o código fonte junto aos requisitos. "
             "MAPEAMENTO: Mapeie os cenários de teste contra as funções e métodos reais presentes no código. "
             "Gere os testes pytest COMPLETOS e integrados, utilizando asserts que validem as lógicas existentes. "
-            "REGRA DE IMPORTAÇÃO MANDATÓRIA: Faça a importação das funções/classes de forma RELATIVA e EXPLÍCITA a partir do arquivo fornecido. "
-            "Exemplo obrigatório: se o arquivo for 'calculadora.py' com a função 'somar', você DEVE usar: `from .calculadora import somar`."
+            "REGRA DE IMPORTAÇÃO MANDATÓRIA: os fontes são materializados junto ao teste e o conftest.py configura os imports. "
+            "Se o path contiver `/src/modulo.py`, importe como `from src.modulo import funcao`. "
+            "Não altere sys.path e nunca referencie workspace_output/coder."
         )
     else:
         instrucao_geracao = (
@@ -114,17 +136,7 @@ Requisito: {conteudo}
 DIRETRIZ DE GERAÇÃO CONDICIONAL:
 {instrucao_geracao}
 
-Regras obrigatórias:
-- Retorne apenas código Python, sem markdown.
-- Use pytest.
-- O teste deve ser executável mesmo sem instalação de módulos externos ao diretório local.
-- Se houver arquivo-fonte local, faça import relativo via pathlib/sys.path usando a própria pasta do teste.
-- Se não houver código-fonte importável, gere testes de contrato (validações e comportamentos inferíveis) sem import quebrado.
-- Cubra cenários feliz, inválido e borda.
-- Inclua asserts objetivos.
-- Cada função de teste deve ter corpo NÃO-VAZIO: ou uma docstring (modo
-  esqueleto), ou asserts objetivos (modo completo). Nunca emita 'pass'
-  isolado, 'TODO', placeholders entre <>, ou caracteres fora da gramática Python.
+{generation_rules}
 """
 
     response = completion(
@@ -132,7 +144,7 @@ Regras obrigatórias:
         messages=[
             {
                 "role": "system",
-                "content": "Você gera exclusivamente código de teste pytest executável.",
+                "content": system_prompt,
             },
             {
                 "role": "user",

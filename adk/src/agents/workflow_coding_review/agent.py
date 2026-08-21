@@ -31,6 +31,8 @@ from .executor.agent import agent as _executor
 from .executor.loop_policy import config_inteiro
 from .reviewer.agent import agent as _reviewer
 from .task_iterator import TaskIterator
+from .manifest import emit_coding_manifest
+
 
 # Teto alto de propósito: a política de progresso encerra o loop muito antes em
 # operação normal. Valor de partida — a issue #394 deixa a calibração fora de
@@ -95,7 +97,8 @@ agent = SequentialAgent(
     name="coding_review_pipeline",
     description=(
         "Pipeline enxuto de codificação com revisão: "
-        "contexto → [por task: codificação ↔ execução] → revisão."
+        "contexto → [por task: codificação ↔ execução] → revisão → manifesto."
     ),
     sub_agents=[_context_engineer, _task_iterator, _reviewer],
+    after_agent_callback=emit_coding_manifest,
 )

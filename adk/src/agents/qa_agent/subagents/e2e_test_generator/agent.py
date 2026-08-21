@@ -8,7 +8,7 @@ from google.adk.tools import FunctionTool
 from .prompt import E2E_TEST_GENERATOR_PROMPT
 from .schemas import RespostaE2E
 from .tools.gerar_testes_e2e import gerar_testes_e2e
-
+from .tools.obter_plano_acao import obter_plano_acao
 
 agent = LlmAgent(
     name="e2e_test_generator",
@@ -18,6 +18,8 @@ agent = LlmAgent(
         "e gera/executa specs Playwright localmente para jornadas web e API."
     ),
     instruction=E2E_TEST_GENERATOR_PROMPT,
-    tools=[FunctionTool(gerar_testes_e2e)],
-    output_schema=RespostaE2E,
+    tools=[
+        FunctionTool(obter_plano_acao),
+        FunctionTool(gerar_testes_e2e),
+    ],
 )
