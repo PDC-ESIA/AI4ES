@@ -167,11 +167,25 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
 # ===========================================================================
 
 
-def test_loop_agent_max_iterations():
-    """LoopAgent deve ter max_iterations=5."""
+def test_max_iterations_e_rede_de_seguranca_alta():
+    """O teto deixou de ser o controle esperado (issue #394).
+
+    Ele agora protege contra um defeito na própria política de progresso, então
+    precisa ser alto o bastante para não cortar tarefas legítimas antes dela —
+    e nunca zero/negativo, o que desligaria a rede.
+    """
     from src.agents.workflow_coding_review.agent import _code_execute_loop
 
-    assert _code_execute_loop.max_iterations == 5
+    assert _code_execute_loop.max_iterations >= 10
+
+
+def test_teto_invalido_no_ambiente_cai_para_o_padrao(monkeypatch):
+    """Um valor quebrado na env var não pode desligar a rede de segurança."""
+    from src.agents.workflow_coding_review.executor.loop_policy import config_inteiro
+
+    for invalido in ("", "abc", "0", "-3"):
+        monkeypatch.setenv("AI4ES_MAX_LOOP_ITERATIONS", invalido)
+        assert config_inteiro("AI4ES_MAX_LOOP_ITERATIONS", 20, minimo=1) == 20
 
 
 # ===========================================================================
@@ -201,6 +215,24 @@ def _veredito(status: str, *criterios: str) -> dict:
             for i, s in enumerate(criterios)
         ],
     }
+
+
+def test_prompt_nao_pede_mais_deteccao_de_estagnacao(executor_module):
+    """O critério de aceite pede a remoção explícita desse trecho do prompt.
+
+    Enquanto ele existisse, o LLM continuaria tentando julgar travamento por
+    conta própria — em paralelo e possivelmente em conflito com a política.
+    """
+    instrucao = executor_module.agent.instruction
+
+    assert "PROTOCOLO ANTI-ESTAGNAÇÃO" not in instrucao
+    assert "STATUS: bloqueado" not in instrucao
+
+
+def test_marcador_de_estagnacao_removido_do_modulo(executor_module):
+    import inspect
+
+    assert "_MARCADOR_ESTAGNACAO" not in inspect.getsource(executor_module)
 
 
 def test_ordem_dos_after_callbacks_e_carga_estrutural(executor_module):
@@ -262,21 +294,26 @@ def test_rodada_reprovada_com_progresso_nao_encerra(executor_module, monkeypatch
 
 
 def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch):
-    """Mesma falha e nota parada: encerra já na 2ª rodada, sem esperar a janela.
+    """Mesma falha e nota parada: encerra pelo acelerador, antes da janela cheia.
 
-    No encerramento o turno é substituído — o coder não pode receber um
-    relatório "conserte isto" referente a uma rodada que não vai existir.
+    Exige que a ausência de progresso tenha PERSISTIDO — uma única rodada sem
+    melhora não basta, senão um vale isolado derrubaria a task.
+
+    No encerramento o turno é substituído: o coder não pode receber um relatório
+    "conserte isto" referente a uma rodada que não vai existir.
     """
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
 
     primeira = executor_module.aplicar_politica_de_progresso(ctx)
     segunda = executor_module.aplicar_politica_de_progresso(ctx)
+    terceira = executor_module.aplicar_politica_de_progresso(ctx)
 
     assert primeira is None, "a 1ª rodada não tem com o que comparar"
+    assert segunda is None, "um único tropeço não pode encerrar a task"
     assert ctx.actions.escalate is True
     assert ctx.state["loop_stop_reason"] == "erro_repetido"
-    assert "NÃO é aprovação" in segunda.parts[0].text
+    assert "NÃO é aprovação" in terceira.parts[0].text
 
 
 def test_plato_encerra_quando_a_falha_muda_mas_a_nota_nao(executor_module, monkeypatch):

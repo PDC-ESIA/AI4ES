@@ -31,7 +31,9 @@ _JANELA = 3
 _MARGEM = 0.01
 
 
-def _avaliar(historico, *, mudaram=True, atual=None, anterior=None, janela=_JANELA):
+def _avaliar(
+    historico, *, mudaram=True, atual=None, anterior=None, janela=_JANELA, acelerar=2
+):
     return avaliar_continuidade(
         historico_notas=historico,
         arquivos_mudaram=mudaram,
@@ -39,6 +41,7 @@ def _avaliar(historico, *, mudaram=True, atual=None, anterior=None, janela=_JANE
         assinatura_erro_anterior=anterior,
         janela_sem_progresso=janela,
         margem_melhora=_MARGEM,
+        rodadas_para_acelerar=acelerar,
     )
 
 
@@ -120,7 +123,7 @@ def test_vale_temporario_nao_encerra_por_engano():
 
 
 def test_sem_alteracao_com_nota_parada_encerra():
-    decisao = _avaliar([0.4, 0.4], mudaram=False)
+    decisao = _avaliar([0.4, 0.4, 0.4], mudaram=False)
 
     assert decisao.parar
     assert decisao.motivo == MOTIVO_SEM_ALTERACAO
@@ -139,7 +142,7 @@ def test_sem_alteracao_com_nota_subindo_nao_encerra():
 
 def test_sem_alteracao_encerra_antes_da_janela_de_plato():
     """O valor do gatilho: acelera o platô em vez de esperar a janela inteira."""
-    historico = [0.4, 0.4]
+    historico = [0.4, 0.4, 0.4]
 
     assert _avaliar(historico, mudaram=False).parar
     assert not _avaliar(historico, mudaram=True).parar
@@ -151,7 +154,7 @@ def test_sem_alteracao_encerra_antes_da_janela_de_plato():
 
 
 def test_erro_repetido_com_nota_parada_encerra():
-    decisao = _avaliar([0.4, 0.4], atual="abc", anterior="abc")
+    decisao = _avaliar([0.4, 0.4, 0.4], atual="abc", anterior="abc")
 
     assert decisao.parar
     assert decisao.motivo == MOTIVO_ERRO_REPETIDO
@@ -165,21 +168,21 @@ def test_erro_repetido_com_nota_subindo_nao_encerra():
 
 
 def test_assinatura_diferente_nao_encerra():
-    decisao = _avaliar([0.4, 0.4], atual="abc", anterior="xyz")
+    decisao = _avaliar([0.4, 0.4, 0.4], atual="abc", anterior="xyz")
 
     assert not decisao.parar
 
 
 def test_sem_assinatura_o_gatilho_nao_dispara():
     """Rodada recusada pelo gate não tem ExecutionReport — nada a comparar."""
-    decisao = _avaliar([0.4, 0.4], atual=None, anterior=None)
+    decisao = _avaliar([0.4, 0.4, 0.4], atual=None, anterior=None)
 
     assert not decisao.parar
 
 
 def test_erro_repetido_cobre_o_coder_que_edita_sem_progredir():
     """Complementa o gatilho 2: arquivos MUDAM, mas a falha é a mesma."""
-    decisao = _avaliar([0.4, 0.4], mudaram=True, atual="abc", anterior="abc")
+    decisao = _avaliar([0.4, 0.4, 0.4], mudaram=True, atual="abc", anterior="abc")
 
     assert decisao.parar
     assert decisao.motivo == MOTIVO_ERRO_REPETIDO
@@ -423,3 +426,100 @@ def test_todas_as_chaves_escritas_estao_declaradas_para_limpeza():
 
     assert set(state) <= set(CHAVES_DE_CICLO)
     assert "loop_stop_reason" in state  # o cenário realmente chegou a parar
+
+
+# ---------------------------------------------------------------------------
+# Regressão: o vale isolado não pode acionar os gatilhos aceleradores
+# ---------------------------------------------------------------------------
+
+
+def test_vale_isolado_sem_alteracao_nao_encerra():
+    """O falso positivo mais caro que esta política já teve.
+
+    A nota cai numa rodada (a correção que conserta A e quebra B), o coder por
+    acaso não edita nada, e a task morria ali — mesmo quando a rodada seguinte
+    voltaria a subir. A nota ter se movido SEM alteração de arquivo é, se alguma
+    coisa, evidência de não-determinismo, não de travamento.
+    """
+    assert not _avaliar([0.50, 0.42], mudaram=False).parar
+
+
+def test_vale_isolado_com_erro_repetido_nao_encerra():
+    """Mesmo vale, pelo outro acelerador."""
+    assert not _avaliar([0.50, 0.42], atual="sig", anterior="sig").parar
+
+
+def test_recuperacao_apos_vale_sobrevive_aos_aceleradores():
+    """A sequência-símbolo da issue (0.50 → 0.42 → 0.48 → 0.53), rodada a rodada.
+
+    O vale vem de uma rodada em que o coder não editou nada — o caso que
+    derrubava a task. Depois ele volta a trabalhar e a nota se recupera.
+
+    LIMITE CONHECIDO E DELIBERADO: se o coder ficasse TRÊS rodadas seguidas sem
+    editar nada, o acelerador encerraria na terceira, mesmo que a nota estivesse
+    subindo. Isso é aceito porque o cenário se contradiz — sem alteração de
+    código a nota não se recupera sozinha; e protegê-lo exigiria elevar
+    `rodadas_para_acelerar` até a janela do platô, o que tornaria os
+    aceleradores código morto.
+    """
+    assert not _avaliar([0.50, 0.42], mudaram=False).parar
+    assert not _avaliar([0.50, 0.42, 0.48], mudaram=True).parar
+    assert not _avaliar([0.50, 0.42, 0.48, 0.53], mudaram=True).parar
+
+
+def test_ausencia_de_progresso_persistente_ainda_encerra():
+    """A tolerância é para o tropeço isolado, não para o travamento real."""
+    decisao = _avaliar([0.50, 0.42, 0.44], mudaram=False)
+
+    assert decisao.parar
+    assert decisao.motivo == MOTIVO_SEM_ALTERACAO
+
+
+def test_aceleradores_continuam_disparando_antes_do_plato():
+    """Se disparassem junto com o platô seriam código morto."""
+    historico = [0.4, 0.4, 0.4]
+
+    assert _avaliar(historico, mudaram=False, janela=5).parar
+    assert not _avaliar(historico, mudaram=True, janela=5).parar
+
+
+# ---------------------------------------------------------------------------
+# Regressão: configuração inválida não pode derrubar o import
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("valor", ["nan", "inf", "-inf", "abc", "0", "-3", ""])
+def test_config_inteiro_recusa_valores_inutilizaveis(monkeypatch, valor):
+    """`nan`/`inf` passavam pela comparação de mínimo e estouravam no int()."""
+    from src.agents.workflow_coding_review.executor.loop_policy import config_inteiro
+
+    monkeypatch.setenv("AI4ES_TESTE_CONFIG", valor)
+
+    assert config_inteiro("AI4ES_TESTE_CONFIG", 20, minimo=1) == 20
+
+
+def test_config_inteiro_recusa_fracionario_em_vez_de_truncar(monkeypatch):
+    """Truncar 3.9 para 3 entregaria um limite diferente do configurado."""
+    from src.agents.workflow_coding_review.executor.loop_policy import config_inteiro
+
+    monkeypatch.setenv("AI4ES_TESTE_CONFIG", "3.9")
+
+    assert config_inteiro("AI4ES_TESTE_CONFIG", 20, minimo=1) == 20
+
+
+def test_config_inteiro_aceita_valor_valido(monkeypatch):
+    from src.agents.workflow_coding_review.executor.loop_policy import config_inteiro
+
+    monkeypatch.setenv("AI4ES_TESTE_CONFIG", " 7 ")
+
+    assert config_inteiro("AI4ES_TESTE_CONFIG", 20, minimo=1) == 7
+
+
+@pytest.mark.parametrize("valor", ["nan", "inf", "-inf"])
+def test_config_fracionario_recusa_nao_finitos(monkeypatch, valor):
+    """Um `nan` desligaria a política em silêncio: toda comparação com ele é False."""
+    from src.agents.workflow_coding_review.executor.loop_policy import _config
+
+    monkeypatch.setenv("AI4ES_TESTE_CONFIG", valor)
+
+    assert _config("AI4ES_TESTE_CONFIG", 0.01, minimo=0.0) == 0.01

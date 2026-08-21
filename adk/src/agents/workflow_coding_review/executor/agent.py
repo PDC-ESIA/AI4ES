@@ -1,10 +1,11 @@
 """Executor dedicado ao workflow coding_review.
 
 - Compõe harness + AgentTool(validador) + exit_loop.
-- O loop encerra em DUAS condições: quando o veredito do validador é 'aprovado',
-  OU quando o protocolo de estagnação detecta que o coder não fez alterações e o
-  bloqueio se repete (encerramento por estagnação, com status `bloqueado` — NÃO é
-  aprovação). O status técnico de execução do harness, sozinho, nunca encerra.
+- O loop encerra por APROVAÇÃO (veredito do validador) ou por FALTA DE PROGRESSO
+  (política em `loop_policy.py`, issue #394). O status técnico de execução do
+  harness, sozinho, nunca encerra. Ambos os encerramentos são sinalizados por
+  código via `escalate`; o `exit_loop` do prompt é uma via redundante no caminho
+  de aprovação.
 
 ## Relatório de erro ao coder (determinístico)
 
@@ -67,11 +68,6 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
-# Marcador que o prompt manda o executor emitir no encerramento por ESTAGNAÇÃO.
-# Nesse caminho o resumo `bloqueado` é destinado ao reviewer (o loop já vai
-# encerrar), então o callback NÃO o substitui pelo ErrorReport.
-_MARCADOR_ESTAGNACAO = "STATUS: bloqueado"
-
 # Estágios apenas PULADOS são consequência em cascata do que falhou antes
 # ("Abortado: ..."), não trazem evidência útil — só falha/erro entram no report.
 _STATUS_COM_EVIDENCIA = ("falha", "erro")
@@ -125,9 +121,9 @@ _CABECALHO_RECUSA = (
 def _mensagem_de_recusa(bloqueios, arquivos) -> str:
     """Relatório determinístico devolvido ao coder no lugar do ErrorReport.
 
-    NÃO pode começar com o marcador de estagnação (`STATUS: bloqueado`): o
-    TaskIterator classificaria a task como encerrada por estagnação, e isto é o
-    oposto — é um pedido para continuar implementando.
+    É um pedido para CONTINUAR implementando, não um encerramento: quem decide
+    encerrar por falta de progresso é a política (`loop_policy.py`), a partir do
+    histórico de notas — não deste texto.
     """
     inventario = "\n".join(f"- {a}" for a in arquivos) or "- (workspace vazio)"
     return (
@@ -311,9 +307,11 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
     Retorna `None` (preservando a saída original do executor) quando:
     - `state['validation']` está ausente — o mecanismo de propagação não
       disparou; degrada para a prosa do LLM em vez de emitir relatório vazio;
-    - o veredito real é 'aprovado' — não há erro a relatar;
-    - o turno é o encerramento por ESTAGNAÇÃO — o resumo `bloqueado` é destinado
-      ao reviewer e não pode ser sobrescrito.
+    - o veredito real é 'aprovado' — não há erro a relatar.
+
+    Não precisa mais tratar o encerramento por travamento: quando a política
+    decide parar, ela devolve `Content` e o ADK interrompe a cadeia de callbacks
+    antes de chegar aqui (ver `aplicar_politica_de_progresso`).
     """
     validation = callback_context.state.get("validation")
     if not validation:
@@ -324,10 +322,6 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
         return None
 
     if validation.get("status") != "reprovado":
-        return None
-
-    raw = callback_context.state.get("execution_result", "") or ""
-    if _MARCADOR_ESTAGNACAO.casefold() in raw.casefold():
         return None
 
     exec_report = _carregar_execution_report(callback_context)

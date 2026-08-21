@@ -150,7 +150,30 @@ def test_classificar_desfecho_rejeita_work_item_divergente():
     assert resultado["motivo_terminacao"] == "validation_ausente_ou_invalida"
 
 
-def test_classificar_desfecho_detecta_estagnacao():
+def test_classificar_desfecho_detecta_travamento():
+    """O travamento vem do campo tipado da política, não mais de texto cru."""
+    resultado = classificar_desfecho(
+        {
+            "validation": {
+                "work_item_id": "TASK-001",
+                "status": "reprovado",
+                "blocking_reason": "sem progresso",
+            },
+            "loop_stop_reason": "plato_nota",
+        },
+        "TASK-001",
+    )
+    assert resultado["status"] == "bloqueado"
+    assert resultado["motivo_terminacao"] == "bloqueado_plato_nota"
+
+
+def test_marcador_de_texto_nao_encerra_mais_a_task():
+    """Regressão: `STATUS: bloqueado` na saída do LLM era o gatilho antigo.
+
+    Um executor que ainda escrevesse o marcador (ou um coder que o mencionasse
+    por acaso) não pode mais classificar a task como travada — só a política
+    decide isso.
+    """
     resultado = classificar_desfecho(
         {
             "validation": {
@@ -162,8 +185,8 @@ def test_classificar_desfecho_detecta_estagnacao():
         },
         "TASK-001",
     )
-    assert resultado["status"] == "bloqueado"
-    assert resultado["motivo_terminacao"] == "bloqueado_estagnacao"
+    assert resultado["status"] == "reprovado"
+    assert resultado["motivo_terminacao"] == "reprovado_apos_loop"
 
 
 @pytest.mark.asyncio
@@ -281,11 +304,11 @@ def test_motivo_de_travamento_e_preservado(motivo, esperado):
     assert resultado["motivo_terminacao"] == esperado
 
 
-def test_campo_tipado_tem_precedencia_sobre_o_marcador_de_texto():
-    """String-sniffing em `execution_result` é o caminho legado."""
+def test_campo_tipado_decide_mesmo_com_texto_conflitante():
+    """O texto do turno não interfere: só o campo da política é consultado."""
     state = _reprovado(
         loop_stop_reason="plato_nota",
-        execution_result="STATUS: bloqueado\nqualquer coisa",
+        execution_result="tudo certo por aqui",
     )
 
     assert classificar_desfecho(state, "TASK-001")["motivo_terminacao"] == (
@@ -369,3 +392,32 @@ def test_resetar_ciclo_remove_o_estado_de_progresso():
     TaskIterator._resetar_ciclo(state, primeira=False, task_id="TASK-002")
 
     assert not any(chave in state for chave in CHAVES_DE_CICLO)
+
+
+def test_travamento_antes_de_haver_veredito_e_classificado(monkeypatch):
+    """Regressão: o gate pode encerrar o loop antes de o validador rodar.
+
+    Quando o coder nunca produz o mínimo executável, o harness nunca roda e não
+    existe `validation`. O loop encerra corretamente pela política, mas o motivo
+    sumia do summary — virava "validation_ausente_ou_invalida", uma falha
+    genérica que esconde a informação mais útil que temos.
+    """
+    resultado = classificar_desfecho(
+        {
+            "progress_score_history": [0.0, 0.0, 0.0],
+            "loop_stop_reason": "sem_alteracao_arquivos",
+        },
+        "TASK-001",
+    )
+
+    assert resultado["status"] == "bloqueado"
+    assert resultado["motivo_terminacao"] == "bloqueado_sem_alteracao_arquivos"
+    assert resultado["nota_final"] == 0.0
+
+
+def test_veredito_ausente_sem_travamento_continua_reprovado():
+    """Sem motivo de parada, a falta de veredito segue sendo o diagnóstico."""
+    resultado = classificar_desfecho({"progress_score_history": [0.3]}, "TASK-001")
+
+    assert resultado["status"] == "reprovado"
+    assert resultado["motivo_terminacao"] == "validation_ausente_ou_invalida"

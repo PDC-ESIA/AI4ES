@@ -159,15 +159,21 @@ def test_callback_recusa_e_publica_execution_result(executor):
     assert "run.json" in texto and "PLAN.md" in texto
 
 
-def test_recusa_nao_e_confundida_com_estagnacao(executor):
-    """`STATUS: bloqueado` na 1ª linha faria o TaskIterator encerrar a task."""
-    from src.agents.workflow_coding_review.task_iterator import _e_estagnacao
+def test_recusa_isolada_nao_classifica_a_task_como_travada(executor):
+    """A recusa é um pedido para continuar, não um encerramento.
+
+    Antes o risco era textual (o marcador `STATUS: bloqueado` na 1ª linha faria
+    o TaskIterator encerrar a task); agora quem decide é a política, e uma
+    recusa isolada não pode marcar travamento.
+    """
+    from src.agents.workflow_coding_review.task_iterator import classificar_desfecho
 
     _coder_ws({"PLAN.md": "# plano"})
     state = {"task_id": "TASK-001"}
     executor.recusar_execucao_incompleta(_Ctx(state))
 
-    assert not _e_estagnacao(state["execution_result"])
+    state["validation"] = {"work_item_id": "TASK-001", "status": "reprovado"}
+    assert classificar_desfecho(state, "TASK-001")["status"] == "reprovado"
 
 
 def test_callback_libera_workspace_completo(executor):

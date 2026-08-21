@@ -18,15 +18,22 @@ Três gatilhos de parada, com uma assimetria deliberada entre eles:
    workspace.
 3. **Erro repetido** — a mesma assinatura de falha da rodada anterior.
 
-Os gatilhos 2 e 3 NÃO param o loop sozinhos: exigem também ausência de melhora
-na nota. Eles aceleram o platô (disparam antes de a janela inteira se esgotar),
-mas nunca interrompem uma entrega que está progredindo. A razão é concreta:
-o validador julga critérios via LLM e testes podem ser instáveis, então a nota
-pode subir entre rodadas mesmo sem mudança de arquivo — e o próprio protocolo
-que esta política substitui já era cauteloso aqui (o prompt do executor mandava
-rodar o harness mais uma vez antes de declarar estagnação, porque "o ambiente
-pode ter mudado"). Uma versão determinística não pode ser MENOS cautelosa que o
-mecanismo frágil que ela aposenta.
+Os gatilhos 2 e 3 NÃO param o loop sozinhos: exigem que a ausência de progresso
+já tenha PERSISTIDO por `rodadas_para_acelerar` rodadas. Eles aceleram o platô
+(disparam antes de a janela inteira se esgotar), mas nunca interrompem uma
+entrega sobre um único tropeço.
+
+Essa persistência é o que impede o falso positivo mais caro: a nota cai numa
+rodada (a correção que conserta A e quebra B), o coder por acaso não edita nada,
+e a task morre justamente quando a rodada seguinte voltaria a subir. Exigir só
+"não melhorou AGORA" derrubava esse caso — e a nota ter se movido sem alteração
+de arquivo é, se alguma coisa, evidência de NÃO-DETERMINISMO (teste instável,
+serviço lento, julgamento do validador), não de travamento.
+
+O próprio protocolo que esta política substitui já era cauteloso aqui: o prompt
+do executor mandava rodar o harness mais uma vez antes de declarar estagnação,
+porque "o ambiente pode ter mudado". Uma versão determinística não pode ser
+MENOS cautelosa que o mecanismo frágil que ela aposenta.
 
 O teto de iterações do `LoopAgent` continua existindo, mas muda de papel: deixa
 de ser o controle esperado e passa a ser rede de segurança contra um defeito
@@ -38,6 +45,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import math
 import os
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -81,11 +89,16 @@ CHAVES_DE_CICLO: tuple[str, ...] = (
 
 
 def _config(nome: str, padrao: float, minimo: float) -> float:
-    """Lê um parâmetro do ambiente, caindo para o padrão se inutilizável.
+    """Lê um parâmetro fracionário do ambiente, caindo para o padrão se inutilizável.
 
-    Um valor inválido (texto, negativo) não pode derrubar o import do módulo
-    nem, pior, desligar silenciosamente a política: o padrão vale e o problema
-    fica registrado no log.
+    Um valor inválido não pode derrubar o import do módulo nem, pior, desligar
+    silenciosamente a política: o padrão vale e o problema fica registrado no log.
+
+    `nan` e `inf` precisam de checagem PRÓPRIA e não são cobertos pela comparação
+    de mínimo: `float("nan") < minimo` é False e `float("inf") < minimo` também,
+    então ambos passariam adiante como se fossem válidos. Um `nan` desligaria a
+    política em silêncio (toda comparação com ele é False) e um `inf` estouraria
+    na conversão para inteiro.
     """
     bruto = os.environ.get(nome)
     if bruto is None:
@@ -95,6 +108,52 @@ def _config(nome: str, padrao: float, minimo: float) -> float:
     except TypeError, ValueError:
         logger.warning(
             "[LOOP_POLICY] %s=%r não é numérico; usando o padrão %s.",
+            nome,
+            bruto,
+            padrao,
+        )
+        return padrao
+    if not math.isfinite(valor):
+        logger.warning(
+            "[LOOP_POLICY] %s=%r não é finito; usando o padrão %s.",
+            nome,
+            bruto,
+            padrao,
+        )
+        return padrao
+    if valor < minimo:
+        logger.warning(
+            "[LOOP_POLICY] %s=%s abaixo do mínimo %s; usando o padrão %s.",
+            nome,
+            valor,
+            minimo,
+            padrao,
+        )
+        return padrao
+    return valor
+
+
+def config_inteiro(nome: str, padrao: int, minimo: int) -> int:
+    """Lê um parâmetro INTEIRO do ambiente — usada também pelo teto do LoopAgent.
+
+    Parseia com `int()` em vez de reaproveitar `_config`, de propósito: passar
+    por `float` aceitaria `"3.9"` e truncaria para `3` silenciosamente, entregando
+    um limite diferente do que foi configurado. Aqui um valor fracionário é
+    recusado e o padrão vale, o que é honesto e visível no log.
+
+    O teto de segurança precisa dessa robustez tanto quanto a política: um valor
+    inválido não pode derrubar o import nem desligar o limite — um `0` que
+    virasse "ilimitado" no LoopAgent transformaria a rede de segurança em
+    ausência de rede.
+    """
+    bruto = os.environ.get(nome)
+    if bruto is None:
+        return padrao
+    try:
+        valor = int(bruto.strip())
+    except TypeError, ValueError, AttributeError:
+        logger.warning(
+            "[LOOP_POLICY] %s=%r não é um inteiro; usando o padrão %s.",
             nome,
             bruto,
             padrao,
@@ -115,11 +174,19 @@ def _config(nome: str, padrao: float, minimo: float) -> float:
 # Rodadas consecutivas sem melhora que caracterizam platô. Precisa ser >= 2:
 # com 1, uma única rodada de vale (a correção que conserta A e quebra B)
 # encerraria a tarefa — exatamente o falso positivo que a issue pede para evitar.
-JANELA_SEM_PROGRESSO: int = int(_config("AI4ES_JANELA_SEM_PROGRESSO", 3, minimo=2))
+JANELA_SEM_PROGRESSO: int = config_inteiro("AI4ES_JANELA_SEM_PROGRESSO", 3, minimo=2)
 
 # Ganho mínimo para uma rodada contar como progresso. Absorve ruído de ponto
 # flutuante e melhoras cosméticas irrelevantes, sem exigir salto grande.
 MARGEM_MELHORA: float = _config("AI4ES_MARGEM_MELHORA", 0.01, minimo=0.0)
+
+# Rodadas sem progresso exigidas antes que os gatilhos ACELERADORES (sem
+# alteração de arquivos, erro repetido) possam encerrar o loop. Precisa ser >= 2
+# pelo mesmo motivo da janela de platô: com 1, um único vale encerraria a task.
+# Fica ABAIXO de `JANELA_SEM_PROGRESSO` de propósito — é essa diferença que dá
+# aos aceleradores a sua razão de existir; se fossem iguais, eles nunca
+# disparariam antes do platô e seriam código morto.
+RODADAS_PARA_ACELERAR: int = config_inteiro("AI4ES_RODADAS_PARA_ACELERAR", 2, minimo=2)
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +242,7 @@ def avaliar_continuidade(
     *,
     janela_sem_progresso: int = JANELA_SEM_PROGRESSO,
     margem_melhora: float = MARGEM_MELHORA,
+    rodadas_para_acelerar: int = RODADAS_PARA_ACELERAR,
 ) -> DecisaoContinuidade:
     """Decide se o loop para nesta rodada.
 
@@ -194,10 +262,22 @@ def avaliar_continuidade(
     if sem_progresso >= janela_sem_progresso:
         return DecisaoContinuidade(True, MOTIVO_PLATO)
 
-    # Guard compartilhado pelos gatilhos 2 e 3: nenhum deles pode encerrar uma
-    # entrega que melhorou nesta rodada (ver docstring do módulo).
-    houve_melhora = sem_progresso == 0
-    if houve_melhora:
+    # Guard compartilhado pelos gatilhos 2 e 3.
+    #
+    # A versão anterior exigia apenas `sem_progresso >= 1` — ou seja, bastava UMA
+    # rodada abaixo do recorde. Isso contradizia o que este módulo promete: a
+    # sequência 0.50 → 0.42 (vale) com o coder sem editar nada encerrava a task
+    # na hora, mesmo quando a rodada seguinte voltaria a subir. O vale isolado é
+    # justamente o caso que a issue manda tolerar, e ele é ainda mais suspeito
+    # quando o código não mudou: a nota ter se movido sem alteração de arquivo é
+    # evidência de não-determinismo (teste instável, serviço lento, julgamento do
+    # validador), não de travamento.
+    #
+    # Agora os aceleradores exigem que a ausência de progresso já tenha PERSISTIDO
+    # por `rodadas_para_acelerar` rodadas. Eles seguem disparando antes da janela
+    # cheia do platô — que é a razão de existirem —, mas nunca sobre um único
+    # tropeço.
+    if sem_progresso < rodadas_para_acelerar:
         return DecisaoContinuidade(False)
 
     if not arquivos_mudaram:

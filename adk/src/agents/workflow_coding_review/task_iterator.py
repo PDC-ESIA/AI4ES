@@ -32,7 +32,6 @@ from google.adk.events.event_actions import EventActions
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
-from .executor.agent import _MARCADOR_ESTAGNACAO
 from .executor.loop_policy import CHAVE_MOTIVO_PARADA, CHAVES_DE_CICLO
 
 logger = logging.getLogger(__name__)
@@ -221,36 +220,18 @@ def _normalizar_validation(bruto: Any) -> Optional[dict]:
     return None
 
 
-def _e_estagnacao(execution_result: Any) -> bool:
-    """True quando o executor encerrou o loop por ESTAGNAÇÃO.
-
-    O contrato é o marcador que o executor emite na PRIMEIRA linha de
-    `execution_result` (ver executor/prompt.py, passo 4).
-    """
-    if not isinstance(execution_result, str):
-        return False
-    linhas = execution_result.strip().splitlines()
-    if not linhas:
-        return False
-    return linhas[0].strip().casefold().startswith(_MARCADOR_ESTAGNACAO.casefold())
-
-
 def _motivo_de_travamento(state: dict) -> Optional[str]:
     """Motivo do encerramento por travamento, se houve um.
 
-    Prefere o campo TIPADO que a política de progresso grava
-    (`state['loop_stop_reason']`, issue #394) ao string-sniffing em
-    `execution_result` — mesma postura do resto deste módulo, que já evita
-    confiar em texto cru (ver `_normalizar_validation`).
-
-    O caminho antigo permanece como fallback enquanto o prompt do executor ainda
-    instruir o LLM a emitir o marcador; some junto com ele.
+    Lê o campo TIPADO que a política de progresso grava
+    (`state['loop_stop_reason']`, issue #394). Substituiu o string-sniffing de
+    `"STATUS: bloqueado"` na primeira linha de `execution_result`, que dependia
+    de o LLM do executor escrever o marcador exato — mesma postura do resto
+    deste módulo, que evita confiar em texto cru (ver `_normalizar_validation`).
     """
     motivo = state.get(CHAVE_MOTIVO_PARADA)
     if isinstance(motivo, str) and motivo:
         return motivo
-    if _e_estagnacao(state.get("execution_result")):
-        return "estagnacao"
     return None
 
 
@@ -284,9 +265,31 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
         report_path = None
 
     progresso = _progresso(state)
+    motivo_travamento = _motivo_de_travamento(state)
 
     validation = _normalizar_validation(state.get("validation"))
     if validation is None or validation.get("work_item_id") != task_id:
+        # Travamento ANTES de existir veredito. Acontece quando o gate estrutural
+        # recusa todas as rodadas: o coder nunca produz o mínimo executável, o
+        # harness nunca roda e o validador nunca é acionado — mas a política de
+        # progresso encerrou o loop por decisão determinística.
+        #
+        # Sem este ramo, o desfecho virava "validation_ausente_ou_invalida", uma
+        # falha genérica que esconde a informação mais útil que temos: POR QUE o
+        # loop parou. O `loop_stop_reason` é confiável aqui porque é limpo entre
+        # tasks (CHAVES_DE_CICLO), então só pode ser desta task.
+        if motivo_travamento is not None:
+            return {
+                "status": "bloqueado",
+                "blocking_reason": (
+                    "Loop encerrado por falta de progresso antes de haver "
+                    f"veredito (motivo: {motivo_travamento}). O artefato não "
+                    "chegou a ser executável."
+                ),
+                "report_path": report_path,
+                "motivo_terminacao": f"bloqueado_{motivo_travamento}",
+                **progresso,
+            }
         return {
             "status": "reprovado",
             "blocking_reason": (
@@ -311,7 +314,6 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
         }
 
     if status_veredito == "reprovado":
-        motivo_travamento = _motivo_de_travamento(state)
         if motivo_travamento is not None:
             # O motivo específico (platô / sem alteração / erro repetido) é
             # preservado no lugar do antigo "bloqueado_estagnacao" genérico: o
