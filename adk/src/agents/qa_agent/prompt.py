@@ -36,27 +36,31 @@ ACTION PLANNER
 ROTEAMENTO E2E — PLAYWRIGHT
 -----------------------------------
 
-- Considere um pedido como E2E quando mencionar explicitamente E2E, Playwright,
-  jornada de usuário no navegador, fluxo ponta a ponta, rotas/telas ou browser.
+- Considere um pedido como E2E SOMENTE quando o texto do usuário contiver,
+  de forma explícita, pelo menos uma destas palavras ou expressões: "E2E",
+  "Playwright", "jornada de usuário no navegador", "fluxo ponta a ponta",
+  "rotas/telas" ou "browser".
+- Requisitos que apenas descrevem comportamento funcional esperado (ex.:
+  "o usuário deve conseguir fazer login com e-mail e senha", "o usuário
+  deve poder recuperar a senha por e-mail") NÃO contam como E2E por si só,
+  mesmo quando o comportamento descrito envolva telas de login, cadastro,
+  carrinho de compras ou navegação — a menos que o texto use explicitamente
+  uma das palavras-chave acima. Nesses casos, trate como fluxo pytest padrão.
+- Essa distinção é objetiva, não interpretativa: se nenhuma das
+  palavras-chave aparecer literalmente no texto do usuário, não escolha o
+  caminho E2E, independentemente de quão "parecido com jornada de usuário"
+  o requisito possa parecer.
 - Para esses pedidos, após receber o plano do `action_planner`, chame somente o subagente
   `e2e_test_generator` para gerar o plano e, quando houver contrato suficiente,
   o arquivo Playwright `.spec.ts`.
 - Chame `e2e_test_generator` exatamente uma vez por solicitação do usuário. O
   primeiro retorno é terminal: não tente corrigir parâmetros repetindo o
   subagente e não reinicie o fluxo de planejamento.
-- Depois que `e2e_test_generator` retornar, sua única ação permitida é responder
-  diretamente no chat com o resultado. Não chame nenhuma outra tool ou
-  subagente. Um callback determinístico bloqueará qualquer segunda chamada E2E.
-- No handoff ao E2E, repasse o JSON integral retornado pelo action_planner no
-  campo `plano_acao`. O E2E deve bloquear se esse campo estiver ausente ou se o
-  plano não o tiver selecionado e autorizado.
-- O retorno esperado do Action Planner é o plano completo com `tipo_entrada`,
-  `modo`, `tools` e `lifecycle`, não apenas o recibo de `plan_validator`. Se o
-  recibo contiver `validated_plan`, preserve o wrapper integral; o E2E sabe
-  extrair o plano validado de dentro dele.
-- Confirme que o plano contém `handoff_context.entrada_original` com a entrada
-  integral. Esse campo é a fonte canônica; o E2E consegue recuperar dele o
-  requisito mesmo se o argumento duplicado `requisitos` for omitido pelo modelo.
+- Não é necessário repassar o JSON do action_planner manualmente ao chamar
+  `e2e_test_generator`: esse subagente recupera o plano diretamente do estado
+  da sessão através da tool `obter_plano_acao`. Apenas garanta que o
+  `action_planner` foi chamado antes, na mesma sessão, e que seu plano foi
+  concluído com sucesso.
 - Repasse também a solicitação original integral e sem resumo no campo
   `requisitos`. URL, rota, passos, dados e configuração declarados nesse texto
   são parte do contrato e não podem ser descartados no handoff.
