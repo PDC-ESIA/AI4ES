@@ -15,7 +15,9 @@ from google.genai import types
 from pydantic import PrivateAttr
 
 from shared.tools.coding_tools import harness_execucao
+from src.agents.workflow_coding_review.executor.loop_policy import CHAVES_DE_CICLO
 from src.agents.workflow_coding_review.task_iterator import (
+    _CHAVES_CICLO_REMOVIDAS,
     TaskIterator,
     calcular_cobertura,
     classificar_desfecho,
@@ -200,7 +202,9 @@ async def test_iterator_isola_erro_e_continua_proxima_task():
     summary = state["task_iteration_summary"]
     assert summary["processed_task_ids"] == ["TASK-001", "TASK-002"]
     assert summary["approved_task_ids"] == ["TASK-002"]
-    assert summary["task_results"]["TASK-001"]["motivo_terminacao"] == "erro_operacional"
+    assert (
+        summary["task_results"]["TASK-001"]["motivo_terminacao"] == "erro_operacional"
+    )
     assert summary["cobertura_completa"] is False
 
 
@@ -223,9 +227,7 @@ def test_resolver_task_id_state_prevalece_e_fallback_e_preservado(monkeypatch):
         recebidos.append((task_id, iteration, tool_context))
         return {"work_item_id": task_id}
 
-    monkeypatch.setattr(
-        harness_execucao, "executar_harness_validacao", fake_validacao
-    )
+    monkeypatch.setattr(harness_execucao, "executar_harness_validacao", fake_validacao)
     contexto = SimpleNamespace(state={"task_id": "TASK-002"})
 
     resultado = harness_execucao.executar_harness_tool(
@@ -242,3 +244,128 @@ def test_detalhe_erro_operacional_nao_expoe_mensagem_bruta():
     detalhe = detalhe_erro_operacional(RuntimeError("segredo " * 100))
     assert detalhe == "RuntimeError: erro operacional; consulte os logs."
     assert "segredo" not in detalhe
+
+
+# ===========================================================================
+# Política de progresso (issue #394)
+# ===========================================================================
+
+
+def _reprovado(**extra) -> dict:
+    state = {
+        "validation": {
+            "work_item_id": "TASK-001",
+            "status": "reprovado",
+            "blocking_reason": "sem progresso",
+        }
+    }
+    state.update(extra)
+    return state
+
+
+@pytest.mark.parametrize(
+    "motivo,esperado",
+    [
+        ("plato_nota", "bloqueado_plato_nota"),
+        ("sem_alteracao_arquivos", "bloqueado_sem_alteracao_arquivos"),
+        ("erro_repetido", "bloqueado_erro_repetido"),
+    ],
+)
+def test_motivo_de_travamento_e_preservado(motivo, esperado):
+    """O motivo específico distingue 'a solução parou de evoluir' de 'o coder
+    parou de mexer no código' — análises diferentes, antes achatadas num
+    'bloqueado_estagnacao' genérico."""
+    resultado = classificar_desfecho(_reprovado(loop_stop_reason=motivo), "TASK-001")
+
+    assert resultado["status"] == "bloqueado"
+    assert resultado["motivo_terminacao"] == esperado
+
+
+def test_campo_tipado_tem_precedencia_sobre_o_marcador_de_texto():
+    """String-sniffing em `execution_result` é o caminho legado."""
+    state = _reprovado(
+        loop_stop_reason="plato_nota",
+        execution_result="STATUS: bloqueado\nqualquer coisa",
+    )
+
+    assert classificar_desfecho(state, "TASK-001")["motivo_terminacao"] == (
+        "bloqueado_plato_nota"
+    )
+
+
+def test_reprovado_sem_travamento_nao_vira_bloqueado():
+    resultado = classificar_desfecho(_reprovado(), "TASK-001")
+
+    assert resultado["status"] == "reprovado"
+    assert resultado["motivo_terminacao"] == "reprovado_apos_loop"
+
+
+def test_nota_e_historico_aparecem_no_desfecho():
+    state = _reprovado(progress_score_history=[0.2, 0.5, 0.5])
+
+    resultado = classificar_desfecho(state, "TASK-001")
+
+    assert resultado["nota_final"] == 0.5
+    assert resultado["historico_notas"] == [0.2, 0.5, 0.5]
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        {"validation": {"work_item_id": "TASK-001", "status": "aprovado"}},
+        {"validation": {"work_item_id": "TASK-999", "status": "aprovado"}},
+        {"validation": {"work_item_id": "TASK-001", "status": "coisa_estranha"}},
+        {
+            "validation": {"work_item_id": "TASK-001", "status": "reprovado"},
+            "loop_stop_reason": "plato_nota",
+        },
+        {"validation": {"work_item_id": "TASK-001", "status": "reprovado"}},
+    ],
+)
+def test_progresso_acompanha_todos_os_desfechos(state):
+    """Task reprovada ou travada é justamente onde o histórico mais importa."""
+    state = {**state, "progress_score_history": [0.4]}
+
+    resultado = classificar_desfecho(state, "TASK-001")
+
+    assert resultado["nota_final"] == 0.4
+    assert resultado["historico_notas"] == [0.4]
+
+
+def test_historico_ausente_nao_estoura():
+    resultado = classificar_desfecho(_reprovado(), "TASK-001")
+
+    assert resultado["nota_final"] is None
+    assert resultado["historico_notas"] == []
+
+
+def test_historico_corrompido_e_ignorado():
+    state = _reprovado(progress_score_history=["x", None, 0.7])
+
+    assert classificar_desfecho(state, "TASK-001")["nota_final"] == 0.7
+
+
+# ---------------------------------------------------------------------------
+# Não-vazamento entre tasks
+# ---------------------------------------------------------------------------
+
+
+def test_chaves_da_politica_sao_limpas_entre_tasks():
+    """Sem isso, a task seguinte herdaria o histórico e o fingerprint da
+    anterior — sua primeira rodada seria lida como 'sem alteração'."""
+    assert set(CHAVES_DE_CICLO) <= set(_CHAVES_CICLO_REMOVIDAS)
+
+
+def test_resetar_ciclo_remove_o_estado_de_progresso():
+    state = {
+        "progress_score_history": [0.5],
+        "progress_score_details": [{"build_concluido": 1.0}],
+        "progress_last_fingerprint": "abc",
+        "progress_last_error_signature": "def",
+        "loop_stop_reason": "plato_nota",
+        "validation": {"status": "reprovado"},
+    }
+
+    TaskIterator._resetar_ciclo(state, primeira=False, task_id="TASK-002")
+
+    assert not any(chave in state for chave in CHAVES_DE_CICLO)

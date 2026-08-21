@@ -33,6 +33,7 @@ from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
 from .executor.agent import _MARCADOR_ESTAGNACAO
+from .executor.loop_policy import CHAVE_MOTIVO_PARADA, CHAVES_DE_CICLO
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +45,23 @@ _ID_TASK_RE = re.compile(r"^TASK-[0-9]{3,}$")
 # Chaves de ciclo do loop coder ↔ executor, removidas entre tasks para que uma
 # task nunca herde o desfecho da anterior. Removidas (pop) e não zeradas: quem
 # as consome checa ausência, e `None` não representa ausência sem ambiguidade.
-_CHAVES_CICLO_REMOVIDAS = ("validation", "report_path", "error_report")
+#
+# As chaves da política de progresso vêm de `CHAVES_DE_CICLO` (issue #394) em vez
+# de repetidas aqui: quem as cria é o `loop_policy`, e uma chave nova que
+# escapasse desta limpeza faria a task seguinte herdar o histórico da anterior —
+# a primeira rodada dela seria lida como "sem alteração" e poderia ser cortada
+# antes de qualquer tentativa real.
+_CHAVES_CICLO_REMOVIDAS = (
+    "validation",
+    "report_path",
+    "error_report",
+) + CHAVES_DE_CICLO
 
 # Marcador do 3º ramo do coder (ver coder/prompt.py): a partir da 2ª task,
 # `execution_result` nunca fica ausente — se ficasse, o coder entenderia
 # "primeira execução" e tentaria reconstruir o projeto do zero.
 _MARCADOR_NOVA_TASK = "NOVA_TASK:"
+
 
 def marcador_nova_task(task_id: str) -> str:
     """Conteúdo de `execution_result` injetado a partir da 2ª task."""
@@ -223,6 +235,44 @@ def _e_estagnacao(execution_result: Any) -> bool:
     return linhas[0].strip().casefold().startswith(_MARCADOR_ESTAGNACAO.casefold())
 
 
+def _motivo_de_travamento(state: dict) -> Optional[str]:
+    """Motivo do encerramento por travamento, se houve um.
+
+    Prefere o campo TIPADO que a política de progresso grava
+    (`state['loop_stop_reason']`, issue #394) ao string-sniffing em
+    `execution_result` — mesma postura do resto deste módulo, que já evita
+    confiar em texto cru (ver `_normalizar_validation`).
+
+    O caminho antigo permanece como fallback enquanto o prompt do executor ainda
+    instruir o LLM a emitir o marcador; some junto com ele.
+    """
+    motivo = state.get(CHAVE_MOTIVO_PARADA)
+    if isinstance(motivo, str) and motivo:
+        return motivo
+    if _e_estagnacao(state.get("execution_result")):
+        return "estagnacao"
+    return None
+
+
+def _progresso(state: dict) -> dict:
+    """Nota final e histórico da task, para o summary do iterator.
+
+    Vai em TODOS os ramos de `classificar_desfecho`, não só no de sucesso: uma
+    task reprovada ou travada é exatamente o caso em que o histórico mais
+    importa para auditoria e para a revisão a jusante.
+    """
+    historico = state.get("progress_score_history")
+    historico = (
+        [n for n in historico if isinstance(n, (int, float))]
+        if isinstance(historico, list)
+        else []
+    )
+    return {
+        "nota_final": historico[-1] if historico else None,
+        "historico_notas": historico,
+    }
+
+
 def classificar_desfecho(state: dict, task_id: str) -> dict:
     """Classifica o desfecho da task a partir do state, sem confiar cegamente.
 
@@ -232,6 +282,8 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
     report_path = state.get("report_path")
     if not (isinstance(report_path, str) and _report_path_valido(report_path, task_id)):
         report_path = None
+
+    progresso = _progresso(state)
 
     validation = _normalizar_validation(state.get("validation"))
     if validation is None or validation.get("work_item_id") != task_id:
@@ -243,6 +295,7 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
             ),
             "report_path": report_path,
             "motivo_terminacao": "validation_ausente_ou_invalida",
+            **progresso,
         }
 
     status_veredito = validation.get("status")
@@ -254,21 +307,29 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
             "blocking_reason": blocking_reason,
             "report_path": report_path,
             "motivo_terminacao": "aprovado",
+            **progresso,
         }
 
     if status_veredito == "reprovado":
-        if _e_estagnacao(state.get("execution_result")):
+        motivo_travamento = _motivo_de_travamento(state)
+        if motivo_travamento is not None:
+            # O motivo específico (platô / sem alteração / erro repetido) é
+            # preservado no lugar do antigo "bloqueado_estagnacao" genérico: o
+            # dado já existe e distingue "a solução parou de evoluir" de "o
+            # coder parou de mexer no código", que pedem análises diferentes.
             return {
                 "status": "bloqueado",
                 "blocking_reason": blocking_reason,
                 "report_path": report_path,
-                "motivo_terminacao": "bloqueado_estagnacao",
+                "motivo_terminacao": f"bloqueado_{motivo_travamento}",
+                **progresso,
             }
         return {
             "status": "reprovado",
             "blocking_reason": blocking_reason,
             "report_path": report_path,
             "motivo_terminacao": "reprovado_apos_loop",
+            **progresso,
         }
 
     # Status fora do enum VerdictStatus — fail-closed, como veredito inválido.
@@ -277,6 +338,7 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
         "blocking_reason": (f"Veredito com status inesperado: {status_veredito!r}."),
         "report_path": report_path,
         "motivo_terminacao": "validation_ausente_ou_invalida",
+        **progresso,
     }
 
 
@@ -430,6 +492,10 @@ class TaskIterator(BaseAgent):
                     "blocking_reason": detalhe_erro_operacional(exc),
                     "report_path": None,
                     "motivo_terminacao": "erro_operacional",
+                    # Também aqui: a task pode ter progredido por várias rodadas
+                    # antes do erro operacional, e esse histórico é a única
+                    # pista do que ela chegou a alcançar.
+                    **_progresso(state),
                 }
             else:
                 resultado = classificar_desfecho(state, task_id)
