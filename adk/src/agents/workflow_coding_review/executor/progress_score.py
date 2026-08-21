@@ -126,11 +126,14 @@ def _inteiro(valor: Any) -> int:
     return 0
 
 
-def _estagios_por_nome(report: dict) -> dict[str, dict]:
+def estagios_por_nome(report: dict) -> dict[str, dict]:
     """Indexa `report['stages']` por nome do estágio, ignorando itens inválidos.
 
     Se o mesmo estágio aparecer duas vezes, a ÚLTIMA ocorrência vence — é a que
     reflete o estado final da passagem pelo harness.
+
+    Pública porque `loop_policy` também percorre os estágios, para montar a
+    assinatura de erro a partir dos mesmos dados.
     """
     indexado: dict[str, dict] = {}
     for item in report.get("stages") or []:
@@ -250,6 +253,36 @@ def redistribuir_pesos(
 # ---------------------------------------------------------------------------
 
 
+def contagem_de_testes(estagio: Optional[dict]) -> tuple[int, int, int]:
+    """Soma `(passaram, falharam, erros)` do estágio de testes automatizados.
+
+    O harness registra um `resumo` POR COMANDO em
+    `evidence['resultados'][*]['resumo']` e não persiste um agregado — o total
+    que aparece no `summary` do estágio é só texto. A soma é feita aqui.
+
+    Pública porque `loop_policy` também precisa dela: a assinatura de erro usa
+    a contagem para distinguir "mesma falha de novo" de "mesma falha, porém com
+    menos testes quebrados" — sem isso, uma rodada que vai de 10/30 para 28/30
+    teria assinatura idêntica e poderia ser lida como travamento.
+    """
+    if not isinstance(estagio, dict):
+        return 0, 0, 0
+
+    evidencia = estagio.get("evidence")
+    resultados = evidencia.get("resultados") if isinstance(evidencia, dict) else None
+
+    passaram = falharam = erros = 0
+    for resultado in resultados or []:
+        resumo = resultado.get("resumo") if isinstance(resultado, dict) else None
+        if not isinstance(resumo, dict):
+            continue
+        passaram += _inteiro(resumo.get("passaram"))
+        falharam += _inteiro(resumo.get("falharam"))
+        erros += _inteiro(resumo.get("erros"))
+
+    return passaram, falharam, erros
+
+
 def _score_estagio_binario(estagio: Optional[dict]) -> float:
     """1.0 se o estágio concluiu com sucesso; 0.0 em qualquer outro caso.
 
@@ -285,18 +318,7 @@ def _score_testes(estagio: Optional[dict]) -> float:
     if not isinstance(estagio, dict):
         return 0.0
 
-    evidencia = estagio.get("evidence")
-    resultados = evidencia.get("resultados") if isinstance(evidencia, dict) else None
-
-    passaram = falharam = erros = 0
-    for resultado in resultados or []:
-        resumo = resultado.get("resumo") if isinstance(resultado, dict) else None
-        if not isinstance(resumo, dict):
-            continue
-        passaram += _inteiro(resumo.get("passaram"))
-        falharam += _inteiro(resumo.get("falharam"))
-        erros += _inteiro(resumo.get("erros"))
-
+    passaram, falharam, erros = contagem_de_testes(estagio)
     total = passaram + falharam + erros
     if total > 0:
         return passaram / total
@@ -345,7 +367,7 @@ def calcular_nota(execution_report: Any, validation: Any) -> NotaProgresso:
     report = execution_report if isinstance(execution_report, dict) else {}
     verdict = validation if isinstance(validation, dict) else {}
 
-    estagios = _estagios_por_nome(report)
+    estagios = estagios_por_nome(report)
     surface, test_commands = _contexto_do_manifesto(estagios)
     aplicaveis = graus_aplicaveis(surface, test_commands)
     pesos = redistribuir_pesos(aplicaveis)
