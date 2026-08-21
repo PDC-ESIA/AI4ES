@@ -99,7 +99,44 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=_DEFAULT_OUTPUT,
         help="Diretório-base dos relatórios de saída.",
     )
+    p.add_argument(
+        "--resume-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Retoma um run existente: reutiliza o diretório informado, pula os "
+            "problemas já concluídos (lidos de progress.jsonl) e completa o resto."
+        ),
+    )
     return p.parse_args(argv)
+
+
+def _carregar_progresso(progress_path: Path) -> dict[str, dict]:
+    """Lê o checkpoint incremental (progress.jsonl) e devolve {task_id: detalhe}.
+
+    Cada linha é o dicionário-detalhe de um problema já concluído. Linhas
+    corrompidas (ex.: escrita truncada por um kill) são ignoradas com aviso.
+    """
+    concluidos: dict[str, dict] = {}
+    if not progress_path.is_file():
+        return concluidos
+    for linha in progress_path.read_text(encoding="utf-8").splitlines():
+        linha = linha.strip()
+        if not linha:
+            continue
+        try:
+            detalhe = json.loads(linha)
+            concluidos[detalhe["task_id"]] = detalhe
+        except (json.JSONDecodeError, KeyError):
+            print(f"[run] Aviso: linha inválida em {progress_path.name}, ignorada.")
+    return concluidos
+
+
+def _append_progresso(progress_path: Path, detalhe: dict) -> None:
+    """Anexa (e faz flush de) o detalhe de um problema ao checkpoint incremental."""
+    with progress_path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(detalhe, ensure_ascii=False) + "\n")
+        fh.flush()
 
 
 async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
@@ -116,12 +153,30 @@ async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
         limit=args.limit,
         task_ids=args.task_ids,
     )
+
+    # Checkpoint incremental: sobrevive a timeouts/kills e permite retomada.
+    run_dir.mkdir(parents=True, exist_ok=True)
+    progress_path = run_dir / "progress.jsonl"
+    concluidos = _carregar_progresso(progress_path)
+    if concluidos:
+        print(f"[run] Retomando: {len(concluidos)} problema(s) já concluído(s), pulando-os.")
     print(f"[run] {len(problemas)} problema(s) a executar, {args.samples} amostra(s) cada.")
 
     detalhes: list[dict] = []
     per_problem: list[tuple[int, int]] = []
 
     for idx, problema in enumerate(problemas, start=1):
+        # Retomada: reaproveita resultados já persistidos.
+        if problema.task_id in concluidos:
+            detalhe = concluidos[problema.task_id]
+            detalhes.append(detalhe)
+            per_problem.append((detalhe["n"], detalhe["correct"]))
+            print(
+                f"[run] ({idx}/{len(problemas)}) {problema.task_id}: "
+                f"CACHE ({detalhe['correct']}/{detalhe['n']})"
+            )
+            continue
+
         corretas = 0
         amostras_info: list[dict] = []
         for amostra in range(args.samples):
@@ -178,15 +233,16 @@ async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
             )
 
         per_problem.append((args.samples, corretas))
-        detalhes.append(
-            {
-                "task_id": problema.task_id,
-                "entry_point": problema.entry_point,
-                "n": args.samples,
-                "correct": corretas,
-                "samples": amostras_info,
-            }
-        )
+        detalhe = {
+            "task_id": problema.task_id,
+            "entry_point": problema.entry_point,
+            "n": args.samples,
+            "correct": corretas,
+            "samples": amostras_info,
+        }
+        detalhes.append(detalhe)
+        # Checkpoint imediato: persiste o problema recém-concluído.
+        _append_progresso(progress_path, detalhe)
 
     metricas = aggregate_pass_at_k(per_problem, args.k)
 
@@ -244,8 +300,13 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = args.output_dir / f"run_{timestamp}"
+    if args.resume_dir is not None:
+        run_dir = args.resume_dir
+        if not run_dir.is_dir():
+            print(f"[run] Aviso: --resume-dir {run_dir} não existe; criando do zero.")
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_dir = args.output_dir / f"run_{timestamp}"
     workspace_dir = run_dir / "workspace"
 
     bootstrap.prepare_environment(workspace_dir, model=args.model)
