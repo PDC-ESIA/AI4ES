@@ -294,6 +294,35 @@ def fingerprint_mudou(state: dict) -> bool:
     return atual != anterior
 
 
+def registrar_rodada(
+    state: dict, nota_total: float, nota_detalhe: Optional[dict]
+) -> list[float]:
+    """Acrescenta a rodada ao histórico de notas e devolve o histórico completo.
+
+    Separada de `registrar_e_avaliar` por causa do caminho de APROVAÇÃO: a
+    rodada aprovada precisa entrar no histórico (o critério de aceite pede que a
+    nota final fique registrada), mas não pode passar pela política — uma task
+    concluída com sucesso não pode terminar marcada com motivo de parada por
+    platô, o que confundiria a classificação do desfecho no `TaskIterator`.
+
+    Args:
+        nota_detalhe: Score por degrau da rodada, ou `None` no caminho do gate
+            estrutural, onde não há `NotaProgresso` (nada foi executado).
+    """
+    # As listas são RECRIADAS e reatribuídas, nunca mutadas no lugar: o `state`
+    # do callback rastreia delta por atribuição de chave, e um `append` numa
+    # lista aninhada poderia não ser persistido fora desta invocação.
+    historico = list(state.get(CHAVE_HISTORICO) or [])
+    historico.append(nota_total)
+    state[CHAVE_HISTORICO] = historico
+
+    detalhes = list(state.get(CHAVE_DETALHES) or [])
+    detalhes.append(nota_detalhe)
+    state[CHAVE_DETALHES] = detalhes
+
+    return historico
+
+
 def registrar_e_avaliar(
     state: dict,
     nota_total: float,
@@ -312,21 +341,8 @@ def registrar_e_avaliar(
 
     Quem seta `escalate` é cada chamador, porque cada callback tem o seu próprio
     `callback_context` — aqui só se decide.
-
-    Args:
-        nota_detalhe: Score por degrau da rodada, ou `None` no caminho do gate,
-            onde não há `NotaProgresso` (nada foi executado).
     """
-    # As listas são RECRIADAS e reatribuídas, nunca mutadas no lugar: o `state`
-    # do callback rastreia delta por atribuição de chave, e um `append` numa
-    # lista aninhada poderia não ser persistido fora desta invocação.
-    historico = list(state.get(CHAVE_HISTORICO) or [])
-    historico.append(nota_total)
-    state[CHAVE_HISTORICO] = historico
-
-    detalhes = list(state.get(CHAVE_DETALHES) or [])
-    detalhes.append(nota_detalhe)
-    state[CHAVE_DETALHES] = detalhes
+    historico = registrar_rodada(state, nota_total, nota_detalhe)
 
     decisao = avaliar_continuidade(
         historico_notas=historico,

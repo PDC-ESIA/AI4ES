@@ -53,6 +53,13 @@ from src.agents.implementation_validator import root_agent as implementation_val
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from . import prompt as executor_prompt
+from .loop_policy import (
+    assinatura_erro,
+    fingerprint_mudou,
+    registrar_e_avaliar,
+    registrar_rodada,
+)
+from .progress_score import NotaProgresso, calcular_nota
 from .schemas import ErrorReport, FailedCriterion, FailedStage
 
 logger = logging.getLogger(__name__)
@@ -146,8 +153,16 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
 
     A checagem cobre apenas condições que o harness TAMBÉM reprovaria no estágio
     1 — sem `run.json`, manifesto incoerente, nenhum código. Como falso positivo
-    é impossível nesse conjunto, o gate não precisa de teto de tentativas: nunca
-    trava uma implementação legítima.
+    é impossível nesse conjunto, a RECUSA em si não tem teto de tentativas: o
+    gate nunca cede enquanto faltar o mínimo, e nunca trava uma implementação
+    legítima.
+
+    O que passou a ter limite (issue #394) é o LOOP, não o gate: recusas
+    consecutivas entram na política de progresso como nota 0.0, e o platô acaba
+    encerrando a task. São coisas diferentes — o gate continua recusando
+    corretamente para sempre; o que se reconhece é que um coder incapaz de
+    produzir o mínimo executável depois de várias rodadas está travado, e
+    insistir só queima orçamento.
 
     ATENÇÃO — `state["execution_result"]` é escrito AQUI, na mão: quando um
     `before_agent_callback` devolve Content, o ADK marca `end_invocation=True` e
@@ -170,9 +185,122 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
         "; ".join(resultado.bloqueios),
     )
 
+    # A rodada recusada TAMBÉM entra na política de progresso (issue #394).
+    # Quando este callback devolve Content, o ADK marca `end_invocation` e nenhum
+    # `after_agent_callback` roda — então, se a avaliação não acontecesse aqui,
+    # um coder que trava justamente neste ponto (nunca produz manifesto válido
+    # ou código) não geraria rodada nenhuma no histórico, nenhum gatilho o
+    # enxergaria, e ele só pararia no teto de segurança.
+    #
+    # Nota 0.0 sem detalhamento: o degrau `MINIMO_PARA_RODAR` não foi vencido e
+    # nada a jusante chegou a ser tentado. Sem ExecutionReport não há assinatura
+    # de erro, então o gatilho de erro repetido não se aplica a este caminho.
+    decisao = registrar_e_avaliar(
+        state,
+        nota_total=0.0,
+        nota_detalhe=None,
+        arquivos_mudaram=fingerprint_mudou(state),
+    )
+
     mensagem = _mensagem_de_recusa(resultado.bloqueios, resultado.arquivos)
     state["execution_result"] = mensagem
+
+    if decisao.parar:
+        # `escalate` setado aqui chega ao LoopAgent: o evento do
+        # before_agent_callback é emitido com `actions=callback_context
+        # ._event_actions` ANTES de `end_invocation` cortar o turno.
+        callback_context.actions.escalate = True
+        logger.warning(
+            "[EXECUTABILIDADE] Loop encerrado por %s após recusas consecutivas "
+            "na task %s.",
+            decisao.motivo,
+            state.get("task_id"),
+        )
+
     return types.Content(role="model", parts=[types.Part(text=mensagem)])
+
+
+def _resumo_da_parada(motivo: Optional[str], nota: NotaProgresso) -> str:
+    """Texto do turno quando a política encerra o loop por travamento.
+
+    Destinado ao reviewer a jusante, não ao coder: quando este texto é
+    produzido, o loop já vai encerrar e não haverá nova rodada de correção.
+    """
+    detalhe = ", ".join(
+        f"{degrau}={score:.2f}" for degrau, score in sorted(nota.como_dict().items())
+    )
+    return (
+        f"LOOP ENCERRADO POR FALTA DE PROGRESSO ({motivo}).\n"
+        f"Nota de progresso final: {nota.total:.3f}.\n"
+        f"Degraus: {detalhe}.\n"
+        "Este encerramento NÃO é aprovação — o veredito permanece 'reprovado'."
+    )
+
+
+def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
+    """PRIMEIRO `after_agent_callback` do executor — a política da issue #394.
+
+    Calcula a nota da rodada e decide, POR CÓDIGO, se o loop continua. Substitui
+    o "protocolo anti-estagnação" do prompt, que dependia de o LLM do executor
+    perceber o travamento e declarar por conta própria.
+
+    A ordem na lista de callbacks é carga estrutural, não estilo: o ADK para no
+    PRIMEIRO callback que devolve `Content` não-vazio, e `montar_error_report`
+    devolve `Content` em toda rodada reprovada — o caso comum. Se este callback
+    viesse depois, nunca rodaria justamente nas rodadas que importam.
+
+    Returns:
+        `Content` apenas quando a política decide PARAR por travamento —
+        substituindo o turno, para que o coder não receba um relatório
+        "conserte isto" numa rodada que não vai existir. Nos demais casos
+        devolve `None`, deixando `montar_error_report` seguir normalmente.
+    """
+    state = callback_context.state
+    validation = state.get("validation")
+    if not validation:
+        # Mesma degradação de `montar_error_report`: sem veredito não há como
+        # medir a rodada, e inventar uma nota seria pior que não registrar.
+        logger.warning(
+            "cr_executor: state['validation'] ausente; rodada não entra no "
+            "histórico de progresso."
+        )
+        return None
+
+    exec_report = _carregar_execution_report(callback_context)
+    nota = calcular_nota(exec_report, validation)
+
+    if validation.get("status") == "aprovado":
+        # A rodada aprovada TAMBÉM entra no histórico: sem isso, a nota final da
+        # task seria a da penúltima rodada (reprovada) — e o critério de aceite
+        # pede a nota final registrada.
+        registrar_rodada(state, nota.total, nota.como_dict())
+        # Encerramento determinístico. O prompt continua pedindo `exit_loop` ao
+        # LLM no caminho de aprovação; as duas vias são independentes e
+        # redundantes de propósito, como o teto do LoopAgent.
+        callback_context.actions.escalate = True
+        logger.info(
+            "[PROGRESSO] Task %s aprovada com nota %.3f (histórico=%s).",
+            state.get("task_id"),
+            nota.total,
+            state.get("progress_score_history"),
+        )
+        # `None` preserva o texto de confirmação que o executor já produz.
+        return None
+
+    decisao = registrar_e_avaliar(
+        state,
+        nota_total=nota.total,
+        nota_detalhe=nota.como_dict(),
+        arquivos_mudaram=fingerprint_mudou(state),
+        assinatura_erro_atual=assinatura_erro(exec_report, validation),
+    )
+    if not decisao.parar:
+        return None
+
+    callback_context.actions.escalate = True
+    resumo = _resumo_da_parada(decisao.motivo, nota)
+    state["execution_result"] = resumo
+    return types.Content(role="model", parts=[types.Part(text=resumo)])
 
 
 def montar_error_report(callback_context) -> Optional[types.Content]:
@@ -264,4 +392,8 @@ agent = LlmAgent(
     ],
 )
 agent.before_agent_callback = recusar_execucao_incompleta
-agent.after_agent_callback = montar_error_report
+# A ORDEM é carga estrutural: o ADK executa os callbacks em sequência e PARA no
+# primeiro que devolver `Content` não-vazio. `montar_error_report` devolve
+# `Content` em toda rodada reprovada — o caso comum —, então a política precisa
+# vir antes, ou nunca rodaria justamente nas rodadas que ela existe para julgar.
+agent.after_agent_callback = [aplicar_politica_de_progresso, montar_error_report]

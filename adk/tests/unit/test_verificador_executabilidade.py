@@ -86,7 +86,11 @@ def test_apenas_arquivos_meta_bloqueia(tmp_path):
 def test_workspace_implementavel_passa(tmp_path):
     raiz = _workspace(
         tmp_path,
-        {"run.json": _RUN_JSON_VALIDO, "PLAN.md": "# plano", "app/main.py": "print('x')"},
+        {
+            "run.json": _RUN_JSON_VALIDO,
+            "PLAN.md": "# plano",
+            "app/main.py": "print('x')",
+        },
     )
 
     assert verificar_executabilidade(raiz).executavel
@@ -108,15 +112,21 @@ def test_workspace_inexistente_bloqueia(tmp_path):
 @pytest.fixture
 def executor(tmp_path, monkeypatch):
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    modulo = importlib.import_module(
-        "src.agents.workflow_coding_review.executor.agent"
-    )
+    modulo = importlib.import_module("src.agents.workflow_coding_review.executor.agent")
     return importlib.reload(modulo)
+
+
+class _Acoes:
+    """`CallbackContext.actions` — o gate passou a setar `escalate` (issue #394)."""
+
+    def __init__(self):
+        self.escalate = None
 
 
 class _Ctx:
     def __init__(self, state):
         self.state = state
+        self.actions = _Acoes()
 
 
 def _coder_ws(arquivos: dict[str, str]):

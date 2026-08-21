@@ -63,9 +63,9 @@ def test_executor_agent_tem_3_tools(executor_module):
 def test_executor_compoe_harness_validador_exit_loop(executor_module):
     """As três peças novas estão presentes e nomeadas."""
     names = _tool_names(executor_module.agent)
-    assert "executar_harness_tool" in names        # harness (bound ao workspace do workflow)
-    assert "implementation_validator" in names     # AgentTool do validador
-    assert "exit_loop" in names                    # encerramento pelo veredito
+    assert "executar_harness_tool" in names  # harness (bound ao workspace do workflow)
+    assert "implementation_validator" in names  # AgentTool do validador
+    assert "exit_loop" in names  # encerramento pelo veredito
 
 
 # ===========================================================================
@@ -101,8 +101,8 @@ def test_executor_sem_last_exec_status(executor_module):
 def test_executor_instruction_tem_salvaguarda(executor_module):
     """A instrução impõe a obediência ao veredito e proíbe exit por execução."""
     instr = executor_module.agent.instruction.lower()
-    assert "obede" in instr                     # DEVE OBEDECER ao veredito
-    assert "apenas o veredito" in instr          # só o veredito encerra
+    assert "obede" in instr  # DEVE OBEDECER ao veredito
+    assert "apenas o veredito" in instr  # só o veredito encerra
     assert "não decide" in instr or "nao decide" in instr
 
 
@@ -172,6 +172,186 @@ def test_loop_agent_max_iterations():
     from src.agents.workflow_coding_review.agent import _code_execute_loop
 
     assert _code_execute_loop.max_iterations == 5
+
+
+# ===========================================================================
+# Política de progresso (issue #394) — decisão de parada fora do LLM
+# ===========================================================================
+
+
+class _Acoes:
+    """Espelha `CallbackContext.actions` no que importa para a política."""
+
+    def __init__(self):
+        self.escalate = None
+
+
+class _Contexto:
+    def __init__(self, state=None):
+        self.state = state if state is not None else {}
+        self.actions = _Acoes()
+
+
+def _veredito(status: str, *criterios: str) -> dict:
+    return {
+        "work_item_id": "TASK-001",
+        "status": status,
+        "criteria_verdicts": [
+            {"criterion": f"CA-{i}", "status": s, "reasoning": ""}
+            for i, s in enumerate(criterios)
+        ],
+    }
+
+
+def test_ordem_dos_after_callbacks_e_carga_estrutural(executor_module):
+    """A política precisa vir ANTES de `montar_error_report`.
+
+    O ADK para no primeiro callback que devolve Content, e o error report
+    devolve Content em toda rodada reprovada — o caso comum. Invertida, a
+    política nunca rodaria nas rodadas que ela existe para julgar.
+    """
+    callbacks = executor_module.agent.after_agent_callback
+
+    assert isinstance(callbacks, list)
+    assert callbacks[0] is executor_module.aplicar_politica_de_progresso
+    assert callbacks[1] is executor_module.montar_error_report
+
+
+def test_rodada_aprovada_entra_no_historico(executor_module, monkeypatch):
+    """Sem isso, a nota final da task seria a da penúltima rodada (reprovada)."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    ctx = _Contexto({"validation": _veredito("aprovado", "atendido")})
+
+    devolvido = executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.state["progress_score_history"], (
+        "rodada aprovada ficou fora do histórico"
+    )
+    assert ctx.state["progress_score_details"][-1] is not None
+    assert devolvido is None, "o texto de confirmação do executor foi sobrescrito"
+
+
+def test_aprovacao_encerra_o_loop_deterministicamente(executor_module, monkeypatch):
+    """Não depende do LLM lembrar de chamar `exit_loop`."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    ctx = _Contexto({"validation": _veredito("aprovado", "atendido")})
+
+    executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.actions.escalate is True
+
+
+def test_aprovacao_nao_marca_motivo_de_parada(executor_module, monkeypatch):
+    """Task concluída com sucesso não pode terminar rotulada como travada."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    ctx = _Contexto({"validation": _veredito("aprovado", "atendido")})
+
+    executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert "loop_stop_reason" not in ctx.state
+
+
+def test_rodada_reprovada_com_progresso_nao_encerra(executor_module, monkeypatch):
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
+
+    devolvido = executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.actions.escalate is None
+    assert devolvido is None, "deixar de devolver None impediria o ErrorReport"
+
+
+def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch):
+    """Mesma falha e nota parada: encerra já na 2ª rodada, sem esperar a janela.
+
+    No encerramento o turno é substituído — o coder não pode receber um
+    relatório "conserte isto" referente a uma rodada que não vai existir.
+    """
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
+
+    primeira = executor_module.aplicar_politica_de_progresso(ctx)
+    segunda = executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert primeira is None, "a 1ª rodada não tem com o que comparar"
+    assert ctx.actions.escalate is True
+    assert ctx.state["loop_stop_reason"] == "erro_repetido"
+    assert "NÃO é aprovação" in segunda.parts[0].text
+
+
+def test_plato_encerra_quando_a_falha_muda_mas_a_nota_nao(executor_module, monkeypatch):
+    """Falhas diferentes a cada rodada afastam o gatilho de erro repetido; sobra
+    o platô, que é o gatilho autônomo e precisa da janela inteira."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    contador = iter(range(100))
+    monkeypatch.setattr(
+        executor_module, "assinatura_erro", lambda *_: f"falha-{next(contador)}"
+    )
+    ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
+
+    decisoes = [executor_module.aplicar_politica_de_progresso(ctx) for _ in range(4)]
+
+    assert decisoes[2] is None, "encerrou antes de esgotar a janela"
+    assert ctx.state["loop_stop_reason"] == "plato_nota"
+    assert decisoes[3] is not None
+
+
+def test_veredito_ausente_nao_registra_rodada(executor_module):
+    ctx = _Contexto({})
+
+    assert executor_module.aplicar_politica_de_progresso(ctx) is None
+    assert "progress_score_history" not in ctx.state
+
+
+# ---------------------------------------------------------------------------
+# Gate estrutural — rodadas recusadas também passam pela política
+# ---------------------------------------------------------------------------
+
+
+def test_recusa_registra_nota_zero(executor_module, monkeypatch):
+    """O gate corta o turno antes de qualquer after_agent_callback; se ele não
+    registrasse, essas rodadas ficariam invisíveis a todos os gatilhos."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: False)
+    ctx = _Contexto({"task_id": "TASK-001"})
+
+    executor_module.recusar_execucao_incompleta(ctx)
+
+    assert ctx.state["progress_score_history"] == [0.0]
+    assert ctx.state["progress_score_details"] == [None]
+
+
+def test_recusas_seguidas_encerram_o_loop(executor_module, monkeypatch):
+    """Regressão: registrar o zero sem AVALIAR deixaria o coder travado no gate
+    rodando até o teto de segurança."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: False)
+    ctx = _Contexto({"task_id": "TASK-001"})
+
+    for _ in range(4):
+        executor_module.recusar_execucao_incompleta(ctx)
+
+    assert ctx.actions.escalate is True
+    assert ctx.state["loop_stop_reason"] is not None
+
+
+def test_primeira_recusa_nao_encerra(executor_module, monkeypatch):
+    """Uma recusa isolada é normal — o coder ainda vai implementar."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: False)
+    ctx = _Contexto({"task_id": "TASK-001"})
+
+    executor_module.recusar_execucao_incompleta(ctx)
+
+    assert ctx.actions.escalate is None
+
+
+def test_recusa_preserva_a_mensagem_ao_coder(executor_module, monkeypatch):
+    """O relatório de recusa continua sendo o que o coder recebe."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: False)
+    ctx = _Contexto({"task_id": "TASK-001"})
+
+    devolvido = executor_module.recusar_execucao_incompleta(ctx)
+
+    assert devolvido is not None
+    assert executor_module._CABECALHO_RECUSA in ctx.state["execution_result"]
 
 
 def test_loop_agent_sub_agents_order():
