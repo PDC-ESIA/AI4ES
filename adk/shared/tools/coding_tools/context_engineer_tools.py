@@ -1,17 +1,21 @@
 """Tools do Agente Context Engineer.
 
-Persistência de tasks contextualizadas como JSON no workspace centralizado.
-Leitura de artefatos de requisitos e design diretamente do workspace.
-Geração de Doubt Artifact em caso de bloqueio.
+Persistência de tasks contextualizadas como JSON no workspace:
+  - tool_salvar_task    → workspace_output/tasks/ (canônico)
+  - tool_salvar_task_cr → workspace_output/coder/tasks/ (workflow coding_review)
+Leitura de artefatos de requisitos via paths extraídos do manifesto pelo LLM.
+Leitura de artefatos de design diretamente do workspace (fallback enquanto o Time 2 não produz manifesto).
+Geração de Doubt Artifact e pausa HITL em caso de bloqueio.
 """
 
 import json
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
-from google.adk.tools import FunctionTool
+from google.adk.tools import FunctionTool, LongRunningFunctionTool, ToolContext
 
 from shared.workspace import get_agent_workspace, get_workspace_root
 
@@ -44,46 +48,22 @@ class DoubtArtifactSchema(BaseModel):
             raise ValueError("O Doubt Artifact deve ser um arquivo .md.")
         return v
 
-def tool_salvar_task(task_id: str, task_json: str) -> dict:
-    """Salva uma task contextualizada como JSON em workspace/tasks/.
-
-    Usa get_agent_workspace("context_engineer") — o workspace é resolvido via
-    a variável de ambiente WORKSPACE_OUTPUT_DIR (default: ./workspace_output).
-
-    Args:
-        task_id (str): Identificador da task (ex: 'TASK-001').
-        task_json (str): Conteúdo JSON serializado da task completa.
-
-    Returns:
-        dict: {sucesso, erro, caminho, task_id}
-    """
+def _ler_arquivo(path: Path, workspace_root: Path) -> Optional[dict]:
+    """Lê um arquivo do workspace e retorna seu conteúdo como dicionário."""
+    if not path.exists() or not path.is_file():
+        return None
     try:
-        dados = SalvarTaskSchema(task_id=task_id, task_json=task_json)
-    except ValidationError as e:
-        return {"sucesso": False, "erro": str(e), "caminho": None}
-
-    try:
-        task_data = json.loads(dados.task_json)
-    except json.JSONDecodeError as e:
-        return {"sucesso": False, "erro": "JSON inválido: " + str(e), "caminho": None}
-
-    output_dir = get_agent_workspace("context_engineer")
-    output_file = output_dir / (dados.task_id + ".json")
-    try:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_file.write_text(
-            json.dumps(task_data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        logger.info("[CONTEXT ENGINEER] Task salva: " + str(output_file.resolve()))
+        conteudo = path.read_text(encoding="utf-8", errors="replace")
         return {
-            "sucesso": True,
-            "erro": None,
-            "caminho": str(output_file.resolve()),
-            "task_id": dados.task_id,
+            "path": str(path.relative_to(workspace_root)).replace("\\", "/"),
+            "nome": path.name,
+            "tipo": path.suffix.lstrip("."),
+            "conteudo": conteudo,
         }
     except Exception as e:
-        return {"sucesso": False, "erro": "Erro ao salvar task: " + str(e), "caminho": None}
+        logger.error("[CONTEXT ENGINEER] Erro ao ler " + str(path) + ": " + str(e))
+        return None
+
 
 def _ler_pasta_workspace(pasta_fase: Path, workspace_root: Path, nome_fase: str) -> dict:
     """Função interna que lê arquivos de uma pasta do workspace.
@@ -188,81 +168,158 @@ def _ler_pasta_workspace(pasta_fase: Path, workspace_root: Path, nome_fase: str)
         "total_lidos": len(artefatos),
         "caminho_pasta": str(pasta_fase),
     }
- 
 
-def tool_ler_requirements() -> dict:
-    """Lê todos os artefatos de requisitos do workspace.
- 
-    Verifica obrigatoriamente a presença de:
-    - pelo menos 1 arquivo RF-*.md em requirements/RFs/ (SEMPRE obrigatório)
- 
-    Informa separadamente se HUs existem via campo tem_hu — a ausência
-    de HUs não é bloqueante aqui. O Passo 2.5 do prompt cruza essa
-    informação com o design para determinar se é bloqueante ou não.
- 
+
+def tool_salvar_task(task_id: str, task_json: str) -> dict:
+    """Salva uma task contextualizada como JSON em workspace_output/tasks/.
+
+    Args:
+        task_id (str): Identificador da task (ex: 'TASK-001').
+        task_json (str): Conteúdo JSON serializado da task completa.
+
     Returns:
-        dict: sucesso, artefatos lidos, artefatos_minimos_presentes,
+        dict: sucesso, erro, caminho, task_id
+    """
+    try:
+        dados = SalvarTaskSchema(task_id=task_id, task_json=task_json)
+    except ValidationError as e:
+        return {"sucesso": False, "erro": str(e), "caminho": None}
+
+    try:
+        task_data = json.loads(dados.task_json)
+    except json.JSONDecodeError as e:
+        return {"sucesso": False, "erro": "JSON inválido: " + str(e), "caminho": None}
+
+    output_dir = get_agent_workspace("context_engineer")
+    output_file = output_dir / (dados.task_id + ".json")
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(
+            json.dumps(task_data, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        logger.info("[CONTEXT ENGINEER] Task salva: " + str(output_file.resolve()))
+        return {
+            "sucesso": True,
+            "erro": None,
+            "caminho": str(output_file.resolve()),
+            "task_id": dados.task_id,
+        }
+    except Exception as e:
+        return {"sucesso": False, "erro": "Erro ao salvar task: " + str(e), "caminho": None}
+
+
+def tool_ler_requirements(paths_json: str) -> dict:
+    """Lê artefatos de requisitos a partir dos paths extraídos do manifesto.
+
+    O LLM extrai os paths do manifesto de requirements recebido no texto
+    do prompt (repassado pelo orquestrador) e passa para esta tool como
+    JSON serializado. A tool lê os arquivos do workspace e verifica os
+    artefatos mínimos obrigatórios.
+    
+    RF é sempre obrigatório — sem RF não há o que transformar em task.
+    HU é informada separadamente via campo tem_hu — ausência não bloqueia
+    sozinha. O Passo 2.5 do prompt cruza com o design para determinar
+    se é bloqueante.
+
+    Args:
+        paths_json (str): JSON serializado com lista de paths (strings) ou itens com chave `path`.
+                          Formatos aceitos: ["requirements/HUs/HU-001.md", ...] ou [{"path": "requirements/HUs/HU-001.md"}, ...]
+
+    Returns:
+        dict: sucesso, fase, artefatos lidos, artefatos_minimos_presentes,
               tem_hu, artefatos_minimos_ausentes e erros.
     """
     workspace_root = get_workspace_root()
-    pasta_fase = workspace_root / "requirements"
- 
-    resultado = _ler_pasta_workspace(pasta_fase, workspace_root, "requirements")
-    if not resultado["sucesso"]:
-        return resultado
- 
-    pasta_hus = pasta_fase / "HUs"
-    pasta_rfs = pasta_fase / "RFs"
- 
-    artefatos_minimos_presentes = True
+
+    try:
+        paths_list = json.loads(paths_json)
+    except json.JSONDecodeError as e:
+        return {
+            "sucesso": False,
+            "fase": "requirements",
+            "erro": "paths_json inválido — JSON malformado: " + str(e),
+            "artefatos": None,
+            "artefatos_minimos_presentes": False,
+            "tem_hu": False,
+        }
+
+    if not paths_list:
+        return {
+            "sucesso": False,
+            "fase": "requirements",
+            "erro": (
+                "Nenhum path de artefato fornecido. "
+                "Extraia os paths do manifesto de requirements recebido no prompt."
+            ),
+            "artefatos": None,
+            "artefatos_minimos_presentes": False,
+            "tem_hu": False,
+        }
+
+    artefatos = []
+    erros = []
+    tem_hu = False
+    tem_rf = False
+
+    for item in paths_list:
+        path_rel = str(item.get("path", "") if isinstance(item, dict) else item).replace("\\", "/")
+        rel_path = Path(path_rel)
+        if rel_path.is_absolute() or ".." in rel_path.parts:
+            erros.append("Path inválido no manifesto: " + path_rel)
+            logger.warning("[CONTEXT ENGINEER] Path inválido no manifesto: " + path_rel)
+            continue
+        path_abs = workspace_root / rel_path
+        conteudo = _ler_arquivo(path_abs, workspace_root)
+        if conteudo:
+            artefatos.append(conteudo)
+            nome = Path(path_rel).name
+            if nome.startswith("HU-") and nome.endswith(".md"):
+                tem_hu = True
+            if nome.startswith("RF-") and nome.endswith(".md"):
+                tem_rf = True
+        else:
+            erros.append("Arquivo não encontrado: " + path_rel)
+            logger.warning("[CONTEXT ENGINEER] Artefato ausente: " + path_rel)
+
+    artefatos_minimos_presentes = tem_rf
     artefatos_minimos_ausentes = []
- 
-    tem_hu = (
-        pasta_hus.exists()
-        and any(
-            f.name.startswith("HU-") and f.suffix == ".md"
-            for f in pasta_hus.iterdir()
-            if f.is_file()
+
+    if not tem_rf:
+        artefatos_minimos_ausentes.append(
+            "Nenhum arquivo RF-*.md encontrado nos paths fornecidos"
         )
-    )
     if not tem_hu:
         artefatos_minimos_ausentes.append(
-            "Nenhum arquivo HU-*.md encontrado em requirements/HUs/ "
+            "Nenhum arquivo HU-*.md encontrado nos paths fornecidos "
             "(pode ser válido — verificar consistência com design no Passo 2.5)"
         )
- 
-    tem_rf = (
-        pasta_rfs.exists()
-        and any(
-            f.name.startswith("RF-") and f.suffix == ".md"
-            for f in pasta_rfs.iterdir()
-            if f.is_file()
-        )
-    )
-    if not tem_rf:
-        artefatos_minimos_presentes = False
-        artefatos_minimos_ausentes.append(
-            "Nenhum arquivo RF-*.md encontrado em requirements/RFs/"
-        )
- 
-    resultado["artefatos_minimos_presentes"] = artefatos_minimos_presentes
-    resultado["artefatos_minimos_ausentes"] = artefatos_minimos_ausentes
-    resultado["tem_hu"] = tem_hu
-    return resultado
+
+    return {
+        "sucesso": True,
+        "fase": "requirements",
+        "erro": None,
+        "artefatos": artefatos,
+        "total_lidos": len(artefatos),
+        "artefatos_minimos_presentes": artefatos_minimos_presentes,
+        "artefatos_minimos_ausentes": artefatos_minimos_ausentes,
+        "tem_hu": tem_hu,
+        "erros_leitura": erros if erros else None,
+    }
 
  
-def tool_ler_design() -> dict:
+def tool_ler_design(tem_hu: bool = True) -> dict:
     """Lê todos os artefatos de design do workspace.
+ 
+    Fallback enquanto o Time 2 não produz manifesto. Quando o manifesto
+    de design for implementado, esta tool será atualizada para consumir
+    os paths do manifesto via mesmo padrão da tool_ler_requirements.
  
     Verifica obrigatoriamente a presença de:
     - pelo menos 1 arquivo analise_tecnica_*.md em design/
  
-    Se o mínimo não for encontrado, retorna
-    artefatos_minimos_presentes=False para que o agente gere um
-    Doubt Artifact e pare a execução.
- 
     Returns:
-        dict: sucesso, artefatos lidos, artefatos_minimos_presentes e erros.
+        dict: sucesso, fase, artefatos lidos, artefatos_minimos_presentes e erros.
     """
     workspace_root = get_workspace_root()
     pasta_fase = workspace_root / "design"
@@ -271,11 +328,9 @@ def tool_ler_design() -> dict:
     if not resultado["sucesso"]:
         return resultado
  
-    # Verifica artefatos mínimos obrigatórios
     tem_analise = any(
-        f.name.startswith("analise_tecnica_") and f.suffix == ".md"
-        for f in pasta_fase.rglob("*.md")
-        if f.is_file()
+        a["nome"].startswith("analise_tecnica_") and a["nome"].endswith(".md")
+        for a in resultado.get("artefatos", [])
     )
  
     artefatos_minimos_ausentes = []
@@ -284,8 +339,20 @@ def tool_ler_design() -> dict:
             "Nenhum arquivo analise_tecnica_*.md encontrado em design/"
         )
  
+    # Verifica inconsistência entre times
+    inconsistencia = False
+    if not tem_hu:
+        tem_analise_hu = any(
+            a["nome"].startswith("analise_tecnica_HU-") and a["nome"].endswith(".md")
+            for a in resultado.get("artefatos", [])
+        )
+        if tem_analise_hu:
+            inconsistencia = True
+
     resultado["artefatos_minimos_presentes"] = tem_analise
     resultado["artefatos_minimos_ausentes"] = artefatos_minimos_ausentes
+    resultado["inconsistencia_detectada"] = inconsistencia
+    resultado["fallback"] = True
     return resultado
 
  
@@ -295,27 +362,26 @@ def tool_gerar_doubt_artifact(
     descricao: str,
     acao_necessaria: str,
     nome_arquivo: str = "Doubt_Artifact_context_engineer.md",
+    subdir: str = "",
 ) -> dict:
-    """Gera um Doubt Artifact ao detectar bloqueio no workspace.
+    """Gera um Doubt Artifact ao detectar bloqueio.
  
-    Use esta tool quando qualquer uma das condições abaixo ocorrer -todas são bloqueantes:
-    - A pasta requirements/ não existir no workspace
-    - A pasta design/ não existir no workspace
-    - RF-*.md ausente em requirements/RFs/
-    - analise_tecnica_*.md ausente em design/
-    - Inconsistência entre times: analise_tecnica_HU-*.md existe em design
-      mas não existe HUs/ em requirements
+    Use esta tool quando qualquer uma das condições abaixo ocorrer, todas são bloqueantes e impedem a geração de tasks:
+    - Manifesto de requirements com status=blocked ou ausente no prompt
+    - RF-*.md ausente nos paths fornecidos
+    - analise_tecnica_*.md ausente no workspace de design
+    - Inconsistência entre times
 
-    A ausência de qualquer um desses artefatos, isoladamente ou em conjunto,
-    impede a geração de tasks e exige intervenção humana.
-    Após chamar esta tool, PARE a execução. Não gere nenhuma task.
+    Após chamar esta tool, chame aguardar_resolucao_bloqueio para
+    pausar o pipeline via HITL. Não gere nenhuma task.
  
     Args:
         titulo (str): Título curto do bloqueio.
-        fase_bloqueada (str): Fase que causou o bloqueio ('requirements' ou 'design').
+        fase_bloqueada (str): Fase que causou o bloqueio.
         descricao (str): Descrição detalhada do problema encontrado.
         acao_necessaria (str): O que precisa ser feito para desbloquear.
         nome_arquivo (str): Nome do arquivo de saída.
+        subdir (str): Subdiretório do workspace onde salvar (ex: 'coder').
  
     Returns:
         dict: sucesso, caminho do arquivo gerado e status de bloqueio.
@@ -330,6 +396,15 @@ def tool_gerar_doubt_artifact(
         )
     except ValidationError as e:
         return {"sucesso": False, "erro": str(e), "caminho": None}
+
+    if subdir:
+        subdir_path = Path(subdir)
+        if subdir_path.is_absolute() or ".." in subdir_path.parts:
+            return {
+                "sucesso": False,
+                "erro": "subdir inválido — não use paths absolutos ou '..': " + subdir,
+                "caminho": None,
+            }
  
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
  
@@ -361,7 +436,8 @@ def tool_gerar_doubt_artifact(
     )
  
     workspace_root = get_workspace_root()
-    path = workspace_root / dados.nome_arquivo
+    pasta_destino = workspace_root / subdir if subdir else workspace_root
+    path = pasta_destino / dados.nome_arquivo
  
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -384,12 +460,111 @@ def tool_gerar_doubt_artifact(
             "erro": "Erro ao salvar Doubt Artifact: " + str(e),
             "caminho": None,
         }
- 
+
+def tool_emitir_manifesto_bloqueado(
+    motivo: str,
+    tool_context: Optional[ToolContext] = None,
+) -> dict:
+    """Emite manifesto com status=blocked no state e em disco.
+
+    Use após tool_gerar_doubt_artifact e antes de aguardar_resolucao_bloqueio.
+    Garante que o manifesto seja gravado no state mesmo com pipeline pausado.
+
+    Args:
+        motivo (str): Motivo do bloqueio — usado como summary do manifesto.
+        tool_context (ToolContext): Injetado automaticamente pelo ADK.
+
+    Returns:
+        dict: sucesso, status, caminho do manifesto gravado.
+    """
+    from src.agents.workflow_coding_review.manifest import (
+        PHASE_NAME,
+        STATE_KEY,
+        _scan_artifacts,
+        _scan_doubts,
+    )
+
+    ws_root = get_workspace_root()
+    coder_ws = get_agent_workspace("coder")
+
+    artifacts = _scan_artifacts(coder_ws, ws_root)
+    doubts = _scan_doubts(coder_ws, ws_root)
+
+    # Invariante do PhaseManifest: status=blocked exige ao menos uma dúvida bloqueante.
+    if not any(d.get("bloqueante") for d in doubts):
+        synthetic_path = coder_ws / "Doubt_Artifact_manifesto_bloqueado.md"
+        synthetic_path.parent.mkdir(parents=True, exist_ok=True)
+        synthetic_path.write_text(
+            "# Doubt Artifact — Bloqueio do context_engineer\n\n"
+            "> EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA\n\n"
+            "## Fase Bloqueada\n**coding**\n\n"
+            "## Descrição do Problema\n"
+            f"{motivo}\n\n"
+            "## Ação Necessária\n"
+            "Resolver o bloqueio e reprocessar a fase.\n\n"
+            "**Bloqueante:** Sim\n",
+            encoding="utf-8",
+        )
+        doubts = _scan_doubts(coder_ws, ws_root)
+
+    manifest: dict = {
+        "phase":     PHASE_NAME,
+        "status":    "blocked",
+        "artifacts": artifacts,
+        "doubts":    doubts,
+        "summary":   motivo,
+    }
+
+    if tool_context is not None:
+        tool_context.state[STATE_KEY] = manifest
+        manifests = list(tool_context.state.get("phase_manifests", []) or [])
+        manifests.append(manifest)
+        tool_context.state["phase_manifests"] = manifests
+
+    manifest_path = coder_ws / "manifest.json"
+    try:
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        logger.info(
+            "[CONTEXT ENGINEER] Manifesto bloqueado emitido: " + str(manifest_path)
+        )
+        return {
+            "sucesso": True,
+            "status": "blocked",
+            "caminho": str(manifest_path.resolve()),
+        }
+    except Exception as e:
+        return {
+            "sucesso": False,
+            "erro": "Erro ao emitir manifesto bloqueado: " + str(e),
+            "caminho": None,
+        }
+
+
+async def aguardar_resolucao_bloqueio(
+    fase_bloqueada: str,
+    motivo: str,
+    acao_necessaria: str,
+) -> Optional[dict[str, Any]]:
+    """Pausa o pipeline até que o bloqueio seja resolvido.
+
+    Use APÓS tool_emitir_manifesto_bloqueado. O ADK interpreta retorno
+    None como função pendente, pausando o SequentialAgent e impedindo
+    o avanço para o coder.
+    """
+    _ = (fase_bloqueada, motivo, acao_necessaria)
+    return None
+
 
 tool_salvar_task_adk = FunctionTool(tool_salvar_task)
 tool_ler_requirements_adk = FunctionTool(tool_ler_requirements)
 tool_ler_design_adk = FunctionTool(tool_ler_design)
 tool_gerar_doubt_artifact_adk = FunctionTool(tool_gerar_doubt_artifact)
+tool_emitir_manifesto_bloqueado_adk = FunctionTool(tool_emitir_manifesto_bloqueado)
+tool_aguardar_resolucao_bloqueio_adk = LongRunningFunctionTool(aguardar_resolucao_bloqueio)
 
 
 def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
@@ -407,6 +582,22 @@ def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
         task_data = json.loads(dados.task_json)
     except json.JSONDecodeError as e:
         return {"sucesso": False, "erro": "JSON inválido: " + str(e), "caminho": None}
+
+    # O nome do arquivo vem de `task_id` e o conteúdo de `task_json`, que são
+    # argumentos independentes. Sem esta checagem, TASK-003.json poderia conter
+    # a TASK-004 — e quem resolve a task pelo nome do arquivo (o coder) leria o
+    # contrato errado sem nenhum sinal de erro.
+    id_no_conteudo = task_data.get("id") if isinstance(task_data, dict) else None
+    if id_no_conteudo is not None and id_no_conteudo != dados.task_id:
+        return {
+            "sucesso": False,
+            "erro": (
+                "Divergência de id: task_id='" + dados.task_id + "' mas o JSON "
+                "contém id='" + str(id_no_conteudo) + "'. Salve cada task com o "
+                "task_id correspondente ao seu conteúdo."
+            ),
+            "caminho": None,
+        }
 
     output_dir = get_agent_workspace("cr_context_engineer")
     output_file = output_dir / (dados.task_id + ".json")
