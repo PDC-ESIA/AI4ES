@@ -27,6 +27,12 @@ nenhum julgamento de qualidade — só afirmam contratos e efeitos
 verificáveis (arquivo criado, exceção levantada, campo do schema
 validado).
 
+```bash
+pytest -m infraestrutura
+```
+
+## Camada 2 — Trajetória
+
 Reúne o que antes vivia em `tests/integration/`, mais dois exemplos novos
 (`test_trajetoria_harness_exemplo.py` e
 `test_trajetoria_convergencia_loop.py`). Valida a **sequência** de
@@ -39,20 +45,6 @@ corretamente via `Runner` do ADK; o `LoopAgent` de correção de código
 executor sinaliza aprovação (`escalate=True`), e encerra de forma
 controlada em `max_iterations` quando o executor nunca aprova — sem
 travar e sem produzir uma falsa aprovação.
-
-```bash
-pytest -m infraestrutura
-```
-
-## Camada 2 — Trajetória
-
-Reúne o que antes vivia em `tests/integration/`, mais um exemplo novo
-(`test_trajetoria_harness_exemplo.py`). Valida a **sequência** de decisões
-— não só o resultado final. Exemplos reais da suite: o harness de
-execução persiste evidências ANTES do validador emitir veredito; o
-Orchestrator só encerra (`exit_loop`) quando o veredito é `aprovado`,
-nunca pelo status técnico isolado; um checkpoint HITL pausa e retoma
-corretamente via `Runner` do ADK.
 
 O artefato central é o **trace**: eventos coletados durante a execução e
 organizados em duas camadas (`tests/fixtures/trace_helpers.py`):

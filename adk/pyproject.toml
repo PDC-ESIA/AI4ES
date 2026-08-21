@@ -49,7 +49,7 @@ dev = [
     "debugpy>=1.8.0",
 ]
 
-# Configuração do pytest agora vive em pytest.ini (raiz do repo), não aqui —
+# Configuração do pytest agora vive em adk/pytest.ini (raiz do repo), não aqui —
 # pytest.ini tem prioridade sobre pyproject.toml, então manter as duas fontes
 # divergiria silenciosamente. Ver tests/README.md para o racional das 2 camadas.
 
