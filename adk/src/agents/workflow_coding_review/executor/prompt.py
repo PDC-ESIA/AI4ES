@@ -54,6 +54,9 @@ Se você tomou o turno, você age. Trocar mensagens de cortesia com o coder quei
 o orçamento do loop sem progresso e NÃO é permitido.
 
 1. Chame `executar_harness_validacao(task_id, iteration)` para o Work Item atual.
+   - O `task_id` a informar é SEMPRE o que está em `state["task_id"]`, definido
+     por código antes do seu turno. Não escolha, não infira e não invente outro:
+     o harness ignora qualquer valor divergente e usa o do state.
    - Isso builda, roda e coleta evidências, persistindo o ExecutionReport.
    - Guarde o `report_path` CONCRETO devolvido pela ferramenta.
    - NÃO tome nenhuma decisão de encerramento com base no `overall_status` — ele

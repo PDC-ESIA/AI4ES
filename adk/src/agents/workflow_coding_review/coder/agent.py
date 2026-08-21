@@ -24,6 +24,7 @@ from shared.tools.filesystem import (
 )
 
 from . import prompt as coder_prompt
+from .workspace_guard import bloquear_sobrescrita_herdada
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
@@ -54,4 +55,5 @@ agent = LlmAgent(
         _bind(FunctionTool(tool_ler_workspace)),
         _bind(FunctionTool(tool_listar_workspace)),
     ],
+    before_tool_callback=bloquear_sobrescrita_herdada,
 )

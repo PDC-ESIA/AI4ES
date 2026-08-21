@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import os
 
 from .io import (
     _gerar_doubt_artifact,
@@ -110,17 +111,20 @@ def receber_requisitos(artefatos_json: str) -> dict:
 
 async def _processar_todos_em_paralelo(
     lista_artefatos: list,
-    max_paralelos: int = 5,
+    max_paralelos: int | None = None,
 ) -> list:
     """Processa múltiplos artefatos em paralelo com limite de concorrência.
 
     Args:
         lista_artefatos: Lista de artefatos de requisito.
-        max_paralelos: Máximo de processamentos simultâneos (padrão: 5).
+        max_paralelos: Máximo de processamentos (chamadas ao LLM) simultâneos.
+            Se None, lê da env var QA_AGENT_MAX_PARALELOS (padrão: 5).
 
     Returns:
         list: Lista de resultados de cada artefato processado.
     """
+    if max_paralelos is None:
+        max_paralelos = int(os.environ.get("QA_AGENT_MAX_PARALELOS", "5"))
     semaforo = asyncio.Semaphore(max_paralelos)
 
     async def processar_com_limite(artefato):
