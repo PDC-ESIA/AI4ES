@@ -171,10 +171,27 @@ def config_inteiro(nome: str, padrao: int, minimo: int) -> int:
     return valor
 
 
-# Rodadas consecutivas sem melhora que caracterizam platô. Precisa ser >= 2:
-# com 1, uma única rodada de vale (a correção que conserta A e quebra B)
-# encerraria a tarefa — exatamente o falso positivo que a issue pede para evitar.
-JANELA_SEM_PROGRESSO: int = config_inteiro("AI4ES_JANELA_SEM_PROGRESSO", 3, minimo=2)
+def _ajustar_rodadas_para_acelerar(
+    janela_sem_progresso: int, rodadas_configuradas: int
+) -> int:
+    """Mantém o acelerador abaixo da janela autônoma de platô."""
+    if rodadas_configuradas < janela_sem_progresso:
+        return rodadas_configuradas
+    ajustado = janela_sem_progresso - 1
+    logger.warning(
+        "[LOOP_POLICY] AI4ES_RODADAS_PARA_ACELERAR=%s precisa ser menor que "
+        "AI4ES_JANELA_SEM_PROGRESSO=%s; usando %s.",
+        rodadas_configuradas,
+        janela_sem_progresso,
+        ajustado,
+    )
+    return ajustado
+
+
+# Rodadas consecutivas sem melhora que caracterizam platô. Precisa ser >= 3:
+# uma rodada absorve o vale temporário e outra permite que os aceleradores
+# detectem persistência antes do platô, sem se tornarem código morto.
+JANELA_SEM_PROGRESSO: int = config_inteiro("AI4ES_JANELA_SEM_PROGRESSO", 3, minimo=3)
 
 # Ganho mínimo para uma rodada contar como progresso. Absorve ruído de ponto
 # flutuante e melhoras cosméticas irrelevantes, sem exigir salto grande.
@@ -186,7 +203,12 @@ MARGEM_MELHORA: float = _config("AI4ES_MARGEM_MELHORA", 0.01, minimo=0.0)
 # Fica ABAIXO de `JANELA_SEM_PROGRESSO` de propósito — é essa diferença que dá
 # aos aceleradores a sua razão de existir; se fossem iguais, eles nunca
 # disparariam antes do platô e seriam código morto.
-RODADAS_PARA_ACELERAR: int = config_inteiro("AI4ES_RODADAS_PARA_ACELERAR", 2, minimo=2)
+_rodadas_para_acelerar = config_inteiro(
+    "AI4ES_RODADAS_PARA_ACELERAR", 2, minimo=2
+)
+RODADAS_PARA_ACELERAR: int = _ajustar_rodadas_para_acelerar(
+    JANELA_SEM_PROGRESSO, _rodadas_para_acelerar
+)
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +218,9 @@ RODADAS_PARA_ACELERAR: int = config_inteiro("AI4ES_RODADAS_PARA_ACELERAR", 2, mi
 MOTIVO_PLATO = "plato_nota"
 MOTIVO_SEM_ALTERACAO = "sem_alteracao_arquivos"
 MOTIVO_ERRO_REPETIDO = "erro_repetido"
+MOTIVOS_PARADA = frozenset(
+    {MOTIVO_PLATO, MOTIVO_SEM_ALTERACAO, MOTIVO_ERRO_REPETIDO}
+)
 
 
 @dataclass(frozen=True)

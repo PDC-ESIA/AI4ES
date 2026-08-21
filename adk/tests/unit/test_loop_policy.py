@@ -25,6 +25,7 @@ from src.agents.workflow_coding_review.executor.loop_policy import (
     contar_rodadas_sem_progresso,
     fingerprint_mudou,
     registrar_e_avaliar,
+    _ajustar_rodadas_para_acelerar,
 )
 
 _JANELA = 3
@@ -513,6 +514,16 @@ def test_config_inteiro_aceita_valor_valido(monkeypatch):
     monkeypatch.setenv("AI4ES_TESTE_CONFIG", " 7 ")
 
     assert config_inteiro("AI4ES_TESTE_CONFIG", 20, minimo=1) == 7
+
+
+def test_janela_global_mantem_acelerador_antes_do_plato():
+    assert loop_policy.JANELA_SEM_PROGRESSO >= 3
+    assert 2 <= loop_policy.RODADAS_PARA_ACELERAR < loop_policy.JANELA_SEM_PROGRESSO
+
+
+def test_config_conflitante_ajusta_acelerador_antes_do_plato(caplog):
+    assert _ajustar_rodadas_para_acelerar(5, 9) == 4
+    assert "precisa ser menor" in caplog.text
 
 
 @pytest.mark.parametrize("valor", ["nan", "inf", "-inf"])

@@ -324,12 +324,24 @@ def test_reprovado_sem_travamento_nao_vira_bloqueado():
 
 
 def test_nota_e_historico_aparecem_no_desfecho():
-    state = _reprovado(progress_score_history=[0.2, 0.5, 0.5])
+    state = _reprovado(
+        progress_score_history=[0.2, 0.5, 0.5],
+        progress_score_details=[
+            {"build_concluido": 0.0},
+            {"build_concluido": 1.0},
+            {"build_concluido": 1.0},
+        ],
+    )
 
     resultado = classificar_desfecho(state, "TASK-001")
 
     assert resultado["nota_final"] == 0.5
     assert resultado["historico_notas"] == [0.2, 0.5, 0.5]
+    assert resultado["detalhes_notas"] == [
+        {"build_concluido": 0.0},
+        {"build_concluido": 1.0},
+        {"build_concluido": 1.0},
+    ]
 
 
 @pytest.mark.parametrize(
@@ -360,12 +372,27 @@ def test_historico_ausente_nao_estoura():
 
     assert resultado["nota_final"] is None
     assert resultado["historico_notas"] == []
+    assert resultado["detalhes_notas"] == []
 
 
 def test_historico_corrompido_e_ignorado():
-    state = _reprovado(progress_score_history=["x", None, 0.7])
+    state = _reprovado(
+        progress_score_history=["x", None, 0.7],
+        progress_score_details=[{"x": 1}, {"y": 1}, {"app_iniciou": 1.0}],
+    )
 
-    assert classificar_desfecho(state, "TASK-001")["nota_final"] == 0.7
+    resultado = classificar_desfecho(state, "TASK-001")
+    assert resultado["nota_final"] == 0.7
+    assert resultado["detalhes_notas"] == [{"app_iniciou": 1.0}]
+
+
+def test_motivo_de_travamento_desconhecido_e_ignorado():
+    resultado = classificar_desfecho(
+        _reprovado(loop_stop_reason="motivo_inventado"), "TASK-001"
+    )
+
+    assert resultado["status"] == "reprovado"
+    assert resultado["motivo_terminacao"] == "reprovado_apos_loop"
 
 
 # ---------------------------------------------------------------------------

@@ -32,7 +32,11 @@ from google.adk.events.event_actions import EventActions
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
-from .executor.loop_policy import CHAVE_MOTIVO_PARADA, CHAVES_DE_CICLO
+from .executor.loop_policy import (
+    CHAVE_MOTIVO_PARADA,
+    CHAVES_DE_CICLO,
+    MOTIVOS_PARADA,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +234,7 @@ def _motivo_de_travamento(state: dict) -> Optional[str]:
     deste módulo, que evita confiar em texto cru (ver `_normalizar_validation`).
     """
     motivo = state.get(CHAVE_MOTIVO_PARADA)
-    if isinstance(motivo, str) and motivo:
+    if motivo in MOTIVOS_PARADA:
         return motivo
     return None
 
@@ -242,15 +246,25 @@ def _progresso(state: dict) -> dict:
     task reprovada ou travada é exatamente o caso em que o histórico mais
     importa para auditoria e para a revisão a jusante.
     """
-    historico = state.get("progress_score_history")
-    historico = (
-        [n for n in historico if isinstance(n, (int, float))]
-        if isinstance(historico, list)
-        else []
-    )
+    historico_bruto = state.get("progress_score_history")
+    detalhes_brutos = state.get("progress_score_details")
+    historico: list[float] = []
+    detalhes: list[Optional[dict]] = []
+    if isinstance(historico_bruto, list):
+        for indice, nota in enumerate(historico_bruto):
+            if isinstance(nota, bool) or not isinstance(nota, (int, float)):
+                continue
+            historico.append(nota)
+            detalhe = (
+                detalhes_brutos[indice]
+                if isinstance(detalhes_brutos, list) and indice < len(detalhes_brutos)
+                else None
+            )
+            detalhes.append(dict(detalhe) if isinstance(detalhe, dict) else None)
     return {
         "nota_final": historico[-1] if historico else None,
         "historico_notas": historico,
+        "detalhes_notas": detalhes,
     }
 
 
