@@ -1,0 +1,268 @@
+"""Orquestrador CLI do benchmark HumanEval sobre o Coder Agent.
+
+Uso típico (a partir da raiz do repositório):
+
+    python -m benchmarks.humaneval.run --limit 5 --samples 1
+
+Ou diretamente:
+
+    python benchmarks/humaneval/run.py --limit 5
+
+Fluxo:
+1. `bootstrap.prepare_environment` fixa `sys.path`, `.env` e o workspace do coder
+   ANTES de qualquer import do agente;
+2. baixa/carrega o dataset (download dinâmico por padrão);
+3. para cada problema × amostra: roda o coder (geração) e avalia com o teste
+   canônico no `DirectSandbox` (grading);
+4. calcula pass@k e persiste um relatório JSON + resumo Markdown.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Este arquivo pode ser executado como script (python benchmarks/humaneval/run.py)
+# ou como módulo (python -m benchmarks.humaneval.run). O bloco abaixo garante que
+# o import do pacote `benchmarks` funcione no modo script.
+if __package__ in (None, ""):
+    import sys as _sys
+
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from benchmarks.humaneval import bootstrap
+from benchmarks.humaneval.dataset import DEFAULT_DATASET_URL
+
+_DEFAULT_OUTPUT = Path(__file__).resolve().parent / "results"
+_DEFAULT_DATASET = Path(__file__).resolve().parent / "datasets" / "HumanEval.jsonl.gz"
+
+
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        prog="benchmarks.humaneval.run",
+        description="Executa o benchmark HumanEval usando o Coder Agent do AI4ES.",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Máximo de problemas a executar (default: todos os 164).",
+    )
+    p.add_argument(
+        "--task-ids",
+        nargs="*",
+        default=None,
+        help="Filtra por task_id específicos (ex.: HumanEval/0 HumanEval_1).",
+    )
+    p.add_argument(
+        "--samples",
+        type=int,
+        default=1,
+        help="Amostras geradas por problema (n). Use >1 para pass@k (default: 1).",
+    )
+    p.add_argument(
+        "--k",
+        type=int,
+        nargs="*",
+        default=[1],
+        help="Valores de k para pass@k (default: 1).",
+    )
+    p.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Timeout (s) por avaliação no sandbox (default: 30).",
+    )
+    p.add_argument(
+        "--model",
+        default=None,
+        help="Sobrescreve ADK_LLM_MODEL (ex.: github_copilot/gpt-4).",
+    )
+    p.add_argument(
+        "--dataset-url",
+        default=DEFAULT_DATASET_URL,
+        help="URL de download do dataset HumanEval.",
+    )
+    p.add_argument(
+        "--dataset-path",
+        type=Path,
+        default=_DEFAULT_DATASET,
+        help="Caminho local do dataset (.jsonl.gz).",
+    )
+    p.add_argument(
+        "--output-dir",
+        type=Path,
+        default=_DEFAULT_OUTPUT,
+        help="Diretório-base dos relatórios de saída.",
+    )
+    return p.parse_args(argv)
+
+
+async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
+    """Executa o loop principal do benchmark e devolve o relatório consolidado."""
+    # Imports tardios: só após o bootstrap ter fixado o ambiente.
+    from benchmarks.humaneval import coder_runner, grading
+    from benchmarks.humaneval.contract import task_id_for
+    from benchmarks.humaneval.dataset import load_problems
+    from benchmarks.humaneval.metrics import aggregate_pass_at_k
+
+    problemas = load_problems(
+        args.dataset_path,
+        url=args.dataset_url,
+        limit=args.limit,
+        task_ids=args.task_ids,
+    )
+    print(f"[run] {len(problemas)} problema(s) a executar, {args.samples} amostra(s) cada.")
+
+    detalhes: list[dict] = []
+    per_problem: list[tuple[int, int]] = []
+
+    for idx, problema in enumerate(problemas, start=1):
+        corretas = 0
+        amostras_info: list[dict] = []
+        for amostra in range(args.samples):
+            t0 = time.time()
+            geracao = await coder_runner.run_coder(problema)
+
+            if geracao.error:
+                resultado = {
+                    "sample": amostra,
+                    "passed": False,
+                    "reason": f"Falha de geração: {geracao.error}",
+                    "files": geracao.files,
+                    "duration_s": round(time.time() - t0, 2),
+                }
+            elif not geracao.has_solution:
+                resultado = {
+                    "sample": amostra,
+                    "passed": False,
+                    "reason": (
+                        "Coder não produziu arquivo com a função-alvo "
+                        f"(`{problema.entry_point}`)."
+                    ),
+                    "files": geracao.files,
+                    "duration_s": round(time.time() - t0, 2),
+                }
+            else:
+                grade = grading.grade_solution(
+                    problema,
+                    geracao.solution_dir,
+                    geracao.solution_file,
+                    timeout=args.timeout,
+                )
+                if grade.passed:
+                    corretas += 1
+                resultado = {
+                    "sample": amostra,
+                    "passed": grade.passed,
+                    "reason": grade.reason,
+                    "solution_file": str(
+                        geracao.solution_file.relative_to(geracao.solution_dir)
+                    ),
+                    "files": geracao.files,
+                    "exit_code": grade.exit_code,
+                    "timed_out": grade.timed_out,
+                    "stderr_tail": grade.stderr_tail,
+                    "duration_s": round(time.time() - t0, 2),
+                }
+            amostras_info.append(resultado)
+            status = "PASS" if resultado["passed"] else "FAIL"
+            print(
+                f"[run] ({idx}/{len(problemas)}) {problema.task_id} "
+                f"amostra {amostra + 1}/{args.samples}: {status} "
+                f"({resultado['duration_s']}s)"
+            )
+
+        per_problem.append((args.samples, corretas))
+        detalhes.append(
+            {
+                "task_id": problema.task_id,
+                "entry_point": problema.entry_point,
+                "n": args.samples,
+                "correct": corretas,
+                "samples": amostras_info,
+            }
+        )
+
+    metricas = aggregate_pass_at_k(per_problem, args.k)
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "model": bootstrap_model(),
+        "num_problems": len(problemas),
+        "samples_per_problem": args.samples,
+        "pass_at_k": {f"pass@{k}": round(v, 4) for k, v in metricas.items()},
+        "problems": detalhes,
+    }
+
+
+def bootstrap_model() -> str:
+    """Modelo LLM efetivamente configurado (para registro no relatório)."""
+    import os
+
+    return os.environ.get("ADK_LLM_MODEL", "desconhecido")
+
+
+def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
+    """Grava o relatório JSON e um resumo Markdown; devolve os dois caminhos."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    json_path = run_dir / "report.json"
+    json_path.write_text(
+        json.dumps(relatorio, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    linhas = [
+        "# Benchmark HumanEval — Coder Agent",
+        "",
+        f"- **Gerado em:** {relatorio['generated_at']}",
+        f"- **Modelo:** {relatorio['model']}",
+        f"- **Problemas:** {relatorio['num_problems']}",
+        f"- **Amostras/problema:** {relatorio['samples_per_problem']}",
+        "",
+        "## Métricas",
+        "",
+    ]
+    if relatorio["pass_at_k"]:
+        for chave, valor in relatorio["pass_at_k"].items():
+            linhas.append(f"- **{chave}:** {valor:.4f} ({valor * 100:.1f}%)")
+    else:
+        linhas.append("_Nenhuma métrica pass@k definível para a configuração usada._")
+
+    linhas += ["", "## Por problema", "", "| Task | Entry point | Corretas/n |", "| ---- | ----------- | ---------- |"]
+    for p in relatorio["problems"]:
+        linhas.append(f"| {p['task_id']} | `{p['entry_point']}` | {p['correct']}/{p['n']} |")
+
+    md_path = run_dir / "report.md"
+    md_path.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    return json_path, md_path
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = args.output_dir / f"run_{timestamp}"
+    workspace_dir = run_dir / "workspace"
+
+    bootstrap.prepare_environment(workspace_dir, model=args.model)
+
+    relatorio = asyncio.run(_executar(args, run_dir))
+    json_path, md_path = _persistir_relatorio(relatorio, run_dir)
+
+    print("\n=== RESULTADO ===")
+    if relatorio["pass_at_k"]:
+        for chave, valor in relatorio["pass_at_k"].items():
+            print(f"{chave}: {valor:.4f} ({valor * 100:.1f}%)")
+    else:
+        print("Nenhuma métrica pass@k definível para a configuração usada.")
+    print(f"Relatório JSON: {json_path}")
+    print(f"Resumo Markdown: {md_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

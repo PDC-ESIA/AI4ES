@@ -1,6 +1,11 @@
 # Pastas do design
 adk/artifacts/
 
+# Benchmarks — dataset baixado dinamicamente e resultados de execução
+benchmarks/humaneval/datasets/
+benchmarks/humaneval/results/
+benchmarks/construcao/resultados/
+
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
 adk/workspace_output/
 workspace_output/
