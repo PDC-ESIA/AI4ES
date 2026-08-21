@@ -12,28 +12,44 @@ from shared.workspace import get_agent_workspace
 
 def _altera_sys_path(tree: ast.AST) -> bool:
     """Detecta mutações de sys.path, desnecessárias no workspace isolado do QA."""
+    sys_aliases = {"sys"}
+    path_aliases: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "sys":
+                    sys_aliases.add(alias.asname or "sys")
+        elif isinstance(node, ast.ImportFrom) and node.module == "sys":
+            for alias in node.names:
+                if alias.name == "path":
+                    path_aliases.add(alias.asname or "path")
+
+    def _is_sys_path(expr: ast.AST) -> bool:
+        return (
+            isinstance(expr, ast.Attribute)
+            and isinstance(expr.value, ast.Name)
+            and expr.value.id in sys_aliases
+            and expr.attr == "path"
+        )
+
+    mutators = {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse"}
     for node in ast.walk(tree):
         if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             if any(
-                isinstance(target, ast.Attribute)
-                and isinstance(target.value, ast.Name)
-                and target.value.id == "sys"
-                and target.attr == "path"
-                for target in targets
+                _is_sys_path(t)
+                or (isinstance(t, ast.Subscript) and _is_sys_path(t.value))
+                for t in targets
             ):
                 return True
-        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
-            continue
-        collection = node.func.value
         if (
-            node.func.attr in {"append", "extend", "insert", "remove"}
-            and isinstance(collection, ast.Attribute)
-            and isinstance(collection.value, ast.Name)
-            and collection.value.id == "sys"
-            and collection.attr == "path"
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in mutators
         ):
-            return True
+            obj = node.func.value
+            if _is_sys_path(obj) or (isinstance(obj, ast.Name) and obj.id in path_aliases):
+                return True
     return False
 
 
