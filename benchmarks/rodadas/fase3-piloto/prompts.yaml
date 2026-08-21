@@ -1,0 +1,59 @@
+# Prompts padronizados do piloto (Protocolo §7).
+# Zero-shot, idênticos para todos os modelos. Sem few-shot, sem ajuste por modelo.
+# Variáveis disponíveis: {question}, {context}
+
+nq_open:
+  user: |
+    Answer the question with a short answer (usually a few words).
+    Respond ONLY with the answer itself - no explanation, no full sentence.
+
+    Question: {question}
+
+    Answer:
+
+squad_v2:
+  user: |
+    Read the passage and answer the question with the shortest possible span
+    from the passage. If the passage does not contain the answer, respond
+    with exactly: unanswerable
+
+    Passage:
+    {context}
+
+    Question: {question}
+
+    Answer (span or "unanswerable"):
+
+hotpot_qa:
+  user: |
+    You are given several paragraphs from Wikipedia. Use them to answer the
+    question in as few words as possible. Respond ONLY with the short answer -
+    no explanation, no full sentence.
+
+    {context}
+
+    Question: {question}
+
+    Answer:
+
+longbench_qasper:
+  user: |
+    Read the scientific paper below and answer the question as briefly as
+    possible (a few words). If the paper does not specify, respond with
+    exactly: not specified
+
+    Paper:
+    {context}
+
+    Question: {question}
+
+    Answer:
+
+gaia_l1:
+  user: |
+    Solve the task below and give the final exact answer.
+    Respond ONLY with the exact final answer - no explanation, no reasoning.
+
+    Task: {question}
+
+    Final Answer:

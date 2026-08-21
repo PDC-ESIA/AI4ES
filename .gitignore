@@ -272,3 +272,8 @@ docs/superpowers/
 adk.zip
 AI4ES/
 Orientacoes.md
+
+# Benchmark: datasets brutos baixados de fontes públicas (os subsets amostrados
+# em benchmarks/tarefas/ permanecem versionados para reprodutibilidade)
+benchmarks/datasets/
+benchmarks/.venv/

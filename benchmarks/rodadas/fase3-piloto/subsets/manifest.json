@@ -1,0 +1,49 @@
+{
+  "rodada": "fase3-piloto",
+  "seed": 42,
+  "gerado_em": "2026-08-21T18:56:48.318521+00:00",
+  "subsets": {
+    "nq_open": {
+      "arquivo": "benchmarks/rodadas/fase3-piloto/subsets/nq_open_pilot.jsonl",
+      "metodo": "uniforme aleatório simples",
+      "populacao": 3610,
+      "amostra": 20,
+      "percentual_da_populacao": 0.55,
+      "sha256": "911e9fa1f105eb4101aa8f28fce19b00a92744aa0a517feb4e72f45004b27786"
+    },
+    "squad_v2": {
+      "arquivo": "benchmarks/rodadas/fase3-piloto/subsets/squad_v2_pilot.jsonl",
+      "metodo": "estratificado por answerable (proporção do split preservada)",
+      "populacao": 11873,
+      "amostra": 20,
+      "percentual_da_populacao": 0.17,
+      "sha256": "fde063e5c62e39ee2b076358abfaf099da39a2d473414321d7993bab4c49e9cd",
+      "answerable": 10,
+      "unanswerable": 10
+    },
+    "hotpot_qa": {
+      "arquivo": "benchmarks/rodadas/fase3-piloto/subsets/hotpot_qa_pilot.jsonl",
+      "metodo": "uniforme aleatório simples",
+      "populacao": 7405,
+      "amostra": 20,
+      "percentual_da_populacao": 0.27,
+      "sha256": "b7e88aa1f06d2bf88aa3ec6c45f321e4bd3d572d3e90a7113f2e39f6aa5e70eb"
+    },
+    "longbench_qasper": {
+      "arquivo": "benchmarks/rodadas/fase3-piloto/subsets/longbench_qasper_pilot.jsonl",
+      "metodo": "uniforme aleatório simples",
+      "populacao": 200,
+      "amostra": 10,
+      "percentual_da_populacao": 5.0,
+      "sha256": "6b87f21489307b0df540e9f1acbc1b68ba7a9b0a07aead6babd0ad40de54fe33"
+    },
+    "gaia_l1": {
+      "arquivo": "benchmarks/rodadas/fase3-piloto/subsets/gaia_l1_pilot.jsonl",
+      "metodo": "uniforme aleatório simples",
+      "populacao": 42,
+      "amostra": 10,
+      "percentual_da_populacao": 23.81,
+      "sha256": "96d7075ff0e96ac53e27ffce204356448297e18b17250822c115f4d0947cd0c7"
+    }
+  }
+}

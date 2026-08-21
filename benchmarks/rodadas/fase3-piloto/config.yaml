@@ -1,0 +1,54 @@
+# Configuração da rodada piloto da Fase 3 (Protocolo §5, §6, §8).
+# Rodada = unidade de organização: config + prompts + subsets + resultados
+# vivem juntos em benchmarks/rodadas/<nome-da-rodada>/.
+# Parâmetros de inferência fixos e idênticos para todos os modelos.
+
+run_id: pilot-fase3
+repetitions: 3
+seed: 42
+
+# Tamanhos dos subsets por benchmark (casos amostrados com a seed acima)
+subsets:
+  nq_open: 20
+  squad_v2: 20
+  hotpot_qa: 20
+  longbench_qasper: 10
+  gaia_l1: 10
+
+# Parâmetros de decodificação (idênticos p/ todos os modelos)
+temperature: 0.0
+top_p: 1.0
+
+# Limites de saída por benchmark (tokens)
+max_tokens:
+  default: 256
+  longbench_qasper: 512
+
+# Timeout/retries por chamada
+timeout_s: 120
+num_retries: 2
+sleep_between_calls_s: 0.3
+
+# Rate-limit por modelo (segundos entre chamadas).
+# Chave Gemini em free tier: limite de 20 req/min para gemini-2.5-flash → 3.5s.
+# Copilot não precisa (cota por assinatura, sem RPM restritivo observado).
+model_sleep_between_calls_s:
+  gemini/gemini-2.5-flash: 3.5
+
+# Modelos candidatos ao piloto (nomes LiteLLM).
+# - Baseline oficial do PR: gemini-2.5-flash via API key Google (free tier,
+#   20 req/min — runner trata rate-limit com espera adaptativa).
+# - Alternativa comercial GPT via Copilot (gpt-5.4 confirmado no preflight;
+#   gpt-5.4-mini/gpt-5.5 só aceitam Responses API).
+# - Gemini 3.5-flash via Copilot: a geração atual do Gemini na conta Copilot
+#   (o 2.5 não é exposto por lá). Modelo "thinking": usa max_tokens maior
+#   para acomodar raciocínio antes da resposta final.
+models:
+  - gemini/gemini-2.5-flash
+  - github_copilot/gpt-5.4
+  - github_copilot/gemini-3.5-flash
+
+# max_tokens efetivo por modelo (sobrepõe "default"; modelos thinking precisam
+# de folga para raciocínio + resposta)
+model_max_tokens:
+  github_copilot/gemini-3.5-flash: 1536
