@@ -79,6 +79,31 @@ QA_AGENT_TOOLS = [
         ],
     },
     {
+        "name": "executar_testes_de_integracao",
+        "agent": "qa_agent",
+        "category": "integration_pytest_execution",
+        "summary": (
+            "Executa em lote arquivos pytest gerados pelo integration_tests_agent "
+            "e retorna relatório consolidado com resultados individuais."
+        ),
+        "input_contract": (
+            "ExecutarTestesIntegracaoInput: lista não vazia de caminhos em "
+            "workspace_output/tests/integration_tests/."
+        ),
+        "output_contract": (
+            "ExecutarTestesIntegracaoOutput: status, resumo {total, sucessos, "
+            "falhas} e resultados individuais com cobertura e erros do pytest."
+        ),
+        "use_when": [
+            "Testes de integração já foram gerados e precisam ser executados.",
+            "O plano precisa consolidar resultados de mais de um arquivo de integração.",
+        ],
+        "avoid_when": [
+            "Ainda não há arquivos de integração gerados.",
+            "O objetivo é executar somente um arquivo pytest unitário existente.",
+        ],
+    },
+    {
         "name": "DoubtArtifactGenerator.generate",
         "agent": "qa_agent",
         "category": "doubt_artifact",
