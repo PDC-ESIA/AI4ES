@@ -70,7 +70,7 @@ def gerar_teste_via_hu(hu_conteudo: str, caminho_destino: Path) -> dict:
     }
 
 def _normalizar_caminho_arquivo(caminho_arquivo: str | dict) -> Path:
-    """Resolve um teste sem duplicar prefixos e o manté dentro do workspace.
+    """Resolve um teste sem duplicar prefixos e o mantém dentro do workspace.
 
     Aceita os formatos emitidos pelos diferentes agentes:
     - relativo a ``tests/inputs``: ``rf_001/test_rf_001.py``;
