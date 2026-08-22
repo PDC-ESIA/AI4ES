@@ -205,6 +205,58 @@ def test_validar_e_persistir_config_retro_migration_success(tmp_path):
     assert saved["timeout"] == 45
 
 
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("github_copilot/gpt-4", "github_copilot-gpt-4"),
+        ("gpt-3.5-turbo", "gpt-3.5-turbo"),
+        ("  spaced  name  ", "spaced-name"),
+        ("weird//slashes\\\\here", "weird-slashes-here"),
+        ("---", "na"),
+        ("", "na"),
+    ],
+)
+def test_sanitizar_componente(raw, expected):
+    """Asserts model/component sanitization for safe directory names."""
+    assert run._sanitizar_componente(raw) == expected
+
+
+def test_construir_nome_run_basico():
+    """Asserts descriptive run dir name includes model, samples and k."""
+    args = argparse.Namespace(
+        model="github_copilot/gpt-4",
+        samples=3,
+        k=[2, 1],
+        limit=None,
+    )
+    nome = run._construir_nome_run(args, "20260822_120000")
+    assert nome == "run_20260822_120000_github_copilot-gpt-4_n3_k1-2"
+
+
+def test_construir_nome_run_com_limit():
+    """Asserts run dir name appends the limit segment when provided."""
+    args = argparse.Namespace(
+        model="gpt-4",
+        samples=1,
+        k=[1],
+        limit=5,
+    )
+    nome = run._construir_nome_run(args, "20260822_120000")
+    assert nome == "run_20260822_120000_gpt-4_n1_k1_lim5"
+
+
+def test_construir_nome_run_k_vazio():
+    """Asserts run dir name falls back to k1 when k is empty."""
+    args = argparse.Namespace(
+        model="gpt-4",
+        samples=2,
+        k=[],
+        limit=None,
+    )
+    nome = run._construir_nome_run(args, "20260822_120000")
+    assert nome == "run_20260822_120000_gpt-4_n2_k1"
+
+
 @patch("benchmarks.coding_review.humaneval.bootstrap.prepare_environment")
 @patch("benchmarks.coding_review.humaneval.run._persistir_relatorio")
 @patch("benchmarks.coding_review.humaneval.run._executar", new_callable=AsyncMock)

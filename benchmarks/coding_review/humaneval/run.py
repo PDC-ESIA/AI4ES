@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -109,6 +110,37 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     return p.parse_args(argv)
+
+
+def _sanitizar_componente(valor: str) -> str:
+    """Normaliza um trecho para uso seguro em nome de diretório.
+
+    Substitui separadores de caminho e caracteres não amigáveis (ex.: barras
+    do id do modelo `github_copilot/gpt-4`) por hífens, colapsa repetições e
+    remove hífens nas bordas.
+    """
+    limpo = re.sub(r"[^0-9A-Za-z._-]+", "-", valor.strip())
+    limpo = re.sub(r"-{2,}", "-", limpo).strip("-.")
+    return limpo or "na"
+
+
+def _construir_nome_run(args: argparse.Namespace, timestamp: str) -> str:
+    """Monta um nome de diretório descritivo a partir dos parâmetros do run.
+
+    Formato: ``run_<timestamp>_<modelo>_n<samples>_k<k>[_lim<limit>]``.
+    O modelo é sanitizado para remover barras e caracteres inseguros.
+    """
+    modelo = _sanitizar_componente(args.model)
+    ks = "-".join(str(k) for k in sorted(args.k)) if args.k else "1"
+    partes = [
+        f"run_{timestamp}",
+        modelo,
+        f"n{args.samples}",
+        f"k{ks}",
+    ]
+    if args.limit is not None:
+        partes.append(f"lim{args.limit}")
+    return "_".join(partes)
 
 
 def _carregar_progresso(progress_path: Path) -> dict[str, dict]:
@@ -421,7 +453,7 @@ def main(argv: list[str] | None = None) -> int:
             )
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_dir = args.output_dir / f"run_{timestamp}"
+        run_dir = args.output_dir / _construir_nome_run(args, timestamp)
 
     # Valida parâmetros em caso de retomada e persiste metadata.json em qualquer cenário
     _validar_e_persistir_config(run_dir, args)
