@@ -26,8 +26,16 @@ litellm.num_retries = int(os.environ.get("AI4ES_LLM_NUM_RETRIES", "1"))
 # Registra github_copilot como provider LiteLLM no ADK (não incluso por padrão).
 # Usa subclasse que injeta X-Initiator: user e retries — evita cair na cota
 # reduzida de "utility models" do GitHub Copilot (429 user_global_rate_limited).
-LLMRegistry._register_lazy(
-    ["github_copilot/.*"],
-    "shared.llm",
-    "GithubCopilotLiteLlm",
-)
+# Registro tolerante a versão do ADK: 1.33+ expõe `_register_lazy` (import
+# preguiçoso do provider, só quando o modelo é resolvido). Em versões antigas,
+# o método não existe; caímos no registro clássico (import imediato da classe).
+if hasattr(LLMRegistry, "_register_lazy"):
+    LLMRegistry._register_lazy(
+        ["github_copilot/.*"],
+        "shared.llm",
+        "GithubCopilotLiteLlm",
+    )
+else:
+    from shared.llm import GithubCopilotLiteLlm
+
+    LLMRegistry._register(r"github_copilot/.*", GithubCopilotLiteLlm)
