@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Formato do id de task emitido pelo context_engineer ("TASK-XXX (sequencial)",
 # ver context_engineer/prompt.py). Estrito de propósito: o id validado aqui é
 # usado sem sanitização adicional para compor o nome da branch da task.
-_ID_TASK_RE = re.compile(r"^TASK-[0-9]{3,}$")
+_ID_TASK_RE = re.compile(r"^TASK-[0-9]+$")
 
 # Chaves de ciclo do loop coder ↔ executor, removidas entre tasks para que uma
 # task nunca herde o desfecho da anterior. Removidas (pop) e não zeradas: quem
