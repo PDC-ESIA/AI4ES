@@ -80,7 +80,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--model",
         default=None,
-        help="Sobrescreve ADK_LLM_MODEL (ex.: github_copilot/gpt-4).",
+        help="Modelo LLM a utilizar (obrigatório, ex.: github_copilot/gpt-4).",
     )
     p.add_argument(
         "--dataset-url",
@@ -139,11 +139,10 @@ def _append_progresso(progress_path: Path, detalhe: dict) -> None:
         fh.flush()
 
 
-async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
+async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict:
     """Executa o loop principal do benchmark e devolve o relatório consolidado."""
     # Imports tardios: só após o bootstrap ter fixado o ambiente.
     from benchmarks.coding_review.humaneval import coder_runner, grading
-    from benchmarks.coding_review.humaneval.contract import task_id_for
     from benchmarks.coding_review.humaneval.dataset import load_problems
     from benchmarks.coding_review.humaneval.metrics import aggregate_pass_at_k
 
@@ -159,8 +158,12 @@ async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
     progress_path = run_dir / "progress.jsonl"
     concluidos = _carregar_progresso(progress_path)
     if concluidos:
-        print(f"[run] Retomando: {len(concluidos)} problema(s) já concluído(s), pulando-os.")
-    print(f"[run] {len(problemas)} problema(s) a executar, {args.samples} amostra(s) cada.")
+        print(
+            f"[run] Retomando: {len(concluidos)} problema(s) já concluído(s), pulando-os."
+        )
+    print(
+        f"[run] {len(problemas)} problema(s) a executar, {args.samples} amostra(s) cada."
+    )
 
     detalhes: list[dict] = []
     per_problem: list[tuple[int, int]] = []
@@ -181,7 +184,7 @@ async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
         amostras_info: list[dict] = []
         for amostra in range(args.samples):
             t0 = time.time()
-            geracao = await coder_runner.run_coder(problema)
+            geracao = await coder_runner.run_coder(problema, model=model)
 
             if geracao.error:
                 resultado = {
@@ -248,19 +251,12 @@ async def _executar(args: argparse.Namespace, run_dir: Path) -> dict:
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "model": bootstrap_model(),
+        "model": model,
         "num_problems": len(problemas),
         "samples_per_problem": args.samples,
         "pass_at_k": {f"pass@{k}": round(v, 4) for k, v in metricas.items()},
         "problems": detalhes,
     }
-
-
-def bootstrap_model() -> str:
-    """Modelo LLM efetivamente configurado (para registro no relatório)."""
-    import os
-
-    return os.environ.get("ADK_LLM_MODEL", "desconhecido")
 
 
 def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
@@ -288,30 +284,153 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
     else:
         linhas.append("_Nenhuma métrica pass@k definível para a configuração usada._")
 
-    linhas += ["", "## Por problema", "", "| Task | Entry point | Corretas/n |", "| ---- | ----------- | ---------- |"]
+    linhas += [
+        "",
+        "## Por problema",
+        "",
+        "| Task | Entry point | Corretas/n |",
+        "| ---- | ----------- | ---------- |",
+    ]
     for p in relatorio["problems"]:
-        linhas.append(f"| {p['task_id']} | `{p['entry_point']}` | {p['correct']}/{p['n']} |")
+        linhas.append(
+            f"| {p['task_id']} | `{p['entry_point']}` | {p['correct']}/{p['n']} |"
+        )
 
     md_path = run_dir / "report.md"
     md_path.write_text("\n".join(linhas) + "\n", encoding="utf-8")
     return json_path, md_path
 
 
+def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace) -> None:
+    """Valida se os parâmetros atuais coincidem com os originais e persiste-os."""
+    config_path = run_dir / "metadata.json"
+
+    # Parâmetros atuais da execução
+    params_atuais = {
+        "model": args.model,
+        "samples": args.samples,
+        "k": sorted(args.k) if args.k else [1],
+        "timeout": args.timeout,
+    }
+
+    if config_path.is_file():
+        # Caso exista metadata.json, valida diretamente contra ele
+        try:
+            params_salvos = json.loads(config_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise ValueError(f"Erro ao ler metadata.json em {run_dir}: {exc}")
+
+        # Comparação detalhada
+        if params_salvos.get("model") != params_atuais["model"]:
+            raise ValueError(
+                f"Erro: O modelo informado ({params_atuais['model']}) difere do "
+                f"modelo original da execução ({params_salvos.get('model')})."
+            )
+        if params_salvos.get("samples") != params_atuais["samples"]:
+            raise ValueError(
+                f"Erro: O parâmetro '--samples' ({params_atuais['samples']}) difere do "
+                f"número de amostras original ({params_salvos.get('samples')})."
+            )
+        k_salvo = sorted(params_salvos.get("k", []))
+        if k_salvo != params_atuais["k"]:
+            raise ValueError(
+                f"Erro: O parâmetro '--k' ({params_atuais['k']}) difere das "
+                f"métricas pass@k originais ({k_salvo})."
+            )
+        if params_salvos.get("timeout") != params_atuais["timeout"]:
+            raise ValueError(
+                f"Erro: O parâmetro '--timeout' ({params_atuais['timeout']}) difere do "
+                f"timeout original ({params_salvos.get('timeout')})."
+            )
+    else:
+        # Backward compatibility / Migração retroativa: tenta validar lendo progress.jsonl ou report.json
+        progress_path = run_dir / "progress.jsonl"
+        report_path = run_dir / "report.json"
+
+        # 1. Validar samples a partir do progress.jsonl
+        if progress_path.is_file():
+            try:
+                linhas_split = progress_path.read_text(encoding="utf-8").splitlines()
+                if linhas_split:
+                    detalhe = json.loads(linhas_split[0])
+                    samples_originais = detalhe.get("n")
+                    if (
+                        samples_originais is not None
+                        and samples_originais != params_atuais["samples"]
+                    ):
+                        raise ValueError(
+                            f"Erro: O parâmetro '--samples' ({params_atuais['samples']}) difere do "
+                            f"número de amostras original ({samples_originais}) encontrado em progress.jsonl."
+                        )
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+        # 2. Validar model e k a partir do report.json
+        if report_path.is_file():
+            try:
+                relatorio_salvo = json.loads(report_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                relatorio_salvo = {}
+
+            if relatorio_salvo:
+                model_original = relatorio_salvo.get("model")
+                if model_original and model_original != params_atuais["model"]:
+                    raise ValueError(
+                        f"Erro: O modelo informado ({params_atuais['model']}) difere do "
+                        f"modelo original ({model_original}) encontrado em report.json."
+                    )
+
+                pass_at_k_salvo = relatorio_salvo.get("pass_at_k", {})
+                if pass_at_k_salvo:
+                    try:
+                        k_salvo = sorted(
+                            [
+                                int(chave.replace("pass@", ""))
+                                for chave in pass_at_k_salvo.keys()
+                            ]
+                        )
+                    except (ValueError, TypeError, KeyError):
+                        k_salvo = []
+                    if k_salvo and k_salvo != params_atuais["k"]:
+                        raise ValueError(
+                            f"Erro: O parâmetro '--k' ({params_atuais['k']}) difere das "
+                            f"métricas pass@k originais ({k_salvo}) encontradas em report.json."
+                        )
+
+        # Se passou na validação retroativa ou se é uma pasta nova, persiste o metadata.json
+        run_dir.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
+            json.dumps(params_atuais, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+
+    if not args.model:
+        raise ValueError(
+            "Erro: O parâmetro '--model' é obrigatório. "
+            "A execução do benchmark não pode prosseguir sem a definição explícita do modelo."
+        )
 
     if args.resume_dir is not None:
         run_dir = args.resume_dir
         if not run_dir.is_dir():
-            print(f"[run] Aviso: --resume-dir {run_dir} não existe; criando do zero.")
+            raise FileNotFoundError(
+                f"Erro: O diretório de retomada '--resume-dir' ({run_dir}) não existe ou não é um diretório."
+            )
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_dir = args.output_dir / f"run_{timestamp}"
+
+    # Valida parâmetros em caso de retomada e persiste metadata.json em qualquer cenário
+    _validar_e_persistir_config(run_dir, args)
+
     workspace_dir = run_dir / "workspace"
 
     bootstrap.prepare_environment(workspace_dir, model=args.model)
 
-    relatorio = asyncio.run(_executar(args, run_dir))
+    relatorio = asyncio.run(_executar(args, run_dir, model=args.model))
     json_path, md_path = _persistir_relatorio(relatorio, run_dir)
 
     print("\n=== RESULTADO ===")

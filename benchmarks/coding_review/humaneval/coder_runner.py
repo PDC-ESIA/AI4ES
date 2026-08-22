@@ -97,7 +97,10 @@ def _localizar_solucao(src_dir: Path, entry_point: str) -> Path | None:
 
 
 async def run_coder(
-    problem: HumanEvalProblem, *, user_id: str = "humaneval-bench"
+    problem: HumanEvalProblem,
+    model: str | None = None,
+    *,
+    user_id: str = "humaneval-bench",
 ) -> CoderGeneration:
     """Roda o coder para um problema e devolve os artefatos gerados.
 
@@ -105,6 +108,9 @@ async def run_coder(
     fixou o workspace/`sys.path` antes do binding das tools.
     """
     from src.agents.workflow_coding_review.coder.agent import agent as coder_agent
+
+    if model:
+        coder_agent.model = model
 
     task_id = problem.slug
     src_dir = _coder_src_dir()
@@ -150,9 +156,7 @@ async def run_coder(
 
     solution_file = _localizar_solucao(src_dir, problem.entry_point)
     arquivos = [
-        str(p.relative_to(src_dir))
-        for p in sorted(src_dir.rglob("*"))
-        if p.is_file()
+        str(p.relative_to(src_dir)) for p in sorted(src_dir.rglob("*")) if p.is_file()
     ]
     return CoderGeneration(
         task_id=task_id,
