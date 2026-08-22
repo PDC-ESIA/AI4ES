@@ -35,9 +35,11 @@ def _parse_tasks_output(callback_context: CallbackContext) -> None:
     tasks_raw = callback_context.state.get("tasks")
     if isinstance(tasks_raw, str):
         try:
-            callback_context.state["tasks"] = json.loads(tasks_raw)
+            parsed = json.loads(tasks_raw)
         except (json.JSONDecodeError, ValueError):
-            pass
+            return
+        if isinstance(parsed, dict):
+            callback_context.state["tasks"] = parsed
 
 
 agent = LlmAgent(
