@@ -189,29 +189,60 @@ def tool_remover_arquivo(caminho: str, base_dir: Optional[str] = None) -> dict:
     Validações automáticas:
     - Bloqueia remoção dentro de (ou de) .git, .venv, venv, node_modules,
       __pycache__, .env.
-    - Bloqueia caminho absoluto ou com ".." quando há base_dir.
+    - Bloqueia caminho absoluto ou com "..", **com ou sem base_dir**.
+    - Bloqueia caminho cujo diretório-pai resolva para fora da raiz — pega o
+      caso de um diretório intermediário ser link simbólico para fora.
     - Bloqueia a remoção da própria raiz do diretório de trabalho.
 
     Args:
-        caminho: Caminho do arquivo ou pasta a remover. Quando há base_dir, é
-            relativo a ele (não pode ser absoluto nem conter ".."). Sem
-            base_dir, é relativo ao CWD do processo.
+        caminho: Caminho do arquivo ou pasta a remover, sempre RELATIVO: à
+            base_dir quando ela existe, senão ao CWD do processo. Absoluto e
+            ".." são recusados nos dois casos.
         base_dir: Diretório base do agente injetado pela factory. Permite
             isolamento workspace-bound. Quando None, comportamento legado.
 
     Returns:
         dict com chaves: `sucesso` (bool), `caminho` (str do path resolvido ou
         o input em caso de erro), `tipo` ("arquivo" ou "diretorio" em sucesso,
-        senão None), `codigo` (str identificando a recusa, ou None em sucesso)
-        e `erro` (str ou None). Falha nunca levanta exceção — sempre retorna
-        `sucesso=False` com `codigo` e `erro` explicativos.
+        **sempre None em falha**), `codigo` (str identificando a recusa, ou
+        None em sucesso) e `erro` (str ou None). Falha **nunca** levanta
+        exceção — nem para entrada de tipo errado: sempre retorna
+        `sucesso=False` com `codigo` e `erro` explicativos. Códigos possíveis:
+        CAMINHO_INVALIDO, CAMINHO_VAZIO, DIRETORIO_PROTEGIDO, RAIZ_DO_WORKSPACE,
+        FORA_DO_WORKSPACE, CAMINHO_INEXISTENTE, DIRETORIO_NAO_VAZIO,
+        PERMISSAO_NEGADA, ERRO_INESPERADO.
     """
-    if not caminho or not caminho.strip():
+    if not isinstance(caminho, str):
+        return {
+            "sucesso": False,
+            "codigo": "CAMINHO_INVALIDO",
+            "erro": f"Caminho deve ser texto; recebido {type(caminho).__name__}.",
+            "caminho": None,
+            "tipo": None,
+        }
+
+    if not caminho.strip():
         return {
             "sucesso": False,
             "codigo": "CAMINHO_VAZIO",
             "erro": "Caminho a remover não pode ser vazio.",
             "caminho": None,
+            "tipo": None,
+        }
+
+    # Absoluto e ".." são recusados SEMPRE, inclusive sem base_dir: _resolver_caminho
+    # só protege quando há base, e remoção é destrutiva demais para depender do
+    # chamador ter feito o binding.
+    rel = Path(caminho)
+    if rel.is_absolute() or ".." in rel.parts:
+        return {
+            "sucesso": False,
+            "codigo": "CAMINHO_INVALIDO",
+            "erro": (
+                f"Caminho '{caminho}' não é relativo ao diretório de trabalho. "
+                f"Não use caminho absoluto nem '..' na remoção."
+            ),
+            "caminho": caminho,
             "tipo": None,
         }
 
@@ -238,7 +269,9 @@ def tool_remover_arquivo(caminho: str, base_dir: Optional[str] = None) -> dict:
             "tipo": None,
         }
 
-    if base_dir is not None and path.resolve() == Path(base_dir).resolve():
+    raiz = Path(base_dir).resolve() if base_dir is not None else Path.cwd().resolve()
+
+    if path.resolve() == raiz:
         return {
             "sucesso": False,
             "codigo": "RAIZ_DO_WORKSPACE",
@@ -250,11 +283,47 @@ def tool_remover_arquivo(caminho: str, base_dir: Optional[str] = None) -> dict:
             "tipo": None,
         }
 
+    # Confinamento real: `..` e caminho absoluto já foram recusados, mas um
+    # diretório-pai que seja LINK SIMBÓLICO ainda escaparia — `unlink()` segue
+    # link de componente intermediário. Resolvemos o PAI (não o alvo, para que
+    # remover o próprio link continue possível) e exigimos que ele fique dentro
+    # da raiz.
+    try:
+        pai_real = path.parent.resolve()
+    except OSError as e:
+        return {
+            "sucesso": False,
+            "codigo": "ERRO_INESPERADO",
+            "erro": f"Não foi possível resolver o diretório de '{caminho}': {e}",
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    if pai_real != raiz and raiz not in pai_real.parents:
+        return {
+            "sucesso": False,
+            "codigo": "FORA_DO_WORKSPACE",
+            "erro": (
+                f"O caminho '{caminho}' resolve para fora do diretório de trabalho "
+                f"({pai_real}). Remoção recusada."
+            ),
+            "caminho": caminho,
+            "tipo": None,
+        }
+
     # is_symlink() antes de is_file()/is_dir(): link quebrado não é nenhum dos
     # dois, e mesmo assim precisa poder ser removido.
     if path.is_symlink():
         try:
             path.unlink()
+        except PermissionError as e:
+            return {
+                "sucesso": False,
+                "codigo": "PERMISSAO_NEGADA",
+                "erro": f"Permissão negada: {e}",
+                "caminho": caminho,
+                "tipo": None,
+            }
         except OSError as e:
             return {
                 "sucesso": False,
@@ -299,7 +368,7 @@ def tool_remover_arquivo(caminho: str, base_dir: Optional[str] = None) -> dict:
                         f"um caminho por chamada, e depois a pasta."
                     ),
                     "caminho": caminho,
-                    "tipo": "diretorio",
+                    "tipo": None,
                 }
             path.rmdir()
             tipo = "diretorio"

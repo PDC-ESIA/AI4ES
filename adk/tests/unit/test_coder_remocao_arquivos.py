@@ -150,6 +150,29 @@ class TestFalhasControladas:
         assert result["sucesso"] is False
         assert result["codigo"] == "CAMINHO_VAZIO"
 
+    @pytest.mark.parametrize("caminho", [123, None, ["app/x.py"], 4.2])
+    def test_caminho_de_tipo_errado_falha_sem_excecao(self, workspace, caminho):
+        """O contrato promete nunca levantar exceção — nem para tipo errado."""
+        result = tool_remover_arquivo(caminho, base_dir=str(workspace))
+
+        assert result["sucesso"] is False
+        assert result["codigo"] == "CAMINHO_INVALIDO"
+        assert "texto" in result["erro"]
+
+    def test_falha_nunca_devolve_tipo_preenchido(self, workspace):
+        """`tipo` é None em toda recusa — inclusive quando o alvo é pasta."""
+        pasta = workspace / "app"
+        pasta.mkdir()
+        (pasta / "main.py").write_text("pass\n", encoding="utf-8")
+
+        recusas = [
+            tool_remover_arquivo("app", base_dir=str(workspace)),
+            tool_remover_arquivo("nao_existe.py", base_dir=str(workspace)),
+            tool_remover_arquivo("../fora.py", base_dir=str(workspace)),
+        ]
+
+        assert all(r["sucesso"] is False and r["tipo"] is None for r in recusas)
+
 
 class TestSeguranca:
     def test_path_traversal_rejeitado_e_alvo_preservado(self, workspace, tmp_path):
@@ -207,6 +230,36 @@ class TestSeguranca:
         assert result["sucesso"] is False
         assert result["codigo"] == "RAIZ_DO_WORKSPACE"
         assert workspace.exists()
+
+    def test_diretorio_pai_que_e_link_simbolico_nao_escapa(self, workspace, tmp_path):
+        """`..` e absoluto são recusados antes — mas um PAI que é link escaparia.
+
+        `unlink()` segue link simbólico de componente intermediário: sem checar o
+        pai resolvido, `atalho/importante.py` apagaria fora do workspace.
+        """
+        externo = tmp_path / "externo"
+        externo.mkdir()
+        vitima = externo / "importante.py"
+        vitima.write_text("dados que não podem sumir\n", encoding="utf-8")
+        (workspace / "atalho").symlink_to(externo, target_is_directory=True)
+
+        result = tool_remover_arquivo("atalho/importante.py", base_dir=str(workspace))
+
+        assert result["sucesso"] is False
+        assert result["codigo"] == "FORA_DO_WORKSPACE"
+        assert vitima.exists(), "o arquivo fora do workspace tem que sobreviver"
+
+    def test_sem_base_dir_tambem_rejeita_absoluto_e_traversal(self, cwd_isolado, tmp_path):
+        """Modo legado é destrutivo igual — não pode aceitar caminho de fora."""
+        vitima = tmp_path / "fora.py"
+        vitima.write_text("pass\n", encoding="utf-8")
+
+        por_absoluto = tool_remover_arquivo(str(vitima))
+        por_traversal = tool_remover_arquivo("../fora.py")
+
+        assert por_absoluto["codigo"] == "CAMINHO_INVALIDO"
+        assert por_traversal["codigo"] == "CAMINHO_INVALIDO"
+        assert vitima.exists()
 
     def test_link_simbolico_e_removido_sem_tocar_no_alvo(self, workspace, tmp_path):
         """Remover o link não pode remover o que está fora do workspace."""
