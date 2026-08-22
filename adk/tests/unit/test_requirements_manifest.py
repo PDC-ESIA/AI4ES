@@ -114,6 +114,13 @@ def test_status_ok_sem_doubts():
     assert _derive_status(arts, []) == "ok"
 
 
+def test_scan_paths_usam_barras_normais(tmp_path):
+    """Paths do manifesto devem usar '/' independentemente do SO."""
+    _make_ws(tmp_path, {"HUs/HU-001.md": "x"})
+    arts = _scan_artifacts(tmp_path, tmp_path)
+    assert "\\" not in arts[0]["path"]
+
+
 def test_status_blocked_doubt_bloqueante():
     arts   = [{"tipo": "HU", "id": "HU-001", "path": "x"}]
     doubts = [{"id": "D-001", "severidade": "alta", "bloqueante": True, "path": "y"}]
@@ -126,8 +133,8 @@ def test_status_partial_doubt_nao_bloqueante():
     assert _derive_status(arts, doubts) == "partial"
 
 
-def test_status_blocked_sem_artefatos():
-    assert _derive_status([], []) == "blocked"
+def test_status_partial_sem_artefatos():
+    assert _derive_status([], []) == "partial"
 
 
 def test_status_blocked_sem_artefatos_com_doubt():
@@ -145,14 +152,25 @@ def test_summary_conta_tipos():
         {"tipo": "HU",  "id": "HU-002", "path": "x"},
         {"tipo": "RF",  "id": "RF-001", "path": "x"},
     ]
-    summary = _build_summary(arts, [])
+    summary = _build_summary(arts, [], "ok")
     assert "2 HU" in summary and "1 RF" in summary
 
 
 def test_summary_menciona_duvidas():
     arts   = [{"tipo": "HU", "id": "HU-001", "path": "x"}]
     doubts = [{"id": "D-001", "severidade": "media", "bloqueante": False, "path": "y"}]
-    assert "dúvida" in _build_summary(arts, doubts)
+    assert "dúvida" in _build_summary(arts, doubts, "partial")
+
+
+def test_summary_blocked_inclui_motivo_com_doubt():
+    doubts = [{"id": "D-001", "severidade": "alta", "bloqueante": True, "path": "y"}]
+    summary = _build_summary([], doubts, "blocked")
+    assert "Motivo do bloqueio" in summary and "D-001" in summary
+
+
+def test_summary_blocked_inclui_motivo_sem_artefatos():
+    summary = _build_summary([], [], "blocked")
+    assert "Motivo do bloqueio" in summary and "nenhum artefato" in summary
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +190,37 @@ def test_emit_grava_state_e_arquivo(tmp_path):
     assert ctx.state["requirements_manifest"]["phase"] == "requirements"
     assert ctx.state["requirements_manifest"]["status"] == "ok"
     assert (tmp_path / "manifest.json").exists()
+
+
+def test_emit_anexa_em_phase_manifests(tmp_path):
+    """Manifesto deve ir para a lista padronizada phase_manifests."""
+    _make_ws(tmp_path, {"HUs/HU-001.md": "# HU-001"})
+    ctx = MagicMock()
+    ctx.state = {"phase_manifests": [{"phase": "qa", "status": "ok",
+                                      "artifacts": [], "doubts": [],
+                                      "summary": ""}]}
+
+    with patch("src.agents.requirements.manifest.get_agent_workspace", return_value=tmp_path), \
+         patch("src.agents.requirements.manifest.get_workspace_root", return_value=tmp_path):
+        emit_requirements_manifest(callback_context=ctx)
+
+    phases = [m["phase"] for m in ctx.state["phase_manifests"]]
+    assert phases == ["qa", "requirements"]
+
+
+def test_emit_substitui_manifesto_da_propria_fase(tmp_path):
+    """Reexecução não deve duplicar o manifesto de requirements na lista."""
+    _make_ws(tmp_path, {"HUs/HU-001.md": "# HU-001"})
+    ctx = MagicMock()
+    ctx.state = {}
+
+    with patch("src.agents.requirements.manifest.get_agent_workspace", return_value=tmp_path), \
+         patch("src.agents.requirements.manifest.get_workspace_root", return_value=tmp_path):
+        emit_requirements_manifest(callback_context=ctx)
+        emit_requirements_manifest(callback_context=ctx)
+
+    phases = [m["phase"] for m in ctx.state["phase_manifests"]]
+    assert phases == ["requirements"]
 
 
 def test_emit_manifest_json_valido(tmp_path):
