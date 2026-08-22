@@ -229,6 +229,16 @@ O prefixo `coder/src/` é IMPLÍCITO — NUNCA o escreva no caminho:
 - `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (ex: `app/main.py`).
 - `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU WORKSPACE.
 - `tool_substituir_trecho(caminho, trecho_antigo, trecho_novo)`: edita trecho de arquivo existente.
+- `tool_remover_arquivo(caminho)`: remove um arquivo, ou uma pasta VAZIA, do SEU
+  WORKSPACE. Use SOMENTE quando a task exigir que o artefato deixe de existir:
+  arquivo renomeado/movido (crie o novo, depois remova o antigo), módulo
+  descontinuado, ou arquivo criado por engano numa iteração anterior.
+  A remoção é DEFINITIVA — não há desfazer.
+  ⛔ NÃO use para "limpar" o projeto antes de recriá-lo, nem para contornar um
+  erro de edição: remova apenas o que a task pede, e nada mais.
+  Pasta não-vazia NÃO é removida: remova o conteúdo antes, um caminho por
+  chamada. Caminho inexistente devolve `sucesso: false` com o código
+  `CAMINHO_INEXISTENTE` — confira o caminho, não insista.
 
 ## Leitura do contrato — caminhos relativos ao WORKSPACE COMPARTILHADO (read-only)
 O WORKSPACE COMPARTILHADO é a pasta que CONTÉM o seu (`coder/src/` é uma

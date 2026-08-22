@@ -16,6 +16,7 @@ from shared.workspace import get_agent_workspace, get_workspace_root
 from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
     tool_ler_arquivo,
+    tool_remover_arquivo,
     tool_substituir_trecho,
 )
 from shared.tools.filesystem import (
@@ -24,7 +25,7 @@ from shared.tools.filesystem import (
 )
 
 from . import prompt as coder_prompt
-from .workspace_guard import bloquear_sobrescrita_herdada
+from .workspace_guard import auditar_remocao, bloquear_sobrescrita_herdada
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
@@ -52,8 +53,10 @@ agent = LlmAgent(
         _bind(FunctionTool(tool_criar_arquivo)),
         _bind(FunctionTool(tool_ler_arquivo)),
         _bind(FunctionTool(tool_substituir_trecho)),
+        _bind(FunctionTool(tool_remover_arquivo)),
         _bind(FunctionTool(tool_ler_workspace)),
         _bind(FunctionTool(tool_listar_workspace)),
     ],
     before_tool_callback=bloquear_sobrescrita_herdada,
+    after_tool_callback=auditar_remocao,
 )
