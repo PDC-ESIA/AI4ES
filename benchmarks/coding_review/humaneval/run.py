@@ -112,6 +112,43 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
+def _testar_conexao_modelo(model: str) -> None:
+    """Pre-flight: chamada mínima ao modelo para validar credenciais/conexão.
+
+    Envia um "ping" de 1 token antes de iniciar o benchmark. Em caso de falha,
+    exibe o traceback COMPLETO (incl. erro interno da API via LiteLLM/HTTPX) e
+    aborta com SystemExit(1) — fail-fast, evitando iniciar o run só para falhar
+    na primeira tarefa. Deve ser chamado após `bootstrap.prepare_environment`
+    (garante .env carregado e providers registrados no LLMRegistry).
+    """
+    import traceback
+
+    import litellm
+
+    print(f"\n[PRE-FLIGHT] Testando conexão com o modelo '{model}'...")
+    try:
+        litellm.completion(
+            model=model,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=1,
+            timeout=20,
+        )
+        print("[PRE-FLIGHT] Conexão estabelecida com sucesso!\n")
+    except Exception:  # noqa: BLE001 — qualquer falha aborta o benchmark
+        print("\n" + "=" * 80)
+        print(f"[PRE-FLIGHT ERROR] Falha ao conectar ao modelo '{model}'.")
+        print("Log de erro / traceback completo:")
+        print("=" * 80)
+        traceback.print_exc()
+        print("=" * 80)
+        print(
+            "DICA: verifique as credenciais no ambiente ou no .env (ex.: "
+            "OPENROUTER_API_KEY, credencial do GitHub Copilot) e a conectividade "
+            "com a internet.\n"
+        )
+        raise SystemExit(1)
+
+
 def _sanitizar_componente(valor: str) -> str:
     """Normaliza um trecho para uso seguro em nome de diretório.
 
@@ -218,6 +255,13 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
             t0 = time.time()
             geracao = await coder_runner.run_coder(problema, model=model)
 
+            # Telemetria de uso do LLM, coletada em qualquer desfecho da geração.
+            telemetria = {
+                "llm_interactions": geracao.llm_interactions,
+                "prompt_tokens": geracao.prompt_tokens,
+                "completion_tokens": geracao.completion_tokens,
+            }
+
             if geracao.error:
                 resultado = {
                     "sample": amostra,
@@ -225,6 +269,7 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
                     "reason": f"Falha de geração: {geracao.error}",
                     "files": geracao.files,
                     "duration_s": round(time.time() - t0, 2),
+                    **telemetria,
                 }
             elif not geracao.has_solution:
                 resultado = {
@@ -236,6 +281,7 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
                     ),
                     "files": geracao.files,
                     "duration_s": round(time.time() - t0, 2),
+                    **telemetria,
                 }
             else:
                 grade = grading.grade_solution(
@@ -258,6 +304,7 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
                     "timed_out": grade.timed_out,
                     "stderr_tail": grade.stderr_tail,
                     "duration_s": round(time.time() - t0, 2),
+                    **telemetria,
                 }
             amostras_info.append(resultado)
             status = "PASS" if resultado["passed"] else "FAIL"
@@ -281,12 +328,31 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
 
     metricas = aggregate_pass_at_k(per_problem, args.k)
 
+    # Agrega telemetria de uso do LLM sobre todas as amostras de todos os
+    # problemas (inclui resultados reaproveitados do checkpoint, se presentes).
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+    total_llm_interactions = 0
+    for p in detalhes:
+        for s in p.get("samples", []):
+            total_prompt_tokens += s.get("prompt_tokens", 0) or 0
+            total_completion_tokens += s.get("completion_tokens", 0) or 0
+            total_llm_interactions += s.get("llm_interactions", 0) or 0
+
+    usage_metrics = {
+        "total_llm_interactions": total_llm_interactions,
+        "total_prompt_tokens": total_prompt_tokens,
+        "total_completion_tokens": total_completion_tokens,
+        "total_tokens": total_prompt_tokens + total_completion_tokens,
+    }
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model": model,
         "num_problems": len(problemas),
         "samples_per_problem": args.samples,
         "pass_at_k": {f"pass@{k}": round(v, 4) for k, v in metricas.items()},
+        "usage_metrics": usage_metrics,
         "problems": detalhes,
     }
 
@@ -315,6 +381,19 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
             linhas.append(f"- **{chave}:** {valor:.4f} ({valor * 100:.1f}%)")
     else:
         linhas.append("_Nenhuma métrica pass@k definível para a configuração usada._")
+
+    usage = relatorio.get("usage_metrics", {})
+    if usage:
+        linhas += [
+            "",
+            "## Métricas de Execução",
+            "",
+            f"- **Tempo total de execução:** {usage.get('total_duration_s', 0.0):.2f}s",
+            f"- **Total de interações com LLM:** {usage.get('total_llm_interactions', 0)}",
+            f"- **Total de tokens de entrada (prompt):** {usage.get('total_prompt_tokens', 0)}",
+            f"- **Total de tokens de saída (completion):** {usage.get('total_completion_tokens', 0)}",
+            f"- **Total de tokens:** {usage.get('total_tokens', 0)}",
+        ]
 
     linhas += [
         "",
@@ -462,7 +541,13 @@ def main(argv: list[str] | None = None) -> int:
 
     bootstrap.prepare_environment(workspace_dir, model=args.model)
 
+    # Pre-flight: valida conexão/credenciais antes de iniciar o benchmark.
+    _testar_conexao_modelo(args.model)
+
+    t_start = time.time()
     relatorio = asyncio.run(_executar(args, run_dir, model=args.model))
+    total_duration_s = round(time.time() - t_start, 2)
+    relatorio.setdefault("usage_metrics", {})["total_duration_s"] = total_duration_s
     json_path, md_path = _persistir_relatorio(relatorio, run_dir)
 
     print("\n=== RESULTADO ===")
@@ -471,6 +556,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{chave}: {valor:.4f} ({valor * 100:.1f}%)")
     else:
         print("Nenhuma métrica pass@k definível para a configuração usada.")
+    usage = relatorio.get("usage_metrics", {})
+    if usage:
+        print(
+            f"Tempo total: {usage.get('total_duration_s', 0.0):.2f}s | "
+            f"Interações LLM: {usage.get('total_llm_interactions', 0)} | "
+            f"Tokens (in/out/total): {usage.get('total_prompt_tokens', 0)}/"
+            f"{usage.get('total_completion_tokens', 0)}/{usage.get('total_tokens', 0)}"
+        )
     print(f"Relatório JSON: {json_path}")
     print(f"Resumo Markdown: {md_path}")
     return 0

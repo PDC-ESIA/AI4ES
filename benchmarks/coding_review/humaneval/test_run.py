@@ -258,9 +258,12 @@ def test_construir_nome_run_k_vazio():
 
 
 @patch("benchmarks.coding_review.humaneval.bootstrap.prepare_environment")
+@patch("benchmarks.coding_review.humaneval.run._testar_conexao_modelo")
 @patch("benchmarks.coding_review.humaneval.run._persistir_relatorio")
 @patch("benchmarks.coding_review.humaneval.run._executar", new_callable=AsyncMock)
-def test_main_happy_path(mock_executar, mock_persistir, mock_prepare_env, tmp_path):
+def test_main_happy_path(
+    mock_executar, mock_persistir, mock_preflight, mock_prepare_env, tmp_path
+):
     """Asserts main CLI execution works end-to-end under successful parameters."""
     run_dir = tmp_path / "run_folder"
     run_dir.mkdir()
@@ -289,5 +292,6 @@ def test_main_happy_path(mock_executar, mock_persistir, mock_prepare_env, tmp_pa
 
     assert status == 0
     mock_prepare_env.assert_called_once_with(run_dir / "workspace", model="gpt-4")
+    mock_preflight.assert_called_once_with("gpt-4")
     mock_executar.assert_called_once()
     mock_persistir.assert_called_once()
