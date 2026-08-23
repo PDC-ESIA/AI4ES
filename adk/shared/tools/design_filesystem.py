@@ -133,7 +133,8 @@ _FOLDER_ALIAS_DISPLAY = (
     "PROTOTYPE, PROTOTYPE_DIR, PROTOTYPE_FOLDER, "
     "REPORT, REPORT_DIR, REPORT_FOLDER, "
     "DOUBT, DOUBT_DIR, DOUBT_FOLDER, "
-    "TEMPLATE_DIR, TEMPLATE_FOLDER"
+    "TEMPLATE, TEMPLATE_DIR, TEMPLATE_FOLDER, "
+    "VALIDATION, VALIDATION_DIR, VALIDATION_FOLDER"
 )
 
 
@@ -164,6 +165,10 @@ def _folder_aliases(dirs: Dict[str, Path]) -> Dict[str, Path]:
         "template":         dirs["template"],
         "template_dir":     dirs["template"],
         "template_folder":  dirs["template"],
+        # VALIDATION
+        "validation":        dirs["validation"],
+        "validation_dir":    dirs["validation"],
+        "validation_folder": dirs["validation"],
     }
 
 

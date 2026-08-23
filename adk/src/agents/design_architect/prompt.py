@@ -133,7 +133,7 @@ a HU em si esteja totalmente coberta, usando a categoria "Funcional" ou
 
   | # | Lacuna | Categoria | Impacto Arquitetural | Ação Recomendada |
   |---|--------|-----------|----------------------|------------------|
-  | N | <o que a HU não especificou> — assumido: "<suposição em texto neutro>" | Funcional \| Arquitetural | <o que fica em aberto se a suposição estiver errada> | Assumir padrão |
+  | N | <o que a HU não especificou> — assumido: "<suposição em texto neutro>" | Funcional \\| Arquitetural | <o que fica em aberto se a suposição estiver errada> | Assumir padrão |
 
 Isso preserva rastreabilidade total: qualquer suposição feita durante a análise
 fica visível e auditável no artefato final, mesmo sem pausar o pipeline.
@@ -173,7 +173,7 @@ AÇÃO 2 — Gere o Doubt_Artifact usando a ferramenta de persistência de artef
   - Lacuna Funcional: o que o sistema deve fazer não está claro na HU.
   - Lacuna Arquitetural: informação ausente que bloqueia uma decisão técnica específica.
 
-  Persista o Doubt_Artifact com filename=doubt_dir/Doubt_Artifact_<HU_ID>_<data atual obtida exclusivamente via tool>.md
+  Persista o Doubt_Artifact com filename=DOUBT/Doubt_Artifact_<HU_ID>_<data atual obtida exclusivamente via tool>.md
   e o seguinte conteúdo:
 
   # Doubt Artifact — <HU_ID>
@@ -367,7 +367,7 @@ sem exceção nos dois casos.
 Ao ser acionado, verifique imediatamente:
 1. O texto das HUs (ator, ação e critérios de aceite) está presente na mensagem?
    - Se sim: prossiga.
-2. A mensagem contém apenas IDs ou um caminho de arquivo (ex: `ANALYSIS_DIR/HUs.md`)?
+2. A mensagem contém apenas IDs ou um caminho de arquivo (ex: `ANALYSIS/HUs.md`)?
    - Interrompa imediatamente.
    - Responda ao pipeline_controller: "BLOQUEIO: O texto das HUs não foi enviado no corpo da mensagem. Aguardando input textual."
 
@@ -687,7 +687,7 @@ GAP ANALYSIS — Lacunas Identificadas
 
 | # | Lacuna | Categoria | Impacto Arquitetural | Ação Recomendada |
 |---|--------|-----------|----------------------|------------------|
-| 1 | <descrição objetiva do que está ausente nas HUs> | Funcional \| Arquitetural | <decisão que fica em aberto ou componente que não pode ser dimensionado> | Doubt_Artifact \| Assumir padrão \| Escalar para Time 1 |
+| 1 | <descrição objetiva do que está ausente nas HUs> | Funcional \\| Arquitetural | <decisão que fica em aberto ou componente que não pode ser dimensionado> | Doubt_Artifact \\| Assumir padrão \\| Escalar para Time 1 |
 
 Categorias:
 - Funcional: o que o sistema deve fazer não está coberto por nenhuma HU do lote.
@@ -796,7 +796,7 @@ REGRAS DE NAVEGAÇÃO:
 - Todos os links usam caminhos relativos entre os arquivos — NUNCA caminhos absolutos,
   endereços de ambiente ou referências a diretórios de sistema.
   ✅ Correto: href="painel_admin.html"
-  ❌ Errado: href="prototype_dir/painel_admin.html" ou href="analysis_dir/painel_admin.html"
+  ❌ Errado: href="PROTOTYPE/painel_admin.html" ou href="ANALYSIS/painel_admin.html"
 
 Produza a tabela de navegação:
 
