@@ -11,6 +11,7 @@ from src.agents.validator.agent import agent as validator
 from src.agents.io_agent.agent import agent as io_agent
 from shared.tools.design_hitl_tool import aguardar_resolucao_doubt
 
+from .gate import gate_parallel_branch
 from .manifest import emit_design_manifest
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
@@ -227,6 +228,11 @@ parallel_branch = ParallelAgent(
         prototyping_specialist,
         diagram_flow,
     ],
+    # Gate determinístico: a description acima é só documentação, não uma
+    # regra aplicada — sem isto, o SequentialAgent raiz roda parallel_branch
+    # incondicionalmente mesmo quando pipeline_controller recusa a análise
+    # técnica (ver gate.py para o incidente real que motivou este fix).
+    before_agent_callback=gate_parallel_branch,
 )
 
 agent = SequentialAgent(

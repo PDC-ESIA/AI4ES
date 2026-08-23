@@ -100,15 +100,20 @@ def _design_root() -> Path:
 
 
 def _repo_relative(path: Path, root: Path) -> str:
-    """Caminho relativo à raiz do repo (o pai de `workspace_output/`).
+    """Caminho relativo à raiz do workspace (`workspace_output/`), com
+    separador normalizado ("/") — mesmo padrão de
+    `requirements/manifest.py::_rel_path` e
+    `workflow_coding_review/manifest.py::_scan_artifacts`, para que o
+    orquestrador e as fases seguintes resolvam os três manifestos da
+    mesma forma.
 
     Ex.: `<repo>/adk/workspace_output/design/diagrams/HU-001.mmd`
-         → `workspace_output/design/diagrams/HU-001.mmd`.
+         → `design/diagrams/HU-001.mmd`.
     Fallback: caminho absoluto, se a relativização não for possível.
     """
     try:
-        base = root.parent.parent  # design/ → workspace_output/ → base
-        return os.path.relpath(path, base)
+        base = root.parent  # design/ → workspace_output/
+        return os.path.relpath(path, base).replace("\\", "/")
     except (ValueError, OSError):
         return str(path)
 
@@ -410,6 +415,12 @@ def emit_design_manifest(callback_context: Any) -> None:
 
     try:
         existing = list(callback_context.state.get("phase_manifests", []) or [])
+        # Reexecução da fase substitui a entrada anterior em vez de duplicá-la
+        # — mesmo padrão de requirements/manifest.py::emit_requirements_manifest.
+        existing = [
+            m for m in existing
+            if not (isinstance(m, dict) and m.get("phase") == PHASE_NAME)
+        ]
         existing.append(manifest_dict)
         callback_context.state["phase_manifests"] = existing
     except Exception as exc:
