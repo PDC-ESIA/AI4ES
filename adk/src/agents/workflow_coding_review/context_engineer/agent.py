@@ -11,10 +11,10 @@
 - Persiste tasks em workspace_output/coder/tasks/.
 """
 
+import json
 import os
-
 from google.adk.agents import LlmAgent
-
+from google.adk.agents.callback_context import CallbackContext
 from shared.tools.coding_tools.context_engineer_tools import (
     tool_salvar_task_cr_adk,
     tool_salvar_macro_context_cr_adk,
@@ -30,12 +30,24 @@ from . import prompt
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
+def _parse_tasks_output(callback_context: CallbackContext) -> None:
+    tasks_raw = callback_context.state.get("tasks")
+    if isinstance(tasks_raw, str):
+        try:
+            parsed = json.loads(tasks_raw)
+        except (json.JSONDecodeError, ValueError):
+            return
+        if isinstance(parsed, dict):
+            callback_context.state["tasks"] = parsed
+
+
 agent = LlmAgent(
     model=_model,
     name="cr_context_engineer",
     description=prompt.description,
     instruction=prompt.instruction,
     output_key="tasks",
+    after_agent_callback=_parse_tasks_output,
     tools=[
         tool_salvar_task_cr_adk,
         tool_salvar_macro_context_cr_adk,
