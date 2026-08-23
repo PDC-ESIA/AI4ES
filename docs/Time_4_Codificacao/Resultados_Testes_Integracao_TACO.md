@@ -132,11 +132,11 @@ Todos os testes foram realizados via ADK Web UI. Os JSONs de entrada foram forne
 
 ---
 
-## 5. Observações técnicas registradas
+## 4. Observações técnicas registradas
 
 Esta seção documenta comportamentos observados nos logs durante os testes.
 
-### 5.1 Número de chamadas LLM por exercício
+### 4.1 Número de chamadas LLM por exercício
 
 **Cenário 1 — logs observados durante o Teste 1:**
 ```
@@ -155,7 +155,7 @@ Total observado: **6 chamadas LLM** para o exercício mais simples (2 variaçõe
 **Cenário 2 — log análogo:**  
 `review_builder` (1) + pipeline do reviewer SDLC (2–3) + `feedback_composer` (1) = **4–5 chamadas LLM**.
 
-### 5.2 Artefatos gerados pelo `cr_coder_agent` no workspace
+### 4.2 Artefatos gerados pelo `cr_coder_agent` no workspace
 
 Após cada execução do Cenário 1, o diretório `workspace_output/coder/src/` continha:
 
@@ -170,25 +170,25 @@ workspace_output/coder/src/
 
 Os três artefatos (`PLAN.md`, `run.json`, `README.md`) foram gerados porque o system prompt do `cr_coder_agent` os declara como obrigatórios. O `task_builder` instrui o coder a não criar esses artefatos, mas a instrução de turno compete com o system prompt — este tem precedência. Os artefatos são descartados pelo `matching.py` sem impacto no resultado final, mas foram gerados e consumiram tokens.
 
-### 5.3 Workspace compartilhado entre Cenário TACO e pipeline SDLC
+### 4.3 Workspace compartilhado entre Cenário TACO e pipeline SDLC
 
 O `cr_coder_agent` e o `cr_review_analyzer_agent` utilizam `workspace_output/coder/src/` — o mesmo diretório do pipeline SDLC. O `agent.py` executa `_limpar_workspace_coder()` antes de cada chamada TACO, o que garante isolamento entre exercícios TACO executados sequencialmente.
 
 O comportamento em execuções simultâneas (dois exercícios TACO em paralelo, ou TACO + SDLC rodando ao mesmo tempo) não foi testado nesta PoC.
 
-### 5.4 Filtragem pedagógica do `feedback_composer`
+### 4.4 Filtragem pedagógica do `feedback_composer`
 
 O `feedback_composer` recebe a saída bruta do reviewer SDLC — que pode conter issues como "ausência de suíte pytest", "violação de SRP" ou "PLAN.md não encontrado" — e filtra esses ruídos antes de apresentar ao aluno. Nos Testes 4 e 5, esse filtro funcionou: o feedback ao aluno não continha essas referências.
 
 O filtro é implementado via instrução de prompt (lista de issues a ignorar/suavizar). A eficácia do filtro pode variar dependendo do exercício e do volume de ruído SDLC na saída do reviewer.
 
-### 5.5 Análise estática no Cenário 2
+### 4.5 Análise estática no Cenário 2
 
 O `cr_review_analyzer_agent` usa um `before_callback` (`_inject_static_findings`) que executa Ruff e Bandit no código presente em `workspace_output/coder/src/` antes de iniciar a revisão. Para que isso funcione no Cenário 2, o `agent.py` escreve o código do aluno em `student_solution.py` antes de invocar o reviewer. Essa etapa funcionou nos Testes 4 e 5.
 
 ---
 
-## 6. Limitações documentadas no código-fonte
+## 5. Limitações documentadas no código-fonte
 
 As seguintes limitações estão registradas no docstring do `agent.py` (transcrição direta):
 
@@ -200,7 +200,7 @@ As seguintes limitações estão registradas no docstring do `agent.py` (transcr
 
 ---
 
-## 7. Sumário dos resultados
+## 6. Sumário dos resultados
 
 | Teste | Cenário | Resultado | Observação |
 |---|---|---|---|
@@ -214,7 +214,7 @@ As seguintes limitações estão registradas no docstring do `agent.py` (transcr
 
 ---
 
-## 8. Fatos registrados para análise posterior
+## 7. Fatos registrados para análise posterior
 
 Os itens abaixo são fatos observados durante os testes, registrados para subsidiar discussões de arquitetura sem antecipar conclusões:
 

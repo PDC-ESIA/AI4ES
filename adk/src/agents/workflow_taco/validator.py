@@ -18,6 +18,7 @@ from __future__ import annotations
 import ast
 import logging
 import subprocess
+import sys
 from pathlib import Path
 
 from .matching import MatchResult
@@ -48,11 +49,13 @@ def _executar_com_stdin(script_path: Path, stdin_input: str) -> tuple[str, int]:
     """Executa o script com a entrada dada e retorna (stdout, exit_code)."""
     try:
         result = subprocess.run(
-            ["python", str(script_path)],
+            [sys.executable, str(script_path)],
             input=stdin_input,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=_EXEC_TIMEOUT_S,
+            cwd=script_path.parent,
         )
         return result.stdout.rstrip("\n"), result.returncode
     except subprocess.TimeoutExpired:
@@ -111,7 +114,9 @@ def validate(
         examples_run = []
         if examples:
             for i, ex in enumerate(examples):
-                stdin_val = ex.get("input", "")
+                stdin_val = str(ex.get("input", ""))
+                if stdin_val and not stdin_val.endswith("\n"):
+                    stdin_val += "\n"
                 expected = str(ex.get("expected_output", "")).rstrip("\n")
                 actual, exit_code = _executar_com_stdin(mr.path, stdin_val)
                 passed = exit_code == 0 and actual == expected

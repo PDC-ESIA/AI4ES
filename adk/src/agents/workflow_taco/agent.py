@@ -88,16 +88,18 @@ async def _invocar_agente(agent, user_text: str) -> str:
         role="user", parts=[types.Part.from_text(text=user_text)],
     )
     last_text = ""
-    async for event in runner.run_async(
-        user_id=session.user_id,
-        session_id=session.id,
-        new_message=content,
-    ):
-        if event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.text:
-                    last_text = part.text
-    await runner.close()
+    try:
+        async for event in runner.run_async(
+            user_id=session.user_id,
+            session_id=session.id,
+            new_message=content,
+        ):
+            if event.content and event.content.parts:
+                for part in event.content.parts:
+                    if part.text:
+                        last_text = part.text
+    finally:
+        await runner.close()
     return last_text
 
 
@@ -108,7 +110,7 @@ def _limpar_workspace_coder() -> None:
     """
     ws = get_agent_workspace("cr_coder")
     if ws.exists():
-        shutil.rmtree(ws, ignore_errors=True)
+        shutil.rmtree(ws)
     ws.mkdir(parents=True, exist_ok=True)
     logger.info("[TACO] workspace coder limpo: %s", ws)
 
