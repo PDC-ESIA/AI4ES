@@ -145,7 +145,7 @@ ETAPA 3 — VERIFICAÇÃO DE BLOQUEIOS (HITL)
 
 Após validar o conteúdo da análise técnica, verifique bloqueios:
 
-Acione o Agente IO: "[pipeline_controller] Verifique se há Doubt_Artifacts bloqueados em DOUBT/."
+Acione o Agente IO: "[pipeline_controller] Verifique se há Doubt_Artifacts bloqueados em design_dir."
 
 SE não houver bloqueios (has_blocks: false):
 → Avance diretamente para ETAPA 4.
