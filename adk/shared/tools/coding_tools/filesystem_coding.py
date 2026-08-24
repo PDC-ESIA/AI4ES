@@ -1,10 +1,13 @@
 """Ferramentas de filesystem compartilhadas entre agentes."""
 
+import logging
 import re
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
+
+logger = logging.getLogger(__name__)
 
 EXTENSOES_PERMITIDAS = {
     ".py",
@@ -165,6 +168,238 @@ def tool_criar_arquivo(caminho: str, conteudo: str, base_dir: Optional[str] = No
         return {"sucesso": False, "erro": f"Permissão negada: {e}", "caminho": caminho}
     except Exception as e:
         return {"sucesso": False, "erro": f"Erro inesperado: {e}", "caminho": caminho}
+
+
+def tool_remover_arquivo(caminho: str, base_dir: Optional[str] = None) -> dict:
+    """Remove do disco um arquivo, ou uma pasta VAZIA, do diretório de trabalho.
+
+    Use quando a task exigir que um artefato deixe de existir — arquivo movido
+    ou renomeado (remova o antigo depois de criar o novo), módulo descontinuado,
+    ou arquivo criado por engano numa iteração anterior. A remoção é definitiva:
+    não há lixeira nem desfazer.
+
+    Não use para esvaziar um arquivo que deve continuar existindo (use a
+    capacidade de criação com conteúdo novo) nem para "limpar" o projeto antes
+    de recriá-lo — remova apenas o que a task pede.
+
+    Pasta NÃO-VAZIA não é removida: remova antes o conteúdo, um caminho por
+    chamada. É deliberado — remoção recursiva apaga em silêncio artefatos que
+    ninguém revisou.
+
+    Validações automáticas:
+    - Bloqueia remoção dentro de (ou de) .git, .venv, venv, node_modules,
+      __pycache__, .env.
+    - Bloqueia caminho absoluto ou com "..", **com ou sem base_dir**.
+    - Bloqueia caminho cujo diretório-pai resolva para fora da raiz — pega o
+      caso de um diretório intermediário ser link simbólico para fora.
+    - Bloqueia a remoção da própria raiz do diretório de trabalho.
+
+    Args:
+        caminho: Caminho do arquivo ou pasta a remover, sempre RELATIVO: à
+            base_dir quando ela existe, senão ao CWD do processo. Absoluto e
+            ".." são recusados nos dois casos.
+        base_dir: Diretório base do agente injetado pela factory. Permite
+            isolamento workspace-bound. Quando None, comportamento legado.
+
+    Returns:
+        dict com chaves: `sucesso` (bool), `caminho` (str do path resolvido ou
+        o input em caso de erro), `tipo` ("arquivo" ou "diretorio" em sucesso,
+        **sempre None em falha**), `codigo` (str identificando a recusa, ou
+        None em sucesso) e `erro` (str ou None). Falha **nunca** levanta
+        exceção — nem para entrada de tipo errado: sempre retorna
+        `sucesso=False` com `codigo` e `erro` explicativos. Códigos possíveis:
+        CAMINHO_INVALIDO, CAMINHO_VAZIO, DIRETORIO_PROTEGIDO, RAIZ_DO_WORKSPACE,
+        FORA_DO_WORKSPACE, CAMINHO_INEXISTENTE, DIRETORIO_NAO_VAZIO,
+        PERMISSAO_NEGADA, ERRO_INESPERADO.
+    """
+    if not isinstance(caminho, str):
+        return {
+            "sucesso": False,
+            "codigo": "CAMINHO_INVALIDO",
+            "erro": f"Caminho deve ser texto; recebido {type(caminho).__name__}.",
+            "caminho": None,
+            "tipo": None,
+        }
+
+    if not caminho.strip():
+        return {
+            "sucesso": False,
+            "codigo": "CAMINHO_VAZIO",
+            "erro": "Caminho a remover não pode ser vazio.",
+            "caminho": None,
+            "tipo": None,
+        }
+
+    # Absoluto e ".." são recusados SEMPRE, inclusive sem base_dir: _resolver_caminho
+    # só protege quando há base, e remoção é destrutiva demais para depender do
+    # chamador ter feito o binding.
+    rel = Path(caminho)
+    if rel.is_absolute() or ".." in rel.parts:
+        return {
+            "sucesso": False,
+            "codigo": "CAMINHO_INVALIDO",
+            "erro": (
+                f"Caminho '{caminho}' não é relativo ao diretório de trabalho. "
+                f"Não use caminho absoluto nem '..' na remoção."
+            ),
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    try:
+        path = _resolver_caminho(caminho, base_dir)
+    except ValueError as e:
+        return {
+            "sucesso": False,
+            "codigo": "CAMINHO_INVALIDO",
+            "erro": str(e),
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    # Diferente da escrita, aqui o ÚLTIMO segmento também é verificado: remover
+    # `.git` inteiro é tão grave quanto escrever dentro dele.
+    bloqueados = set(path.parts) & DIRETORIOS_PROIBIDOS
+    if bloqueados:
+        return {
+            "sucesso": False,
+            "codigo": "DIRETORIO_PROTEGIDO",
+            "erro": f"Remoção não permitida em diretório protegido: {bloqueados}",
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    raiz = Path(base_dir).resolve() if base_dir is not None else Path.cwd().resolve()
+
+    if path.resolve() == raiz:
+        return {
+            "sucesso": False,
+            "codigo": "RAIZ_DO_WORKSPACE",
+            "erro": (
+                "A raiz do seu diretório de trabalho não pode ser removida. "
+                "Remova apenas os artefatos que a task exige."
+            ),
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    # Confinamento real: `..` e caminho absoluto já foram recusados, mas um
+    # diretório-pai que seja LINK SIMBÓLICO ainda escaparia — `unlink()` segue
+    # link de componente intermediário. Resolvemos o PAI (não o alvo, para que
+    # remover o próprio link continue possível) e exigimos que ele fique dentro
+    # da raiz.
+    try:
+        pai_real = path.parent.resolve()
+    except OSError as e:
+        return {
+            "sucesso": False,
+            "codigo": "ERRO_INESPERADO",
+            "erro": f"Não foi possível resolver o diretório de '{caminho}': {e}",
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    if pai_real != raiz and raiz not in pai_real.parents:
+        return {
+            "sucesso": False,
+            "codigo": "FORA_DO_WORKSPACE",
+            "erro": (
+                f"O caminho '{caminho}' resolve para fora do diretório de trabalho "
+                f"({pai_real}). Remoção recusada."
+            ),
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    # is_symlink() antes de is_file()/is_dir(): link quebrado não é nenhum dos
+    # dois, e mesmo assim precisa poder ser removido.
+    if path.is_symlink():
+        try:
+            path.unlink()
+        except PermissionError as e:
+            return {
+                "sucesso": False,
+                "codigo": "PERMISSAO_NEGADA",
+                "erro": f"Permissão negada: {e}",
+                "caminho": caminho,
+                "tipo": None,
+            }
+        except OSError as e:
+            return {
+                "sucesso": False,
+                "codigo": "ERRO_INESPERADO",
+                "erro": f"Erro ao remover link simbólico: {e}",
+                "caminho": caminho,
+                "tipo": None,
+            }
+        logger.info("Link simbólico removido: %s", path)
+        return {
+            "sucesso": True,
+            "codigo": None,
+            "erro": None,
+            "caminho": str(path),
+            "tipo": "arquivo",
+        }
+
+    if not path.exists():
+        return {
+            "sucesso": False,
+            "codigo": "CAMINHO_INEXISTENTE",
+            "erro": (
+                f"O caminho '{caminho}' não existe — nada foi removido. "
+                f"Confira o caminho (ele é relativo ao seu diretório de trabalho) "
+                f"antes de tentar de novo."
+            ),
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    try:
+        if path.is_dir():
+            filhos = sorted(p.name for p in path.iterdir())
+            if filhos:
+                return {
+                    "sucesso": False,
+                    "codigo": "DIRETORIO_NAO_VAZIO",
+                    "erro": (
+                        f"A pasta '{caminho}' não está vazia ({len(filhos)} item(ns): "
+                        f"{', '.join(filhos[:5])}{'...' if len(filhos) > 5 else ''}). "
+                        f"Remoção recursiva não é suportada: remova o conteúdo primeiro, "
+                        f"um caminho por chamada, e depois a pasta."
+                    ),
+                    "caminho": caminho,
+                    "tipo": None,
+                }
+            path.rmdir()
+            tipo = "diretorio"
+        else:
+            path.unlink()
+            tipo = "arquivo"
+    except PermissionError as e:
+        return {
+            "sucesso": False,
+            "codigo": "PERMISSAO_NEGADA",
+            "erro": f"Permissão negada: {e}",
+            "caminho": caminho,
+            "tipo": None,
+        }
+    except OSError as e:
+        return {
+            "sucesso": False,
+            "codigo": "ERRO_INESPERADO",
+            "erro": f"Erro inesperado ao remover '{caminho}': {e}",
+            "caminho": caminho,
+            "tipo": None,
+        }
+
+    logger.info("Caminho removido do workspace (%s): %s", tipo, path)
+    return {
+        "sucesso": True,
+        "codigo": None,
+        "erro": None,
+        "caminho": str(path),
+        "tipo": tipo,
+    }
 
 
 def tool_salvar_relatorio(

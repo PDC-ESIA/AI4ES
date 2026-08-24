@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import PurePosixPath
 from typing import Any, MutableMapping
 
 from shared.workspace import get_agent_workspace
 
+logger = logging.getLogger(__name__)
+
 CHAVE_ARQUIVOS_HERDADOS = "coder_arquivos_herdados_da_task"
+NOME_TOOL_REMOCAO = "tool_remover_arquivo"
 
 
 def preparar_arquivos_herdados(
@@ -84,3 +88,66 @@ def bloquear_sobrescrita_herdada(tool, args, tool_context) -> dict | None:
         ),
         "caminho": caminho,
     }
+
+
+def _remover_da_baseline(herdados: list, caminho: str) -> list:
+    """Devolve a baseline sem o caminho removido e sem o que havia sob ele."""
+    prefixo = f"{caminho}/"
+    return [
+        item
+        for item in herdados
+        if not (item == caminho or (isinstance(item, str) and item.startswith(prefixo)))
+    ]
+
+
+def auditar_remocao(tool, args, tool_context, tool_response) -> None:
+    """Registra a remoção feita pelo coder e libera o caminho na baseline.
+
+    Duas responsabilidades, ambas determinísticas:
+
+    1. **Auditoria.** Toda chamada a ``tool_remover_arquivo`` vira uma linha de
+       log com a task corrente, o caminho pedido e o desfecho — é o que permite
+       rastrear depois o que sumiu do workspace e por conta de qual task.
+    2. **Baseline.** Remover um arquivo herdado é ato explícito, não sobrescrita
+       cega: o caminho sai de ``CHAVE_ARQUIVOS_HERDADOS`` para que a task possa
+       recriá-lo (renomeação, troca de implementação) sem esbarrar no
+       ``SOBRESCRITA_INTER_TASK_BLOQUEADA``. Só acontece quando a remoção
+       **de fato ocorreu**; recusa nenhuma altera a fotografia.
+
+    Devolve sempre ``None`` — o retorno da tool chega ao modelo intacto.
+    """
+    if getattr(tool, "name", None) != NOME_TOOL_REMOCAO:
+        return None
+
+    solicitado = args.get("caminho") if isinstance(args, dict) else None
+    task_id = tool_context.state.get("task_id") or "sem_task"
+    resposta = tool_response if isinstance(tool_response, dict) else {}
+
+    if resposta.get("sucesso") is not True:
+        logger.warning(
+            "[CODER][%s] remoção RECUSADA de '%s': %s",
+            task_id,
+            solicitado,
+            resposta.get("codigo") or "resposta_inesperada",
+        )
+        return None
+
+    logger.info(
+        "[CODER][%s] REMOVIDO do workspace (%s): '%s' -> %s",
+        task_id,
+        resposta.get("tipo") or "desconhecido",
+        solicitado,
+        resposta.get("caminho"),
+    )
+
+    caminho = _normalizar_caminho(solicitado)
+    if caminho is None:
+        return None
+
+    herdados = tool_context.state.get(CHAVE_ARQUIVOS_HERDADOS)
+    if isinstance(herdados, list):
+        restante = _remover_da_baseline(herdados, caminho)
+        if len(restante) != len(herdados):
+            tool_context.state[CHAVE_ARQUIVOS_HERDADOS] = restante
+
+    return None
