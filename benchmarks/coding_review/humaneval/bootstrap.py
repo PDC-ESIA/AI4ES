@@ -9,8 +9,9 @@ antes disso.
 O bootstrap:
 - Coloca o diretório `adk/` no `sys.path` (para resolver `shared` e `src`).
 - Carrega o `.env` do `adk/` (modelo LLM, timeouts, etc.).
-- Registra o provider LiteLLM para os modelos `github_copilot/*` (espelha
-  `adk/app/main.py`), senão o ADK não seleciona o backend correto.
+- Registra o provider LiteLLM para os modelos `github_copilot/*` e
+  `openrouter/*` (espelha `adk/app/main.py`), senão o ADK não seleciona o
+  backend correto.
 - Fixa `WORKSPACE_OUTPUT_DIR` no diretório de workspace do benchmark.
 
 Chame `prepare_environment(...)` UMA vez, no início do `run.py`, e só então
@@ -95,7 +96,7 @@ def _load_dotenv(env_path: Path) -> None:
 
 
 def _configure_litellm() -> None:
-    """Registra o LiteLlm para `github_copilot/*` e aplica limites fail-fast."""
+    """Registra o LiteLlm para `github_copilot/*` e `openrouter/*` e aplica limites fail-fast."""
     try:
         import litellm
         from google.adk.models.lite_llm import LiteLlm
@@ -103,6 +104,7 @@ def _configure_litellm() -> None:
 
         LLMRegistry._register(r"github_copilot/.*", LiteLlm)
         LLMRegistry._register(r"github/.*", LiteLlm)
+        LLMRegistry._register(r"openrouter/.*", LiteLlm)
 
         litellm.drop_params = True
         litellm.request_timeout = float(os.environ.get("AI4ES_LLM_TIMEOUT", "120"))

@@ -128,6 +128,20 @@ def test_validar_envelope_rejeita_formas_invalidas():
         assert any(erro["type"] == tipo_esperado for erro in erros)
 
 
+def test_validar_envelope_aceita_ids_com_menos_de_tres_digitos():
+    envelope = {
+        "tasks": [
+            {"id": "TASK-1"},
+            {"id": "TASK-02"},
+            {"id": "TASK-003"},
+        ]
+    }
+    tasks, erros = validar_envelope_de_tasks(envelope)
+    assert erros == []
+    assert len(tasks) == 3
+    assert [t["id"] for t in tasks] == ["TASK-1", "TASK-02", "TASK-003"]
+
+
 def test_calcular_cobertura_e_fail_closed():
     ids = ["TASK-001", "TASK-002"]
     assert calcular_cobertura(True, ids, ids, ids) is True

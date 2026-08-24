@@ -40,6 +40,12 @@ class CoderGeneration:
     final_text: str = ""
     error: str | None = None
 
+    # Telemetria de execução: contagem de chamadas ao LLM e consumo de tokens
+    # (entrada/saída), agregados a partir do `usage_metadata` dos eventos.
+    llm_interactions: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
     @property
     def has_solution(self) -> bool:
         return self.solution_file is not None and self.solution_file.is_file()
@@ -97,7 +103,10 @@ def _localizar_solucao(src_dir: Path, entry_point: str) -> Path | None:
 
 
 async def run_coder(
-    problem: HumanEvalProblem, *, user_id: str = "humaneval-bench"
+    problem: HumanEvalProblem,
+    model: str | None = None,
+    *,
+    user_id: str = "humaneval-bench",
 ) -> CoderGeneration:
     """Roda o coder para um problema e devolve os artefatos gerados.
 
@@ -105,6 +114,9 @@ async def run_coder(
     fixou o workspace/`sys.path` antes do binding das tools.
     """
     from src.agents.workflow_coding_review.coder.agent import agent as coder_agent
+
+    if model:
+        coder_agent.model = model
 
     task_id = problem.slug
     src_dir = _coder_src_dir()
@@ -114,6 +126,11 @@ async def run_coder(
     _persistir_task(problem)
 
     mensagem = build_coder_message(problem)
+
+    # Telemetria agregada ao longo dos eventos emitidos pelo Runner.
+    prompt_tokens = 0
+    completion_tokens = 0
+    llm_interactions = 0
 
     try:
         runner = Runner(
@@ -135,6 +152,14 @@ async def run_coder(
             session_id=session.id,
             new_message=content,
         ):
+            # Cada evento com `usage_metadata` representa uma resposta finalizada
+            # do LLM; acumulamos tokens de entrada/saída e contamos a interação.
+            if event.usage_metadata:
+                prompt_tokens += event.usage_metadata.prompt_token_count or 0
+                completion_tokens += (
+                    event.usage_metadata.candidates_token_count or 0
+                )
+                llm_interactions += 1
             if event.content and event.content.parts:
                 for part in event.content.parts:
                     if part.text:
@@ -146,13 +171,14 @@ async def run_coder(
             solution_dir=src_dir,
             solution_file=None,
             error=f"{type(exc).__name__}: {exc}",
+            llm_interactions=llm_interactions,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
         )
 
     solution_file = _localizar_solucao(src_dir, problem.entry_point)
     arquivos = [
-        str(p.relative_to(src_dir))
-        for p in sorted(src_dir.rglob("*"))
-        if p.is_file()
+        str(p.relative_to(src_dir)) for p in sorted(src_dir.rglob("*")) if p.is_file()
     ]
     return CoderGeneration(
         task_id=task_id,
@@ -160,4 +186,7 @@ async def run_coder(
         solution_file=solution_file,
         files=arquivos,
         final_text=final_text,
+        llm_interactions=llm_interactions,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
     )
