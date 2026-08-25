@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from src.agents.workflow_coding_review.coder.workspace_guard import (
     CHAVE_ARQUIVOS_HERDADOS,
+    _MAX_ARQUIVOS_NO_AVISO,
+    anunciar_arquivos_herdados,
     bloquear_sobrescrita_herdada,
     preparar_arquivos_herdados,
 )
@@ -104,4 +106,115 @@ def test_coder_agent_conecta_o_guard(tmp_path, monkeypatch):
     importlib.reload(coder_agent)
 
     assert coder_agent.agent.before_tool_callback is coder_agent.bloquear_sobrescrita_herdada
+    assert coder_agent.agent.after_tool_callback is coder_agent.anunciar_arquivos_herdados
     assert "SOMENTE QUANDO execution_result ESTIVER AUSENTE" in coder_agent.agent.instruction
+
+
+# ===========================================================================
+# anunciar_arquivos_herdados — o aviso preventivo, no canal que o coder segue
+# ===========================================================================
+#
+# Metade preventiva da proteção. A run do "fotógrafo" mostrou o coder abrindo
+# TODAS as 5 tasks pós-primeira com `tool_criar_arquivo("PLAN.md")`, ignorando a
+# instrução em prosa — mas reagindo corretamente ao resultado de uma tool em
+# 19/19 bloqueios. Estes testes fixam que o aviso chega por esse canal.
+
+
+def _anunciar(state: dict, resposta, tool_name: str = "tool_listar_workspace"):
+    return anunciar_arquivos_herdados(
+        _Tool(tool_name),
+        {"caminho": "."},
+        _Context(state),
+        resposta,
+    )
+
+
+def test_primeira_task_nao_anuncia_projeto_existente():
+    """Sem arquivos herdados o aviso seria falso: o projeto está nascendo."""
+    assert _anunciar({CHAVE_ARQUIVOS_HERDADOS: []}, ["PLAN.md"]) is None
+    assert _anunciar({}, ["PLAN.md"]) is None
+
+
+def test_task_posterior_anuncia_projeto_e_preserva_a_listagem():
+    state = {CHAVE_ARQUIVOS_HERDADOS: ["PLAN.md", "app/main.py"]}
+
+    resposta = _anunciar(state, ["TASK-001.json", "TASK-002.json"])
+
+    assert resposta is not None
+    # A listagem original não se perde — o aviso é acréscimo, não substituição.
+    assert resposta["itens"] == ["TASK-001.json", "TASK-002.json"]
+    assert resposta["projeto_ja_implementado"] is True
+    assert resposta["arquivos_existentes_no_workspace"] == ["PLAN.md", "app/main.py"]
+    # O aviso precisa nomear a ação proibida e a alternativa correta.
+    instrucao = resposta["instrucao_obrigatoria"]
+    assert "PLAN.md" in instrucao
+    assert "tool_substituir_trecho" in instrucao
+
+
+def test_outras_tools_nao_sao_alteradas():
+    """O aviso vai em UMA tool por task; anexá-lo a cada leitura seria ruído."""
+    state = {CHAVE_ARQUIVOS_HERDADOS: ["PLAN.md"]}
+
+    assert _anunciar(state, "conteudo", tool_name="tool_ler_arquivo") is None
+    assert _anunciar(state, {"ok": True}, tool_name="tool_criar_arquivo") is None
+
+
+def test_resposta_de_erro_da_tool_passa_intacta():
+    """A tool sinaliza falha com uma string 'Erro:'; anexar o aviso confundiria."""
+    state = {CHAVE_ARQUIVOS_HERDADOS: ["PLAN.md"]}
+
+    assert _anunciar(state, "Erro: diretório 'x' não existe.") is None
+
+
+def test_baseline_corrompida_nao_estoura():
+    """Callback no meio do fluxo: derrubá-lo custaria a rodada inteira."""
+    assert _anunciar({CHAVE_ARQUIVOS_HERDADOS: "PLAN.md"}, ["a"]) is None
+    assert _anunciar({CHAVE_ARQUIVOS_HERDADOS: None}, ["a"]) is None
+
+
+def test_projeto_grande_tem_a_lista_truncada_com_contagem():
+    """Um projeto grande não pode transformar o aviso num despejo de contexto."""
+    herdados = [f"src/modulo_{i}.py" for i in range(_MAX_ARQUIVOS_NO_AVISO + 25)]
+
+    resposta = _anunciar({CHAVE_ARQUIVOS_HERDADOS: herdados}, ["a"])
+
+    assert len(resposta["arquivos_existentes_no_workspace"]) == _MAX_ARQUIVOS_NO_AVISO
+    assert resposta["arquivos_omitidos_deste_aviso"] == 25
+
+
+# ===========================================================================
+# Gate de abertura do prompt — a decisão de modo vem antes de tudo
+# ===========================================================================
+
+
+def test_gate_de_modo_abre_a_instrucao_do_coder():
+    """A regra já existia em prosa e não pegava; a aposta aqui é POSIÇÃO.
+
+    Enterrada depois de ~45 linhas de perfil e diretrizes, a exceção "não recrie
+    o projeto" chegava tarde demais — o modelo já tinha entrado no fluxo
+    "planeje e implemente". O gate precisa ser a PRIMEIRA coisa que ele lê.
+    """
+    from src.agents.workflow_coding_review.coder import prompt
+
+    instrucao = prompt.build_instruction("/ws")
+    abertura = instrucao[: instrucao.index("# PERFIL DO AGENTE")]
+
+    # O gate está inteiro ANTES do perfil.
+    assert abertura.lstrip().startswith("# ANTES DE QUALQUER OUTRA COISA")
+    # E carrega a decisão binária com a proibição concreta.
+    assert "modo CRIAÇÃO" in abertura
+    assert "modo INCREMENTO" in abertura
+    assert 'tool_criar_arquivo("PLAN.md")' in abertura
+    assert "tool_substituir_trecho" in abertura
+
+
+def test_gate_preserva_o_placeholder_de_estado_do_adk():
+    """`{execution_result?}` precisa chegar literal para o ADK resolver em runtime.
+
+    O gate não passa por `.format()` justamente por isso; se alguém o incluir na
+    formatação, o placeholder vira `KeyError` ou some — e o coder perde o único
+    dado que distingue os dois modos.
+    """
+    from src.agents.workflow_coding_review.coder import prompt
+
+    assert "{execution_result?}" in prompt.build_instruction("/ws")

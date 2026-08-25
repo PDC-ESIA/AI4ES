@@ -5,8 +5,11 @@ Demonstra, ponta a ponta e com o sandbox stubbado, o contrato final da feature:
   1. o harness RODA sobre uma Task de exemplo, dirigido pelo manifesto run.json;
   2. PERSISTE o ExecutionReport (apenas evidência) em disco;
   3. o validador LÊ o report do disco e EMITE um ValidationVerdict;
-  4. o executor SÓ encerraria o loop (exit_loop) se o veredito for 'aprovado' —
-     nunca pelo status técnico de execução do harness.
+  4. o executor SÓ encerraria o loop (exit_loop) se o veredito for 'aprovado'.
+
+O veredito é sobre a EXECUÇÃO: aprova quando o harness conclui com
+`overall_status == "sucesso"`. O julgamento semântico dos critérios de aceite
+entra no veredito como registro e não altera o status (PoC 3).
 
 Não sobe processo/container real nem chama LLM: o sandbox é substituído por um
 `FakeSandbox` (via patch em `create_sandbox`) e o `requests.get` é mockado. A
@@ -244,11 +247,19 @@ def test_poc_fluxo_execucao_falha_nao_encerra(tmp_path):
 
 
 # ===========================================================================
-# PoC 3 — o status técnico de execução, sozinho, NUNCA encerra
+# PoC 3 — o julgamento semântico de critério NÃO derruba execução bem-sucedida
 # ===========================================================================
 
-def test_poc_status_execucao_sozinho_nao_encerra(tmp_path):
-    """Mesmo com overall_status='sucesso', se um critério não é atendido, reprova."""
+def test_poc_criterio_nao_comprovado_nao_derruba_execucao_ok(tmp_path):
+    """Com overall_status='sucesso', o veredito aprova mesmo com critério em aberto.
+
+    Inversão deliberada de contrato: julgar semanticamente um critério de aceite
+    exige comprovar comportamento que o harness não instrumenta, e o julgamento
+    honesto do LLM sobre isso era `nao_atendido`/`inconclusivo` rodada após
+    rodada. Enquanto isso reprovava, nenhuma task chegava a aprovar — o loop
+    perseguia uma aprovação inalcançável até morrer por platô. O veredito passou
+    a ser sobre a EXECUÇÃO; o julgamento segue registrado, sem decidir.
+    """
     criteria = ["A rota GET / responde 200", "O relatório de auditoria é gerado"]
     coder, execution, tasks = _preparar_workspace(tmp_path, criteria)
 
@@ -257,7 +268,6 @@ def test_poc_status_execucao_sozinho_nao_encerra(tmp_path):
 
     report_file = execution / f"{_TASK_ID}.report.json"
     disk_report = json.loads(report_file.read_text(encoding="utf-8"))
-    # A Camada 2 julga um critério como nao_atendido (evidência não sustenta).
     criteria_verdicts = [
         CriterionVerdict(criterion=criteria[0], status=CriterionStatus.ATENDIDO, reasoning="HTTP 200"),
         CriterionVerdict(
@@ -268,9 +278,10 @@ def test_poc_status_execucao_sozinho_nao_encerra(tmp_path):
     ]
     veredito = montar_veredito(disk_report, criteria_verdicts)
 
-    # Execução bem-sucedida NÃO basta: o veredito é 'reprovado' → não encerra.
-    assert veredito.status == VerdictStatus.REPROVADO
-    assert _executor_encerraria(veredito) is False
+    assert veredito.status == VerdictStatus.APROVADO
+    assert _executor_encerraria(veredito) is True
+    # O julgamento continua auditável no veredito, apenas não decide o status.
+    assert veredito.criteria_verdicts == criteria_verdicts
 
 
 # ===========================================================================

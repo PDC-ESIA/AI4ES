@@ -9,7 +9,9 @@ parar no meio de um avanço real ou insistir numa solução travada:
   a nota justamente na rodada que fracassou);
 - testes precisam pontuar fracionado, senão a nota fica cega enquanto o coder
   conserta a suíte um teste por vez;
-- stack de teste não-pytest não pode zerar um degrau que foi conquistado.
+- stack de teste não-pytest não pode zerar um degrau que foi conquistado;
+- nenhum degrau pode depender de julgamento do LLM — foi o que travou a nota em
+  ~0.65 permanentemente enquanto existia o degrau `CRITERIOS_ATENDIDOS`.
 """
 
 import pytest
@@ -23,7 +25,7 @@ from src.agents.workflow_coding_review.executor.progress_score import (
 )
 
 # ---------------------------------------------------------------------------
-# Construtores de ExecutionReport / ValidationVerdict sintéticos
+# Construtores de ExecutionReport sintéticos
 # ---------------------------------------------------------------------------
 
 _SUCESSO = "sucesso"
@@ -103,18 +105,26 @@ def _report(
     }
 
 
-def _veredito(*status_por_criterio: str) -> dict:
-    return {
-        "work_item_id": "TASK-001",
-        "status": "reprovado",
-        "criteria_verdicts": [
-            {"criterion": f"CA-{i}", "status": status, "reasoning": ""}
-            for i, status in enumerate(status_por_criterio)
-        ],
-    }
+# ---------------------------------------------------------------------------
+# A nota mede EXECUÇÃO — nada que dependa de julgamento do LLM
+# ---------------------------------------------------------------------------
 
 
-_TODOS_ATENDIDOS = _veredito("atendido", "atendido")
+def test_nota_nao_recebe_veredito_do_validador():
+    """Contrato de assinatura: `calcular_nota` só aceita o ExecutionReport.
+
+    Enquanto o `ValidationVerdict` entrava no cálculo, o degrau
+    `CRITERIOS_ATENDIDOS` (35% do peso) ficava travado em 0 — o validador não
+    consegue COMPROVAR um critério de UI e devolvia `inconclusivo` rodada após
+    rodada. A nota teto virava ~0.65 e nenhuma task jamais aprovava. Manter a
+    porta fechada na assinatura impede que isso volte por descuido.
+    """
+    with pytest.raises(TypeError):
+        calcular_nota(_report(), {"criteria_verdicts": []})
+
+
+def test_nenhum_degrau_depende_de_julgamento_semantico():
+    assert not any("criterio" in degrau.value for degrau in Degrau)
 
 
 # ---------------------------------------------------------------------------
@@ -183,9 +193,9 @@ def test_peso_de_degrau_dispensado_e_diluido_proporcionalmente():
 
 
 def test_um_unico_degrau_aplicavel_recebe_todo_o_peso():
-    pesos = redistribuir_pesos({Degrau.CRITERIOS_ATENDIDOS})
+    pesos = redistribuir_pesos({Degrau.TESTES_PASSARAM})
 
-    assert pesos == {Degrau.CRITERIOS_ATENDIDOS: pytest.approx(1.0)}
+    assert pesos == {Degrau.TESTES_PASSARAM: pytest.approx(1.0)}
 
 
 def test_nenhum_degrau_aplicavel_devolve_vazio_sem_estourar():
@@ -198,20 +208,30 @@ def test_pesos_base_somam_um_com_todos_os_degraus():
     assert set(_PESOS_BASE) == set(Degrau)
 
 
+def test_testes_passaram_e_o_degrau_de_maior_peso():
+    """É o proxy mais direto de 'funciona' e o único fracionário.
+
+    Ser o mais pesado é o que dá à `loop_policy` um sinal forte e contínuo na
+    fase mais comum de iteração — consertar a suíte um teste por vez.
+    """
+    assert _PESOS_BASE[Degrau.TESTES_PASSARAM] == max(_PESOS_BASE.values())
+
+
 # ---------------------------------------------------------------------------
 # calcular_nota — extremos
 # ---------------------------------------------------------------------------
 
 
-def test_tudo_verde_e_todos_criterios_atendidos_da_nota_maxima():
-    nota = calcular_nota(_report(), _TODOS_ATENDIDOS)
+def test_tudo_verde_da_nota_maxima():
+    """O teto 1.0 precisa ser ALCANÇÁVEL — antes travava em ~0.65."""
+    nota = calcular_nota(_report())
 
     assert nota.total == pytest.approx(1.0)
 
 
 def test_report_vazio_da_nota_quase_zero():
     """Só `MINIMO_PARA_RODAR` pontua: chegar aqui já implica gate aprovado."""
-    nota = calcular_nota({}, {})
+    nota = calcular_nota({})
 
     assert nota.por_degrau[Degrau.MINIMO_PARA_RODAR] == 1.0
     assert nota.total == pytest.approx(_PESOS_BASE[Degrau.MINIMO_PARA_RODAR])
@@ -220,7 +240,7 @@ def test_report_vazio_da_nota_quase_zero():
 @pytest.mark.parametrize("entrada", [None, "", [], 42])
 def test_entradas_invalidas_nao_estouram(entrada):
     """O chamador é um callback no meio do fluxo; derrubá-lo custaria a rodada."""
-    nota = calcular_nota(entrada, entrada)
+    nota = calcular_nota(entrada)
 
     assert 0.0 <= nota.total <= 1.0
 
@@ -228,7 +248,7 @@ def test_entradas_invalidas_nao_estouram(entrada):
 def test_minimo_para_rodar_e_sempre_um_dentro_de_calcular_nota():
     """Comportamento esperado, não bug: quem registra a falha do degrau 1 é o
     gate `recusar_execucao_incompleta`, gravando 0.0 na rodada que ele recusa."""
-    nota = calcular_nota(_report(preparacao=_ERRO), _veredito("nao_atendido"))
+    nota = calcular_nota(_report(preparacao=_ERRO))
 
     assert nota.por_degrau[Degrau.MINIMO_PARA_RODAR] == 1.0
 
@@ -241,17 +261,13 @@ def test_minimo_para_rodar_e_sempre_um_dentro_de_calcular_nota():
 def test_nota_cresce_conforme_a_escada_avanca():
     """A propriedade central: mais capacidade conquistada, nota maior."""
     so_preparou = calcular_nota(
-        _report(implantacao=_FALHA, inicializacao=_PULADO, testes=_PULADO),
-        _veredito("nao_atendido"),
+        _report(implantacao=_FALHA, inicializacao=_PULADO, testes=_PULADO)
     )
-    construiu = calcular_nota(
-        _report(inicializacao=_FALHA, testes=_PULADO), _veredito("nao_atendido")
-    )
+    construiu = calcular_nota(_report(inicializacao=_FALHA, testes=_PULADO))
     subiu = calcular_nota(
-        _report(testes=_FALHA, evidencia_testes=_resumo_testes(0, falharam=5)),
-        _veredito("nao_atendido"),
+        _report(testes=_FALHA, evidencia_testes=_resumo_testes(0, falharam=5))
     )
-    tudo = calcular_nota(_report(), _TODOS_ATENDIDOS)
+    tudo = calcular_nota(_report())
 
     assert so_preparou.total < construiu.total < subiu.total < tudo.total
 
@@ -264,17 +280,14 @@ def test_degrau_pulado_por_falha_upstream_nao_tem_peso_redistribuido():
     subiria — premiando a rodada que fracassou.
     """
     cascata = calcular_nota(
-        _report(implantacao=_FALHA, inicializacao=_PULADO, testes=_PULADO),
-        _veredito("nao_atendido"),
+        _report(implantacao=_FALHA, inicializacao=_PULADO, testes=_PULADO)
     )
 
     assert Degrau.APP_INICIOU in cascata.degraus_aplicaveis
     assert cascata.por_degrau[Degrau.APP_INICIOU] == 0.0
 
     # Numa biblioteca (surface=none) o MESMO estágio pulado é dispensa legítima.
-    biblioteca = calcular_nota(
-        _report(surface="none", inicializacao=_PULADO), _TODOS_ATENDIDOS
-    )
+    biblioteca = calcular_nota(_report(surface="none", inicializacao=_PULADO))
     assert Degrau.APP_INICIOU not in biblioteca.degraus_aplicaveis
     assert biblioteca.total == pytest.approx(1.0)
 
@@ -287,12 +300,10 @@ def test_degrau_pulado_por_falha_upstream_nao_tem_peso_redistribuido():
 def test_testes_pontuam_fracionado():
     """Sem isso a nota fica cega enquanto o coder conserta a suíte aos poucos."""
     poucos = calcular_nota(
-        _report(testes=_FALHA, evidencia_testes=_resumo_testes(2, falharam=8)),
-        _veredito("nao_atendido"),
+        _report(testes=_FALHA, evidencia_testes=_resumo_testes(2, falharam=8))
     )
     quase = calcular_nota(
-        _report(testes=_FALHA, evidencia_testes=_resumo_testes(8, falharam=2)),
-        _veredito("nao_atendido"),
+        _report(testes=_FALHA, evidencia_testes=_resumo_testes(8, falharam=2))
     )
 
     assert poucos.por_degrau[Degrau.TESTES_PASSARAM] == pytest.approx(0.2)
@@ -310,9 +321,7 @@ def test_contadores_somam_entre_multiplos_comandos_de_teste():
         "saida_tail": "",
     }
 
-    nota = calcular_nota(
-        _report(testes=_FALHA, evidencia_testes=evidencia), _veredito("nao_atendido")
-    )
+    nota = calcular_nota(_report(testes=_FALHA, evidencia_testes=evidencia))
 
     assert nota.por_degrau[Degrau.TESTES_PASSARAM] == pytest.approx(8 / 10)
 
@@ -327,9 +336,7 @@ def test_stack_nao_pytest_com_suite_verde_nao_e_zerada():
         "resultados": [{"resumo": {"passaram": 0, "falharam": 0, "erros": 0}}]
     }
 
-    nota = calcular_nota(
-        _report(testes=_SUCESSO, evidencia_testes=sem_contadores), _TODOS_ATENDIDOS
-    )
+    nota = calcular_nota(_report(testes=_SUCESSO, evidencia_testes=sem_contadores))
 
     assert nota.por_degrau[Degrau.TESTES_PASSARAM] == 1.0
     assert nota.total == pytest.approx(1.0)
@@ -337,10 +344,7 @@ def test_stack_nao_pytest_com_suite_verde_nao_e_zerada():
 
 def test_estagio_de_testes_falho_sem_contadores_vale_zero():
     """Contrapartida: sem contadores E sem sucesso, não há o que creditar."""
-    nota = calcular_nota(
-        _report(testes=_FALHA, evidencia_testes={"resultados": []}),
-        _veredito("nao_atendido"),
-    )
+    nota = calcular_nota(_report(testes=_FALHA, evidencia_testes={"resultados": []}))
 
     assert nota.por_degrau[Degrau.TESTES_PASSARAM] == 0.0
 
@@ -348,31 +352,9 @@ def test_estagio_de_testes_falho_sem_contadores_vale_zero():
 def test_contadores_corrompidos_nao_estouram():
     evidencia = {"resultados": [{"resumo": {"passaram": "muitos", "falharam": None}}]}
 
-    nota = calcular_nota(
-        _report(testes=_FALHA, evidencia_testes=evidencia), _veredito("nao_atendido")
-    )
+    nota = calcular_nota(_report(testes=_FALHA, evidencia_testes=evidencia))
 
     assert nota.por_degrau[Degrau.TESTES_PASSARAM] == 0.0
-
-
-# ---------------------------------------------------------------------------
-# Degrau de critérios de aceite
-# ---------------------------------------------------------------------------
-
-
-def test_criterios_pontuam_pela_proporcao_atendida():
-    nota = calcular_nota(
-        _report(), _veredito("atendido", "atendido", "nao_atendido", "inconclusivo")
-    )
-
-    assert nota.por_degrau[Degrau.CRITERIOS_ATENDIDOS] == pytest.approx(0.5)
-
-
-def test_veredito_sem_criterios_julgados_vale_zero():
-    """Mesma postura do validador, que reprova lista vazia em vez de aprovar."""
-    nota = calcular_nota(_report(), _veredito())
-
-    assert nota.por_degrau[Degrau.CRITERIOS_ATENDIDOS] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -381,7 +363,7 @@ def test_veredito_sem_criterios_julgados_vale_zero():
 
 
 def test_detalhamento_cobre_exatamente_os_degraus_aplicaveis():
-    nota = calcular_nota(_report(surface="none", test_commands=()), _TODOS_ATENDIDOS)
+    nota = calcular_nota(_report(surface="none", test_commands=()))
 
     assert set(nota.por_degrau) == set(nota.degraus_aplicaveis)
     assert set(nota.pesos_efetivos) == set(nota.degraus_aplicaveis)
@@ -389,7 +371,7 @@ def test_detalhamento_cobre_exatamente_os_degraus_aplicaveis():
 
 def test_como_dict_serializa_com_chaves_de_texto():
     """O detalhamento vai para o session state e precisa sobreviver a JSON."""
-    detalhe = calcular_nota(_report(), _TODOS_ATENDIDOS).como_dict()
+    detalhe = calcular_nota(_report()).como_dict()
 
-    assert detalhe[Degrau.CRITERIOS_ATENDIDOS.value] == 1.0
+    assert detalhe[Degrau.TESTES_PASSARAM.value] == 1.0
     assert all(isinstance(chave, str) for chave in detalhe)

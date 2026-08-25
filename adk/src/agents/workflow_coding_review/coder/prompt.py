@@ -462,9 +462,65 @@ package.json, pom.xml/build.gradle, go.mod) — dupla checagem. Fundamental para
 """
 
 
+# ---------------------------------------------------------------------------
+# Gate de abertura — PRIMEIRA coisa da instrução, antes até do perfil.
+#
+# A regra que este bloco carrega já existia, em prosa, dentro de "MODO DE
+# OPERAÇÃO" (seção de workspace). Ela não estava pegando: na run do
+# "fotógrafo", em TODAS as 5 tasks que sucederam a primeira, a ação de abertura
+# do coder sobre o código foi `tool_criar_arquivo("PLAN.md")` — o ramo de
+# "primeira execução", com o projeto inteiro já implementado no workspace.
+#
+# A hipótese que este bloco ataca é de POSIÇÃO, não de conteúdo: a exceção
+# aparecia depois de ~45 linhas de perfil e diretrizes, e o modelo já havia
+# entrado no fluxo "planeje e implemente" antes de alcançá-la. Aqui a decisão
+# vem antes de qualquer outra coisa, é binária, e está escrita como as duas
+# únicas aberturas de turno permitidas — não como advertência a lembrar.
+#
+# NÃO passa por `.format()`: `{execution_result?}` precisa chegar literal para o
+# templating de estado do ADK resolvê-lo em runtime.
+# ---------------------------------------------------------------------------
+_GATE_ABERTURA = """# ANTES DE QUALQUER OUTRA COISA — DECIDA EM QUAL MODO VOCÊ ESTÁ
+
+Leia o conteúdo abaixo. Ele é o resultado da execução anterior:
+
+--- INÍCIO ---
+{execution_result?}
+--- FIM ---
+
+Responda a UMA pergunta antes de agir: **o bloco acima está vazio?**
+
+- **VAZIO** → o projeto ainda não existe. Você está no modo CRIAÇÃO.
+  Sua primeira ação é criar o `PLAN.md` e, em seguida, implementar o projeto.
+
+- **NÃO VAZIO** (qualquer conteúdo: `NOVA_TASK:`, um ErrorReport, uma recusa de
+  execução, um veredito) → **o projeto JÁ EXISTE e já foi implementado.**
+  Você está no modo INCREMENTO. Neste modo:
+  - É PROIBIDO chamar `tool_criar_arquivo("PLAN.md")`. O `PLAN.md` já existe.
+  - É PROIBIDO recriar, refazer ou reimplementar arquivos que já existem.
+  - É PROIBIDO refazer o planejamento do projeto.
+  - Sua primeira ação é INSPECIONAR o que já existe (`tool_listar_workspace`,
+    `tool_ler_arquivo`) e só então escrever o que a task atual exige de NOVO.
+  - Para mudar um arquivo existente: `tool_ler_arquivo` e depois
+    `tool_substituir_trecho`. Nunca `tool_criar_arquivo`.
+
+No modo INCREMENTO, `tool_criar_arquivo` sobre um arquivo que já existe será
+RECUSADO pelo ambiente, e a tentativa desperdiça a rodada. A resposta de
+`tool_listar_workspace` lhe dirá, explicitamente, quais arquivos já existem.
+
+O restante desta instrução descreve COMO codificar. A decisão acima define O QUE
+você tem permissão de fazer, e prevalece sobre qualquer outra seção.
+
+"""
+
+
 def build_instruction(coder_ws: str) -> str:
     """Compõe a instrução final do coder para o workspace informado."""
-    return _INSTRUCTION_BASE + _WORKSPACE_SECTION.format(coder_ws=coder_ws)
+    return (
+        _GATE_ABERTURA
+        + _INSTRUCTION_BASE
+        + _WORKSPACE_SECTION.format(coder_ws=coder_ws)
+    )
 
 
 instruction = build_instruction("SEU WORKSPACE")

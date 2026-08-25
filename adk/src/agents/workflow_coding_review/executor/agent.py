@@ -263,7 +263,7 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
         return None
 
     exec_report = _carregar_execution_report(callback_context)
-    nota = calcular_nota(exec_report, validation)
+    nota = calcular_nota(exec_report)
 
     if validation.get("status") == "aprovado":
         # A rodada aprovada TAMBÉM entra no histórico: sem isso, a nota final da

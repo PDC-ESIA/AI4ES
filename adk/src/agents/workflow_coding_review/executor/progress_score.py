@@ -6,17 +6,27 @@ avançavam e insistia em soluções já travadas. Este módulo produz a MEDIDA q
 substitui esse teto como critério primário: uma nota de 0 a 1 que diz o quanto a
 entrega subiu por uma "escada de capacidades".
 
-Princípio: a nota não pede NADA ao LLM. Ela é derivada de dois artefatos que o
-fluxo já produz a cada rodada — o `ExecutionReport` do harness e o
-`ValidationVerdict` do `implementation_validator`. Dado o mesmo par de
-artefatos, a nota é sempre a mesma; é auditável e testável isoladamente.
+O QUE A NOTA MEDE — e o que ela deliberadamente NÃO mede: a nota responde a uma
+única pergunta, "o sistema gerado funciona, e o quanto?". Ela NÃO responde "a
+entrega atende ao critério de aceite" — julgar semanticamente um critério de
+aceite está fora do que este fluxo se propõe a fazer, aqui e em qualquer outro
+ponto do loop.
 
-(Ressalva honesta de escopo: os `criteria_verdicts` que alimentam o degrau
-`CRITERIOS_ATENDIDOS` nascem de um julgamento do LLM dentro do validador — só a
-agregação é determinística lá. Logo, a nota é reprodutível A PARTIR DOS
-ARTEFATOS de uma rodada, mas duas rodadas idênticas do zero podem divergir
-levemente. O que este módulo garante é que ele próprio não acrescenta nenhuma
-não-determinação.)
+A distinção é a razão de ser deste módulo na forma atual. Uma versão anterior
+tinha um degrau `CRITERIOS_ATENDIDOS`, alimentado pelo julgamento que o
+`implementation_validator` pedia ao LLM sobre cada critério. Na prática esse
+degrau ficava permanentemente em 0: sem instrumentação de UI, o validador não
+tem como COMPROVAR "o usuário consegue criar um álbum pela interface", e o
+julgamento honesto era `inconclusivo` rodada após rodada. Com 35% do peso
+travado em zero, a nota teto virava ~0.65, nenhuma task jamais aprovava, e o
+platô disparava sobre um limite artificial em vez de sobre a entrega real. O
+degrau media a cegueira do validador, não o progresso do código.
+
+Princípio: a nota não pede NADA ao LLM. Ela é derivada de um único artefato que
+o fluxo já produz a cada rodada — o `ExecutionReport` do harness, que é saída de
+processo (exit codes, contagem de testes), não de julgamento. Dado o mesmo
+report, a nota é sempre a mesma; é auditável, reprodutível e testável
+isoladamente.
 
 Este módulo NÃO decide se o loop continua — isso é `loop_policy.py`. Ele também
 NÃO emite veredito de aprovação: quem aprova continua sendo exclusivamente o
@@ -35,8 +45,10 @@ from shared.tools.coding_tools.harness_schemas import StageName, StageStatus
 class Degrau(str, Enum):
     """Os degraus da escada de capacidades, em ordem de progresso.
 
-    Os cinco primeiros compõem a "versão mínima que funciona"; o último mede o
-    quanto a entrega está de fato completa.
+    Todos medem a mesma coisa por ângulos diferentes: o quanto o sistema gerado
+    consegue efetivamente rodar. Cada degrau é uma capacidade concreta que a
+    entrega tem ou não tem, e cujo resultado sai de uma execução real — nunca de
+    um julgamento sobre o que a entrega "deveria" fazer.
     """
 
     MINIMO_PARA_RODAR = "minimo_para_rodar"
@@ -44,12 +56,19 @@ class Degrau(str, Enum):
     BUILD_CONCLUIDO = "build_concluido"
     APP_INICIOU = "app_iniciou"
     TESTES_PASSARAM = "testes_passaram"
-    CRITERIOS_ATENDIDOS = "criterios_atendidos"
 
 
 # Pesos-base dos degraus. Somam 1.0 quando TODOS se aplicam; quando algum não se
 # aplica ao tipo de projeto, `redistribuir_pesos` renormaliza para que o teto
 # continue sendo 1.0 (ver docstring de lá).
+#
+# A ordem crescente é intencional: cada degrau só é alcançável depois do
+# anterior, então pesar mais os degraus finais faz a nota subir mais quando a
+# entrega avança na parte difícil. `TESTES_PASSARAM` leva o maior peso por ser o
+# proxy mais direto de "funciona" que o harness produz — e por ser o único
+# FRACIONÁRIO, o que dá à `loop_policy` um sinal contínuo justamente na fase mais
+# comum de iteração (consertar testes um a um) em vez de um degrau binário que
+# só acende no fim.
 #
 # ATENÇÃO — estes valores são um PONTO DE PARTIDA, não uma calibração. A issue
 # #394 deixa explicitamente a calibração fora de escopo: ajuste-os com base em
@@ -57,15 +76,14 @@ class Degrau(str, Enum):
 _PESOS_BASE: dict[Degrau, float] = {
     Degrau.MINIMO_PARA_RODAR: 0.05,
     Degrau.AMBIENTE_PREPARADO: 0.10,
-    Degrau.BUILD_CONCLUIDO: 0.15,
-    Degrau.APP_INICIOU: 0.15,
-    Degrau.TESTES_PASSARAM: 0.20,
-    Degrau.CRITERIOS_ATENDIDOS: 0.35,
+    Degrau.BUILD_CONCLUIDO: 0.20,
+    Degrau.APP_INICIOU: 0.25,
+    Degrau.TESTES_PASSARAM: 0.40,
 }
 
 # Degraus cujo score sai do status técnico de UM estágio do harness (binário).
-# Os demais degraus têm regra própria: MINIMO_PARA_RODAR (ver `calcular_nota`),
-# TESTES_PASSARAM e CRITERIOS_ATENDIDOS (fracionários).
+# Os demais degraus têm regra própria: MINIMO_PARA_RODAR (ver `calcular_nota`) e
+# TESTES_PASSARAM (fracionário).
 _ESTAGIO_DO_DEGRAU: dict[Degrau, StageName] = {
     Degrau.AMBIENTE_PREPARADO: StageName.PREPARACAO_AMBIENTE,
     Degrau.BUILD_CONCLUIDO: StageName.IMPLANTACAO_ARTEFATO,
@@ -209,7 +227,6 @@ def graus_aplicaveis(
         Degrau.MINIMO_PARA_RODAR,
         Degrau.AMBIENTE_PREPARADO,
         Degrau.BUILD_CONCLUIDO,
-        Degrau.CRITERIOS_ATENDIDOS,
     }
     if surface is None or surface != _SURFACE_SEM_APP:
         aplicaveis.add(Degrau.APP_INICIOU)
@@ -326,46 +343,28 @@ def _score_testes(estagio: Optional[dict]) -> float:
     return 1.0 if estagio.get("status") == StageStatus.SUCESSO else 0.0
 
 
-def _score_criterios(validation: dict) -> float:
-    """Fração dos critérios de aceite com veredito 'atendido'.
-
-    Lê o `ValidationVerdict` apenas como MEDIDA; o contrato binário que decide
-    aprovação (`montar_veredito`) não é afetado nem reinterpretado aqui.
-    Sem critérios julgados a fração é 0.0 — mesma postura conservadora do
-    validador, que também reprova lista vazia em vez de aprovar no vácuo.
-    """
-    vereditos = validation.get("criteria_verdicts")
-    if not isinstance(vereditos, list) or not vereditos:
-        return 0.0
-
-    considerados = [item for item in vereditos if isinstance(item, dict)]
-    if not considerados:
-        return 0.0
-
-    atendidos = sum(1 for item in considerados if item.get("status") == "atendido")
-    return atendidos / len(considerados)
-
-
 # ---------------------------------------------------------------------------
 # Cálculo da nota
 # ---------------------------------------------------------------------------
 
 
-def calcular_nota(execution_report: Any, validation: Any) -> NotaProgresso:
+def calcular_nota(execution_report: Any) -> NotaProgresso:
     """Calcula a nota de progresso de UMA rodada do loop.
+
+    Recebe SÓ o `ExecutionReport`, e essa assinatura é parte do contrato: a nota
+    mede execução, então nada que dependa de julgamento do LLM (o
+    `ValidationVerdict`, em particular) pode entrar no cálculo nem por descuido.
 
     Args:
         execution_report: `ExecutionReport` do harness, como dict. Entradas
             inválidas/ausentes degradam para "nada foi alcançado" em vez de
             levantar — o chamador é um callback no meio do fluxo, e derrubá-lo
             custaria a rodada inteira.
-        validation: `ValidationVerdict` como dict (`state['validation']`).
 
     Returns:
         `NotaProgresso` com o total em [0, 1] e o detalhamento por degrau.
     """
     report = execution_report if isinstance(execution_report, dict) else {}
-    verdict = validation if isinstance(validation, dict) else {}
 
     estagios = estagios_por_nome(report)
     surface, test_commands = _contexto_do_manifesto(estagios)
@@ -385,8 +384,6 @@ def calcular_nota(execution_report: Any, validation: Any) -> NotaProgresso:
             por_degrau[degrau] = _score_testes(
                 estagios.get(StageName.TESTES_AUTOMATIZADOS)
             )
-        elif degrau is Degrau.CRITERIOS_ATENDIDOS:
-            por_degrau[degrau] = _score_criterios(verdict)
         else:
             por_degrau[degrau] = _score_estagio_binario(
                 estagios.get(_ESTAGIO_DO_DEGRAU[degrau])
