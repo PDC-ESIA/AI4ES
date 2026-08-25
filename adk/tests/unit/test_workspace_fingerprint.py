@@ -199,7 +199,7 @@ def test_symlink_e_ignorado(tmp_path):
     externo.write_text("segredo\n", encoding="utf-8")
     try:
         (raiz / "link.py").symlink_to(externo)
-    except OSError, NotImplementedError:
+    except (OSError, NotImplementedError):
         pytest.skip("filesystem sem suporte a symlink")
 
     assert fingerprint_workspace(raiz) == antes
