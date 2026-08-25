@@ -124,7 +124,7 @@ def _config(nome: str, padrao: float, minimo: float) -> float:
         return padrao
     try:
         valor = float(bruto)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         logger.warning(
             "[LOOP_POLICY] %s=%r não é numérico; usando o padrão %s.",
             nome,
