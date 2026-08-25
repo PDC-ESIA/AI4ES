@@ -72,3 +72,40 @@ class GithubCopilotLiteLlm(LiteLlm):
             kwargs["extra_headers"] = merged
             kwargs.setdefault("num_retries", extra["num_retries"])
         super().__init__(model=model, **kwargs)
+
+
+def openrouter_completion_kwargs(model_name: str) -> dict:
+    """Kwargs extras para chamadas litellm.completion com openrouter.
+
+    O OpenRouter recomenda os headers ``HTTP-Referer`` e ``X-Title`` para
+    identificar a aplicação no painel/ranking da plataforma. Ambos são
+    opcionais e sobrescrevíveis via env var; se vazios, não são enviados.
+    """
+    if not model_name.startswith("openrouter/"):
+        return {}
+    headers = {}
+    x_title = os.environ.get("OPENROUTER_X_TITLE", "AI4ES")
+    if x_title:
+        headers["X-Title"] = x_title
+    http_referer = os.environ.get(
+        "OPENROUTER_HTTP_REFERER", "https://github.com/ceia-pdc/AI4ES"
+    )
+    if http_referer:
+        headers["HTTP-Referer"] = http_referer
+    return {
+        "extra_headers": headers,
+        "num_retries": int(os.environ.get("ADK_LLM_NUM_RETRIES", "1")),
+    }
+
+
+class OpenRouterLiteLlm(LiteLlm):
+    """LiteLlm com headers recomendados (HTTP-Referer/X-Title) para openrouter."""
+
+    def __init__(self, model: str, **kwargs):
+        extra = openrouter_completion_kwargs(model)
+        if extra:
+            headers = dict(kwargs.pop("extra_headers", None) or {})
+            merged = extra["extra_headers"] | headers
+            kwargs["extra_headers"] = merged
+            kwargs.setdefault("num_retries", extra["num_retries"])
+        super().__init__(model=model, **kwargs)

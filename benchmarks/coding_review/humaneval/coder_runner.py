@@ -40,6 +40,12 @@ class CoderGeneration:
     final_text: str = ""
     error: str | None = None
 
+    # Telemetria de execução: contagem de chamadas ao LLM e consumo de tokens
+    # (entrada/saída), agregados a partir do `usage_metadata` dos eventos.
+    llm_interactions: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
     @property
     def has_solution(self) -> bool:
         return self.solution_file is not None and self.solution_file.is_file()
@@ -121,6 +127,11 @@ async def run_coder(
 
     mensagem = build_coder_message(problem)
 
+    # Telemetria agregada ao longo dos eventos emitidos pelo Runner.
+    prompt_tokens = 0
+    completion_tokens = 0
+    llm_interactions = 0
+
     try:
         runner = Runner(
             app_name=coder_agent.name,
@@ -141,6 +152,14 @@ async def run_coder(
             session_id=session.id,
             new_message=content,
         ):
+            # Cada evento com `usage_metadata` representa uma resposta finalizada
+            # do LLM; acumulamos tokens de entrada/saída e contamos a interação.
+            if event.usage_metadata:
+                prompt_tokens += event.usage_metadata.prompt_token_count or 0
+                completion_tokens += (
+                    event.usage_metadata.candidates_token_count or 0
+                )
+                llm_interactions += 1
             if event.content and event.content.parts:
                 for part in event.content.parts:
                     if part.text:
@@ -152,6 +171,9 @@ async def run_coder(
             solution_dir=src_dir,
             solution_file=None,
             error=f"{type(exc).__name__}: {exc}",
+            llm_interactions=llm_interactions,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
         )
 
     solution_file = _localizar_solucao(src_dir, problem.entry_point)
@@ -164,4 +186,7 @@ async def run_coder(
         solution_file=solution_file,
         files=arquivos,
         final_text=final_text,
+        llm_interactions=llm_interactions,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
     )

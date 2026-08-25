@@ -249,7 +249,7 @@ FORMATO DO Doubt_Artifact (usado em ambos os tipos)
 ──────────────────────────────────────────────────────────────
 Encaminhe ao Agente IO:
 "[prototyping_specialist] Salve o arquivo
-Doubt_Artifact_PROTO_<arquivo_ou_contexto>_<data>.md em doubt_dir com o conteúdo:
+Doubt_Artifact_PROTO_<arquivo_ou_contexto>_<data>.md em DOUBT/ com o conteúdo:
  
 # Doubt Artifact — Prototipação
 

@@ -23,9 +23,12 @@ litellm.drop_params = True
 litellm.request_timeout = float(os.environ.get("AI4ES_LLM_TIMEOUT", "120"))
 litellm.num_retries = int(os.environ.get("AI4ES_LLM_NUM_RETRIES", "1"))
 
-# Registra github_copilot como provider LiteLLM no ADK (não incluso por padrão).
-# Usa subclasse que injeta X-Initiator: user e retries — evita cair na cota
-# reduzida de "utility models" do GitHub Copilot (429 user_global_rate_limited).
+# Registra github_copilot e openrouter como providers LiteLLM no ADK (não
+# inclusos por padrão). Usam subclasses que injetam headers específicos:
+# github_copilot → X-Initiator: user + retries (evita a cota reduzida de
+# "utility models", 429 user_global_rate_limited); openrouter → HTTP-Referer/
+# X-Title recomendados pela plataforma. As subclasses só atuam sobre o próprio
+# prefixo, sem impacto nos demais providers.
 # Registro tolerante a versão do ADK: 1.33+ expõe `_register_lazy` (import
 # preguiçoso do provider, só quando o modelo é resolvido). Em versões antigas,
 # o método não existe; caímos no registro clássico (import imediato da classe).
@@ -35,7 +38,13 @@ if hasattr(LLMRegistry, "_register_lazy"):
         "shared.llm",
         "GithubCopilotLiteLlm",
     )
+    LLMRegistry._register_lazy(
+        ["openrouter/.*"],
+        "shared.llm",
+        "OpenRouterLiteLlm",
+    )
 else:
-    from shared.llm import GithubCopilotLiteLlm
+    from shared.llm import GithubCopilotLiteLlm, OpenRouterLiteLlm
 
     LLMRegistry._register(r"github_copilot/.*", GithubCopilotLiteLlm)
+    LLMRegistry._register(r"openrouter/.*", OpenRouterLiteLlm)

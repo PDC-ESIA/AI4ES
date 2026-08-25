@@ -106,7 +106,7 @@ resolver sozinho — só a ORIGEM desse texto passou a poder vir do manifesto.
 ETAPA 2 — ANÁLISE TÉCNICA (BLOQUEANTE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. Acione o design_architect com o comando: 'Analise o seguinte conteúdo de HUs e gere a análise técnica em analysis_dir: '. Deixe claro que não há arquivo de origem e que ele deve usar este texto como fonte única.
+1. Acione o design_architect com o comando: 'Analise o seguinte conteúdo de HUs e gere a análise técnica em ANALYSIS/: '. Deixe claro que não há arquivo de origem e que ele deve usar este texto como fonte única.
 2. APÓS o retorno do design_architect, você DEVE obrigatoriamente executar a ferramenta list_design_files do Agente IO.
 3. Se o arquivo 'analise_tecnica_*.md' NÃO aparecer na lista, você deve perguntar ao design_architect: "Onde está o arquivo de análise técnica? Confirme o salvamento."
 4. Repita a verificação de listagem até que o arquivo esteja presente.
@@ -146,7 +146,7 @@ ETAPA 3 — VERIFICAÇÃO DE BLOQUEIOS (HITL)
 
 Após validar o conteúdo da análise técnica, verifique bloqueios:
 
-Acione o Agente IO: "[pipeline_controller] Verifique se há Doubt_Artifacts bloqueados em doubt_dir."
+Acione o Agente IO: "[pipeline_controller] Verifique se há Doubt_Artifacts bloqueados em design_dir."
 
 SE não houver bloqueios (has_blocks: false):
 → Avance diretamente para ETAPA 4.
