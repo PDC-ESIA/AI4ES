@@ -141,7 +141,7 @@ def test_review_analyzer_instruction_provider_inclui_aceitacao_com_ressalvas(tmp
                         "status": "aceito_com_ressalvas",
                         "conceito": "B",
                         "nota_final": 0.8,
-                        "motivo_terminacao": "aceito_com_ressalvas_plato",
+                        "motivo_terminacao": "aceito_com_ressalvas_plato_nota",
                         "blocking_reason": "Dois testes ainda falham.",
                     }
                 },
