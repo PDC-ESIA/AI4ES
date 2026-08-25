@@ -42,6 +42,9 @@ from .executor.loop_policy import (
 
 logger = logging.getLogger(__name__)
 
+_LIMITE_CONCEITO_C = 0.6
+_LIMITE_CONCEITO_B = 0.9
+
 # Formato do id de task emitido pelo context_engineer ("TASK-XXX (sequencial)",
 # ver context_engineer/prompt.py). Estrito de propósito: o id validado aqui é
 # usado sem sanitização adicional para compor o nome da branch da task.
@@ -263,11 +266,57 @@ def _progresso(state: dict) -> dict:
                 else None
             )
             detalhes.append(dict(detalhe) if isinstance(detalhe, dict) else None)
+    nota_final = historico[-1] if historico else None
     return {
-        "nota_final": historico[-1] if historico else None,
+        "nota_final": nota_final,
+        "nota_final_10": round(nota_final * 10, 2) if nota_final is not None else None,
+        "conceito": conceito_da_nota(nota_final),
         "historico_notas": historico,
         "detalhes_notas": detalhes,
     }
+
+
+def conceito_da_nota(nota: Optional[float]) -> Optional[str]:
+    """Converte a nota normalizada no conceito público da task.
+
+    Fronteiras acordadas na escala 0–10: até 6 (inclusive) é C; acima de 6 até
+    9 é B; acima de 9 é A. ``None`` significa que não houve rodada mensurável.
+    """
+    if nota is None:
+        return None
+    if nota <= _LIMITE_CONCEITO_C:
+        return "C"
+    if nota <= _LIMITE_CONCEITO_B:
+        return "B"
+    return "A"
+
+
+def _base_executavel_comprovada(progresso: dict) -> bool:
+    """True quando o último harness comprovou ambiente, build e app aplicável.
+
+    O conceito sozinho não pode mascarar falha estrutural. Todos os degraus
+    fundamentais presentes precisam valer 1.0; ``app_iniciou`` é opcional para
+    superfícies sem aplicação de topo (bibliotecas, por exemplo).
+    """
+    detalhes = progresso.get("detalhes_notas")
+    if not isinstance(detalhes, list) or not detalhes:
+        return False
+    ultimo = detalhes[-1]
+    if not isinstance(ultimo, dict):
+        return False
+    obrigatorios = ("minimo_para_rodar", "ambiente_preparado", "build_concluido")
+    if any(ultimo.get(degrau) != 1 for degrau in obrigatorios):
+        return False
+    return "app_iniciou" not in ultimo or ultimo.get("app_iniciou") == 1
+
+
+def _aceitavel_com_ressalvas(progresso: dict, report_path: Optional[str]) -> bool:
+    """Aceitação parcial exige nota B/A, report válido e base executável."""
+    return (
+        report_path is not None
+        and progresso.get("conceito") in ("A", "B")
+        and _base_executavel_comprovada(progresso)
+    )
 
 
 def classificar_desfecho(state: dict, task_id: str) -> dict:
@@ -331,6 +380,14 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
 
     if status_veredito == "reprovado":
         if motivo_travamento is not None:
+            if _aceitavel_com_ressalvas(progresso, report_path):
+                return {
+                    "status": "aceito_com_ressalvas",
+                    "blocking_reason": blocking_reason,
+                    "report_path": report_path,
+                    "motivo_terminacao": f"aceito_com_ressalvas_{motivo_travamento}",
+                    **progresso,
+                }
             # O motivo específico (platô / sem alteração / erro repetido) é
             # preservado no lugar do antigo "bloqueado_estagnacao" genérico: o
             # dado já existe e distingue "a solução parou de evoluir" de "o
@@ -365,17 +422,20 @@ def calcular_cobertura(
     expected_task_ids: list[str],
     processed_task_ids: list[str],
     approved_task_ids: list[str],
+    accepted_task_ids: Optional[list[str]] = None,
 ) -> bool:
     """Gate de completude, fail-closed.
 
     `len(expected) > 0` é explícito: sem ele, uma lista vazia satisfaria
     `expected == processed == approved` trivialmente e aprovaria no vácuo.
     """
+    concluidas = set(approved_task_ids) | set(accepted_task_ids or [])
     return (
         input_valid
         and len(expected_task_ids) > 0
         and set(expected_task_ids) == set(processed_task_ids)
-        and set(expected_task_ids) == set(approved_task_ids)
+        and set(expected_task_ids) == concluidas
+        and not (set(approved_task_ids) & set(accepted_task_ids or []))
     )
 
 
@@ -386,6 +446,7 @@ def montar_summary(
     expected_task_ids: list[str],
     processed_task_ids: list[str],
     approved_task_ids: list[str],
+    accepted_task_ids: list[str],
     task_results: dict[str, dict],
 ) -> dict:
     """Monta o `task_iteration_summary` (sempre um objeto novo, sem aliasing)."""
@@ -395,9 +456,21 @@ def montar_summary(
         "expected_task_ids": list(expected_task_ids),
         "processed_task_ids": list(processed_task_ids),
         "approved_task_ids": list(approved_task_ids),
+        "accepted_task_ids": list(accepted_task_ids),
         "task_results": {k: dict(v) for k, v in task_results.items()},
         "cobertura_completa": calcular_cobertura(
-            input_valid, expected_task_ids, processed_task_ids, approved_task_ids
+            input_valid,
+            expected_task_ids,
+            processed_task_ids,
+            approved_task_ids,
+            accepted_task_ids,
+        ),
+        "qualidade_completa": (
+            input_valid
+            and len(expected_task_ids) > 0
+            and set(expected_task_ids) == set(processed_task_ids)
+            and set(expected_task_ids) == set(approved_task_ids)
+            and not accepted_task_ids
         ),
     }
 
@@ -447,6 +520,7 @@ class TaskIterator(BaseAgent):
                     expected_task_ids=[],
                     processed_task_ids=[],
                     approved_task_ids=[],
+                    accepted_task_ids=[],
                     task_results={},
                 ),
             )
@@ -455,6 +529,7 @@ class TaskIterator(BaseAgent):
         expected_task_ids = [t["id"] for t in tasks]
         processed_task_ids: list[str] = []
         approved_task_ids: list[str] = []
+        accepted_task_ids: list[str] = []
         task_results: dict[str, dict] = {}
 
         def _summary() -> dict:
@@ -464,6 +539,7 @@ class TaskIterator(BaseAgent):
                 expected_task_ids=expected_task_ids,
                 processed_task_ids=processed_task_ids,
                 approved_task_ids=approved_task_ids,
+                accepted_task_ids=accepted_task_ids,
                 task_results=task_results,
             )
 
@@ -522,6 +598,8 @@ class TaskIterator(BaseAgent):
             processed_task_ids.append(task_id)
             if resultado["status"] == "aprovado":
                 approved_task_ids.append(task_id)
+            elif resultado["status"] == "aceito_com_ressalvas":
+                accepted_task_ids.append(task_id)
 
             logger.info(
                 "[TASK_ITERATOR] Task %s encerrada: status=%s motivo=%s",

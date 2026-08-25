@@ -175,6 +175,7 @@ def _derive_status(
     artifacts: list[dict],
     doubts: list[dict],
     validation: str,
+    has_accepted_with_caveats: bool = False,
 ) -> str:
     """Deriva o status da fase coding.
 
@@ -189,14 +190,17 @@ def _derive_status(
                                     doubt sintético bloqueante nesse caso,
                                     resultando em blocked via regra 1)
     4. Doubt não-bloqueante        → partial
-    5. Reviewer aprovado           → ok
-    6. Qualquer outro caso         → partial
+    5. Reviewer aprovado, mas há task aceita com ressalvas → partial
+    6. Reviewer aprovado sem ressalvas                     → ok
+    7. Qualquer outro caso         → partial
     """
     if any(d["bloqueante"] for d in doubts):
         return "blocked"
     if not artifacts:
         return "partial"
     if doubts:
+        return "partial"
+    if validation == "pass" and has_accepted_with_caveats:
         return "partial"
     if validation == "pass":
         return "ok"
@@ -207,6 +211,7 @@ def _build_summary(
     artifacts: list[dict],
     doubts: list[dict],
     validation: str,
+    accepted_count: int = 0,
 ) -> str:
     counts: dict[str, int] = {}
     for a in artifacts:
@@ -219,6 +224,8 @@ def _build_summary(
     if doubts:
         n_bloq = sum(1 for d in doubts if d["bloqueante"])
         base += f" {len(doubts)} dúvida(s) ({n_bloq} bloqueante(s))."
+    if accepted_count:
+        base += f" {accepted_count} task(s) aceita(s) com ressalvas."
     return base
 
 
@@ -238,6 +245,13 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         artifacts  = _scan_artifacts(coder_ws, ws_root)
         doubts     = _scan_doubts(coder_ws, ws_root)
         validation = _validation_verdict(coder_ws)
+        task_summary = callback_context.state.get("task_iteration_summary")
+        accepted_ids = (
+            task_summary.get("accepted_task_ids", [])
+            if isinstance(task_summary, dict)
+            else []
+        )
+        accepted_ids = accepted_ids if isinstance(accepted_ids, list) else []
 
         # Gera doubt sintético se nenhum artefato foi produzido
         if not artifacts:
@@ -272,7 +286,12 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             )
             doubts = _scan_doubts(coder_ws, ws_root)
 
-        status     = _derive_status(artifacts, doubts, validation)
+        status = _derive_status(
+            artifacts,
+            doubts,
+            validation,
+            has_accepted_with_caveats=bool(accepted_ids),
+        )
 
 
         manifest: dict = {
@@ -280,7 +299,9 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             "status":     status,
             "artifacts":  artifacts,
             "doubts":     doubts,
-            "summary":    _build_summary(artifacts, doubts, validation),
+            "summary": _build_summary(
+                artifacts, doubts, validation, accepted_count=len(accepted_ids)
+            ),
         }
 
         callback_context.state[STATE_KEY] = manifest

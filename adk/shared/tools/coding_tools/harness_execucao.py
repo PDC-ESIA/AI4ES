@@ -751,10 +751,26 @@ def _estagio_validacoes_work_item(
 def _agregar_status(
     stages: list[StageResult], critical_stages: tuple[str, ...]
 ) -> StageStatus:
-    """Deriva o status técnico agregado (não é veredito de aprovação)."""
+    """Deriva o status técnico agregado (não é veredito de aprovação).
+
+    Uma suíte declarada que executou e falhou é sempre bloqueante. Os perfis
+    continuam decidindo quais estágios de infraestrutura são críticos, mas não
+    podem transformar ``TESTES_FALHARAM``/``TESTES_TIMEOUT`` em sucesso técnico:
+    isso fazia o validador aprovar a task com nota 0.6 (build e serviço OK,
+    zero testes passando) e encerrar o loop antes de qualquer correção.
+
+    ``PULADO`` permanece permitido quando o manifesto não declara testes. A
+    obrigatoriedade de existir uma suíte é uma decisão de contrato/DoD distinta;
+    esta função garante apenas que uma suíte efetivamente declarada não possa
+    falhar silenciosamente.
+    """
     por_estagio = {s.stage.value: s.status for s in stages}
     if any(s.status == StageStatus.ERRO for s in stages):
         return StageStatus.ERRO
+
+    if por_estagio.get(StageName.TESTES_AUTOMATIZADOS) == StageStatus.FALHA:
+        return StageStatus.FALHA
+
     for critico in critical_stages:
         if por_estagio.get(critico) in (StageStatus.FALHA, StageStatus.PULADO):
             return StageStatus.FALHA

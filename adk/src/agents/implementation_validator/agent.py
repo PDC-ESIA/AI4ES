@@ -70,6 +70,22 @@ def _report_path_valido(caminho: str, task_id: str) -> bool:
 _EXECUCAO_SUCESSO = "sucesso"
 
 
+def _testes_declarados_falharam(report: dict) -> bool:
+    """Detecta uma suíte executada com falha, mesmo em report inconsistente.
+
+    O harness atual já incorpora esta falha no ``overall_status``. A checagem
+    permanece aqui como defesa fail-closed para reports antigos, forjados ou
+    produzidos por versões incompatíveis: ``overall_status='sucesso'`` nunca
+    pode prevalecer sobre evidência explícita de testes falhos.
+    """
+    return any(
+        isinstance(stage, dict)
+        and stage.get("stage") == "testes_automatizados"
+        and stage.get("status") in ("falha", "erro")
+        for stage in (report.get("stages") or [])
+    )
+
+
 def _extrair_criterios(report: dict) -> list[str]:
     """Extrai a lista de critérios de aceite do report.
 
@@ -117,7 +133,10 @@ def montar_veredito(
     overall = report.get("overall_status")
 
     # ---- Execução não bem-sucedida: reprova ----
-    if overall != _EXECUCAO_SUCESSO:
+    # A segunda condição é defesa contra um report internamente contraditório:
+    # foi justamente essa combinação (overall=sucesso + testes=falha) que
+    # aprovou tasks com nota 0.6 na run de regressão.
+    if overall != _EXECUCAO_SUCESSO or _testes_declarados_falharam(report):
         verdicts = [
             CriterionVerdict(
                 criterion=c,

@@ -434,7 +434,7 @@ def test_healthcheck_falha_marca_inicializacao(tmp_path):
 # Estágio de testes: sucesso, falha, timeout, pulado
 # ===========================================================================
 
-def test_testes_falharam_marcam_falha_sem_veredito(tmp_path):
+def test_testes_falharam_derrubam_status_tecnico(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
     _write_manifest(coder, _manifest_service())
@@ -455,8 +455,9 @@ def test_testes_falharam_marcam_falha_sem_veredito(tmp_path):
     assert testes["evidence"]["resultados"][0]["resumo"]["falharam"] == 1
     # Nenhum campo de veredito vazou.
     assert not ({"verdict", "aprovado", "veredito", "approved"} & set(testes["evidence"].keys()))
-    # Testes não são estágio crítico: a falha deles NÃO derruba o overall.
-    assert result["overall_status"] == "sucesso"
+    # Regressão: build + app no ar não podem esconder uma suíte vermelha. Antes
+    # isto produzia overall=sucesso, nota 0.6 e aprovação imediata da task.
+    assert result["overall_status"] == "falha"
 
 
 def test_testes_timeout_marca_falha(tmp_path):
@@ -477,6 +478,7 @@ def test_testes_timeout_marca_falha(tmp_path):
 
     assert testes["status"] == "falha"
     assert testes["error_code"] == "TESTES_TIMEOUT"
+    assert result["overall_status"] == "falha"
 
 
 def test_testes_pulado_quando_manifesto_sem_test(tmp_path):

@@ -97,6 +97,24 @@ def test_execucao_falha_tem_precedencia_sobre_criterios_positivos():
     assert all(cv.status == CriterionStatus.INCONCLUSIVO for cv in v.criteria_verdicts)
 
 
+def test_report_inconsistente_com_testes_falhos_reprova():
+    """Defesa da regressão observada: overall sucesso não apaga suíte vermelha."""
+    report = _report("sucesso")
+    report["stages"] = [
+        {
+            "stage": "testes_automatizados",
+            "status": "falha",
+            "error_code": "TESTES_FALHARAM",
+        }
+    ]
+
+    v = montar_veredito(report)
+
+    assert v.status == VerdictStatus.REPROVADO
+    assert "testes_automatizados" in (v.blocking_reason or "")
+    assert "TESTES_FALHARAM" in (v.blocking_reason or "")
+
+
 # ===========================================================================
 # Fail-closed: só "sucesso" aprova
 # ===========================================================================

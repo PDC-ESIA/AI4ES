@@ -21,6 +21,7 @@ from src.agents.workflow_coding_review.task_iterator import (
     TaskIterator,
     calcular_cobertura,
     classificar_desfecho,
+    conceito_da_nota,
     detalhe_erro_operacional,
     validar_envelope_de_tasks,
 )
@@ -150,6 +151,29 @@ def test_calcular_cobertura_e_fail_closed():
     assert calcular_cobertura(True, ids, ids, ["TASK-001"]) is False
 
 
+def test_cobertura_aceita_combinacao_de_aprovadas_e_ressalvas():
+    ids = ["TASK-001", "TASK-002"]
+
+    assert calcular_cobertura(
+        True, ids, ids, ["TASK-001"], ["TASK-002"]
+    ) is True
+    assert calcular_cobertura(
+        True, ids, ids, ["TASK-001"], ["TASK-001", "TASK-002"]
+    ) is False, "uma task não pode estar nas duas categorias"
+
+
+@pytest.mark.parametrize(
+    "nota,conceito",
+    [(0.0, "C"), (0.6, "C"), (0.600001, "B"), (0.9, "B"), (0.900001, "A"), (1.0, "A")],
+)
+def test_conceito_da_nota_respeita_fronteiras(nota, conceito):
+    assert conceito_da_nota(nota) == conceito
+
+
+def test_conceito_sem_nota_permanece_ausente():
+    assert conceito_da_nota(None) is None
+
+
 def test_classificar_desfecho_rejeita_work_item_divergente():
     resultado = classificar_desfecho(
         {
@@ -179,6 +203,66 @@ def test_classificar_desfecho_detecta_travamento():
     )
     assert resultado["status"] == "bloqueado"
     assert resultado["motivo_terminacao"] == "bloqueado_plato_nota"
+
+
+def test_estagnacao_conceito_b_com_base_executavel_e_aceita(monkeypatch):
+    import src.agents.workflow_coding_review.task_iterator as modulo
+
+    monkeypatch.setattr(modulo, "_report_path_valido", lambda *_: True)
+    resultado = classificar_desfecho(
+        {
+            "validation": {
+                "work_item_id": "TASK-001",
+                "status": "reprovado",
+                "blocking_reason": "Ainda há testes falhos.",
+            },
+            "report_path": "/ws/coder/execution/TASK-001.report.json",
+            "loop_stop_reason": "plato_nota",
+            "progress_score_history": [0.8, 0.8, 0.8],
+            "progress_score_details": [
+                {
+                    "minimo_para_rodar": 1,
+                    "ambiente_preparado": 1,
+                    "build_concluido": 1,
+                    "app_iniciou": 1,
+                    "testes_passaram": 0.5,
+                }
+            ] * 3,
+        },
+        "TASK-001",
+    )
+
+    assert resultado["status"] == "aceito_com_ressalvas"
+    assert resultado["conceito"] == "B"
+    assert resultado["nota_final_10"] == 8.0
+    assert resultado["motivo_terminacao"] == "aceito_com_ressalvas_plato_nota"
+
+
+@pytest.mark.parametrize(
+    "nota,detalhe",
+    [
+        (0.6, {"minimo_para_rodar": 1, "ambiente_preparado": 1, "build_concluido": 1, "app_iniciou": 1}),
+        (0.8, {"minimo_para_rodar": 1, "ambiente_preparado": 1, "build_concluido": 1, "app_iniciou": 0}),
+    ],
+)
+def test_estagnacao_conceito_c_ou_base_quebrada_continua_bloqueada(
+    monkeypatch, nota, detalhe
+):
+    import src.agents.workflow_coding_review.task_iterator as modulo
+
+    monkeypatch.setattr(modulo, "_report_path_valido", lambda *_: True)
+    resultado = classificar_desfecho(
+        {
+            "validation": {"work_item_id": "TASK-001", "status": "reprovado"},
+            "report_path": "/ws/coder/execution/TASK-001.report.json",
+            "loop_stop_reason": "plato_nota",
+            "progress_score_history": [nota],
+            "progress_score_details": [detalhe],
+        },
+        "TASK-001",
+    )
+
+    assert resultado["status"] == "bloqueado"
 
 
 def test_marcador_de_texto_nao_encerra_mais_a_task():

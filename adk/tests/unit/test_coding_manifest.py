@@ -289,6 +289,12 @@ def test_status_ok_com_config():
     assert _derive_status([_art("config")], [], "pass") == "ok"
 
 
+
+def test_status_partial_com_task_aceita_com_ressalvas():
+    assert _derive_status(
+        [_art("source")], [], "pass", has_accepted_with_caveats=True
+    ) == "partial"
+
 def test_emit_gera_doubt_quando_sem_artefatos(tmp_path):
     coder_ws = tmp_path / "coder"
     coder_ws.mkdir(parents=True)

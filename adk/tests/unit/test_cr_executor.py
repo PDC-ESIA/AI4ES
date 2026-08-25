@@ -293,6 +293,35 @@ def test_rodada_reprovada_com_progresso_nao_encerra(executor_module, monkeypatch
     assert devolvido is None, "deixar de devolver None impediria o ErrorReport"
 
 
+def test_nota_seis_com_testes_falhos_nao_encerra(executor_module, monkeypatch):
+    """Nota mede progresso; 0.6 não é limiar de aprovação.
+
+    Reproduz a run em que ambiente, build e aplicação passaram, mas a suíte
+    ficou vermelha. Com o veredito reprovado, o coder precisa receber outra
+    rodada para corrigir os testes em vez de a task ser aprovada imediatamente.
+    """
+    from src.agents.workflow_coding_review.executor.progress_score import NotaProgresso
+
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module,
+        "calcular_nota",
+        lambda _: NotaProgresso(
+            total=0.6,
+            por_degrau={},
+            degraus_aplicaveis=frozenset(),
+            pesos_efetivos={},
+        ),
+    )
+    ctx = _Contexto({"validation": _veredito("reprovado", "inconclusivo")})
+
+    devolvido = executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.state["progress_score_history"] == [0.6]
+    assert ctx.actions.escalate is None
+    assert devolvido is None
+
+
 def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch):
     """Mesma falha e nota parada: encerra pelo acelerador, antes da janela cheia.
 

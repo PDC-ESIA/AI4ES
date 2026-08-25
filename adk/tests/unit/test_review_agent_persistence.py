@@ -119,6 +119,61 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_pa
     assert "- app/main.py" in rendered
 
 
+def test_review_analyzer_instruction_provider_inclui_aceitacao_com_ressalvas(tmp_path, monkeypatch):
+    """O reviewer recebe status, conceito e ressalva publicados pelo TaskIterator."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from shared.tools.coding_tools import review_tools
+    import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+    importlib.reload(review_tools)
+    importlib.reload(cr_reviewer)
+
+    class _FakeCtx:
+        state = {
+            "task_iteration_summary": {
+                "expected_task_ids": ["TASK-001"],
+                "accepted_task_ids": ["TASK-001"],
+                "cobertura_completa": True,
+                "qualidade_completa": False,
+                "task_results": {
+                    "TASK-001": {
+                        "status": "aceito_com_ressalvas",
+                        "conceito": "B",
+                        "nota_final": 0.8,
+                        "motivo_terminacao": "aceito_com_ressalvas_plato",
+                        "blocking_reason": "Dois testes ainda falham.",
+                    }
+                },
+            }
+        }
+
+    rendered = cr_reviewer._analyzer_instruction_provider(_FakeCtx())
+
+    assert "Tasks aceitas com ressalvas: TASK-001" in rendered
+    assert "status=aceito_com_ressalvas" in rendered
+    assert "conceito=B" in rendered
+    assert "Dois testes ainda falham." not in rendered
+    assert "isoladamente, NÃO bloqueiam o pipeline" in rendered
+
+
+def test_review_analyzer_instruction_preserva_bloqueios_criticos(tmp_path, monkeypatch):
+    """A política de ressalvas não encobre segurança, dados ou base inexequível."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from shared.tools.coding_tools import review_tools
+    import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+    importlib.reload(review_tools)
+    importlib.reload(cr_reviewer)
+
+    rendered = cr_reviewer._analyzer_instruction_provider(type("Ctx", (), {"state": {}})())
+
+    assert "Vulnerabilidade séria" in rendered
+    assert "perda/corrupção de dados" in rendered
+    assert "continuam sendo `critical`" in rendered
+
+
 def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monkeypatch):
     """tool_ler_arquivo do analyzer resolve paths relativos contra _CODER_WS."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
