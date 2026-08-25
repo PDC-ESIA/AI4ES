@@ -105,8 +105,10 @@ def montar_veredito(
     Args:
         report: ExecutionReport como dict (saída do harness).
         criteria_verdicts: Vereditos por critério, quando houver. NÃO influenciam
-            o status — entram no veredito como registro para auditoria e para a
-            revisão a jusante, e alimentam a assinatura de erro da `loop_policy`.
+            o status. No caminho de SUCESSO entram no veredito como registro de
+            auditoria; no de FALHA são descartados e substituídos pela lista
+            determinística acima. A `loop_policy` NÃO os consulta: a assinatura
+            de erro é de falha técnica e recebe só o `ExecutionReport`.
 
     Returns:
         ValidationVerdict consolidado (o único portador de veredito do fluxo).
@@ -154,10 +156,9 @@ def montar_veredito(
 
     # ---- Execução bem-sucedida: aprova ----
     #
-    # Os `criteria_verdicts` vão junto como REGISTRO (auditoria, revisão a
-    # jusante, assinatura de erro da loop_policy) e não são consultados para
-    # decidir o status — um `inconclusivo` aqui significa "o harness não
-    # instrumenta isso", não "a entrega falhou".
+    # Os `criteria_verdicts` vão junto como REGISTRO de auditoria e não são
+    # consultados para decidir o status — um `inconclusivo` aqui significa "o
+    # harness não instrumenta isso", não "a entrega falhou".
     return ValidationVerdict(
         work_item_id=work_item_id,
         status=VerdictStatus.APROVADO,

@@ -55,6 +55,7 @@ from src.agents.implementation_validator.agent import _report_path_valido
 
 from . import prompt as executor_prompt
 from .loop_policy import (
+    CHAVE_HISTORICO,
     assinatura_erro,
     fingerprint_mudou,
     registrar_e_avaliar,
@@ -278,7 +279,7 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
             "[PROGRESSO] Task %s aprovada com nota %.3f (histórico=%s).",
             state.get("task_id"),
             nota.total,
-            state.get("progress_score_history"),
+            state.get(CHAVE_HISTORICO),
         )
         # `None` preserva o texto de confirmação que o executor já produz.
         return None
@@ -288,7 +289,7 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
         nota_total=nota.total,
         nota_detalhe=nota.como_dict(),
         arquivos_mudaram=fingerprint_mudou(state),
-        assinatura_erro_atual=assinatura_erro(exec_report, validation),
+        assinatura_erro_atual=assinatura_erro(exec_report),
     )
     if not decisao.parar:
         return None

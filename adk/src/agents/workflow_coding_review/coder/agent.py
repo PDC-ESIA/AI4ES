@@ -16,6 +16,7 @@ from shared.workspace import get_agent_workspace, get_workspace_root
 from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
     tool_ler_arquivo,
+    tool_remover_arquivo,
     tool_substituir_trecho,
 )
 from shared.tools.filesystem import (
@@ -26,6 +27,7 @@ from shared.tools.filesystem import (
 from . import prompt as coder_prompt
 from .workspace_guard import (
     anunciar_arquivos_herdados,
+    auditar_remocao,
     bloquear_sobrescrita_herdada,
 )
 
@@ -55,12 +57,14 @@ agent = LlmAgent(
         _bind(FunctionTool(tool_criar_arquivo)),
         _bind(FunctionTool(tool_ler_arquivo)),
         _bind(FunctionTool(tool_substituir_trecho)),
+        _bind(FunctionTool(tool_remover_arquivo)),
         _bind(FunctionTool(tool_ler_workspace)),
         _bind(FunctionTool(tool_listar_workspace)),
     ],
-    # As duas metades da proteção inter-task: `anunciar_` avisa que o projeto já
-    # existe antes da primeira escrita da task; `bloquear_` recusa a sobrescrita
-    # se o aviso não bastar. Ver `workspace_guard`.
+    # As frentes da proteção inter-task (ver `workspace_guard`): `anunciar_`
+    # avisa que o projeto já existe antes da primeira escrita da task;
+    # `bloquear_` recusa a sobrescrita se o aviso não bastar; `auditar_`
+    # registra remoções e libera o caminho removido da baseline.
     before_tool_callback=bloquear_sobrescrita_herdada,
-    after_tool_callback=anunciar_arquivos_herdados,
+    after_tool_callback=[anunciar_arquivos_herdados, auditar_remocao],
 )

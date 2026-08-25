@@ -33,6 +33,8 @@ from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
 from .executor.loop_policy import (
+    CHAVE_DETALHES,
+    CHAVE_HISTORICO,
     CHAVE_MOTIVO_PARADA,
     CHAVES_DE_CICLO,
     MOTIVOS_PARADA,
@@ -246,8 +248,8 @@ def _progresso(state: dict) -> dict:
     task reprovada ou travada é exatamente o caso em que o histórico mais
     importa para auditoria e para a revisão a jusante.
     """
-    historico_bruto = state.get("progress_score_history")
-    detalhes_brutos = state.get("progress_score_details")
+    historico_bruto = state.get(CHAVE_HISTORICO)
+    detalhes_brutos = state.get(CHAVE_DETALHES)
     historico: list[float] = []
     detalhes: list[Optional[dict]] = []
     if isinstance(historico_bruto, list):

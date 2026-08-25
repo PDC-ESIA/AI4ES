@@ -18,6 +18,7 @@ from src.agents.workflow_coding_review.executor import loop_policy
 from src.agents.workflow_coding_review.executor.loop_policy import (
     CHAVES_DE_CICLO,
     MOTIVO_ERRO_REPETIDO,
+    MOTIVO_ORCAMENTO_FALHAS,
     MOTIVO_PLATO,
     MOTIVO_SEM_ALTERACAO,
     assinatura_erro,
@@ -30,19 +31,55 @@ from src.agents.workflow_coding_review.executor.loop_policy import (
 
 _JANELA = 3
 _MARGEM = 0.01
+_ORCAMENTO = 6
 
 
 def _avaliar(
-    historico, *, mudaram=True, atual=None, anterior=None, janela=_JANELA, acelerar=2
+    historico,
+    *,
+    mudaram=True,
+    atual=None,
+    anterior=None,
+    vistas=None,
+    assinaturas=None,
+    janela=_JANELA,
+    acelerar=2,
+    orcamento=_ORCAMENTO,
 ):
+    """Avalia uma rodada montando o histórico de assinaturas alinhado às notas.
+
+    `assinaturas` passa o histórico literal (usado nos testes de sequência).
+    Caso contrário ele é montado a partir de `vistas` (rodadas iniciais),
+    `anterior` (penúltima) e `atual` (última).
+
+    Default de `vistas`: a assinatura atual JÁ foi vista. É o default certo
+    porque a maioria dos casos aqui exercita repetição/platô; uma falha inédita
+    zera a tolerância por desenho e mascararia esses gatilhos. Os testes de
+    novidade passam `vistas`/`assinaturas` explicitamente.
+    """
+    if assinaturas is None:
+        total = len(historico)
+        assinaturas = [None] * total
+        if vistas is None:
+            vistas = [atual] if atual is not None else []
+        for indice, assinatura in enumerate(vistas):
+            if indice < max(0, total - 2):
+                assinaturas[indice] = assinatura
+        if total >= 2:
+            assinaturas[-2] = anterior
+        if total >= 1:
+            assinaturas[-1] = atual
+
     return avaliar_continuidade(
         historico_notas=historico,
         arquivos_mudaram=mudaram,
         assinatura_erro_atual=atual,
         assinatura_erro_anterior=anterior,
+        historico_assinaturas=assinaturas,
         janela_sem_progresso=janela,
         margem_melhora=_MARGEM,
         rodadas_para_acelerar=acelerar,
+        orcamento_de_falhas_distintas=orcamento,
     )
 
 
@@ -190,6 +227,117 @@ def test_erro_repetido_cobre_o_coder_que_edita_sem_progredir():
 
 
 # ---------------------------------------------------------------------------
+# Política orientada a causa — falha inédita renova a tolerância
+# ---------------------------------------------------------------------------
+#
+# A nota é grosseira DENTRO de um degrau: `build_concluido` é binário, então o
+# coder pode derrubar três problemas seguidos com a nota parada. Olhar só a nota
+# declarava platô no meio dessa sequência e matava tasks que iam terminar.
+
+
+def test_falha_inedita_com_nota_parada_nao_encerra():
+    """O caso que motivou a política: erro novo é avanço que a nota não vê."""
+    decisao = _avaliar([0.2, 0.2, 0.2, 0.2], atual="erro-novo", vistas=["erro-a", "erro-b"])
+
+    assert not decisao.parar
+
+
+def test_falha_inedita_adia_o_plato_ate_o_orcamento():
+    """Novidade renova a tolerância, mas não indefinidamente."""
+    assinaturas: list[str] = []
+    paradas = []
+    for rodada in range(1, 12):
+        assinaturas.append(f"erro-{rodada}")
+        decisao = _avaliar(
+            [0.2] * rodada,
+            assinaturas=list(assinaturas),
+            atual=assinaturas[-1],
+            anterior=assinaturas[-2] if rodada > 1 else None,
+        )
+        paradas.append(decisao)
+        if decisao.parar:
+            break
+
+    # Atravessou o orçamento inteiro de falhas distintas antes de desistir...
+    assert len(paradas) == _ORCAMENTO + 1
+    # ...e o motivo diz exatamente o que aconteceu.
+    assert paradas[-1].motivo == MOTIVO_ORCAMENTO_FALHAS
+    assert all(not d.parar for d in paradas[:-1])
+
+
+def test_falha_inedita_renova_a_tolerancia_de_verdade():
+    """Regressão: a novidade tem de zerar a contagem, não só pular a rodada.
+
+    Sequência A → B → C → D → D. Na quinta rodada o coder está no PRIMEIRO retry
+    de uma falha que acabou de descobrir, depois de três avanços reais. Uma
+    versão anterior contava o platô só sobre a nota: a novidade da rodada 4
+    deixava passar aquela rodada, mas o platô acumulado encerrava a task na 5 —
+    exatamente quando ela mais merecia continuar.
+    """
+    decisao = _avaliar([0.2] * 5, assinaturas=["A", "B", "C", "D", "D"], atual="D", anterior="D")
+
+    assert not decisao.parar
+
+
+def test_falha_nova_ganha_as_proprias_tentativas_antes_de_encerrar():
+    """A contrapartida: a tolerância renovada é finita, não infinita."""
+    decisao = _avaliar(
+        [0.2] * 6, assinaturas=["A", "B", "C", "D", "D", "D"], atual="D", anterior="D"
+    )
+
+    assert decisao.parar
+    assert decisao.motivo == MOTIVO_ERRO_REPETIDO
+
+
+def test_falha_ja_vista_nao_renova_a_tolerancia():
+    """Voltar a um erro conhecido não é progresso — o conservador volta a valer."""
+    decisao = _avaliar(
+        [0.2] * 5,
+        assinaturas=["erro-a", "erro-b", None, "erro-b", "erro-a"],
+        atual="erro-a",
+        anterior="erro-b",
+    )
+
+    assert decisao.parar
+    assert decisao.motivo == MOTIVO_PLATO
+
+
+def test_oscilacao_entre_duas_falhas_conhecidas_encerra():
+    """A → B → A → B: a novidade se esgota e o platô encerra, sem detector de ciclo."""
+    sequencia = ["A", "B", "A", "B", "A"]
+    decisoes = []
+    for indice, assinatura in enumerate(sequencia):
+        decisao = _avaliar(
+            [0.2] * (indice + 1),
+            assinaturas=sequencia[: indice + 1],
+            atual=assinatura,
+            anterior=sequencia[indice - 1] if indice else None,
+        )
+        decisoes.append(decisao)
+        if decisao.parar:
+            break
+
+    assert decisoes[-1].parar
+    assert decisoes[-1].motivo == MOTIVO_PLATO
+
+
+def test_coder_que_para_de_editar_nao_e_salvo_por_falha_inedita():
+    """Sem edição não há correção: assinatura que muda sozinha é ruído de
+    execução (teste instável, serviço lento), não avanço."""
+    decisao = _avaliar([0.2, 0.2, 0.2], mudaram=False, atual="erro-novo", vistas=[])
+
+    assert decisao.parar
+    assert decisao.motivo == MOTIVO_SEM_ALTERACAO
+
+
+def test_nota_subindo_vence_qualquer_gatilho():
+    """Recorde superado encerra a análise antes de tudo — inclusive do orçamento."""
+    decisao = _avaliar([0.2, 0.9], atual="erro-a", anterior="erro-a", vistas=["erro-a"])
+
+    assert not decisao.parar
+
+
+# ---------------------------------------------------------------------------
 # assinatura_erro — fina o bastante para não confundir avanço com repetição
 # ---------------------------------------------------------------------------
 
@@ -217,68 +365,165 @@ def _report_com_testes(passaram: int, falharam: int) -> dict:
     }
 
 
-_VEREDITO_GENERICO = {
-    "blocking_reason": "Ao menos um critério ficou nao_atendido ou inconclusivo.",
-    "criteria_verdicts": [
-        {"criterion": "CA-1", "status": "nao_atendido", "reasoning": "x"}
-    ],
-}
+def _report_build_falho(logs: str, comando: str = "pip install -r requirements.txt") -> dict:
+    """Build falho — o caso em que `error_code` sozinho é cego.
+
+    `FALHA_BUILD` cobre qualquer erro de build; a causa real só existe no log.
+    """
+    return {
+        "stages": [
+            {
+                "stage": "implantacao_artefato",
+                "status": "falha",
+                "error_code": "FALHA_BUILD",
+                "summary": f"Falha no build: exit=1. Comando: {comando!r}.",
+                "evidence": {
+                    "comando_falho": comando,
+                    "exit_code": 1,
+                    "timed_out": False,
+                    "build_logs_tail": logs,
+                },
+            }
+        ]
+    }
 
 
 def test_mesma_falha_com_menos_testes_quebrados_muda_a_assinatura():
     """Regressão do bug encontrado na revisão da spec.
 
-    `error_code` e `blocking_reason` são idênticos entre as duas rodadas — o
-    `blocking_reason` da Camada 2 é uma string fixa. Só a contagem de testes
+    `error_code` é idêntico entre as duas rodadas. Só a contagem de testes
     distingue 10/30 de 28/30; sem ela o loop pararia no meio do avanço.
     """
-    antes = assinatura_erro(_report_com_testes(10, 20), _VEREDITO_GENERICO)
-    depois = assinatura_erro(_report_com_testes(28, 2), _VEREDITO_GENERICO)
+    antes = assinatura_erro(_report_com_testes(10, 20))
+    depois = assinatura_erro(_report_com_testes(28, 2))
 
     assert antes != depois
 
 
 def test_falha_identica_repete_a_assinatura():
-    a = assinatura_erro(_report_com_testes(10, 20), _VEREDITO_GENERICO)
-    b = assinatura_erro(_report_com_testes(10, 20), _VEREDITO_GENERICO)
+    a = assinatura_erro(_report_com_testes(10, 20))
+    b = assinatura_erro(_report_com_testes(10, 20))
 
     assert a == b
 
 
-def test_reasoning_do_llm_nao_entra_na_assinatura():
-    """Texto livre muda de redação sem o resultado mudar; incluí-lo desligaria
-    o gatilho na prática, porque a assinatura nunca repetiria."""
-    outro_texto = {
-        "blocking_reason": _VEREDITO_GENERICO["blocking_reason"],
-        "criteria_verdicts": [
-            {
-                "criterion": "CA-1",
-                "status": "nao_atendido",
-                "reasoning": "redacao completamente diferente desta vez",
-            }
-        ],
-    }
+def test_mesmo_error_code_com_causas_diferentes_gera_assinaturas_diferentes():
+    """O defeito que motivou descer até a saída do comando.
 
-    assert assinatura_erro(
-        _report_com_testes(10, 20), _VEREDITO_GENERICO
-    ) == assinatura_erro(_report_com_testes(10, 20), outro_texto)
+    Dois pacotes inexistentes diferentes produzem o MESMO `error_code`
+    (`FALHA_BUILD`) e, se o build morre antes dos testes, a mesma contagem
+    `0:0:0`. Com a assinatura antiga as duas rodadas colidiam, e bastavam duas
+    tentativas de correção legítimas e distintas para o gatilho de erro repetido
+    encerrar uma task que estava progredindo.
+    """
+    primeira = assinatura_erro(
+        _report_build_falho("ERROR: No matching distribution found for foo==1.0")
+    )
+    segunda = assinatura_erro(
+        _report_build_falho("ERROR: No matching distribution found for bar==2.0")
+    )
 
-
-def test_mudanca_de_status_de_criterio_muda_a_assinatura():
-    atendido = {
-        "criteria_verdicts": [
-            {"criterion": "CA-1", "status": "atendido", "reasoning": "x"}
-        ]
-    }
-
-    assert assinatura_erro(
-        _report_com_testes(10, 20), _VEREDITO_GENERICO
-    ) != assinatura_erro(_report_com_testes(10, 20), atendido)
+    assert primeira != segunda
 
 
-@pytest.mark.parametrize("entrada", [None, "", [], 42])
+def test_volatilidade_de_ambiente_nao_muda_a_assinatura():
+    """Contrapartida: a MESMA causa precisa repetir mesmo com ruído de execução.
+
+    Timestamp, diretório temporário do sandbox, PID e duração mudam a cada
+    rodada. Se entrassem no hash, a assinatura nunca repetiria e o gatilho de
+    erro repetido ficaria desligado na prática.
+    """
+    primeira = assinatura_erro(
+        _report_build_falho(
+            "2026-08-25T09:00:01Z /tmp/ai4se-sandbox-aaa/app/x.py: falhou "
+            "pid=111\n1 failed in 0.35s"
+        )
+    )
+    segunda = assinatura_erro(
+        _report_build_falho(
+            "2026-08-25T11:22:33Z /tmp/ai4se-sandbox-zzz/app/x.py: falhou "
+            "pid=999\n1 failed in 1.20s"
+        )
+    )
+
+    assert primeira == segunda
+
+
+def test_normalizacao_nao_apaga_informacao_causal():
+    """Contrapartida da normalização: só o inequivocamente volátil sai.
+
+    Um diretório temporário escolhido pelo PROJETO (não o do sandbox) e uma
+    duração que é configuração (não rodapé de suíte) são causa, não ruído.
+    """
+    projeto_a = assinatura_erro(_report_build_falho("/tmp/projeto-a/config.py: erro"))
+    projeto_b = assinatura_erro(_report_build_falho("/tmp/projeto-b/config.py: erro"))
+    assert projeto_a != projeto_b
+
+    curto = assinatura_erro(_report_build_falho("retry timeout configured as 5s"))
+    longo = assinatura_erro(_report_build_falho("retry timeout configured as 60s"))
+    assert curto != longo
+
+
+def test_caminho_relativo_diferente_muda_a_assinatura():
+    """O caminho relativo é CAUSA, não ruído — normalizá-lo recriaria o bug.
+
+    `ModuleNotFoundError` em `modulo_a.py` e em `modulo_b.py` são problemas
+    distintos, cada um merecendo a sua rodada de correção.
+    """
+    a = assinatura_erro(
+        _report_build_falho("/tmp/ai4se-sandbox-aaa/app/modulo_a.py: ModuleNotFoundError")
+    )
+    b = assinatura_erro(
+        _report_build_falho("/tmp/ai4se-sandbox-aaa/app/modulo_b.py: ModuleNotFoundError")
+    )
+
+    assert a != b
+
+
+def test_excecao_presente_apenas_no_summary_distingue_a_falha():
+    """`ERRO_START_SERVICE` guarda a exceção só em `summary`.
+
+    A `evidence` desse caminho traz apenas `run_command` (constante para a task)
+    e o log do build (de outro estágio). Sem incluir `summary`, toda falha de
+    subida de serviço colidiria numa assinatura única.
+    """
+
+    def _start_falho(excecao: str) -> dict:
+        return {
+            "stages": [
+                {
+                    "stage": "implantacao_artefato",
+                    "status": "erro",
+                    "error_code": "ERRO_START_SERVICE",
+                    "summary": f"Erro ao iniciar o serviço: {excecao}",
+                    "evidence": {
+                        "run_command": "uvicorn app.main:app",
+                        "build_logs_tail": "build ok",
+                    },
+                }
+            ]
+        }
+
+    assert assinatura_erro(_start_falho("porta ocupada")) != assinatura_erro(
+        _start_falho("modulo ausente")
+    )
+
+
+def test_julgamento_de_criterio_nao_participa_da_assinatura():
+    """A assinatura é de falha TÉCNICA; o veredito nem entra na função.
+
+    No caminho de falha, `montar_veredito` monta a lista de critérios de forma
+    determinística (todos `inconclusivo`), então ela não distinguia rodada
+    alguma — era peso morto num hash de causa técnica.
+    """
+    import inspect
+
+    assert list(inspect.signature(assinatura_erro).parameters) == ["execution_report"]
+
+
+@pytest.mark.parametrize("entrada", [None, "", [], 42, {}])
 def test_assinatura_tolera_entradas_invalidas(entrada):
-    assert isinstance(assinatura_erro(entrada, entrada), str)
+    assert isinstance(assinatura_erro(entrada), str)
 
 
 # ---------------------------------------------------------------------------

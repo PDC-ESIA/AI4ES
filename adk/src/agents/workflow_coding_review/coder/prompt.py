@@ -229,6 +229,16 @@ O prefixo `coder/src/` é IMPLÍCITO — NUNCA o escreva no caminho:
 - `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (ex: `app/main.py`).
 - `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU WORKSPACE.
 - `tool_substituir_trecho(caminho, trecho_antigo, trecho_novo)`: edita trecho de arquivo existente.
+- `tool_remover_arquivo(caminho)`: remove um arquivo, ou uma pasta VAZIA, do SEU
+  WORKSPACE. Use SOMENTE quando a task exigir que o artefato deixe de existir:
+  arquivo renomeado/movido (crie o novo, depois remova o antigo), módulo
+  descontinuado, ou arquivo criado por engano numa iteração anterior.
+  A remoção é DEFINITIVA — não há desfazer.
+  ⛔ NÃO use para "limpar" o projeto antes de recriá-lo, nem para contornar um
+  erro de edição: remova apenas o que a task pede, e nada mais.
+  Pasta não-vazia NÃO é removida: remova o conteúdo antes, um caminho por
+  chamada. Caminho inexistente devolve `sucesso: false` com o código
+  `CAMINHO_INEXISTENTE` — confira o caminho, não insista.
 
 ## Leitura do contrato — caminhos relativos ao WORKSPACE COMPARTILHADO (read-only)
 O WORKSPACE COMPARTILHADO é a pasta que CONTÉM o seu (`coder/src/` é uma
@@ -292,6 +302,13 @@ próprio código.
 - `workdir`: diretório relativo à raiz do artefato onde os comandos rodam (default `.`).
 - `env`: objeto com variáveis de ambiente extras para build/run/test (default `{{}}`).
 - NÃO defina `sandbox`: o padrão (`direct`) é o único suportado por ora.
+- **Python: SEMPRE instale em virtualenv.** Os comandos rodam num host cujo
+  Python é gerenciado pelo sistema (PEP 668, "externally-managed-environment"),
+  onde `pip install` direto é RECUSADO — o build falha antes de qualquer linha
+  do seu código rodar. Crie o venv no primeiro comando de `build` e invoque os
+  binários dele por caminho (`venv/bin/pip`, `venv/bin/python`) em `build`,
+  `run` e `test`. Não use `activate`: cada comando roda num shell próprio, então
+  a ativação não sobrevive de um para o outro.
 
 ## Superfície derivada do `product_type`
 - `web_app`, `api_service` → `service` (sobe e escuta em rede; exige `run` + `port`).
@@ -310,9 +327,9 @@ Serviço (ex.: FastAPI):
 {{
   "schema_version": "1",
   "surface": "service",
-  "build": ["pip install -r requirements.txt"],
-  "run": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
-  "test": ["python -m pytest"],
+  "build": ["python3 -m venv venv", "venv/bin/pip install -r requirements.txt"],
+  "run": "venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000",
+  "test": ["venv/bin/python -m pytest"],
   "port": 8000,
   "healthcheck": "/"
 }}
@@ -322,9 +339,9 @@ Comando (ex.: CLI/pipeline):
 {{
   "schema_version": "1",
   "surface": "command",
-  "build": ["pip install -r requirements.txt"],
-  "run": "python -m meupacote --input data.csv",
-  "test": ["python -m pytest"]
+  "build": ["python3 -m venv venv", "venv/bin/pip install -r requirements.txt"],
+  "run": "venv/bin/python -m meupacote --input data.csv",
+  "test": ["venv/bin/python -m pytest"]
 }}
 ```
 Sem superfície (ex.: biblioteca):
@@ -332,8 +349,8 @@ Sem superfície (ex.: biblioteca):
 {{
   "schema_version": "1",
   "surface": "none",
-  "build": ["pip install -e ."],
-  "test": ["python -m pytest"]
+  "build": ["python3 -m venv venv", "venv/bin/pip install -e ."],
+  "test": ["venv/bin/python -m pytest"]
 }}
 ```
 

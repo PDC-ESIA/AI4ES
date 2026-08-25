@@ -316,9 +316,18 @@ def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch)
     assert "NÃO é aprovação" in terceira.parts[0].text
 
 
-def test_plato_encerra_quando_a_falha_muda_mas_a_nota_nao(executor_module, monkeypatch):
-    """Falhas diferentes a cada rodada afastam o gatilho de erro repetido; sobra
-    o platô, que é o gatilho autônomo e precisa da janela inteira."""
+def test_falha_sempre_inedita_atravessa_o_plato_ate_o_orcamento(
+    executor_module, monkeypatch
+):
+    """Inversão deliberada: falha nova a cada rodada NÃO é platô.
+
+    A nota é cega dentro de um degrau — `build_concluido` é binário, então o
+    coder pode derrubar um erro de import, depois uma dependência faltando,
+    depois um erro de sintaxe, com a nota parada o tempo todo. A política
+    anterior lia isso como platô e encerrava na 4ª rodada, matando tasks que
+    terminariam. Agora a novidade renova a tolerância, e o freio é o orçamento
+    de falhas distintas.
+    """
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     contador = iter(range(100))
     monkeypatch.setattr(
@@ -326,11 +335,32 @@ def test_plato_encerra_quando_a_falha_muda_mas_a_nota_nao(executor_module, monke
     )
     ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
 
-    decisoes = [executor_module.aplicar_politica_de_progresso(ctx) for _ in range(4)]
+    from src.agents.workflow_coding_review.executor.loop_policy import (
+        ORCAMENTO_FALHAS_DISTINTAS as orcamento,
+    )
+    decisoes = [
+        executor_module.aplicar_politica_de_progresso(ctx)
+        for _ in range(orcamento + 1)
+    ]
 
-    assert decisoes[2] is None, "encerrou antes de esgotar a janela"
-    assert ctx.state["loop_stop_reason"] == "plato_nota"
-    assert decisoes[3] is not None
+    # Onde a política antiga já teria encerrado (4ª rodada), o loop segue.
+    assert decisoes[3] is None, "encerrou por platô apesar de a falha ser inédita"
+    # E o encerramento vem do orçamento, não do platô.
+    assert all(d is None for d in decisoes[:orcamento])
+    assert decisoes[orcamento] is not None
+    assert ctx.state["loop_stop_reason"] == "orcamento_de_falhas_distintas"
+
+
+def test_mesma_falha_repetida_ainda_encerra_cedo(executor_module, monkeypatch):
+    """Contrapartida: a tolerância é para erro NOVO, não para repisar o mesmo."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(executor_module, "assinatura_erro", lambda *_: "sempre-a-mesma")
+    ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
+
+    decisoes = [executor_module.aplicar_politica_de_progresso(ctx) for _ in range(3)]
+
+    assert decisoes[2] is not None
+    assert ctx.state["loop_stop_reason"] == "erro_repetido"
 
 
 def test_veredito_ausente_nao_registra_rodada(executor_module):
