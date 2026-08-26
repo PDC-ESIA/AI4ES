@@ -1,6 +1,6 @@
 """Smoke test isolado do PoC de memória (mem0) — sem subir o pipeline ADK.
 
-Valida a config de `shared/memory/config.py::get_memory()` (chave Gemini,
+Valida a config de `shared/coding_review_lesson_memory/config.py::get_memory()` (chave Gemini,
 embedder, vector store) fazendo um roundtrip real de add + search, antes de
 depender disso dentro do `workflow_coding_review`.
 
@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from shared.memory.config import get_memory  # noqa: E402
+from shared.coding_review_lesson_memory.config import get_memory  # noqa: E402
 
 _STACK_KEY = "smoke-test-stack"
 _LICAO = (

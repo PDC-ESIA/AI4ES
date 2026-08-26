@@ -120,7 +120,7 @@ def _dir_memory_store() -> Path:
     override = os.environ.get("AI4ES_MEMORY_DIR")
     if override:
         return Path(override)
-    # .../adk/shared/memory/config.py → parents[2] == adk/
+    # .../adk/shared/coding_review_lesson_memory/config.py → parents[2] == adk/
     return Path(__file__).resolve().parents[2] / "memory_store"
 
 

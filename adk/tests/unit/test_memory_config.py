@@ -1,4 +1,4 @@
-"""Testes de `shared/memory/config.py` — gates explícitos (interruptor geral
+"""Testes de `shared/coding_review_lesson_memory/config.py` — gates explícitos (interruptor geral
 e uso de Postgres).
 
 A feature inteira vem desligada por padrão (precisa de
@@ -11,7 +11,7 @@ import importlib
 
 
 def _reload_config(monkeypatch):
-    from shared.memory import config
+    from shared.coding_review_lesson_memory import config
 
     importlib.reload(config)
     return config

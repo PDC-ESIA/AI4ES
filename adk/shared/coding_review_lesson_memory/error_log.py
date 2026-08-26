@@ -7,7 +7,7 @@ repetiu) vira lição gravada no mem0 (ver `reviewer/agent.py::_escrever_memoria
 — este módulo cuida exclusivamente do log bruto, antes desse filtro.
 
 Um arquivo JSONL por stack_key, dentro de `memory_store/error_log/` — mesma
-pasta-base usada pelo fallback local do mem0 (`shared/memory/config.py`),
+pasta-base usada pelo fallback local do mem0 (`shared/coding_review_lesson_memory/config.py`),
 fora de `WORKSPACE_OUTPUT_DIR` para sobreviver à limpeza do workspace a cada
 execução nova, e já coberta pelo `.gitignore` (`adk/memory_store/`).
 """

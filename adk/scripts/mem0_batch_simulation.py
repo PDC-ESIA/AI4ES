@@ -41,8 +41,8 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from shared.memory.config import get_memory, memoria_habilitada  # noqa: E402
-from shared.memory.error_log import (  # noqa: E402
+from shared.coding_review_lesson_memory.config import get_memory, memoria_habilitada  # noqa: E402
+from shared.coding_review_lesson_memory.error_log import (  # noqa: E402
     ler_erros_pendentes,
     limite_lote,
     limpar_erros_pendentes,

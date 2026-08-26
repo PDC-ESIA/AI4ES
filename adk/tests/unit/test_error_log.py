@@ -5,7 +5,7 @@ import importlib
 
 def _reload_error_log(tmp_path, monkeypatch):
     monkeypatch.setenv("AI4ES_MEMORY_DIR", str(tmp_path / "mem"))
-    from shared.memory import error_log
+    from shared.coding_review_lesson_memory import error_log
 
     importlib.reload(error_log)
     return error_log

@@ -34,7 +34,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
 
-from shared.memory.config import get_memory, memoria_habilitada
+from shared.coding_review_lesson_memory.config import get_memory, memoria_habilitada
 
 logger = logging.getLogger(__name__)
 

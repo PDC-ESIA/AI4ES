@@ -20,8 +20,8 @@ from datetime import datetime, timezone
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
-from shared.memory.config import get_memory, memoria_habilitada
-from shared.memory.error_log import (
+from shared.coding_review_lesson_memory.config import get_memory, memoria_habilitada
+from shared.coding_review_lesson_memory.error_log import (
     limite_lote,
     limpar_erros_pendentes,
     ler_erros_pendentes,
@@ -251,7 +251,7 @@ async def _escrever_memoria(callback_context) -> None:
     produz conteúdo de override, então os dois sempre executam).
 
     Não escreve mais no mem0 a cada reprovação: acumula os erros brutos num
-    log local por stack (`shared/memory/error_log.py`, arquivo — sem
+    log local por stack (`shared/coding_review_lesson_memory/error_log.py`, arquivo — sem
     Postgres nesta camada) e só processa o lote quando acumula
     `limite_lote()` erros pendentes. Do lote, só o que se
     repetiu (mesma assinatura 2+ vezes) vira lição; erro isolado é
