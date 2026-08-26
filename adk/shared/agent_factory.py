@@ -36,6 +36,7 @@ devolvendo o controle ao usuário.
 _FILESYSTEM_TOOL_NAMES = {
     "tool_criar_arquivo",
     "tool_ler_arquivo",
+    "tool_remover_arquivo",
     "tool_substituir_trecho",
     "tool_salvar_relatorio",
     "tool_salvar_artefato_requisito",
@@ -44,7 +45,16 @@ _FILESYSTEM_TOOL_NAMES = {
     "ler_artefatos_gerados",
     # Time 2 (Design) — design_filesystem.py
     "save_artifact",
-    "list_staging_files",
+    "append_artifact",
+    "append_architect_section",
+    "patch_section",
+    "promote_artifact",
+    "clear_design_folder",
+    "list_design_files",
+    "check_active_blocks",
+    "read_file",
+    "read_analysis_sections",
+    "read_multiple_files",
 }
 
 # Tools de workspace read (aceitam base_dir como workspace_root)

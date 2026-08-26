@@ -1,6 +1,7 @@
 from .coding_tools.git import tool_git_add, tool_git_commit, tool_git_checkout, tool_ler_diff, tool_preparar_commit, tool_confirmar_commit
 from .coding_tools.filesystem_coding import (
     tool_criar_arquivo,
+    tool_remover_arquivo,
     tool_salvar_relatorio,
     tool_ler_arquivo,
     tool_substituir_trecho,
@@ -13,6 +14,7 @@ from .filesystem import (
 )
 # NOTE: `gerar_doubt_artifact` é reexportado de `doubt_generator_analista` para manter compatibilidade.
 from .hitl_tool import aguardar_aprovacao_humana
+from .design_hitl_tool import aguardar_resolucao_doubt, aguardar_decisao_validacao
 from .planner_tools import (
     create_hitl_checkpoint,
     describe_tools,
@@ -37,6 +39,7 @@ __all__ = [
     "tool_preparar_commit",
     "tool_confirmar_commit",
     "tool_criar_arquivo",
+    "tool_remover_arquivo",
     "tool_salvar_relatorio",
     "tool_ler_arquivo",
     "tool_substituir_trecho",
@@ -57,6 +60,8 @@ __all__ = [
     "coletar_doubts_pendentes",
     "responder_doubt",
     "aguardar_aprovacao_humana",
+    "aguardar_resolucao_doubt",
+    "aguardar_decisao_validacao",
     "create_hitl_checkpoint",
     "describe_tools",
     "generate_compliance_report",

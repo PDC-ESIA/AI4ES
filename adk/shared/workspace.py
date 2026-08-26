@@ -38,15 +38,16 @@ AGENT_DIRS: dict[str, str] = {
     # Time 2 — Design
     "design_architect": "design",
     "design_orchestrator": "design",
-    "mermaid_specialist": "design/diagrams",
-    "markdown_specialist": "design/reports",
-    "validator": "design/validation",
-    "io_agent": "design/staging",
+    "mermaid_specialist": "design",
+    "markdown_specialist": "design",
+    "validator": "design",
+    "io_agent": "design",
     # Time 3 — QA / Testes
     "qa_agent": "tests",
     "action_planner": "tests/planning",
     "code_fix_agent": "tests/fixes",
     "receive_requirements": "tests/inputs",
+    "integration_tests_agent": "tests/integration_tests",
     "e2e_test_generator": "tests/e2e",
     # Time 4 — Codificação
     "context_engineer": "tasks",

@@ -1,7 +1,5 @@
 """Smoke test: orchestrator é descoberto pelo ADK e expõe root_agent."""
 
-import pytest
-
 
 def test_orchestrator_root_agent_importavel():
     from src.agents.orchestrator import root_agent

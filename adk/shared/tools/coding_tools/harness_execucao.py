@@ -930,6 +930,34 @@ def executar_harness_validacao(
                 logger.warning(f"[HARNESS] Falha ao limpar o sandbox: {e}")
 
 
+def _resolver_task_id(task_id: str, tool_context: ToolContext | None) -> str:
+    """Resolve o task_id EFETIVO: o state prevalece sobre o argumento do LLM.
+
+    O `task_id` da vez é escopado por código pelo `TaskIterator`, que o grava em
+    `state["task_id"]` antes de invocar o loop da task. Se o LLM chamar a tool
+    com outro valor, o valor do state vence — sem isso, a cobertura por task
+    voltaria a depender do que o modelo resolve escrever (issue #369).
+
+    Chamadas diretas (testes/PoC) não têm `tool_context`, ou têm um state sem
+    `task_id`: nesses casos o argumento recebido é usado como sempre foi.
+    """
+    if tool_context is None:
+        return task_id
+
+    do_state = tool_context.state.get("task_id")
+    if not isinstance(do_state, str) or not do_state.strip():
+        return task_id
+
+    if do_state != task_id:
+        logger.warning(
+            "[HARNESS] task_id do argumento (%r) diverge do escopado em "
+            "state['task_id'] (%r); o valor do state prevalece.",
+            task_id,
+            do_state,
+        )
+    return do_state
+
+
 def executar_harness_tool(
     task_id: str,
     iteration: int = 1,
@@ -940,7 +968,13 @@ def executar_harness_tool(
     Os diretórios de trabalho são SEMPRE os do workspace do fluxo — o LLM
     não os controla. A função `executar_harness_validacao` mantém os
     parâmetros `*_base_dir` para injeção em testes/PoC, fora do schema da tool.
+
+    Pelo mesmo princípio, `task_id` não é escolha do LLM quando há um valor
+    escopado no state: ver `_resolver_task_id`.
+
     """
     return executar_harness_validacao(
-        task_id, iteration, tool_context=tool_context,
+        _resolver_task_id(task_id, tool_context),
+        iteration,
+        tool_context=tool_context,
     )

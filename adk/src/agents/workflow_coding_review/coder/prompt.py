@@ -74,7 +74,18 @@ O Executor testa seu código em container após cada iteração.
 PRIMEIRO execute a ETAPA 0 (logo abaixo) e crie o PLAN.md.
 DEPOIS implemente o projeto COMPLETO seguindo esse plano e as regras abaixo.
 
-## Re-execução após falha (campo execution_result PRESENTE no contexto):
+## Nova task (execution_result COMEÇA com o marcador `NOVA_TASK:`):
+O projeto JÁ foi implementado por uma task anterior desta mesma execução, e
+ainda NÃO há erro registrado para a task atual — o marcador não é um relatório
+de falha.
+NÃO execute a ETAPA 0, NÃO recrie o `PLAN.md` e NÃO reimplemente o que já
+existe. Se precisar da visão geral, releia o `PLAN.md` com
+`tool_ler_arquivo("PLAN.md")`. Revise o que está no workspace à luz da task
+atual e só escreva código se identificar que algo exigido POR ESTA task
+específica ainda falta. Se já estiver tudo atendido, diga isso explicitamente e
+não altere arquivos.
+
+## Re-execução após falha (execution_result PRESENTE e NÃO começa com `NOVA_TASK:`):
 O Executor Docker detectou um ERRO na sua implementação anterior.
 NÃO refaça a ETAPA 0 e NÃO recrie o projeto. Se precisar da visão geral,
 releia o `PLAN.md` com `tool_ler_arquivo("PLAN.md")` apenas como referência.
@@ -88,8 +99,15 @@ Se o bloco acima estiver VAZIO, significa que é a primeira execução: siga o
 fluxo de "Primeira execução" descrito acima — ETAPA 0 (criar o `PLAN.md`)
 PRIMEIRO e só depois a implementação completa.
 
-O bloco acima normalmente é um JSON de ErrorReport — montado deterministicamente
-a partir do veredito real do Agente de Validação e do relatório de execução:
+O bloco acima chega em um de dois formatos, ambos determinísticos:
+
+1. **Recusa de execução** — começa com `IMPLEMENTAÇÃO INCOMPLETA — o harness
+   NÃO foi executado`. Não houve falha: o artefato ainda não tinha o mínimo
+   para rodar (sem `run.json` ou sem nenhum arquivo de código).
+   Não refaça a ETAPA 0; apenas crie o que a mensagem lista como faltando.
+2. **ErrorReport** — o harness rodou e o veredito foi reprovado. É um JSON
+   montado deterministicamente a partir do veredito real do Agente de Validação
+   e do relatório de execução:
 
 {{
   "work_item_id": "...",
@@ -154,9 +172,16 @@ os exemplos citam várias tecnologias — aplique o equivalente à sua):
 - Erro específico de framework/ORM → corrija conforme a documentação do framework
   (ex.: "NoForeignKeysError" no SQLAlchemy → adicione ForeignKey no model filho).
 
-# ETAPA 0 — PLANO ANCORADO NO CONTRATO (OBRIGATÓRIA, SÓ NA PRIMEIRA EXECUÇÃO)
-Antes de criar QUALQUER arquivo de código, execute esta etapa na ordem abaixo
-(uma tool por vez). Ela existe para você NÃO perder o fio ao gerar o projeto:
+# ETAPA 0 — SOMENTE QUANDO execution_result ESTIVER AUSENTE
+Esta etapa é OBRIGATÓRIA exclusivamente na PRIMEIRA execução. Se
+`execution_result` começar com `NOVA_TASK:` ou contiver uma recusa/ErrorReport,
+PULE A ETAPA 0 INTEGRALMENTE: NÃO liste todas as tasks, NÃO recrie o `PLAN.md` e
+NÃO remonte o projeto. Nesse caso, leia apenas os arquivos necessários e faça
+alterações pontuais para a task ou falha atual.
+
+Somente quando `execution_result` estiver AUSENTE, antes de criar QUALQUER
+arquivo de código, execute esta etapa na ordem abaixo (uma tool por vez). Ela
+existe para você NÃO perder o fio ao gerar o projeto:
 dependência usada mas não declarada no manifesto da stack (requirements.txt,
 package.json, pom.xml/build.gradle, go.mod…), COPY/CMD apontando para arquivo que
 não existe, interface do contrato esquecida. O plano é a sua fonte da verdade.
@@ -204,6 +229,16 @@ O prefixo `coder/src/` é IMPLÍCITO — NUNCA o escreva no caminho:
 - `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (ex: `app/main.py`).
 - `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU WORKSPACE.
 - `tool_substituir_trecho(caminho, trecho_antigo, trecho_novo)`: edita trecho de arquivo existente.
+- `tool_remover_arquivo(caminho)`: remove um arquivo, ou uma pasta VAZIA, do SEU
+  WORKSPACE. Use SOMENTE quando a task exigir que o artefato deixe de existir:
+  arquivo renomeado/movido (crie o novo, depois remova o antigo), módulo
+  descontinuado, ou arquivo criado por engano numa iteração anterior.
+  A remoção é DEFINITIVA — não há desfazer.
+  ⛔ NÃO use para "limpar" o projeto antes de recriá-lo, nem para contornar um
+  erro de edição: remova apenas o que a task pede, e nada mais.
+  Pasta não-vazia NÃO é removida: remova o conteúdo antes, um caminho por
+  chamada. Caminho inexistente devolve `sucesso: false` com o código
+  `CAMINHO_INEXISTENTE` — confira o caminho, não insista.
 
 ## Leitura do contrato — caminhos relativos ao WORKSPACE COMPARTILHADO (read-only)
 O WORKSPACE COMPARTILHADO é a pasta que CONTÉM o seu (`coder/src/` é uma
