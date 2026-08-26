@@ -1,0 +1,20 @@
+{
+  "id": "caso_07_sem_testes",
+  "categoria": "testes",
+  "descricao_curta": "Código funcional e correto, mas sem nenhum arquivo de teste",
+  "arquivos": {
+    "conversor_temperatura.py": "def celsius_para_fahrenheit(celsius: float) -> float:\n    \"\"\"Converte uma temperatura de Celsius para Fahrenheit.\"\"\"\n    return (celsius * 9 / 5) + 32\n"
+  },
+  "arquivos_teste": {},
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "teste",
+    "test",
+    "cobertura",
+    "ausente",
+    "faltando",
+    "n[ãa]o foram entregues"
+  ],
+  "problema_para_judge": "O código é funcional e correto, mas não há nenhum arquivo de teste automatizado que cubra seu comportamento — o reviewer deve identificar essa ausência como um problema bloqueante de completude/testes."
+}

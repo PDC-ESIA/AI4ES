@@ -1,0 +1,21 @@
+{
+  "id": "caso_06_sem_tratamento_erro",
+  "categoria": "corretude",
+  "descricao_curta": "Leitura/parsing de arquivo sem nenhum tratamento de exceção",
+  "arquivos": {
+    "carregador_config.py": "import json\n\n\ndef carregar_configuracao(caminho_arquivo: str) -> dict:\n    \"\"\"Carrega e retorna a configuração a partir de um arquivo JSON.\"\"\"\n    arquivo = open(caminho_arquivo)\n    conteudo = arquivo.read()\n    configuracao = json.loads(conteudo)\n    return configuracao\n"
+  },
+  "arquivos_teste": {
+    "test_carregador_config.py": "import json\n\nfrom carregador_config import carregar_configuracao\n\n\ndef test_carrega_configuracao_valida(tmp_path):\n    arquivo = tmp_path / \"config.json\"\n    arquivo.write_text(json.dumps({\"chave\": \"valor\"}))\n\n    resultado = carregar_configuracao(str(arquivo))\n\n    assert resultado == {\"chave\": \"valor\"}\n"
+  },
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "exce[çc][ãa]o",
+    "erro",
+    "try",
+    "except",
+    "tratamento"
+  ],
+  "problema_para_judge": "A função lê e faz parsing de um arquivo sem nenhum tratamento de exceção — falhas previsíveis como arquivo inexistente ou JSON inválido não são tratadas, e o arquivo aberto nunca é fechado explicitamente (sem uso de context manager)."
+}

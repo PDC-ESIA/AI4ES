@@ -1,33 +1,10 @@
-"""Smoke test: orchestrator é descoberto pelo ADK e expõe root_agent."""
+"""Wiring interno do pipeline workflow_coding_review (escopo: coder_isolado).
 
-import pytest
-
-
-def test_orchestrator_root_agent_importavel():
-    from src.agents.orchestrator import root_agent
-    assert root_agent is not None
-    assert root_agent.name == "orchestrator"
-
-
-def test_orchestrator_tem_4_pipelines():
-    """v4: orchestrator é BaseAgent custom que invoca 4 sub-pipelines em sessão isolada."""
-    from src.agents.orchestrator import root_agent
-    pipelines = type(root_agent)._pipelines
-    assert len(pipelines) == 4
-
-
-def test_orchestrator_pipelines_esperados():
-    """v4: pipelines fixos são requirements → design → coding_review → qa (nesta ordem)."""
-    from src.agents.orchestrator import root_agent
-
-    pipelines = type(root_agent)._pipelines
-    nomes = [p.name for p in pipelines]
-    assert nomes == [
-        "requirements_pipeline",
-        "design_pipeline",
-        "coding_review_pipeline",
-        "qa_pipeline",
-    ], f"Pipelines em ordem inesperada: {nomes}"
+Extraído de `test_orchestrator_discovery.py`: os demais testes daquele
+arquivo validam o orchestrator (agnóstico de agente); este valida
+especificamente a estrutura interna do `workflow_coding_review` — não
+depende de nenhum outro agente.
+"""
 
 
 def test_workflow_coding_review_inclui_context_engineer():

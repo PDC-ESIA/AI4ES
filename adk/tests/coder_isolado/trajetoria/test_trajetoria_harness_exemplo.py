@@ -6,16 +6,25 @@ verifica a TRAJETÓRIA: a sequência de estágios que o harness percorre.
 Serve de referência para novos testes desta camada — ver
 `tests/README.md` para o guia completo.
 
-Reaproveita os stubs de Docker/HTTP de `test_harness_poc.py`
-(agora expostos como fixtures `docker_mock`/`mock_response` em
-`tests/trajetoria/conftest.py`) e a fixture `workspace_fixture`.
+Pós-issue #370 (arquitetura agnóstica de tecnologia), o estágio 1 do harness
+(`_estagio_preparacao`) exige um manifesto `run.json` explícito na raiz do
+artefato do coder — o harness não infere mais stack/Docker/FastAPI a partir
+dos arquivos (ver `shared/execution/manifest.py`). Este teste usa
+`surface="command"` (perfil C) com `sandbox="direct"` (padrão): o `run` é um
+comando único que roda e termina, sem subir serviço nem fazer healthcheck
+HTTP (ver `shared/execution/profile.py`). Isso permite exercitar o harness
+de ponta a ponta com subprocessos REAIS (via `DirectSandbox`), sem precisar
+de Docker nem de rede — por isso os fixtures `docker_mock`/`mock_response`
+(vestígios do harness pré-#370, que subia Docker/FastAPI diretamente) não
+são mais requisitados aqui: o caminho `command` do harness atual nunca toca
+`docker.from_env` nem `requests.get`. Eles continuam definidos em
+`tests/coder_isolado/conftest.py` (sem consumidor após esta correção).
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
 
@@ -23,7 +32,8 @@ _TASK_ID = "TASK-TRAJETORIA-001"
 
 
 def _preparar_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
-    """Monta um workspace mínimo com uma app FastAPI e uma Task de exemplo."""
+    """Monta um workspace mínimo com um script de linha de comando, o manifesto
+    `run.json` (contrato coder→harness) e uma Task de exemplo."""
     coder = tmp_path / "coder" / "src"
     execution = tmp_path / "coder" / "execution"
     tasks = tmp_path / "coder" / "tasks"
@@ -31,21 +41,35 @@ def _preparar_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
         d.mkdir(parents=True, exist_ok=True)
 
     (coder / "main.py").write_text(
-        "from fastapi import FastAPI\n"
-        "app = FastAPI()\n\n"
-        "@app.get('/')\n"
-        "def home():\n"
-        "    return {'ok': True}\n",
+        "def main() -> None:\n"
+        "    print('Execução concluída com sucesso.')\n\n\n"
+        "if __name__ == '__main__':\n"
+        "    main()\n",
         encoding="utf-8",
     )
-    (coder / "Dockerfile").write_text("FROM python:3.12-slim\n", encoding="utf-8")
+
+    (coder / "run.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "surface": "command",
+                "build": ["python3 -m py_compile main.py"],
+                "run": "python3 main.py",
+                "test": ["echo '1 passed'"],
+                "sandbox": "direct",
+            }
+        ),
+        encoding="utf-8",
+    )
 
     (tasks / f"{_TASK_ID}.json").write_text(
         json.dumps(
             {
                 "id": _TASK_ID,
-                "description": "Expor uma rota raiz que responde 200.",
-                "acceptance_criteria": ["A rota GET / deve responder 200"],
+                "description": "Executar o pipeline via linha de comando.",
+                "acceptance_criteria": [
+                    "O comando principal deve ser executado com sucesso (exit code 0)."
+                ],
                 "contract": {},
             }
         ),
@@ -54,9 +78,7 @@ def _preparar_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
     return coder, execution, tasks
 
 
-def test_harness_percorre_estagios_na_ordem_esperada(
-    tmp_path, docker_mock, mock_response, trace_collector,
-):
+def test_harness_percorre_estagios_na_ordem_esperada(tmp_path, trace_collector):
     """A trajetória do harness deve seguir preparação → deploy → testes → relatório.
 
     Além de checar o `overall_status` (o que já é feito na Camada 1), aqui
@@ -67,18 +89,13 @@ def test_harness_percorre_estagios_na_ordem_esperada(
     """
     coder, execution, tasks = _preparar_workspace(tmp_path)
 
-    with (
-        patch("docker.from_env", return_value=docker_mock),
-        patch("requests.get", return_value=mock_response),
-        patch("shared.tools.coding_tools.harness_execucao.time.sleep"),
-    ):
-        report = executar_harness_validacao(
-            _TASK_ID,
-            1,
-            coder_base_dir=coder,
-            execution_base_dir=execution,
-            tasks_base_dir=tasks,
-        )
+    report = executar_harness_validacao(
+        _TASK_ID,
+        1,
+        coder_base_dir=coder,
+        execution_base_dir=execution,
+        tasks_base_dir=tasks,
+    )
 
     for stage in report["stages"]:
         trace_collector.record(

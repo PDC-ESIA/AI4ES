@@ -40,6 +40,27 @@ _SEVERITY_ORDER: dict[str, int] = {"critical": 0, "warning": 1, "info": 2}
 _SUBPROCESS_TIMEOUT = 60
 
 
+def _path_relativo(caminho_absoluto: str, base: Path) -> str:
+    """Normaliza um path absoluto de ferramenta externa para relativo a `base`.
+
+    Bandit recebe `str(target_dir)` (absoluto — necessário para a ferramenta
+    localizar o código) e devolve `filename` no mesmo formato absoluto no
+    JSON de saída. Mas o prompt do reviewer usa paths relativos a esse
+    mesmo `target_dir` na seção "ARQUIVOS A REVISAR"
+    (`review_tools._discover_coder_files`). Um `Finding.arquivo` absoluto
+    ali cria dois formatos de path lado a lado no mesmo prompt — o LLM
+    revisor tentava reconciliar os dois e errava o relativo derivado (ex.:
+    "src/config.py" em vez de "config.py"), causando falsos negativos de
+    "arquivo não encontrado" (achado real, não hipótese).
+    """
+    if not caminho_absoluto:
+        return caminho_absoluto
+    try:
+        return Path(caminho_absoluto).resolve().relative_to(base.resolve()).as_posix()
+    except ValueError:
+        return caminho_absoluto
+
+
 def _diagnostic(origem: str, mensagem: str) -> list[Finding]:
     """Retorna um Finding informativo quando a ferramenta falha em executar."""
     return [Finding(
@@ -83,7 +104,7 @@ class RuffCapability:
                 origem=self.name,
                 regra=item.get("code", ""),
                 severidade="warning",
-                arquivo=item.get("filename", ""),
+                arquivo=_path_relativo(item.get("filename", ""), target_dir),
                 linha=(item.get("location") or {}).get("row"),
                 mensagem=item.get("message", ""),
                 sugestao=fix.get("message") if fix else None,
@@ -130,7 +151,7 @@ class BanditCapability:
                 severidade=self._SEVERITY_MAP.get(
                     issue.get("issue_severity", ""), "info"
                 ),
-                arquivo=issue.get("filename", ""),
+                arquivo=_path_relativo(issue.get("filename", ""), target_dir),
                 linha=issue.get("line_number"),
                 mensagem=issue.get("issue_text", ""),
                 sugestao=issue.get("more_info"),

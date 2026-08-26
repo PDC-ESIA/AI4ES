@@ -1,0 +1,15 @@
+{
+  "id": "caso_12_tratamento_erro_correto",
+  "categoria": "codigo_limpo",
+  "descricao_curta": "I/O com tratamento de exceção correto, testado incluindo casos de erro",
+  "arquivos": {
+    "carregador_config_seguro.py": "import json\n\n\ndef carregar_configuracao_segura(caminho_arquivo: str) -> dict:\n    \"\"\"Carrega configuração de um arquivo JSON, tratando erros previsíveis.\n\n    Retorna um dict vazio se o arquivo não existir ou o conteúdo for\n    JSON inválido, em vez de propagar a exceção.\n    \"\"\"\n    try:\n        with open(caminho_arquivo, \"r\", encoding=\"utf-8\") as arquivo:\n            return json.load(arquivo)\n    except FileNotFoundError:\n        return {}\n    except json.JSONDecodeError:\n        return {}\n"
+  },
+  "arquivos_teste": {
+    "test_carregador_config_seguro.py": "import json\n\nfrom carregador_config_seguro import carregar_configuracao_segura\n\n\ndef test_carrega_configuracao_valida(tmp_path):\n    arquivo = tmp_path / \"config.json\"\n    arquivo.write_text(json.dumps({\"chave\": \"valor\"}))\n\n    assert carregar_configuracao_segura(str(arquivo)) == {\"chave\": \"valor\"}\n\n\ndef test_arquivo_inexistente_retorna_dict_vazio(tmp_path):\n    caminho = tmp_path / \"nao_existe.json\"\n\n    assert carregar_configuracao_segura(str(caminho)) == {}\n\n\ndef test_json_invalido_retorna_dict_vazio(tmp_path):\n    arquivo = tmp_path / \"invalido.json\"\n    arquivo.write_text(\"{invalido\")\n\n    assert carregar_configuracao_segura(str(arquivo)) == {}\n"
+  },
+  "veredito_esperado": "APROVADO",
+  "severidade_esperada": null,
+  "palavras_chave_deterministicas": [],
+  "problema_para_judge": "A função trata corretamente os erros previsíveis (arquivo inexistente, JSON inválido) usando try/except específico, com uso de context manager (with) garantindo o fechamento do arquivo, e os testes cobrem tanto o caso feliz quanto os dois casos de erro — não há problemas reais; o reviewer deve reconhecer isso e aprovar."
+}

@@ -1,0 +1,20 @@
+{
+  "id": "caso_02_sql_injection",
+  "categoria": "seguranca",
+  "descricao_curta": "Query SQL concatenada com input do usuário",
+  "arquivos": {
+    "consulta_usuario.py": "import sqlite3\n\n\ndef buscar_usuario_por_nome(nome_usuario: str):\n    \"\"\"Busca um usuário pelo nome no banco de dados.\"\"\"\n    conexao = sqlite3.connect(\"app.db\")\n    cursor = conexao.cursor()\n    query = \"SELECT * FROM usuarios WHERE nome = '\" + nome_usuario + \"'\"\n    cursor.execute(query)\n    resultado = cursor.fetchone()\n    conexao.close()\n    return resultado\n"
+  },
+  "arquivos_teste": {
+    "test_consulta_usuario.py": "from unittest.mock import patch, MagicMock\n\nfrom consulta_usuario import buscar_usuario_por_nome\n\n\ndef test_buscar_usuario_por_nome_retorna_resultado():\n    with patch(\"consulta_usuario.sqlite3.connect\") as mock_connect:\n        mock_cursor = MagicMock()\n        mock_cursor.fetchone.return_value = (1, \"alice\")\n        mock_connect.return_value.cursor.return_value = mock_cursor\n\n        resultado = buscar_usuario_por_nome(\"alice\")\n\n        assert resultado == (1, \"alice\")\n"
+  },
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "sql",
+    "injection",
+    "inje[cç][ãa]o",
+    "concaten"
+  ],
+  "problema_para_judge": "O código monta uma query SQL concatenando diretamente a entrada do usuário na string SQL, sem parametrização, permitindo ataques de SQL injection."
+}

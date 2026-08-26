@@ -24,13 +24,47 @@ import types
 
 # ---------------------------------------------------------------------------
 # Stubs das dependências externas (google-adk, pydantic, requests).
+#
+# ATENÇÃO: `sys.modules.setdefault("pydantic", ...)` é NO-OP aqui — o pydantic
+# real já foi importado antes (via pré-cache de `tests/conftest.py`), então
+# esse `setdefault` não cria um módulo fake isolado. As atribuições abaixo
+# (`sys.modules["pydantic"].BaseModel = object` etc.) mutam o módulo
+# `pydantic` REAL e GLOBAL, compartilhado por todo o processo pytest — não
+# um stand-in descartável. Sem restaurar os valores originais, qualquer
+# código coletado/executado DEPOIS deste arquivo na mesma sessão (inclusive
+# fora deste diretório) herda um `pydantic.BaseModel` quebrado. Isso foi
+# descoberto investigando uma falha real em `tests/coder_isolado/evals/`:
+# com `BaseModel = object`, `isinstance(x, BaseModel)` vira sempre `True`
+# (tudo é instância de `object`), então guardas de tipo no litellm deixavam
+# passar valores que não eram Pydantic models e chamavam `.model_dump()`
+# neles — o `AttributeError` resultante aparecia disfarçado de
+# `litellm.InternalServerError`.
+#
+# A restauração NÃO vive neste arquivo (nem como fixture): a sabotagem roda
+# incondicionalmente na COLETA (import do módulo), que sempre acontece para
+# os 439 testes independente de seleção por `-m`; uma fixture só dispara se
+# um teste DESTE módulo for de fato executado — com `pytest -m evals`
+# (que deseleciona este arquivo), a sabotagem roda mas a fixture nunca
+# dispara, deixando `pydantic.BaseModel` corrompido para a execução inteira.
+# `_pydantic_originais` é exposto aqui (module-level) só para leitura; quem
+# restaura é o hook `pytest_collection_finish` em `tests/conftest.py`
+# (mesma característica "sempre roda" da sabotagem, não "só roda se
+# selecionado" de uma fixture — ver docstring do hook para o porquê).
 # ---------------------------------------------------------------------------
+_pydantic_originais = {}
+if "pydantic" in sys.modules:
+    _mod_pydantic = sys.modules["pydantic"]
+    for _attr in ("BaseModel", "Field", "field_validator"):
+        if hasattr(_mod_pydantic, _attr):
+            _pydantic_originais[_attr] = getattr(_mod_pydantic, _attr)
+
 for _mod in ["google", "google.adk", "google.adk.tools", "pydantic", "requests"]:
     sys.modules.setdefault(_mod, types.ModuleType(_mod))
 sys.modules["google.adk.tools"].ToolContext = object
 sys.modules["pydantic"].BaseModel = object
 sys.modules["pydantic"].Field = lambda *a, **k: None
 sys.modules["pydantic"].field_validator = lambda *a, **k: lambda f: f
+
 
 from shared.tools.coding_tools.git import (  # noqa: E402
     tool_git_add,
