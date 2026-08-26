@@ -430,6 +430,14 @@ class TestResolverStackKey:
         cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
         assert cr_reviewer._resolver_stack_key({}) == "stack-desconhecida"
 
+    def test_macro_context_nao_dict_nao_derruba(self, tmp_path, monkeypatch):
+        """Regressão: macro_context pode vir corrompido/em formato inesperado
+        (não um dict) — antes disso quebrava com AttributeError, fora do
+        try/except de _escrever_memoria."""
+        cr_reviewer = _reload_reviewer(tmp_path, monkeypatch)
+        state = {"tasks": {"macro_context": "formato-inesperado"}}
+        assert cr_reviewer._resolver_stack_key(state) == "stack-desconhecida"
+
 
 class TestEntradasBrutas:
     """`_entradas_brutas` — achata error_history em entradas por estágio."""

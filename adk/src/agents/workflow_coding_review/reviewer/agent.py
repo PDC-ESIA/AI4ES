@@ -174,7 +174,8 @@ def _resolver_stack_key(state) -> str:
         return chave
     tasks = state.get("tasks") or {}
     macro_context = tasks.get("macro_context") if isinstance(tasks, dict) else None
-    return stack_key((macro_context or {}).get("tech_stack") or [])
+    macro_context_dict = macro_context if isinstance(macro_context, dict) else {}
+    return stack_key(macro_context_dict.get("tech_stack") or [])
 
 
 def _entradas_brutas(error_history: list[dict], chave_stack: str) -> list[dict]:

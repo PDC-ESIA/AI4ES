@@ -74,7 +74,8 @@ class _MemoryProvisioner(BaseAgent):
         state = ctx.session.state
         tasks = state.get("tasks") or {}
         macro_context = tasks.get("macro_context") if isinstance(tasks, dict) else None
-        tech_stack = (macro_context or {}).get("tech_stack") or []
+        macro_context_dict = macro_context if isinstance(macro_context, dict) else {}
+        tech_stack = macro_context_dict.get("tech_stack") or []
         chave = stack_key(tech_stack)
 
         memory_context = ""

@@ -97,3 +97,20 @@ class TestMemoryProvisionerDesabilitado:
         state_delta = eventos[0].actions.state_delta
         assert state_delta["memory_context"] == ""
         assert state_delta["memory_stack_key"] == "python"
+
+
+class TestMemoryProvisionerMacroContextInvalido:
+    """Regressão: macro_context num formato inesperado (não dict) não pode
+    quebrar o agente — essa extração roda ANTES até da checagem do
+    interruptor geral, então nem o gate `memoria_habilitada()` protegeria."""
+
+    async def test_macro_context_nao_dict_nao_derruba(self, monkeypatch):
+        monkeypatch.delenv("AI4ES_MEMORY_ENABLED", raising=False)
+
+        ctx = _FakeInvocationContext({"tasks": {"macro_context": "formato-inesperado"}})
+        eventos = [e async for e in memory_feedforward_agent._run_async_impl(ctx)]
+
+        assert len(eventos) == 1
+        assert (
+            eventos[0].actions.state_delta["memory_stack_key"] == "stack-desconhecida"
+        )
