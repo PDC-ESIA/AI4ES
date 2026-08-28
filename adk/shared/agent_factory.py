@@ -36,6 +36,7 @@ devolvendo o controle ao usuário.
 _FILESYSTEM_TOOL_NAMES = {
     "tool_criar_arquivo",
     "tool_ler_arquivo",
+    "tool_remover_arquivo",
     "tool_substituir_trecho",
     "tool_salvar_relatorio",
     "tool_salvar_artefato_requisito",

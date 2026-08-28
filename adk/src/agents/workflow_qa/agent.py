@@ -12,11 +12,13 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
+from src.agents.qa_agent.subagents.integration_tests_agent.agent import agent as integration_tests_agent
 from src.agents.qa_agent.subagents.code_fix_agent.agent import agent as code_fix_agent
 from src.agents.qa_agent.subagents.receive_requirements.orchestration import (
     receber_requisitos,
 )
 from shared.tools.hitl_tool import aguardar_aprovacao_humana
+from src.agents.qa_agent.subagents.integration_tests_agent.integration_pytest_runner import executar_testes_de_integracao
 from shared.tools.pytest_runner import executar_pytest_tool
 from shared.tools.doubt_tool import DoubtArtifactGenerator
 from src.agents.workflow_qa.tools.planner_wrapper import invocar_planejamento_qa
@@ -196,6 +198,11 @@ FLUXO OBRIGATÓRIO:
    - inclui anexos no campo `arquivos_apoio` quando houver código-fonte;
    - gera arquivos pytest em tests/inputs/<slug>/test_<slug>.py;
    - retorna {status, resumo, detalhes} com sucessos, bloqueados e falhas.
+
+   Encaminhe também o(s) mesmo(s) artefato(s) ao integration_tests_agent, que:
+   - normaliza a entrada da mesma forma;
+   - gera arquivos pytest de integração em tests/integration_tests/<slug>/test_<slug>.py;
+   - retorna {status, resumo, detalhes} com sucessos, bloqueados e falhas.
    → Para cada artefato bloqueado (status "bloqueado"): registre o Doubt_Artifact
      gerado e prossiga com os demais.
    → `detalhes[].arquivo_gerado` é a ÚNICA fonte de verdade dos paths.
@@ -273,12 +280,23 @@ agent = LlmAgent(
         "requisitos, execução e autocorreção. Compõe action_planner, "
         "receber_requisitos e code_fix sobre as tools do qa_agent."
     ),
-    instruction=_INSTRUCTION,
+    instruction=_INSTRUCTION + """
+
+EXECUÇÃO OBRIGATÓRIA DE TESTES DE INTEGRAÇÃO:
+Após chamar integration_tests_agent, leia `detalhes` do resultado e selecione
+o campo `arquivo_gerado` de cada item com status `sucesso`. Chame
+`executar_testes_de_integracao(arquivos_gerados=<lista desses caminhos>)`.
+Essa ferramenta executa cada arquivo de integration_tests com pytest e retorna
+um resumo consolidado e os resultados individuais completos. Analise esses
+resultados antes da resposta final ou de qualquer encaminhamento ao code_fix.
+""",
     tools=[
         FunctionTool(invocar_planejamento_qa),
         FunctionTool(receber_requisitos),
+        AgentTool(agent=integration_tests_agent),
         AgentTool(agent=code_fix_agent),
         FunctionTool(executar_pytest_tool),
+        FunctionTool(executar_testes_de_integracao),
         FunctionTool(DoubtArtifactGenerator.generate),
         LongRunningFunctionTool(aguardar_aprovacao_humana),
     ],
