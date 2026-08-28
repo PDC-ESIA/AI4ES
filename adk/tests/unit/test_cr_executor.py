@@ -488,3 +488,154 @@ def test_coder_instruction_exige_run_json(tmp_path, monkeypatch):
     assert "surface" in instr
     for surface in ("service", "command", "none"):
         assert surface in instr, f"superfície ausente no prompt: {surface}"
+
+
+# ===========================================================================
+# Aviso de cobertura de critérios (Fase 4) — uma rodada, contador próprio
+# ===========================================================================
+
+
+def _report_com_criterios(*outcomes) -> dict:
+    return {
+        "criteria_evidence": [
+            {
+                "criterion": f"Critério {i + 1}",
+                "criterion_id": f"CA-{i + 1:02d}",
+                "outcome": outcome,
+                "automatable": outcome != "nao_automatizavel",
+            }
+            for i, outcome in enumerate(outcomes)
+        ]
+    }
+
+
+@pytest.fixture
+def executor_com_report(executor_module, monkeypatch):
+    """Permite injetar o ExecutionReport que o callback enxerga."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+
+    def _configurar(report: dict):
+        monkeypatch.setattr(
+            executor_module, "_carregar_execution_report", lambda _: report
+        )
+        return executor_module
+
+    return _configurar
+
+
+def test_aprovacao_com_criterio_sem_teste_segura_o_encerramento(executor_com_report):
+    mod = executor_com_report(
+        _report_com_criterios("atendido", "sem_teste_mapeado")
+    )
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    devolvido = mod.aplicar_politica_de_progresso(ctx)
+
+    assert devolvido is not None, "o aviso de cobertura não foi emitido"
+    assert ctx.actions.escalate is None, "o loop encerrou antes de dar a rodada extra"
+    assert "CA-02" in devolvido.parts[0].text
+    # O coder precisa RECEBER o pedido: é `execution_result` que ele lê.
+    assert ctx.state["execution_result"] == devolvido.parts[0].text
+
+
+def test_aviso_de_cobertura_e_emitido_uma_unica_vez_por_task(executor_com_report):
+    """Esgotado o aviso, a task aprova mesmo com a cobertura em aberto."""
+    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    primeira = mod.aplicar_politica_de_progresso(ctx)
+    segunda = mod.aplicar_politica_de_progresso(ctx)
+
+    assert primeira is not None
+    assert segunda is None, "o aviso foi repetido e travaria a task"
+    assert ctx.actions.escalate is True
+
+
+def test_criterio_nao_automatizavel_nunca_gera_aviso(executor_com_report):
+    """Cobrar teste de jornada de interface é pedir o impossível ao coder."""
+    mod = executor_com_report(
+        _report_com_criterios("atendido", "nao_automatizavel")
+    )
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    devolvido = mod.aplicar_politica_de_progresso(ctx)
+
+    assert devolvido is None
+    assert ctx.actions.escalate is True
+
+
+def test_cobertura_completa_encerra_sem_rodada_extra(executor_com_report):
+    mod = executor_com_report(_report_com_criterios("atendido", "atendido"))
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    assert mod.aplicar_politica_de_progresso(ctx) is None
+    assert ctx.actions.escalate is True
+
+
+def test_teste_declarado_que_nao_rodou_tambem_gera_aviso(executor_com_report):
+    mod = executor_com_report(_report_com_criterios("teste_nao_executado"))
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    devolvido = mod.aplicar_politica_de_progresso(ctx)
+
+    assert devolvido is not None
+    assert "CA-01" in devolvido.parts[0].text
+
+
+def test_rodada_reprovada_nunca_dispara_aviso_de_cobertura(executor_com_report):
+    """O aviso é do caminho de aprovação; falha técnica tem outro tratamento."""
+    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
+    ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+
+    devolvido = mod.aplicar_politica_de_progresso(ctx)
+
+    assert devolvido is None, "o ErrorReport foi substituído pelo aviso"
+    assert "acceptance_coverage_notice_used" not in ctx.state
+
+
+def test_aviso_nao_toca_no_estado_da_politica_de_continuidade(executor_com_report):
+    """Contador PRÓPRIO: cobrança de teste não é tropeço técnico.
+
+    Se o aviso consumisse o orçamento de falhas distintas ou entrasse no
+    histórico de notas, uma task devendo um teste gastaria a paciência
+    reservada a bugs — ou o loop leria a cobrança como sintoma de travamento.
+    """
+    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    mod.aplicar_politica_de_progresso(ctx)
+
+    assert len(ctx.state["progress_score_history"]) == 1
+    assert ctx.state.get("progress_error_signature_history") in (None, [])
+    assert "loop_stop_reason" not in ctx.state
+
+
+def test_mensagem_do_aviso_nao_se_confunde_com_os_outros_relatorios(
+    executor_com_report,
+):
+    """Não pode parecer ErrorReport (JSON) nem recusa por implementação incompleta."""
+    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    texto = mod.aplicar_politica_de_progresso(ctx).parts[0].text
+
+    assert texto.startswith("EXECUÇÃO BEM-SUCEDIDA")
+    assert not texto.lstrip().startswith("{")
+    assert "IMPLEMENTAÇÃO INCOMPLETA" not in texto
+    assert "STATUS: bloqueado" not in texto
+    # Precisa dizer ao coder para não reescrever o que já funciona.
+    assert "NÃO altere o código" in texto
+
+
+def test_nota_de_aceite_e_publicada_a_cada_rodada(executor_com_report):
+    mod = executor_com_report(
+        _report_com_criterios("atendido", "nao_atendido", "nao_automatizavel")
+    )
+    ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+
+    mod.aplicar_politica_de_progresso(ctx)
+    aceite = ctx.state["acceptance_score"]
+
+    assert aceite["nota"] == 0.5
+    assert aceite["total"] == 3
+    assert aceite["cobertura"] == pytest.approx(2 / 3)

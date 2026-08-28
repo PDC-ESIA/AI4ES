@@ -54,6 +54,12 @@ from src.agents.implementation_validator import root_agent as implementation_val
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from . import prompt as executor_prompt
+from .acceptance_score import (
+    CHAVE_ACEITE,
+    CHAVE_AVISO_COBERTURA,
+    NotaAceite,
+    calcular_nota_aceite,
+)
 from .loop_policy import (
     CHAVE_HISTORICO,
     assinatura_erro,
@@ -234,6 +240,96 @@ def _resumo_da_parada(motivo: Optional[str], nota: NotaProgresso) -> str:
     )
 
 
+def _mensagem_de_cobertura(pendentes: list[str], aceite: NotaAceite) -> str:
+    """Pedido determinístico para o coder fechar a cobertura de critérios.
+
+    NÃO pode começar com um marcador de encerramento nem parecer um ErrorReport:
+    a execução foi bem-sucedida, e o que se pede é um acréscimo pontual — não
+    correção de defeito. O texto diz isso explicitamente para o coder não sair
+    reescrevendo o que já funciona.
+    """
+    lista = "\n".join(f"- {identificador}" for identificador in pendentes)
+    return (
+        "EXECUÇÃO BEM-SUCEDIDA — falta apenas cobrir critérios de aceite com "
+        "testes.\n\n"
+        "O build, a inicialização e a suíte atual passaram. NÃO altere o código "
+        "de produção e NÃO refaça o que já funciona.\n\n"
+        f"Critérios automatizáveis ainda sem teste que os comprove "
+        f"({len(pendentes)} de {aceite.total}):\n"
+        f"{lista}\n\n"
+        "Para CADA um deles, nesta mesma rodada:\n"
+        "1. Escreva um teste que comprove o comportamento descrito no critério, "
+        "com asserção real sobre o resultado — não um teste que só importa o "
+        "módulo.\n"
+        "2. Declare o vínculo em `acceptance_tests`, no `run.json`, usando o id "
+        "do critério como chave e o identificador do teste como valor.\n"
+        "3. Garanta que os comandos de `test` listem cada teste pelo nome (em "
+        "pytest, `-v`) — sem isso o resultado não pode ser casado com o critério.\n\n"
+        "Este pedido é feito UMA única vez por task: se algum critério não puder "
+        "ser coberto por teste de código, siga em frente — ele será registrado "
+        "como não coberto, sem reprovar a entrega."
+    )
+
+
+def _emitir_aviso_de_cobertura(
+    callback_context, aceite: NotaAceite
+) -> Optional[types.Content]:
+    """Concede UMA rodada extra para o coder fechar a cobertura de critérios.
+
+    Roda no caminho de APROVAÇÃO, imediatamente antes do encerramento: a
+    execução já está tecnicamente correta e o loop iria fechar. Em vez de fechar,
+    segura por uma rodada e devolve ao coder a lista de critérios automatizáveis
+    sem teste.
+
+    Três propriedades tornam isto seguro, e as três são deliberadas:
+
+    - **Uma vez por task.** O aviso é um flag de uso único, não um orçamento:
+      esgotado, a task aprova mesmo com a cobertura em aberto. Um critério que
+      não tem como virar teste (jornada de interface) custa no máximo uma rodada
+      e nunca trava a task, que é a diferença entre isto e o degrau de critérios
+      que precisou ser removido da nota técnica.
+    - **Contador PRÓPRIO.** Não toca no orçamento de falhas distintas nem no
+      histórico de notas da `loop_policy`. Cobrança de teste não é tropeço
+      técnico: misturar os dois faria uma task devendo um teste consumir a
+      paciência reservada a bugs, ou o inverso — o loop ler a cobrança como
+      sintoma de travamento e cortar a task por um motivo errado.
+    - **Não bloqueia por cobertura.** Se o coder ignorar o pedido, a rodada
+      seguinte aprova. O que sobrar em aberto vira cobertura registrada, nunca
+      reprovação.
+
+    O que acontecer com os testes novos (passarem, quebrarem, revelarem um bug)
+    é problema TÉCNICO comum, já coberto pela nota de progresso e pela política
+    de continuidade — nada novo precisa ser ensinado a elas.
+
+    TRADE-OFF ACEITO, e é o único risco real deste mecanismo: se o teste novo
+    FALHAR, a rodada seguinte é reprovada e a task, que ia aprovar, volta ao
+    loop. Ela pode terminar bloqueada se o coder não conseguir fechar. Isso é
+    deliberado — um teste vermelho significa que o critério não é atendido de
+    fato, e aprovar ali teria sido um falso positivo. O custo é assumido em
+    troca de descobrir o defeito; o teto do LoopAgent segue como rede.
+
+    Returns:
+        O Content do pedido quando o aviso é emitido; `None` para deixar o
+        encerramento seguir normalmente.
+    """
+    state = callback_context.state
+    pendentes = aceite.criterios_enderecaveis
+    if not pendentes or state.get(CHAVE_AVISO_COBERTURA):
+        return None
+
+    state[CHAVE_AVISO_COBERTURA] = True
+    mensagem = _mensagem_de_cobertura(pendentes, aceite)
+    state["execution_result"] = mensagem
+    logger.info(
+        "[COBERTURA] Task %s aprovada tecnicamente com %d critério(s) sem teste "
+        "(%s); concedida UMA rodada para fechar a cobertura.",
+        state.get("task_id"),
+        len(pendentes),
+        ", ".join(pendentes),
+    )
+    return types.Content(role="model", parts=[types.Part(text=mensagem)])
+
+
 def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
     """PRIMEIRO `after_agent_callback` do executor — a política da issue #394.
 
@@ -266,20 +362,43 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
     exec_report = _carregar_execution_report(callback_context)
     nota = calcular_nota(exec_report)
 
+    # Nota de aceite: dimensão SEPARADA, publicada no state. Não entra no
+    # histórico de progresso nem na assinatura de erro — a política de
+    # continuidade continua cega para ela, de propósito.
+    #
+    # Calculada a CADA rodada, e não só no fechamento da task. O motivo é o
+    # mesmo que faz `_progresso` acompanhar todos os desfechos no TaskIterator:
+    # uma task que termina por platô ou bloqueio nunca tem "rodada de
+    # fechamento", e é justamente nela que a medida importa para auditoria. Com
+    # o cálculo restrito à aprovação, toda task travada ficaria sem dimensão de
+    # aceite. O valor é sobrescrito a cada rodada e quem consome lê o último —
+    # que é sempre o da evidência mais recente.
+    aceite = calcular_nota_aceite(exec_report)
+    state[CHAVE_ACEITE] = aceite.como_dict()
+
     if validation.get("status") == "aprovado":
         # A rodada aprovada TAMBÉM entra no histórico: sem isso, a nota final da
         # task seria a da penúltima rodada (reprovada) — e o critério de aceite
         # pede a nota final registrada.
         registrar_rodada(state, nota.total, nota.como_dict())
+
+        # Antes de encerrar: uma única chance de fechar a cobertura de critérios.
+        aviso = _emitir_aviso_de_cobertura(callback_context, aceite)
+        if aviso is not None:
+            return aviso
+
         # Encerramento determinístico. O prompt continua pedindo `exit_loop` ao
         # LLM no caminho de aprovação; as duas vias são independentes e
         # redundantes de propósito, como o teto do LoopAgent.
         callback_context.actions.escalate = True
         logger.info(
-            "[PROGRESSO] Task %s aprovada com nota %.3f (histórico=%s).",
+            "[PROGRESSO] Task %s aprovada com nota %.3f (histórico=%s); "
+            "aceite=%s cobertura=%.0f%%.",
             state.get("task_id"),
             nota.total,
             state.get(CHAVE_HISTORICO),
+            aceite.nota,
+            aceite.cobertura * 100,
         )
         # `None` preserva o texto de confirmação que o executor já produz.
         return None

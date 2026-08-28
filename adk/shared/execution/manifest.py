@@ -17,10 +17,13 @@ biblioteca.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 # Superfície de execução do produto — determina qual perfil o harness aplica.
 #   service → sobe um serviço de rede e faz healthcheck (web_app, api_service)
@@ -81,6 +84,67 @@ class RunManifest(BaseModel):
         default="direct",
         description="Estratégia de isolamento: 'direct' (padrão) ou 'docker' (opt-in).",
     )
+    acceptance_tests: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description=(
+            "Mapa critério de aceite → testes que o comprovam. A chave é o id "
+            "do critério na Task (CA-01, CA-02...); o valor, os identificadores "
+            "dos testes que o cobrem, no formato com que a suíte nomeia um "
+            "teste individual (em pytest, o nodeid "
+            "'tests/test_x.py::test_y'). Vazio quando o coder não declarou "
+            "nenhuma cobertura."
+        ),
+    )
+
+    @field_validator("acceptance_tests", mode="before")
+    @classmethod
+    def _coerce_acceptance_tests(cls, v: Any) -> dict[str, list[str]]:
+        """Aceita o que der para aproveitar; NUNCA invalida o manifesto.
+
+        Este campo é o único do manifesto cujo conteúdo malformado não pode
+        derrubar a carga, e a assimetria é deliberada: `run`/`port`/`build`
+        descrevem COMO executar — sem eles não há execução, e falhar cedo é
+        correto. O mapa de testes é BOOKKEEPING; recusá-lo faria o estágio 1
+        (crítico) abortar a execução inteira, zerando a nota técnica do coder
+        por um erro de anotação — punindo-o tecnicamente por algo que não é
+        defeito do artefato.
+
+        Só a FORMA é tratada aqui. Se as chaves são ids de critério que existem
+        na Task é outra pergunta, respondida onde a Task é conhecida (ver
+        `normalizar_mapa_de_testes`, em `coding_tools/criterios_aceite.py`).
+        """
+        if not isinstance(v, dict):
+            if v not in (None, ""):
+                logger.warning(
+                    "run.json: 'acceptance_tests' é %s; esperado objeto. "
+                    "Nenhum vínculo teste↔critério será considerado.",
+                    type(v).__name__,
+                )
+            return {}
+
+        normalizado: dict[str, list[str]] = {}
+        for chave, valor in v.items():
+            if not isinstance(chave, str):
+                logger.warning(
+                    "run.json: chave de 'acceptance_tests' de tipo %s ignorada.",
+                    type(chave).__name__,
+                )
+                continue
+            # Um teste só, escrito sem lista, é erro comum de LLM e não custa
+            # nada absorver — mesma tolerância de `Contract._coerce_interfaces`.
+            bruto = [valor] if isinstance(valor, str) else valor
+            if not isinstance(bruto, list):
+                logger.warning(
+                    "run.json: 'acceptance_tests[%s]' é %s; esperado lista de "
+                    "strings. Entrada ignorada.",
+                    chave,
+                    type(valor).__name__,
+                )
+                continue
+            testes = [t.strip() for t in bruto if isinstance(t, str) and t.strip()]
+            if testes:
+                normalizado[chave] = testes
+        return normalizado
 
     @model_validator(mode="after")
     def _check_coherence(self) -> "RunManifest":

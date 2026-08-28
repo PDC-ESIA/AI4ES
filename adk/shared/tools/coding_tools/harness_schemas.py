@@ -40,11 +40,75 @@ class StageName(str, Enum):
     GERACAO_RELATORIO = "geracao_relatorio"
 
 
+class TestOutcome(str, Enum):
+    """Desfecho de UM teste individual da suíte do artefato.
+
+    Distinto de `StageStatus`, que fala do estágio inteiro: aqui a unidade é um
+    teste nomeado, e o vocabulário existe para casar o resultado da suíte com o
+    critério de aceite que aquele teste comprova (o mapa `acceptance_tests` do
+    manifesto).
+
+    `PULADO` cobre tanto o skip explícito quanto o `xfail` — em ambos o teste
+    não comprovou o comportamento, e essa é a leitura que importa para
+    cobertura. Um `xpass` conta como `PASSOU`: o comportamento funcionou, ainda
+    que a suíte esperasse o contrário.
+    """
+
+    PASSOU = "passou"
+    FALHOU = "falhou"
+    ERRO = "erro"
+    PULADO = "pulado"
+
+
+class CriterionOutcome(str, Enum):
+    """Resultado DETERMINÍSTICO de um critério, derivado dos testes que o cobrem.
+
+    Não é veredito de aprovação: o harness continua sem decidir se o Work Item
+    passa. É a leitura mecânica de "os testes que o coder declarou para este
+    critério passaram?" — e cada valor descreve uma situação com encaminhamento
+    próprio, e não graus de uma mesma coisa:
+
+      - `ATENDIDO` / `NAO_ATENDIDO`: houve verificação, e ela concluiu. São os
+        únicos que entram no cálculo da nota de aceite.
+      - `SEM_TESTE_MAPEADO`: o critério era automatizável e o coder não declarou
+        teste nenhum. É lacuna endereçável — o coder pode fechá-la.
+      - `TESTE_NAO_EXECUTADO`: o vínculo foi declarado, mas nenhum resultado
+        para aquele teste apareceu na saída da suíte (nodeid errado, teste não
+        coletado, ou a saída não nomeia testes). Também é endereçável.
+      - `NAO_AUTOMATIZAVEL`: está fora do que se consegue comprovar com teste de
+        código hoje. NÃO é lacuna do coder; é limite da instrumentação, e por
+        isso nunca é cobrado dele.
+
+    Os três últimos significam "não comprovado", e nenhum deles significa
+    "reprovado": ausência de evidência não é evidência de ausência.
+    """
+
+    ATENDIDO = "atendido"
+    NAO_ATENDIDO = "nao_atendido"
+    SEM_TESTE_MAPEADO = "sem_teste_mapeado"
+    TESTE_NAO_EXECUTADO = "teste_nao_executado"
+    NAO_AUTOMATIZAVEL = "nao_automatizavel"
+
+
+# Resultados que representam uma verificação CONCLUÍDA — os únicos que entram no
+# numerador/denominador da nota de aceite.
+OUTCOMES_DECIDIDOS = frozenset(
+    {CriterionOutcome.ATENDIDO, CriterionOutcome.NAO_ATENDIDO}
+)
+
+# Resultados que o coder PODE fechar escrevendo ou corrigindo teste. Base do
+# aviso de cobertura; `NAO_AUTOMATIZAVEL` fica de fora de propósito — cobrar
+# dele o impossível é a patologia que este desenho existe para não repetir.
+OUTCOMES_ENDERECAVEIS = frozenset(
+    {CriterionOutcome.SEM_TESTE_MAPEADO, CriterionOutcome.TESTE_NAO_EXECUTADO}
+)
+
+
 class CriterionEvidence(BaseModel):
     """Evidência bruta coletada para um critério de aceite, sem veredito.
 
     Registra o que foi verificado e o que foi observado. A conclusão sobre se o
-    critério foi atendido é responsabilidade do implementation_validator.
+    Work Item deve ser aprovado é responsabilidade do implementation_validator.
     """
 
     criterion: str = Field(description="Critério de aceite ao qual a evidência se refere")
@@ -52,6 +116,28 @@ class CriterionEvidence(BaseModel):
     observed: str = Field(description="O que foi efetivamente observado durante a execução")
     checkable: bool = Field(
         description="Indica se o critério pôde ser verificado automaticamente pelo harness"
+    )
+    criterion_id: str = Field(
+        default="",
+        description=(
+            "Id do critério na Task (CA-01...). Vazio só em reports antigos, "
+            "gerados antes de o critério ter identidade."
+        ),
+    )
+    automatable: bool = Field(
+        default=True,
+        description=(
+            "Classificação declarada na Task: o critério é comprovável por "
+            "teste automatizado com as capacidades atuais do fluxo?"
+        ),
+    )
+    outcome: CriterionOutcome = Field(
+        default=CriterionOutcome.SEM_TESTE_MAPEADO,
+        description="Resultado determinístico derivado dos testes vinculados",
+    )
+    linked_tests: list[str] = Field(
+        default_factory=list,
+        description="Testes declarados no manifesto como cobertura deste critério",
     )
 
 

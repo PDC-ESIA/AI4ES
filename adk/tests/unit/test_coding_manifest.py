@@ -14,6 +14,8 @@ Cobre:
  
 import json
 from pathlib import Path
+
+import pytest
 from unittest.mock import MagicMock, patch
  
 from src.agents.workflow_coding_review.manifest import (
@@ -25,6 +27,7 @@ from src.agents.workflow_coding_review.manifest import (
     _scan_doubts,
     _validation_verdict,
     emit_coding_manifest,
+    resumo_de_aceite,
 )
  
  
@@ -447,4 +450,136 @@ def test_after_agent_callback_e_emit_coding_manifest():
     from src.agents.workflow_coding_review.manifest import emit_coding_manifest
  
     assert agent.after_agent_callback is emit_coding_manifest
- 
+
+
+# ---------------------------------------------------------------------------
+# resumo_de_aceite — a dimensão de critérios publicada no manifesto (Fase 7)
+# ---------------------------------------------------------------------------
+
+
+def _task_result(total, atendidos, nao_atendidos, **extra):
+    resultado = {
+        "nota_final": 0.9,
+        "nota_tecnica_final": 0.95,
+        "nota_aceite": 1.0,
+        "cobertura_criterios": 0.5,
+        "conceito": "B",
+        "aceite": {
+            "total": total,
+            "atendidos": atendidos,
+            "nao_atendidos": nao_atendidos,
+        },
+    }
+    resultado.update(extra)
+    return resultado
+
+
+def test_resumo_de_aceite_agrega_por_razao_global():
+    """Razão global, não média das taxas: task de 1 critério não pesa como a de 9."""
+    summary = {
+        "task_results": {
+            "TASK-001": _task_result(total=1, atendidos=1, nao_atendidos=0),
+            "TASK-002": _task_result(total=9, atendidos=1, nao_atendidos=0),
+        }
+    }
+
+    aceite = resumo_de_aceite(summary)
+
+    assert aceite["criterios_total"] == 10
+    assert aceite["criterios_atendidos"] == 2
+    assert aceite["cobertura_criterios"] == 0.2
+    assert aceite["nota_aceite"] == 1.0
+
+
+def test_resumo_de_aceite_conta_os_sem_cobertura():
+    summary = {
+        "task_results": {"TASK-001": _task_result(total=5, atendidos=2, nao_atendidos=1)}
+    }
+
+    aceite = resumo_de_aceite(summary)
+
+    assert aceite["criterios_sem_cobertura"] == 2
+    assert aceite["nota_aceite"] == pytest.approx(2 / 3, abs=1e-4)
+
+
+def test_resumo_de_aceite_sem_nada_decidido_nao_vira_zero():
+    summary = {
+        "task_results": {"TASK-001": _task_result(total=3, atendidos=0, nao_atendidos=0)}
+    }
+
+    aceite = resumo_de_aceite(summary)
+
+    assert aceite["nota_aceite"] is None
+    assert aceite["cobertura_criterios"] == 0.0
+    assert aceite["criterios_sem_cobertura"] == 3
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [None, "texto", 42, {}, {"task_results": None}, {"task_results": {"T": "x"}}],
+)
+def test_resumo_de_aceite_tolera_summary_invalido(summary):
+    aceite = resumo_de_aceite(summary)
+
+    assert aceite["criterios_total"] == 0
+    assert aceite["nota_aceite"] is None
+    assert aceite["por_task"] == {}
+
+
+def test_manifesto_publica_aceite_sem_alterar_status(tmp_path):
+    """A medida é publicada; a decisão de status permanece a mesma.
+
+    Cobertura baixa mede o que o fluxo não consegue verificar, não defeito do
+    artefato — por isso não pode virar bloqueio aqui.
+    """
+    coder_ws = tmp_path / "coder"
+    _make_ws(coder_ws, {
+        "src/app/main.py": "# main",
+        "review/revisao.md": "## Status: APROVADO",
+    })
+
+    ctx = MagicMock()
+    ctx.state = {
+        "task_iteration_summary": {
+            "task_results": {
+                "TASK-001": _task_result(total=4, atendidos=1, nao_atendidos=0)
+            }
+        }
+    }
+    ctx.session = MagicMock(id=None)
+    ctx.session_id = None
+
+    with patch("src.agents.workflow_coding_review.manifest.get_agent_workspace", return_value=coder_ws), \
+         patch("src.agents.workflow_coding_review.manifest.get_workspace_root", return_value=tmp_path):
+        emit_coding_manifest(callback_context=ctx)
+
+    manifest = ctx.state[STATE_KEY]
+
+    assert manifest["status"] == "ok", "a cobertura baixa bloqueou a fase"
+    assert manifest["aceite"]["criterios_total"] == 4
+    assert manifest["aceite"]["criterios_sem_cobertura"] == 3
+    assert "cobertura 25%" in manifest["summary"]
+
+    # E chega ao disco, para consumo a jusante.
+    gravado = json.loads((coder_ws / "manifest.json").read_text(encoding="utf-8"))
+    assert gravado["aceite"]["cobertura_criterios"] == 0.25
+
+
+def test_manifesto_sem_dimensao_de_aceite_nao_polui_o_summary(tmp_path):
+    coder_ws = tmp_path / "coder"
+    _make_ws(coder_ws, {
+        "src/app/main.py": "# main",
+        "review/revisao.md": "## Status: APROVADO",
+    })
+
+    ctx = MagicMock()
+    ctx.state = {}
+    ctx.session = MagicMock(id=None)
+    ctx.session_id = None
+
+    with patch("src.agents.workflow_coding_review.manifest.get_agent_workspace", return_value=coder_ws), \
+         patch("src.agents.workflow_coding_review.manifest.get_workspace_root", return_value=tmp_path):
+        emit_coding_manifest(callback_context=ctx)
+
+    assert "Critérios de aceite" not in ctx.state[STATE_KEY]["summary"]
+    assert ctx.state[STATE_KEY]["aceite"]["criterios_total"] == 0

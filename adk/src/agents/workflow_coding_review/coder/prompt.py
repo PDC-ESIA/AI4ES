@@ -301,6 +301,9 @@ próprio código.
   ex.: `/`, `/docs`, `/health`).
 - `workdir`: diretório relativo à raiz do artefato onde os comandos rodam (default `.`).
 - `env`: objeto com variáveis de ambiente extras para build/run/test (default `{{}}`).
+- `acceptance_tests`: objeto que liga cada critério de aceite da Task aos testes
+  que o comprovam — ver a seção abaixo. Use `{{}}` se a Task não tiver critérios
+  automatizáveis.
 - NÃO defina `sandbox`: o padrão (`direct`) é o único suportado por ora.
 - **Python: SEMPRE instale em virtualenv.** Os comandos rodam num host cujo
   Python é gerenciado pelo sistema (PEP 668, "externally-managed-environment"),
@@ -321,6 +324,35 @@ próprio código.
 - `surface=command`  → `run` obrigatório.
 - `surface=none`     → ao menos `build` OU `test` (sem `run`).
 
+## `acceptance_tests` — ligando critérios de aceite aos seus testes
+Cada critério da Task vem com um `id` (`CA-01`, `CA-02`...) e um campo
+`automatable`. Para CADA critério com `automatable: true`, escreva ao menos um
+teste que o comprove e declare o vínculo em `acceptance_tests`:
+
+```json
+"acceptance_tests": {{
+  "CA-01": ["tests/test_auth.py::test_retorna_401_com_credenciais_invalidas"],
+  "CA-02": ["tests/test_ensaios.py::test_cria_ensaio", "tests/test_ensaios.py::test_persiste_ensaio"]
+}}
+```
+
+- A chave é o `id` do critério, copiado EXATAMENTE como aparece na Task.
+- O valor é a LISTA de identificadores dos testes que cobrem aquele critério, no
+  formato com que a sua ferramenta de teste nomeia um teste individual — em
+  pytest, o nodeid `caminho/arquivo.py::nome_do_teste`.
+- Os comandos de `test` precisam LISTAR CADA TESTE pelo nome na saída — em
+  pytest, acrescente `-v` (ex.: `venv/bin/python -m pytest -v`). Sem isso a
+  saída só informa quantos testes passaram, não QUAIS, e nenhum vínculo declarado
+  aqui pode ser confirmado: os critérios ficam todos sem cobertura.
+- Os testes citados precisam existir de fato e ser executados por algum comando
+  de `test`. Um id que não corresponde a nenhum critério da Task é descartado.
+- Critérios com `automatable: false` (jornada de interface, julgamento visual)
+  NÃO entram aqui: eles não têm como ser comprovados por teste de código, e
+  inventar um teste de fachada para eles é pior que deixá-los de fora.
+- O teste precisa comprovar o COMPORTAMENTO que o critério descreve, com
+  asserção real. Um teste que só importa o módulo, ou que afirma `True`, não
+  comprova nada — e é pior que a ausência de teste, porque simula cobertura.
+
 ## Exemplos por superfície (adapte à SUA stack)
 Serviço (ex.: FastAPI):
 ```json
@@ -329,9 +361,12 @@ Serviço (ex.: FastAPI):
   "surface": "service",
   "build": ["python3 -m venv venv", "venv/bin/pip install -r requirements.txt"],
   "run": "venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000",
-  "test": ["venv/bin/python -m pytest"],
+  "test": ["venv/bin/python -m pytest -v"],
   "port": 8000,
-  "healthcheck": "/"
+  "healthcheck": "/",
+  "acceptance_tests": {{
+    "CA-01": ["tests/test_auth.py::test_retorna_401_com_credenciais_invalidas"]
+  }}
 }}
 ```
 Comando (ex.: CLI/pipeline):
@@ -341,7 +376,7 @@ Comando (ex.: CLI/pipeline):
   "surface": "command",
   "build": ["python3 -m venv venv", "venv/bin/pip install -r requirements.txt"],
   "run": "venv/bin/python -m meupacote --input data.csv",
-  "test": ["venv/bin/python -m pytest"]
+  "test": ["venv/bin/python -m pytest -v"]
 }}
 ```
 Sem superfície (ex.: biblioteca):
@@ -350,7 +385,7 @@ Sem superfície (ex.: biblioteca):
   "schema_version": "1",
   "surface": "none",
   "build": ["python3 -m venv venv", "venv/bin/pip install -e ."],
-  "test": ["venv/bin/python -m pytest"]
+  "test": ["venv/bin/python -m pytest -v"]
 }}
 ```
 

@@ -115,6 +115,16 @@ _ANALYZER_INSTRUCTION_TEMPLATE = (
     "Este bloco vem do TaskIterator. Use-o para distinguir aprovação plena,\n"
     "aceitação com ressalvas e bloqueio; não invente nem altere esses status.\n"
     "__TASK_OUTCOMES__\n\n"
+    "## Como ler a dimensão de aceite\n"
+    "`nota` é calculada SÓ sobre os critérios que puderam ser verificados por\n"
+    "teste automatizado; `cobertura` diz quantos puderam. São medidas distintas:\n"
+    "- Critério listado em `sem teste que os cubra` é lacuna ENDEREÇÁVEL — o\n"
+    "  código é testável e ninguém escreveu o teste. Registre como issue de\n"
+    "  completude (severidade `warning`), citando o id do critério.\n"
+    "- Cobertura baixa por si só NÃO é defeito do código: critérios de jornada de\n"
+    "  interface ou subjetivos não têm como ser comprovados por teste de código\n"
+    "  neste fluxo. NÃO bloqueie a entrega por causa dela, e não invente issue\n"
+    "  para critério que não aparece como endereçável.\n\n"
     "# ANÁLISE ESTÁTICA (pré-LLM)\n"
     "Os seguintes problemas foram identificados por ferramentas determinísticas\n"
     "de análise estática da stack (linters/analisadores, ex.: Ruff/Bandit em\n"
@@ -160,7 +170,40 @@ def _render_task_outcomes(state) -> str:
             f"conceito={result.get('conceito')}; nota={result.get('nota_final')}; "
             f"término={result.get('motivo_terminacao')}"
         )
+        lines.append(f"  {_linha_de_aceite(result)}")
     return "\n".join(lines)
+
+
+def _linha_de_aceite(result: Mapping) -> str:
+    """Dimensão de aceite da task, em uma linha, para o contexto do reviewer."""
+    aceite = result.get("aceite")
+    aceite = aceite if isinstance(aceite, Mapping) else {}
+    total = aceite.get("total") or 0
+    if not total:
+        return "critérios de aceite: nenhum registrado"
+
+    atendidos = aceite.get("atendidos") or 0
+    nao_atendidos = aceite.get("nao_atendidos") or 0
+    sem_cobertura = max(total - atendidos - nao_atendidos, 0)
+    nota = result.get("nota_aceite")
+    nota_txt = (
+        f"{nota:.2f}"
+        if isinstance(nota, (int, float)) and not isinstance(nota, bool)
+        else "não apurável"
+    )
+    cobertura = result.get("cobertura_criterios") or 0.0
+    enderecaveis = aceite.get("criterios_enderecaveis")
+    pendentes = (
+        ", ".join(str(item) for item in enderecaveis)
+        if isinstance(enderecaveis, list) and enderecaveis
+        else "nenhum"
+    )
+    return (
+        f"critérios de aceite: nota={nota_txt}; "
+        f"cobertura={cobertura * 100:.0f}% ({atendidos} atendidos, "
+        f"{nao_atendidos} não atendidos, {sem_cobertura} sem verificação); "
+        f"sem teste que os cubra: {pendentes}"
+    )
 
 
 def _analyzer_instruction_provider(ctx) -> str:

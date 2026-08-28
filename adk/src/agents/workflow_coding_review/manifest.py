@@ -207,11 +207,86 @@ def _derive_status(
     return "partial"
 
 
+def _numero(valor: Any) -> Any:
+    """Devolve `valor` se for número real; `None` caso contrário."""
+    if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+        return None
+    return valor
+
+
+def resumo_de_aceite(task_summary: Any) -> dict:
+    """Consolida a dimensão de aceite das tasks para o manifesto da fase.
+
+    É a publicação da medida, não um gate: nada aqui entra em `_derive_status`.
+    A razão é a mesma que orienta o desenho inteiro — cobertura baixa mede o que
+    o fluxo NÃO consegue verificar (critério de interface, instrumentação
+    ausente), não defeito do artefato. Transformá-la em bloqueio devolveria ao
+    coder a conta de um limite que não é dele.
+
+    A cobertura agregada é a razão GLOBAL (`decididos / total` somados), e não a
+    média das coberturas por task: tasks têm quantidades diferentes de
+    critérios, e a média daria a uma task de um critério o mesmo peso de uma de
+    dez.
+
+    Returns:
+        Bloco serializável com o agregado e o detalhe por task. Entradas
+        inutilizáveis degradam para zeros, nunca levantam.
+    """
+    resultados = (
+        task_summary.get("task_results") if isinstance(task_summary, dict) else None
+    )
+    resultados = resultados if isinstance(resultados, dict) else {}
+
+    por_task: dict[str, dict] = {}
+    total = decididos = atendidos = nao_atendidos = 0
+
+    for task_id, resultado in sorted(resultados.items()):
+        if not isinstance(resultado, dict):
+            continue
+        aceite = resultado.get("aceite")
+        aceite = aceite if isinstance(aceite, dict) else {}
+
+        n_total = _numero(aceite.get("total")) or 0
+        n_atendidos = _numero(aceite.get("atendidos")) or 0
+        n_nao_atendidos = _numero(aceite.get("nao_atendidos")) or 0
+        n_decididos = n_atendidos + n_nao_atendidos
+
+        total += n_total
+        decididos += n_decididos
+        atendidos += n_atendidos
+        nao_atendidos += n_nao_atendidos
+
+        por_task[task_id] = {
+            "nota_final": _numero(resultado.get("nota_final")),
+            "nota_tecnica": _numero(resultado.get("nota_tecnica_final")),
+            "nota_aceite": _numero(resultado.get("nota_aceite")),
+            "cobertura_criterios": _numero(resultado.get("cobertura_criterios")) or 0.0,
+            "conceito": resultado.get("conceito"),
+            "criterios_total": n_total,
+            "criterios_atendidos": n_atendidos,
+            "criterios_nao_atendidos": n_nao_atendidos,
+            "criterios_sem_cobertura": max(n_total - n_decididos, 0),
+        }
+
+    return {
+        "criterios_total": total,
+        "criterios_atendidos": atendidos,
+        "criterios_nao_atendidos": nao_atendidos,
+        "criterios_sem_cobertura": max(total - decididos, 0),
+        # `None` (e não 0.0) quando nada foi decidido: "não verifiquei" é
+        # diferente de "verifiquei e não atende".
+        "nota_aceite": round(atendidos / decididos, 4) if decididos else None,
+        "cobertura_criterios": round(decididos / total, 4) if total else 0.0,
+        "por_task": por_task,
+    }
+
+
 def _build_summary(
     artifacts: list[dict],
     doubts: list[dict],
     validation: str,
     accepted_count: int = 0,
+    aceite: dict | None = None,
 ) -> str:
     counts: dict[str, int] = {}
     for a in artifacts:
@@ -226,6 +301,19 @@ def _build_summary(
         base += f" {len(doubts)} dúvida(s) ({n_bloq} bloqueante(s))."
     if accepted_count:
         base += f" {accepted_count} task(s) aceita(s) com ressalvas."
+    if aceite and aceite.get("criterios_total"):
+        nota = aceite.get("nota_aceite")
+        base += (
+            " Critérios de aceite: "
+            + (
+                f"nota {nota:.2f}"
+                if isinstance(nota, (int, float)) and not isinstance(nota, bool)
+                else "nota não apurável"
+            )
+            + f", cobertura {aceite.get('cobertura_criterios', 0.0) * 100:.0f}%"
+            + f" ({aceite.get('criterios_sem_cobertura', 0)} de "
+            + f"{aceite['criterios_total']} sem verificação automatizada)."
+        )
     return base
 
 
@@ -294,13 +382,22 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         )
 
 
+        # Dimensão de aceite: publicada como MEDIDA, fora da derivação de
+        # status — ver `resumo_de_aceite`.
+        aceite = resumo_de_aceite(task_summary)
+
         manifest: dict = {
             "phase":      PHASE_NAME,
             "status":     status,
             "artifacts":  artifacts,
             "doubts":     doubts,
+            "aceite":     aceite,
             "summary": _build_summary(
-                artifacts, doubts, validation, accepted_count=len(accepted_ids)
+                artifacts,
+                doubts,
+                validation,
+                accepted_count=len(accepted_ids),
+                aceite=aceite,
             ),
         }
 

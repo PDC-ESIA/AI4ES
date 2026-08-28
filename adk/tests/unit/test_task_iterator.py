@@ -546,3 +546,104 @@ def test_veredito_ausente_sem_travamento_continua_reprovado():
 
     assert resultado["status"] == "reprovado"
     assert resultado["motivo_terminacao"] == "validation_ausente_ou_invalida"
+
+
+# ===========================================================================
+# Nota unificada — técnica + aceite (Fase 6)
+# ===========================================================================
+
+
+def _aceite(nota, cobertura=1.0, total=2, atendidos=2, nao_atendidos=0):
+    return {
+        "nota": nota,
+        "cobertura": cobertura,
+        "total": total,
+        "atendidos": atendidos,
+        "nao_atendidos": nao_atendidos,
+        "decididos": atendidos + nao_atendidos,
+        "por_resultado": {},
+        "criterios_enderecaveis": [],
+    }
+
+
+def test_nota_final_compoe_tecnica_e_aceite():
+    state = _reprovado(
+        progress_score_history=[0.8],
+        acceptance_score=_aceite(0.5, cobertura=1.0),
+    )
+
+    resultado = classificar_desfecho(state, "TASK-001")
+
+    assert resultado["nota_tecnica_final"] == 0.8
+    assert resultado["nota_aceite"] == 0.5
+    assert resultado["nota_final"] == pytest.approx(0.65 * 0.8 + 0.35 * 0.5)
+    assert resultado["cobertura_criterios"] == 1.0
+
+
+def test_sem_aceite_a_nota_final_e_a_tecnica_pura():
+    """Compatível com o comportamento anterior à dimensão de aceite."""
+    resultado = classificar_desfecho(
+        _reprovado(progress_score_history=[0.9]), "TASK-001"
+    )
+
+    assert resultado["nota_final"] == 0.9
+    assert resultado["nota_tecnica_final"] == 0.9
+    assert resultado["nota_aceite"] is None
+    assert resultado["cobertura_criterios"] == 0.0
+
+
+def test_cobertura_baixa_nao_desconta_da_nota_final():
+    """Cegueira do harness é medida à parte, nunca desconto na nota.
+
+    Mesma nota de aceite, coberturas muito diferentes: a nota final tem de ser
+    IDÊNTICA. Só a cobertura publicada distingue os dois casos.
+    """
+    ampla = classificar_desfecho(
+        _reprovado(
+            progress_score_history=[0.9],
+            acceptance_score=_aceite(1.0, cobertura=1.0, total=8, atendidos=8),
+        ),
+        "TASK-001",
+    )
+    estreita = classificar_desfecho(
+        _reprovado(
+            progress_score_history=[0.9],
+            acceptance_score=_aceite(1.0, cobertura=0.25, total=8, atendidos=2),
+        ),
+        "TASK-001",
+    )
+
+    assert estreita["nota_final"] == ampla["nota_final"]
+    assert estreita["cobertura_criterios"] == 0.25
+    assert ampla["cobertura_criterios"] == 1.0
+
+
+def test_conceito_deriva_da_nota_unificada():
+    """Aceite ruim rebaixa o conceito mesmo com a técnica impecável."""
+    state = _reprovado(
+        progress_score_history=[1.0], acceptance_score=_aceite(0.0)
+    )
+
+    resultado = classificar_desfecho(state, "TASK-001")
+
+    assert resultado["nota_final"] == pytest.approx(0.65)
+    assert resultado["conceito"] == "B"
+
+
+@pytest.mark.parametrize(
+    "bruto",
+    [None, "texto", 42, [], {"nota": "x"}, {"nota": True}, {"cobertura": "y"}],
+)
+def test_aceite_corrompido_degrada_para_a_nota_tecnica(bruto):
+    state = _reprovado(progress_score_history=[0.7], acceptance_score=bruto)
+
+    resultado = classificar_desfecho(state, "TASK-001")
+
+    assert resultado["nota_final"] == 0.7
+    assert resultado["nota_aceite"] is None
+
+
+def test_chaves_de_aceite_sao_limpas_entre_tasks():
+    """O flag do aviso precisa zerar, ou só a primeira task o receberia."""
+    assert "acceptance_score" in _CHAVES_CICLO_REMOVIDAS
+    assert "acceptance_coverage_notice_used" in _CHAVES_CICLO_REMOVIDAS

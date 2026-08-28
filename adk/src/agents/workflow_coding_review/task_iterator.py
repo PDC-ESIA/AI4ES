@@ -32,6 +32,9 @@ from google.adk.events.event_actions import EventActions
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
+from .executor.acceptance_score import CHAVE_ACEITE
+from .executor.acceptance_score import CHAVES_DE_CICLO as CHAVES_DE_CICLO_ACEITE
+from .executor.acceptance_score import nota_unificada
 from .executor.loop_policy import (
     CHAVE_DETALHES,
     CHAVE_HISTORICO,
@@ -60,10 +63,17 @@ _ID_TASK_RE = re.compile(r"^TASK-[0-9]+$")
 # a primeira rodada dela seria lida como "sem alteração" e poderia ser cortada
 # antes de qualquer tentativa real.
 _CHAVES_CICLO_REMOVIDAS = (
-    "validation",
-    "report_path",
-    "error_report",
-) + CHAVES_DE_CICLO
+    (
+        "validation",
+        "report_path",
+        "error_report",
+    )
+    + CHAVES_DE_CICLO
+    # As da nota de aceite vêm do módulo que as cria, pela mesma razão. Entre
+    # elas está o flag do aviso de cobertura: se ele sobrevivesse à troca de
+    # task, a primeira task o consumiria e nenhuma outra receberia o pedido.
+    + CHAVES_DE_CICLO_ACEITE
+)
 
 # Marcador do 3º ramo do coder (ver coder/prompt.py): a partir da 2ª task,
 # `execution_result` nunca fica ausente — se ficasse, o coder entenderia
@@ -244,12 +254,42 @@ def _motivo_de_travamento(state: dict) -> Optional[str]:
     return None
 
 
+def _aceite(state: dict) -> dict:
+    """A nota de aceite da última rodada, defensivamente normalizada.
+
+    Report antigo, rodada que não chegou a calcular, ou valor corrompido caem
+    todos no mesmo lugar seguro: sem nota de aceite (`None`) e cobertura zero —
+    o que faz a nota final degradar para a técnica pura, em vez de descontar por
+    algo que não foi medido.
+    """
+    bruto = state.get(CHAVE_ACEITE)
+    if not isinstance(bruto, dict):
+        return {"nota": None, "cobertura": 0.0, "total": 0}
+
+    nota = bruto.get("nota")
+    if isinstance(nota, bool) or not isinstance(nota, (int, float)):
+        nota = None
+    cobertura = bruto.get("cobertura")
+    if isinstance(cobertura, bool) or not isinstance(cobertura, (int, float)):
+        cobertura = 0.0
+    return {**bruto, "nota": nota, "cobertura": float(cobertura)}
+
+
 def _progresso(state: dict) -> dict:
-    """Nota final e histórico da task, para o summary do iterator.
+    """Notas e histórico da task, para o summary do iterator.
 
     Vai em TODOS os ramos de `classificar_desfecho`, não só no de sucesso: uma
     task reprovada ou travada é exatamente o caso em que o histórico mais
     importa para auditoria e para a revisão a jusante.
+
+    Publica TRÊS notas, e a distinção entre elas é o ponto:
+      - `nota_tecnica_final`: "o sistema funciona?" (a de sempre, issue #394);
+      - `nota_aceite`: "atende aos critérios que deu para verificar?";
+      - `nota_final`: a composição das duas, e é ela que vira `conceito`.
+
+    A cobertura anda junto, separada da nota, porque mede coisa diferente: o
+    quanto foi possível verificar. Cobertura baixa é limite da instrumentação,
+    não defeito da entrega — por isso ela informa, mas não desconta.
     """
     historico_bruto = state.get(CHAVE_HISTORICO)
     detalhes_brutos = state.get(CHAVE_DETALHES)
@@ -266,11 +306,19 @@ def _progresso(state: dict) -> dict:
                 else None
             )
             detalhes.append(dict(detalhe) if isinstance(detalhe, dict) else None)
-    nota_final = historico[-1] if historico else None
+
+    nota_tecnica = historico[-1] if historico else None
+    aceite = _aceite(state)
+    nota_final = nota_unificada(nota_tecnica, aceite["nota"])
+
     return {
         "nota_final": nota_final,
         "nota_final_10": round(nota_final * 10, 2) if nota_final is not None else None,
         "conceito": conceito_da_nota(nota_final),
+        "nota_tecnica_final": nota_tecnica,
+        "nota_aceite": aceite["nota"],
+        "cobertura_criterios": aceite["cobertura"],
+        "aceite": aceite,
         "historico_notas": historico,
         "detalhes_notas": detalhes,
     }
