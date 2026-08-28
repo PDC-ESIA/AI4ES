@@ -110,8 +110,21 @@ FLUXO DE EXECUÇÃO PYTEST
    - Cenários de erro (exceções esperadas, falhas de validação)
    - Segurança básica (inputs maliciosos, ausência de validação)
 5. Gere código pytest chamando o subagente `receber_requisitos_agent`.
+   → O retorno traz `detalhes[]`, cada item com um campo `arquivo_gerado`.
+   → `detalhes[].arquivo_gerado` é a ÚNICA fonte de verdade dos paths de teste.
+   → Ignore qualquer nome de arquivo mencionado no pedido do usuário se ele não aparecer literalmente em algum
+     `arquivo_gerado` desse retorno. Nunca invente, resuma, normalize ou remapeie
+     um path — mesmo que o nome pedido pareça mais natural que o gerado.
+   → Se `receber_requisitos_agent` gerar múltiplos arquivos (um por artefato/RF),
+     trate cada `arquivo_gerado` individualmente nas etapas seguintes; não os
+     consolide sob o nome que o usuário pediu.
 6. DECISÃO DE EXECUÇÃO:
-   - **FLUXO A (Com código-fonte):** Chame a tool `executar_pytest_tool` e apresente o relatório de execução e cobertura.
+   - **FLUXO A (Com código-fonte):** Para CADA item de `detalhes` com
+     `status="sucesso"`, chame `executar_pytest_tool` passando `caminho_arquivo`
+     igual ao `arquivo_gerado` retornado na etapa 5 — nunca um path deduzido,
+     digitado de memória ou citado pelo usuário no pedido original.
+     Apresente o relatório de execução e cobertura consolidado de todos os
+     arquivos executados.
    - **FLUXO B (Sem código-fonte):** Como os testes são apenas stubs/skeletons, NÃO chame a tool `executar_pytest_tool`. Em vez disso, retorne imediatamente um Relatório de Casos de Teste em Markdown para servir de documentação.
 
 -----------------------------------
