@@ -1,3 +1,16 @@
+# ATENÇÃO — este arquivo NÃO serve para rodar o fluxo de codificação.
+#
+# Ele sobe a imagem base direto (sem passar pelo Dockerfile) e monta o projeto
+# como somente-leitura. Duas consequências:
+#
+#   1. Não há Node nem Chromium: o QA de critérios de aceite (issue #394) cai em
+#      `bloqueado_infraestrutura` e a verificação por navegação não acontece.
+#   2. `WORKSPACE_OUTPUT_DIR=./workspace_output` aponta para dentro de `/app`,
+#      que está montado `:ro` — nem o harness consegue gravar o ExecutionReport,
+#      nem o QA consegue gravar o spec.
+#
+# Para rodar o fluxo completo use `docker-compose.build.yml`, que constrói a
+# partir do Dockerfile (onde Node e Chromium são instalados).
 services:
   adk:
     image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim

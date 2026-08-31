@@ -72,23 +72,25 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
 
             if subdir == "app":
                 tipo = "source"
-                id_val = str(
-                    f.relative_to(src / "app").with_suffix("")
-                ).replace("\\", "/")
+                id_val = str(f.relative_to(src / "app").with_suffix("")).replace(
+                    "\\", "/"
+                )
             elif subdir == "tests":
                 tipo = "teste"
-                id_val = str(
-                    f.relative_to(src / "tests").with_suffix("")
-                ).replace("\\", "/")
+                id_val = str(f.relative_to(src / "tests").with_suffix("")).replace(
+                    "\\", "/"
+                )
             else:
                 tipo = "config"
                 id_val = f.name
 
-            artifacts.append({
-                "tipo": tipo,
-                "id": id_val,
-                "path": str(f.relative_to(ws_root)).replace("\\", "/"),
-            })
+            artifacts.append(
+                {
+                    "tipo": tipo,
+                    "id": id_val,
+                    "path": str(f.relative_to(ws_root)).replace("\\", "/"),
+                }
+            )
 
     review_dir = coder_ws / "review"
     if review_dir.exists():
@@ -98,22 +100,26 @@ def _scan_artifacts(coder_ws: Path, ws_root: Path) -> list[dict]:
                 and f.name not in _IGNORED
                 and f.suffix not in _IGNORED_SUFFIXES
             ):
-                artifacts.append({
-                    "tipo": "revisao",
-                    "id": f.stem,
-                    "path": str(f.relative_to(ws_root)).replace("\\", "/"),
-                })
+                artifacts.append(
+                    {
+                        "tipo": "revisao",
+                        "id": f.stem,
+                        "path": str(f.relative_to(ws_root)).replace("\\", "/"),
+                    }
+                )
 
     tasks_dir = coder_ws / "tasks"
     if tasks_dir.exists():
         for f in sorted(tasks_dir.glob("*.json")):
             if f.name not in _IGNORED:
                 tipo = "macro_context" if f.stem == "_macro_context" else "task"
-                artifacts.append({
-                    "tipo": tipo,
-                    "id": f.stem,
-                    "path": str(f.relative_to(ws_root)).replace("\\", "/"),
-                })
+                artifacts.append(
+                    {
+                        "tipo": tipo,
+                        "id": f.stem,
+                        "path": str(f.relative_to(ws_root)).replace("\\", "/"),
+                    }
+                )
 
     return artifacts
 
@@ -137,12 +143,14 @@ def _scan_doubts(coder_ws: Path, ws_root: Path) -> list[dict]:
         # Detecta dois formatos: padrão Time 1 ("**Bloqueante:** Sim") e
         # formato gerado por tool_gerar_doubt_artifact_adk ("EXECUÇÃO PAUSADA").
         bloqueante = "**Bloqueante:** Sim" in text or "EXECUÇÃO PAUSADA" in text
-        doubts.append({
-            "id": f.stem,
-            "severidade": "alta" if bloqueante else "media",
-            "bloqueante": bloqueante,
-            "path": str(f.relative_to(ws_root)).replace("\\", "/"),
-        })
+        doubts.append(
+            {
+                "id": f.stem,
+                "severidade": "alta" if bloqueante else "media",
+                "bloqueante": bloqueante,
+                "path": str(f.relative_to(ws_root)).replace("\\", "/"),
+            }
+        )
     return doubts
 
 
@@ -257,8 +265,10 @@ def resumo_de_aceite(task_summary: Any) -> dict:
         nao_atendidos += n_nao_atendidos
 
         por_task[task_id] = {
+            # `nota_tecnica` saiu do bloco quando a nota foi unificada (PoC
+            # #394): não existe mais uma parcela técnica separada a publicar —
+            # `nota_final` já inclui os critérios como um degrau da escada.
             "nota_final": _numero(resultado.get("nota_final")),
-            "nota_tecnica": _numero(resultado.get("nota_tecnica_final")),
             "nota_aceite": _numero(resultado.get("nota_aceite")),
             "cobertura_criterios": _numero(resultado.get("cobertura_criterios")) or 0.0,
             "conceito": resultado.get("conceito"),
@@ -330,8 +340,8 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         ws_root = get_workspace_root()
         coder_ws = get_agent_workspace("coder")
 
-        artifacts  = _scan_artifacts(coder_ws, ws_root)
-        doubts     = _scan_doubts(coder_ws, ws_root)
+        artifacts = _scan_artifacts(coder_ws, ws_root)
+        doubts = _scan_doubts(coder_ws, ws_root)
         validation = _validation_verdict(coder_ws)
         task_summary = callback_context.state.get("task_iteration_summary")
         accepted_ids = (
@@ -381,17 +391,16 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             has_accepted_with_caveats=bool(accepted_ids),
         )
 
-
         # Dimensão de aceite: publicada como MEDIDA, fora da derivação de
         # status — ver `resumo_de_aceite`.
         aceite = resumo_de_aceite(task_summary)
 
         manifest: dict = {
-            "phase":      PHASE_NAME,
-            "status":     status,
-            "artifacts":  artifacts,
-            "doubts":     doubts,
-            "aceite":     aceite,
+            "phase": PHASE_NAME,
+            "status": status,
+            "artifacts": artifacts,
+            "doubts": doubts,
+            "aceite": aceite,
             "summary": _build_summary(
                 artifacts,
                 doubts,
@@ -402,7 +411,7 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         }
 
         callback_context.state[STATE_KEY] = manifest
-        
+
         manifest_path = coder_ws / "manifest.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(
@@ -412,7 +421,10 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
 
         logger.info(
             "[MANIFEST] coding → %s | %d artefato(s) | %d dúvida(s) | revisão: %s",
-            status, len(artifacts), len(doubts), validation,
+            status,
+            len(artifacts),
+            len(doubts),
+            validation,
         )
 
         existing = list(callback_context.state.get("phase_manifests", []) or [])

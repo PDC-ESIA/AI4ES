@@ -36,6 +36,7 @@ Vive no LoopAgent [coder → executor]; o validador é AgentTool interna do
 executor. O reviewer permanece fora do loop.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -48,18 +49,14 @@ from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
 from shared.execution.verificador_executabilidade import verificar_executabilidade
+from shared.tools.coding_tools.harness_schemas import CriterionOutcome
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
 from shared.workspace import get_agent_workspace
 from src.agents.implementation_validator import root_agent as implementation_validator
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from . import prompt as executor_prompt
-from .acceptance_score import (
-    CHAVE_ACEITE,
-    CHAVE_AVISO_COBERTURA,
-    NotaAceite,
-    calcular_nota_aceite,
-)
+from .acceptance_score import CHAVE_ACEITE
 from .loop_policy import (
     CHAVE_HISTORICO,
     assinatura_erro,
@@ -67,7 +64,18 @@ from .loop_policy import (
     registrar_e_avaliar,
     registrar_rodada,
 )
-from .progress_score import NotaProgresso, calcular_nota
+from .progress_score import (
+    CHAVE_FONTE_EVIDENCIA,
+    FONTE_QA_E2E,
+    NotaProgresso,
+    calcular_nota,
+    evidencia_de_qa,
+)
+from .qa_criterios import (
+    CHAVE_QA,
+    CHAVE_QA_EVIDENCIAS,
+    verificar_criterios_por_e2e,
+)
 from .schemas import ErrorReport, FailedCriterion, FailedStage
 
 logger = logging.getLogger(__name__)
@@ -240,102 +248,168 @@ def _resumo_da_parada(motivo: Optional[str], nota: NotaProgresso) -> str:
     )
 
 
-def _mensagem_de_cobertura(pendentes: list[str], aceite: NotaAceite) -> str:
-    """Pedido determinístico para o coder fechar a cobertura de critérios.
+def _criterios_reprovados_pelo_qa(state) -> list[dict]:
+    """Critérios que o QA PROVOU não atendidos navegando a aplicação.
 
-    NÃO pode começar com um marcador de encerramento nem parecer um ErrorReport:
-    a execução foi bem-sucedida, e o que se pede é um acréscimo pontual — não
-    correção de defeito. O texto diz isso explicitamente para o coder não sair
-    reescrevendo o que já funciona.
+    Lê o registro que `_aplicar_qa_de_criterios` deixou no state, e não o report
+    em disco: o report é do harness, e sobrescrevê-lo com evidência de outro
+    produtor apagaria a fronteira que faz dele um sensor confiável.
+
+    Só `nao_atendido` entra. `sem_teste_mapeado`, `teste_nao_executado` e
+    `nao_automatizavel` significam "não comprovado", e ausência de evidência
+    nunca é evidência de ausência — cobrá-los aqui recriaria a task que nunca
+    aprova.
     """
-    lista = "\n".join(f"- {identificador}" for identificador in pendentes)
+    registro = state.get(CHAVE_QA_EVIDENCIAS)
+    if not isinstance(registro, list):
+        return []
+    return [
+        evidencia
+        for evidencia in registro
+        if isinstance(evidencia, dict)
+        and evidencia.get("outcome") == CriterionOutcome.NAO_ATENDIDO.value
+    ]
+
+
+def _assinatura_da_rodada(exec_report: dict, reprovados_pelo_qa: list[dict]) -> str:
+    """Assinatura de falha da rodada, incluindo o que o QA reprovou.
+
+    A do harness sozinha não serve quando a execução foi tecnicamente verde e só
+    o QA reprovou: ela seria IDÊNTICA em todas essas rodadas (nenhum estágio
+    falho, mesma contagem de testes), e o gatilho de erro repetido encerraria a
+    task já na segunda tentativa de fechar um critério — mesmo que o coder
+    estivesse fechando um critério diferente a cada rodada.
+
+    Somando os ids reprovados, a assinatura passa a distinguir "travado no mesmo
+    critério" de "avançou para o próximo", que é exatamente a leitura que a
+    política de continuidade precisa fazer.
+    """
+    base = assinatura_erro(exec_report)
+    if not reprovados_pelo_qa:
+        return base
+    ids = sorted(
+        str(c.get("criterion_id") or c.get("criterion", "")) for c in reprovados_pelo_qa
+    )
+    return hashlib.sha256("\n".join([base, *ids]).encode("utf-8")).hexdigest()
+
+
+def _mensagem_de_criterios_reprovados(reprovados: list[dict]) -> str:
+    """Devolve ao coder o que o QA constatou, com a evidência de cada critério.
+
+    É a única via pela qual o achado do QA chega a quem pode agir sobre ele: o
+    `ErrorReport` é montado a partir do report do harness, que não conhece a
+    navegação. Sem esta mensagem, o loop bloquearia a aprovação sem nunca dizer
+    ao coder o que precisa mudar.
+    """
+    itens = "\n".join(
+        f"- {c.get('criterion_id') or '?'}: {c.get('criterion', '')}\n"
+        f"  O que o QA observou: {c.get('observed', '(sem detalhe)')}"
+        for c in reprovados
+    )
     return (
-        "EXECUÇÃO BEM-SUCEDIDA — falta apenas cobrir critérios de aceite com "
-        "testes.\n\n"
-        "O build, a inicialização e a suíte atual passaram. NÃO altere o código "
-        "de produção e NÃO refaça o que já funciona.\n\n"
-        f"Critérios automatizáveis ainda sem teste que os comprove "
-        f"({len(pendentes)} de {aceite.total}):\n"
-        f"{lista}\n\n"
-        "Para CADA um deles, nesta mesma rodada:\n"
-        "1. Escreva um teste que comprove o comportamento descrito no critério, "
-        "com asserção real sobre o resultado — não um teste que só importa o "
-        "módulo.\n"
-        "2. Declare o vínculo em `acceptance_tests`, no `run.json`, usando o id "
-        "do critério como chave e o identificador do teste como valor.\n"
-        "3. Garanta que os comandos de `test` listem cada teste pelo nome (em "
-        "pytest, `-v`) — sem isso o resultado não pode ser casado com o critério.\n\n"
-        "Este pedido é feito UMA única vez por task: se algum critério não puder "
-        "ser coberto por teste de código, siga em frente — ele será registrado "
-        "como não coberto, sem reprovar a entrega."
+        "EXECUÇÃO OK, MAS A ENTREGA NÃO ATENDE AOS CRITÉRIOS DE ACEITE.\n\n"
+        "O build, a inicialização e a sua suíte passaram. Um agente de QA "
+        "independente navegou a aplicação com um navegador real e comprovou que "
+        f"{len(reprovados)} critério(s) NÃO são atendidos:\n\n"
+        f"{itens}\n\n"
+        "Estes não são testes seus: são a verificação do que o Work Item pediu, "
+        "feita na interface. Corrija o COMPORTAMENTO da aplicação para que cada "
+        "um passe a valer — não escreva testes novos para contorná-los, e não "
+        "altere o que já funciona."
     )
 
 
-def _emitir_aviso_de_cobertura(
-    callback_context, aceite: NotaAceite
-) -> Optional[types.Content]:
-    """Concede UMA rodada extra para o coder fechar a cobertura de critérios.
+async def _aplicar_qa_de_criterios(callback_context, exec_report: dict) -> dict:
+    """Substitui a evidência de critérios do harness pela do QA, quando houver.
 
-    Roda no caminho de APROVAÇÃO, imediatamente antes do encerramento: a
-    execução já está tecnicamente correta e o loop iria fechar. Em vez de fechar,
-    segura por uma rodada e devolve ao coder a lista de critérios automatizáveis
-    sem teste.
+    Roda ANTES do cálculo da nota, e é o que faz o QA entrar no loop de verdade:
+    o degrau `CRITERIOS_ATENDIDOS` lê `criteria_evidence`, então trocar a fonte
+    dessa lista muda a nota da rodada — e, por ela, a decisão de continuidade.
 
-    Três propriedades tornam isto seguro, e as três são deliberadas:
+    A substituição é TOTAL, não uma fusão: as duas fontes respondem à mesma
+    pergunta por vias diferentes, e misturá-las produziria dois resultados para o
+    mesmo critério sem uma regra defensável de desempate. Quando o QA rodou, a
+    palavra dele vale — ele navegou a aplicação; o harness só olhou o resultado
+    dos testes que o próprio coder escreveu e vinculou.
 
-    - **Uma vez por task.** O aviso é um flag de uso único, não um orçamento:
-      esgotado, a task aprova mesmo com a cobertura em aberto. Um critério que
-      não tem como virar teste (jornada de interface) custa no máximo uma rodada
-      e nunca trava a task, que é a diferença entre isto e o degrau de critérios
-      que precisou ser removido da nota técnica.
-    - **Contador PRÓPRIO.** Não toca no orçamento de falhas distintas nem no
-      histórico de notas da `loop_policy`. Cobrança de teste não é tropeço
-      técnico: misturar os dois faria uma task devendo um teste consumir a
-      paciência reservada a bugs, ou o inverso — o loop ler a cobrança como
-      sintoma de travamento e cortar a task por um motivo errado.
-    - **Não bloqueia por cobertura.** Se o coder ignorar o pedido, a rodada
-      seguinte aprova. O que sobrar em aberto vira cobertura registrada, nunca
-      reprovação.
-
-    O que acontecer com os testes novos (passarem, quebrarem, revelarem um bug)
-    é problema TÉCNICO comum, já coberto pela nota de progresso e pela política
-    de continuidade — nada novo precisa ser ensinado a elas.
-
-    TRADE-OFF ACEITO, e é o único risco real deste mecanismo: se o teste novo
-    FALHAR, a rodada seguinte é reprovada e a task, que ia aprovar, volta ao
-    loop. Ela pode terminar bloqueada se o coder não conseguir fechar. Isso é
-    deliberado — um teste vermelho significa que o critério não é atendido de
-    fato, e aprovar ali teria sido um falso positivo. O custo é assumido em
-    troca de descobrir o defeito; o teto do LoopAgent segue como rede.
+    Quando o QA não roda (portão fechado, app que não subiu, runtime ausente), a
+    evidência do harness permanece intocada e o fluxo se comporta exatamente como
+    antes desta PoC. Degradar para o comportamento anterior é deliberado: uma
+    medida auxiliar indisponível não pode piorar a leitura da rodada.
 
     Returns:
-        O Content do pedido quando o aviso é emitido; `None` para deixar o
-        encerramento seguir normalmente.
+        O `exec_report` a usar no cálculo — o mesmo objeto quando o QA não rodou.
     """
     state = callback_context.state
-    pendentes = aceite.criterios_enderecaveis
-    if not pendentes or state.get(CHAVE_AVISO_COBERTURA):
-        return None
+    task_id = state.get("task_id") or ""
+    if not task_id:
+        return exec_report
 
-    state[CHAVE_AVISO_COBERTURA] = True
-    mensagem = _mensagem_de_cobertura(pendentes, aceite)
-    state["execution_result"] = mensagem
-    logger.info(
-        "[COBERTURA] Task %s aprovada tecnicamente com %d critério(s) sem teste "
-        "(%s); concedida UMA rodada para fechar a cobertura.",
-        state.get("task_id"),
-        len(pendentes),
-        ", ".join(pendentes),
-    )
-    return types.Content(role="model", parts=[types.Part(text=mensagem)])
+    # O QA promete não levantar, mas a promessa depende de infraestrutura que
+    # não controlamos: `sandbox.exec` deixa passar `OSError`/`FileNotFoundError`,
+    # e escrever o spec toca o disco. Sem esta rede, uma falha de infra do QA
+    # derrubaria a rodada INTEIRA — inclusive `montar_error_report`, que roda
+    # depois e é o que dá feedback ao coder. Uma medida auxiliar nunca pode
+    # custar o turno de quem ela deveria ajudar.
+    try:
+        resultado = await verificar_criterios_por_e2e(task_id, exec_report)
+    except Exception:  # noqa: BLE001 — QA quebrado degrada, não interrompe
+        logger.exception(
+            "[QA] Verificação por navegação falhou na task %s; a rodada segue "
+            "com a evidência do harness.",
+            task_id,
+        )
+        state[CHAVE_QA] = {"executado": False, "motivo": "erro na verificação"}
+        return exec_report
+
+    state[CHAVE_QA] = resultado.como_dict()
+
+    # Só substitui quando o QA DECIDIU algo. Uma lista só de recusas e de
+    # "não verificável" não é melhor que a do harness — e apagaria os
+    # `atendido` que o harness tinha, sumindo com eles da cobertura publicada ao
+    # reviewer sem nada melhor a pôr no lugar.
+    decididos = [
+        e
+        for e in resultado.evidencias
+        if e.outcome in (CriterionOutcome.ATENDIDO, CriterionOutcome.NAO_ATENDIDO)
+    ]
+    if not decididos:
+        # `CallbackContext.state` é `google.adk.sessions.state.State`, que
+        # implementa get/set/update, mas não `pop`/deleção. Além de funcionar
+        # tanto no ADK quanto nos dicts dos testes, gravar a lista vazia no
+        # delta remove deterministicamente qualquer evidência da rodada
+        # anterior sem deixar valor obsoleto persistido na sessão/frontend.
+        state[CHAVE_QA_EVIDENCIAS] = []
+        logger.info(
+            "[QA] Task %s sem verificação por navegação nesta rodada: %s",
+            task_id,
+            resultado.motivo or "nenhum critério pôde ser decidido",
+        )
+        return exec_report
+
+    evidencias = [e.model_dump(mode="json") for e in resultado.evidencias]
+    # Registrado no state porque `montar_error_report` relê o report do DISCO,
+    # que é do harness e não conhece a navegação. É daqui que sai o que o coder
+    # recebe sobre os critérios.
+    state[CHAVE_QA_EVIDENCIAS] = evidencias
+
+    return {
+        **exec_report,
+        CHAVE_FONTE_EVIDENCIA: FONTE_QA_E2E,
+        "criteria_evidence": evidencias,
+    }
 
 
-def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
+async def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
     """PRIMEIRO `after_agent_callback` do executor — a política da issue #394.
 
     Calcula a nota da rodada e decide, POR CÓDIGO, se o loop continua. Substitui
     o "protocolo anti-estagnação" do prompt, que dependia de o LLM do executor
     perceber o travamento e declarar por conta própria.
+
+    É `async` porque a verificação de critérios por navegação (PoC do QA no loop)
+    invoca um agente — o ADK aguarda callbacks que devolvem awaitable, então a
+    assinatura muda sem que nada no wiring precise mudar junto.
 
     A ordem na lista de callbacks é carga estrutural, não estilo: o ADK para no
     PRIMEIRO callback que devolve `Content` não-vazio, e `montar_error_report`
@@ -360,32 +434,52 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
         return None
 
     exec_report = _carregar_execution_report(callback_context)
+    exec_report = await _aplicar_qa_de_criterios(callback_context, exec_report)
     nota = calcular_nota(exec_report)
 
-    # Nota de aceite: dimensão SEPARADA, publicada no state. Não entra no
-    # histórico de progresso nem na assinatura de erro — a política de
-    # continuidade continua cega para ela, de propósito.
+    # A cobertura vai para o state a CADA rodada, e não só no fechamento da
+    # task: uma task que termina por platô ou bloqueio nunca tem "rodada de
+    # fechamento", e é justamente nela que a medida importa para auditoria. O
+    # valor é sobrescrito a cada rodada e quem consome lê o último — sempre o da
+    # evidência mais recente.
     #
-    # Calculada a CADA rodada, e não só no fechamento da task. O motivo é o
-    # mesmo que faz `_progresso` acompanhar todos os desfechos no TaskIterator:
-    # uma task que termina por platô ou bloqueio nunca tem "rodada de
-    # fechamento", e é justamente nela que a medida importa para auditoria. Com
-    # o cálculo restrito à aprovação, toda task travada ficaria sem dimensão de
-    # aceite. O valor é sobrescrito a cada rodada e quem consome lê o último —
-    # que é sempre o da evidência mais recente.
-    aceite = calcular_nota_aceite(exec_report)
-    state[CHAVE_ACEITE] = aceite.como_dict()
+    # A NOTA de aceite não é mais composta por fora (ver `acceptance_score`): ela
+    # entra na nota única como o degrau `CRITERIOS_ATENDIDOS`. O que se publica
+    # aqui é o recorte auditável dessa dimensão.
+    # A procedência acompanha o que é PUBLICADO, e não só o que pontua. Sem
+    # isso, `nota_aceite` e `cobertura_criterios` chegariam ao reviewer e ao
+    # manifesto como se fossem verificação independente quando são, na verdade, o
+    # resultado dos testes que o próprio coder escreveu — a mesma autoavaliação
+    # que a trava do degrau recusa. `nota` vai a `None` nesse caso: "ninguém
+    # verificou" é diferente de "verifiquei e deu isto".
+    veio_do_qa = evidencia_de_qa(exec_report)
+    aceite_publicado = nota.aceite.como_dict()
+    aceite_publicado["fonte"] = (
+        FONTE_QA_E2E if veio_do_qa else "harness_testes_do_coder"
+    )
+    if not veio_do_qa:
+        aceite_publicado["nota"] = None
+        aceite_publicado["cobertura"] = 0.0
+    state[CHAVE_ACEITE] = aceite_publicado
 
-    if validation.get("status") == "aprovado":
+    # O veredito responde "a execução foi bem-sucedida?" e NADA além disso (ver
+    # `montar_veredito`). Sem esta trava, uma entrega que constrói, sobe e passa
+    # nos próprios testes seria aprovada mesmo com o QA tendo PROVADO, navegando,
+    # que ela não faz o que os critérios pedem — e o agente de QA não teria
+    # influência nenhuma sobre o que é entregue, justamente o problema que
+    # trazê-lo para dentro do loop deveria resolver.
+    #
+    # Só falha PROVADA bloqueia. Critério que ninguém conseguiu verificar
+    # continua sem bloquear nada: é a mesma assimetria que mantém o teto da nota
+    # em 1.0 quando não há evidência (ver `progress_score`), e é o que impede
+    # esta trava de recriar a task que nunca aprova.
+    reprovados_pelo_qa = _criterios_reprovados_pelo_qa(state)
+
+    if validation.get("status") == "aprovado" and not reprovados_pelo_qa:
         # A rodada aprovada TAMBÉM entra no histórico: sem isso, a nota final da
         # task seria a da penúltima rodada (reprovada) — e o critério de aceite
         # pede a nota final registrada.
         registrar_rodada(state, nota.total, nota.como_dict())
-
-        # Antes de encerrar: uma única chance de fechar a cobertura de critérios.
-        aviso = _emitir_aviso_de_cobertura(callback_context, aceite)
-        if aviso is not None:
-            return aviso
 
         # Encerramento determinístico. O prompt continua pedindo `exit_loop` ao
         # LLM no caminho de aprovação; as duas vias são independentes e
@@ -397,26 +491,48 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
             state.get("task_id"),
             nota.total,
             state.get(CHAVE_HISTORICO),
-            aceite.nota,
-            aceite.cobertura * 100,
+            nota.aceite.nota,
+            nota.aceite.cobertura * 100,
         )
         # `None` preserva o texto de confirmação que o executor já produz.
         return None
 
+    # A partir daqui a rodada é tratada como NÃO concluída — inclusive quando o
+    # veredito técnico foi 'aprovado' e só o QA reprovou. Ela passa pela política
+    # de continuidade como qualquer outra, e isso é obrigatório: um caminho que
+    # devolvesse Content sem chamar `registrar_e_avaliar` não registraria
+    # assinatura, não avaliaria platô e deixaria a task rodar até o teto do
+    # LoopAgent — gastando um build e uma suíte de navegação por rodada. Seria a
+    # volta do loop sem freio que a issue #394 existe para eliminar.
     decisao = registrar_e_avaliar(
         state,
         nota_total=nota.total,
         nota_detalhe=nota.como_dict(),
         arquivos_mudaram=fingerprint_mudou(state),
-        assinatura_erro_atual=assinatura_erro(exec_report),
+        assinatura_erro_atual=_assinatura_da_rodada(exec_report, reprovados_pelo_qa),
     )
-    if not decisao.parar:
-        return None
+    if decisao.parar:
+        callback_context.actions.escalate = True
+        resumo = _resumo_da_parada(decisao.motivo, nota)
+        state["execution_result"] = resumo
+        return types.Content(role="model", parts=[types.Part(text=resumo)])
 
-    callback_context.actions.escalate = True
-    resumo = _resumo_da_parada(decisao.motivo, nota)
-    state["execution_result"] = resumo
-    return types.Content(role="model", parts=[types.Part(text=resumo)])
+    if reprovados_pelo_qa:
+        # Execução tecnicamente OK: o `ErrorReport` a jusante não teria o que
+        # relatar (ele nasce de estágios em falha), então o achado do QA precisa
+        # sair por aqui ou não chega a quem pode agir sobre ele.
+        mensagem = _mensagem_de_criterios_reprovados(reprovados_pelo_qa)
+        state["execution_result"] = mensagem
+        logger.info(
+            "[QA] Task %s tecnicamente aprovada, mas o QA reprovou %d "
+            "critério(s) navegando: %s. A task volta ao coder.",
+            state.get("task_id"),
+            len(reprovados_pelo_qa),
+            ", ".join(c.get("criterion_id") or "?" for c in reprovados_pelo_qa),
+        )
+        return types.Content(role="model", parts=[types.Part(text=mensagem)])
+
+    return None
 
 
 def montar_error_report(callback_context) -> Optional[types.Content]:

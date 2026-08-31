@@ -22,9 +22,11 @@ from shared.execution.sandbox import CommandResult
 from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
 from src.agents.workflow_coding_review.executor.acceptance_score import (
     calcular_nota_aceite,
-    nota_unificada,
 )
-from src.agents.workflow_coding_review.executor.progress_score import calcular_nota
+from src.agents.workflow_coding_review.executor.progress_score import (
+    Degrau,
+    calcular_nota,
+)
 from src.agents.workflow_coding_review.manifest import resumo_de_aceite
 
 
@@ -117,11 +119,13 @@ def _executar(workspace, saida, exit_code=0):
     coder, execution, tasks = workspace
     resposta = MagicMock(status_code=200, text="OK")
     resposta.json.return_value = {"paths": {"/": {"get": {}}}}
-    with patch(
-        "shared.tools.coding_tools.harness_execucao.create_sandbox",
-        return_value=_Sandbox(saida, exit_code),
-    ), patch("requests.get", return_value=resposta), patch(
-        "shared.tools.coding_tools.harness_execucao.time.sleep"
+    with (
+        patch(
+            "shared.tools.coding_tools.harness_execucao.create_sandbox",
+            return_value=_Sandbox(saida, exit_code),
+        ),
+        patch("requests.get", return_value=resposta),
+        patch("shared.tools.coding_tools.harness_execucao.time.sleep"),
     ):
         return executar_harness_validacao(
             "TASK-001",
@@ -161,8 +165,13 @@ def test_cobertura_parcial_percorre_a_cadeia_inteira(workspace):
     # Só CA-02 é cobrável: CA-03 está fora do alcance de teste de código.
     assert aceite.criterios_enderecaveis == ["CA-02"]
 
-    tecnica = calcular_nota(report).total
-    assert nota_unificada(tecnica, aceite.nota) == pytest.approx(tecnica)
+    # A evidência aqui vem do HARNESS (testes que o coder escreveu e vinculou),
+    # não da navegação do QA. Desde a PoC #394 ela não alimenta o degrau de
+    # critérios — a nota é a técnica pura, e o que não deu para verificar
+    # continua sem descontar nada.
+    nota = calcular_nota(report)
+    assert Degrau.CRITERIOS_ATENDIDOS not in nota.degraus_aplicaveis
+    assert nota.total == pytest.approx(1.0)
 
 
 def test_criterio_com_teste_vermelho_derruba_a_nota_de_aceite(workspace):
@@ -204,9 +213,7 @@ def test_grafia_divergente_do_id_nao_quebra_o_vinculo(workspace):
     coder, _, _ = workspace
     _manifesto(coder, {"ca-1": ["tests/test_auth.py::test_401"]})
 
-    report = _executar(
-        workspace, "tests/test_auth.py::test_401 PASSED\n1 passed\n"
-    )
+    report = _executar(workspace, "tests/test_auth.py::test_401 PASSED\n1 passed\n")
 
     por_id = {e["criterion_id"]: e["outcome"] for e in report["criteria_evidence"]}
     assert por_id["CA-01"] == "atendido"
@@ -233,9 +240,7 @@ def test_nota_do_manifesto_agrega_o_que_o_harness_produziu(workspace):
     """Fecha a cadeia até o artefato que segue para jusante."""
     coder, _, _ = workspace
     _manifesto(coder, {"CA-01": ["tests/test_auth.py::test_401"]})
-    report = _executar(
-        workspace, "tests/test_auth.py::test_401 PASSED\n1 passed\n"
-    )
+    report = _executar(workspace, "tests/test_auth.py::test_401 PASSED\n1 passed\n")
     aceite = calcular_nota_aceite(report)
 
     resumo = resumo_de_aceite(

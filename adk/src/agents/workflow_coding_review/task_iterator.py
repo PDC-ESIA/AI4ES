@@ -34,7 +34,7 @@ from src.agents.implementation_validator.agent import _report_path_valido
 from .coder.workspace_guard import preparar_arquivos_herdados
 from .executor.acceptance_score import CHAVE_ACEITE
 from .executor.acceptance_score import CHAVES_DE_CICLO as CHAVES_DE_CICLO_ACEITE
-from .executor.acceptance_score import nota_unificada
+from .executor.qa_criterios import CHAVES_DE_CICLO as CHAVES_DE_CICLO_QA
 from .executor.loop_policy import (
     CHAVE_DETALHES,
     CHAVE_HISTORICO,
@@ -69,10 +69,12 @@ _CHAVES_CICLO_REMOVIDAS = (
         "error_report",
     )
     + CHAVES_DE_CICLO
-    # As da nota de aceite vêm do módulo que as cria, pela mesma razão. Entre
-    # elas está o flag do aviso de cobertura: se ele sobrevivesse à troca de
-    # task, a primeira task o consumiria e nenhuma outra receberia o pedido.
+    # As da nota de aceite vêm do módulo que as cria, pela mesma razão.
     + CHAVES_DE_CICLO_ACEITE
+    # E as do QA de critérios (PoC #394): o registro do que o QA verificou é por
+    # rodada e por task; herdá-lo faria a auditoria de uma task sem QA apontar
+    # uma verificação que aconteceu em outra.
+    + CHAVES_DE_CICLO_QA
 )
 
 # Marcador do 3º ramo do coder (ver coder/prompt.py): a partir da 2ª task,
@@ -282,10 +284,16 @@ def _progresso(state: dict) -> dict:
     task reprovada ou travada é exatamente o caso em que o histórico mais
     importa para auditoria e para a revisão a jusante.
 
-    Publica TRÊS notas, e a distinção entre elas é o ponto:
-      - `nota_tecnica_final`: "o sistema funciona?" (a de sempre, issue #394);
-      - `nota_aceite`: "atende aos critérios que deu para verificar?";
-      - `nota_final`: a composição das duas, e é ela que vira `conceito`.
+    Publica UMA nota, e essa unificação é a mudança da PoC do QA no loop: desde
+    que os critérios de aceite passaram a ser comprovados por navegação real
+    (`qa_criterios/`), eles entram na mesma escada de capacidades das dimensões
+    técnicas, como o degrau `CRITERIOS_ATENDIDOS`. Não há mais uma nota técnica e
+    uma de aceite compostas por fora — `nota_final` é a última do histórico, e é
+    ela que vira `conceito`.
+
+    `nota_aceite` continua publicada como RECORTE auditável ("dos critérios
+    decididos, quantos passaram?"), não como parcela a compor: quem quiser saber
+    o quanto da nota veio de critérios olha o degrau em `detalhes_notas`.
 
     A cobertura anda junto, separada da nota, porque mede coisa diferente: o
     quanto foi possível verificar. Cobertura baixa é limite da instrumentação,
@@ -307,15 +315,13 @@ def _progresso(state: dict) -> dict:
             )
             detalhes.append(dict(detalhe) if isinstance(detalhe, dict) else None)
 
-    nota_tecnica = historico[-1] if historico else None
+    nota_final = historico[-1] if historico else None
     aceite = _aceite(state)
-    nota_final = nota_unificada(nota_tecnica, aceite["nota"])
 
     return {
         "nota_final": nota_final,
         "nota_final_10": round(nota_final * 10, 2) if nota_final is not None else None,
         "conceito": conceito_da_nota(nota_final),
-        "nota_tecnica_final": nota_tecnica,
         "nota_aceite": aceite["nota"],
         "cobertura_criterios": aceite["cobertura"],
         "aceite": aceite,

@@ -184,65 +184,24 @@ def calcular_nota_aceite(execution_report: Any) -> NotaAceite:
     decididos = atendidos + nao_atendidos
 
     return NotaAceite(
-        nota=(
-            round(atendidos / decididos, _CASAS_DECIMAIS) if decididos else None
-        ),
-        cobertura=(
-            round(decididos / total, _CASAS_DECIMAIS) if total else 0.0
-        ),
+        nota=(round(atendidos / decididos, _CASAS_DECIMAIS) if decididos else None),
+        cobertura=(round(decididos / total, _CASAS_DECIMAIS) if total else 0.0),
         total=total,
         por_resultado=por_resultado,
         criterios_enderecaveis=enderecaveis,
     )
 
 
-# ---------------------------------------------------------------------------
-# Composição com a nota técnica
-# ---------------------------------------------------------------------------
-
-# Peso da dimensão técnica na nota final. O complemento (0.35) é o peso da nota
-# de aceite.
+# A composição `S = 0.65·técnica + 0.35·aceite` (`nota_unificada`/`PESO_TECNICO`)
+# viveu aqui e foi REMOVIDA na PoC da issue #394. Ela existia porque o aceite não
+# tinha como ser medido de verdade e precisava de uma dimensão separada, ponderada
+# por fora, para não capar a nota técnica.
 #
-# ATENÇÃO — como os pesos de `progress_score`, estes são um PONTO DE PARTIDA e
-# não uma calibração: ajuste-os comparando o histórico de notas com o desfecho
-# observado em execuções reais.
-PESO_TECNICO = 0.65
-
-
-def nota_unificada(
-    nota_tecnica: Optional[float], nota_aceite: Optional[float]
-) -> Optional[float]:
-    """Compõe a nota final a partir das duas dimensões.
-
-        S = 0.65 · técnica + 0.35 · aceite
-
-    Quando a nota de aceite é `None` — nenhum critério pôde ser decidido — o
-    peso dela é REDISTRIBUÍDO para a técnica (`S = T`), em vez de a dimensão
-    entrar valendo zero.
-
-    Essa escolha é o ponto inteiro do módulo. Multiplicar a nota de aceite pela
-    cobertura, ou tratar o não verificado como zero, reintroduziria exatamente o
-    defeito que motivou remover o degrau de critérios da nota técnica: a nota
-    passaria a medir de novo o que o harness NÃO consegue observar, e uma
-    entrega correta ficaria com teto artificial só porque seus critérios são de
-    interface. A incerteza tem lugar próprio — a cobertura, publicada ao lado —
-    e não desconto na nota.
-
-    O mesmo princípio de redistribuição já vale em `progress_score`
-    (`redistribuir_pesos`): dimensão que não se aplica não vira zero, sai da
-    conta.
-
-    Args:
-        nota_tecnica: Nota de progresso da execução, em [0, 1].
-        nota_aceite: Nota de aceite, em [0, 1], ou `None` se nada foi decidido.
-
-    Returns:
-        A nota composta, ou `None` quando não há nota técnica (nenhuma rodada
-        mensurável).
-    """
-    if nota_tecnica is None:
-        return None
-    if nota_aceite is None:
-        return round(nota_tecnica, _CASAS_DECIMAIS)
-    composta = PESO_TECNICO * nota_tecnica + (1.0 - PESO_TECNICO) * nota_aceite
-    return round(composta, _CASAS_DECIMAIS)
+# Com o QA navegando a aplicação (ver `qa_criterios/`), o aceite virou evidência
+# executável como qualquer outra, e passou a caber na MESMA escada de capacidades
+# — como o degrau `CRITERIOS_ATENDIDOS` de `progress_score`. Duas notas
+# compostas por fora eram uma duplicação da mesma ideia de ponderação, e faziam
+# a `loop_policy` operar sobre uma nota que não incluía a dimensão de aceite.
+#
+# O que sobrou aqui é o que continua sendo só desta dimensão: a CONTAGEM (quem
+# foi decidido, quem não), a COBERTURA e a lista de critérios endereçáveis.

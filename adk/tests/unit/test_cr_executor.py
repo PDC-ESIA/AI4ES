@@ -20,6 +20,13 @@ test_implementation_validator.py.
 import importlib
 
 import pytest
+from google.adk.sessions.state import State
+
+from shared.tools.coding_tools.harness_schemas import (
+    CriterionEvidence,
+    CriterionOutcome,
+)
+from src.agents.workflow_coding_review.executor.qa_criterios import ResultadoQA
 
 
 # ---------------------------------------------------------------------------
@@ -249,12 +256,12 @@ def test_ordem_dos_after_callbacks_e_carga_estrutural(executor_module):
     assert callbacks[1] is executor_module.montar_error_report
 
 
-def test_rodada_aprovada_entra_no_historico(executor_module, monkeypatch):
+async def test_rodada_aprovada_entra_no_historico(executor_module, monkeypatch):
     """Sem isso, a nota final da task seria a da penúltima rodada (reprovada)."""
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     ctx = _Contexto({"validation": _veredito("aprovado", "atendido")})
 
-    devolvido = executor_module.aplicar_politica_de_progresso(ctx)
+    devolvido = await executor_module.aplicar_politica_de_progresso(ctx)
 
     assert ctx.state["progress_score_history"], (
         "rodada aprovada ficou fora do histórico"
@@ -263,37 +270,39 @@ def test_rodada_aprovada_entra_no_historico(executor_module, monkeypatch):
     assert devolvido is None, "o texto de confirmação do executor foi sobrescrito"
 
 
-def test_aprovacao_encerra_o_loop_deterministicamente(executor_module, monkeypatch):
+async def test_aprovacao_encerra_o_loop_deterministicamente(
+    executor_module, monkeypatch
+):
     """Não depende do LLM lembrar de chamar `exit_loop`."""
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     ctx = _Contexto({"validation": _veredito("aprovado", "atendido")})
 
-    executor_module.aplicar_politica_de_progresso(ctx)
+    await executor_module.aplicar_politica_de_progresso(ctx)
 
     assert ctx.actions.escalate is True
 
 
-def test_aprovacao_nao_marca_motivo_de_parada(executor_module, monkeypatch):
+async def test_aprovacao_nao_marca_motivo_de_parada(executor_module, monkeypatch):
     """Task concluída com sucesso não pode terminar rotulada como travada."""
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     ctx = _Contexto({"validation": _veredito("aprovado", "atendido")})
 
-    executor_module.aplicar_politica_de_progresso(ctx)
+    await executor_module.aplicar_politica_de_progresso(ctx)
 
     assert "loop_stop_reason" not in ctx.state
 
 
-def test_rodada_reprovada_com_progresso_nao_encerra(executor_module, monkeypatch):
+async def test_rodada_reprovada_com_progresso_nao_encerra(executor_module, monkeypatch):
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
 
-    devolvido = executor_module.aplicar_politica_de_progresso(ctx)
+    devolvido = await executor_module.aplicar_politica_de_progresso(ctx)
 
     assert ctx.actions.escalate is None
     assert devolvido is None, "deixar de devolver None impediria o ErrorReport"
 
 
-def test_nota_seis_com_testes_falhos_nao_encerra(executor_module, monkeypatch):
+async def test_nota_seis_com_testes_falhos_nao_encerra(executor_module, monkeypatch):
     """Nota mede progresso; 0.6 não é limiar de aprovação.
 
     Reproduz a run em que ambiente, build e aplicação passaram, mas a suíte
@@ -315,14 +324,14 @@ def test_nota_seis_com_testes_falhos_nao_encerra(executor_module, monkeypatch):
     )
     ctx = _Contexto({"validation": _veredito("reprovado", "inconclusivo")})
 
-    devolvido = executor_module.aplicar_politica_de_progresso(ctx)
+    devolvido = await executor_module.aplicar_politica_de_progresso(ctx)
 
     assert ctx.state["progress_score_history"] == [0.6]
     assert ctx.actions.escalate is None
     assert devolvido is None
 
 
-def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch):
+async def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch):
     """Mesma falha e nota parada: encerra pelo acelerador, antes da janela cheia.
 
     Exige que a ausência de progresso tenha PERSISTIDO — uma única rodada sem
@@ -334,9 +343,9 @@ def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch)
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
 
-    primeira = executor_module.aplicar_politica_de_progresso(ctx)
-    segunda = executor_module.aplicar_politica_de_progresso(ctx)
-    terceira = executor_module.aplicar_politica_de_progresso(ctx)
+    primeira = await executor_module.aplicar_politica_de_progresso(ctx)
+    segunda = await executor_module.aplicar_politica_de_progresso(ctx)
+    terceira = await executor_module.aplicar_politica_de_progresso(ctx)
 
     assert primeira is None, "a 1ª rodada não tem com o que comparar"
     assert segunda is None, "um único tropeço não pode encerrar a task"
@@ -345,7 +354,7 @@ def test_erro_repetido_encerra_e_substitui_o_turno(executor_module, monkeypatch)
     assert "NÃO é aprovação" in terceira.parts[0].text
 
 
-def test_falha_sempre_inedita_atravessa_o_plato_ate_o_orcamento(
+async def test_falha_sempre_inedita_atravessa_o_plato_ate_o_orcamento(
     executor_module, monkeypatch
 ):
     """Inversão deliberada: falha nova a cada rodada NÃO é platô.
@@ -367,8 +376,9 @@ def test_falha_sempre_inedita_atravessa_o_plato_ate_o_orcamento(
     from src.agents.workflow_coding_review.executor.loop_policy import (
         ORCAMENTO_FALHAS_DISTINTAS as orcamento,
     )
+
     decisoes = [
-        executor_module.aplicar_politica_de_progresso(ctx)
+        await executor_module.aplicar_politica_de_progresso(ctx)
         for _ in range(orcamento + 1)
     ]
 
@@ -380,22 +390,24 @@ def test_falha_sempre_inedita_atravessa_o_plato_ate_o_orcamento(
     assert ctx.state["loop_stop_reason"] == "orcamento_de_falhas_distintas"
 
 
-def test_mesma_falha_repetida_ainda_encerra_cedo(executor_module, monkeypatch):
+async def test_mesma_falha_repetida_ainda_encerra_cedo(executor_module, monkeypatch):
     """Contrapartida: a tolerância é para erro NOVO, não para repisar o mesmo."""
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
     monkeypatch.setattr(executor_module, "assinatura_erro", lambda *_: "sempre-a-mesma")
     ctx = _Contexto({"validation": _veredito("reprovado", "nao_atendido")})
 
-    decisoes = [executor_module.aplicar_politica_de_progresso(ctx) for _ in range(3)]
+    decisoes = [
+        await executor_module.aplicar_politica_de_progresso(ctx) for _ in range(3)
+    ]
 
     assert decisoes[2] is not None
     assert ctx.state["loop_stop_reason"] == "erro_repetido"
 
 
-def test_veredito_ausente_nao_registra_rodada(executor_module):
+async def test_veredito_ausente_nao_registra_rodada(executor_module):
     ctx = _Contexto({})
 
-    assert executor_module.aplicar_politica_de_progresso(ctx) is None
+    assert await executor_module.aplicar_politica_de_progresso(ctx) is None
     assert "progress_score_history" not in ctx.state
 
 
@@ -491,8 +503,32 @@ def test_coder_instruction_exige_run_json(tmp_path, monkeypatch):
 
 
 # ===========================================================================
-# Aviso de cobertura de critérios (Fase 4) — uma rodada, contador próprio
+# QA de critérios no loop (PoC #394) — a evidência do QA substitui a do harness
 # ===========================================================================
+
+
+def _report_tecnico_verde() -> dict:
+    """Estágios técnicos todos em sucesso, para isolar o degrau de critérios."""
+    return {
+        "stages": [
+            {
+                "stage": "preparacao_ambiente",
+                "status": "sucesso",
+                "evidence": {"surface": "service", "test_commands": ["pytest -v"]},
+            },
+            {"stage": "implantacao_artefato", "status": "sucesso"},
+            {"stage": "inicializacao_aplicacao", "status": "sucesso"},
+            {
+                "stage": "testes_automatizados",
+                "status": "sucesso",
+                "evidence": {
+                    "resultados": [
+                        {"resumo": {"passaram": 5, "falharam": 0, "erros": 0}}
+                    ]
+                },
+            },
+        ]
+    }
 
 
 def _report_com_criterios(*outcomes) -> dict:
@@ -511,8 +547,18 @@ def _report_com_criterios(*outcomes) -> dict:
 
 @pytest.fixture
 def executor_com_report(executor_module, monkeypatch):
-    """Permite injetar o ExecutionReport que o callback enxerga."""
+    """Injeta o ExecutionReport que o callback enxerga e neutraliza o QA.
+
+    O QA é desligado por padrão porque sobe aplicação e chama LLM: um teste
+    unitário que o exercitasse de verdade dependeria de rede e de Docker. Os
+    testes que precisam dele o religam explicitamente.
+    """
     monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+
+    async def _sem_qa(_task_id, _report, **_kwargs):
+        return ResultadoQA(executado=False, motivo="desligado no teste")
+
+    monkeypatch.setattr(executor_module, "verificar_criterios_por_e2e", _sem_qa)
 
     def _configurar(report: dict):
         monkeypatch.setattr(
@@ -523,119 +569,424 @@ def executor_com_report(executor_module, monkeypatch):
     return _configurar
 
 
-def test_aprovacao_com_criterio_sem_teste_segura_o_encerramento(executor_com_report):
-    mod = executor_com_report(
-        _report_com_criterios("atendido", "sem_teste_mapeado")
-    )
-    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
-
-    devolvido = mod.aplicar_politica_de_progresso(ctx)
-
-    assert devolvido is not None, "o aviso de cobertura não foi emitido"
-    assert ctx.actions.escalate is None, "o loop encerrou antes de dar a rodada extra"
-    assert "CA-02" in devolvido.parts[0].text
-    # O coder precisa RECEBER o pedido: é `execution_result` que ele lê.
-    assert ctx.state["execution_result"] == devolvido.parts[0].text
-
-
-def test_aviso_de_cobertura_e_emitido_uma_unica_vez_por_task(executor_com_report):
-    """Esgotado o aviso, a task aprova mesmo com a cobertura em aberto."""
-    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
-    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
-
-    primeira = mod.aplicar_politica_de_progresso(ctx)
-    segunda = mod.aplicar_politica_de_progresso(ctx)
-
-    assert primeira is not None
-    assert segunda is None, "o aviso foi repetido e travaria a task"
-    assert ctx.actions.escalate is True
-
-
-def test_criterio_nao_automatizavel_nunca_gera_aviso(executor_com_report):
-    """Cobrar teste de jornada de interface é pedir o impossível ao coder."""
-    mod = executor_com_report(
-        _report_com_criterios("atendido", "nao_automatizavel")
-    )
-    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
-
-    devolvido = mod.aplicar_politica_de_progresso(ctx)
-
-    assert devolvido is None
-    assert ctx.actions.escalate is True
-
-
-def test_cobertura_completa_encerra_sem_rodada_extra(executor_com_report):
-    mod = executor_com_report(_report_com_criterios("atendido", "atendido"))
-    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
-
-    assert mod.aplicar_politica_de_progresso(ctx) is None
-    assert ctx.actions.escalate is True
-
-
-def test_teste_declarado_que_nao_rodou_tambem_gera_aviso(executor_com_report):
-    mod = executor_com_report(_report_com_criterios("teste_nao_executado"))
-    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
-
-    devolvido = mod.aplicar_politica_de_progresso(ctx)
-
-    assert devolvido is not None
-    assert "CA-01" in devolvido.parts[0].text
-
-
-def test_rodada_reprovada_nunca_dispara_aviso_de_cobertura(executor_com_report):
-    """O aviso é do caminho de aprovação; falha técnica tem outro tratamento."""
-    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
-    ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
-
-    devolvido = mod.aplicar_politica_de_progresso(ctx)
-
-    assert devolvido is None, "o ErrorReport foi substituído pelo aviso"
-    assert "acceptance_coverage_notice_used" not in ctx.state
-
-
-def test_aviso_nao_toca_no_estado_da_politica_de_continuidade(executor_com_report):
-    """Contador PRÓPRIO: cobrança de teste não é tropeço técnico.
-
-    Se o aviso consumisse o orçamento de falhas distintas ou entrasse no
-    histórico de notas, uma task devendo um teste gastaria a paciência
-    reservada a bugs — ou o loop leria a cobrança como sintoma de travamento.
-    """
-    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
-    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
-
-    mod.aplicar_politica_de_progresso(ctx)
-
-    assert len(ctx.state["progress_score_history"]) == 1
-    assert ctx.state.get("progress_error_signature_history") in (None, [])
-    assert "loop_stop_reason" not in ctx.state
-
-
-def test_mensagem_do_aviso_nao_se_confunde_com_os_outros_relatorios(
-    executor_com_report,
-):
-    """Não pode parecer ErrorReport (JSON) nem recusa por implementação incompleta."""
-    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
-    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
-
-    texto = mod.aplicar_politica_de_progresso(ctx).parts[0].text
-
-    assert texto.startswith("EXECUÇÃO BEM-SUCEDIDA")
-    assert not texto.lstrip().startswith("{")
-    assert "IMPLEMENTAÇÃO INCOMPLETA" not in texto
-    assert "STATUS: bloqueado" not in texto
-    # Precisa dizer ao coder para não reescrever o que já funciona.
-    assert "NÃO altere o código" in texto
-
-
-def test_nota_de_aceite_e_publicada_a_cada_rodada(executor_com_report):
+async def test_cobertura_de_criterios_e_publicada_a_cada_rodada(executor_com_report):
     mod = executor_com_report(
         _report_com_criterios("atendido", "nao_atendido", "nao_automatizavel")
     )
     ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
 
-    mod.aplicar_politica_de_progresso(ctx)
+    await mod.aplicar_politica_de_progresso(ctx)
     aceite = ctx.state["acceptance_score"]
 
-    assert aceite["nota"] == 0.5
+    # Sem QA, a evidência é a autoavaliação do coder: a contagem bruta é
+    # publicada para auditoria, mas `nota`/`cobertura` vão zeradas e a FONTE diz
+    # por quê. Publicá-las como se fossem verificação independente enganaria o
+    # reviewer e o manifesto.
+    assert aceite["fonte"] == "harness_testes_do_coder"
+    assert aceite["nota"] is None
+    assert aceite["cobertura"] == 0.0
     assert aceite["total"] == 3
-    assert aceite["cobertura"] == pytest.approx(2 / 3)
+
+
+async def test_cobertura_do_qa_e_publicada_com_a_fonte(executor_module, monkeypatch):
+    """Com QA, a nota de aceite vale e a procedência acompanha."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module, "_carregar_execution_report", lambda _: _report_tecnico_verde()
+    )
+
+    async def _qa(_task_id, _report, **_kwargs):
+        return ResultadoQA(
+            executado=True,
+            evidencias=[
+                CriterionEvidence(
+                    criterion="A",
+                    criterion_id="CA-01",
+                    outcome=CriterionOutcome.ATENDIDO,
+                    checkable=True,
+                    check_performed="Playwright",
+                    observed="passou",
+                ),
+                CriterionEvidence(
+                    criterion="B",
+                    criterion_id="CA-02",
+                    outcome=CriterionOutcome.NAO_ATENDIDO,
+                    checkable=True,
+                    check_performed="Playwright",
+                    observed="falhou",
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(executor_module, "verificar_criterios_por_e2e", _qa)
+    ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+
+    await executor_module.aplicar_politica_de_progresso(ctx)
+    aceite = ctx.state["acceptance_score"]
+
+    assert aceite["fonte"] == "qa_e2e"
+    assert aceite["nota"] == 0.5
+    assert aceite["cobertura"] == 1.0
+
+
+async def test_criterios_verificados_pelo_qa_entram_na_nota_registrada(
+    executor_module, monkeypatch
+):
+    """A nota do histórico embute o degrau de critérios quando o QA decidiu."""
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module, "_carregar_execution_report", lambda _: _report_tecnico_verde()
+    )
+
+    def _qa_com(outcome):
+        async def _executar(_task_id, _report, **_kwargs):
+            return ResultadoQA(
+                executado=True,
+                evidencias=[
+                    CriterionEvidence(
+                        criterion="Critério 1",
+                        criterion_id="CA-01",
+                        outcome=outcome,
+                        checkable=True,
+                        check_performed="Playwright",
+                        observed="-",
+                    )
+                ],
+            )
+
+        return _executar
+
+    monkeypatch.setattr(
+        executor_module,
+        "verificar_criterios_por_e2e",
+        _qa_com(CriterionOutcome.ATENDIDO),
+    )
+    ctx_bom = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+    await executor_module.aplicar_politica_de_progresso(ctx_bom)
+
+    monkeypatch.setattr(
+        executor_module,
+        "verificar_criterios_por_e2e",
+        _qa_com(CriterionOutcome.NAO_ATENDIDO),
+    )
+    ctx_ruim = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+    await executor_module.aplicar_politica_de_progresso(ctx_ruim)
+
+    assert (
+        ctx_bom.state["progress_score_history"][0]
+        > ctx_ruim.state["progress_score_history"][0]
+    )
+
+
+async def test_evidencia_do_harness_nao_mexe_na_nota(executor_com_report):
+    """Sem QA, a nota volta a ser a técnica pura — o coder não se autoavalia."""
+    atendido = executor_com_report(
+        {**_report_tecnico_verde(), **_report_com_criterios("atendido")}
+    )
+    ctx_a = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+    await atendido.aplicar_politica_de_progresso(ctx_a)
+
+    nao_atendido = executor_com_report(
+        {**_report_tecnico_verde(), **_report_com_criterios("nao_atendido")}
+    )
+    ctx_b = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+    await nao_atendido.aplicar_politica_de_progresso(ctx_b)
+
+    assert (
+        ctx_a.state["progress_score_history"][0]
+        == ctx_b.state["progress_score_history"][0]
+    )
+
+
+async def test_evidencia_do_qa_substitui_a_do_harness(executor_module, monkeypatch):
+    """Quando o QA roda, é a palavra dele que vale — ele navegou a aplicação.
+
+    O harness só olha o resultado dos testes que o próprio coder escreveu e
+    vinculou; misturar as duas fontes produziria dois resultados para o mesmo
+    critério sem regra de desempate.
+    """
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module,
+        "_carregar_execution_report",
+        lambda _: _report_com_criterios("sem_teste_mapeado"),
+    )
+
+    async def _qa_reprova(_task_id, _report, **_kwargs):
+        return ResultadoQA(
+            executado=True,
+            evidencias=[
+                CriterionEvidence(
+                    criterion="Critério 1",
+                    criterion_id="CA-01",
+                    outcome=CriterionOutcome.NAO_ATENDIDO,
+                    checkable=True,
+                    check_performed="Playwright",
+                    observed="falhou",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(executor_module, "verificar_criterios_por_e2e", _qa_reprova)
+    ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+
+    await executor_module.aplicar_politica_de_progresso(ctx)
+
+    # O harness dizia `sem_teste_mapeado` (nada decidido, degrau fora da conta);
+    # o QA decidiu, e o critério reprovado passa a descontar da nota.
+    assert ctx.state["acceptance_score"]["nao_atendidos"] == 1
+    assert ctx.state["acceptance_score"]["cobertura"] == 1.0
+
+
+async def test_qa_indisponivel_degrada_para_a_evidencia_do_harness(
+    executor_com_report,
+):
+    """Medida auxiliar ausente não pode piorar a leitura da rodada."""
+    mod = executor_com_report(_report_com_criterios("atendido"))
+    ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+
+    await mod.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.state["acceptance_score"]["atendidos"] == 1
+    assert ctx.state["qa_criterios_resultado"]["executado"] is False
+
+
+async def test_registro_do_qa_vai_para_o_state(executor_com_report):
+    """Auditoria: o que o QA fez (ou por que não fez) precisa ficar registrado."""
+    mod = executor_com_report(_report_com_criterios("atendido"))
+    ctx = _Contexto({"validation": _veredito("reprovado"), "task_id": "TASK-001"})
+
+    await mod.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.state["qa_criterios_resultado"]["motivo"] == "desligado no teste"
+
+
+async def test_criterio_reprovado_pelo_qa_bloqueia_a_aprovacao(
+    executor_module, monkeypatch
+):
+    """Execução verde não basta: o QA provou que a entrega não faz o que pediram.
+
+    Sem esta trava o agente de QA não teria influência nenhuma sobre o que é
+    entregue — o loop encerraria por aprovação técnica e o achado dele viraria
+    só um número no relatório.
+    """
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module, "_carregar_execution_report", lambda _: _report_tecnico_verde()
+    )
+
+    async def _qa_reprova(_task_id, _report, **_kwargs):
+        return ResultadoQA(
+            executado=True,
+            evidencias=[
+                CriterionEvidence(
+                    criterion="A página inicial lista os álbuns",
+                    criterion_id="CA-01",
+                    outcome=CriterionOutcome.NAO_ATENDIDO,
+                    checkable=True,
+                    check_performed="Playwright",
+                    observed="O teste de navegação falhou: heading não encontrado.",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(executor_module, "verificar_criterios_por_e2e", _qa_reprova)
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    devolvido = await executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.actions.escalate is None, "encerrou o loop apesar do critério reprovado"
+    assert devolvido is not None
+    texto = devolvido.parts[0].text
+    assert "CA-01" in texto
+    assert "heading não encontrado" in texto, "o coder não recebeu o que o QA observou"
+    assert ctx.state["execution_result"] == texto
+
+
+async def test_criterio_nao_comprovado_nao_bloqueia_a_aprovacao(
+    executor_module, monkeypatch
+):
+    """Ausência de evidência não é evidência de ausência.
+
+    Só falha PROVADA bloqueia — senão a trava recriaria a task que nunca aprova,
+    que é o defeito histórico que este desenho inteiro evita.
+    """
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module, "_carregar_execution_report", lambda _: _report_tecnico_verde()
+    )
+
+    async def _qa_inconclusivo(_task_id, _report, **_kwargs):
+        return ResultadoQA(
+            executado=True,
+            evidencias=[
+                CriterionEvidence(
+                    criterion="O visual é minimalista",
+                    criterion_id="CA-01",
+                    outcome=CriterionOutcome.NAO_AUTOMATIZAVEL,
+                    checkable=False,
+                    check_performed="-",
+                    observed="fora do alcance da navegação",
+                ),
+                CriterionEvidence(
+                    criterion="Lista álbuns",
+                    criterion_id="CA-02",
+                    outcome=CriterionOutcome.ATENDIDO,
+                    checkable=True,
+                    check_performed="Playwright",
+                    observed="passou",
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(
+        executor_module, "verificar_criterios_por_e2e", _qa_inconclusivo
+    )
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    devolvido = await executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.actions.escalate is True
+    assert devolvido is None
+
+
+async def test_sem_qa_a_aprovacao_tecnica_encerra_como_antes(executor_com_report):
+    """Sem verificação por navegação, o comportamento anterior é preservado."""
+    mod = executor_com_report(_report_tecnico_verde())
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    devolvido = await mod.aplicar_politica_de_progresso(ctx)
+
+    assert ctx.actions.escalate is True
+    assert devolvido is None
+
+
+async def test_sem_decisao_do_qa_funciona_com_state_real_do_adk(
+    executor_com_report,
+):
+    """Regressão: `State` não implementa `pop`, usado antes nesta passagem.
+
+    Em execução real, o AttributeError escapava do after callback e fazia o
+    TaskIterator marcar todas as tasks como `erro_operacional`, logo após o
+    primeiro turno do executor.
+    """
+    mod = executor_com_report(_report_tecnico_verde())
+    state = State(
+        {
+            "validation": _veredito("aprovado"),
+            "task_id": "TASK-001",
+            "qa_criterios_evidencias": [{"outcome": "nao_atendido"}],
+        },
+        {},
+    )
+    ctx = _Contexto(state)
+
+    devolvido = await mod.aplicar_politica_de_progresso(ctx)
+
+    assert devolvido is None
+    assert ctx.actions.escalate is True
+    assert state["qa_criterios_evidencias"] == []
+
+
+async def test_qa_reprovando_sempre_o_mesmo_criterio_acaba_encerrando(
+    executor_module, monkeypatch
+):
+    """Bloquear a aprovação NÃO pode criar um loop sem freio.
+
+    Regressão: a primeira versão desta trava devolvia Content sem passar por
+    `registrar_e_avaliar`, então nenhuma decisão de continuidade era tomada e a
+    task rodava até o teto do LoopAgent — um build completo e uma suíte de
+    navegação por rodada. A rodada bloqueada pelo QA é uma rodada NÃO concluída
+    como qualquer outra, e a política precisa julgá-la.
+    """
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module, "_carregar_execution_report", lambda _: _report_tecnico_verde()
+    )
+
+    async def _qa_reprova(_task_id, _report, **_kwargs):
+        return ResultadoQA(
+            executado=True,
+            evidencias=[
+                CriterionEvidence(
+                    criterion="A página lista os álbuns",
+                    criterion_id="CA-01",
+                    outcome=CriterionOutcome.NAO_ATENDIDO,
+                    checkable=True,
+                    check_performed="Playwright",
+                    observed="heading não encontrado",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(executor_module, "verificar_criterios_por_e2e", _qa_reprova)
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    for _ in range(6):
+        await executor_module.aplicar_politica_de_progresso(ctx)
+        if ctx.actions.escalate:
+            break
+
+    assert ctx.actions.escalate is True, "o loop rodaria até o teto do LoopAgent"
+    assert ctx.state["loop_stop_reason"] is not None
+
+
+async def test_rodada_bloqueada_pelo_qa_mantem_os_historicos_alinhados(
+    executor_module, monkeypatch
+):
+    """Notas e assinaturas precisam ter o mesmo comprimento.
+
+    `contar_rodadas_sem_avanco` indexa as assinaturas pelo índice da NOTA. Se a
+    rodada bloqueada pelo QA entrasse só no histórico de notas, as duas listas
+    desalinhavam e a novidade de uma rodada seria creditada a outra — o platô
+    dispararia na task que estava avançando.
+    """
+    monkeypatch.setattr(executor_module, "fingerprint_mudou", lambda _: True)
+    monkeypatch.setattr(
+        executor_module, "_carregar_execution_report", lambda _: _report_tecnico_verde()
+    )
+
+    async def _qa_reprova(_task_id, _report, **_kwargs):
+        return ResultadoQA(
+            executado=True,
+            evidencias=[
+                CriterionEvidence(
+                    criterion="A",
+                    criterion_id="CA-01",
+                    outcome=CriterionOutcome.NAO_ATENDIDO,
+                    checkable=True,
+                    check_performed="Playwright",
+                    observed="falhou",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(executor_module, "verificar_criterios_por_e2e", _qa_reprova)
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-001"})
+
+    await executor_module.aplicar_politica_de_progresso(ctx)
+
+    assert len(ctx.state["progress_score_history"]) == len(
+        ctx.state["progress_error_signature_history"]
+    )
+
+
+async def test_criterios_reprovados_diferentes_renovam_a_tolerancia(executor_module):
+    """Fechar um critério e cair no seguinte é AVANÇO, não repetição.
+
+    Se a assinatura ignorasse quais critérios falharam, ela seria idêntica em
+    todas essas rodadas (execução verde, mesmos estágios) e o gatilho de erro
+    repetido cortaria a task na segunda tentativa.
+    """
+    primeira = executor_module._assinatura_da_rodada(
+        _report_tecnico_verde(), [{"criterion_id": "CA-01"}]
+    )
+    mesma = executor_module._assinatura_da_rodada(
+        _report_tecnico_verde(), [{"criterion_id": "CA-01"}]
+    )
+    outra = executor_module._assinatura_da_rodada(
+        _report_tecnico_verde(), [{"criterion_id": "CA-02"}]
+    )
+
+    assert primeira == mesma
+    assert primeira != outra

@@ -114,17 +114,38 @@ def test_nota_nao_recebe_veredito_do_validador():
     """Contrato de assinatura: `calcular_nota` só aceita o ExecutionReport.
 
     Enquanto o `ValidationVerdict` entrava no cálculo, o degrau
-    `CRITERIOS_ATENDIDOS` (35% do peso) ficava travado em 0 — o validador não
-    consegue COMPROVAR um critério de UI e devolvia `inconclusivo` rodada após
-    rodada. A nota teto virava ~0.65 e nenhuma task jamais aprovava. Manter a
-    porta fechada na assinatura impede que isso volte por descuido.
+    `CRITERIOS_ATENDIDOS` ficava travado em 0 — o validador não consegue
+    COMPROVAR um critério de UI e devolvia `inconclusivo` rodada após rodada. A
+    nota teto virava ~0.65 e nenhuma task jamais aprovava.
+
+    O degrau voltou na PoC do QA no loop (#394), mas por outra porta: o outcome
+    vem de teste EXECUTADO (`criteria_evidence`), não de julgamento. Esta porta
+    segue fechada, e é o que impede a regressão por descuido.
     """
     with pytest.raises(TypeError):
         calcular_nota(_report(), {"criteria_verdicts": []})
 
 
-def test_nenhum_degrau_depende_de_julgamento_semantico():
-    assert not any("criterio" in degrau.value for degrau in Degrau)
+def test_degrau_de_criterios_deriva_de_evidencia_executada():
+    """O degrau lê `criteria_evidence`, que é resultado de teste — não opinião.
+
+    Mesma evidência, mesma nota, quantas vezes se calcule: é essa propriedade
+    que distingue o degrau atual do que precisou ser removido, e não o fato de
+    ele medir critérios.
+    """
+    report = _report()
+    # Marcador de procedência: só evidência do QA independente pontua no degrau.
+    report["criteria_evidence_source"] = "qa_e2e"
+    report["criteria_evidence"] = [
+        {"criterion_id": "CA-01", "outcome": "atendido"},
+        {"criterion_id": "CA-02", "outcome": "nao_atendido"},
+    ]
+
+    primeira = calcular_nota(report)
+    segunda = calcular_nota(report)
+
+    assert primeira.por_degrau[Degrau.CRITERIOS_ATENDIDOS] == pytest.approx(0.5)
+    assert primeira.total == segunda.total
 
 
 # ---------------------------------------------------------------------------
@@ -154,9 +175,24 @@ def test_manifesto_sem_comandos_de_teste_dispensa_o_degrau_de_testes():
     assert Degrau.TESTES_PASSARAM not in graus_aplicaveis("service", [])
 
 
-def test_surface_desconhecida_mantem_todos_os_degraus():
+def test_surface_desconhecida_mantem_todos_os_degraus_tecnicos():
     """Sem saber o tipo do projeto, dispensar degrau inflaria a nota."""
-    assert graus_aplicaveis(None, []) == frozenset(Degrau)
+    aplicaveis = graus_aplicaveis(None, [])
+
+    assert aplicaveis == frozenset(Degrau) - {Degrau.CRITERIOS_ATENDIDOS}
+
+
+def test_criterios_so_entram_quando_ha_evidencia_decidida():
+    """A ÚNICA aplicabilidade que depende do resultado, e de propósito.
+
+    Para os degraus técnicos, deduzir aplicabilidade do resultado confundiria
+    "não se aplica" com "não executei porque algo falhou antes". Para os
+    critérios não há essa confusão: nada decidido é sempre limite de
+    instrumentação, nunca falha da entrega — e contá-lo como não alcançado
+    recriaria o teto artificial que motivou remover este degrau no passado.
+    """
+    assert Degrau.CRITERIOS_ATENDIDOS not in graus_aplicaveis("service", ["pytest"], 0)
+    assert Degrau.CRITERIOS_ATENDIDOS in graus_aplicaveis("service", ["pytest"], 1)
 
 
 # ---------------------------------------------------------------------------
@@ -208,13 +244,29 @@ def test_pesos_base_somam_um_com_todos_os_degraus():
     assert set(_PESOS_BASE) == set(Degrau)
 
 
-def test_testes_passaram_e_o_degrau_de_maior_peso():
-    """É o proxy mais direto de 'funciona' e o único fracionário.
+def test_criterios_atendidos_e_o_degrau_de_maior_peso():
+    """É a única capacidade que fala do QUE foi pedido.
 
-    Ser o mais pesado é o que dá à `loop_policy` um sinal forte e contínuo na
-    fase mais comum de iteração — consertar a suíte um teste por vez.
+    As outras cinco falam de o sistema conseguir rodar, que é pré-requisito e
+    não objetivo — daí este degrau pesar mais que qualquer um delas.
     """
-    assert _PESOS_BASE[Degrau.TESTES_PASSARAM] == max(_PESOS_BASE.values())
+    assert _PESOS_BASE[Degrau.CRITERIOS_ATENDIDOS] == max(_PESOS_BASE.values())
+
+
+def test_testes_passaram_e_o_maior_peso_entre_os_tecnicos():
+    """Entre as capacidades técnicas, é o proxy mais direto de 'funciona'.
+
+    Junto com o de critérios, é FRACIONÁRIO — e são os dois que dão à
+    `loop_policy` sinal contínuo nas fases mais comuns de iteração (consertar a
+    suíte um teste por vez, fechar critérios um a um).
+    """
+    tecnicos = {
+        degrau: peso
+        for degrau, peso in _PESOS_BASE.items()
+        if degrau is not Degrau.CRITERIOS_ATENDIDOS
+    }
+
+    assert _PESOS_BASE[Degrau.TESTES_PASSARAM] == max(tecnicos.values())
 
 
 # ---------------------------------------------------------------------------
@@ -230,11 +282,19 @@ def test_tudo_verde_da_nota_maxima():
 
 
 def test_report_vazio_da_nota_quase_zero():
-    """Só `MINIMO_PARA_RODAR` pontua: chegar aqui já implica gate aprovado."""
+    """Só `MINIMO_PARA_RODAR` pontua: chegar aqui já implica gate aprovado.
+
+    O valor esperado é o peso REDISTRIBUÍDO, não o peso-base: sem critério
+    decidido, o degrau de critérios sai da conta e o peso dele é diluído entre
+    os técnicos — que é exatamente o comportamento que mantém o teto em 1.0.
+    """
     nota = calcular_nota({})
 
     assert nota.por_degrau[Degrau.MINIMO_PARA_RODAR] == 1.0
-    assert nota.total == pytest.approx(_PESOS_BASE[Degrau.MINIMO_PARA_RODAR])
+    assert nota.total == pytest.approx(
+        nota.pesos_efetivos[Degrau.MINIMO_PARA_RODAR], abs=1e-6
+    )
+    assert Degrau.CRITERIOS_ATENDIDOS not in nota.degraus_aplicaveis
 
 
 @pytest.mark.parametrize("entrada", [None, "", [], 42])

@@ -6,27 +6,40 @@ avançavam e insistia em soluções já travadas. Este módulo produz a MEDIDA q
 substitui esse teto como critério primário: uma nota de 0 a 1 que diz o quanto a
 entrega subiu por uma "escada de capacidades".
 
-O QUE A NOTA MEDE — e o que ela deliberadamente NÃO mede: a nota responde a uma
-única pergunta, "o sistema gerado funciona, e o quanto?". Ela NÃO responde "a
-entrega atende ao critério de aceite" — julgar semanticamente um critério de
-aceite está fora do que este fluxo se propõe a fazer, aqui e em qualquer outro
-ponto do loop.
+O QUE A NOTA MEDE: uma pergunta só, em duas metades — "o sistema gerado funciona,
+e faz o que foi pedido?". As cinco primeiras capacidades respondem a primeira
+metade; `CRITERIOS_ATENDIDOS` responde a segunda.
 
-A distinção é a razão de ser deste módulo na forma atual. Uma versão anterior
-tinha um degrau `CRITERIOS_ATENDIDOS`, alimentado pelo julgamento que o
-`implementation_validator` pedia ao LLM sobre cada critério. Na prática esse
-degrau ficava permanentemente em 0: sem instrumentação de UI, o validador não
-tem como COMPROVAR "o usuário consegue criar um álbum pela interface", e o
-julgamento honesto era `inconclusivo` rodada após rodada. Com 35% do peso
-travado em zero, a nota teto virava ~0.65, nenhuma task jamais aprovava, e o
-platô disparava sobre um limite artificial em vez de sobre a entrega real. O
-degrau media a cegueira do validador, não o progresso do código.
+## Por que o degrau de critérios saiu e voltou (PoC issue #394)
 
-Princípio: a nota não pede NADA ao LLM. Ela é derivada de um único artefato que
-o fluxo já produz a cada rodada — o `ExecutionReport` do harness, que é saída de
-processo (exit codes, contagem de testes), não de julgamento. Dado o mesmo
-report, a nota é sempre a mesma; é auditável, reprodutível e testável
-isoladamente.
+Houve uma versão com um degrau `CRITERIOS_ATENDIDOS` alimentado pelo julgamento
+que o `implementation_validator` pedia ao LLM sobre cada critério. Ele ficava
+permanentemente em 0: sem instrumentação de interface, ninguém conseguia
+COMPROVAR "o usuário consegue criar um álbum pela interface", e o julgamento
+honesto era `inconclusivo` rodada após rodada. Com o peso travado em zero, a nota
+teto caía para ~0.65, nenhuma task aprovava, e o platô disparava sobre um limite
+artificial. O degrau media a cegueira do avaliador, não o progresso do código.
+
+A separação em duas notas (`acceptance_score` compondo por fora) resolveu o
+sintoma. O degrau volta agora porque a CAUSA foi resolvida: o QA de critérios
+navega a aplicação real com Playwright e produz `atendido`/`nao_atendido` de
+verdade (ver `qa_criterios/`). Com evidência real, medir critérios na mesma
+escada que o resto deixa de inflar um limite artificial e passa a ser o que
+sempre deveria ter sido — a medida do que a entrega faz.
+
+Duas defesas impedem a volta do vício antigo, e ambas são estruturais:
+
+1. **Aplicabilidade condicionada à evidência.** O degrau só entra na conta quando
+   ALGUM critério pôde ser decidido. Nada decidido → o peso é redistribuído e o
+   teto continua 1.0, em vez de a dimensão entrar valendo zero.
+2. **Não decidido nunca é não atendido.** `sem_teste_mapeado`,
+   `teste_nao_executado` e `nao_automatizavel` ficam fora do numerador E do
+   denominador — a incerteza aparece na COBERTURA, que informa sem descontar.
+
+Princípio preservado: a nota não pede NADA ao LLM em tempo de cálculo. Ela é
+derivada de um único artefato — o `ExecutionReport`, cujo `criteria_evidence` é
+resultado de teste executado (exit code de Playwright ou da suíte), não de
+julgamento. Dado o mesmo report, a nota é sempre a mesma.
 
 Este módulo NÃO decide se o loop continua — isso é `loop_policy.py`. Ele também
 NÃO emite veredito de aprovação: quem aprova continua sendo exclusivamente o
@@ -35,11 +48,13 @@ NÃO emite veredito de aprovação: quem aprova continua sendo exclusivamente o
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
 from shared.tools.coding_tools.harness_schemas import StageName, StageStatus
+
+from .acceptance_score import NotaAceite, calcular_nota_aceite
 
 
 class Degrau(str, Enum):
@@ -56,6 +71,7 @@ class Degrau(str, Enum):
     BUILD_CONCLUIDO = "build_concluido"
     APP_INICIOU = "app_iniciou"
     TESTES_PASSARAM = "testes_passaram"
+    CRITERIOS_ATENDIDOS = "criterios_atendidos"
 
 
 # Pesos-base dos degraus. Somam 1.0 quando TODOS se aplicam; quando algum não se
@@ -64,21 +80,26 @@ class Degrau(str, Enum):
 #
 # A ordem crescente é intencional: cada degrau só é alcançável depois do
 # anterior, então pesar mais os degraus finais faz a nota subir mais quando a
-# entrega avança na parte difícil. `TESTES_PASSARAM` leva o maior peso por ser o
-# proxy mais direto de "funciona" que o harness produz — e por ser o único
-# FRACIONÁRIO, o que dá à `loop_policy` um sinal contínuo justamente na fase mais
-# comum de iteração (consertar testes um a um) em vez de um degrau binário que
-# só acende no fim.
+# entrega avança na parte difícil.
+#
+# `CRITERIOS_ATENDIDOS` leva o maior peso porque é a única capacidade que fala do
+# QUE foi pedido; as outras cinco falam de o sistema conseguir rodar, que é
+# pré-requisito e não objetivo. `TESTES_PASSARAM` vem em seguida e continua
+# importando por um motivo próprio: junto com o de critérios, é FRACIONÁRIO, e são
+# os dois que dão à `loop_policy` sinal contínuo nas fases mais comuns de
+# iteração (consertar testes um a um, fechar critérios um a um) em vez de degraus
+# binários que só acendem no fim.
 #
 # ATENÇÃO — estes valores são um PONTO DE PARTIDA, não uma calibração. A issue
 # #394 deixa explicitamente a calibração fora de escopo: ajuste-os com base em
 # execuções reais (comparar o histórico de notas contra o desfecho observado).
 _PESOS_BASE: dict[Degrau, float] = {
     Degrau.MINIMO_PARA_RODAR: 0.05,
-    Degrau.AMBIENTE_PREPARADO: 0.10,
-    Degrau.BUILD_CONCLUIDO: 0.20,
-    Degrau.APP_INICIOU: 0.25,
-    Degrau.TESTES_PASSARAM: 0.40,
+    Degrau.AMBIENTE_PREPARADO: 0.08,
+    Degrau.BUILD_CONCLUIDO: 0.15,
+    Degrau.APP_INICIOU: 0.18,
+    Degrau.TESTES_PASSARAM: 0.24,
+    Degrau.CRITERIOS_ATENDIDOS: 0.30,
 }
 
 # Degraus cujo score sai do status técnico de UM estágio do harness (binário).
@@ -93,6 +114,27 @@ _ESTAGIO_DO_DEGRAU: dict[Degrau, StageName] = {
 # Superfície declarada no `run.json` que dispensa o degrau APP_INICIOU: não há
 # serviço nem comando de topo a inicializar (biblioteca, etc.).
 _SURFACE_SEM_APP = "none"
+
+# Marcador de procedência gravado no report quando a evidência de critérios veio
+# da navegação independente do QA (ver `qa_criterios`). Chave publicada no
+# próprio `ExecutionReport`, e não passada por parâmetro, para que a nota
+# continue derivável de um único artefato — e para que a procedência fique
+# auditável no report persistido em disco.
+CHAVE_FONTE_EVIDENCIA = "criteria_evidence_source"
+FONTE_QA_E2E = "qa_e2e"
+
+
+def evidencia_de_qa(report: Any) -> bool:
+    """Se a evidência de critérios deste report veio da navegação do QA.
+
+    Fail-closed: qualquer coisa que não seja exatamente o marcador esperado
+    conta como "não veio do QA". Um report antigo, truncado ou forjado nunca
+    pode fazer a evidência do coder pontuar no degrau de critérios.
+    """
+    if not isinstance(report, dict):
+        return False
+    return report.get(CHAVE_FONTE_EVIDENCIA) == FONTE_QA_E2E
+
 
 # Casas decimais da nota. Evita que ruído de ponto flutuante (0.30000000000004)
 # apareça no histórico e atrapalhe as comparações de margem em `loop_policy`.
@@ -109,12 +151,30 @@ class NotaProgresso:
         degraus_aplicaveis: Degraus que fazem sentido para este projeto.
         pesos_efetivos: Peso de cada degrau aplicável após a redistribuição;
             soma 1.0.
+        aceite: A leitura dos critérios de aceite desta rodada. Viaja junto com
+            a nota porque a COBERTURA (quanto deu para verificar) precisa ser
+            publicada ao lado dela sem entrar nela — cobertura baixa é limite da
+            instrumentação, não defeito da entrega, e por isso informa em vez de
+            descontar.
     """
 
     total: float
     por_degrau: dict[Degrau, float]
     degraus_aplicaveis: frozenset[Degrau]
     pesos_efetivos: dict[Degrau, float]
+    # Default vazio ("nenhum critério lido") para que uma `NotaProgresso` possa
+    # ser construída à mão sem montar a leitura de aceite inteira. `calcular_nota`
+    # SEMPRE preenche este campo — o default serve a quem fabrica uma nota, não
+    # ao caminho real.
+    aceite: NotaAceite = field(
+        default_factory=lambda: NotaAceite(
+            nota=None,
+            cobertura=0.0,
+            total=0,
+            por_resultado={},
+            criterios_enderecaveis=[],
+        )
+    )
 
     def como_dict(self) -> dict[str, float]:
         """Detalhamento serializável para o histórico no session state.
@@ -201,11 +261,14 @@ def _contexto_do_manifesto(
 
 
 def graus_aplicaveis(
-    surface: Optional[str], test_commands: list[str]
+    surface: Optional[str],
+    test_commands: list[str],
+    criterios_decididos: int = 0,
 ) -> frozenset[Degrau]:
-    """Degraus que fazem sentido para este projeto, a partir do manifesto.
+    """Degraus que fazem sentido para este projeto.
 
-    Puramente declarativo: NÃO consulta o resultado de nenhum estágio. Isso é
+    Os cinco degraus técnicos são decididos de forma puramente DECLARATIVA, a
+    partir do manifesto, sem consultar o resultado de nenhum estágio. Isso é
     deliberado — o harness usa `StageStatus.PULADO` para duas coisas bem
     diferentes: "não se aplica a este projeto" (ex.: `surface=none` não
     inicializa aplicação) e "não executei porque algo antes falhou". Deduzir
@@ -213,15 +276,27 @@ def graus_aplicaveis(
     upstream teria seu peso redistribuído em vez de contar como não alcançado —
     inflando a nota justamente na rodada que fracassou.
 
+    `CRITERIOS_ATENDIDOS` é a ÚNICA exceção, e a assimetria é o ponto: sua
+    aplicabilidade depende da evidência (`criterios_decididos`), não do
+    manifesto. O motivo é que, para ele, as duas situações que a regra acima
+    protege não se confundem — "nenhum critério pôde ser decidido" nunca é falha
+    da entrega, é limite de instrumentação, exatamente como um `surface=none` não
+    inicializa aplicação. Tratá-lo como não alcançado reintroduziria o teto
+    artificial de ~0.65 que motivou remover este degrau no passado (ver a
+    docstring do módulo).
+
     Args:
         surface: Superfície declarada no `run.json` (`service`/`command`/`none`),
             ou `None` quando ainda não se sabe.
         test_commands: Comandos de teste declarados no manifesto.
+        criterios_decididos: Quantos critérios de aceite receberam
+            `atendido`/`nao_atendido` nesta rodada. Zero mantém o degrau fora da
+            conta e redistribui o peso dele.
 
     Returns:
-        Conjunto de degraus aplicáveis. Com `surface=None` (desconhecida), todos
-        entram — conservador: sem evidência de que um degrau é dispensável,
-        redistribuir o peso dele inflaria a nota.
+        Conjunto de degraus aplicáveis. Com `surface=None` (desconhecida), os
+        técnicos entram todos — conservador: sem evidência de que um degrau é
+        dispensável, redistribuir o peso dele inflaria a nota.
     """
     aplicaveis = {
         Degrau.MINIMO_PARA_RODAR,
@@ -232,6 +307,8 @@ def graus_aplicaveis(
         aplicaveis.add(Degrau.APP_INICIOU)
     if surface is None or test_commands:
         aplicaveis.add(Degrau.TESTES_PASSARAM)
+    if criterios_decididos > 0:
+        aplicaveis.add(Degrau.CRITERIOS_ATENDIDOS)
     return frozenset(aplicaveis)
 
 
@@ -368,12 +445,30 @@ def calcular_nota(execution_report: Any) -> NotaProgresso:
 
     estagios = estagios_por_nome(report)
     surface, test_commands = _contexto_do_manifesto(estagios)
-    aplicaveis = graus_aplicaveis(surface, test_commands)
+    aceite = calcular_nota_aceite(report)
+
+    # A PROCEDÊNCIA da evidência decide se ela pode pontuar, e essa é a trava
+    # central desta PoC. O estágio 7 do harness também emite
+    # `atendido`/`nao_atendido` — mas derivados de testes que o PRÓPRIO CODER
+    # escreveu e vinculou no `run.json`. Deixar essa evidência alimentar o degrau
+    # daria 30% da nota para o coder se autoavaliar, que é exatamente o problema
+    # que este trabalho existe para eliminar.
+    #
+    # Só evidência produzida por navegação independente (`qa_e2e`) conta. Sem
+    # ela, o degrau sai da conta e o peso é redistribuído — a nota volta a ser a
+    # técnica pura, como era antes desta PoC. Degradar para o comportamento
+    # anterior é a resposta certa quando o QA não pôde rodar.
+    decididos = aceite.decididos if evidencia_de_qa(report) else 0
+    aplicaveis = graus_aplicaveis(surface, test_commands, decididos)
     pesos = redistribuir_pesos(aplicaveis)
 
     por_degrau: dict[Degrau, float] = {}
     for degrau in aplicaveis:
-        if degrau is Degrau.MINIMO_PARA_RODAR:
+        if degrau is Degrau.CRITERIOS_ATENDIDOS:
+            # `nota` é `atendidos / decididos`, e só chega aqui com `decididos >
+            # 0` (é o que torna o degrau aplicável), então nunca é `None`.
+            por_degrau[degrau] = aceite.nota or 0.0
+        elif degrau is Degrau.MINIMO_PARA_RODAR:
             # Sempre 1.0 aqui, e isso é intencional: `calcular_nota` só roda
             # depois que o harness executou, o que só acontece quando o gate
             # `recusar_execucao_incompleta` já deixou passar. Quem registra a
@@ -396,4 +491,5 @@ def calcular_nota(execution_report: Any) -> NotaProgresso:
         por_degrau={d: round(s, _CASAS_DECIMAIS) for d, s in por_degrau.items()},
         degraus_aplicaveis=aplicaveis,
         pesos_efetivos={d: round(p, _CASAS_DECIMAIS) for d, p in pesos.items()},
+        aceite=aceite,
     )

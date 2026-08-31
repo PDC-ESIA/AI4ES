@@ -2,3 +2,8 @@
 __pycache__/
 *.pyc
 .env
+# O `npm install` da imagem já cria o node_modules correto, numa camada anterior
+# ao `COPY . .`. Sem esta exclusão, o node_modules da máquina do dev seria
+# copiado por cima — trazendo binários de outra plataforma e inflando a imagem.
+node_modules/
+

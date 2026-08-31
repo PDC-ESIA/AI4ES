@@ -154,12 +154,11 @@ def test_calcular_cobertura_e_fail_closed():
 def test_cobertura_aceita_combinacao_de_aprovadas_e_ressalvas():
     ids = ["TASK-001", "TASK-002"]
 
-    assert calcular_cobertura(
-        True, ids, ids, ["TASK-001"], ["TASK-002"]
-    ) is True
-    assert calcular_cobertura(
-        True, ids, ids, ["TASK-001"], ["TASK-001", "TASK-002"]
-    ) is False, "uma task não pode estar nas duas categorias"
+    assert calcular_cobertura(True, ids, ids, ["TASK-001"], ["TASK-002"]) is True
+    assert (
+        calcular_cobertura(True, ids, ids, ["TASK-001"], ["TASK-001", "TASK-002"])
+        is False
+    ), "uma task não pode estar nas duas categorias"
 
 
 @pytest.mark.parametrize(
@@ -227,7 +226,8 @@ def test_estagnacao_conceito_b_com_base_executavel_e_aceita(monkeypatch):
                     "app_iniciou": 1,
                     "testes_passaram": 0.5,
                 }
-            ] * 3,
+            ]
+            * 3,
         },
         "TASK-001",
     )
@@ -241,8 +241,24 @@ def test_estagnacao_conceito_b_com_base_executavel_e_aceita(monkeypatch):
 @pytest.mark.parametrize(
     "nota,detalhe",
     [
-        (0.6, {"minimo_para_rodar": 1, "ambiente_preparado": 1, "build_concluido": 1, "app_iniciou": 1}),
-        (0.8, {"minimo_para_rodar": 1, "ambiente_preparado": 1, "build_concluido": 1, "app_iniciou": 0}),
+        (
+            0.6,
+            {
+                "minimo_para_rodar": 1,
+                "ambiente_preparado": 1,
+                "build_concluido": 1,
+                "app_iniciou": 1,
+            },
+        ),
+        (
+            0.8,
+            {
+                "minimo_para_rodar": 1,
+                "ambiente_preparado": 1,
+                "build_concluido": 1,
+                "app_iniciou": 0,
+            },
+        ),
     ],
 )
 def test_estagnacao_conceito_c_ou_base_quebrada_continua_bloqueada(
@@ -566,7 +582,13 @@ def _aceite(nota, cobertura=1.0, total=2, atendidos=2, nao_atendidos=0):
     }
 
 
-def test_nota_final_compoe_tecnica_e_aceite():
+def test_nota_final_e_a_ultima_do_historico():
+    """A nota já vem unificada do `progress_score` (PoC #394 — QA no loop).
+
+    Não há mais composição aqui: os critérios entram na nota como um degrau da
+    escada, então o iterator só publica a última nota registrada. `nota_aceite`
+    segue publicada ao lado, como recorte auditável da dimensão.
+    """
     state = _reprovado(
         progress_score_history=[0.8],
         acceptance_score=_aceite(0.5, cobertura=1.0),
@@ -574,20 +596,18 @@ def test_nota_final_compoe_tecnica_e_aceite():
 
     resultado = classificar_desfecho(state, "TASK-001")
 
-    assert resultado["nota_tecnica_final"] == 0.8
+    assert resultado["nota_final"] == 0.8
     assert resultado["nota_aceite"] == 0.5
-    assert resultado["nota_final"] == pytest.approx(0.65 * 0.8 + 0.35 * 0.5)
     assert resultado["cobertura_criterios"] == 1.0
 
 
-def test_sem_aceite_a_nota_final_e_a_tecnica_pura():
-    """Compatível com o comportamento anterior à dimensão de aceite."""
+def test_sem_aceite_publicado_a_nota_final_segue_valendo():
+    """Sem registro de aceite, a nota continua sendo a do histórico."""
     resultado = classificar_desfecho(
         _reprovado(progress_score_history=[0.9]), "TASK-001"
     )
 
     assert resultado["nota_final"] == 0.9
-    assert resultado["nota_tecnica_final"] == 0.9
     assert resultado["nota_aceite"] is None
     assert resultado["cobertura_criterios"] == 0.0
 
@@ -618,15 +638,20 @@ def test_cobertura_baixa_nao_desconta_da_nota_final():
     assert ampla["cobertura_criterios"] == 1.0
 
 
-def test_conceito_deriva_da_nota_unificada():
-    """Aceite ruim rebaixa o conceito mesmo com a técnica impecável."""
+def test_conceito_deriva_da_nota_registrada():
+    """O conceito sai da nota unificada, que já embute os critérios.
+
+    O rebaixamento por aceite ruim continua acontecendo — só que ANTES daqui,
+    dentro de `calcular_nota` (ver `test_acceptance_score`): quando este módulo
+    recebe a nota, ela já foi descontada pelo degrau de critérios.
+    """
     state = _reprovado(
-        progress_score_history=[1.0], acceptance_score=_aceite(0.0)
+        progress_score_history=[0.7], acceptance_score=_aceite(0.0, cobertura=1.0)
     )
 
     resultado = classificar_desfecho(state, "TASK-001")
 
-    assert resultado["nota_final"] == pytest.approx(0.65)
+    assert resultado["nota_final"] == pytest.approx(0.7)
     assert resultado["conceito"] == "B"
 
 
@@ -643,7 +668,11 @@ def test_aceite_corrompido_degrada_para_a_nota_tecnica(bruto):
     assert resultado["nota_aceite"] is None
 
 
-def test_chaves_de_aceite_sao_limpas_entre_tasks():
-    """O flag do aviso precisa zerar, ou só a primeira task o receberia."""
+def test_chaves_de_aceite_e_de_qa_sao_limpas_entre_tasks():
+    """Registro por task não pode vazar para a task seguinte.
+
+    Herdar o registro do QA faria a auditoria de uma task sem verificação
+    apontar uma navegação que aconteceu em outra.
+    """
     assert "acceptance_score" in _CHAVES_CICLO_REMOVIDAS
-    assert "acceptance_coverage_notice_used" in _CHAVES_CICLO_REMOVIDAS
+    assert "qa_criterios_resultado" in _CHAVES_CICLO_REMOVIDAS
