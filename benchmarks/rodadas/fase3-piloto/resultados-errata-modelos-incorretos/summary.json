@@ -1,0 +1,326 @@
+{
+  "rodada": "fase3-piloto",
+  "models": {
+    "gemini/gemini-2.5-flash": {
+      "gaia_l1": {
+        "n_cases": 0,
+        "k_reps": 0,
+        "EM_mean": 0.0,
+        "F1_mean": 0.0,
+        "pass_k_consistency": 0.0,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 90,
+          "pares_caso_repeticao": 30,
+          "n_api_error": 30
+        },
+        "latencia": {},
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": null
+      },
+      "hotpot_qa": {
+        "n_cases": 0,
+        "k_reps": 0,
+        "EM_mean": 0.0,
+        "F1_mean": 0.0,
+        "pass_k_consistency": 0.0,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 180,
+          "pares_caso_repeticao": 60,
+          "n_api_error": 60
+        },
+        "latencia": {},
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": null
+      },
+      "longbench_qasper": {
+        "n_cases": 0,
+        "k_reps": 0,
+        "EM_mean": 0.0,
+        "F1_mean": 0.0,
+        "pass_k_consistency": 0.0,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 90,
+          "pares_caso_repeticao": 30,
+          "n_api_error": 30
+        },
+        "latencia": {},
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": null
+      },
+      "nq_open": {
+        "n_cases": 4,
+        "k_reps": 3,
+        "EM_mean": 0.25,
+        "F1_mean": 0.6166666666666667,
+        "pass_k_consistency": 0.25,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 171,
+          "pares_caso_repeticao": 60,
+          "n_api_error": 45,
+          "n_ok": 8,
+          "n_rate_limited": 7
+        },
+        "latencia": {
+          "p50_s": 1.024,
+          "p95_s": 1.501,
+          "mean_s": 1.08
+        },
+        "custo_total_usd": 0.001109,
+        "custo_medio_por_chamada_usd": 0.00013866,
+        "tokens_saida_media": 50.1
+      },
+      "squad_v2": {
+        "n_cases": 7,
+        "k_reps": 3,
+        "EM_mean": 0.0,
+        "F1_mean": 0.0,
+        "pass_k_consistency": 0.0,
+        "unanswerable_rate": 0.6904761904761906,
+        "n_unanswerable_cases": 7,
+        "false_positive_answering": 0.3095238095238095,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 154,
+          "pares_caso_repeticao": 60,
+          "n_api_error": 47,
+          "n_ok": 13
+        },
+        "latencia": {
+          "p50_s": 1.746,
+          "p95_s": 23.758,
+          "mean_s": 4.003
+        },
+        "custo_total_usd": 0.008537,
+        "custo_medio_por_chamada_usd": 0.00065672,
+        "tokens_saida_media": 234.8
+      }
+    },
+    "github_copilot/gemini-3.5-flash": {
+      "gaia_l1": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.5333333333333333,
+        "F1_mean": 0.5333333333333333,
+        "pass_k_consistency": 0.5,
+        "answered_rate": 0.9667,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 12.488,
+          "p95_s": 14.999,
+          "mean_s": 11.659
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 17.1
+      },
+      "hotpot_qa": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.8,
+        "F1_mean": 0.8911111111111112,
+        "pass_k_consistency": 0.8,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 3.644,
+          "p95_s": 4.92,
+          "mean_s": 3.807
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 2.9
+      },
+      "longbench_qasper": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.3,
+        "F1_mean": 0.5363944104695764,
+        "pass_k_consistency": 0.3,
+        "answered_rate": 0.7,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 5.425,
+          "p95_s": 9.523,
+          "mean_s": 5.768
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 4.3
+      },
+      "nq_open": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.25,
+        "F1_mean": 0.44230158730158725,
+        "pass_k_consistency": 0.2,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 3.998,
+          "p95_s": 10.855,
+          "mean_s": 4.709
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.7
+      },
+      "squad_v2": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.4666666666666666,
+        "F1_mean": 0.48888888888888893,
+        "pass_k_consistency": 0.45,
+        "unanswerable_rate": 0.6333333333333334,
+        "n_unanswerable_cases": 10,
+        "false_positive_answering": 0.36666666666666664,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 4.516,
+          "p95_s": 9.43,
+          "mean_s": 5.404
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.2
+      }
+    },
+    "github_copilot/gpt-5.4": {
+      "gaia_l1": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.1,
+        "F1_mean": 0.1,
+        "pass_k_consistency": 0.1,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 1.126,
+          "p95_s": 1.338,
+          "mean_s": 1.109
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 9.5
+      },
+      "hotpot_qa": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.75,
+        "F1_mean": 0.8411111111111111,
+        "pass_k_consistency": 0.75,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 0.927,
+          "p95_s": 1.229,
+          "mean_s": 0.968
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 6.0
+      },
+      "longbench_qasper": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.3,
+        "F1_mean": 0.6002152273338714,
+        "pass_k_consistency": 0.3,
+        "answered_rate": 0.7333,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 0.939,
+          "p95_s": 1.296,
+          "mean_s": 1.103
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 7.2
+      },
+      "nq_open": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.16666666666666669,
+        "F1_mean": 0.31444444444444447,
+        "pass_k_consistency": 0.15,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 1.025,
+          "p95_s": 1.819,
+          "mean_s": 1.135
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 6.5
+      },
+      "squad_v2": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.45,
+        "F1_mean": 0.4928571428571429,
+        "pass_k_consistency": 0.45,
+        "unanswerable_rate": 0.5,
+        "n_unanswerable_cases": 10,
+        "false_positive_answering": 0.5,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 0.966,
+          "p95_s": 1.339,
+          "mean_s": 1.007
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 6.7
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+# Prompts padronizados do piloto (Protocolo §7).
+# Zero-shot, idênticos para todos os modelos. Sem few-shot, sem ajuste por modelo.
+# Variáveis disponíveis: {question}, {context}
+
+nq_open:
+  user: |
+    Answer the question with a short answer (usually a few words).
+    Respond ONLY with the answer itself - no explanation, no full sentence.
+
+    Question: {question}
+
+    Answer:
+
+squad_v2:
+  user: |
+    Read the passage and answer the question with the shortest possible span
+    from the passage. If the passage does not contain the answer, respond
+    with exactly: unanswerable
+
+    Passage:
+    {context}
+
+    Question: {question}
+
+    Answer (span or "unanswerable"):
+
+hotpot_qa:
+  # Ajuste Fase 4: solicita também os títulos dos parágrafos usados como evidência.
+  # Isso viabiliza a métrica Supporting Fact Precision/Recall.
+  user: |
+    You are given several paragraphs from Wikipedia. Use them to answer the
+    question in as few words as possible.
+
+    First, write the short answer on one line, prefixed with "Answer:".
+    Then, on the next line, list the paragraph titles you used as evidence,
+    prefixed with "Supporting facts:" and separated by " | ".
+
+    {context}
+
+    Question: {question}
+
+    Answer:
+    Supporting facts:
+
+longbench_qasper:
+  user: |
+    Read the scientific paper below and answer the question as briefly as
+    possible (a few words). If the paper does not specify, respond with
+    exactly: not specified
+
+    Paper:
+    {context}
+
+    Question: {question}
+
+    Answer:
+
+gaia_l1:
+  user: |
+    Solve the task below and give the final exact answer.
+    Respond ONLY with the exact final answer - no explanation, no reasoning.
+
+    Task: {question}
+
+    Final Answer:

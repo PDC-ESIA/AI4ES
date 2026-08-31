@@ -1,0 +1,50 @@
+# Configuração da rodada piloto da Fase 3 (Protocolo §5, §6, §8).
+# Rodada = unidade de organização: config + prompts + subsets + resultados
+# vivem juntos em benchmarks/rodadas/<nome-da-rodada>/.
+# Parâmetros de inferência fixos e idênticos para todos os modelos.
+
+run_id: fase3-piloto-modelos-corretos
+repetitions: 3
+seed: 42
+
+# Tamanhos dos subsets por benchmark (casos amostrados com a seed acima)
+subsets:
+  nq_open: 20
+  squad_v2: 20
+  hotpot_qa: 20
+  longbench_qasper: 10
+  gaia_l1: 10
+
+# Parâmetros de decodificação (idênticos p/ todos os modelos)
+temperature: 0.0
+top_p: 1.0
+
+# Limites de saída por benchmark (tokens)
+max_tokens:
+  default: 256
+  longbench_qasper: 512
+
+# Timeout/retries por chamada
+timeout_s: 120
+num_retries: 2
+sleep_between_calls_s: 0.3
+
+# Modelos conforme PR.md (linhas 50-56).
+# Nota: github_copilot/gemini-3.5-flash-lite foi removido porque a API do
+# GitHub Copilot retornou "The requested model is not supported" para esta conta.
+# Os demais 5 modelos passaram no preflight.
+models:
+  - github_copilot/gemini-3.1-pro-preview
+  - github_copilot/gemini-3.7-flash
+  - github_copilot/gemini-3.5-flash
+  - github_copilot/gpt-5-mini
+  - github_copilot/claude-sonnet-4.5
+
+# max_tokens efetivo por modelo (sobrepõe "default").
+# gpt-5-mini consome tokens de raciocínio antes de emitir texto; precisa de
+# pelo menos ~128 tokens para respostas curtas. Modelos thinking/pro ganham
+# folga extra para não truncar respostas longas.
+model_max_tokens:
+  github_copilot/gpt-5-mini: 512
+  github_copilot/gemini-3.1-pro-preview: 1536
+  github_copilot/claude-sonnet-4.5: 1536

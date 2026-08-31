@@ -1,0 +1,67 @@
+# Configuração da Fase 4 Executiva — Benchmark do Agente de QA.
+#
+# Esta rodada mantém a representatividade da Fase 4 (datasets maiores que o
+# piloto) mas com tamanhos viáveis para execução em poucas horas usando o
+# runner paralelo. Cumpre o requisito da Fase 4 de executar uma porcentagem
+# substancial dos datasets totais disponibilizados.
+#
+# Estimativa de chamadas:
+#   5 modelos × (500+1000+500+100+42 casos) × 3 reps ≈ 32.130 chamadas
+# Tempo estimado com 20 workers/modelo e 10 req/s: 2-4 horas.
+
+run_id: fase4-executiva
+repetitions: 3
+seed: 42
+
+# Subsets executivos (porcentagem do dataset total):
+#   nq_open: 500 / 3.610  ≈ 13.9%
+#   squad_v2: 1.000 / 11.873 ≈ 8.4%
+#   hotpot_qa: 500 / 7.405 ≈ 6.8%
+#   longbench_qasper: 100 / 200 = 50%
+#   gaia_l1: 42 / 42 = 100%
+subsets:
+  nq_open: 500
+  squad_v2: 1000
+  hotpot_qa: 500
+  longbench_qasper: 100
+  gaia_l1: null
+
+# Parâmetros de decodificação (idênticos p/ todos os modelos)
+temperature: 0.0
+top_p: 1.0
+
+# Limites de saída por benchmark (tokens)
+max_tokens:
+  default: 256
+  longbench_qasper: 512
+  gaia_l1: 512
+
+# Timeout/retries por chamada
+timeout_s: 120
+num_retries: 2
+max_reasoning_retries: 2
+sleep_between_calls_s: 0.3
+
+# Paralelismo
+max_concurrent_calls_per_model: 20
+max_calls_per_second_per_model: 10.0
+
+# Paralelismo do LLM-as-a-Judge
+judge_max_workers: 15
+judge_max_calls_per_second: 8.0
+
+# Modelos conforme PR.md (linhas 50-56), ajustados para a realidade da conta.
+# Nota: github_copilot/gemini-3.5-flash-lite foi removido porque a API do
+# GitHub Copilot retornou "The requested model is not supported" para esta conta.
+models:
+  - github_copilot/gemini-3.1-pro-preview
+  - github_copilot/gemini-3.7-flash
+  - github_copilot/gemini-3.5-flash
+  - github_copilot/gpt-5-mini
+  - github_copilot/claude-sonnet-4.5
+
+# max_tokens efetivo por modelo (sobrepõe "default").
+model_max_tokens:
+  github_copilot/gpt-5-mini: 512
+  github_copilot/gemini-3.1-pro-preview: 1536
+  github_copilot/claude-sonnet-4.5: 1536

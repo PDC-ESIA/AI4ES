@@ -1,0 +1,559 @@
+{
+  "rodada": "fase3-piloto",
+  "models": {
+    "github_copilot/claude-sonnet-4.5": {
+      "gaia_l1": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.1,
+        "F1_mean": 0.1,
+        "pass_k_consistency": 0.1,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 3.079,
+          "p95_s": 5.002,
+          "mean_s": 3.002
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 78.9
+      },
+      "hotpot_qa": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.75,
+        "F1_mean": 0.8411111111111111,
+        "pass_k_consistency": 0.75,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 1.679,
+          "p95_s": 1.948,
+          "mean_s": 1.7
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 6.5
+      },
+      "longbench_qasper": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.16666666666666666,
+        "F1_mean": 0.4486377803939612,
+        "pass_k_consistency": 0.1,
+        "answered_rate": 0.9333,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 1.897,
+          "p95_s": 8.192,
+          "mean_s": 2.669
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 57.9
+      },
+      "nq_open": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.25,
+        "F1_mean": 0.3898015873015873,
+        "pass_k_consistency": 0.25,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 1.816,
+          "p95_s": 2.357,
+          "mean_s": 1.907
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 8.4
+      },
+      "squad_v2": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.45,
+        "F1_mean": 0.4833333333333333,
+        "pass_k_consistency": 0.45,
+        "unanswerable_rate": 0.6666666666666667,
+        "n_unanswerable_cases": 10,
+        "false_positive_answering": 0.33333333333333337,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 1.742,
+          "p95_s": 2.768,
+          "mean_s": 1.934
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 18.0
+      }
+    },
+    "github_copilot/gemini-3.1-pro-preview": {
+      "gaia_l1": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.6,
+        "F1_mean": 0.6,
+        "pass_k_consistency": 0.5,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 9.421,
+          "p95_s": 19.096,
+          "mean_s": 11.738
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 5.0
+      },
+      "hotpot_qa": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.8,
+        "F1_mean": 0.8911111111111112,
+        "pass_k_consistency": 0.8,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 5.224,
+          "p95_s": 7.19,
+          "mean_s": 5.587
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.0
+      },
+      "longbench_qasper": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.3,
+        "F1_mean": 0.5235485606672048,
+        "pass_k_consistency": 0.3,
+        "answered_rate": 0.6667,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 6.449,
+          "p95_s": 14.465,
+          "mean_s": 7.147
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.8
+      },
+      "nq_open": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.26666666666666666,
+        "F1_mean": 0.4750793650793651,
+        "pass_k_consistency": 0.25,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 5.89,
+          "p95_s": 11.573,
+          "mean_s": 6.515
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.7
+      },
+      "squad_v2": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.45,
+        "F1_mean": 0.48650793650793656,
+        "pass_k_consistency": 0.45,
+        "unanswerable_rate": 0.7666666666666666,
+        "n_unanswerable_cases": 10,
+        "false_positive_answering": 0.2333333333333333,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 6.76,
+          "p95_s": 9.912,
+          "mean_s": 6.831
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3
+      }
+    },
+    "github_copilot/gemini-3.5-flash": {
+      "gaia_l1": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.16666666666666666,
+        "F1_mean": 0.16666666666666666,
+        "pass_k_consistency": 0.0,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 4.307,
+          "p95_s": 7.042,
+          "mean_s": 4.85
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 4.5
+      },
+      "hotpot_qa": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.7833333333333333,
+        "F1_mean": 0.9020634920634922,
+        "pass_k_consistency": 0.75,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 3.386,
+          "p95_s": 4.404,
+          "mean_s": 3.47
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 2.9
+      },
+      "longbench_qasper": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.3,
+        "F1_mean": 0.5033078219341818,
+        "pass_k_consistency": 0.3,
+        "answered_rate": 0.8,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 5.326,
+          "p95_s": 6.966,
+          "mean_s": 4.952
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 7.4
+      },
+      "nq_open": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.25,
+        "F1_mean": 0.3961255411255411,
+        "pass_k_consistency": 0.25,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 3.997,
+          "p95_s": 6.041,
+          "mean_s": 4.113
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.9
+      },
+      "squad_v2": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.41666666666666663,
+        "F1_mean": 0.4595238095238095,
+        "pass_k_consistency": 0.35,
+        "unanswerable_rate": 0.6333333333333333,
+        "n_unanswerable_cases": 10,
+        "false_positive_answering": 0.3666666666666667,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 3.794,
+          "p95_s": 5.64,
+          "mean_s": 4.04
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.9
+      }
+    },
+    "github_copilot/gemini-3.7-flash": {
+      "gaia_l1": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.4666666666666666,
+        "F1_mean": 0.4666666666666666,
+        "pass_k_consistency": 0.4,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 5.224,
+          "p95_s": 7.884,
+          "mean_s": 6.892
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.5
+      },
+      "hotpot_qa": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.8,
+        "F1_mean": 0.8911111111111112,
+        "pass_k_consistency": 0.8,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 61,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 3.484,
+          "p95_s": 4.942,
+          "mean_s": 3.662
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.0
+      },
+      "longbench_qasper": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.3,
+        "F1_mean": 0.5046199892386334,
+        "pass_k_consistency": 0.3,
+        "answered_rate": 0.6667,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_ok": 30
+        },
+        "latencia": {
+          "p50_s": 4.507,
+          "p95_s": 7.792,
+          "mean_s": 4.9
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 6.7
+      },
+      "nq_open": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.23333333333333334,
+        "F1_mean": 0.44637566137566137,
+        "pass_k_consistency": 0.2,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 4.308,
+          "p95_s": 6.234,
+          "mean_s": 4.52
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 4.0
+      },
+      "squad_v2": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.45,
+        "F1_mean": 0.48650793650793656,
+        "pass_k_consistency": 0.45,
+        "unanswerable_rate": 0.8,
+        "n_unanswerable_cases": 10,
+        "false_positive_answering": 0.2,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 3.489,
+          "p95_s": 5.941,
+          "mean_s": 3.897
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 3.1
+      }
+    },
+    "github_copilot/gpt-5-mini": {
+      "gaia_l1": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.1,
+        "F1_mean": 0.1,
+        "pass_k_consistency": 0.0,
+        "answered_rate": 0.1667,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_empty": 25,
+          "n_ok": 5
+        },
+        "latencia": {
+          "p50_s": 3.69,
+          "p95_s": 5.02,
+          "mean_s": 3.751
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 344.4
+      },
+      "hotpot_qa": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.75,
+        "F1_mean": 0.8411111111111111,
+        "pass_k_consistency": 0.75,
+        "answered_rate": 1.0,
+        "execucoes": {
+          "total_registros_brutos": 61,
+          "pares_caso_repeticao": 60,
+          "n_ok": 60
+        },
+        "latencia": {
+          "p50_s": 1.845,
+          "p95_s": 4.713,
+          "mean_s": 2.3
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 122.8
+      },
+      "longbench_qasper": {
+        "n_cases": 10,
+        "k_reps": 3,
+        "EM_mean": 0.06666666666666667,
+        "F1_mean": 0.3463046716586099,
+        "pass_k_consistency": 0.0,
+        "answered_rate": 0.7667,
+        "execucoes": {
+          "total_registros_brutos": 30,
+          "pares_caso_repeticao": 30,
+          "n_empty": 1,
+          "n_ok": 29
+        },
+        "latencia": {
+          "p50_s": 2.255,
+          "p95_s": 4.817,
+          "mean_s": 2.633
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 163.2
+      },
+      "nq_open": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.2,
+        "F1_mean": 0.31633838383838386,
+        "pass_k_consistency": 0.2,
+        "answered_rate": 0.7833,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_empty": 13,
+          "n_ok": 47
+        },
+        "latencia": {
+          "p50_s": 2.809,
+          "p95_s": 6.045,
+          "mean_s": 3.318
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 231
+      },
+      "squad_v2": {
+        "n_cases": 20,
+        "k_reps": 3,
+        "EM_mean": 0.45,
+        "F1_mean": 0.4928571428571429,
+        "pass_k_consistency": 0.45,
+        "unanswerable_rate": 0.5,
+        "n_unanswerable_cases": 10,
+        "false_positive_answering": 0.5,
+        "answered_rate": null,
+        "execucoes": {
+          "total_registros_brutos": 60,
+          "pares_caso_repeticao": 60,
+          "n_empty": 3,
+          "n_ok": 57
+        },
+        "latencia": {
+          "p50_s": 2.052,
+          "p95_s": 6.648,
+          "mean_s": 2.731
+        },
+        "custo_total_usd": 0.0,
+        "custo_medio_por_chamada_usd": 0.0,
+        "tokens_saida_media": 174.2
+      }
+    }
+  }
+}
