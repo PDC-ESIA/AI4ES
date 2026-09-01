@@ -97,6 +97,40 @@ def _extrair_criterios(report: dict) -> list[str]:
     return [e.get("criterion", "") for e in report.get("criteria_evidence", [])]
 
 
+def _neutralizar_criterios_nao_avaliados(
+    report: dict,
+    criteria_verdicts: list[CriterionVerdict],
+) -> list[CriterionVerdict]:
+    """Impede o LLM de decidir critérios que o harness não avaliou.
+
+    `nao_avaliado` é uma fronteira de confiança, não uma sugestão ao modelo:
+    testes e sondagens do report são evidência técnica insuficiente para afirmar
+    atendimento semântico. Qualquer `atendido` ou `nao_atendido` emitido pelo
+    LLM para esse outcome é substituído deterministicamente por `inconclusivo`.
+    """
+    nao_avaliados = {
+        evidencia.get("criterion")
+        for evidencia in (report.get("criteria_evidence") or [])
+        if isinstance(evidencia, dict)
+        and evidencia.get("outcome") == "nao_avaliado"
+        and isinstance(evidencia.get("criterion"), str)
+    }
+    return [
+        CriterionVerdict(
+            criterion=veredito.criterion,
+            status=CriterionStatus.INCONCLUSIVO,
+            reasoning=(
+                "Critério não avaliado pelo harness; evidências técnicas e "
+                "testes do coder não autorizam conclusão semântica."
+            ),
+            evidence_ref=None,
+        )
+        if veredito.criterion in nao_avaliados
+        else veredito
+        for veredito in criteria_verdicts
+    ]
+
+
 def montar_veredito(
     report: dict,
     criteria_verdicts: list[CriterionVerdict] | None = None,
@@ -121,10 +155,10 @@ def montar_veredito(
     Args:
         report: ExecutionReport como dict (saída do harness).
         criteria_verdicts: Vereditos por critério, quando houver. NÃO influenciam
-            o status. No caminho de SUCESSO entram no veredito como registro de
-            auditoria; no de FALHA são descartados e substituídos pela lista
-            determinística acima. A `loop_policy` NÃO os consulta: a assinatura
-            de erro é de falha técnica e recebe só o `ExecutionReport`.
+            o status. No caminho de SUCESSO entram como registro de auditoria,
+            mas qualquer critério cujo outcome seja `nao_avaliado` é forçado a
+            `inconclusivo`. No caminho de FALHA são descartados e substituídos
+            pela lista determinística acima. A `loop_policy` NÃO os consulta.
 
     Returns:
         ValidationVerdict consolidado (o único portador de veredito do fluxo).
@@ -181,7 +215,9 @@ def montar_veredito(
     return ValidationVerdict(
         work_item_id=work_item_id,
         status=VerdictStatus.APROVADO,
-        criteria_verdicts=criteria_verdicts or [],
+        criteria_verdicts=_neutralizar_criterios_nao_avaliados(
+            report, criteria_verdicts or []
+        ),
         blocking_reason=None,
         summary=(
             "Aprovado: o sistema gerado foi construído, iniciou e passou nos "
@@ -226,6 +262,8 @@ def _parse_e_aplicar_politica(callback_context):
       não é permitido);
     - critério do report não julgado (ou renomeado) → `inconclusivo` no
       registro, sem efeito sobre o status;
+        - critério com `outcome=nao_avaliado` → sempre `inconclusivo`, mesmo que o
+            LLM responda `atendido` ou `nao_atendido`;
     - execução sem `overall_status == "sucesso"` → REPROVADO, mesmo que o texto
       do LLM "aprove"; execução bem-sucedida → APROVADO, mesmo que o texto do
       LLM reprove por critério não comprovado.

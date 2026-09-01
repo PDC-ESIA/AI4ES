@@ -87,7 +87,8 @@ class RunManifest(BaseModel):
     acceptance_tests: dict[str, list[str]] = Field(
         default_factory=dict,
         description=(
-            "Mapa critério de aceite → testes que o comprovam. A chave é o id "
+            "Mapa critério de aceite → testes que exercitam seu comportamento. "
+            "O vínculo é evidência técnica e não aprova o critério. A chave é o id "
             "do critério na Task (CA-01, CA-02...); o valor, os identificadores "
             "dos testes que o cobrem, no formato com que a suíte nomeia um "
             "teste individual (em pytest, o nodeid "

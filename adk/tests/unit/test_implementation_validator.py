@@ -193,12 +193,46 @@ def test_veredito_e_um_validation_verdict():
 
 
 # ---------------------------------------------------------------------------
-# Instrução do validador — a única barreira contra o falso `atendido`
+# Enforcement contra falso `atendido`
 # ---------------------------------------------------------------------------
 #
 # Desde que o harness parou de converter teste vinculado em `atendido`, todo
-# critério chega como `nao_avaliado` e o julgamento é inteiramente deste agente.
-# O prompt é, portanto, o que separa "evidência" de "aprovação por aproximação".
+# critério chega como `nao_avaliado`. O enforcement abaixo é feito por código;
+# o prompt apenas comunica ao LLM a mesma regra.
+
+
+@pytest.mark.parametrize(
+    "status_llm",
+    [CriterionStatus.ATENDIDO, CriterionStatus.NAO_ATENDIDO],
+)
+def test_criterio_nao_avaliado_e_forcado_a_inconclusivo(status_llm):
+    """Nem uma resposta explícita do LLM pode criar falso positivo/negativo."""
+    report = _report("sucesso", criteria=("Usuário consegue criar álbum",))
+    report["criteria_evidence"][0].update(
+        {
+            "outcome": "nao_avaliado",
+            "linked_tests": ["tests/test_ensaio.py::test_criar_listar_ensaio"],
+        }
+    )
+
+    verdict = montar_veredito(
+        report,
+        criteria_verdicts=[
+            _cv(status_llm, criterion="Usuário consegue criar álbum")
+        ],
+    )
+
+    assert verdict.status == VerdictStatus.APROVADO
+    assert verdict.criteria_verdicts[0].status == CriterionStatus.INCONCLUSIVO
+    assert "não avaliado pelo harness" in verdict.criteria_verdicts[0].reasoning
+
+
+def test_outcome_legado_decidido_preserva_veredito_para_compatibilidade():
+    report = _report("sucesso", criteria=("Critério legado",))
+    report["criteria_evidence"][0]["outcome"] = "atendido"
+    legado = _cv(CriterionStatus.ATENDIDO, criterion="Critério legado")
+
+    assert montar_veredito(report, [legado]).criteria_verdicts == [legado]
 
 
 def test_prompt_ensina_o_estado_nao_avaliado():

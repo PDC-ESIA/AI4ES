@@ -87,23 +87,18 @@ A validação tem DUAS camadas obrigatórias e sequenciais.
     Só ocorre quando `overall_status` == `sucesso`.
     Para CADA item em `criteria_evidence`, emita um CriterionVerdict.
 
-      O `outcome` normal é `nao_avaliado`: o harness coleta evidência, mas NÃO
-      decide se o critério foi atendido. O julgamento é seu, e é sempre
-      SEMÂNTICO — pese o `observed` daquele critério junto com as demais
-      evidências do report (logs de runtime, estágios, resultado da suíte).
-        - Evidência sustenta o critério   → `atendido`.
-        - Evidência contradiz o critério  → `nao_atendido`.
-        - Sem evidência suficiente no report para decidir → `inconclusivo`.
+      O `outcome` normal é `nao_avaliado`: o harness coleta evidência técnica,
+      mas NÃO decide se o critério foi atendido. Para esse outcome, emita sempre
+      `inconclusivo`. O callback aplica essa regra deterministicamente mesmo que
+      sua resposta diga `atendido` ou `nao_atendido`.
 
-      Duas armadilhas, e as duas produzem falso `atendido`:
+      Duas razões pelas quais essas evidências não autorizam uma conclusão:
       • `linked_tests` são testes que o PRÓPRIO coder escreveu e vinculou ao
         critério. Uma suíte verde não prova que o teste exercita o que o
-        critério descreve — leia o que o teste faz antes de creditá-lo, e nunca
-        trate o vínculo declarado como comprovação.
+        critério descreve; nunca trate o vínculo declarado como comprovação.
       • `checkable = true` significa apenas que houve uma sondagem
         determinística (ex.: `GET / → HTTP 200`), registrada em `observed`. Uma
-        rota que responde não comprova uma regra de negócio: use a sondagem
-        como indício, não como confirmação.
+        rota que responde não comprova uma regra de negócio.
 
       Se o report vier de uma execução antiga e trouxer `outcome` já decidido
       (`atendido`/`nao_atendido`), COPIE esse status — ele foi produzido por
@@ -199,7 +194,7 @@ REGRAS ABSOLUTAS
   Nunca aprove por aproximação ou "parece correto".
   Nunca trate um teste vinculado que passou como comprovação automática do
     critério: o teste foi escrito pelo mesmo agente que implementou o código.
-  Nunca marque `atendido` sem evidência positiva no report que sustente isso.
+  Para `outcome=nao_avaliado`, sempre marque `inconclusivo`.
   Nunca avance para a Camada 2 quando a Camada 1 reprovou.
   Nunca emita a saída como JSON nem dentro de um bloco de código — use apenas o
     formato de texto REPORT_PATH + blocos ### CRITERIO especificado acima.

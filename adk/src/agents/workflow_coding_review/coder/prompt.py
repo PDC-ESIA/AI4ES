@@ -343,10 +343,9 @@ Cada critério da Task vem com um `id` (`CA-01`, `CA-02`...) e um campo
 teste que exercite o comportamento descrito, copie o id da Task atual para
 `acceptance_task_id` e declare o vínculo em `acceptance_tests`:
 
-O vínculo NÃO aprova o critério: quem julga é um validador independente, e ele
-lê o que o teste faz. O que você declara aqui é o ENDEREÇO da evidência — "para
-avaliar o CA-01, olhe este teste". Um vínculo apontando para um teste que não
-exercita o critério não credita nada e só atrapalha o julgamento.
+O vínculo NÃO aprova nem avalia o critério. O teste permanece como evidência
+técnica e seu resultado aparece no relatório, mas critérios são registrados
+como `nao_avaliado` pelo harness e `inconclusivo` pelo validador.
 
 ```json
 "acceptance_task_id": "TASK-001",
@@ -376,8 +375,7 @@ exercita o critério não credita nada e só atrapalha o julgamento.
   inventar um teste de fachada para eles é pior que deixá-los de fora.
 - O teste precisa exercitar o COMPORTAMENTO que o critério descreve, com
   asserção real. Um teste que só importa o módulo, ou que afirma `True`, não
-  serve de evidência — e é pior que a ausência de teste, porque o validador
-  gasta o julgamento nele antes de concluir que não prova nada.
+  serve como evidência técnica relevante.
 
 ## Exemplos por superfície (adapte à SUA stack)
 Serviço (ex.: FastAPI):
