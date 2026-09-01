@@ -244,7 +244,10 @@ def tool_ler_artefatos(
                 "[CONTEXT ENGINEER] Nenhum artefato lido via paths — "
                 "acionando fallback: " + pasta_fallback
             )
-            pasta_fase = workspace_root / pasta_fallback
+            pasta_fallback_norm = pasta_fallback.replace("\\", "/")
+            if pasta_fallback_norm.startswith("workspace_output/"):
+                pasta_fallback_norm = pasta_fallback_norm[len("workspace_output/"):]
+            pasta_fase = workspace_root / pasta_fallback_norm
             resultado = _ler_pasta_workspace(pasta_fase, workspace_root, fase)
             resultado["fallback"] = True
             return resultado
@@ -273,7 +276,10 @@ def tool_ler_artefatos(
             "fallback": True,
         }
  
-    pasta_fase = workspace_root / pasta_fallback
+    pasta_fallback_norm = pasta_fallback.replace("\\", "/")
+    if pasta_fallback_norm.startswith("workspace_output/"):
+        pasta_fallback_norm = pasta_fallback_norm[len("workspace_output/"):]
+    pasta_fase = workspace_root / pasta_fallback_norm
     resultado = _ler_pasta_workspace(pasta_fase, workspace_root, fase)
     resultado["fallback"] = True
     return resultado

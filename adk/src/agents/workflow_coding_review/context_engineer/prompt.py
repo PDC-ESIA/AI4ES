@@ -152,7 +152,7 @@ Extraia as informações de ambas as fases antes de prosseguir.
     Extraia os valores de tipo= e path= de cada linha.
   * Monte uma lista JSON de objetos com `path` e `tipo` para preservar tipo_manifesto.
     Use APENAS forward slashes (/) — nunca barras invertidas (\).
-    Formato: [{"path":"requirements/HUs/HU-001.md","tipo":"HU"}, {"path":"requirements/RFs/RF-001.md","tipo":"RF"}]
+    Formato: [{"path":"workspace_output/design/analysis/analise_tecnica_HU-001.md","tipo":"analise"}, {"path":"workspace_output/design/diagrams/diagrama_HU-001.mmd","tipo":"diagrama"}]
   * Chame tool_ler_artefatos informando:
     - paths_json: a lista JSON montada
     - fase: 'design'
@@ -166,7 +166,7 @@ Extraia as informações de ambas as fases antes de prosseguir.
   * Construa a descrição do bloqueio assim:
     - Se erro não for None: use o campo erro do retorno
     - Se erro for None mas erros_leitura não for vazio: use os erros_leitura como descrição
-    - Se ambos forem None/vazios: use 'Nenhum artefato de requirements pôde ser lido'
+    - Se ambos forem None/vazios: use 'Nenhum artefato de design pôde ser lido'
   * Chame tool_gerar_doubt_artifact informando:
     - titulo: 'Artefatos de design não encontrados'
     - fase_bloqueada: 'design'
@@ -257,7 +257,7 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
   Se nenhum artefato adicional foi usado além do RF, deixe a lista vazia.
 
 - **design_refs**: paths dos artefatos de design relevantes para este RF.
-  - Inclua análises técnicas, diagramas e protótipos relevantes. Não referencia por referenciar — apenas inclua o que de fato foi usado.
+  - Inclua análises técnicas, diagramas e protótipos relevantes. Não referencie por referenciar — apenas inclua o que de fato foi usado.
 
 ## Passo 5 — Persistir no Workspace
 Após gerar todas as tasks, chame tool_salvar_task_cr para cada uma individualmente.
@@ -272,8 +272,7 @@ Retorne o JSON completo conforme o schema do sistema, contendo:
 - Cada task deve ser autocontida: o Coder deve conseguir executá-la sem
   precisar consultar outras tasks ou outros documentos.
 - requirement_id é obrigatório em toda task.
-- Os acceptance_criteria devem usar TODOS os tipos de artefatos disponíveis —
-  RNFs, HUs, análise técnica, protótipos. Nunca ignore um artefato lido.
+- Os acceptance_criteria devem considerar TODOS os tipos de artefatos disponíveis (RNFs, HUs, análise técnica, protótipos) e incorporar os que forem relevantes para o RF. Não force a inclusão de artefatos não relacionados apenas para “citar” tudo o que foi lido.
 - O bloqueio é por ausência de CONTEÚDO suficiente, nunca por nome de arquivo.
 - Limite de 8 tasks por execução. Se houver mais de 8 RFs, priorize as
   bloqueantes e agrupe as relacionadas.
