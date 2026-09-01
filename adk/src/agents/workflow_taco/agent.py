@@ -1,15 +1,14 @@
-"""Pipeline TACO — Cenário 1 (Geração de Gabarito).
+"""Pipeline TACO — Cenário 1 (Geração de Gabarito) e Cenário 2 (Revisão de Código).
 
 Orquestra via Runner isolado (padrão confirmado em
 benchmarks/coding_review/humaneval/coder_runner.py):
 
-    task_builder → cr_coder_agent → matching → validator → result_composer
+  Cenário 1: task_builder → cr_coder_agent → matching → validator → result_composer
+  Cenário 2: review_builder → cr_review_analyzer_agent → feedback_composer
 
-O cr_coder_agent é importado de forma lazy (dentro da função async) para
-garantir que o binding de workspace das tools já ocorreu antes do import,
-seguindo o mesmo padrão do coder_runner.py do benchmark HumanEval.
-O task_builder e o result_composer são rodados via Runner isolado — mesma
-abordagem dos outros agentes não-SDLC do projeto.
+Entrada robusta via input_normalizer:
+  Qualquer texto livre ou JSON parcial é normalizado para o formato TACO antes do
+  roteamento. JSON válido segue direto (fast path, sem custo de LLM extra).
 
 Limitações conhecidas desta versão (Estratégia C — sem reorganização):
 
@@ -17,7 +16,6 @@ Limitações conhecidas desta versão (Estratégia C — sem reorganização):
    run.json e README como OBRIGATÓRIOS. O task_builder instrui o contrário,
    mas o system prompt tem precedência sobre o turno do usuário. O benchmark
    HumanEval confirma isso: "você ainda deve entregar run.json e README.md".
-   O task_builder instrui o contrário — o system prompt vence.
 
 2. Workspace compartilhado: coder TACO e coder SDLC usam o mesmo diretório
    (workspace_output/coder/src/). O agent.py limpa antes de cada chamada
@@ -31,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import shutil
 from typing import AsyncGenerator
 
@@ -46,6 +45,7 @@ from pydantic import ConfigDict
 from shared.workspace import get_agent_workspace
 
 from .feedback_composer.agent import agent as feedback_composer_agent
+from .input_normalizer.agent import agent as input_normalizer_agent
 from .matching import match_files
 from .result_composer.agent import agent as result_composer_agent
 from .review_builder.agent import agent as review_builder_agent
@@ -55,6 +55,73 @@ from .validator import validate
 logger = logging.getLogger(__name__)
 
 _USER_ID = "taco-gabarito"
+
+_SCHEMA_HINT = (
+    "Envie um JSON no formato TACO.\n\n"
+    "Cenário 1 — geração de gabarito:\n"
+    '  {"challenge": {"title": "...", "description": "..."}, '
+    '"solutionsRequested": 1, "variations": [{"label": "solucao", '
+    '"strategy": "...", "use": [], "avoid": []}]}\n\n'
+    "Cenário 2 — revisão de código do aluno:\n"
+    '  {"codigo_aluno": "...", "exercicio": {"challenge": {...}, '
+    '"solutionsRequested": 1, "variations": [...]}}'
+)
+
+
+# ---------------------------------------------------------------------------
+# Utilitários de parsing
+# ---------------------------------------------------------------------------
+
+
+def _try_parse_json(text: str) -> dict | None:
+    """Extrai e parseia o primeiro objeto JSON encontrado no texto.
+
+    Tenta em ordem:
+    1. json.loads() direto sobre o texto completo
+    2. Conteúdo dentro de um bloco ```json ... ``` ou ``` ... ```
+    3. Primeiro bloco { ... } balanceado encontrado no texto livre
+    """
+    if not text or not text.strip():
+        return None
+    text = text.strip()
+
+    # 1. Parse direto
+    try:
+        result = json.loads(text)
+        if isinstance(result, dict):
+            return result
+    except json.JSONDecodeError:
+        pass
+
+    # 2. Conteúdo entre markdown fences
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if fence:
+        try:
+            result = json.loads(fence.group(1).strip())
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Primeiro bloco { ... } balanceado no texto livre
+    start = text.find("{")
+    if start != -1:
+        depth = 0
+        for i, ch in enumerate(text[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        result = json.loads(text[start : i + 1])
+                        if isinstance(result, dict):
+                            return result
+                    except json.JSONDecodeError:
+                        pass
+                    break
+
+    return None
 
 
 def _extrair_mensagem_usuario(ctx: InvocationContext) -> str:
@@ -104,10 +171,7 @@ async def _invocar_agente(agent, user_text: str) -> str:
 
 
 def _limpar_workspace_coder() -> None:
-    """Remove e recria o diretório do coder — isolamento entre exercícios.
-
-    Mesmo padrão de _limpar_dir() usado no benchmark HumanEval.
-    """
+    """Remove e recria o diretório do coder — isolamento entre exercícios."""
     ws = get_agent_workspace("cr_coder")
     if ws.exists():
         shutil.rmtree(ws)
@@ -116,12 +180,7 @@ def _limpar_workspace_coder() -> None:
 
 
 def _escrever_codigo_aluno(codigo: str) -> None:
-    """Escreve o código do aluno no workspace do coder para análise estática.
-
-    O cr_review_analyzer_agent usa _inject_static_findings (Ruff + Bandit)
-    que lê arquivos de workspace_output/coder/src/. O arquivo precisa existir
-    antes da chamada ao revisor para que a análise estática funcione.
-    """
+    """Escreve o código do aluno no workspace para análise estática (Ruff + Bandit)."""
     ws = get_agent_workspace("cr_coder")
     student_file = ws / "student_solution.py"
     student_file.write_text(codigo, encoding="utf-8")
@@ -152,7 +211,10 @@ def _construir_input_composer(
                 codigo = mr.path.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 codigo = "[ERRO AO LER ARQUIVO]"
-            linhas.append(f"Arquivo: {mr.path.relative_to(workspace)} (estratégia de match: {mr.strategy})")
+            linhas.append(
+                f"Arquivo: {mr.path.relative_to(workspace)} "
+                f"(estratégia de match: {mr.strategy})"
+            )
             linhas.append(f"Validação sintática: {vr.get('status', 'N/A')}")
             linhas.append("Código:")
             linhas.append(codigo)
@@ -176,37 +238,19 @@ def _construir_input_composer(
     return "\n".join(linhas)
 
 
+# ---------------------------------------------------------------------------
+# Agentes de cenário
+# ---------------------------------------------------------------------------
+
+
 class TacoGabaritoAgent(BaseAgent):
     """Orquestra o Cenário 1 do TACO: geração de gabarito com soluções de referência."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    async def _run_async_impl(
-        self, ctx: InvocationContext
-    ) -> AsyncGenerator[Event, None]:
-        raw = _extrair_mensagem_usuario(ctx)
-        if not raw.strip():
-            yield Event(
-                author=self.name,
-                content=types.Content(
-                    role="model",
-                    parts=[types.Part.from_text(text="Nenhuma mensagem recebida.")],
-                ),
-            )
-            return
-
-        try:
-            json_input = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            yield Event(
-                author=self.name,
-                content=types.Content(
-                    role="model",
-                    parts=[types.Part.from_text(text=f"JSON inválido: {exc}")],
-                ),
-            )
-            return
-
+    async def _executar(self, raw: str) -> AsyncGenerator[Event, None]:
+        """Executa o pipeline de gabarito a partir de um JSON TACO já validado."""
+        json_input = json.loads(raw)
         variations = json_input.get("variations", [])
         examples = json_input.get("challenge", {}).get("examples")
         titulo = json_input.get("challenge", {}).get("title", "?")
@@ -229,7 +273,6 @@ class TacoGabaritoAgent(BaseAgent):
         _limpar_workspace_coder()
 
         # 3. Coder: task → arquivos Python no workspace
-        # Lazy import para garantir que o binding de workspace já ocorreu.
         logger.info("[TACO] Passo 2/4 — coder")
         from src.agents.workflow_coding_review.coder.agent import (  # noqa: PLC0415
             agent as cr_coder_agent,
@@ -253,9 +296,18 @@ class TacoGabaritoAgent(BaseAgent):
             author=self.name,
             content=types.Content(
                 role="model",
-                parts=[types.Part.from_text(text=resposta or "[result_composer sem saída]")],
+                parts=[types.Part.from_text(
+                    text=resposta or "[result_composer sem saída]"
+                )],
             ),
         )
+
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
+        raw = _extrair_mensagem_usuario(ctx)
+        async for event in self._executar(raw):
+            yield event
 
 
 class TacoReviewAgent(BaseAgent):
@@ -272,23 +324,9 @@ class TacoReviewAgent(BaseAgent):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    async def _run_async_impl(
-        self, ctx: InvocationContext
-    ) -> AsyncGenerator[Event, None]:
-        raw = _extrair_mensagem_usuario(ctx)
-
-        try:
-            json_input = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            yield Event(
-                author=self.name,
-                content=types.Content(
-                    role="model",
-                    parts=[types.Part.from_text(text=f"JSON inválido: {exc}")],
-                ),
-            )
-            return
-
+    async def _executar(self, raw: str) -> AsyncGenerator[Event, None]:
+        """Executa o pipeline de revisão a partir de um JSON TACO já validado."""
+        json_input = json.loads(raw)
         codigo_aluno = json_input.get("codigo_aluno", "")
         exercicio = json_input.get("exercicio", {})
         titulo = exercicio.get("challenge", {}).get("title", "?")
@@ -334,6 +372,13 @@ class TacoReviewAgent(BaseAgent):
             ),
         )
 
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
+        raw = _extrair_mensagem_usuario(ctx)
+        async for event in self._executar(raw):
+            yield event
+
 
 # ---------------------------------------------------------------------------
 # Instâncias internas — usadas pelo dispatcher TacoAgent
@@ -356,12 +401,23 @@ _review_agent = TacoReviewAgent(
 )
 
 
+# ---------------------------------------------------------------------------
+# Dispatcher principal
+# ---------------------------------------------------------------------------
+
+
 class TacoAgent(BaseAgent):
     """Ponto de entrada único do workflow TACO.
 
-    Despacha para Cenário 1 (gabarito) ou Cenário 2 (revisão) com base no JSON:
-    - Cenário 1: campo "variations" presente (JSON do exercício TACO)
-    - Cenário 2: campo "codigo_aluno" presente
+    Fluxo de entrada:
+      1. Fast path: tenta json.loads() direto + extração de markdown fence/bloco livre.
+      2. Slow path: se o parse falhar, chama input_normalizer_agent (1 LLM call) e
+         repete o parse. Isso permite aceitar texto livre ou JSON fora do padrão TACO.
+      3. Se ainda falhar: retorna mensagem de erro com dica do schema.
+
+    Roteamento após parse bem-sucedido:
+      - "codigo_aluno" no JSON → Cenário 2 (TacoReviewAgent)
+      - caso contrário          → Cenário 1 (TacoGabaritoAgent)
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -380,33 +436,47 @@ class TacoAgent(BaseAgent):
             )
             return
 
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            yield Event(
-                author=self.name,
-                content=types.Content(
-                    role="model",
-                    parts=[types.Part.from_text(text=f"JSON inválido: {exc}")],
-                ),
-            )
-            return
+        # Fast path: parse direto (JSON válido ou com fence/bloco livre)
+        data = _try_parse_json(raw)
+
+        if data is None:
+            # Slow path: normaliza via LLM
+            logger.info("[TACO] Entrada não é JSON — acionando input_normalizer.")
+            normalized = await _invocar_agente(input_normalizer_agent, raw)
+            data = _try_parse_json(normalized)
+
+            if data is None:
+                logger.warning("[TACO] input_normalizer não produziu JSON válido.")
+                yield Event(
+                    author=self.name,
+                    content=types.Content(
+                        role="model",
+                        parts=[types.Part.from_text(
+                            text=f"Não foi possível interpretar a entrada.\n\n{_SCHEMA_HINT}"
+                        )],
+                    ),
+                )
+                return
+
+            # Usa o JSON normalizado para o restante do pipeline
+            raw = json.dumps(data, ensure_ascii=False)
+            logger.info("[TACO] Entrada normalizada com sucesso.")
 
         if "codigo_aluno" in data:
             logger.info("[TACO] → Cenário 2 (revisão de código do aluno)")
-            async for event in _review_agent._run_async_impl(ctx):
+            async for event in _review_agent._executar(raw):
                 yield event
         else:
             logger.info("[TACO] → Cenário 1 (geração de gabarito)")
-            async for event in _gabarito_agent._run_async_impl(ctx):
+            async for event in _gabarito_agent._executar(raw):
                 yield event
 
 
 agent = TacoAgent(
     name="taco_workflow",
     description=(
-        "Workflow TACO: Cenário 1 (gabarito) via JSON de exercício, "
-        "Cenário 2 (revisão pedagógica) via JSON com campo 'codigo_aluno'."
+        "Workflow TACO: aceita qualquer entrada (texto livre ou JSON) e roteia para "
+        "Cenário 1 (gabarito) ou Cenário 2 (revisão pedagógica)."
     ),
 )
 
