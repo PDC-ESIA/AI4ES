@@ -170,7 +170,7 @@ def config_inteiro(nome: str, padrao: int, minimo: int) -> int:
         return padrao
     try:
         valor = int(bruto.strip())
-    except TypeError, ValueError, AttributeError:
+    except (TypeError, ValueError, AttributeError):
         logger.warning(
             "[LOOP_POLICY] %s=%r não é um inteiro; usando o padrão %s.",
             nome,

@@ -280,8 +280,14 @@ def test_poc_criterio_nao_comprovado_nao_derruba_execucao_ok(tmp_path):
 
     assert veredito.status == VerdictStatus.APROVADO
     assert _executor_encerraria(veredito) is True
-    # O julgamento continua auditável no veredito, apenas não decide o status.
-    assert veredito.criteria_verdicts == criteria_verdicts
+    # O julgamento continua auditável no veredito, apenas não decide o status —
+    # e, como o harness emite `nao_avaliado` para todo critério, o `atendido` e
+    # o `nao_atendido` do LLM são neutralizados: evidência técnica e testes do
+    # próprio coder não autorizam conclusão semântica.
+    assert [v.criterion for v in veredito.criteria_verdicts] == criteria
+    assert all(
+        v.status == CriterionStatus.INCONCLUSIVO for v in veredito.criteria_verdicts
+    )
 
 
 # ===========================================================================
