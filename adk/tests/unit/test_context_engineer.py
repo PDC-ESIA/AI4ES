@@ -313,7 +313,7 @@ def test_tool_ler_artefatos_path_traversal_rejeitado(tmp_path, monkeypatch):
 def test_tool_ler_artefatos_design_via_paths(tmp_path, monkeypatch):
     """Lê artefatos de design via paths do manifesto de design."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    pasta = tmp_path / "ws" / "workspace_output" / "design" / "analysis"
+    pasta = tmp_path / "ws" / "design" / "analysis"
     pasta.mkdir(parents=True)
     (pasta / "analise_tecnica_HU-001.md").write_text("# Análise", encoding="utf-8")
  
@@ -332,7 +332,7 @@ def test_tool_ler_artefatos_design_via_paths(tmp_path, monkeypatch):
 def test_tool_ler_artefatos_design_fallback(tmp_path, monkeypatch):
     """Usa fallback de leitura direta do workspace para design."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
-    pasta = tmp_path / "ws" / "workspace_output" / "design"
+    pasta = tmp_path / "ws" / "design"
     pasta.mkdir(parents=True)
     (pasta / "analise_tecnica_HU-001.md").write_text("# Análise", encoding="utf-8")
  

@@ -239,6 +239,16 @@ def tool_ler_artefatos(
                 erros.append("Arquivo não encontrado: " + path_rel)
                 logger.warning("[CONTEXT ENGINEER] Artefato ausente: " + path_rel)
  
+        if not artefatos and pasta_fallback:
+            logger.warning(
+                "[CONTEXT ENGINEER] Nenhum artefato lido via paths — "
+                "acionando fallback: " + pasta_fallback
+            )
+            pasta_fase = workspace_root / pasta_fallback
+            resultado = _ler_pasta_workspace(pasta_fase, workspace_root, fase)
+            resultado["fallback"] = True
+            return resultado
+
         return {
             "sucesso": True,
             "fase": fase,

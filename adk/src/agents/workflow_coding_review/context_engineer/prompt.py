@@ -94,30 +94,34 @@ Extraia as informações de ambas as fases antes de prosseguir.
   * Extraia a lista de artifacts do manifesto.
     Cada artifact aparece no formato: tipo=XX id=XX path=XX
     Extraia os valores de tipo= e path= de cada linha.
-  * Monte uma lista JSON simples com os paths.
+  * Monte uma lista JSON de objetos com `path` e `tipo` para preservar tipo_manifesto.
     Use APENAS forward slashes (/) — nunca barras invertidas (\).
-    Formato: ["requirements/HUs/HU-001.md", "requirements/RFs/RF-001.md"]
+    Formato: [{"path":"requirements/HUs/HU-001.md","tipo":"HU"}, {"path":"requirements/RFs/RF-001.md","tipo":"RF"}]
   * Chame tool_ler_artefatos informando:
     - paths_json: a lista JSON montada
     - fase: 'requirements'
-    - pasta_fallback: 'workspace_output/requirements'
+    - pasta_fallback: 'requirements'
 - Se o manifesto de requirements NÃO estiver no contexto (fallback):
   * Chame tool_ler_artefatos informando:
     - paths_json: '[]'
     - fase: 'requirements'
-    - pasta_fallback: 'workspace_output/requirements'
+    - pasta_fallback: 'requirements'
 - Se retornar sucesso=False ou total_lidos==0:
+  * Construa a descrição do bloqueio assim:
+    - Se erro não for None: use o campo erro do retorno
+    - Se erro for None mas erros_leitura não for vazio: use os erros_leitura como descrição
+    - Se ambos forem None/vazios: use 'Nenhum artefato de requirements pôde ser lido'
   * Chame tool_gerar_doubt_artifact informando:
     - titulo: 'Artefatos de requirements não encontrados'
     - fase_bloqueada: 'requirements'
-    - descricao: use o campo erro do retorno
+    - descricao: a descrição construída acima
     - acao_necessaria: 'A fase requirements deve ter concluído antes de continuar'
     - subdir: 'coder'
   * Chame tool_emitir_manifesto_bloqueado informando:
-    - motivo: use o campo erro do retorno
+    - motivo: a descrição construída acima
   * Chame aguardar_resolucao_bloqueio informando:
     - fase_bloqueada: 'requirements'
-    - motivo: use o campo erro do retorno
+    - motivo: a descrição construída acima
     - acao_necessaria: 'A fase requirements deve ter concluído antes de continuar'
   * PARE IMEDIATAMENTE. Não gere nenhuma task.
 - Classifique semanticamente o conteúdo de cada artefato usando tipo_manifesto como guia:
@@ -146,28 +150,34 @@ Extraia as informações de ambas as fases antes de prosseguir.
   * Extraia a lista de artifacts do manifesto de design.
     Cada artifact aparece no formato: tipo=XX id=XX path=XX
     Extraia os valores de tipo= e path= de cada linha.
-  * Monte uma lista JSON simples com os paths.
+  * Monte uma lista JSON de objetos com `path` e `tipo` para preservar tipo_manifesto.
+    Use APENAS forward slashes (/) — nunca barras invertidas (\).
+    Formato: [{"path":"requirements/HUs/HU-001.md","tipo":"HU"}, {"path":"requirements/RFs/RF-001.md","tipo":"RF"}]
   * Chame tool_ler_artefatos informando:
     - paths_json: a lista JSON montada
     - fase: 'design'
-    - pasta_fallback: 'workspace_output/design'
+    - pasta_fallback: 'design'
 - Se o manifesto de design NÃO estiver no contexto (fallback):
   * Chame tool_ler_artefatos informando:
     - paths_json: '[]'
     - fase: 'design'
-    - pasta_fallback: 'workspace_output/design'
+    - pasta_fallback: 'design'
 - Se retornar sucesso=False ou total_lidos==0:
+  * Construa a descrição do bloqueio assim:
+    - Se erro não for None: use o campo erro do retorno
+    - Se erro for None mas erros_leitura não for vazio: use os erros_leitura como descrição
+    - Se ambos forem None/vazios: use 'Nenhum artefato de requirements pôde ser lido'
   * Chame tool_gerar_doubt_artifact informando:
     - titulo: 'Artefatos de design não encontrados'
     - fase_bloqueada: 'design'
-    - descricao: use o campo erro do retorno
+    - descricao: a descrição construída acima
     - acao_necessaria: 'A fase design deve ser reprocessada antes de continuar'
     - subdir: 'coder'
   * Chame tool_emitir_manifesto_bloqueado informando:
-    - motivo: use o campo erro do retorno
+    - motivo: a descrição construída acima
   * Chame aguardar_resolucao_bloqueio informando:
     - fase_bloqueada: 'design'
-    - motivo: use o campo erro do retorno
+    - motivo: a descrição construída acima
     - acao_necessaria: 'A fase design deve ser reprocessada antes de continuar'
   * PARE IMEDIATAMENTE. Não gere nenhuma task.
 - Classifique semanticamente o conteúdo de cada artefato de design:
@@ -233,7 +243,7 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
 - **contract**: defina as fronteiras com base nos artefatos de design:
     - inputs: arquivos ou módulos que o Coder pode LER mas NÃO modificar.
     - outputs: arquivos que o Coder deve CRIAR ou MODIFICAR.
-    - interfaces: Extraia dos diagramas Mermaid protótipos e análise técnica. deixe vazio se não houver artefatos de design relevantes.
+    - interfaces: Extraia de diagramas Mermaid, protótipos e análises técnicas; deixe vazio se não houver artefatos de design relevantes.
 
 - **requirement_id**: ID do RF de origem (ex.: RF-001).
 
