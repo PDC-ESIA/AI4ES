@@ -49,6 +49,12 @@ Sistema desktop para controle de entrada e saída de produtos em uma loja físic
 
 Aplicação web para uso individual que permite ao usuário catalogar seus livros físicos e digitais. O usuário registra títulos, autores, editoras e status de leitura (não lido, lendo, concluído), organiza o acervo por gênero ou coleção e filtra por qualquer atributo. O sistema gera um resumo do acervo com estatísticas simples, como total de livros por status e gêneros mais frequentes.
 
+#### P05 — Reservas para quadras esportivas
+
+**Origem do escopo:** dois atores (operador do espaço e cliente), sem autenticação para o cliente final, sem integrações externas além do envio de e-mail de confirmação, lógica de negócio restrita à disponibilidade e reserva de horários.
+
+Sistema web que permite a um operador de quadras esportivas gerenciar a disponibilidade e as reservas de horários. O cliente consulta a disponibilidade e realiza a reserva sem necessidade de cadastro, recebendo um código de confirmação por e-mail. O operador controla bloqueios de horário para manutenção, cancelamentos e valores diferenciados por faixa de horário.
+
 ---
 
 ### Escopo médio
@@ -76,6 +82,12 @@ Plataforma que conecta artesãos e compradores. Produtores cadastram seus produt
 **Origem do escopo:** múltiplos atores (síndico, condôminos e funcionários), integração com gateway de pagamento para boletos, gestão de áreas comuns e comunicados.
 
 Sistema web que centraliza a administração de um condomínio residencial. O síndico cadastra unidades e moradores, emite boletos de condomínio com integração a gateway de pagamento, registra ocorrências e publica comunicados. Condôminos acessam um portal para visualizar boletos, reservar áreas comuns, registrar ocorrências e acompanhar assembleias. Funcionários registram visitantes e controle de acesso.
+
+#### M05 — Gestão de academia
+
+**Origem do escopo:** múltiplos atores (recepcionista, instrutor e aluno), integração com gateway de pagamento para cobrança recorrente de mensalidades, controle de acesso físico condicionado ao status do plano e gestão de aulas e treinos.
+
+Sistema que centraliza a operação de uma academia com múltiplas modalidades. A recepção gerencia matrículas, planos e cobranças recorrentes, bloqueando automaticamente o acesso de alunos inadimplentes. Instrutores cadastram aulas coletivas e fichas de treino individuais. Alunos realizam check-in, se inscrevem em aulas e consultam seus treinos pelo aplicativo. O administrador acompanha faturamento, inadimplência e manutenção de equipamentos.
 
 ---
 
@@ -105,6 +117,12 @@ Sistema integrado de gestão empresarial voltado para indústrias de manufatura.
 
 Plataforma que gerencia o ciclo completo de transporte de cargas, desde a coleta até a entrega. Embarcadores registram pedidos de frete, a plataforma roteia automaticamente para transportadoras parceiras com base em preço, prazo e tipo de carga. Motoristas atualizam o status da entrega via aplicativo mobile com geolocalização. Destinatários acompanham a carga em tempo real, recebem notificações de cada etapa e assinam o comprovante de entrega digitalmente. A plataforma integra com sistemas de emissão de CT-e, consulta de SEFAZ e seguradoras para cobertura de sinistros.
 
+#### G05 — Plataforma de negociação de ativos financeiros (corretora de valores)
+
+**Origem do escopo:** alta complexidade regulatória (CVM, B3, Banco Central, COAF), múltiplas integrações externas (provedores de cotação em tempo real, custódia na B3, contas bancárias), atores com necessidades distintas (investidor, assessor e compliance) e requisitos rígidos de desempenho e auditabilidade.
+
+Sistema que oferece negociação de ativos financeiros (ações, renda fixa e fundos) para investidores pessoa física e jurídica. Conta com processo de KYC e suitability, envio e execução de ordens em tempo real, custódia e cálculo de posição consolidada, apuração automática de impostos e emissão de relatórios regulatórios. Assessores acompanham carteiras de clientes mediante autorização, e a área de compliance monitora transações suspeitas conforme normas de prevenção à lavagem de dinheiro.
+
 ---
 
 ## Visão geral
@@ -115,11 +133,14 @@ Plataforma que gerencia o ciclo completo de transporte de cargas, desde a coleta
 | P02 — Agendador de consultas para clínica pequena        | 12 | 08 | 09 |
 | P03 — Controle de estoque para loja física               | 12 | 08 | 08 |
 | P04 — Biblioteca pessoal de livros                       | 13 | 07 | 08 |
+| P05 — Reservas para quadras esportivas                   | 12 | 07 | 07 |
 | M01 — Plataforma de cursos online                        | 16 | 10 | 09 |
 | M02 — Sistema de gestão para clínica odontológica        | 25 | 11 | 12 |
 | M03 — Marketplace de produtos artesanais                 | 30 | 13 | 12 |
 | M04 — Sistema de gestão de condomínio                    | 33 | 13 | 14 |
+| M05 — Gestão de academia                                 | 20 | 10 | 09 |
 | G01 — Sistema bancário digital                           | 47 | 24 | 13 |
 | G02 — Plataforma de telemedicina                         | 46 | 26 | 14 |
 | G03 — ERP para indústria manufatureira                   | 53 | 24 | 12 |
 | G04 — Plataforma de logística e rastreamento de cargas   | 49 | 25 | 14 |
+| G05 — Plataforma de negociação de ativos financeiros     | 33 | 15 | 12 |
