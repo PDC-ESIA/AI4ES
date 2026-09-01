@@ -54,6 +54,7 @@ def _executar_com_stdin(script_path: Path, stdin_input: str) -> tuple[str, int]:
             capture_output=True,
             text=True,
             encoding="utf-8",
+            errors="replace",
             timeout=_EXEC_TIMEOUT_S,
             cwd=script_path.parent,
         )
@@ -84,7 +85,7 @@ def validate(
         - examples_run: lista de resultados de execução (vazia se sem examples)
     """
     if examples is None:
-        logger.info(
+        logger.debug(
             "[TACO-VALIDATOR] challenge.examples ausente nos dados de entrada. "
             "Achado a reportar ao time TACO: o campo 'prompt' dos JSONs referencia "
             "'challenge.examples' para validação, mas o schema não inclui o campo."

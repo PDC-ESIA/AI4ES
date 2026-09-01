@@ -42,7 +42,7 @@ from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.genai import types
 from pydantic import ConfigDict
 
-from shared.workspace import get_agent_workspace
+from shared.workspace import get_agent_workspace, get_workspace_root
 
 from .feedback_composer.agent import agent as feedback_composer_agent
 from .input_normalizer.agent import agent as input_normalizer_agent
@@ -94,7 +94,7 @@ def _try_parse_json(text: str) -> dict | None:
         pass
 
     # 2. Conteúdo entre markdown fences
-    fence = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
     if fence:
         try:
             result = json.loads(fence.group(1).strip())
@@ -174,6 +174,13 @@ def _limpar_workspace_coder() -> None:
     """Remove e recria o diretório do coder — isolamento entre exercícios."""
     ws = get_agent_workspace("cr_coder")
     if ws.exists():
+        root = get_workspace_root()
+        if not (root / ".ai4se_workspace").exists():
+            raise RuntimeError(
+                f"[TACO] Recusa em limpar workspace do coder '{ws}': "
+                "marker .ai4se_workspace não encontrado no workspace raiz. "
+                "Verifique se WORKSPACE_OUTPUT_DIR aponta para o diretório correto."
+            )
         shutil.rmtree(ws)
     ws.mkdir(parents=True, exist_ok=True)
     logger.info("[TACO] workspace coder limpo: %s", ws)
