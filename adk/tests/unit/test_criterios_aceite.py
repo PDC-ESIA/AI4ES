@@ -317,6 +317,59 @@ def test_mapa_sem_criterios_na_task_descarta_tudo():
     assert mapa.ids_desconhecidos == ["CA-01"]
 
 
+def test_mapa_usa_task_id_como_namespace_dos_criterios():
+    mapa = normalizar_mapa_de_testes(
+        {"CA-01": ["t::antigo"]},
+        _criterios(("CA-01", True)),
+        task_id="TASK-002",
+        task_id_declarada="TASK-001",
+    )
+
+    assert mapa.por_criterio == {}
+    assert mapa.escopo_valido is False
+    assert mapa.task_id_declarada == "TASK-001"
+
+
+@pytest.mark.parametrize("declarada", ["task-002", " TASK-002 ", "Task-002"])
+def test_mapa_tolera_grafia_do_task_id_declarado(declarada):
+    """Descarte é por ESCOPO, nunca por caixa ou espaço — os dois lados são LLM."""
+    mapa = normalizar_mapa_de_testes(
+        {"CA-01": ["t::atual"]},
+        _criterios(("CA-01", True)),
+        task_id="TASK-002",
+        task_id_declarada=declarada,
+    )
+
+    assert mapa.por_criterio == {"CA-01": ["t::atual"]}
+    assert mapa.escopo_valido is True
+
+
+@pytest.mark.parametrize("task_id", [None, "", "   ", 42])
+def test_sem_task_corrente_utilizavel_o_mapa_segue_pelo_caminho_legado(task_id):
+    """Chamador que não informa a Task (uso fora do TaskIterator) não perde nada."""
+    mapa = normalizar_mapa_de_testes(
+        {"CA-01": ["t::x"]},
+        _criterios(("CA-01", True)),
+        task_id=task_id,
+        task_id_declarada=None,
+    )
+
+    assert mapa.por_criterio == {"CA-01": ["t::x"]}
+    assert mapa.escopo_valido is True
+
+
+def test_mapa_aceita_ids_locais_quando_namespace_e_da_task_atual():
+    mapa = normalizar_mapa_de_testes(
+        {"CA-01": ["t::atual"]},
+        _criterios(("CA-01", True)),
+        task_id="TASK-002",
+        task_id_declarada="TASK-002",
+    )
+
+    assert mapa.por_criterio == {"CA-01": ["t::atual"]}
+    assert mapa.escopo_valido is True
+
+
 @pytest.mark.parametrize(
     "bruto,esperado",
     [("CA-01", "CA-01"), ("ca-7", "CA-07"), ("CA-100", "CA-100")],

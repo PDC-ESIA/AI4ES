@@ -514,6 +514,27 @@ def test_resumo_de_aceite_sem_nada_decidido_nao_vira_zero():
     assert aceite["criterios_sem_cobertura"] == 3
 
 
+def test_resumo_de_aceite_mantem_criterios_esperados_quando_report_sumiu():
+    summary = {
+        "task_results": {
+            "TASK-005": _task_result(
+                total=0,
+                atendidos=0,
+                nao_atendidos=0,
+                criterios_esperados=4,
+            )
+        }
+    }
+
+    aceite = resumo_de_aceite(summary)
+
+    assert aceite["criterios_total"] == 4
+    assert aceite["criterios_sem_cobertura"] == 4
+    assert aceite["cobertura_criterios"] == 0.0
+    assert aceite["por_task"]["TASK-005"]["criterios_medidos"] == 0
+    assert aceite["por_task"]["TASK-005"]["criterios_esperados"] == 4
+
+
 @pytest.mark.parametrize(
     "summary",
     [None, "texto", 42, {}, {"task_results": None}, {"task_results": {"T": "x"}}],

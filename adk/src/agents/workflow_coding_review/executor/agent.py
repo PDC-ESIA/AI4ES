@@ -240,6 +240,43 @@ def _resumo_da_parada(motivo: Optional[str], nota: NotaProgresso) -> str:
     )
 
 
+def _mensagem_de_mapa_fora_de_escopo(aceite: NotaAceite, task_id: str) -> str:
+    """Pedido específico para o caso "os testes existem, o manifesto é que não".
+
+    O harness descarta o mapa inteiro quando o `acceptance_task_id` não é o da
+    Task corrente — proteção contra os testes de uma task serem citados como
+    evidência do `CA-01` de outra, que descreve coisa diferente. Mas o efeito
+    colateral é que TODOS os critérios reaparecem como "sem teste vinculado", e
+    o pedido genérico mandaria escrever testes que muito provavelmente já estão
+    escritos. Como o aviso é de uso ÚNICO por task, gastá-lo com a instrução
+    errada custa a cobertura inteira.
+    """
+    declarada = aceite.task_id_do_mapa
+    origem = (
+        f"declara `acceptance_task_id: {declarada!r}`"
+        if declarada
+        else "não declara `acceptance_task_id`"
+    )
+    return (
+        "EXECUÇÃO BEM-SUCEDIDA — o vínculo teste↔critério do `run.json` está "
+        "fora de escopo e foi INTEIRAMENTE descartado.\n\n"
+        f"O manifesto {origem}, mas esta execução é da task `{task_id}`. Por "
+        "isso NENHUM dos vínculos de `acceptance_tests` foi considerado, e "
+        "todos os critérios aparecem sem teste vinculado — mesmo os que já têm "
+        "teste. Os testes da task anterior não são evidência do `CA-01` desta, "
+        "que descreve outra coisa.\n\n"
+        "NÃO altere o código de produção. Nesta mesma rodada, regrave o "
+        "`run.json` com `tool_criar_arquivo(\"run.json\", ...)` — este arquivo "
+        "é o único que você pode sobrescrever no modo INCREMENTO:\n"
+        f"1. `acceptance_task_id`: exatamente `{task_id}`.\n"
+        "2. `acceptance_tests`: os critérios DESTA task como chaves, apontando "
+        "para os testes que exercitam cada um. Reaproveite os testes que já "
+        "existem e escreva apenas os que faltarem.\n"
+        "3. Preserve `build`, `run` e `test` que já funcionam.\n\n"
+        "Este pedido é feito UMA única vez por task."
+    )
+
+
 def _mensagem_de_cobertura(pendentes: list[str], aceite: NotaAceite) -> str:
     """Pedido determinístico para o coder fechar a cobertura de critérios.
 
@@ -250,24 +287,28 @@ def _mensagem_de_cobertura(pendentes: list[str], aceite: NotaAceite) -> str:
     """
     lista = "\n".join(f"- {identificador}" for identificador in pendentes)
     return (
-        "EXECUÇÃO BEM-SUCEDIDA — falta apenas cobrir critérios de aceite com "
-        "testes.\n\n"
+        "EXECUÇÃO BEM-SUCEDIDA — falta apenas vincular testes a critérios de "
+        "aceite.\n\n"
         "O build, a inicialização e a suíte atual passaram. NÃO altere o código "
         "de produção e NÃO refaça o que já funciona.\n\n"
-        f"Critérios automatizáveis ainda sem teste que os comprove "
+        f"Critérios automatizáveis ainda sem teste vinculado "
         f"({len(pendentes)} de {aceite.total}):\n"
         f"{lista}\n\n"
+        "O vínculo não aprova o critério — quem julga é um validador "
+        "independente, que lê o teste. Ele é o endereço da evidência.\n\n"
         "Para CADA um deles, nesta mesma rodada:\n"
-        "1. Escreva um teste que comprove o comportamento descrito no critério, "
+        "1. Escreva um teste que exercite o comportamento descrito no critério, "
         "com asserção real sobre o resultado — não um teste que só importa o "
         "módulo.\n"
         "2. Declare o vínculo em `acceptance_tests`, no `run.json`, usando o id "
         "do critério como chave e o identificador do teste como valor.\n"
-        "3. Garanta que os comandos de `test` listem cada teste pelo nome (em "
-        "pytest, `-v`) — sem isso o resultado não pode ser casado com o critério.\n\n"
+        "3. Confirme que `acceptance_task_id` é o id da task ATUAL: um manifesto "
+        "que aponte para outra task tem TODOS os vínculos descartados.\n"
+        "4. Garanta que os comandos de `test` listem cada teste pelo nome (em "
+        "pytest, `-v`) — sem isso o resultado do teste não chega ao relatório.\n\n"
         "Este pedido é feito UMA única vez por task: se algum critério não puder "
-        "ser coberto por teste de código, siga em frente — ele será registrado "
-        "como não coberto, sem reprovar a entrega."
+        "ser exercitado por teste de código, siga em frente — ele será "
+        "registrado sem vínculo, sem reprovar a entrega."
     )
 
 
@@ -275,6 +316,15 @@ def _emitir_aviso_de_cobertura(
     callback_context, aceite: NotaAceite
 ) -> Optional[types.Content]:
     """Concede UMA rodada extra para o coder fechar a cobertura de critérios.
+
+    INERTE COM O HARNESS ATUAL, e de propósito: o estágio 7 emite `nao_avaliado`
+    para todo critério, nenhum outcome é endereçável, `criterios_enderecaveis`
+    vem sempre vazio e este callback devolve `None` na primeira linha. A razão
+    está em `harness_schemas.OUTCOMES_ENDERECAVEIS` — mais testes escritos pelo
+    próprio coder não convertem critério em aceite, então gastar uma rodada
+    pedindo teste seria loop sem desfecho. O mecanismo continua aqui porque a
+    avaliação de aceite vai voltar apoiada em evidência independente; o que está
+    desligado é a cobrança, não o desenho.
 
     Roda no caminho de APROVAÇÃO, imediatamente antes do encerramento: a
     execução já está tecnicamente correta e o loop iria fechar. Em vez de fechar,
@@ -318,15 +368,27 @@ def _emitir_aviso_de_cobertura(
         return None
 
     state[CHAVE_AVISO_COBERTURA] = True
-    mensagem = _mensagem_de_cobertura(pendentes, aceite)
+    task_id = state.get("task_id") or ""
+    # Mapa descartado por escopo não é falta de teste: o conserto é o manifesto,
+    # e o aviso de uso único tem de pedir exatamente isso.
+    if aceite.mapa_fora_de_escopo and task_id:
+        mensagem = _mensagem_de_mapa_fora_de_escopo(aceite, task_id)
+        logger.warning(
+            "[COBERTURA] Task %s: mapa acceptance_tests descartado (declarava "
+            "%r); concedida UMA rodada para corrigir o manifesto.",
+            task_id,
+            aceite.task_id_do_mapa,
+        )
+    else:
+        mensagem = _mensagem_de_cobertura(pendentes, aceite)
+        logger.info(
+            "[COBERTURA] Task %s aprovada tecnicamente com %d critério(s) sem "
+            "teste (%s); concedida UMA rodada para fechar a cobertura.",
+            task_id,
+            len(pendentes),
+            ", ".join(pendentes),
+        )
     state["execution_result"] = mensagem
-    logger.info(
-        "[COBERTURA] Task %s aprovada tecnicamente com %d critério(s) sem teste "
-        "(%s); concedida UMA rodada para fechar a cobertura.",
-        state.get("task_id"),
-        len(pendentes),
-        ", ".join(pendentes),
-    )
     return types.Content(role="model", parts=[types.Part(text=mensagem)])
 
 

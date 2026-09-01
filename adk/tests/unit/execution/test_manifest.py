@@ -136,6 +136,42 @@ def test_acceptance_tests_preserva_mapa_bem_formado():
     }
 
 
+def test_acceptance_task_id_define_namespace_do_mapa():
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_task_id="TASK-002",
+        acceptance_tests={"CA-01": ["t/a.py::x"]},
+    )
+
+    assert m.acceptance_task_id == "TASK-002"
+
+    
+def test_acceptance_task_id_remove_espacos_externos():
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_task_id="  TASK-002  ",
+        acceptance_tests={"CA-01": ["t/a.py::x"]},
+    )
+
+    assert m.acceptance_task_id == "TASK-002"
+
+
+@pytest.mark.parametrize("valor", [42, True, [], {}, "", "   ", None])
+def test_acceptance_task_id_malformado_nao_invalida_manifesto(valor):
+    """Erro no bookkeeping descarta cobertura, sem impedir build e testes."""
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_task_id=valor,
+        acceptance_tests={"CA-01": ["t/a.py::x"]},
+    )
+
+    assert m.acceptance_task_id is None
+    assert m.acceptance_tests == {"CA-01": ["t/a.py::x"]}
+
+
 def test_acceptance_tests_aceita_teste_unico_fora_de_lista():
     """Erro comum de LLM; absorver custa nada e evita perder cobertura real."""
     m = RunManifest(
@@ -203,3 +239,22 @@ def test_load_manifest_com_acceptance_tests_invalido_nao_levanta(tmp_path):
         encoding="utf-8",
     )
     assert load_manifest(p).acceptance_tests == {}
+
+
+def test_load_manifest_com_acceptance_task_id_invalido_nao_levanta(tmp_path):
+    p = tmp_path / "run.json"
+    p.write_text(
+        json.dumps(
+            {
+                "surface": "none",
+                "test": ["pytest -q"],
+                "acceptance_task_id": 42,
+                "acceptance_tests": {"CA-01": ["tests/test_a.py::test_x"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifesto = load_manifest(p)
+    assert manifesto.acceptance_task_id is None
+    assert manifesto.acceptance_tests == {"CA-01": ["tests/test_a.py::test_x"]}

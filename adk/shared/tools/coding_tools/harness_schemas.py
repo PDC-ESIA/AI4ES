@@ -61,28 +61,24 @@ class TestOutcome(str, Enum):
 
 
 class CriterionOutcome(str, Enum):
-    """Resultado DETERMINÍSTICO de um critério, derivado dos testes que o cobrem.
+    """Estado da avaliação de um critério de aceite.
 
-    Não é veredito de aprovação: o harness continua sem decidir se o Work Item
-    passa. É a leitura mecânica de "os testes que o coder declarou para este
-    critério passaram?" — e cada valor descreve uma situação com encaminhamento
-    próprio, e não graus de uma mesma coisa:
+    O harness atual coleta evidências técnicas, mas deliberadamente não infere
+    atendimento semântico a partir dos testes escritos pelo próprio coder.
+    `NAO_AVALIADO` é, portanto, o único estado emitido para relatórios novos.
 
-      - `ATENDIDO` / `NAO_ATENDIDO`: houve verificação, e ela concluiu. São os
-        únicos que entram no cálculo da nota de aceite.
+    Os demais valores permanecem para leitura compatível de relatórios antigos:
+      - `ATENDIDO` / `NAO_ATENDIDO`: uma versão anterior inferiu atendimento a
+        partir de testes vinculados.
       - `SEM_TESTE_MAPEADO`: o critério era automatizável e o coder não declarou
-        teste nenhum. É lacuna endereçável — o coder pode fechá-la.
+        teste nenhum.
       - `TESTE_NAO_EXECUTADO`: o vínculo foi declarado, mas nenhum resultado
-        para aquele teste apareceu na saída da suíte (nodeid errado, teste não
-        coletado, ou a saída não nomeia testes). Também é endereçável.
+        para aquele teste apareceu na saída da suíte.
       - `NAO_AUTOMATIZAVEL`: está fora do que se consegue comprovar com teste de
-        código hoje. NÃO é lacuna do coder; é limite da instrumentação, e por
-        isso nunca é cobrado dele.
-
-    Os três últimos significam "não comprovado", e nenhum deles significa
-    "reprovado": ausência de evidência não é evidência de ausência.
+        código.
     """
 
+    NAO_AVALIADO = "nao_avaliado"
     ATENDIDO = "atendido"
     NAO_ATENDIDO = "nao_atendido"
     SEM_TESTE_MAPEADO = "sem_teste_mapeado"
@@ -91,14 +87,21 @@ class CriterionOutcome(str, Enum):
 
 
 # Resultados que representam uma verificação CONCLUÍDA — os únicos que entram no
-# numerador/denominador da nota de aceite.
+# numerador/denominador da nota de aceite. O harness atual não emite nenhum
+# deles (ver `NAO_AVALIADO`), então na prática só relatórios antigos os trazem.
 OUTCOMES_DECIDIDOS = frozenset(
     {CriterionOutcome.ATENDIDO, CriterionOutcome.NAO_ATENDIDO}
 )
 
-# Resultados que o coder PODE fechar escrevendo ou corrigindo teste. Base do
-# aviso de cobertura; `NAO_AUTOMATIZAVEL` fica de fora de propósito — cobrar
-# dele o impossível é a patologia que este desenho existe para não repetir.
+# Lacunas que o coder podia fechar escrevendo ou corrigindo teste — base do
+# aviso de cobertura do executor. `NAO_AUTOMATIZAVEL` ficava de fora de
+# propósito: cobrar dele o impossível é a patologia que este desenho existe para
+# não repetir.
+#
+# Com o harness atual nenhum desses valores é emitido, então o aviso não dispara
+# — e isso é deliberado: mais testes do coder não convertem critério em aceite,
+# logo uma rodada extra pedindo teste seria loop sem desfecho. O conjunto segue
+# aqui para os relatórios antigos e para quando a avaliação de aceite voltar.
 OUTCOMES_ENDERECAVEIS = frozenset(
     {CriterionOutcome.SEM_TESTE_MAPEADO, CriterionOutcome.TESTE_NAO_EXECUTADO}
 )
@@ -115,7 +118,11 @@ class CriterionEvidence(BaseModel):
     check_performed: str = Field(description="Verificação/comando executado para coletar a evidência")
     observed: str = Field(description="O que foi efetivamente observado durante a execução")
     checkable: bool = Field(
-        description="Indica se o critério pôde ser verificado automaticamente pelo harness"
+        description=(
+            "Houve sondagem determinística do harness (ex.: requisição HTTP) "
+            "registrada em `observed`. Não significa atendimento: quem julga o "
+            "critério é o validador"
+        )
     )
     criterion_id: str = Field(
         default="",
@@ -132,8 +139,8 @@ class CriterionEvidence(BaseModel):
         ),
     )
     outcome: CriterionOutcome = Field(
-        default=CriterionOutcome.SEM_TESTE_MAPEADO,
-        description="Resultado determinístico derivado dos testes vinculados",
+        default=CriterionOutcome.NAO_AVALIADO,
+        description="Estado da avaliação do critério; não inferido dos testes técnicos",
     )
     linked_tests: list[str] = Field(
         default_factory=list,

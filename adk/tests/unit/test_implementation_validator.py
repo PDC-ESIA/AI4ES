@@ -190,3 +190,34 @@ def test_criterio_negativo_nao_derruba_execucao_bem_sucedida(status_criterio):
 
 def test_veredito_e_um_validation_verdict():
     assert isinstance(montar_veredito(_report("sucesso")), ValidationVerdict)
+
+
+# ---------------------------------------------------------------------------
+# Instrução do validador — a única barreira contra o falso `atendido`
+# ---------------------------------------------------------------------------
+#
+# Desde que o harness parou de converter teste vinculado em `atendido`, todo
+# critério chega como `nao_avaliado` e o julgamento é inteiramente deste agente.
+# O prompt é, portanto, o que separa "evidência" de "aprovação por aproximação".
+
+
+def test_prompt_ensina_o_estado_nao_avaliado():
+    from src.agents.implementation_validator import prompt
+
+    assert "nao_avaliado" in prompt.instruction
+
+
+def test_prompt_nao_manda_copiar_atendimento_de_teste_vinculado():
+    """Regressão do falso positivo: teste do coder não é comprovação.
+
+    A instrução antiga mandava COPIAR o `outcome` determinístico e proibia
+    contradizê-lo — exatamente o caminho pelo qual um vínculo errado no
+    `run.json` creditava um critério que o teste não exercitava.
+    """
+    from src.agents.implementation_validator import prompt
+
+    instrucao = prompt.instruction
+
+    assert "linked_tests" in instrucao
+    assert "próprio coder" in instrucao or "PRÓPRIO coder" in instrucao
+    assert "Nunca contradiga um `outcome` determinístico" not in instrucao

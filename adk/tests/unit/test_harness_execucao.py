@@ -146,6 +146,8 @@ def _manifest_service(**over):
         "sandbox": "direct",
     }
     m.update(over)
+    if m.get("acceptance_tests") and "acceptance_task_id" not in m:
+        m["acceptance_task_id"] = "TASK-001"
     return m
 
 
@@ -726,6 +728,61 @@ def test_estagio1_sem_mapa_declarado_segue_normalmente(tmp_path):
     assert "0/2 automatizáveis com teste declarado" in estagio1["summary"]
 
 
+def test_estagio1_ignora_mapa_stale_de_outra_task(tmp_path):
+    """CA-01 da task anterior não pode comprovar CA-01 da task corrente."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, task_id="TASK-002", criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_task_id="TASK-001",
+            acceptance_tests={"CA-01": ["tests/test_task_1.py::test_antigo"]},
+        ),
+    )
+
+    result = _run("TASK-002", coder, execution, tasks, _sandbox_ok())
+    estagio1 = _estagio(result, "preparacao_ambiente")
+
+    assert estagio1["status"] == "sucesso"
+    assert estagio1["evidence"]["acceptance_tests"] == {}
+    assert estagio1["evidence"]["acceptance_tests_task_id"] == "TASK-001"
+    assert estagio1["evidence"]["acceptance_tests_escopo_valido"] is False
+    assert "0/2 automatizáveis com teste declarado" in estagio1["summary"]
+    # O descarte tem de aparecer no RELATÓRIO: no log do servidor ele é
+    # indistinguível de "o coder não declarou vínculo nenhum".
+    assert "descartado" in estagio1["summary"]
+    assert "TASK-001" in estagio1["summary"]
+    assert "TASK-002" in estagio1["summary"]
+
+
+def test_estagio1_com_mapa_em_escopo_nao_avisa_descarte(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(coder, _manifest_service(acceptance_tests={"CA-01": ["t::a"]}))
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    assert "descartado" not in _estagio(result, "preparacao_ambiente")["summary"]
+
+
+def test_estagio1_ignora_mapa_sem_namespace_da_task(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_task_id=None,
+            acceptance_tests={"CA-01": ["tests/test_antigo.py::test_stale"]},
+        ),
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    evidencia = _estagio(result, "preparacao_ambiente")["evidence"]
+
+    assert evidencia["acceptance_tests"] == {}
+    assert evidencia["acceptance_tests_escopo_valido"] is False
+
+
 # ===========================================================================
 # Serialização JSON + markdown + sobrescrita atômica
 # ===========================================================================
@@ -966,7 +1023,7 @@ def _evidencia_por_id(result):
     return {e["criterion_id"]: e for e in result["criteria_evidence"]}
 
 
-def test_criterio_com_teste_que_passou_fica_atendido(tmp_path):
+def test_criterio_com_teste_que_passou_permanece_nao_avaliado(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(
@@ -976,13 +1033,14 @@ def test_criterio_com_teste_que_passou_fica_atendido(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-01"]["outcome"] == "atendido"
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
     assert ev["CA-01"]["linked_tests"] == ["tests/t.py::test_ok"]
-    assert ev["CA-01"]["checkable"] is True
+    assert ev["CA-01"]["checkable"] is False
     assert "tests/t.py::test_ok → passou" in ev["CA-01"]["observed"]
+    assert "não usados para avaliar semanticamente" in ev["CA-01"]["observed"]
 
 
-def test_criterio_com_teste_que_falhou_fica_nao_atendido(tmp_path):
+def test_criterio_com_teste_que_falhou_permanece_nao_avaliado(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(
@@ -992,11 +1050,12 @@ def test_criterio_com_teste_que_falhou_fica_nao_atendido(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-01"]["outcome"] == "nao_atendido"
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert "tests/t.py::test_ko → falhou" in ev["CA-01"]["observed"]
 
 
 def test_criterio_com_teste_declarado_que_nao_rodou(tmp_path):
-    """Nodeid errado ou teste não coletado: nunca lido como atendido."""
+    """Nodeid errado continua auditável, mas não avalia o critério."""
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(
@@ -1007,8 +1066,8 @@ def test_criterio_com_teste_declarado_que_nao_rodou(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-01"]["outcome"] == "teste_nao_executado"
-    assert "Nenhum resultado para esses testes" in ev["CA-01"]["observed"]
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert "Sem resultado observado" in ev["CA-01"]["observed"]
 
 
 def test_criterio_automatizavel_sem_teste_declarado(tmp_path):
@@ -1018,24 +1077,23 @@ def test_criterio_automatizavel_sem_teste_declarado(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, _sandbox_ok()))
 
-    assert ev["CA-01"]["outcome"] == "sem_teste_mapeado"
-    assert ev["CA-02"]["outcome"] == "sem_teste_mapeado"
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert ev["CA-02"]["outcome"] == "nao_avaliado"
 
 
-def test_criterio_nao_automatizavel_nao_e_cobrado(tmp_path):
-    """`nao_automatizavel` é limite da instrumentação, não lacuna do coder."""
+def test_criterio_nao_automatizavel_tambem_permanece_nao_avaliado(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(coder, _manifest_service())
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, _sandbox_ok()))
 
-    assert ev["CA-03"]["outcome"] == "nao_automatizavel"
+    assert ev["CA-03"]["outcome"] == "nao_avaliado"
     assert ev["CA-03"]["automatable"] is False
 
 
-def test_vinculo_declarado_prevalece_sobre_a_classificacao(tmp_path):
-    """O rótulo é expectativa; o teste que rodou é fato."""
+def test_vinculo_declarado_nao_prevalece_sobre_a_politica(tmp_path):
+    """Nem um vínculo explícito transforma teste técnico em aceite."""
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(
@@ -1045,12 +1103,11 @@ def test_vinculo_declarado_prevalece_sobre_a_classificacao(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-03"]["outcome"] == "atendido"
+    assert ev["CA-03"]["outcome"] == "nao_avaliado"
     assert ev["CA-03"]["automatable"] is False
 
 
-def test_cobertura_parcial_do_criterio_nao_atende(tmp_path):
-    """Um teste vinculado que não comprova já derruba o critério inteiro."""
+def test_cobertura_parcial_nao_avalia_o_criterio(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(
@@ -1065,7 +1122,7 @@ def test_cobertura_parcial_do_criterio_nao_atende(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-01"]["outcome"] == "nao_atendido"
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
 
 
 def test_teste_pulado_nao_comprova_o_criterio(tmp_path):
@@ -1078,7 +1135,7 @@ def test_teste_pulado_nao_comprova_o_criterio(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-01"]["outcome"] == "nao_atendido"
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
 
 
 def test_estagio7_resume_a_contagem_por_resultado(tmp_path):
@@ -1093,12 +1150,8 @@ def test_estagio7_resume_a_contagem_por_resultado(tmp_path):
     evidencia = _estagio(result, "validacoes_work_item")["evidence"]
 
     assert evidencia["total_criterios"] == 3
-    assert evidencia["decididos_por_teste"] == 1
-    assert evidencia["por_resultado"] == {
-        "atendido": 1,
-        "sem_teste_mapeado": 1,
-        "nao_automatizavel": 1,
-    }
+    assert evidencia["criterios_avaliados"] == 0
+    assert evidencia["por_resultado"] == {"nao_avaliado": 3}
 
 
 def test_task_no_formato_antigo_produz_evidencia_com_id_gerado(tmp_path):
@@ -1110,17 +1163,11 @@ def test_task_no_formato_antigo_produz_evidencia_com_id_gerado(tmp_path):
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, _sandbox_ok()))
 
     assert set(ev) == {"CA-01", "CA-02"}
-    assert all(e["outcome"] == "sem_teste_mapeado" for e in ev.values())
+    assert all(e["outcome"] == "nao_avaliado" for e in ev.values())
     assert all(e["automatable"] is True for e in ev.values())
 
 
-def test_teste_ausente_sem_falha_observada_nao_reprova_o_criterio(tmp_path):
-    """Prova incompleta ≠ prova de violação.
-
-    Marcar como `nao_atendido` erraria duas vezes: puniria a nota por uma falha
-    que ninguém observou E tiraria o critério dos endereçáveis, de modo que o
-    aviso de cobertura nunca pediria ao coder para consertar o vínculo.
-    """
+def test_teste_ausente_nao_avalia_o_criterio(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(
@@ -1135,12 +1182,11 @@ def test_teste_ausente_sem_falha_observada_nao_reprova_o_criterio(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-01"]["outcome"] == "teste_nao_executado"
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
     assert "tests/t.py::test_ausente" in ev["CA-01"]["observed"]
 
 
-def test_falha_observada_prevalece_sobre_teste_ausente(tmp_path):
-    """Com falha real entre os observados, a prova incompleta não atenua."""
+def test_falha_observada_com_teste_ausente_nao_avalia_o_criterio(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks, criteria=_criterios_objeto())
     _write_manifest(
@@ -1161,11 +1207,11 @@ def test_falha_observada_prevalece_sobre_teste_ausente(tmp_path):
 
     ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert ev["CA-01"]["outcome"] == "nao_atendido"
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
 
 
-def test_criterio_com_prova_incompleta_entra_nos_enderecaveis(tmp_path):
-    """Fecha o ciclo: prova incompleta precisa chegar ao aviso de cobertura."""
+def test_criterio_nao_avaliado_nao_pede_novo_teste(tmp_path):
+    """A política não cria loop para tentar converter teste em aceite."""
     from src.agents.workflow_coding_review.executor.acceptance_score import (
         calcular_nota_aceite,
     )
@@ -1184,6 +1230,5 @@ def test_criterio_com_prova_incompleta_entra_nos_enderecaveis(tmp_path):
 
     aceite = calcular_nota_aceite(_run("TASK-001", coder, execution, tasks, sandbox))
 
-    assert "CA-01" in aceite.criterios_enderecaveis
-    # E não contamina a nota com uma reprovação que ninguém observou.
+    assert aceite.criterios_enderecaveis == []
     assert aceite.nota is None

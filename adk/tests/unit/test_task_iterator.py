@@ -313,6 +313,24 @@ async def test_iterator_processa_todas_em_branches_irmas_e_publica_gate():
 
 
 @pytest.mark.asyncio
+async def test_iterator_preserva_total_de_criterios_sem_report():
+    _, _, state = await _executar_iterator(
+        {
+            "tasks": [
+                {
+                    "id": "TASK-001",
+                    "acceptance_criteria": ["Primeiro", "Segundo"],
+                }
+            ]
+        },
+        {"TASK-001": "aprovado"},
+    )
+
+    resultado = state["task_iteration_summary"]["task_results"]["TASK-001"]
+    assert resultado["criterios_esperados"] == 2
+
+
+@pytest.mark.asyncio
 async def test_iterator_isola_erro_e_continua_proxima_task():
     loop, _, state = await _executar_iterator(
         {"tasks": [{"id": "TASK-001"}, {"id": "TASK-002"}]},

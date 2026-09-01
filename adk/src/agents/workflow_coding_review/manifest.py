@@ -246,7 +246,12 @@ def resumo_de_aceite(task_summary: Any) -> dict:
         aceite = resultado.get("aceite")
         aceite = aceite if isinstance(aceite, dict) else {}
 
-        n_total = _numero(aceite.get("total")) or 0
+        n_medido = _numero(aceite.get("total")) or 0
+        n_esperado = _numero(resultado.get("criterios_esperados")) or 0
+        # O report pode faltar (reset, erro operacional, contrato apagado), mas
+        # os critérios esperados já estavam no envelope do TaskIterator. Eles
+        # permanecem no denominador como não cobertos, em vez de sumirem.
+        n_total = max(n_medido, n_esperado)
         n_atendidos = _numero(aceite.get("atendidos")) or 0
         n_nao_atendidos = _numero(aceite.get("nao_atendidos")) or 0
         n_decididos = n_atendidos + n_nao_atendidos
@@ -263,6 +268,8 @@ def resumo_de_aceite(task_summary: Any) -> dict:
             "cobertura_criterios": _numero(resultado.get("cobertura_criterios")) or 0.0,
             "conceito": resultado.get("conceito"),
             "criterios_total": n_total,
+            "criterios_medidos": n_medido,
+            "criterios_esperados": n_esperado,
             "criterios_atendidos": n_atendidos,
             "criterios_nao_atendidos": n_nao_atendidos,
             "criterios_sem_cobertura": max(n_total - n_decididos, 0),

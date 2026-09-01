@@ -95,6 +95,32 @@ class RunManifest(BaseModel):
             "nenhuma cobertura."
         ),
     )
+    acceptance_task_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Id da Task à qual acceptance_tests pertence. Torna o vínculo "
+            "inequívoco mesmo quando tasks diferentes reutilizam CA-01, CA-02..."
+        ),
+    )
+
+    @field_validator("acceptance_task_id", mode="before")
+    @classmethod
+    def _coerce_acceptance_task_id(cls, v: Any) -> Optional[str]:
+        """Normaliza o namespace de aceite sem invalidar a execução técnica.
+
+        Assim como `acceptance_tests`, este campo é bookkeeping: valor ausente,
+        vazio ou malformado deve fazer o harness descartar os vínculos como
+        fora de escopo, nunca rejeitar todo o `run.json` e zerar a nota técnica.
+        """
+        if isinstance(v, str):
+            return v.strip() or None
+        if v is not None:
+            logger.warning(
+                "run.json: 'acceptance_task_id' é %s; esperado texto. "
+                "O namespace será tratado como ausente.",
+                type(v).__name__,
+            )
+        return None
 
     @field_validator("acceptance_tests", mode="before")
     @classmethod

@@ -493,6 +493,15 @@ def test_coder_instruction_exige_run_json(tmp_path, monkeypatch):
 # ===========================================================================
 # Aviso de cobertura de critérios (Fase 4) — uma rodada, contador próprio
 # ===========================================================================
+#
+# ATENÇÃO ao ler estes testes: eles montam à mão relatórios com os outcomes
+# ANTIGOS (`sem_teste_mapeado`, `teste_nao_executado`), porque o harness atual
+# emite só `nao_avaliado` e, com ele, o aviso NÃO dispara — comportamento
+# deliberado, fixado em
+# `test_harness_execucao.py::test_criterio_nao_avaliado_nao_pede_novo_teste`.
+# O que se testa aqui é o mecanismo (uma rodada, contador próprio, texto
+# acionável), preservado para quando a avaliação de aceite voltar apoiada em
+# evidência independente do coder.
 
 
 def _report_com_criterios(*outcomes) -> dict:
@@ -580,6 +589,69 @@ def test_teste_declarado_que_nao_rodou_tambem_gera_aviso(executor_com_report):
 
     assert devolvido is not None
     assert "CA-01" in devolvido.parts[0].text
+
+
+def _report_com_escopo(*outcomes, task_id_declarada=None) -> dict:
+    """Report cujo estágio 1 registra o mapa descartado por pertencer a outra task."""
+    return {
+        **_report_com_criterios(*outcomes),
+        "stages": [
+            {
+                "stage": "preparacao_ambiente",
+                "evidence": {
+                    "acceptance_tests_escopo_valido": False,
+                    "acceptance_tests_task_id": task_id_declarada,
+                },
+            }
+        ],
+    }
+
+
+def test_mapa_fora_de_escopo_pede_o_conserto_do_manifesto(executor_com_report):
+    """O aviso é de uso ÚNICO: gastá-lo pedindo testes que já existem custa a task.
+
+    Com o mapa descartado por escopo, TODOS os critérios voltam como
+    `sem_teste_mapeado` — o texto genérico mandaria escrever testes, quando a
+    correção é uma linha do `run.json`.
+    """
+    mod = executor_com_report(
+        _report_com_escopo(
+            "sem_teste_mapeado", "sem_teste_mapeado", task_id_declarada="TASK-001"
+        )
+    )
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-002"})
+
+    devolvido = mod.aplicar_politica_de_progresso(ctx)
+
+    texto = devolvido.parts[0].text
+    assert "acceptance_task_id" in texto
+    assert "TASK-001" in texto, "o coder precisa ver o id errado que declarou"
+    assert "TASK-002" in texto, "e o id correto a usar"
+    assert "run.json" in texto
+    assert ctx.state["execution_result"] == texto
+
+
+def test_mapa_fora_de_escopo_sem_id_declarado_ainda_orienta(executor_com_report):
+    """`acceptance_task_id` ausente é o caso mais comum: o texto não pode quebrar."""
+    mod = executor_com_report(_report_com_escopo("sem_teste_mapeado"))
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-002"})
+
+    texto = mod.aplicar_politica_de_progresso(ctx).parts[0].text
+
+    assert "não declara" in texto
+    assert "TASK-002" in texto
+
+
+def test_mapa_em_escopo_mantem_o_pedido_de_testes(executor_com_report):
+    """Sem descarte, a pendência é de TESTE — o texto genérico continua valendo."""
+    mod = executor_com_report(_report_com_criterios("sem_teste_mapeado"))
+    ctx = _Contexto({"validation": _veredito("aprovado"), "task_id": "TASK-002"})
+
+    texto = mod.aplicar_politica_de_progresso(ctx).parts[0].text
+
+    assert "Escreva um teste" in texto
+    # Mesmo aqui o manifesto é lembrado: é a causa silenciosa de cobertura zero.
+    assert "acceptance_task_id" in texto
 
 
 def test_rodada_reprovada_nunca_dispara_aviso_de_cobertura(executor_com_report):

@@ -126,6 +126,70 @@ def test_enderecavel_sem_id_cai_para_o_texto_do_criterio():
 
 
 # ---------------------------------------------------------------------------
+# Escopo do mapa teste↔critério — distinguir "não declarou" de "declarou errado"
+# ---------------------------------------------------------------------------
+
+
+def _com_estagio_de_preparacao(report: dict, **evidencia) -> dict:
+    return {
+        **report,
+        "stages": [
+            {"stage": "implantacao_artefato", "evidence": {}},
+            {"stage": "preparacao_ambiente", "evidence": evidencia},
+        ],
+    }
+
+
+def test_mapa_descartado_por_escopo_chega_a_nota_de_aceite():
+    """Sem esse sinal, o pedido de cobertura manda escrever testes que já existem."""
+    aceite = calcular_nota_aceite(
+        _com_estagio_de_preparacao(
+            _report("sem_teste_mapeado", "sem_teste_mapeado"),
+            acceptance_tests_escopo_valido=False,
+            acceptance_tests_task_id="TASK-001",
+        )
+    )
+
+    assert aceite.mapa_fora_de_escopo is True
+    assert aceite.task_id_do_mapa == "TASK-001"
+    assert aceite.como_dict()["mapa_fora_de_escopo"] is True
+
+
+def test_mapa_em_escopo_nao_marca_nada():
+    aceite = calcular_nota_aceite(
+        _com_estagio_de_preparacao(
+            _report("atendido"),
+            acceptance_tests_escopo_valido=True,
+            acceptance_tests_task_id="TASK-002",
+        )
+    )
+
+    assert aceite.mapa_fora_de_escopo is False
+    assert aceite.task_id_do_mapa == "TASK-002"
+
+
+@pytest.mark.parametrize(
+    "report",
+    [
+        {"criteria_evidence": []},
+        {"criteria_evidence": [], "stages": "texto"},
+        {"criteria_evidence": [], "stages": [None, 42]},
+        {"criteria_evidence": [], "stages": [{"stage": "preparacao_ambiente"}]},
+        {
+            "criteria_evidence": [],
+            "stages": [{"stage": "preparacao_ambiente", "evidence": {}}],
+        },
+    ],
+)
+def test_report_sem_o_campo_de_escopo_degrada_para_em_escopo(report):
+    """Report antigo não pode virar acusação falsa de manifesto errado."""
+    aceite = calcular_nota_aceite(report)
+
+    assert aceite.mapa_fora_de_escopo is False
+    assert aceite.task_id_do_mapa is None
+
+
+# ---------------------------------------------------------------------------
 # Totalidade — a entrada é um report que pode estar ausente ou corrompido
 # ---------------------------------------------------------------------------
 

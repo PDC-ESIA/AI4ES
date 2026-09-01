@@ -106,6 +106,7 @@ def _manifesto(coder, acceptance_tests):
                 "port": 8000,
                 "healthcheck": "/",
                 "sandbox": "direct",
+                "acceptance_task_id": "TASK-001",
                 "acceptance_tests": acceptance_tests,
             }
         ),
@@ -132,12 +133,8 @@ def _executar(workspace, saida, exit_code=0):
         )
 
 
-def test_cobertura_parcial_percorre_a_cadeia_inteira(workspace):
-    """Um critério coberto, um sem teste, um não automatizável.
-
-    A nota de aceite enxerga só o coberto; os outros dois vão para a cobertura.
-    E a nota final NÃO é penalizada pelo que não deu para verificar.
-    """
+def test_criterios_nao_sao_avaliados_por_testes_do_coder(workspace):
+    """A suíte permanece técnica e nunca produz atendimento semântico."""
     coder, _, _ = workspace
     _manifesto(coder, {"CA-01": ["tests/test_auth.py::test_401"]})
 
@@ -150,22 +147,21 @@ def test_cobertura_parcial_percorre_a_cadeia_inteira(workspace):
 
     por_id = {e["criterion_id"]: e["outcome"] for e in report["criteria_evidence"]}
     assert por_id == {
-        "CA-01": "atendido",
-        "CA-02": "sem_teste_mapeado",
-        "CA-03": "nao_automatizavel",
+        "CA-01": "nao_avaliado",
+        "CA-02": "nao_avaliado",
+        "CA-03": "nao_avaliado",
     }
 
     aceite = calcular_nota_aceite(report)
-    assert aceite.nota == 1.0
-    assert aceite.cobertura == pytest.approx(1 / 3)
-    # Só CA-02 é cobrável: CA-03 está fora do alcance de teste de código.
-    assert aceite.criterios_enderecaveis == ["CA-02"]
+    assert aceite.nota is None
+    assert aceite.cobertura == 0.0
+    assert aceite.criterios_enderecaveis == []
 
     tecnica = calcular_nota(report).total
     assert nota_unificada(tecnica, aceite.nota) == pytest.approx(tecnica)
 
 
-def test_criterio_com_teste_vermelho_derruba_a_nota_de_aceite(workspace):
+def test_teste_vermelho_falha_tecnicamente_sem_avaliar_criterio(workspace):
     coder, _, _ = workspace
     _manifesto(
         coder,
@@ -186,13 +182,12 @@ def test_criterio_com_teste_vermelho_derruba_a_nota_de_aceite(workspace):
     )
 
     por_id = {e["criterion_id"]: e["outcome"] for e in report["criteria_evidence"]}
-    assert por_id["CA-01"] == "atendido"
-    assert por_id["CA-02"] == "nao_atendido"
+    assert por_id["CA-01"] == "nao_avaliado"
+    assert por_id["CA-02"] == "nao_avaliado"
 
     aceite = calcular_nota_aceite(report)
-    assert aceite.nota == 0.5
-    assert aceite.cobertura == pytest.approx(2 / 3)
-    # Nada a cobrar do coder: os dois critérios automatizáveis têm teste.
+    assert aceite.nota is None
+    assert aceite.cobertura == 0.0
     assert aceite.criterios_enderecaveis == []
 
     # Suíte vermelha é falha TÉCNICA — o caminho de sempre continua valendo.
@@ -209,24 +204,22 @@ def test_grafia_divergente_do_id_nao_quebra_o_vinculo(workspace):
     )
 
     por_id = {e["criterion_id"]: e["outcome"] for e in report["criteria_evidence"]}
-    assert por_id["CA-01"] == "atendido"
+    assert por_id["CA-01"] == "nao_avaliado"
 
 
-def test_suite_sem_saida_verbosa_nao_comprova_nada(workspace):
-    """Sem `-v` o resultado não tem nome, e nada é dado por comprovado."""
+def test_suite_sem_saida_verbosa_tambem_nao_avalia(workspace):
     coder, _, _ = workspace
     _manifesto(coder, {"CA-01": ["tests/test_auth.py::test_401"]})
 
     report = _executar(workspace, "..\n2 passed in 0.02s\n")
 
     por_id = {e["criterion_id"]: e["outcome"] for e in report["criteria_evidence"]}
-    assert por_id["CA-01"] == "teste_nao_executado"
+    assert por_id["CA-01"] == "nao_avaliado"
 
     aceite = calcular_nota_aceite(report)
     assert aceite.nota is None
     assert aceite.cobertura == 0.0
-    # É lacuna endereçável: o coder pode corrigir o comando ou o identificador.
-    assert aceite.criterios_enderecaveis == ["CA-01", "CA-02"]
+    assert aceite.criterios_enderecaveis == []
 
 
 def test_nota_do_manifesto_agrega_o_que_o_harness_produziu(workspace):
@@ -254,7 +247,7 @@ def test_nota_do_manifesto_agrega_o_que_o_harness_produziu(workspace):
     )
 
     assert resumo["criterios_total"] == 3
-    assert resumo["criterios_atendidos"] == 1
-    assert resumo["criterios_sem_cobertura"] == 2
-    assert resumo["nota_aceite"] == 1.0
-    assert resumo["cobertura_criterios"] == pytest.approx(1 / 3, abs=1e-4)
+    assert resumo["criterios_atendidos"] == 0
+    assert resumo["criterios_sem_cobertura"] == 3
+    assert resumo["nota_aceite"] is None
+    assert resumo["cobertura_criterios"] == 0.0

@@ -224,8 +224,10 @@ Há DOIS escopos de caminho — não os confunda:
 ## Escrita/edição — caminhos relativos ao SEU WORKSPACE (`coder/src/`)
 O prefixo `coder/src/` é IMPLÍCITO — NUNCA o escreva no caminho:
   ✅ `tool_criar_arquivo("app/main.py", ...)`
-  ❌ `tool_criar_arquivo("coder/src/app/main.py", ...)` — isso cria
-     `coder/src/coder/src/app/main.py`, sem erro visível, e QUEBRA o build.
+  ❌ `tool_criar_arquivo("coder/src/app/main.py", ...)` — resolveria para
+     `coder/src/coder/src/app/main.py` e QUEBRARIA o build; a chamada é RECUSADA
+     (`PREFIXO_DE_WORKSPACE_PROIBIDO`), assim como qualquer caminho começando por
+     `coder/tasks`, `coder/execution`, `coder/review` ou `coder/validation`.
 - `tool_criar_arquivo(caminho, conteudo)`: cria/sobrescreve arquivo (ex: `app/main.py`).
 - `tool_ler_arquivo(caminho)`: lê arquivo já existente no SEU WORKSPACE.
 - `tool_substituir_trecho(caminho, trecho_antigo, trecho_novo)`: edita trecho de arquivo existente.
@@ -282,6 +284,14 @@ próprio código.
 "Na raiz do SEU WORKSPACE" significa passar SÓ o nome do arquivo — por exemplo
 `tool_criar_arquivo("run.json", ...)` — sem prefixo `coder/src/` e sem `./`.
 
+O `run.json` é POR TASK, e por isso é o único arquivo que você reescreve
+integralmente em TODA task, inclusive no modo INCREMENTO: a proteção contra
+sobrescrita não se aplica a ele. Numa task posterior, leia o manifesto atual com
+`tool_ler_arquivo("run.json")`, mantenha `build`/`run`/`test` que já funcionam e
+regrave o arquivo com `acceptance_task_id` e `acceptance_tests` da task ATUAL.
+Herdar o manifesto da task anterior faz o harness descartar todos os vínculos e
+zerar a cobertura de aceite desta task.
+
 ## Campos do `run.json`
 - `schema_version`: use `"1"`.
 - `surface`: a SUPERFÍCIE de execução do produto — derive-a do `product_type` do
@@ -301,6 +311,9 @@ próprio código.
   ex.: `/`, `/docs`, `/health`).
 - `workdir`: diretório relativo à raiz do artefato onde os comandos rodam (default `.`).
 - `env`: objeto com variáveis de ambiente extras para build/run/test (default `{{}}`).
+- `acceptance_task_id`: o id da Task ATUAL (ex.: `"TASK-002"`), que dá escopo ao
+  mapa abaixo. OBRIGATÓRIO sempre que `acceptance_tests` não estiver vazio, e
+  atualizado a cada nova task — ver a seção abaixo.
 - `acceptance_tests`: objeto que liga cada critério de aceite da Task aos testes
   que o comprovam — ver a seção abaixo. Use `{{}}` se a Task não tiver critérios
   automatizáveis.
@@ -327,9 +340,16 @@ próprio código.
 ## `acceptance_tests` — ligando critérios de aceite aos seus testes
 Cada critério da Task vem com um `id` (`CA-01`, `CA-02`...) e um campo
 `automatable`. Para CADA critério com `automatable: true`, escreva ao menos um
-teste que o comprove e declare o vínculo em `acceptance_tests`:
+teste que exercite o comportamento descrito, copie o id da Task atual para
+`acceptance_task_id` e declare o vínculo em `acceptance_tests`:
+
+O vínculo NÃO aprova o critério: quem julga é um validador independente, e ele
+lê o que o teste faz. O que você declara aqui é o ENDEREÇO da evidência — "para
+avaliar o CA-01, olhe este teste". Um vínculo apontando para um teste que não
+exercita o critério não credita nada e só atrapalha o julgamento.
 
 ```json
+"acceptance_task_id": "TASK-001",
 "acceptance_tests": {{
   "CA-01": ["tests/test_auth.py::test_retorna_401_com_credenciais_invalidas"],
   "CA-02": ["tests/test_ensaios.py::test_cria_ensaio", "tests/test_ensaios.py::test_persiste_ensaio"]
@@ -337,21 +357,27 @@ teste que o comprove e declare o vínculo em `acceptance_tests`:
 ```
 
 - A chave é o `id` do critério, copiado EXATAMENTE como aparece na Task.
+- `acceptance_task_id` é OBRIGATÓRIO quando `acceptance_tests` não está vazio e
+  deve ser atualizado em toda nova Task. O harness ignora deterministicamente
+  todos os vínculos se esse campo estiver ausente ou apontar para outra Task;
+  isso impede que testes da Task anterior sejam citados como evidência de um
+  novo `CA-01`, que descreve outra coisa.
 - O valor é a LISTA de identificadores dos testes que cobrem aquele critério, no
   formato com que a sua ferramenta de teste nomeia um teste individual — em
   pytest, o nodeid `caminho/arquivo.py::nome_do_teste`.
 - Os comandos de `test` precisam LISTAR CADA TESTE pelo nome na saída — em
   pytest, acrescente `-v` (ex.: `venv/bin/python -m pytest -v`). Sem isso a
-  saída só informa quantos testes passaram, não QUAIS, e nenhum vínculo declarado
-  aqui pode ser confirmado: os critérios ficam todos sem cobertura.
+  saída só informa quantos testes passaram, não QUAIS, e o resultado de cada
+  teste vinculado não chega ao relatório de evidências.
 - Os testes citados precisam existir de fato e ser executados por algum comando
   de `test`. Um id que não corresponde a nenhum critério da Task é descartado.
 - Critérios com `automatable: false` (jornada de interface, julgamento visual)
-  NÃO entram aqui: eles não têm como ser comprovados por teste de código, e
+  NÃO entram aqui: eles não têm como ser exercitados por teste de código, e
   inventar um teste de fachada para eles é pior que deixá-los de fora.
-- O teste precisa comprovar o COMPORTAMENTO que o critério descreve, com
+- O teste precisa exercitar o COMPORTAMENTO que o critério descreve, com
   asserção real. Um teste que só importa o módulo, ou que afirma `True`, não
-  comprova nada — e é pior que a ausência de teste, porque simula cobertura.
+  serve de evidência — e é pior que a ausência de teste, porque o validador
+  gasta o julgamento nele antes de concluir que não prova nada.
 
 ## Exemplos por superfície (adapte à SUA stack)
 Serviço (ex.: FastAPI):
@@ -364,6 +390,7 @@ Serviço (ex.: FastAPI):
   "test": ["venv/bin/python -m pytest -v"],
   "port": 8000,
   "healthcheck": "/",
+  "acceptance_task_id": "TASK-001",
   "acceptance_tests": {{
     "CA-01": ["tests/test_auth.py::test_retorna_401_com_credenciais_invalidas"]
   }}
@@ -555,10 +582,16 @@ Responda a UMA pergunta antes de agir: **o bloco acima está vazio?**
     `tool_ler_arquivo`) e só então escrever o que a task atual exige de NOVO.
   - Para mudar um arquivo existente: `tool_ler_arquivo` e depois
     `tool_substituir_trecho`. Nunca `tool_criar_arquivo`.
+  - EXCEÇÃO ÚNICA — `run.json`: ele é o manifesto DESTA task, não código
+    acumulado. Você DEVE reescrevê-lo por inteiro com
+    `tool_criar_arquivo("run.json", ...)` (a chamada é aceita), preservando os
+    comandos que já funcionam e atualizando `acceptance_task_id` e
+    `acceptance_tests` para a task ATUAL.
 
 No modo INCREMENTO, `tool_criar_arquivo` sobre um arquivo que já existe será
-RECUSADO pelo ambiente, e a tentativa desperdiça a rodada. A resposta de
-`tool_listar_workspace` lhe dirá, explicitamente, quais arquivos já existem.
+RECUSADO pelo ambiente (exceto `run.json`), e a tentativa desperdiça a rodada. A
+resposta de `tool_listar_workspace` lhe dirá, explicitamente, quais arquivos já
+existem.
 
 O restante desta instrução descreve COMO codificar. A decisão acima define O QUE
 você tem permissão de fazer, e prevalece sobre qualquer outra seção.

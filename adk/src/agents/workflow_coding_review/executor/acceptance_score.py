@@ -10,7 +10,22 @@ As duas notas medem coisas diferentes e por isso vivem separadas:
     build, inicialização, testes). É ela que a `loop_policy` usa para decidir
     continuidade, e nada aqui pode contaminá-la.
   - este módulo        → "a entrega faz o que o Work Item pediu?", medido só
-    sobre o que foi COMPROVADO por teste vinculado ao critério.
+    sobre os critérios que o harness DECIDIU.
+
+## Estado atual: o harness não decide critério nenhum
+
+O estágio 7 deixou de converter teste vinculado em `atendido`/`nao_atendido` e
+emite `nao_avaliado` para todo critério. A razão é um falso positivo real: o
+teste que "comprovava" o critério é escrito pelo MESMO agente que implementou a
+funcionalidade, e um vínculo declarado errado no `run.json` fazia um teste
+qualquer creditar um critério que ele não exercitava. Sem uma fonte
+independente, a leitura mecânica valia menos que nada — ela virava nota.
+
+Na prática, portanto: `nota` é sempre `None` e `cobertura` sempre `0.0` para
+relatórios novos, e `nota_unificada` redistribui o peso para a nota técnica. As
+fórmulas abaixo continuam valendo — para relatórios antigos e para quando a
+avaliação de aceite voltar, apoiada em evidência que não venha do próprio
+coder. O que NÃO volta é inferir atendimento da suíte dele.
 
 ## Por que a nota exclui os critérios não comprovados
 
@@ -37,11 +52,10 @@ verificável), nunca defeito do artefato.
 
 ## Nada aqui pede nada a um LLM
 
-Como em `progress_score`, a entrada é só o `ExecutionReport` — o resultado
-determinístico que o estágio 7 derivou dos testes vinculados. Os
-`criteria_verdicts` do `implementation_validator` NÃO entram: são julgamento
-semântico, e um número objetivo não pode depender de algo que varia entre
-rodadas para a mesma evidência.
+Como em `progress_score`, a entrada é só o `ExecutionReport` — o que o estágio 7
+registrou. Os `criteria_verdicts` do `implementation_validator` NÃO entram: são
+julgamento semântico, e um número objetivo não pode depender de algo que varia
+entre rodadas para a mesma evidência.
 """
 
 from __future__ import annotations
@@ -52,6 +66,7 @@ from typing import Any, Optional
 from shared.tools.coding_tools.harness_schemas import (
     OUTCOMES_ENDERECAVEIS,
     CriterionOutcome,
+    StageName,
 )
 
 # Casas decimais — mesma razão de `progress_score`: evitar que ruído de ponto
@@ -82,7 +97,18 @@ class NotaAceite:
         por_resultado: Contagem por `CriterionOutcome`, para o relatório.
         criterios_enderecaveis: Ids dos critérios cuja falta de cobertura o
             CODER pode fechar (sem teste declarado, ou teste declarado que não
-            executou). Exclui os não automatizáveis de propósito.
+            executou). Exclui os não automatizáveis de propósito. **Sempre vazio
+            com o harness atual**: `NAO_AVALIADO` não é endereçável, porque
+            pedir mais testes não converteria nada em aceite — a decisão é do
+            validador. O campo segue alimentado por relatórios antigos e volta a
+            ter uso quando a avaliação de aceite for reintroduzida.
+        mapa_fora_de_escopo: `True` quando o harness descartou o mapa
+            teste↔critério inteiro porque o `acceptance_task_id` do `run.json`
+            não é o da Task executada. Sem esta distinção, o descarte é
+            indistinguível de "nada foi declarado" — e o pedido de cobertura
+            pediria mais testes em vez do conserto de uma linha do manifesto.
+        task_id_do_mapa: O `acceptance_task_id` que o manifesto declarava, para
+            o pedido poder dizer ao coder o que estava lá.
     """
 
     nota: Optional[float]
@@ -90,6 +116,8 @@ class NotaAceite:
     total: int
     por_resultado: dict[str, int]
     criterios_enderecaveis: list[str]
+    mapa_fora_de_escopo: bool = False
+    task_id_do_mapa: Optional[str] = None
 
     @property
     def atendidos(self) -> int:
@@ -114,6 +142,8 @@ class NotaAceite:
             "decididos": self.decididos,
             "por_resultado": dict(self.por_resultado),
             "criterios_enderecaveis": list(self.criterios_enderecaveis),
+            "mapa_fora_de_escopo": self.mapa_fora_de_escopo,
+            "task_id_do_mapa": self.task_id_do_mapa,
         }
 
 
@@ -125,6 +155,40 @@ def _evidencias(execution_report: Any) -> list[dict]:
     if not isinstance(bruto, list):
         return []
     return [e for e in bruto if isinstance(e, dict)]
+
+
+def _escopo_do_mapa(execution_report: Any) -> tuple[bool, Optional[str]]:
+    """Lê, do estágio de preparação, se o mapa teste↔critério foi descartado.
+
+    A informação nasce em `normalizar_mapa_de_testes` e viaja na evidência do
+    estágio 1 — é a única fonte que distingue "o coder não declarou vínculo"
+    de "declarou, mas para outra Task". Report antigo (sem o campo) ou
+    malformado degrada para "em escopo": o pior efeito é o pedido de cobertura
+    voltar ao texto genérico, nunca uma acusação falsa.
+
+    Returns:
+        `(fora_de_escopo, task_id_declarada)`.
+    """
+    if not isinstance(execution_report, dict):
+        return False, None
+    estagios = execution_report.get("stages")
+    if not isinstance(estagios, list):
+        return False, None
+
+    for estagio in estagios:
+        if not isinstance(estagio, dict):
+            continue
+        if estagio.get("stage") != StageName.PREPARACAO_AMBIENTE.value:
+            continue
+        evidencia = estagio.get("evidence")
+        if not isinstance(evidencia, dict):
+            return False, None
+        declarada = evidencia.get("acceptance_tests_task_id")
+        return (
+            evidencia.get("acceptance_tests_escopo_valido") is False,
+            declarada if isinstance(declarada, str) else None,
+        )
+    return False, None
 
 
 def _outcome(evidencia: dict) -> Optional[CriterionOutcome]:
@@ -182,6 +246,7 @@ def calcular_nota_aceite(execution_report: Any) -> NotaAceite:
 
     total = len(evidencias)
     decididos = atendidos + nao_atendidos
+    fora_de_escopo, task_id_do_mapa = _escopo_do_mapa(execution_report)
 
     return NotaAceite(
         nota=(
@@ -193,6 +258,8 @@ def calcular_nota_aceite(execution_report: Any) -> NotaAceite:
         total=total,
         por_resultado=por_resultado,
         criterios_enderecaveis=enderecaveis,
+        mapa_fora_de_escopo=fora_de_escopo,
+        task_id_do_mapa=task_id_do_mapa,
     )
 
 

@@ -29,6 +29,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
 
+from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
@@ -641,6 +642,14 @@ class TaskIterator(BaseAgent):
                 }
             else:
                 resultado = classificar_desfecho(state, task_id)
+
+            # O contrato no envelope é a fonte esperada da dimensão de aceite,
+            # mesmo se o arquivo da task ou o report desaparecer durante a run.
+            # Sem este denominador, uma task perdida contribuiria com 0/0 e
+            # inflaria artificialmente a cobertura agregada do manifesto.
+            resultado["criterios_esperados"] = len(
+                normalizar_criterios(task.get("acceptance_criteria"))
+            )
 
             task_results[task_id] = resultado
             processed_task_ids.append(task_id)

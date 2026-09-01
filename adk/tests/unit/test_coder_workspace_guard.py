@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.agents.workflow_coding_review.coder.workspace_guard import (
     CHAVE_ARQUIVOS_HERDADOS,
     _MAX_ARQUIVOS_NO_AVISO,
@@ -56,6 +58,47 @@ def test_primeira_task_nao_bloqueia_criacao_ou_sobrescrita():
     assert _chamar(state, "src/app.py") is None
 
 
+@pytest.mark.parametrize(
+    "caminho",
+    [
+        "coder/tasks/TASK-006.json",
+        "coder/src/app/main.py",
+        "coder/execution/TASK-001.report.json",
+        "coder/review/parecer.md",
+    ],
+)
+def test_prefixo_global_coder_e_bloqueado_mesmo_na_primeira_task(caminho):
+    resposta = _chamar({CHAVE_ARQUIVOS_HERDADOS: []}, caminho)
+
+    assert resposta["codigo"] == "PREFIXO_DE_WORKSPACE_PROIBIDO"
+    assert "coder/src" in resposta["erro"]
+    assert "somente leitura" in resposta["erro"]
+
+
+@pytest.mark.parametrize(
+    "caminho", ["coder/parser.py", "coder/__init__.py", "coder", "app/coder/src.py"]
+)
+def test_pacote_do_projeto_chamado_coder_nao_e_colateral(caminho):
+    """O erro é de ESCOPO, não de nome: só o layout compartilhado é bloqueado.
+
+    `coder/src`, `coder/tasks` e irmãs endereçam o workspace compartilhado; um
+    módulo `coder/parser.py` do próprio projeto é código legítimo e não pode ser
+    recusado por coincidência de nome.
+    """
+    assert _chamar({CHAVE_ARQUIVOS_HERDADOS: []}, caminho) is None
+
+
+def test_subpastas_compartilhadas_vem_do_mapa_oficial_de_agentes():
+    """Derivadas de AGENT_DIRS para não divergirem quando uma irmã for criada."""
+    from src.agents.workflow_coding_review.coder.workspace_guard import (
+        SUBPASTAS_COMPARTILHADAS,
+    )
+
+    assert {"src", "tasks", "execution", "review", "validation"} <= (
+        SUBPASTAS_COMPARTILHADAS
+    )
+
+
 def test_task_posterior_bloqueia_arquivo_herdado_com_mensagem_acionavel():
     state = {CHAVE_ARQUIVOS_HERDADOS: ["PLAN.md", "src/app.py"]}
 
@@ -66,6 +109,36 @@ def test_task_posterior_bloqueia_arquivo_herdado_com_mensagem_acionavel():
     assert resposta["codigo"] == "SOBRESCRITA_INTER_TASK_BLOQUEADA"
     assert "tool_ler_arquivo" in resposta["erro"]
     assert "tool_substituir_trecho" in resposta["erro"]
+
+
+def test_run_json_herdado_pode_ser_reescrito_pela_task_atual():
+    """O manifesto é POR TASK: bloqueá-lo zeraria a cobertura de aceite.
+
+    Desde que `acceptance_task_id` namespaceia o mapa teste↔critério, um
+    `run.json` da task anterior é stale por construção e o harness descarta
+    todos os vínculos. Se o guard impedisse a regravação, toda task a partir da
+    2ª ficaria com cobertura zero — sem que o coder tivesse como consertar.
+    """
+    state = {CHAVE_ARQUIVOS_HERDADOS: ["PLAN.md", "run.json", "src/app.py"]}
+
+    assert _chamar(state, "run.json") is None
+    assert _chamar(state, "./run.json") is None
+    # A exceção é só do manifesto; o resto da baseline segue protegido.
+    assert _chamar(state, "PLAN.md")["codigo"] == "SOBRESCRITA_INTER_TASK_BLOQUEADA"
+
+
+def test_run_json_e_regravavel_mesmo_com_baseline_invalida():
+    """Nada do estado da fotografia pode impedir a entrega do manifesto."""
+    assert _chamar({CHAVE_ARQUIVOS_HERDADOS: "corrompida"}, "run.json") is None
+
+
+def test_run_json_sob_subpasta_nao_e_a_excecao():
+    """A exceção é o manifesto na raiz — não qualquer arquivo com esse nome."""
+    state = {CHAVE_ARQUIVOS_HERDADOS: ["fixtures/run.json"]}
+
+    assert _chamar(state, "fixtures/run.json")["codigo"] == (
+        "SOBRESCRITA_INTER_TASK_BLOQUEADA"
+    )
 
 
 def test_alias_de_caminho_nao_contorna_o_guard():
@@ -269,6 +342,11 @@ def test_task_posterior_anuncia_projeto_e_preserva_a_listagem():
     instrucao = resposta["instrucao_obrigatoria"]
     assert "PLAN.md" in instrucao
     assert "tool_substituir_trecho" in instrucao
+    # E precisa abrir a exceção do manifesto, senão o coder não regrava o
+    # `acceptance_task_id` e perde a cobertura de aceite da task.
+    excecao = resposta["excecao_run_json"]
+    assert "run.json" in excecao
+    assert "acceptance_task_id" in excecao
 
 
 def test_outras_tools_nao_sao_alteradas():
@@ -326,6 +404,22 @@ def test_gate_de_modo_abre_a_instrucao_do_coder():
     assert "modo INCREMENTO" in abertura
     assert 'tool_criar_arquivo("PLAN.md")' in abertura
     assert "tool_substituir_trecho" in abertura
+
+
+def test_gate_abre_a_excecao_do_manifesto_por_task():
+    """O gate prevalece sobre as demais seções: a exceção precisa estar NELE.
+
+    Sem isso, "nunca `tool_criar_arquivo` em arquivo existente" leria como
+    proibição de regravar o `run.json` — e o manifesto stale da task anterior
+    faria o harness descartar todos os vínculos de aceite.
+    """
+    from src.agents.workflow_coding_review.coder import prompt
+
+    instrucao = prompt.build_instruction("/ws")
+    abertura = instrucao[: instrucao.index("# PERFIL DO AGENTE")]
+
+    assert 'tool_criar_arquivo("run.json"' in abertura
+    assert "acceptance_task_id" in abertura
 
 
 def test_gate_preserva_o_placeholder_de_estado_do_adk():

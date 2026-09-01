@@ -304,10 +304,43 @@ class MapaDeTestes(BaseModel):
             "desta Task (`CA-09` numa task com 3 critérios)."
         ),
     )
+    task_id_declarada: Optional[str] = Field(
+        default=None,
+        description="Task à qual o manifesto declarou que o mapa pertence.",
+    )
+    escopo_valido: bool = Field(
+        default=True,
+        description=(
+            "False quando um mapa não vazio não está explicitamente associado "
+            "à Task executada; nesse caso nenhum vínculo é utilizado."
+        ),
+    )
+
+
+def _chave_de_task(valor: Any) -> Optional[str]:
+    """Forma comparável de um id de Task: sem espaços nas pontas e sem caixa.
+
+    Os dois lados são escritos por LLM — o `acceptance_task_id` pelo coder, o id
+    da Task pelo autor do contrato. Exigir igualdade literal faria `task-002`
+    ou `"TASK-002 "` perderem toda a cobertura de `TASK-002`: descarte por
+    GRAFIA, não por escopo, que é o oposto do que a proteção quer fazer. A
+    canonização é a mesma ideia de `canonizar_id` para `CA-NN`.
+
+    Returns:
+        A chave comparável, ou `None` quando não há id utilizável (não-string ou
+        vazio) — caso em que o chamador trata o namespace como desconhecido.
+    """
+    if not isinstance(valor, str):
+        return None
+    return valor.strip().casefold() or None
 
 
 def normalizar_mapa_de_testes(
-    bruto: Any, criterios: list[AcceptanceCriterion]
+    bruto: Any,
+    criterios: list[AcceptanceCriterion],
+    *,
+    task_id: Optional[str] = None,
+    task_id_declarada: Optional[str] = None,
 ) -> MapaDeTestes:
     """Casa o mapa declarado no `run.json` com os critérios reais da Task.
 
@@ -343,7 +376,26 @@ def normalizar_mapa_de_testes(
                 "considerado.",
                 type(bruto).__name__,
             )
-        return MapaDeTestes()
+        return MapaDeTestes(task_id_declarada=task_id_declarada)
+
+    # CA-NN é deliberadamente local à Task. Logo, a identidade real de um
+    # vínculo é (task_id, criterion_id), nunca somente criterion_id. Quando o
+    # harness informa a Task corrente, um mapa não vazio sem esse namespace —
+    # ou ainda apontando para a Task anterior — é stale e falha fechado: fica
+    # visível no relatório, mas não pode produzir evidência de aceite.
+    corrente = _chave_de_task(task_id)
+    if bruto and corrente is not None and _chave_de_task(task_id_declarada) != corrente:
+        logger.warning(
+            "Mapa teste↔critério pertence à task %r, mas o harness executa %r. "
+            "Todos os vínculos foram ignorados para evitar evidência stale.",
+            task_id_declarada,
+            task_id,
+        )
+        return MapaDeTestes(
+            ids_desconhecidos=[str(chave) for chave in bruto],
+            task_id_declarada=task_id_declarada,
+            escopo_valido=False,
+        )
 
     for chave, testes in bruto.items():
         id_canonico = canonizar_id(chave)
@@ -366,4 +418,8 @@ def normalizar_mapa_de_testes(
             ", ".join(desconhecidos),
         )
 
-    return MapaDeTestes(por_criterio=por_criterio, ids_desconhecidos=desconhecidos)
+    return MapaDeTestes(
+        por_criterio=por_criterio,
+        ids_desconhecidos=desconhecidos,
+        task_id_declarada=task_id_declarada,
+    )

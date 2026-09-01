@@ -242,10 +242,27 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     # da Task. Só aqui os dois lados são conhecidos ao mesmo tempo. Um mapa
     # inaproveitável não falha o estágio: é anotação, não execução.
     ctx.mapa_de_testes = normalizar_mapa_de_testes(
-        ctx.manifest.acceptance_tests, ctx.acceptance_criteria
+        ctx.manifest.acceptance_tests,
+        ctx.acceptance_criteria,
+        task_id=ctx.task_id,
+        task_id_declarada=ctx.manifest.acceptance_task_id,
     )
     automatizaveis = [c for c in ctx.acceptance_criteria if c.automatable]
     cobertos = [c for c in automatizaveis if c.id in ctx.mapa_de_testes.por_criterio]
+
+    # O descarte por escopo precisa aparecer no RELATÓRIO, não só no log do
+    # servidor: sem isso ele é indistinguível de "o coder não declarou nada", e
+    # ninguém — nem o coder, nem o validador — sabe qual é a correção.
+    aviso_escopo = (
+        ""
+        if ctx.mapa_de_testes.escopo_valido
+        else (
+            " ATENÇÃO: o mapa 'acceptance_tests' foi INTEIRAMENTE descartado — "
+            f"o run.json declara acceptance_task_id="
+            f"{ctx.mapa_de_testes.task_id_declarada!r}, mas esta execução é da "
+            f"task {ctx.task_id!r}. Corrija o manifesto para revincular os testes."
+        )
+    )
 
     ctx.env_ok = True
     return StageResult(
@@ -257,6 +274,7 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
             f"critérios, {len(cobertos)}/{len(automatizaveis)} automatizáveis com "
             f"teste declarado), manifesto surface='{ctx.manifest.surface}' "
             f"(perfil {ctx.profile.name}), sandbox '{ctx.manifest.sandbox}'."
+            f"{aviso_escopo}"
         ),
         evidence={
             "task_file": str(task_file),
@@ -265,6 +283,8 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
             "acceptance_tests_ids_desconhecidos": list(
                 ctx.mapa_de_testes.ids_desconhecidos
             ),
+            "acceptance_tests_task_id": ctx.mapa_de_testes.task_id_declarada,
+            "acceptance_tests_escopo_valido": ctx.mapa_de_testes.escopo_valido,
             "surface": ctx.manifest.surface,
             "profile": ctx.profile.name,
             "sandbox": ctx.manifest.sandbox,
@@ -866,86 +886,28 @@ def _evidencia_nao_http(criterion: str, motivo: str) -> CriterionEvidence:
     )
 
 
-# Desfechos de teste que NÃO comprovam o comportamento. Um só deles entre os
-# testes vinculados já derruba o critério: cobertura parcial não é cobertura.
-_TESTE_NAO_COMPROVA = (TestOutcome.FALHOU, TestOutcome.ERRO, TestOutcome.PULADO)
-
-
-def _resultado_por_testes(
-    criterio: AcceptanceCriterion,
+def _evidencia_tecnica_dos_testes(
     vinculados: list[str],
     desfechos: dict[str, TestOutcome],
-) -> tuple[CriterionOutcome, str, str]:
-    """Deriva o resultado do critério a partir dos testes que o coder vinculou.
+) -> tuple[str, str]:
+    """Descreve testes vinculados sem inferir atendimento do critério.
 
-    O vínculo declarado prevalece sobre a classificação `automatable`: se existe
-    teste apontando para o critério, é o RESULTADO dele que vale. O rótulo é
-    expectativa; o teste é fato.
-
-    Returns:
-        `(outcome, check_performed, observed)`.
+    Os testes continuam relevantes para a saúde técnica da entrega, mas são
+    código produzido pelo mesmo agente que implementou a funcionalidade. O
+    harness registra seus resultados para auditoria e nunca os converte em
+    `atendido` ou `nao_atendido`.
     """
     observados = {t: desfechos[t] for t in vinculados if t in desfechos}
     ausentes = [t for t in vinculados if t not in desfechos]
     citados = ", ".join(vinculados)
-
-    if not observados:
-        # O vínculo existe, mas nenhum dos testes apareceu na saída da suíte:
-        # nodeid errado, teste não coletado, ou saída que não nomeia testes.
-        # NUNCA é lido como atendido — comprovação exige observação positiva.
-        return (
-            CriterionOutcome.TESTE_NAO_EXECUTADO,
-            f"Testes vinculados no manifesto: {citados}.",
-            (
-                "Nenhum resultado para esses testes foi encontrado na saída da "
-                "suíte. Verifique se o identificador está correto e se os "
-                "comandos de teste listam cada teste pelo nome."
-            ),
-        )
-
-    reprovados = [t for t, d in observados.items() if d in _TESTE_NAO_COMPROVA]
-    # `.value` explícito: um enum com mixin de str interpola como
-    # "TestOutcome.PASSOU" na f-string, e este texto é lido por humanos e pelo
-    # validador.
     detalhe = "; ".join(f"{t} → {d.value}" for t, d in sorted(observados.items()))
-    pendencia = (
-        f" Sem resultado observado: {', '.join(ausentes)}." if ausentes else ""
-    )
-
-    # Falha OBSERVADA e prova INCOMPLETA são coisas diferentes, e a ordem destes
-    # dois ramos é o que as separa.
-    #
-    # Um teste vinculado que rodou e não comprovou é evidência positiva de que o
-    # critério não é atendido — `nao_atendido`, e entra na nota.
-    #
-    # Um teste vinculado que simplesmente não apareceu na saída não é evidência
-    # de nada: pode ser nodeid errado, teste não coletado, ou comando que não
-    # nomeia testes. Marcá-lo como `nao_atendido` erraria duas vezes: puniria a
-    # nota por uma falha que ninguém observou E tiraria o critério da lista de
-    # endereçáveis, de modo que o aviso de cobertura nunca pediria ao coder para
-    # consertar o vínculo — justamente a única ação que resolveria o caso.
-    if reprovados:
-        return (
-            CriterionOutcome.NAO_ATENDIDO,
-            f"Resultado dos testes vinculados: {citados}.",
-            f"{detalhe}.{pendencia}",
-        )
-
+    partes = [detalhe] if detalhe else []
     if ausentes:
-        return (
-            CriterionOutcome.TESTE_NAO_EXECUTADO,
-            f"Resultado dos testes vinculados: {citados}.",
-            (
-                f"{detalhe}.{pendencia} Nenhuma falha observada, mas a prova do "
-                "critério está incompleta: verifique o identificador do teste e "
-                "se os comandos de teste listam cada teste pelo nome."
-            ),
-        )
-
+        partes.append(f"Sem resultado observado: {', '.join(ausentes)}")
+    partes.append("Resultados não usados para avaliar semanticamente o critério")
     return (
-        CriterionOutcome.ATENDIDO,
-        f"Resultado dos testes vinculados: {citados}.",
-        f"{detalhe}.",
+        f"Testes vinculados coletados apenas como evidência técnica: {citados}.",
+        ". ".join(partes) + ".",
     )
 
 
@@ -954,18 +916,10 @@ def _estagio_validacoes_work_item(
 ) -> tuple[StageResult, list[CriterionEvidence]]:
     """Estágio 7 — coleta a evidência de cada critério de aceite.
 
-    Duas fontes, nesta ordem de precedência:
-
-    1. **Testes vinculados** (`acceptance_tests` do manifesto): resultado
-       determinístico, derivado da suíte que o próprio artefato executa. É a
-       única fonte que produz `atendido`/`nao_atendido`.
-    2. **Sondagem HTTP** (só perfil S, app no ar): mantida para os critérios sem
-       vínculo, porque continua sendo a melhor evidência disponível para o
-       julgamento semântico do validador a jusante. Ela NÃO produz resultado —
-       apenas registra o que foi observado.
-
-    O estágio segue sem emitir veredito: mesmo `nao_atendido` é leitura de
-    teste, não decisão sobre o Work Item.
+    Testes vinculados e sondagens HTTP podem ser registrados como evidência
+    técnica, mas nenhuma dessas fontes classifica o critério. Todo critério sai
+    como `nao_avaliado`, eliminando por construção a possibilidade de um teste
+    escrito pelo coder produzir um falso `atendido`.
     """
     if not ctx.deploy_ok or ctx.profile is None:
         return (
@@ -991,28 +945,25 @@ def _estagio_validacoes_work_item(
         vinculados = ctx.mapa_de_testes.por_criterio.get(c.id, [])
 
         if vinculados:
-            outcome, check, observed = _resultado_por_testes(
-                c, vinculados, ctx.desfecho_dos_testes
+            check, observed = _evidencia_tecnica_dos_testes(
+                vinculados, ctx.desfecho_dos_testes
             )
             evidencias.append(
                 CriterionEvidence(
                     criterion=c.description,
                     criterion_id=c.id,
                     automatable=c.automatable,
-                    outcome=outcome,
+                    outcome=CriterionOutcome.NAO_AVALIADO,
                     linked_tests=list(vinculados),
                     check_performed=check,
                     observed=observed,
-                    # `checkable` mantém o sentido histórico que o validador já
-                    # conhece: houve verificação determinística deste critério.
-                    checkable=True,
+                    checkable=False,
                 )
             )
             continue
 
-        # Sem vínculo: a sondagem HTTP segue alimentando o validador, e o
-        # resultado registra POR QUE não houve comprovação — distinguindo a
-        # lacuna que o coder pode fechar do limite da instrumentação.
+        # Sem vínculo: a sondagem HTTP segue como telemetria técnica, sem virar
+        # avaliação do critério.
         base = (
             _evidencia_http(c.description, ctx.base_url, ctx.main_route)
             if http_ok
@@ -1023,11 +974,7 @@ def _estagio_validacoes_work_item(
                 update={
                     "criterion_id": c.id,
                     "automatable": c.automatable,
-                    "outcome": (
-                        CriterionOutcome.SEM_TESTE_MAPEADO
-                        if c.automatable
-                        else CriterionOutcome.NAO_AUTOMATIZAVEL
-                    ),
+                    "outcome": CriterionOutcome.NAO_AVALIADO,
                 }
             )
         )
@@ -1035,9 +982,7 @@ def _estagio_validacoes_work_item(
     contagem: dict[str, int] = {}
     for e in evidencias:
         contagem[e.outcome.value] = contagem.get(e.outcome.value, 0) + 1
-    decididos = sum(
-        1 for e in evidencias if e.outcome in OUTCOMES_DECIDIDOS
-    )
+    decididos = sum(1 for e in evidencias if e.outcome in OUTCOMES_DECIDIDOS)
 
     result = StageResult(
         stage=StageName.VALIDACOES_WORK_ITEM,
@@ -1045,13 +990,13 @@ def _estagio_validacoes_work_item(
         duration_seconds=round(time.time() - t0, 3),
         summary=(
             f"Evidência coletada para {len(evidencias)} critérios "
-            f"({decididos} decididos por teste vinculado). "
-            "Nenhum julgamento emitido."
+            f"({decididos} avaliados). Testes automatizados não são usados "
+            "para inferir atendimento."
         ),
         evidence={
             "total_criterios": len(evidencias),
             "verificaveis": sum(1 for e in evidencias if e.checkable),
-            "decididos_por_teste": decididos,
+            "criterios_avaliados": decididos,
             "por_resultado": contagem,
         },
         error_code=None,

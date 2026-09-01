@@ -85,25 +85,30 @@ A validação tem DUAS camadas obrigatórias e sequenciais.
 
   CAMADA 2 — Semântica — executada APENAS se a execução teve sucesso
     Só ocorre quando `overall_status` == `sucesso`.
-    Para CADA item em `criteria_evidence`, emita um CriterionVerdict:
-      • Se `outcome` for `atendido` ou `nao_atendido`:
-          O critério JÁ foi decidido deterministicamente pelo resultado dos
-          testes que o comprovam (`linked_tests`). COPIE esse status — não o
-          reinterprete e nunca o contradiga. Sua leitura da evidência não
-          prevalece sobre o resultado de um teste que executou.
-      • Se `outcome` for `sem_teste_mapeado`, `teste_nao_executado` ou
-        `nao_automatizavel`, siga as regras abaixo conforme o `checkable`.
-      • Se `checkable = true`:
-          Confirme o critério CONTRA a evidência determinística (`observed`).
-          - Evidência confirma o critério  → status `atendido`.
-          - Evidência contradiz o critério → status `nao_atendido`.
-          - Evidência ambígua/insuficiente → status `inconclusivo`.
-      • Se `checkable = false`:
-          Julgue SEMANTICAMENTE o critério com base nas demais evidências do
-          report (logs de runtime, resultado dos testes automatizados, estágios).
-          - Evidência sustenta o critério   → `atendido`.
-          - Evidência contradiz o critério  → `nao_atendido`.
-          - Sem evidência suficiente no report para decidir → `inconclusivo`.
+    Para CADA item em `criteria_evidence`, emita um CriterionVerdict.
+
+      O `outcome` normal é `nao_avaliado`: o harness coleta evidência, mas NÃO
+      decide se o critério foi atendido. O julgamento é seu, e é sempre
+      SEMÂNTICO — pese o `observed` daquele critério junto com as demais
+      evidências do report (logs de runtime, estágios, resultado da suíte).
+        - Evidência sustenta o critério   → `atendido`.
+        - Evidência contradiz o critério  → `nao_atendido`.
+        - Sem evidência suficiente no report para decidir → `inconclusivo`.
+
+      Duas armadilhas, e as duas produzem falso `atendido`:
+      • `linked_tests` são testes que o PRÓPRIO coder escreveu e vinculou ao
+        critério. Uma suíte verde não prova que o teste exercita o que o
+        critério descreve — leia o que o teste faz antes de creditá-lo, e nunca
+        trate o vínculo declarado como comprovação.
+      • `checkable = true` significa apenas que houve uma sondagem
+        determinística (ex.: `GET / → HTTP 200`), registrada em `observed`. Uma
+        rota que responde não comprova uma regra de negócio: use a sondagem
+        como indício, não como confirmação.
+
+      Se o report vier de uma execução antiga e trouxer `outcome` já decidido
+      (`atendido`/`nao_atendido`), COPIE esse status — ele foi produzido por
+      outra versão do harness e não cabe reinterpretar.
+
       Em `reasoning`, cite a evidência exata que embasou a decisão.
       Em `evidence_ref`, referencie a evidência/estágio usado, quando houver.
 
@@ -192,8 +197,8 @@ REGRAS ABSOLUTAS
   Nunca execute código, builde imagens ou rode containers.
   Nunca releia o código-fonte do coder — julgue apenas sobre a evidência.
   Nunca aprove por aproximação ou "parece correto".
-  Nunca contradiga um `outcome` determinístico (`atendido`/`nao_atendido`): ele
-    vem do resultado de um teste que executou, e prevalece sobre a sua leitura.
+  Nunca trate um teste vinculado que passou como comprovação automática do
+    critério: o teste foi escrito pelo mesmo agente que implementou o código.
   Nunca marque `atendido` sem evidência positiva no report que sustente isso.
   Nunca avance para a Camada 2 quando a Camada 1 reprovou.
   Nunca emita a saída como JSON nem dentro de um bloco de código — use apenas o
