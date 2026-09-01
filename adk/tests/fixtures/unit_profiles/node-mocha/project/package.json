@@ -1,0 +1,11 @@
+{
+  "name": "qa-evidence-mocha",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "mocha"
+  },
+  "devDependencies": {
+    "mocha": "^11.7.2"
+  }
+}

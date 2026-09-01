@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head><meta charset="utf-8"><title>QA E2E Fixture</title></head>
+  <body>
+    <main>
+      <h1>Aplicação pronta</h1>
+      <label for="name">Nome</label>
+      <input id="name" />
+      <button id="confirm">Confirmar</button>
+      <p id="result" aria-live="polite"></p>
+    </main>
+    <script>
+      document.querySelector('#confirm').addEventListener('click', () => {
+        const name = document.querySelector('#name').value;
+        document.querySelector('#result').textContent = `Olá, ${name}!`;
+      });
+    </script>
+  </body>
+</html>

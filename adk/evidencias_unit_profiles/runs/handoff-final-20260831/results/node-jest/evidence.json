@@ -1,0 +1,155 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "unit-profile-smoke",
+  "collected_at": "2026-09-01T02:40:20.090394+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "node-jest",
+    "title": "Node/TypeScript com Jest",
+    "test_relative_path": "tests/unit/calculator.test.js",
+    "reference_test": "calculator.test.js",
+    "runtime_command": [
+      "node",
+      "--version"
+    ],
+    "requirement": "Gere e execute testes unitários para src/calculator.js. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "bootstrap_commands": [
+      [
+        "npm",
+        "install",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ]
+    ],
+    "minimum_tests": 2,
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\node-jest"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "--version"
+    ],
+    "output": "v24.19.0"
+  },
+  "bootstrap": {
+    "status": "sucesso",
+    "commands": [
+      {
+        "command": [
+          "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+          "C:\\Users\\Henrique Lima\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\\node-v24.19.0-win-x64\\node_modules\\npm\\bin\\npm-cli.js",
+          "install",
+          "--ignore-scripts",
+          "--no-audit",
+          "--no-fund"
+        ],
+        "returncode": 0,
+        "output": "added 278 packages in 55s\nnpm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me"
+      }
+    ]
+  },
+  "workspace": {
+    "profile_id": "node-jest",
+    "title": "Node/TypeScript com Jest",
+    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output",
+    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src",
+    "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para src/calculator.js. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "expected": {
+      "inspection_status": "suportado",
+      "profile_id": "node-jest",
+      "execution_status": "sucesso",
+      "minimum_tests": 2
+    },
+    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\dev_ui_session.json",
+    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.js"
+  },
+  "source_sha256": {
+    "coverage/clover.xml": "6ec4ba7f3364ce6ee1ac6d5f9e3d3e200994c2edc843550992472e9be88f99fa",
+    "coverage/coverage-final.json": "567f32678defeb0c7e9a86f805a6208adbf7dbbb8eeb3d4cd3f4035d3bd5324a",
+    "coverage/lcov-report/base.css": "3f876e51f0a46864ffa7665b4b7a1f5fb5f6f37fb6a28f014e2b12d82962c852",
+    "coverage/lcov-report/block-navigation.js": "cd8db34b1fbeb973354a93f8b4133c7c7eab34cdda9429a0434be91384783b7e",
+    "coverage/lcov-report/calculator.js.html": "f02aa69f75f0b9895e208ca81cf4c0bbf8e729c94affc6b92918f75530355bf3",
+    "coverage/lcov-report/favicon.png": "5b0cfd52dc0bfbe544f4e1a9c77aa46b8629b0e0aad6c54f95eef457b86c2a89",
+    "coverage/lcov-report/index.html": "1f129d238be8474eb475a8bd4d972a23e5d4c8c71cad531fea6ed54cb5e5c398",
+    "coverage/lcov-report/prettify.css": "ea3fe433f9450698ca8a230271688e7aeec12f99c8a7ef6c94379abb38f27823",
+    "coverage/lcov-report/prettify.js": "fa1b1e1b906ddcfa08b46f161c0f924f506e1a31b4f3e09b8caaa2463ef52c18",
+    "coverage/lcov-report/sort-arrow-sprite.png": "42c895355f9838ede83fdfdca90127d8471aefed5ecf5342374f65ec7c3f10ab",
+    "coverage/lcov-report/sorter.js": "f8cc5d157379d844fd695ad567b6c29b3c1f0812964ddf6f95c26327e434bab5",
+    "coverage/lcov.info": "44f916737d92508b2257c2a53e362c4509b61d507a9a691441cd0683604ba439",
+    "package-lock.json": "397e2e2b06e7f074c513629ace29e806a907be976b9ed181f50df7d758d73f07",
+    "package.json": "b7fdee2e224fecbf37fdfc87925a514a1343bf8ed8cc3c8c42c9cd839ea9a5ee",
+    "src/calculator.js": "0b2e117cc23dd9c0a158a318202423e822a80b529f7127d4901c499ab441929b",
+    "tests/unit/calculator.test.js": "fc88df7d9e1917f59117f4d6535b4ad64ab21a50800db5a7c23bbba20ad2c061"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "unitario",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "node-jest",
+      "language": "javascript-typescript",
+      "framework": "jest",
+      "source_suffixes": [
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".ts",
+        ".tsx"
+      ],
+      "marker_files": [
+        "package.json",
+        "jest.config.js",
+        "jest.config.ts"
+      ],
+      "test_file_pattern": "<componente>.test.ts",
+      "coverage_format": "lcov",
+      "executor": "jest_runner",
+      "implemented": true
+    },
+    "confianca": 0.99,
+    "evidencias": [
+      "package.json:jest",
+      "source:node(2)"
+    ],
+    "arquivos_fonte": [
+      "src/calculator.js",
+      "tests/unit/calculator.test.js"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "unitario",
+    "perfil": "node-jest",
+    "comando": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src\\node_modules\\jest\\bin\\jest.js",
+      "tests/unit/calculator.test.js",
+      "--runInBand",
+      "--coverage"
+    ],
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "cobertura": {
+      "percentual": null,
+      "formato": "lcov",
+      "arquivo": null
+    },
+    "saida": "---------------|---------|----------|---------|---------|-------------------\nFile           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s \n---------------|---------|----------|---------|---------|-------------------\nAll files      |      80 |       50 |     100 |      80 |                   \n calculator.js |      80 |       50 |     100 |      80 | 9                 \n---------------|---------|----------|---------|---------|-------------------\n\nTest Suites: 1 passed, 1 total\nTests:       2 passed, 2 total\nSnapshots:   0 total\nTime:        7.633 s\nRan all test suites matching tests/unit/calculator.test.js.",
+    "erros": []
+  },
+  "normalized_result": {
+    "total": 2,
+    "sucessos": 2,
+    "falhas": 0,
+    "ignorados": 0,
+    "cobertura_percentual": null
+  }
+}

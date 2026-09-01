@@ -6,8 +6,8 @@ from google.adk.tools.agent_tool import AgentTool
 from .subagents.action_planner.agent import agent as action_planner_agent
 from .subagents.code_fix_agent.agent import agent as code_fix_agent
 from .subagents.e2e_test_generator.agent import agent as e2e_test_generator_agent
-
-from .subagents.receive_requirements import agent as receber_requisitos_agent
+from .subagents.integration_tests_agent.agent import agent as integration_tests_agent
+from .subagents.unit_test_generator.agent import agent as unit_test_generator_agent
 from shared.cache import create_qa_agent_response_cache
 from shared.tools.pytest_runner import executar_pytest_tool
 from shared.tools.doubt_tool import DoubtArtifactGenerator
@@ -34,15 +34,17 @@ agent = LlmAgent(
     description=(
         "Agente QA do Time 3 — PDC-AI4SE. "
         "Recebe artefatos de requisito (RF, HU, UC, RNF, RN), "
-        "gera testes pytest e cobertura, ou planos E2E Playwright quando solicitado."
+        "gera e executa testes unitários e de integração por perfil, além de "
+        "testes E2E com Playwright TypeScript."
     ),
     instruction=QA_PROMPT,
     tools=[
         AgentTool(agent=action_planner_agent),
+        AgentTool(agent=unit_test_generator_agent),
+        AgentTool(agent=integration_tests_agent),
         AgentTool(agent=e2e_test_generator_agent),
         FunctionTool(executar_pytest_tool),
         FunctionTool(DoubtArtifactGenerator.generate),
-        AgentTool(agent=receber_requisitos_agent),
         AgentTool(agent=code_fix_agent),
     ],
     before_model_callback=_qa_cache.before_model_callback,

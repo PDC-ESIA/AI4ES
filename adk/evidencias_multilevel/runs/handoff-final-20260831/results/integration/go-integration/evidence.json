@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "integration-profile-smoke",
+  "collected_at": "2026-09-01T02:36:40.418135+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "go-integration",
+    "stack": "Go",
+    "title": "Go com testing",
+    "test_relative_path": "checkout_integration_test.go",
+    "reference_test": "checkout_integration_test.go",
+    "runtime_command": [
+      "go",
+      "version"
+    ],
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\integration_profiles\\go-integration"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "version"
+    ],
+    "output": "go version go1.24.1 windows/amd64"
+  },
+  "workspace": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\go-integration\\workspace_output",
+  "source_sha256": {
+    "checkout_integration_test.go": "90c0e0791618441cfb71d806bf02ff5390e26a0fd91a10b4119be53c130ad878",
+    "go.mod": "448eee3c8b67f80d7a7b9ae62c20e1d33d1d74613e06a6d4b15befa249a9e82d",
+    "repository.go": "a72c7ebbab1689fd3d2da0f15e250ce34f4c7b5c865d92c2962194099bfe6dd4",
+    "service.go": "150d05b822a11cea4e08445c51915c6d647c985d1fb193b105a824a6fc5b8fdd"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "integracao",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\go-integration\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "go-integration",
+      "test_type": "integracao",
+      "stack": "go",
+      "framework": "testing",
+      "source_suffixes": [
+        ".go"
+      ],
+      "marker_files": [
+        "go.mod"
+      ],
+      "test_file_pattern": "<componente>_integration_test.go",
+      "generator": "go_integration_generator",
+      "executor": "go_integration_runner",
+      "aliases": [
+        "golang"
+      ],
+      "implemented": true
+    },
+    "confianca": 1.0,
+    "evidencias": [
+      "stack_declarada:Go",
+      "marcador:go.mod",
+      "fontes:3"
+    ],
+    "arquivos_fonte": [
+      "checkout_integration_test.go",
+      "repository.go",
+      "service.go"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "integracao",
+    "perfil": "go-integration",
+    "framework": "go-testing",
+    "comando": [
+      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "test",
+      "-json",
+      "."
+    ],
+    "codigo_saida": 0,
+    "stdout": "{\"Time\":\"2026-08-31T23:36:40.0003107-03:00\",\"Action\":\"start\",\"Package\":\"example.com/qa-integration\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Output\":\"=== RUN   TestCheckoutReservesInventory\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Output\":\"--- PASS: TestCheckoutReservesInventory (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Output\":\"=== RUN   TestCheckoutRejectsInsufficientInventory\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Output\":\"--- PASS: TestCheckoutRejectsInsufficientInventory (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Output\":\"PASS\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3638985-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Output\":\"ok  \\texample.com/qa-integration\\t0.363s\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.373975-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Elapsed\":0.374}\n",
+    "stderr": "",
+    "bloqueios": []
+  },
+  "normalized_result": {
+    "status": "sucesso",
+    "tipo_teste": "integracao",
+    "perfil": "go-integration",
+    "framework": "go-testing",
+    "comando": [
+      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "test",
+      "-json",
+      "."
+    ],
+    "codigo_saida": 0,
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "saida": "{\"Time\":\"2026-08-31T23:36:40.0003107-03:00\",\"Action\":\"start\",\"Package\":\"example.com/qa-integration\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Output\":\"=== RUN   TestCheckoutReservesInventory\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Output\":\"--- PASS: TestCheckoutReservesInventory (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Output\":\"=== RUN   TestCheckoutRejectsInsufficientInventory\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Output\":\"--- PASS: TestCheckoutRejectsInsufficientInventory (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Output\":\"PASS\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3638985-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Output\":\"ok  \\texample.com/qa-integration\\t0.363s\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.373975-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Elapsed\":0.374}",
+    "erros": [],
+    "resultado_bruto": {
+      "status": "sucesso",
+      "tipo_teste": "integracao",
+      "perfil": "go-integration",
+      "framework": "go-testing",
+      "comando": [
+        "C:\\Program Files\\Go\\bin\\go.EXE",
+        "test",
+        "-json",
+        "."
+      ],
+      "codigo_saida": 0,
+      "stdout": "{\"Time\":\"2026-08-31T23:36:40.0003107-03:00\",\"Action\":\"start\",\"Package\":\"example.com/qa-integration\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Output\":\"=== RUN   TestCheckoutReservesInventory\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Output\":\"--- PASS: TestCheckoutReservesInventory (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutReservesInventory\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Output\":\"=== RUN   TestCheckoutRejectsInsufficientInventory\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Output\":\"--- PASS: TestCheckoutRejectsInsufficientInventory (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Test\":\"TestCheckoutRejectsInsufficientInventory\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:36:40.3616169-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Output\":\"PASS\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.3638985-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-integration\",\"Output\":\"ok  \\texample.com/qa-integration\\t0.363s\\n\"}\n{\"Time\":\"2026-08-31T23:36:40.373975-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-integration\",\"Elapsed\":0.374}\n",
+      "stderr": "",
+      "bloqueios": []
+    }
+  }
+}

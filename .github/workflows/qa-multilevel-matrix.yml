@@ -1,0 +1,101 @@
+name: QA integration and E2E matrix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/qa-multilevel-matrix.yml"
+      - "adk/pyproject.toml"
+      - "adk/uv.lock"
+      - "adk/package.json"
+      - "adk/playwright.config.ts"
+      - "adk/scripts/qa_multilevel_evidence.py"
+      - "adk/shared/testing/**"
+      - "adk/src/agents/qa_agent/subagents/integration_tests_agent/**"
+      - "adk/src/agents/qa_agent/subagents/e2e_test_generator/**"
+      - "adk/tests/fixtures/integration_profiles/**"
+      - "adk/tests/fixtures/e2e_profiles/**"
+      - "adk/tests/integration/test_multistack_profiles_real.py"
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Integration (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: python-integration
+            runtime: python
+          - profile: node-integration
+            runtime: node
+          - profile: java-integration
+            runtime: java
+          - profile: go-integration
+            runtime: go
+    defaults:
+      run:
+        working-directory: adk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v6
+        if: matrix.runtime == 'node'
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v5
+        if: matrix.runtime == 'java'
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-go@v7
+        if: matrix.runtime == 'go'
+        with:
+          go-version: "1.24"
+          cache: false
+      - run: uv sync --group dev
+      - name: Execute real integration profile
+        run: >-
+          uv run python scripts/qa_multilevel_evidence.py
+          --level integration
+          --profile ${{ matrix.profile }}
+          --output evidencias_multilevel/runs/ci/${{ matrix.profile }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-${{ matrix.profile }}
+          path: adk/evidencias_multilevel/runs/ci/${{ matrix.profile }}
+
+  e2e:
+    name: E2E Playwright profiles
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: adk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - run: uv sync --group dev
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Execute all real E2E profiles
+        run: >-
+          uv run python scripts/qa_multilevel_evidence.py
+          --level e2e
+          --profile all
+          --output evidencias_multilevel/runs/ci/e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-e2e-profiles
+          path: adk/evidencias_multilevel/runs/ci/e2e

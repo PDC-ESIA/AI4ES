@@ -14,11 +14,10 @@ from google.adk.tools.agent_tool import AgentTool
 
 from src.agents.qa_agent.subagents.integration_tests_agent.agent import agent as integration_tests_agent
 from src.agents.qa_agent.subagents.code_fix_agent.agent import agent as code_fix_agent
-from src.agents.qa_agent.subagents.receive_requirements.orchestration import (
-    receber_requisitos,
+from src.agents.qa_agent.subagents.unit_test_generator.orchestration import (
+    gerar_testes_unitarios,
 )
 from shared.tools.hitl_tool import aguardar_aprovacao_humana
-from src.agents.qa_agent.subagents.integration_tests_agent.integration_pytest_runner import executar_testes_de_integracao
 from shared.tools.pytest_runner import executar_pytest_tool
 from shared.tools.doubt_tool import DoubtArtifactGenerator
 from src.agents.workflow_qa.tools.planner_wrapper import invocar_planejamento_qa
@@ -162,8 +161,8 @@ Você é o pipeline de QA / Testes do Time 3.
 
 PAPEL:
 Receber artefatos de requisito (RF, HU, UC, RNF, RN) — opcionalmente
-acompanhados de código fonte — e produzir uma suíte pytest executável,
-corrigindo automaticamente as falhas detectadas.
+acompanhados de código fonte — e produzir testes unitários pelo perfil da stack
+ou testes de integração, corrigindo automaticamente as falhas detectadas.
 
 FLUXO OBRIGATÓRIO:
 
@@ -191,29 +190,33 @@ FLUXO OBRIGATÓRIO:
           - "solicitar_ajustes" → encerre devolvendo `comments` ao
                                   solicitante; não gere testes.
 
-2. GERAÇÃO DE TESTES
-   Chame diretamente `receber_requisitos(artefatos_json=<JSON>)`.
-   Essa função determinística:
-   - normaliza a entrada em JSON com id_artefato, tipo, conteúdo, módulo, criticidade;
-   - inclui anexos no campo `arquivos_apoio` quando houver código-fonte;
-   - gera arquivos pytest em tests/inputs/<slug>/test_<slug>.py;
-   - retorna {status, resumo, detalhes} com sucessos, bloqueados e falhas.
+2. ROTEAMENTO E EXECUÇÃO
+   Execute somente os tipos selecionados no plano:
 
-   Encaminhe também o(s) mesmo(s) artefato(s) ao integration_tests_agent, que:
-   - normaliza a entrada da mesma forma;
-   - gera arquivos pytest de integração em tests/integration_tests/<slug>/test_<slug>.py;
-   - retorna {status, resumo, detalhes} com sucessos, bloqueados e falhas.
-   → Para cada artefato bloqueado (status "bloqueado"): registre o Doubt_Artifact
-     gerado e prossiga com os demais.
-   → `detalhes[].arquivo_gerado` é a ÚNICA fonte de verdade dos paths.
-   → Ignore qualquer path desejado mencionado na entrada se ele não aparecer
-     literalmente nesse retorno. Nunca invente, resuma ou remapeie paths.
+   TESTE UNITÁRIO (`unit_test_generator`):
+   - Chame `gerar_testes_unitarios(artefatos_json=<JSON>)`.
+   - A função inspeciona a stack, seleciona um perfil registrado, gera os testes
+     e usa o executor fixo do perfil para Python/FastAPI, Node/Express
+     (JavaScript e TypeScript), Java/Spring ou Go. O pytest_runner permanece Python.
+   - Leia a execução em `detalhes[].resultado_execucao`; não execute novamente
+     um resultado já conclusivo.
+   - Se `status="bloqueado"`, reporte os bloqueios e não tente outro framework.
 
-3. EXECUÇÃO
-   Para CADA item de `detalhes` com status=sucesso, invoque
-   `executar_pytest_tool` usando exatamente seu `arquivo_gerado`.
-   Não execute arquivos pedidos na entrada, apenas arquivos confirmados pela
-   função de geração. Colete status, saída pytest, cobertura e falhas.
+   TESTE DE INTEGRAÇÃO (`integration_tests_agent`):
+   - Encaminhe os artefatos ao `integration_tests_agent`.
+   - O agente seleciona o perfil registrado, gera o arquivo e chama o executor
+     próprio de Python, Node/TypeScript, Java ou Go.
+   - Leia o envelope normalizado; stdout, stderr e código de saída permanecem
+     disponíveis em `resultado_bruto`.
+   - Não use o executor pytest legado como fallback de stack.
+
+   Não execute os dois fluxos automaticamente. Só execute ambos quando o plano
+   validado contiver explicitamente os dois tipos de teste.
+   `arquivos_gerados` e `detalhes[].arquivo_gerado` são as únicas fontes de
+   verdade dos paths; nunca invente, resuma ou remapeie caminhos.
+
+3. ANÁLISE DA EXECUÇÃO
+   Analise os resultados unitários e/ou de integração selecionados no plano.
    → Se TODOS os testes passaram: vá direto para a entrega final.
    → Se houver falhas: vá para a etapa 4.
 
@@ -257,16 +260,16 @@ _INSTRUCTION += """
 
 CONTRATO DE CÓDIGO-FONTE PERSISTIDO:
 Se a entrada trouxer Manifesto de Fase com artefatos `tipo=source`, preserve
-cada `path` e inclua-o em `arquivos_apoio` na chamada a receber_requisitos.
+cada `path` e inclua-o em `arquivos_apoio` na chamada a gerar_testes_unitarios.
 Paths do manifesto são a fonte canônica. Não declare que o código-fonte está
 ausente sem tentar materializar todos esses paths.
 
 O manifesto de Coding NÃO é obrigatório. Mesmo quando ele não estiver na
-entrada, chame receber_requisitos: a camada de I/O do QA descobre de
+entrada, chame gerar_testes_unitarios: a inspeção e a camada de I/O descobrem de
 forma determinística os fontes persistidos em `workspace_output/coder/src`.
 Não solicite alterações em Requirements, Design ou Coding para fazer o handoff.
 
-O retorno de receber_requisitos informa `bootstrap_pytest` e
+O retorno de gerar_testes_unitarios preserva `bootstrap_pytest` e
 `marcador_pacote`. Use esses campos como fonte de verdade ao relatar a
 existência de conftest.py e __init__.py; não afirme que estão ausentes sem
 conferir o resultado da tool.
@@ -276,27 +279,18 @@ agent = LlmAgent(
     model=os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL),
     name="qa_pipeline",
     description=(
-        "Pipeline completo de QA: planejamento, geração pytest a partir de "
-        "requisitos, execução e autocorreção. Compõe action_planner, "
-        "receber_requisitos e code_fix sobre as tools do qa_agent."
+        "Pipeline completo de QA: planejamento, testes unitários por perfil e "
+        "integração multistack, execução e autocorreção. "
+        "Compõe action_planner, unit_test_generator, integration_tests_agent e "
+        "code_fix sobre as tools do qa_agent."
     ),
-    instruction=_INSTRUCTION + """
-
-EXECUÇÃO OBRIGATÓRIA DE TESTES DE INTEGRAÇÃO:
-Após chamar integration_tests_agent, leia `detalhes` do resultado e selecione
-o campo `arquivo_gerado` de cada item com status `sucesso`. Chame
-`executar_testes_de_integracao(arquivos_gerados=<lista desses caminhos>)`.
-Essa ferramenta executa cada arquivo de integration_tests com pytest e retorna
-um resumo consolidado e os resultados individuais completos. Analise esses
-resultados antes da resposta final ou de qualquer encaminhamento ao code_fix.
-""",
+    instruction=_INSTRUCTION,
     tools=[
         FunctionTool(invocar_planejamento_qa),
-        FunctionTool(receber_requisitos),
+        FunctionTool(gerar_testes_unitarios),
         AgentTool(agent=integration_tests_agent),
         AgentTool(agent=code_fix_agent),
         FunctionTool(executar_pytest_tool),
-        FunctionTool(executar_testes_de_integracao),
         FunctionTool(DoubtArtifactGenerator.generate),
         LongRunningFunctionTool(aguardar_aprovacao_humana),
     ],

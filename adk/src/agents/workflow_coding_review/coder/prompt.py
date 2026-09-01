@@ -289,6 +289,12 @@ próprio código.
 - `build`: LISTA de comandos de preparação, na ordem, executados ANTES de run/test
   (ex.: `pip install -r requirements.txt`, `npm ci`, `go build ./...`,
   `mvn -q package`). Use `[]` se não houver.
+- Projetos Node: NUNCA fabrique `package-lock.json` manualmente. Você não possui
+  shell para gerar um lockfile completo. Ao criar um projeto novo sem lockfile
+  herdado e válido, omita `package-lock.json` e use `npm install` em `build`.
+  Use `npm ci` SOMENTE quando já existir um lockfile autêntico e sincronizado
+  com `package.json`. Se o executor apontar lockfile fora de sincronia, remova o
+  lockfile inválido e troque pontualmente `npm ci` por `npm install`.
 - `run`: UM comando de topo. Em `service`, é o processo que SOBE e FICA ESCUTANDO
   (ex.: `uvicorn app.main:app --host 0.0.0.0 --port 8000`). Em `command`, é o
   comando que RODA e TERMINA (ex.: `python -m meupacote --input data.csv`). Em

@@ -1,0 +1,11 @@
+{
+  "name": "qa-evidence-jest",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^30.1.3"
+  }
+}

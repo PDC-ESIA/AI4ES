@@ -1,0 +1,132 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "unit-profile-smoke",
+  "collected_at": "2026-09-01T02:39:12.882873+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "java-junit",
+    "title": "Java/Spring com JUnit 5",
+    "test_relative_path": "src/test/java/com/example/CalculatorTest.java",
+    "reference_test": "CalculatorTest.java",
+    "runtime_command": [
+      "java",
+      "--version"
+    ],
+    "requirement": "Gere e execute testes unitários para src/main/java/com/example/Calculator.java. Valide a soma e a divisão por zero.",
+    "bootstrap_commands": [
+      [
+        "mvn",
+        "-q",
+        "-DskipTests",
+        "test"
+      ]
+    ],
+    "minimum_tests": 2,
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\java-junit"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath\\java.EXE",
+      "--version"
+    ],
+    "output": "java 26 2026-03-17\nJava(TM) SE Runtime Environment (build 26+35-2893)\nJava HotSpot(TM) 64-Bit Server VM (build 26+35-2893, mixed mode, sharing)"
+  },
+  "bootstrap": {
+    "status": "sucesso",
+    "commands": [
+      {
+        "command": [
+          "C:\\apache-maven-3.9.16-bin\\apache-maven-3.9.16\\bin\\mvn.CMD",
+          "-q",
+          "-DskipTests",
+          "test"
+        ],
+        "returncode": 0,
+        "output": ""
+      }
+    ]
+  },
+  "workspace": {
+    "profile_id": "java-junit",
+    "title": "Java/Spring com JUnit 5",
+    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\java-junit\\workspace_output",
+    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\java-junit\\workspace_output\\coder\\src",
+    "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para src/main/java/com/example/Calculator.java. Valide a soma e a divisão por zero.",
+    "expected": {
+      "inspection_status": "suportado",
+      "profile_id": "java-junit",
+      "execution_status": "sucesso",
+      "minimum_tests": 2
+    },
+    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\java-junit\\workspace_output\\dev_ui_session.json",
+    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\java-junit\\workspace_output\\coder\\src\\src\\test\\java\\com\\example\\CalculatorTest.java"
+  },
+  "source_sha256": {
+    "pom.xml": "4b702fc81eae54a6dc0f00f2a55356f5813d5854f9c418945143738cfa9d093f",
+    "src/main/java/com/example/Calculator.java": "e46821879180c11c3cfe723548c34077adc0533e0a8c6a9e5e9b9f5da458ab9a",
+    "src/test/java/com/example/CalculatorTest.java": "1b991801bada0ec75c7aa9d5c833d37e3f6f08d45d02b8212330a79286bb4527"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "unitario",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\java-junit\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "java-junit",
+      "language": "java",
+      "framework": "junit",
+      "source_suffixes": [
+        ".java"
+      ],
+      "marker_files": [
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts"
+      ],
+      "test_file_pattern": "<Componente>Test.java",
+      "coverage_format": "jacoco-xml",
+      "executor": "junit_runner",
+      "implemented": true
+    },
+    "confianca": 0.99,
+    "evidencias": [
+      "marker:pom.xml",
+      "source:.java(2)"
+    ],
+    "arquivos_fonte": [
+      "src/main/java/com/example/Calculator.java",
+      "src/test/java/com/example/CalculatorTest.java"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "unitario",
+    "perfil": "java-junit",
+    "comando": [
+      "C:\\apache-maven-3.9.16-bin\\apache-maven-3.9.16\\bin\\mvn.CMD",
+      "-Dtest=com.example.CalculatorTest",
+      "test"
+    ],
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "cobertura": {
+      "percentual": null,
+      "formato": "jacoco-xml",
+      "arquivo": null
+    },
+    "saida": "[INFO] Scanning for projects...\n[INFO] \n[INFO] -------------------< com.example:qa-evidence-junit >--------------------\n[INFO] Building qa-evidence-junit 1.0.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ qa-evidence-junit ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\java-junit\\workspace_output\\coder\\src\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:compile (default-compile) @ qa-evidence-junit ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.4.0:testResources (default-testResources) @ qa-evidence-junit ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\java-junit\\workspace_output\\coder\\src\\src\\test\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ qa-evidence-junit ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- surefire:3.5.4:test (default-test) @ qa-evidence-junit ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running com.example.CalculatorTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.054 s -- in com.example.CalculatorTest\n[INFO] \n[INFO] Results:\n[INFO] \n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  2.551 s\n[INFO] Finished at: 2026-08-31T23:39:12-03:00\n[INFO] ------------------------------------------------------------------------",
+    "erros": []
+  },
+  "normalized_result": {
+    "total": 2,
+    "sucessos": 2,
+    "falhas": 0,
+    "ignorados": 0,
+    "cobertura_percentual": null
+  }
+}

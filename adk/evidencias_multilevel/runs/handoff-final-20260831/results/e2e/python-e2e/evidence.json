@@ -1,0 +1,199 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "e2e-profile-smoke",
+  "collected_at": "2026-09-01T02:36:43.786898+00:00",
+  "status": "sucesso",
+  "profile": {
+    "profile_id": "python-e2e",
+    "test_type": "e2e",
+    "stack": "python",
+    "framework": "playwright-typescript",
+    "source_suffixes": [
+      ".py"
+    ],
+    "marker_files": [
+      "pyproject.toml",
+      "requirements.txt"
+    ],
+    "test_file_pattern": "<fluxo>.spec.ts",
+    "generator": "playwright_typescript_generator",
+    "executor": "playwright_runner",
+    "aliases": [
+      "fastapi",
+      "python-fastapi",
+      "python/fastapi"
+    ],
+    "implemented": true
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "--version"
+    ],
+    "output": "v24.19.0"
+  },
+  "workspace": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output",
+  "source_sha256": {
+    ".ai4se_workspace": "6237bf8dacef6cc528d6a37ff59dd7a1e179ba9517e383e8d19b9a5ad2c21404",
+    "tests/e2e/python-e2e.spec.playwright-report.json": "1d4fc72bf9d3181e9f08a63cc57aba26b556fb2cea7318a76921da1b7613cf76",
+    "tests/e2e/python-e2e.spec.ts": "f4ae99f120829f48a6640288e1ac5726def57ed930d57fd5a49f923e7d05652c"
+  },
+  "execution": {
+    "status": "aprovado",
+    "comando": "node @playwright/test/cli.js test --config playwright.config.ts",
+    "codigo_saida": 0,
+    "duracao_ms": 2713,
+    "testes_executados": 1,
+    "testes_aprovados": 1,
+    "testes_falhos": 0,
+    "testes_pulados": 0,
+    "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.playwright-report.json",
+    "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\test-results\\python-e2e.spec",
+    "falhas": [],
+    "logs_resumidos": [
+      "Running 1 test using 1 worker",
+      "[1/1] [chromium] › evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts:3:5 › fluxo de confirmação funciona",
+      "1 passed (1.8s)"
+    ]
+  },
+  "normalized_result": {
+    "status": "sucesso",
+    "tipo_teste": "e2e",
+    "inspecao": {
+      "status": "suportado"
+    },
+    "perfil": {
+      "profile_id": "python-e2e",
+      "test_type": "e2e",
+      "stack": "python",
+      "framework": "playwright-typescript",
+      "source_suffixes": [
+        ".py"
+      ],
+      "marker_files": [
+        "pyproject.toml",
+        "requirements.txt"
+      ],
+      "test_file_pattern": "<fluxo>.spec.ts",
+      "generator": "playwright_typescript_generator",
+      "executor": "playwright_runner",
+      "aliases": [
+        "fastapi",
+        "python-fastapi",
+        "python/fastapi"
+      ],
+      "implemented": true
+    },
+    "resumo": {
+      "total": 1,
+      "sucessos": 1,
+      "bloqueados": 0,
+      "falhas": 0,
+      "executados": 1
+    },
+    "arquivos_gerados": [
+      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts"
+    ],
+    "detalhes": [
+      {
+        "id_artefato": "RF-E2E-001",
+        "status": "sucesso",
+        "fluxo": "A",
+        "framework": "playwright-typescript",
+        "arquivo_gerado": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts",
+        "resultado_execucao": {
+          "status": "sucesso",
+          "tipo_teste": "e2e",
+          "framework": "playwright-typescript",
+          "comando": "node @playwright/test/cli.js test --config playwright.config.ts",
+          "codigo_saida": 0,
+          "duracao_ms": 2713,
+          "testes": {
+            "total": 1,
+            "sucessos": 1,
+            "falhas": 0,
+            "ignorados": 0
+          },
+          "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.playwright-report.json",
+          "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\test-results\\python-e2e.spec",
+          "saida": "Running 1 test using 1 worker\n[1/1] [chromium] › evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts:3:5 › fluxo de confirmação funciona\n1 passed (1.8s)",
+          "erros": [],
+          "resultado_bruto": {
+            "status": "aprovado",
+            "comando": "node @playwright/test/cli.js test --config playwright.config.ts",
+            "codigo_saida": 0,
+            "duracao_ms": 2713,
+            "testes_executados": 1,
+            "testes_aprovados": 1,
+            "testes_falhos": 0,
+            "testes_pulados": 0,
+            "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.playwright-report.json",
+            "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\test-results\\python-e2e.spec",
+            "falhas": [],
+            "logs_resumidos": [
+              "Running 1 test using 1 worker",
+              "[1/1] [chromium] › evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts:3:5 › fluxo de confirmação funciona",
+              "1 passed (1.8s)"
+            ]
+          }
+        },
+        "resultado_bruto": {
+          "tipo_saida": "executado",
+          "arquivos_gerados": [
+            "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts"
+          ],
+          "resultado_execucao": {
+            "status": "aprovado",
+            "comando": "node @playwright/test/cli.js test --config playwright.config.ts",
+            "codigo_saida": 0,
+            "duracao_ms": 2713,
+            "testes_executados": 1,
+            "testes_aprovados": 1,
+            "testes_falhos": 0,
+            "testes_pulados": 0,
+            "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.playwright-report.json",
+            "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\test-results\\python-e2e.spec",
+            "falhas": [],
+            "logs_resumidos": [
+              "Running 1 test using 1 worker",
+              "[1/1] [chromium] › evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts:3:5 › fluxo de confirmação funciona",
+              "1 passed (1.8s)"
+            ]
+          },
+          "bloqueios": []
+        }
+      }
+    ],
+    "bloqueios": [],
+    "resultado_bruto": {
+      "tipo_saida": "executado",
+      "arquivos_gerados": [
+        "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts"
+      ],
+      "resultado_execucao": {
+        "status": "aprovado",
+        "comando": "node @playwright/test/cli.js test --config playwright.config.ts",
+        "codigo_saida": 0,
+        "duracao_ms": 2713,
+        "testes_executados": 1,
+        "testes_aprovados": 1,
+        "testes_falhos": 0,
+        "testes_pulados": 0,
+        "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.playwright-report.json",
+        "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\test-results\\python-e2e.spec",
+        "falhas": [],
+        "logs_resumidos": [
+          "Running 1 test using 1 worker",
+          "[1/1] [chromium] › evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-e2e\\workspace_output\\tests\\e2e\\python-e2e.spec.ts:3:5 › fluxo de confirmação funciona",
+          "1 passed (1.8s)"
+        ]
+      },
+      "bloqueios": []
+    },
+    "cenarios": [],
+    "nivel_confianca": null,
+    "tipo_sistema": null,
+    "arquivos_sugeridos": []
+  }
+}

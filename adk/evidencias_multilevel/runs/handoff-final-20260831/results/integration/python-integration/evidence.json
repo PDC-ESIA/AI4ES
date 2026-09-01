@@ -1,0 +1,135 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "integration-profile-smoke",
+  "collected_at": "2026-09-01T02:36:32.045342+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "python-integration",
+    "stack": "Python/FastAPI",
+    "title": "Python/FastAPI com pytest",
+    "test_relative_path": "tests/integration/test_checkout_integration.py",
+    "reference_test": "test_checkout_integration.py",
+    "runtime_command": [
+      "python",
+      "--version"
+    ],
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\integration_profiles\\python-integration"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Users\\Henrique Lima\\AppData\\Local\\Programs\\Python\\Python310\\python.EXE",
+      "--version"
+    ],
+    "output": "Python 3.10.6"
+  },
+  "workspace": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-integration\\workspace_output",
+  "source_sha256": {
+    "app/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "app/repository.py": "51d42c5a7df3e218f0ee43ad1ce107ffafa09e67a2b09b74cb4fa85aa18c39ea",
+    "app/service.py": "bbc58bb134f7d918f1a7588a61eac3eb15a4b2ef1fc63867f02aa28f2d02e541",
+    "pyproject.toml": "cd4d999c045f9d60c744e50eda54e4fbf20392394c8944b4ed54089b85718b0d",
+    "tests/integration/test_checkout_integration.py": "e45e7dcf800afbb2f2cfa8f15a9be425015ea9c2ac9f3af288db6c821ef979a3"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "integracao",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\python-integration\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "python-integration",
+      "test_type": "integracao",
+      "stack": "python",
+      "framework": "pytest",
+      "source_suffixes": [
+        ".py"
+      ],
+      "marker_files": [
+        "pyproject.toml",
+        "pytest.ini",
+        "requirements.txt",
+        "setup.cfg"
+      ],
+      "test_file_pattern": "test_<componente>_integration.py",
+      "generator": "pytest_integration_generator",
+      "executor": "pytest_integration_runner",
+      "aliases": [
+        "fastapi",
+        "python-fastapi",
+        "python/fastapi"
+      ],
+      "implemented": true
+    },
+    "confianca": 1.0,
+    "evidencias": [
+      "stack_declarada:Python/FastAPI",
+      "marcador:pyproject.toml",
+      "fontes:4"
+    ],
+    "arquivos_fonte": [
+      "app/__init__.py",
+      "app/repository.py",
+      "app/service.py",
+      "tests/integration/test_checkout_integration.py"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "integracao",
+    "perfil": "python-integration",
+    "framework": "pytest",
+    "comando": [
+      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\.venv\\Scripts\\python.exe",
+      "-m",
+      "pytest",
+      "tests/integration/test_checkout_integration.py",
+      "-q",
+      "--tb=short"
+    ],
+    "codigo_saida": 0,
+    "stdout": "..                                                                       [100%]\n2 passed in 0.06s\n",
+    "stderr": "",
+    "bloqueios": []
+  },
+  "normalized_result": {
+    "status": "sucesso",
+    "tipo_teste": "integracao",
+    "perfil": "python-integration",
+    "framework": "pytest",
+    "comando": [
+      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\.venv\\Scripts\\python.exe",
+      "-m",
+      "pytest",
+      "tests/integration/test_checkout_integration.py",
+      "-q",
+      "--tb=short"
+    ],
+    "codigo_saida": 0,
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "saida": "..                                                                       [100%]\n2 passed in 0.06s",
+    "erros": [],
+    "resultado_bruto": {
+      "status": "sucesso",
+      "tipo_teste": "integracao",
+      "perfil": "python-integration",
+      "framework": "pytest",
+      "comando": [
+        "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "tests/integration/test_checkout_integration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "codigo_saida": 0,
+      "stdout": "..                                                                       [100%]\n2 passed in 0.06s\n",
+      "stderr": "",
+      "bloqueios": []
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "qa-evidence-node",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test"
+  }
+}

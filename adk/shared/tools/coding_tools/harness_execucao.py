@@ -266,6 +266,34 @@ def _carregar_product_type(tasks_dir: Path) -> str:
 # Estágio 2 — Implantação do artefato (build + subida de serviço) [crítico]
 # ===========================================================================
 
+def _log_excerpt(texto: str, limite: int = 4000) -> str:
+    """Preserva começo e fim de logs longos sem ocultar a causa inicial."""
+    if len(texto) <= limite:
+        return texto
+    metade = limite // 2
+    omitidos = len(texto) - (metade * 2)
+    return (
+        texto[:metade]
+        + f"\n... [{omitidos} caracteres omitidos] ...\n"
+        + texto[-metade:]
+    )
+
+
+def _diagnosticar_falha_build(comando: str, saida: str) -> str | None:
+    """Reconhece causas mecânicas comuns sem substituir o diagnóstico do coder."""
+    normalizado = saida.casefold()
+    if (
+        comando.strip().casefold().startswith("npm ci")
+        and "package-lock.json" in normalizado
+        and "in sync" in normalizado
+    ):
+        return (
+            "package.json e package-lock.json estão fora de sincronia. "
+            "Regenere o lockfile com npm install (ou npm install "
+            "--package-lock-only); use npm ci somente com lockfile válido."
+        )
+    return None
+
 def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
     t0 = time.time()
     assert ctx.manifest is not None and ctx.profile is not None and ctx.sandbox is not None
@@ -283,22 +311,30 @@ def _estagio_implantacao(ctx: _HarnessContext) -> StageResult:
             linhas.append(res.stderr)
         if res.timed_out or (res.exit_code not in (0, None)):
             ctx.build_logs = "\n".join(linhas)
+            diagnostico = _diagnosticar_falha_build(cmd, ctx.build_logs)
             motivo = (
                 f"Comando de build excedeu {_BUILD_TIMEOUT}s (timeout)."
                 if res.timed_out
                 else f"Comando de build retornou exit={res.exit_code}."
             )
+            summary = f"Falha no build: {motivo} Comando: {cmd!r}."
+            if diagnostico:
+                summary += f" Diagnóstico: {diagnostico}"
+            evidence = {
+                "comando_falho": cmd,
+                "exit_code": res.exit_code,
+                "timed_out": res.timed_out,
+                "build_logs_tail": ctx.build_logs[-2000:],
+                "build_logs_excerpt": _log_excerpt(ctx.build_logs),
+            }
+            if diagnostico:
+                evidence["diagnostico"] = diagnostico
             return StageResult(
                 stage=StageName.IMPLANTACAO_ARTEFATO,
                 status=StageStatus.FALHA,
                 duration_seconds=round(time.time() - t0, 3),
-                summary=f"Falha no build: {motivo} Comando: {cmd!r}.",
-                evidence={
-                    "comando_falho": cmd,
-                    "exit_code": res.exit_code,
-                    "timed_out": res.timed_out,
-                    "build_logs_tail": ctx.build_logs[-2000:],
-                },
+                summary=summary,
+                evidence=evidence,
                 error_code="FALHA_BUILD",
             )
 
@@ -362,6 +398,7 @@ def _estagio_coleta_logs_implantacao(ctx: _HarnessContext) -> StageResult:
             "linhas_parseadas": len(parsed),
             "erros": erros[:10],
             "build_logs_tail": ctx.build_logs[-2000:],
+            "build_logs_excerpt": _log_excerpt(ctx.build_logs),
         },
         error_code=None,
     )

@@ -1,0 +1,110 @@
+name: Unit profile matrix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/unit-profile-matrix.yml"
+      - "adk/pyproject.toml"
+      - "adk/uv.lock"
+      - "adk/scripts/unit_profile_evidence.py"
+      - "adk/shared/testing/**"
+      - "adk/shared/tools/pytest_runner.py"
+      - "adk/src/agents/qa_agent/subagents/unit_test_generator/**"
+      - "adk/tests/fixtures/unit_profiles/**"
+      - "adk/tests/unit/test_unit_profile_*.py"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - ".github/workflows/unit-profile-matrix.yml"
+      - "adk/pyproject.toml"
+      - "adk/uv.lock"
+      - "adk/scripts/unit_profile_evidence.py"
+      - "adk/shared/testing/**"
+      - "adk/shared/tools/pytest_runner.py"
+      - "adk/src/agents/qa_agent/subagents/unit_test_generator/**"
+      - "adk/tests/fixtures/unit_profiles/**"
+      - "adk/tests/unit/test_unit_profile_*.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unit-profile-matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Unit profiles (${{ matrix.runtime }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: python
+            os: ubuntu-latest
+            profiles: python-pytest
+          - runtime: node
+            os: ubuntu-latest
+            profiles: node-vitest node-jest node-node-test node-mocha
+          - runtime: java
+            os: ubuntu-latest
+            profiles: java-junit
+          - runtime: go
+            os: ubuntu-latest
+            profiles: go-testing
+
+    defaults:
+      run:
+        working-directory: adk
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Set up Node.js
+        if: matrix.runtime == 'node'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Set up Java
+        if: matrix.runtime == 'java'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Go
+        if: matrix.runtime == 'go'
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.25"
+          cache: false
+
+      - name: Install ADK dependencies
+        run: uv sync --group dev
+
+      - name: Run real profile smokes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for profile in ${{ matrix.profiles }}; do
+            uv run python scripts/unit_profile_evidence.py collect \
+              --profile "$profile" \
+              --bootstrap-runtime \
+              --output "evidencias_unit_profiles/runs/ci/${{ matrix.runtime }}/$profile"
+          done
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-profile-${{ matrix.runtime }}
+          path: adk/evidencias_unit_profiles/runs/ci/${{ matrix.runtime }}
+          if-no-files-found: warn

@@ -1,0 +1,8 @@
+{
+  "name": "qa-integration-node-typescript",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "unit-profile-smoke",
+  "collected_at": "2026-09-01T02:40:53.545647+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "node-vitest",
+    "title": "Node/TypeScript com Vitest",
+    "test_relative_path": "tests/unit/calculator.test.ts",
+    "reference_test": "calculator.test.ts",
+    "runtime_command": [
+      "node",
+      "--version"
+    ],
+    "requirement": "Gere e execute testes unitários para src/calculator.ts. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "bootstrap_commands": [
+      [
+        "npm",
+        "install",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ]
+    ],
+    "minimum_tests": 2,
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\node-vitest"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "--version"
+    ],
+    "output": "v24.19.0"
+  },
+  "bootstrap": {
+    "status": "sucesso",
+    "commands": [
+      {
+        "command": [
+          "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+          "C:\\Users\\Henrique Lima\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\\node-v24.19.0-win-x64\\node_modules\\npm\\bin\\npm-cli.js",
+          "install",
+          "--ignore-scripts",
+          "--no-audit",
+          "--no-fund"
+        ],
+        "returncode": 0,
+        "output": "added 51 packages in 15s"
+      }
+    ]
+  },
+  "workspace": {
+    "profile_id": "node-vitest",
+    "title": "Node/TypeScript com Vitest",
+    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output",
+    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src",
+    "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para src/calculator.ts. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "expected": {
+      "inspection_status": "suportado",
+      "profile_id": "node-vitest",
+      "execution_status": "sucesso",
+      "minimum_tests": 2
+    },
+    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\dev_ui_session.json",
+    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.ts"
+  },
+  "source_sha256": {
+    "package-lock.json": "a1efb6990af708f83fc705bc7fa4c056f32975f8630afb34b0b551dc2aa6fe61",
+    "package.json": "3f4d17d9a584ca19ec1a27914732169dea311235431d276c32309165027a4320",
+    "src/calculator.ts": "b2827029d575f819d461944cd89257c32dde30e922607361fc77a0b66a56ca0b",
+    "tests/unit/calculator.test.ts": "8a4b6e501e5225754d6b6844b1a4a15b01ba867527fa1e996ede6b908de2c6e1"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "unitario",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "node-vitest",
+      "language": "javascript-typescript",
+      "framework": "vitest",
+      "source_suffixes": [
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".ts",
+        ".tsx"
+      ],
+      "marker_files": [
+        "package.json",
+        "vitest.config.js",
+        "vitest.config.ts"
+      ],
+      "test_file_pattern": "<componente>.test.ts",
+      "coverage_format": "lcov",
+      "executor": "vitest_runner",
+      "implemented": true
+    },
+    "confianca": 0.99,
+    "evidencias": [
+      "package.json:vitest",
+      "source:node(2)"
+    ],
+    "arquivos_fonte": [
+      "src/calculator.ts",
+      "tests/unit/calculator.test.ts"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "unitario",
+    "perfil": "node-vitest",
+    "comando": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src\\node_modules\\vitest\\vitest.mjs",
+      "run",
+      "tests/unit/calculator.test.ts",
+      "--reporter=verbose"
+    ],
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "cobertura": {
+      "percentual": null,
+      "formato": "lcov",
+      "arquivo": null
+    },
+    "saida": "RUN  v3.2.7 C:/Users/Henrique Lima/Documents/GitHub/AI4ES/adk/evidencias_unit_profiles/workspaces/handoff-final-20260831/node-vitest/workspace_output/coder/src\n\n ✓ tests/unit/calculator.test.ts > calculator > adds two numbers 2ms\n ✓ tests/unit/calculator.test.ts > calculator > rejects division by zero 0ms\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Start at  23:40:50\n   Duration  2.30s (transform 743ms, setup 0ms, collect 771ms, tests 5ms, environment 0ms, prepare 858ms)",
+    "erros": []
+  },
+  "normalized_result": {
+    "total": 2,
+    "sucessos": 2,
+    "falhas": 0,
+    "ignorados": 0,
+    "cobertura_percentual": null
+  }
+}

@@ -310,16 +310,16 @@ def test_receive_ignora_path_sugerido_e_retorna_canonico(
     ).exists()
 
 
-def test_workflow_qa_usa_receive_deterministico_em_vez_de_agent_tool():
+def test_workflow_qa_usa_fluxo_unitario_deterministico_em_vez_de_agent_tool():
     from google.adk.tools.agent_tool import AgentTool
     from src.agents.workflow_qa.agent import agent
 
-    receive_tool = next(
+    unit_tool = next(
         tool for tool in agent.tools
-        if getattr(tool, "name", "") == "receber_requisitos"
+        if getattr(tool, "name", "") == "gerar_testes_unitarios"
     )
 
-    assert not isinstance(receive_tool, AgentTool)
+    assert not isinstance(unit_tool, AgentTool)
     assert "detalhes[].arquivo_gerado" in agent.instruction
 
 

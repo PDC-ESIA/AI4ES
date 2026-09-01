@@ -447,6 +447,70 @@ class TaskIterator(BaseAgent):
             )
             yield self._evento_summary(ctx, state, _summary(), task_id=task_id)
 
+        # Todas as tasks compartilham o mesmo artefato. Uma task posterior pode
+        # corrigir uma configuração global (lockfile, build, entrypoint) que
+        # também fazia uma task anterior falhar. Revalide uma única vez apenas
+        # as reprovações anteriores a alguma task aprovada; não reabre bloqueios
+        # por estagnação nem erros operacionais.
+        indice_por_id = {task["id"]: indice for indice, task in enumerate(tasks)}
+        indices_aprovados = {
+            indice_por_id[task_id] for task_id in approved_task_ids
+        }
+        revalidar = [
+            task
+            for task in tasks
+            if task_results[task["id"]].get("motivo_terminacao")
+            == "reprovado_apos_loop"
+            and any(
+                aprovado > indice_por_id[task["id"]]
+                for aprovado in indices_aprovados
+            )
+        ]
+
+        for reindice, task in enumerate(revalidar):
+            task_id = task["id"]
+            self._resetar_ciclo(state, primeira=False, task_id=task_id)
+            preparar_arquivos_herdados(state, primeira=False)
+            state["task_id"] = task_id
+            task_ctx = ctx.model_copy(
+                update={
+                    "branch": branch_da_task(
+                        ctx.branch, len(tasks) + reindice, task_id
+                    )
+                }
+            )
+
+            logger.info(
+                "[TASK_ITERATOR] Revalidando %s após aprovação de task posterior.",
+                task_id,
+            )
+            try:
+                async for event in self._sub_loop.run_async(task_ctx):
+                    yield event
+            except Exception as exc:  # noqa: BLE001 — isolamento por task
+                logger.exception(
+                    "[TASK_ITERATOR] Erro operacional na revalidação de %s.",
+                    task_id,
+                )
+                resultado = {
+                    "status": "reprovado",
+                    "blocking_reason": detalhe_erro_operacional(exc),
+                    "report_path": None,
+                    "motivo_terminacao": "erro_operacional",
+                }
+            else:
+                resultado = classificar_desfecho(state, task_id)
+
+            task_results[task_id] = resultado
+            if resultado["status"] == "aprovado":
+                approved_task_ids.append(task_id)
+            logger.info(
+                "[TASK_ITERATOR] Revalidação de %s encerrada: status=%s.",
+                task_id,
+                resultado["status"],
+            )
+            yield self._evento_summary(ctx, state, _summary(), task_id=task_id)
+
     @staticmethod
     def _resetar_ciclo(state: dict, *, primeira: bool, task_id: str) -> None:
         """Zera as chaves de ciclo do loop antes de escopar a próxima task.

@@ -68,7 +68,7 @@ Voce deve sempre responder somente em JSON no seguinte formato:
     "less_prompt_more_action": true
   },
   "analise_inicial": {
-    "linguagem_suspeita": "python|java|javascript|typescript|desconhecida",
+    "linguagem_suspeita": "python|java|javascript|typescript|go|desconhecida",
     "funcao_suspeita_do_codigo": "texto ou null",
     "nivel_de_confianca": 0.0
   },
@@ -139,44 +139,21 @@ Como analisar a entrada:
   diga como o QA Agent deve confirmar em teste.
 
 5. Escolha tools reais do qa_agent:
-- Para pedido explicitamente E2E, Playwright, browser ou jornada ponta a ponta,
-  use somente "e2e_test_generator". Ele materializa cenarios, gera `.spec.ts`
-  e pode executar Playwright localmente, mas nao faz o planejamento de acao.
-  Nao combine com pytest, `executar_pytest_tool` ou
-  code fix, a menos que o usuario solicite separadamente os dois tipos de teste.
-- Para E2E, registre em `estrategia` que o QA Agent deve chamar
-  `e2e_test_generator` somente depois deste plano e deve repassar o JSON integral
-  no campo `plano_acao`.
-- Para E2E, preencha `handoff_context` com requisitos, URL, rotas, dados,
-  localizadores, lacunas e evidencias esperadas que estiverem na entrada.
-- Preserve sem inferencia qualquer lista `contratos_negativos`; somente contratos
-  explicitos e completos podem autorizar automacao de cenarios negativos.
-- Para E2E, copie a entrada recebida integralmente e sem reformulacao para
-  `handoff_context.entrada_original`. Esse campo e a fonte canonica usada pelo
-  executor quando o argumento `requisitos` nao for duplicado no handoff.
-- Para E2E, determine que a solicitação original deve ser preservada
-  integralmente no campo `requisitos` do executor e que o subagente deve ser
-  chamado uma única vez.
-- Para E2E local, inspeção e geração são ações autônomas, reversíveis e sem
-  efeito externo. Autorize o plano com `execution_allowed=true` e não crie HITL
-  apenas porque faltam URL, entrypoint, rota, seletor, massa ou configuração de
-  runtime: o executor inspeciona o projeto e devolve lacunas estruturadas.
-- Se receber o envelope autônomo, preserve integralmente `origem`, `requisitos`,
-  `codigo_fonte`, `workspace_projeto`, `contexto_runtime` e
-  `politica_execucao`, inclusive `contratos_negativos`, dentro de
-  `handoff_context.entrada_original`.
-- Se o usuario pedir para executar o E2E, mantenha somente
-  "e2e_test_generator" em `tools` e registre no handoff a decisao de usar
-  ambiente local, browser Chromium e o perfil "npx playwright test". Nao
-  selecione `executar_pytest_tool` e nao construa argumentos de shell.
-- Para gerar testes a partir de requisito/codigo/requisito misto, use
-  "receber_requisitos" quando o objetivo for pytest.
+- Para pedido explicitamente E2E ou jornada ponta a ponta, use somente
+  "e2e_test_generator". O agente inspeciona o projeto, seleciona o perfil da
+  família do Coder e usa o adaptador Playwright TypeScript.
+- Para E2E, copie a entrada recebida integralmente e sem reformulação para
+  `handoff_context.entrada_original` e chame o subagente uma única vez.
+- Não invente browser ou comando de execução: esses detalhes pertencem ao
+  adaptador E2E registrado.
+- Para gerar testes unitarios a partir de requisito, codigo ou entrada mista,
+  use somente "unit_test_generator". Esse subagente inspeciona a stack, gera e
+  executa o perfil suportado; nao combine com `executar_pytest_tool`.
 - Para executar arquivo pytest ja existente, use "executar_pytest_tool".
-- Para executar arquivos criados pelo integration_tests_agent, use
-  "executar_testes_de_integracao" após a geração; repasse a lista dos campos
-  `arquivo_gerado` retornados pelo subagente.
-- Se o plano precisar gerar e depois executar, inclua as duas tools na ordem
-  operacional (receber_requisitos primeiro, depois executar_pytest_tool).
+- Para pedidos explicitamente de integração, use somente
+  "integration_tests_agent". O agente inspeciona o projeto e seleciona o
+  gerador e executor registrados para a família do Coder.
+- Não selecione pytest ou outro executor como fallback de integração.
 - Para transformar falhas de pytest em prompt de correcao, use "code_fix_agent".
 - Para registrar bloqueio real de artefato, use "DoubtArtifactGenerator.generate".
 - Nao use nomes inventados como "pytest_generator" se a tool nao aparecer em

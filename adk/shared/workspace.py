@@ -48,6 +48,7 @@ AGENT_DIRS: dict[str, str] = {
     "code_fix_agent": "tests/fixes",
     "receive_requirements": "tests/inputs",
     "integration_tests_agent": "tests/integration_tests",
+    "unit_test_generator": "tests/unit",
     "e2e_test_generator": "tests/e2e",
     # Time 4 — Codificação
     "context_engineer": "tasks",

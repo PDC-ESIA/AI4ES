@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "unit-profile-smoke",
+  "collected_at": "2026-09-01T02:40:33.062386+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "node-node-test",
+    "title": "Node/TypeScript com node:test",
+    "test_relative_path": "tests/unit/calculator.test.js",
+    "reference_test": "calculator.test.js",
+    "runtime_command": [
+      "node",
+      "--version"
+    ],
+    "requirement": "Gere e execute testes unitários para src/calculator.js. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "bootstrap_commands": [],
+    "minimum_tests": 2,
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\node-node-test"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "--version"
+    ],
+    "output": "v24.19.0"
+  },
+  "bootstrap": {
+    "status": "nao_necessario",
+    "commands": []
+  },
+  "workspace": {
+    "profile_id": "node-node-test",
+    "title": "Node/TypeScript com node:test",
+    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-node-test\\workspace_output",
+    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-node-test\\workspace_output\\coder\\src",
+    "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para src/calculator.js. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "expected": {
+      "inspection_status": "suportado",
+      "profile_id": "node-node-test",
+      "execution_status": "sucesso",
+      "minimum_tests": 2
+    },
+    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-node-test\\workspace_output\\dev_ui_session.json",
+    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-node-test\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.js"
+  },
+  "source_sha256": {
+    "package.json": "8eb4b615cfd010542c6c7efe9a7689795e7439bc309a3eefcaa32bf6bd061881",
+    "src/calculator.js": "0b2e117cc23dd9c0a158a318202423e822a80b529f7127d4901c499ab441929b",
+    "tests/unit/calculator.test.js": "18a7761f12dbe768fa9efa5c9d1e8d2acd8ffea19fc56bc7be46d4e3a79ae516"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "unitario",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-node-test\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "node-node-test",
+      "language": "javascript-typescript",
+      "framework": "node:test",
+      "source_suffixes": [
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".ts",
+        ".tsx"
+      ],
+      "marker_files": [
+        "package.json"
+      ],
+      "test_file_pattern": "<componente>.test.js",
+      "coverage_format": "node-v8",
+      "executor": "node_test_runner",
+      "implemented": true
+    },
+    "confianca": 0.99,
+    "evidencias": [
+      "package.json:node-test",
+      "source:node(2)"
+    ],
+    "arquivos_fonte": [
+      "src/calculator.js",
+      "tests/unit/calculator.test.js"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "unitario",
+    "perfil": "node-node-test",
+    "comando": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "--test",
+      "tests/unit/calculator.test.js"
+    ],
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "cobertura": {
+      "percentual": null,
+      "formato": "node-v8",
+      "arquivo": null
+    },
+    "saida": "✔ add returns the sum (1.2104ms)\n✔ divide rejects zero (0.8453ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 175.0831",
+    "erros": []
+  },
+  "normalized_result": {
+    "total": 2,
+    "sucessos": 2,
+    "falhas": 0,
+    "ignorados": 0,
+    "cobertura_percentual": null
+  }
+}

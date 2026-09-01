@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "integration-profile-smoke",
+  "collected_at": "2026-09-01T02:36:38.597979+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "java-integration",
+    "stack": "Java/Spring",
+    "title": "Java/Spring com JUnit/Maven",
+    "test_relative_path": "src/test/java/com/example/CheckoutIntegrationTest.java",
+    "reference_test": "CheckoutIntegrationTest.java",
+    "runtime_command": [
+      "java",
+      "--version"
+    ],
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\integration_profiles\\java-integration"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Program Files\\Common Files\\Oracle\\Java\\javapath\\java.EXE",
+      "--version"
+    ],
+    "output": "java 26 2026-03-17\nJava(TM) SE Runtime Environment (build 26+35-2893)\nJava HotSpot(TM) 64-Bit Server VM (build 26+35-2893, mixed mode, sharing)"
+  },
+  "workspace": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output",
+  "source_sha256": {
+    "pom.xml": "8f6140acb81942b81aed0e611f3ffa0b9f4de7a19d06b503ac226810afe19ca7",
+    "src/main/java/com/example/CheckoutService.java": "00f56872f51efcfcd6276b44cfd40cf79cc833bffba1442aad371e9435916a95",
+    "src/main/java/com/example/InventoryRepository.java": "39c51678e427cad83345257122b3d90351ed0d218428d115573dfb893d03f275",
+    "src/test/java/com/example/CheckoutIntegrationTest.java": "56d8c9329a04a20c652c4c72e987842c6438ff8ad941f6fd6900817dfe7ca5eb"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "integracao",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "java-integration",
+      "test_type": "integracao",
+      "stack": "java",
+      "framework": "junit",
+      "source_suffixes": [
+        ".java"
+      ],
+      "marker_files": [
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts"
+      ],
+      "test_file_pattern": "<Componente>IntegrationTest.java",
+      "generator": "junit_integration_generator",
+      "executor": "junit_integration_runner",
+      "aliases": [
+        "spring",
+        "java-spring",
+        "java/spring"
+      ],
+      "implemented": true
+    },
+    "confianca": 1.0,
+    "evidencias": [
+      "stack_declarada:Java/Spring",
+      "marcador:pom.xml",
+      "fontes:3"
+    ],
+    "arquivos_fonte": [
+      "src/main/java/com/example/CheckoutService.java",
+      "src/main/java/com/example/InventoryRepository.java",
+      "src/test/java/com/example/CheckoutIntegrationTest.java"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "integracao",
+    "perfil": "java-integration",
+    "framework": "junit-maven",
+    "comando": [
+      "C:\\apache-maven-3.9.16-bin\\apache-maven-3.9.16\\bin\\mvn.CMD",
+      "-Dtest=com.example.CheckoutIntegrationTest",
+      "test"
+    ],
+    "codigo_saida": 0,
+    "stdout": "[INFO] Scanning for projects...\n[INFO] \n[INFO] ------------------< com.example:qa-integration-java >-------------------\n[INFO] Building qa-integration-java 1.0.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ qa-integration-java ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output\\coder\\src\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:compile (default-compile) @ qa-integration-java ---\n[INFO] Recompiling the module because of changed source code.\n[INFO] Compiling 2 source files with javac [debug release 17] to target\\classes\n[INFO] \n[INFO] --- resources:3.4.0:testResources (default-testResources) @ qa-integration-java ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output\\coder\\src\\src\\test\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ qa-integration-java ---\n[INFO] Recompiling the module because of changed dependency.\n[INFO] Compiling 1 source file with javac [debug release 17] to target\\test-classes\n[INFO] \n[INFO] --- surefire:3.5.4:test (default-test) @ qa-integration-java ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running com.example.CheckoutIntegrationTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in com.example.CheckoutIntegrationTest\n[INFO] \n[INFO] Results:\n[INFO] \n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  3.819 s\n[INFO] Finished at: 2026-08-31T23:36:38-03:00\n[INFO] ------------------------------------------------------------------------\n",
+    "stderr": "",
+    "bloqueios": []
+  },
+  "normalized_result": {
+    "status": "sucesso",
+    "tipo_teste": "integracao",
+    "perfil": "java-integration",
+    "framework": "junit-maven",
+    "comando": [
+      "C:\\apache-maven-3.9.16-bin\\apache-maven-3.9.16\\bin\\mvn.CMD",
+      "-Dtest=com.example.CheckoutIntegrationTest",
+      "test"
+    ],
+    "codigo_saida": 0,
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "saida": "[INFO] Scanning for projects...\n[INFO] \n[INFO] ------------------< com.example:qa-integration-java >-------------------\n[INFO] Building qa-integration-java 1.0.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ qa-integration-java ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output\\coder\\src\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:compile (default-compile) @ qa-integration-java ---\n[INFO] Recompiling the module because of changed source code.\n[INFO] Compiling 2 source files with javac [debug release 17] to target\\classes\n[INFO] \n[INFO] --- resources:3.4.0:testResources (default-testResources) @ qa-integration-java ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output\\coder\\src\\src\\test\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ qa-integration-java ---\n[INFO] Recompiling the module because of changed dependency.\n[INFO] Compiling 1 source file with javac [debug release 17] to target\\test-classes\n[INFO] \n[INFO] --- surefire:3.5.4:test (default-test) @ qa-integration-java ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running com.example.CheckoutIntegrationTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in com.example.CheckoutIntegrationTest\n[INFO] \n[INFO] Results:\n[INFO] \n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  3.819 s\n[INFO] Finished at: 2026-08-31T23:36:38-03:00\n[INFO] ------------------------------------------------------------------------",
+    "erros": [],
+    "resultado_bruto": {
+      "status": "sucesso",
+      "tipo_teste": "integracao",
+      "perfil": "java-integration",
+      "framework": "junit-maven",
+      "comando": [
+        "C:\\apache-maven-3.9.16-bin\\apache-maven-3.9.16\\bin\\mvn.CMD",
+        "-Dtest=com.example.CheckoutIntegrationTest",
+        "test"
+      ],
+      "codigo_saida": 0,
+      "stdout": "[INFO] Scanning for projects...\n[INFO] \n[INFO] ------------------< com.example:qa-integration-java >-------------------\n[INFO] Building qa-integration-java 1.0.0\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ qa-integration-java ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output\\coder\\src\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:compile (default-compile) @ qa-integration-java ---\n[INFO] Recompiling the module because of changed source code.\n[INFO] Compiling 2 source files with javac [debug release 17] to target\\classes\n[INFO] \n[INFO] --- resources:3.4.0:testResources (default-testResources) @ qa-integration-java ---\n[INFO] skip non existing resourceDirectory C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\java-integration\\workspace_output\\coder\\src\\src\\test\\resources\n[INFO] \n[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ qa-integration-java ---\n[INFO] Recompiling the module because of changed dependency.\n[INFO] Compiling 1 source file with javac [debug release 17] to target\\test-classes\n[INFO] \n[INFO] --- surefire:3.5.4:test (default-test) @ qa-integration-java ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running com.example.CheckoutIntegrationTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in com.example.CheckoutIntegrationTest\n[INFO] \n[INFO] Results:\n[INFO] \n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD SUCCESS\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  3.819 s\n[INFO] Finished at: 2026-08-31T23:36:38-03:00\n[INFO] ------------------------------------------------------------------------\n",
+      "stderr": "",
+      "bloqueios": []
+    }
+  }
+}

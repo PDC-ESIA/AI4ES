@@ -402,6 +402,40 @@ def test_falha_build_pula_estagios_seguintes(tmp_path):
     assert sandbox.cleanup_called is True
 
 
+def test_falha_npm_ci_preserva_causa_e_diagnostica_lockfile(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    manifesto = _manifest_service()
+    manifesto["build"] = ["npm ci"]
+    _write_manifest(coder, manifesto)
+    causa = (
+        "npm error `npm ci` can only install packages when your package.json "
+        "and package-lock.json are in sync.\n"
+    )
+    sandbox = FakeSandbox(
+        exec_results={
+            "npm ci": CommandResult(
+                exit_code=1,
+                stdout="",
+                stderr=causa + ("npm help option\n" * 500),
+                timed_out=False,
+            ),
+        }
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    implantacao = next(
+        stage
+        for stage in result["stages"]
+        if stage["stage"] == "implantacao_artefato"
+    )
+
+    assert "fora de sincronia" in implantacao["summary"]
+    assert "fora de sincronia" in implantacao["evidence"]["diagnostico"]
+    assert causa.strip() in implantacao["evidence"]["build_logs_excerpt"]
+    assert "caracteres omitidos" in implantacao["evidence"]["build_logs_excerpt"]
+
+
 # ===========================================================================
 # Healthcheck do serviço falha → estágio 4 FALHA
 # ===========================================================================

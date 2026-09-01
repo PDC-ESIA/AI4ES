@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "unit-profile-smoke",
+  "collected_at": "2026-09-01T02:40:58.566111+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "python-pytest",
+    "title": "Python/FastAPI com pytest",
+    "test_relative_path": "test_calculator.py",
+    "reference_test": "test_calculator.py",
+    "runtime_command": [
+      "python",
+      "--version"
+    ],
+    "requirement": "Gere e execute testes unitários para calculator.py. Valide a soma de dois números e que divisão por zero lança ValueError.",
+    "bootstrap_commands": [],
+    "minimum_tests": 2,
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\python-pytest"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\.venv\\Scripts\\python.exe",
+      "--version"
+    ],
+    "output": "Python 3.14.4"
+  },
+  "bootstrap": {
+    "status": "nao_necessario",
+    "commands": []
+  },
+  "workspace": {
+    "profile_id": "python-pytest",
+    "title": "Python/FastAPI com pytest",
+    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output",
+    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src",
+    "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para calculator.py. Valide a soma de dois números e que divisão por zero lança ValueError.",
+    "expected": {
+      "inspection_status": "suportado",
+      "profile_id": "python-pytest",
+      "execution_status": "sucesso",
+      "minimum_tests": 2
+    },
+    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\dev_ui_session.json",
+    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src\\test_calculator.py"
+  },
+  "source_sha256": {
+    "calculator.py": "5f4d910f9714320d428d9f43eae7cabbb90d4d2b294d7cdae0935d0c27ad4c66",
+    "pyproject.toml": "7347d89ad8e0c823b9b5ae8fbff9caf4f9bf5689ac21daf299b362fb17308ed4",
+    "test_calculator.py": "13acc9bd1d123d386d6d27108e43be09bb341867557b0fa6bfb25f8b83238faf"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "unitario",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "python-pytest",
+      "language": "python",
+      "framework": "pytest",
+      "source_suffixes": [
+        ".py"
+      ],
+      "marker_files": [
+        "pyproject.toml",
+        "pytest.ini",
+        "requirements.txt",
+        "setup.cfg"
+      ],
+      "test_file_pattern": "test_<componente>.py",
+      "coverage_format": "coverage.py-json",
+      "executor": "pytest_runner",
+      "implemented": true
+    },
+    "confianca": 0.99,
+    "evidencias": [
+      "marker:pyproject.toml",
+      "source:.py(2)"
+    ],
+    "arquivos_fonte": [
+      "calculator.py",
+      "test_calculator.py"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "resultado_resumo": "sucesso_total",
+    "testes_passaram": 2,
+    "testes_falharam": 0,
+    "testes_ignorados": 0,
+    "agente_origem": "pytest_runner",
+    "proxima_acao_orquestrador": "finalizar_qa",
+    "tipo_teste": "pytest",
+    "testes_gerados": [
+      {
+        "nome": "test_calculator",
+        "arquivo": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src\\test_calculator.py",
+        "resultado": "passou"
+      }
+    ],
+    "cobertura": {
+      "percentual": 92.31,
+      "linhas_cobertas": 12,
+      "linhas_totais": 13
+    },
+    "erros": []
+  },
+  "normalized_result": {
+    "total": 2,
+    "sucessos": 2,
+    "falhas": 0,
+    "ignorados": 0,
+    "cobertura_percentual": 92.31
+  }
+}

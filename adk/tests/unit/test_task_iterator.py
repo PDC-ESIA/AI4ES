@@ -27,10 +27,10 @@ from src.agents.workflow_coding_review.task_iterator import (
 class _StubLoop(BaseAgent):
     """Loop controlável que aprova, reprova ou lança erro por task."""
 
-    _comportamentos: dict[str, str] = PrivateAttr(default_factory=dict)
+    _comportamentos: dict[str, str | list[str]] = PrivateAttr(default_factory=dict)
     _chamadas: list[dict] = PrivateAttr(default_factory=list)
 
-    def configurar(self, comportamentos: dict[str, str]) -> None:
+    def configurar(self, comportamentos: dict[str, str | list[str]]) -> None:
         self._comportamentos = comportamentos
 
     @property
@@ -48,7 +48,11 @@ class _StubLoop(BaseAgent):
                 "execution_result": ctx.session.state.get("execution_result"),
             }
         )
-        comportamento = self._comportamentos.get(task_id, "aprovado")
+        configurado = self._comportamentos.get(task_id, "aprovado")
+        if isinstance(configurado, list):
+            comportamento = configurado.pop(0)
+        else:
+            comportamento = configurado
         if comportamento == "erro":
             raise RuntimeError("falha operacional de teste")
 
@@ -65,7 +69,9 @@ class _StubLoop(BaseAgent):
         )
 
 
-async def _executar_iterator(tasks: object, comportamentos: dict[str, str]):
+async def _executar_iterator(
+    tasks: object, comportamentos: dict[str, str | list[str]]
+):
     loop = _StubLoop(name="stub_loop")
     loop.configurar(comportamentos)
     iterator = TaskIterator(
@@ -216,6 +222,40 @@ async def test_iterator_isola_erro_e_continua_proxima_task():
     assert summary["approved_task_ids"] == ["TASK-002"]
     assert summary["task_results"]["TASK-001"]["motivo_terminacao"] == "erro_operacional"
     assert summary["cobertura_completa"] is False
+
+
+@pytest.mark.asyncio
+async def test_iterator_revalida_task_anterior_apos_correcao_posterior():
+    loop, _, state = await _executar_iterator(
+        {"tasks": [{"id": "TASK-001"}, {"id": "TASK-002"}]},
+        {
+            "TASK-001": ["reprovado", "aprovado"],
+            "TASK-002": "aprovado",
+        },
+    )
+
+    assert [c["task_id"] for c in loop.chamadas] == [
+        "TASK-001",
+        "TASK-002",
+        "TASK-001",
+    ]
+    assert loop.chamadas[-1]["execution_result"].startswith("NOVA_TASK:")
+    summary = state["task_iteration_summary"]
+    assert summary["processed_task_ids"] == ["TASK-001", "TASK-002"]
+    assert summary["approved_task_ids"] == ["TASK-002", "TASK-001"]
+    assert summary["task_results"]["TASK-001"]["status"] == "aprovado"
+    assert summary["cobertura_completa"] is True
+
+
+@pytest.mark.asyncio
+async def test_iterator_nao_revalida_ultima_task_sem_correcao_posterior():
+    loop, _, state = await _executar_iterator(
+        {"tasks": [{"id": "TASK-001"}, {"id": "TASK-002"}]},
+        {"TASK-001": "aprovado", "TASK-002": "reprovado"},
+    )
+
+    assert [c["task_id"] for c in loop.chamadas] == ["TASK-001", "TASK-002"]
+    assert state["task_iteration_summary"]["cobertura_completa"] is False
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "evidence_type": "unit-profile-smoke",
+  "collected_at": "2026-09-01T02:40:32.483203+00:00",
+  "status": "sucesso",
+  "case": {
+    "profile_id": "node-mocha",
+    "title": "Node/TypeScript com Mocha",
+    "test_relative_path": "tests/unit/calculator.test.js",
+    "reference_test": "calculator.test.js",
+    "runtime_command": [
+      "node",
+      "--version"
+    ],
+    "requirement": "Gere e execute testes unitários para src/calculator.js. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "bootstrap_commands": [
+      [
+        "npm",
+        "install",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ]
+    ],
+    "minimum_tests": 2,
+    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\node-mocha"
+  },
+  "runtime": {
+    "available": true,
+    "command": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "--version"
+    ],
+    "output": "v24.19.0"
+  },
+  "bootstrap": {
+    "status": "sucesso",
+    "commands": [
+      {
+        "command": [
+          "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+          "C:\\Users\\Henrique Lima\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\\node-v24.19.0-win-x64\\node_modules\\npm\\bin\\npm-cli.js",
+          "install",
+          "--ignore-scripts",
+          "--no-audit",
+          "--no-fund"
+        ],
+        "returncode": 0,
+        "output": "added 92 packages in 8s\nnpm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me"
+      }
+    ]
+  },
+  "workspace": {
+    "profile_id": "node-mocha",
+    "title": "Node/TypeScript com Mocha",
+    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-mocha\\workspace_output",
+    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-mocha\\workspace_output\\coder\\src",
+    "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para src/calculator.js. Valide a soma de dois números e que divisão por zero lança RangeError.",
+    "expected": {
+      "inspection_status": "suportado",
+      "profile_id": "node-mocha",
+      "execution_status": "sucesso",
+      "minimum_tests": 2
+    },
+    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-mocha\\workspace_output\\dev_ui_session.json",
+    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-mocha\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.js"
+  },
+  "source_sha256": {
+    "package-lock.json": "b5e70ca81d8680aab226d050844089c49d168a9207ee40d9b79ff09f4e889b80",
+    "package.json": "a2b11aef8e82a8cf3df6fcbce03d4026bedb1b053dcc66e25fb68d2e52438f0f",
+    "src/calculator.js": "0b2e117cc23dd9c0a158a318202423e822a80b529f7127d4901c499ab441929b",
+    "tests/unit/calculator.test.js": "4215afd573997c152aefd54805a9d763d7c79588b906d67476ae8acb33e28a12"
+  },
+  "inspection": {
+    "status": "suportado",
+    "tipo_teste": "unitario",
+    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-mocha\\workspace_output\\coder\\src",
+    "perfil": {
+      "profile_id": "node-mocha",
+      "language": "javascript-typescript",
+      "framework": "mocha",
+      "source_suffixes": [
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs",
+        ".ts",
+        ".tsx"
+      ],
+      "marker_files": [
+        "package.json",
+        ".mocharc.json",
+        ".mocharc.js"
+      ],
+      "test_file_pattern": "<componente>.test.js",
+      "coverage_format": null,
+      "executor": "mocha_runner",
+      "implemented": true
+    },
+    "confianca": 0.99,
+    "evidencias": [
+      "package.json:mocha",
+      "source:node(2)"
+    ],
+    "arquivos_fonte": [
+      "src/calculator.js",
+      "tests/unit/calculator.test.js"
+    ],
+    "bloqueios": []
+  },
+  "execution": {
+    "status": "sucesso",
+    "tipo_teste": "unitario",
+    "perfil": "node-mocha",
+    "comando": [
+      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-mocha\\workspace_output\\coder\\src\\node_modules\\mocha\\bin\\mocha.js",
+      "tests/unit/calculator.test.js",
+      "--reporter",
+      "spec"
+    ],
+    "testes": {
+      "total": 2,
+      "sucessos": 2,
+      "falhas": 0,
+      "ignorados": 0
+    },
+    "cobertura": {
+      "percentual": null,
+      "formato": null,
+      "arquivo": null
+    },
+    "saida": "calculator\n    ✔ adds two numbers\n    ✔ rejects division by zero\n\n\n  2 passing (3ms)",
+    "erros": []
+  },
+  "normalized_result": {
+    "total": 2,
+    "sucessos": 2,
+    "falhas": 0,
+    "ignorados": 0,
+    "cobertura_percentual": null
+  }
+}
