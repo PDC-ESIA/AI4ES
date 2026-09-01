@@ -215,9 +215,13 @@ def tool_ler_artefatos(
         for item in paths_list:
             if isinstance(item, dict):
                 path_rel = str(item.get("path", "")).replace("\\", "/")
+                if path_rel.startswith("workspace_output/"):
+                    path_rel = path_rel[len("workspace_output/"):]
                 tipo_manifesto = item.get("tipo", "")
             else:
                 path_rel = str(item).replace("\\", "/")
+                if path_rel.startswith("workspace_output/"):
+                    path_rel = path_rel[len("workspace_output/"):]
                 tipo_manifesto = ""
  
             rel_path = Path(path_rel)
@@ -544,7 +548,7 @@ def tool_salvar_macro_context_cr(macro_context_json: str) -> dict:
             "erro": "Erro ao salvar macro context: " + str(e),
             "caminho": None,
         }
-
+tool_ler_artefatos_adk = FunctionTool(tool_ler_artefatos)
 tool_gerar_doubt_artifact_adk = FunctionTool(tool_gerar_doubt_artifact)
 tool_emitir_manifesto_bloqueado_adk = FunctionTool(tool_emitir_manifesto_bloqueado)
 tool_aguardar_resolucao_bloqueio_adk = LongRunningFunctionTool(aguardar_resolucao_bloqueio)

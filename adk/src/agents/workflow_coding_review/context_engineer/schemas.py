@@ -128,6 +128,16 @@ class Task(BaseModel):
             "(ex: RF-001). Garante rastreabilidade até o Time 1."
         )
     )
+
+    requirement_refs: list[str] = Field(
+        default_factory=list,
+        description=(
+            "IDs de todos os artefatos de requirements que contribuíram para "
+            "esta task — RNFs, RNs, HUs e outros além do RF de origem. "
+            "requirement_id é o RF principal; requirement_refs complementa "
+            "com todos os demais que enriqueceram o contexto."
+        ),
+    )
     design_refs: list[str] = Field(
         default_factory=list,
         description=(

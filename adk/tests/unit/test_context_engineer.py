@@ -79,11 +79,13 @@ def test_schemas_task_com_contract():
         acceptance_criteria=["Retorna 200 com JWT", "Retorna 401 com credenciais inválidas"],
         contract=Contract(inputs=[], outputs=["src/auth.py"]),
         requirement_id="RF-001",
+        requirement_refs=["HU-001", "RNF-001"],
         design_refs=["design/analise_tecnica_HU-001.md"],
     )
     assert task.id == "TASK-001"
     assert task.business_rules == []
     assert task.contract.outputs == ["src/auth.py"]
+    assert task.requirement_refs == ["HU-001", "RNF-001"]
  
  
 def test_schemas_task_design_refs_vazio_valido():

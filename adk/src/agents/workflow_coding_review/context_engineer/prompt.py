@@ -237,6 +237,15 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
 
 - **requirement_id**: ID do RF de origem (ex.: RF-001).
 
+- **requirement_refs**: IDs de todos os artefatos de requirements que
+  contribuíram para enriquecer esta task além do RF de origem.
+  Inclua:
+  * IDs das HUs cujos critérios de aceitação foram usados em acceptance_criteria
+  * IDs dos RNFs que geraram critérios testáveis em acceptance_criteria
+  * IDs das RNs que alimentaram business_rules
+  * IDs de artefatos em "Outros" que contribuíram para o contexto da task
+  Se nenhum artefato adicional foi usado além do RF, deixe a lista vazia.
+
 - **design_refs**: paths dos artefatos de design relevantes para este RF.
   - Inclua análises técnicas, diagramas e protótipos relevantes. Não referencia por referenciar — apenas inclua o que de fato foi usado.
 
