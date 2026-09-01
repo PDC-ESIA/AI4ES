@@ -10,7 +10,7 @@
 | RF02  | O sistema deve permitir que o operador edite ou remova uma quadra cadastrada. |
 | RF03  | O sistema deve permitir que o operador bloqueie horários específicos de uma quadra para manutenção ou feriados. |
 | RF04  | O sistema deve exibir ao cliente, sem exigir cadastro ou login, os horários disponíveis por quadra e por data. |
-| RF05  | O sistema deve permitir que o cliente realize uma reserva informando nome, telefone e horário desejado. |
+| RF05  | O sistema deve permitir que o cliente realize uma reserva informando nome, e-mail, telefone e horário desejado. |
 | RF06  | O sistema deve gerar um código de confirmação único para cada reserva realizada. |
 | RF07  | O sistema deve impedir a reserva de um horário já ocupado por outro cliente. |
 | RF08  | O sistema deve permitir que o cliente cancele sua própria reserva informando o código de confirmação. |
