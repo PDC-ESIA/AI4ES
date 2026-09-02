@@ -89,6 +89,93 @@ def _load_artifacts(artefatos_json: str) -> list[dict[str, Any]]:
     return raw
 
 
+def _requirement_text(artifact: dict[str, Any]) -> str:
+    """Extrai a solicitação original de envelopes aceitos pelo workflow."""
+    for field in (
+        "conteudo",
+        "descricao",
+        "requisito",
+        "resumo",
+        "resumo_do_requisito",
+        "titulo",
+    ):
+        value = artifact.get(field)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    handoff = artifact.get("handoff_context")
+    if isinstance(handoff, dict):
+        original = handoff.get("entrada_original")
+        if isinstance(original, str) and original.strip():
+            return original.strip()
+
+    criteria = artifact.get("criterios_aceite") or artifact.get(
+        "criterios_verificaveis"
+    )
+    if isinstance(criteria, list):
+        values = [str(item).strip() for item in criteria if str(item).strip()]
+        if values:
+            return "; ".join(values)
+    return ""
+
+
+def _workspace_relative_path(value: str) -> str:
+    normalized = value.strip().replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    if normalized.startswith("workspace_output/"):
+        normalized = normalized.removeprefix("workspace_output/")
+    return normalized
+
+
+def _normalize_artifacts(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Produz o mesmo contrato mínimo para Python e demais perfis."""
+    normalized: list[dict[str, Any]] = []
+    for artifact in artifacts:
+        item = dict(artifact)
+        item.setdefault(
+            "id_artefato", str(item.get("id") or "SEM_ID")
+        )
+        item.setdefault("tipo", "RF")
+        if not isinstance(item.get("conteudo"), str) or not item["conteudo"].strip():
+            requirement = _requirement_text(item)
+            if requirement:
+                item["conteudo"] = requirement
+
+        support_files = item.get("arquivos_apoio", [])
+        if not isinstance(support_files, list):
+            support_files = []
+        canonical_support: list[Any] = []
+        known_paths: set[str] = set()
+        for support in support_files:
+            if isinstance(support, str) and support.strip():
+                path = _workspace_relative_path(support)
+                canonical_support.append({"path": path})
+                known_paths.add(path)
+            elif isinstance(support, dict):
+                copied = dict(support)
+                path = copied.get("path")
+                if isinstance(path, str) and path.strip():
+                    path = _workspace_relative_path(path)
+                    copied["path"] = path
+                    known_paths.add(path)
+                canonical_support.append(copied)
+
+        relevant_files = item.get("arquivos_relevantes", [])
+        if isinstance(relevant_files, list):
+            for relevant in relevant_files:
+                if not isinstance(relevant, str) or not relevant.strip():
+                    continue
+                path = _workspace_relative_path(relevant)
+                if path not in known_paths:
+                    canonical_support.append({"path": path})
+                    known_paths.add(path)
+        if canonical_support:
+            item["arquivos_apoio"] = canonical_support
+        normalized.append(item)
+    return normalized
+
+
 def _artifact_file_names(artifacts: list[dict[str, Any]]) -> list[str]:
     names: list[str] = []
     for artifact in artifacts:
@@ -153,7 +240,7 @@ def gerar_testes_unitarios(
 ) -> dict:
     """Inspeciona, gera e executa testes unitários no perfil suportado."""
     try:
-        artifacts = _load_artifacts(artefatos_json)
+        artifacts = _normalize_artifacts(_load_artifacts(artefatos_json))
         project_root = _resolve_project_root(workspace_projeto)
     except ValueError as exc:
         return _blocked("ENTRADA_UNITARIA_INVALIDA", str(exc))
@@ -179,7 +266,9 @@ def gerar_testes_unitarios(
     profile = inspection.get("perfil") or {}
     profile_id = profile.get("profile_id")
     if profile_id == "python-pytest":
-        generation = receber_requisitos(artefatos_json)
+        generation = receber_requisitos(
+            json.dumps(artifacts, ensure_ascii=False)
+        )
     elif profile_id in _NON_PYTHON_PROFILES:
         generation = gerar_testes_do_perfil(profile_id, artifacts, project_root)
     else:

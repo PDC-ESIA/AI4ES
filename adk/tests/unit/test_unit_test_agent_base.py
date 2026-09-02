@@ -185,6 +185,48 @@ def test_fluxo_python_gera_e_executa_sem_alterar_runner(tmp_path, monkeypatch):
     assert result["detalhes"][0]["resultado_execucao"]["status"] == "sucesso"
 
 
+def test_fluxo_python_normaliza_resumo_do_workflow_como_conteudo(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    project = workspace / "coder" / "src"
+    project.mkdir(parents=True)
+    (project / "pyproject.toml").write_text(
+        "[project]\nname='sample'\n", encoding="utf-8"
+    )
+    (project / "calculator.py").write_text(
+        "def add(a, b): return a + b\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace))
+    captured = {}
+
+    def fake_receive(payload):
+        captured["artifacts"] = json.loads(payload)
+        return {"status": "concluido", "detalhes": []}
+
+    monkeypatch.setattr(orchestration, "receber_requisitos", fake_receive)
+
+    result = orchestration.gerar_testes_unitarios(
+        json.dumps(
+            {
+                "resumo_do_requisito": (
+                    "Somar dois números e lançar ValueError na divisão por zero."
+                ),
+                "objetivo_qa": "Executar somente testes unitários.",
+                "arquivos_relevantes": [
+                    "workspace_output/coder/src/calculator.py"
+                ],
+            }
+        )
+    )
+
+    assert result["perfil"]["profile_id"] == "python-pytest"
+    assert captured["artifacts"][0]["conteudo"].startswith("Somar dois números")
+    assert captured["artifacts"][0]["arquivos_apoio"] == [
+        {"path": "coder/src/calculator.py"}
+    ]
+
+
 def test_fluxo_sem_codigo_gera_esqueleto_apenas_com_stack_declarada(
     tmp_path, monkeypatch
 ):

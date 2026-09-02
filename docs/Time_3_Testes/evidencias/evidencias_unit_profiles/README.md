@@ -4,6 +4,9 @@ Esta pasta reúne resultados automatizados e prints opcionais da Dev UI para os
 sete perfis unitários de Python, Node, Java e Go. TypeScript é coberto pelos
 perfis Node.
 
+Os prints consolidados da execução estão em
+[`DEV_UI_EVIDENCIAS.md`](DEV_UI_EVIDENCIAS.md).
+
 ## Coletar evidências
 
 Na pasta `adk`:
@@ -18,6 +21,10 @@ O comando cria um `SUMMARY.md` e um `evidence.json` por perfil. Os JSONs
 registram detecção, runtime, comando, contagens, cobertura, hashes e saída.
 
 O conjunto versionado está em `runs/handoff-final-20260831/`.
+
+Os relatórios e prints ficam em
+`docs/Time_3_Testes/evidencias/evidencias_unit_profiles/`, a partir da raiz do
+repositório. Workspaces locais da Dev UI continuam separados, na pasta `adk`.
 
 ## Validar pela Dev UI
 

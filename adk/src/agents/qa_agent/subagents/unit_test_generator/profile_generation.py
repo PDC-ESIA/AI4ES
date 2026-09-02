@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path, PurePosixPath
@@ -168,9 +169,34 @@ def _package_and_type(source: Path | None, fallback: str) -> tuple[str, str]:
 
 
 def _available_target(preferred: Path) -> Path:
+    """Mantém o helper genérico usado pelos adaptadores de integração."""
     if not preferred.exists():
         return preferred
     return preferred.with_name(f"{preferred.stem}.generated{preferred.suffix}")
+
+
+def _available_java_target(preferred: Path) -> Path:
+    if not preferred.exists():
+        return preferred
+    component = preferred.stem.removesuffix("Test")
+    candidate = preferred.with_name(f"{component}GeneratedTest.java")
+    index = 2
+    while candidate.exists():
+        candidate = preferred.with_name(f"{component}Generated{index}Test.java")
+        index += 1
+    return candidate
+
+
+def _available_go_target(preferred: Path) -> Path:
+    if not preferred.exists():
+        return preferred
+    component = preferred.name.removesuffix("_test.go")
+    candidate = preferred.with_name(f"{component}_generated_test.go")
+    index = 2
+    while candidate.exists():
+        candidate = preferred.with_name(f"{component}_generated{index}_test.go")
+        index += 1
+    return candidate
 
 
 def _node_test_convention(root: Path, extension: str) -> tuple[Path, str]:
@@ -223,7 +249,7 @@ def _test_target(
     if profile_id == "java-junit":
         package, class_name = _package_and_type(primary, module)
         package_path = Path(*package.split(".")) if package else Path()
-        return _available_target(
+        return _available_java_target(
             root / "src" / "test" / "java" / package_path / f"{class_name}Test.java"
         )
     if profile_id == "go-testing":
@@ -232,7 +258,7 @@ def _test_target(
             if primary
             else root / f"{artifact_slug}_test.go"
         )
-        return _available_target(preferred)
+        return _available_go_target(preferred)
     raise ValueError(f"Perfil de geração não suportado: {profile_id}")
 
 
@@ -267,6 +293,59 @@ def _artifact_requirement(artifact: dict[str, Any]) -> str:
         if values:
             return "; ".join(values)
     return ""
+
+
+def _declared_node_module_type(root: Path) -> str:
+    package_json = root / "package.json"
+    if not package_json.is_file():
+        return ""
+    try:
+        package = json.loads(package_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    value = package.get("type") if isinstance(package, dict) else None
+    return value.strip().casefold() if isinstance(value, str) else ""
+
+
+def _node_module_instruction(profile_id: str, root: Path, target: Path) -> str:
+    if profile_id not in {"node-node-test", "node-mocha"}:
+        return ""
+    module_type = _declared_node_module_type(root)
+    if target.suffix.casefold() in {".js", ".cjs"} and module_type != "module":
+        return (
+            "- O projeto executa JavaScript como CommonJS. Use exclusivamente "
+            "`require(...)`; não use declarações `import` ou `export`."
+        )
+    return (
+        "- O projeto executa o teste como ES Module. Use `import` e não use "
+        "`require(...)`."
+    )
+
+
+def _requires_explicit_commonjs(
+    profile_id: str, root: Path, target: Path
+) -> bool:
+    return (
+        profile_id in {"node-node-test", "node-mocha"}
+        and target.suffix.casefold() in {".js", ".cjs"}
+        and _declared_node_module_type(root) == "commonjs"
+    )
+
+
+def _repair_commonjs_test(code: str) -> str:
+    return _completion_content(
+        (
+            "Você corrige somente a sintaxe de módulos de um teste Node.js e "
+            "preserva integralmente seus cenários e asserts."
+        ),
+        f"""O projeto está declarado como CommonJS, mas o teste abaixo usa ESM.
+Reescreva todas as importações para `require(...)`. Não use `import` nem `export`.
+Retorne exclusivamente o arquivo JavaScript corrigido, sem Markdown.
+
+Teste:
+{code}
+""",
+    )
 
 
 def _completion_content(system_prompt: str, user_prompt: str) -> str:
@@ -312,6 +391,58 @@ def _sanitize_code(profile_id: str, code: str) -> str:
     return value + "\n"
 
 
+def _align_java_test_class(code: str, target: Path) -> str:
+    """Alinha a classe JUnit ao nome físico exigido pelo compilador Java."""
+    match = re.search(r"\bclass\s+(\w+)", code)
+    if match is None or match.group(1) == target.stem:
+        return code
+    return re.sub(
+        rf"\b{re.escape(match.group(1))}\b",
+        target.stem,
+        code,
+    )
+
+
+def _deduplicate_go_test_names(code: str, root: Path, target: Path) -> str:
+    """Evita colisões de funções Test* com testes Go preexistentes."""
+    existing: set[str] = set()
+    for path in root.rglob("*_test.go"):
+        if not path.is_file() or path.resolve() == target.resolve():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        existing.update(re.findall(r"\bfunc\s+(Test\w+)\s*\(", text))
+
+    replacements: dict[str, str] = {}
+    reserved = set(existing)
+    for name in re.findall(r"\bfunc\s+(Test\w+)\s*\(", code):
+        if name not in reserved:
+            reserved.add(name)
+            continue
+        candidate = f"{name}Generated"
+        index = 2
+        while candidate in reserved:
+            candidate = f"{name}Generated{index}"
+            index += 1
+        replacements[name] = candidate
+        reserved.add(candidate)
+    for original, replacement in replacements.items():
+        code = re.sub(rf"\b{re.escape(original)}\b", replacement, code)
+    return code
+
+
+def _normalize_generated_code(
+    profile_id: str,
+    code: str,
+    root: Path,
+    target: Path,
+) -> str:
+    if profile_id == "java-junit":
+        return _align_java_test_class(code, target)
+    if profile_id == "go-testing":
+        return _deduplicate_go_test_names(code, root, target)
+    return code
+
+
 def _generate_test_code(
     profile_id: str,
     artifact: dict[str, Any],
@@ -330,6 +461,7 @@ def _generate_test_code(
         if sources
         else "Não há código-fonte: gere um esqueleto marcado como ignorado pelo framework."
     )
+    module_instruction = _node_module_instruction(profile_id, root, target)
     prompt = f"""Gere o arquivo {target.relative_to(root).as_posix()}.
 Artefato: {artifact.get("id_artefato", "SEM_ID")}
 Tipo: {artifact.get("tipo", "RF")}
@@ -343,6 +475,7 @@ Código-fonte do projeto:
 
 Regras do perfil:
 {_PROFILE_RULES[profile_id]}
+{module_instruction}
 - Importe o código real pelo caminho/package/module correto do projeto.
 - Não altere configuração, manifestos, dependências ou código de produção.
 - Cubra caminho feliz, entradas inválidas e limites observáveis.
@@ -404,7 +537,20 @@ def gerar_testes_do_perfil(
                 target,
                 sources,
             )
+            if (
+                _requires_explicit_commonjs(profile_id, root, target)
+                and re.search(r"(?m)^\s*import\s", generated)
+            ):
+                generated = _repair_commonjs_test(generated)
             code = _sanitize_code(profile_id, generated)
+            code = _normalize_generated_code(profile_id, code, root, target)
+            if (
+                _requires_explicit_commonjs(profile_id, root, target)
+                and re.search(r"(?m)^\s*(?:import|export)\s", code)
+            ):
+                raise ValueError(
+                    "O teste gerado permaneceu incompatível com CommonJS após correção."
+                )
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(code, encoding="utf-8")
             execution = (

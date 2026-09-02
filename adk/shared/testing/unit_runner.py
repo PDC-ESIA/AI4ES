@@ -15,6 +15,7 @@ from shared.workspace import get_agent_workspace
 from .unit_profiles import get_unit_test_profile
 
 _DEFAULT_TIMEOUT_SECONDS = 120
+_ANSI_ESCAPE_RE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|[@-_])")
 
 
 def _blocked(profile_id: str, code: str, message: str) -> dict[str, Any]:
@@ -89,7 +90,12 @@ def _node_command(
 def _jvm_test_name(test: Path) -> str:
     text = test.read_text(encoding="utf-8", errors="replace")
     package_match = re.search(r"^\s*package\s+([\w.]+)\s*;?", text, re.MULTILINE)
-    return f"{package_match.group(1)}.{test.stem}" if package_match else test.stem
+    class_match = re.search(
+        r"\b(?:public\s+)?(?:final\s+)?class\s+(\w+)",
+        text,
+    )
+    class_name = class_match.group(1) if class_match else test.stem
+    return f"{package_match.group(1)}.{class_name}" if package_match else class_name
 
 
 def _jvm_command(root: Path, test: Path) -> tuple[list[str] | None, str | None]:
@@ -162,7 +168,13 @@ def _counts(total: int, failed: int = 0, skipped: int = 0) -> dict[str, int]:
     }
 
 
+def _strip_ansi(output: str) -> str:
+    """Remove sequências de estilo emitidas pelos runners em terminais CI."""
+    return _ANSI_ESCAPE_RE.sub("", output)
+
+
 def _parse_counts(profile_id: str, output: str, returncode: int) -> dict[str, int]:
+    output = _strip_ansi(output)
     if profile_id == "go-testing":
         return _parse_go_json(output)
     if re.search(
@@ -241,6 +253,7 @@ def _parse_counts(profile_id: str, output: str, returncode: int) -> dict[str, in
 
 
 def _coverage_percent(profile_id: str, output: str) -> float | None:
+    output = _strip_ansi(output)
     patterns = {
         "go-testing": r"coverage:\s*([\d.]+)%",
         "node-vitest": r"All files[^\n]*?([\d.]+)\s*%",

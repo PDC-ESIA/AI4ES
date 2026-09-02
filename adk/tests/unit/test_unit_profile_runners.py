@@ -82,6 +82,26 @@ def test_java_maven_usa_nome_qualificado(tmp_path, monkeypatch):
     assert command == ["/mvn", "-Dtest=com.example.CalculatorTest", "test"]
 
 
+def test_java_maven_usa_classe_declarada_em_nome_legado(tmp_path, monkeypatch):
+    (tmp_path / "pom.xml").write_text("<project />", encoding="utf-8")
+    test_file = _test_file(
+        tmp_path,
+        "src/test/java/com/example/CalculatorTest.generated.java",
+    )
+    test_file.write_text(
+        "package com.example; class CalculatorTestGenerated {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(unit_runner, "_command_path", lambda name: f"/{name}")
+
+    command, blocker, _coverage = unit_runner._build_command(
+        "java-junit", tmp_path, test_file
+    )
+
+    assert blocker is None
+    assert command == ["/mvn", "-Dtest=com.example.CalculatorTestGenerated", "test"]
+
+
 def test_go_usa_go_mod_e_gera_coverprofile(tmp_path, monkeypatch):
     (tmp_path / "go.mod").write_text("module sample\n", encoding="utf-8")
     test_file = _test_file(tmp_path, "calculator_test.go")
@@ -126,6 +146,22 @@ def test_go_usa_go_mod_e_gera_coverprofile(tmp_path, monkeypatch):
 )
 def test_normaliza_contagens(profile_id, output, expected):
     assert unit_runner._parse_counts(profile_id, output, 1) == expected
+
+
+def test_normaliza_contagem_vitest_com_ansi_do_github_actions():
+    output = (
+        "\x1b[2m Test Files \x1b[22m \x1b[1m\x1b[32m1 passed\x1b[39m\x1b[22m"
+        "\x1b[90m (1)\x1b[39m\n"
+        "\x1b[2m      Tests \x1b[22m \x1b[1m\x1b[32m2 passed\x1b[39m\x1b[22m"
+        "\x1b[90m (2)\x1b[39m"
+    )
+
+    assert unit_runner._parse_counts("node-vitest", output, 0) == {
+        "total": 2,
+        "sucessos": 2,
+        "falhas": 0,
+        "ignorados": 0,
+    }
 
 
 def test_normaliza_eventos_go():

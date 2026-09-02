@@ -19,7 +19,14 @@ from shared.testing.unit_evidence import (  # noqa: E402
     prepare_unit_evidence_workspace,
 )
 
-_DEFAULT_EVIDENCE_ROOT = _ADK_ROOT / "evidencias_unit_profiles"
+_DEFAULT_EVIDENCE_ROOT = (
+    _ADK_ROOT.parent
+    / "docs"
+    / "Time_3_Testes"
+    / "evidencias"
+    / "evidencias_unit_profiles"
+)
+_DEFAULT_WORKSPACE_ROOT = _ADK_ROOT / "evidencias_unit_profiles"
 
 
 def _profile_ids(value: str) -> list[str]:
@@ -104,7 +111,7 @@ def _prepare_dev_ui(args: argparse.Namespace) -> int:
     output_root = (
         Path(args.output).expanduser().resolve()
         if args.output
-        else _DEFAULT_EVIDENCE_ROOT / "dev_ui_workspaces"
+        else _DEFAULT_WORKSPACE_ROOT / "dev_ui_workspaces"
     )
     sessions = []
     for profile_id in profile_ids:

@@ -24,10 +24,15 @@ Execute na pasta `adk`:
 
 ## Evidências versionadas
 
-- Unitário: `evidencias_unit_profiles/runs/handoff-final-20260831/SUMMARY.md`.
-- Integração e E2E: `evidencias_multilevel/runs/handoff-final-20260831/SUMMARY.md`.
+- [Resultados unitários](evidencias_unit_profiles/runs/handoff-final-20260831/SUMMARY.md).
+- [Resultados de integração e E2E](evidencias_multilevel/runs/handoff-final-20260831/SUMMARY.md).
+- [Prints da Dev UI — unitários](evidencias_unit_profiles/DEV_UI_EVIDENCIAS.md).
 - Cada perfil possui um `evidence.json` com runtime, comando, hashes, logs e
   resultado normalizado.
+
+Os comandos de coleta salvam os relatórios por padrão nesta pasta de evidências
+do Time 3. Os caminhos registrados nos JSONs descrevem o ambiente da execução
+original e não foram reescritos durante a organização.
 
 ## Dev UI
 

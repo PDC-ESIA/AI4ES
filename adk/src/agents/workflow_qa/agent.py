@@ -222,19 +222,22 @@ FLUXO OBRIGATÓRIO:
 
 4. AUTOCORREÇÃO (Code Fix)
    Encaminhe o relatório de falhas ao code_fix_agent.
-   Ele analisa o log, lê o arquivo test_*.py e aplica a correção
-   fisicamente com write_qa_test.
+   Ele analisa o log, lê o arquivo de teste Python, Node/TypeScript, Java ou Go
+   e aplica a correção fisicamente com write_qa_test.
    → Passe sempre o path completo retornado em
-     `testes_gerados[].arquivo`, não apenas o basename do teste.
-   → Exija confirmação `status=aplicado` antes de reexecutar.
+     `detalhes[].arquivo_gerado`, não apenas o basename do teste.
+   → Exija confirmação `status=aplicado` e reexecução `status=sucesso` pelo
+     executor do perfil antes de aceitar a correção.
    → Nunca execute novamente um arquivo que não foi alterado.
    → O code_fix_agent pode alterar somente código de TESTE, nunca fonte.
    → O code_fix_agent nunca pode criar um teste ausente; ele só corrige um
      `arquivo_gerado` já existente e confirmado pela etapa 2.
    → Nunca peça ao code_fix_agent para alterar sys.path ou apontar para
      workspace_output/coder; os testes usam somente a cópia materializada.
-   → Volte para a etapa 3 (re-execução), com no máximo 2 ciclos de
-     autocorreção antes de bloquear e gerar Doubt_Artifact.
+   → O code_fix_agent reexecuta o arquivo corrigido com pytest, Vitest, Jest,
+     node:test, Mocha, JUnit ou go test, conforme o perfil detectado.
+   → Volte para a etapa 3 com no máximo 2 ciclos de autocorreção antes de
+     bloquear e gerar Doubt_Artifact.
 
 5. DOUBT ARTIFACT (fallback)
    Em qualquer etapa, se faltar contexto crítico, use a tool

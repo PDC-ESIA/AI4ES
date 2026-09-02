@@ -19,7 +19,13 @@ from shared.testing.multilevel_evidence import (  # noqa: E402
     collect_integration_profile_evidence,
 )
 
-_DEFAULT_ROOT = _ADK_ROOT / "evidencias_multilevel"
+_DEFAULT_ROOT = (
+    _ADK_ROOT.parent
+    / "docs"
+    / "Time_3_Testes"
+    / "evidencias"
+    / "evidencias_multilevel"
+)
 
 
 def _selected(level: str, profile: str) -> list[tuple[str, str]]:
