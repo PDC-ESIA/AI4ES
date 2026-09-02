@@ -60,10 +60,13 @@ import pytest
 def pytest_configure(config: pytest.Config) -> None:
     """Registra os markers de camada, evitando warnings de marker desconhecido."""
     config.addinivalue_line(
-        "markers", "infraestrutura: Camada 1 — testes determinísticos (unit/integração leve)"
+        "markers", "integration: testes que executam ferramentas externas (ruff, bandit) — requerem instalação no ambiente"
     )
     config.addinivalue_line(
-        "markers", "trajetoria: Camada 2 — validação da sequência de decisões dos agentes"
+        "markers", "infraestrutura: Camada 1 — testes determinísticos (unit/integração leve): schemas, tools, workspace, harness Docker, orquestração"
+    )
+    config.addinivalue_line(
+        "markers", "trajetoria: Camada 2 — validação da sequência de decisões dos agentes (trajectory evaluation), com coleta de trace estruturado"
     )
     config.addinivalue_line(
         "markers", "coder_isolado: testes que exercitam exclusivamente o pipeline workflow_coding_review"
