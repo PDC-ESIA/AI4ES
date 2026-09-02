@@ -1,0 +1,15 @@
+{
+  "id": "caso_09_codigo_limpo_simples",
+  "categoria": "codigo_limpo",
+  "descricao_curta": "Função simples, correta, com teste adequado",
+  "arquivos": {
+    "somar.py": "def somar_dois_numeros(a: int, b: int) -> int:\n    \"\"\"Retorna a soma de dois inteiros.\"\"\"\n    return a + b\n"
+  },
+  "arquivos_teste": {
+    "test_somar.py": "from somar import somar_dois_numeros\n\n\ndef test_somar_numeros_positivos():\n    assert somar_dois_numeros(2, 3) == 5\n\n\ndef test_somar_com_zero():\n    assert somar_dois_numeros(0, 5) == 5\n    assert somar_dois_numeros(5, 0) == 5\n\n\ndef test_somar_numeros_negativos():\n    assert somar_dois_numeros(-2, -3) == -5\n\n\ndef test_somar_positivo_e_negativo():\n    assert somar_dois_numeros(10, -4) == 6\n"
+  },
+  "veredito_esperado": "APROVADO",
+  "severidade_esperada": null,
+  "palavras_chave_deterministicas": [],
+  "problema_para_judge": "O código é simples, correto e possui um teste adequado cobrindo o comportamento principal — não há problemas reais; o reviewer deve reconhecer isso e aprovar."
+}

@@ -1,23 +1,50 @@
-"""conftest.py — fixtures para a suíte de testes de integração."""
+"""conftest.py — Camada 2 (trajetória).
+
+Enquanto a Camada 1 valida "o código faz o que deveria", esta camada valida
+"o agente decidiu chamar as coisas certas, na ordem certa" (trajectory
+evaluation, no vocabulário do MASEval e da survey de avaliação de agentes
+LLM). Isso cobre, por exemplo:
+
+- o Orchestrator dispara os 4 pipelines (requirements → design →
+  coding_review → qa) na ordem esperada;
+- um HITL checkpoint pausa a execução e retoma corretamente após a
+  decisão humana;
+- o harness de execução persiste evidências e o validador só aprova com
+  base nelas (nunca no status técnico isolado) — coberto hoje pelos testes
+  em `tests/coder_isolado/trajetoria/`, que também definem as fixtures de
+  trace/mocks de Docker (`tests/coder_isolado/conftest.py`).
+
+O artefato central desta camada é o **trace**: a sequência de eventos
+observados durante a execução, organizada em duas camadas (ver
+`tests/fixtures/trace_helpers.py`). Os testes que permanecem diretamente
+aqui (`test_hitl_e2e.py`, `test_integration_orchestrator_qa.py`) validam
+o orchestrator e não usam trace_collector — por isso essa fixture não
+está mais neste conftest (ver `tests/coder_isolado/conftest.py`).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
-from shared.preflight import PreflightResult
 
+@pytest.fixture
+def workspace_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Workspace isolado por teste, substituindo `workspace_output` global.
 
-@pytest.fixture(autouse=True)
-def _stub_llm_preflight(monkeypatch):
-    """Neutraliza o health-check de LLM do orchestrator nos testes de integração.
-
-    ensure_llm_ready faria chamadas de rede reais (validação de credencial +
-    ping ao endpoint). Substituímos por um no-op ok=True para manter os testes
-    determinísticos e offline; o comportamento do preflight é coberto por
-    tests/unit/test_preflight_healthcheck.py.
+    Equivalente ao `tmp_workspace` usado em `test_integration_orchestrator_qa.py`,
+    promovido a fixture compartilhada da camada: cria a raiz do workspace com
+    o marker esperado por `shared.workspace` e aponta `WORKSPACE_OUTPUT_DIR`
+    para dentro do `tmp_path` do teste.
     """
+    from shared import workspace as _workspace_mod
 
-    async def _ok(model=None):
-        return PreflightResult(ok=True)
+    ws = tmp_path / "workspace_output"
+    ws.mkdir(parents=True, exist_ok=True)
+    (ws / ".ai4se_workspace").write_text("marker", encoding="utf-8")
 
-    monkeypatch.setattr(
-        "src.agents.orchestrator.agent.ensure_llm_ready", _ok, raising=False
-    )
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(ws))
+    monkeypatch.setattr(_workspace_mod, "_DEFAULT_WORKSPACE", str(ws))
+    return ws
+

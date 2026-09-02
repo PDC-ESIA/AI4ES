@@ -1,0 +1,15 @@
+{
+  "id": "caso_11_classe_bem_testada",
+  "categoria": "codigo_limpo",
+  "descricao_curta": "Classe pequena, responsabilidade única, bem testada",
+  "arquivos": {
+    "conta_bancaria.py": "class ContaBancaria:\n    \"\"\"Representa uma conta bancária simples com saldo.\"\"\"\n\n    def __init__(self, saldo_inicial: float = 0.0) -> None:\n        self._saldo = saldo_inicial\n\n    def depositar(self, valor: float) -> None:\n        \"\"\"Adiciona `valor` ao saldo. `valor` deve ser positivo.\"\"\"\n        if valor <= 0:\n            raise ValueError(\"valor do depósito deve ser positivo\")\n        self._saldo += valor\n\n    def sacar(self, valor: float) -> None:\n        \"\"\"Remove `valor` do saldo, se houver saldo suficiente.\"\"\"\n        if valor <= 0:\n            raise ValueError(\"valor do saque deve ser positivo\")\n        if valor > self._saldo:\n            raise ValueError(\"saldo insuficiente\")\n        self._saldo -= valor\n\n    @property\n    def saldo(self) -> float:\n        return self._saldo\n"
+  },
+  "arquivos_teste": {
+    "test_conta_bancaria.py": "import pytest\n\nfrom conta_bancaria import ContaBancaria\n\n\ndef test_deposito_aumenta_saldo():\n    conta = ContaBancaria(saldo_inicial=100.0)\n    conta.depositar(50.0)\n    assert conta.saldo == 150.0\n\n\ndef test_saque_diminui_saldo():\n    conta = ContaBancaria(saldo_inicial=100.0)\n    conta.sacar(30.0)\n    assert conta.saldo == 70.0\n\n\ndef test_saque_maior_que_saldo_levanta_erro():\n    conta = ContaBancaria(saldo_inicial=10.0)\n    with pytest.raises(ValueError):\n        conta.sacar(50.0)\n\n\ndef test_deposito_valor_negativo_levanta_erro():\n    conta = ContaBancaria()\n    with pytest.raises(ValueError):\n        conta.depositar(-5.0)\n"
+  },
+  "veredito_esperado": "APROVADO",
+  "severidade_esperada": null,
+  "palavras_chave_deterministicas": [],
+  "problema_para_judge": "A classe tem responsabilidade única (gerenciar saldo de uma conta), métodos claros e bem documentados, e os testes cobrem depósito, saque, saldo insuficiente e valores inválidos — não há problemas reais; o reviewer deve reconhecer isso e aprovar."
+}

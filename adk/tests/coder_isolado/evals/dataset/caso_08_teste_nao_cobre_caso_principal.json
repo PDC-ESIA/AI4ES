@@ -1,0 +1,21 @@
+{
+  "id": "caso_08_teste_nao_cobre_caso_principal",
+  "categoria": "testes",
+  "descricao_curta": "Arquivo de teste presente, mas testa algo trivial/irrelevante",
+  "arquivos": {
+    "validador_senha.py": "def senha_e_forte(senha: str) -> bool:\n    \"\"\"Verifica se a senha atende aos critérios mínimos de força.\n\n    Critérios: pelo menos 8 caracteres, contendo letra maiúscula,\n    letra minúscula e dígito.\n    \"\"\"\n    if len(senha) < 8:\n        return False\n    tem_maiuscula = any(c.isupper() for c in senha)\n    tem_minuscula = any(c.islower() for c in senha)\n    tem_digito = any(c.isdigit() for c in senha)\n    return tem_maiuscula and tem_minuscula and tem_digito\n"
+  },
+  "arquivos_teste": {
+    "test_validador_senha.py": "from validador_senha import senha_e_forte\n\n\ndef test_funcao_existe():\n    \"\"\"Smoke test: a função pode ser chamada sem erro.\"\"\"\n    senha_e_forte(\"qualquer_coisa\")\n"
+  },
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "cobertura",
+    "n[ãa]o cobre",
+    "cen[áa]rio",
+    "insuficiente",
+    "trivial"
+  ],
+  "problema_para_judge": "O arquivo de teste existe, mas contém apenas um smoke test que não verifica o comportamento real da função (não testa senhas fortes/fracas de fato) — a cobertura de testes é insuficiente para validar a lógica principal."
+}

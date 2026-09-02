@@ -1,0 +1,21 @@
+{
+  "id": "caso_04_path_traversal",
+  "categoria": "seguranca",
+  "descricao_curta": "Leitura de arquivo sem validar path traversal",
+  "arquivos": {
+    "leitor_arquivo.py": "import os\n\n\ndef ler_arquivo_usuario(nome_arquivo: str) -> str:\n    \"\"\"Lê o conteúdo de um arquivo dentro do diretório de uploads.\"\"\"\n    caminho = os.path.join(\"uploads\", nome_arquivo)\n    with open(caminho, \"r\", encoding=\"utf-8\") as f:\n        return f.read()\n"
+  },
+  "arquivos_teste": {
+    "test_leitor_arquivo.py": "from leitor_arquivo import ler_arquivo_usuario\n\n\ndef test_ler_arquivo_usuario_le_conteudo(tmp_path, monkeypatch):\n    monkeypatch.chdir(tmp_path)\n    uploads = tmp_path / \"uploads\"\n    uploads.mkdir()\n    (uploads / \"nota.txt\").write_text(\"ola\")\n\n    conteudo = ler_arquivo_usuario(\"nota.txt\")\n\n    assert conteudo == \"ola\"\n"
+  },
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "path traversal",
+    "travessia",
+    "diret[óo]rio",
+    "sanitiz",
+    "absoluto"
+  ],
+  "problema_para_judge": "A função monta o caminho do arquivo a partir de um nome fornecido pelo usuário sem validar sequências '..' ou paths absolutos, permitindo path traversal para ler arquivos fora do diretório de uploads."
+}

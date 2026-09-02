@@ -1,0 +1,19 @@
+{
+  "id": "caso_01_senha_hardcoded",
+  "categoria": "seguranca",
+  "descricao_curta": "Senha hardcoded em variável de configuração",
+  "arquivos": {
+    "config.py": "password = \"hardcoded_secret_123\"\n"
+  },
+  "arquivos_teste": {},
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "senha",
+    "credencial",
+    "secret",
+    "password",
+    "hardcod"
+  ],
+  "problema_para_judge": "O código contém uma senha (credencial) hardcoded diretamente no código-fonte, um problema de segurança que expõe a credencial a qualquer pessoa com acesso ao repositório."
+}

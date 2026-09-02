@@ -1,0 +1,22 @@
+{
+  "id": "caso_05_bug_logico",
+  "categoria": "corretude",
+  "descricao_curta": "Bug de comparação (off-by-one) em verificação de intervalo",
+  "arquivos": {
+    "validador_intervalo.py": "def esta_no_intervalo(valor: int, minimo: int, maximo: int) -> bool:\n    \"\"\"Verifica se `valor` está dentro do intervalo [minimo, maximo], incluindo as extremidades.\"\"\"\n    return minimo < valor < maximo\n"
+  },
+  "arquivos_teste": {
+    "test_validador_intervalo.py": "from validador_intervalo import esta_no_intervalo\n\n\ndef test_valor_dentro_do_intervalo():\n    assert esta_no_intervalo(5, 1, 10) is True\n\n\ndef test_valor_nas_extremidades_e_considerado_valido():\n    assert esta_no_intervalo(1, 1, 10) is True\n    assert esta_no_intervalo(10, 1, 10) is True\n\n\ndef test_valor_fora_do_intervalo():\n    assert esta_no_intervalo(15, 1, 10) is False\n"
+  },
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "l[óo]gic",
+    "compara[çc][ãa]o",
+    "extremidade",
+    "limite",
+    "off-by-one",
+    "incorret"
+  ],
+  "problema_para_judge": "A função deveria considerar o intervalo como inclusivo nas duas extremidades (conforme a docstring), mas usa comparações estritas (<) em vez de <=, excluindo incorretamente os valores mínimo e máximo do intervalo válido."
+}

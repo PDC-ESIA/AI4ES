@@ -1,13 +1,16 @@
-"""conftest.py — fixtures e pre-importações para a suite de testes unitários.
+"""conftest.py — Camada 1 (infraestrutura).
 
-test_git_tools.py estufa pydantic.BaseModel = object no sys.modules para
-isolar os testes de git. Isso corrompe módulos importados posteriormente que
-dependem do Pydantic real (ex.: schemas dos agentes e ADK LlmAgent).
+Testes determinísticos: schemas Pydantic, ferramentas (tools), workspace,
+harness Docker, orquestração ADK sem depender de julgamento de qualidade
+("é isso que o código faz", não "isso é uma boa resposta"). `tmp_path` e
+`monkeypatch` já vêm prontos do pytest — as fixtures abaixo só compõem
+sobre eles o que é específico deste projeto (base_dir de tools, schemas
+de exemplo).
 
-Solução: pre-importar todos os módulos de agente que usam BaseModel antes
-que qualquer test module seja coletado. conftest.py é executado pelo pytest
-antes da coleta, então os módulos ficam cacheados no sys.modules com o
-BaseModel correto.
+O pré-cache de módulos ADK/Pydantic (necessário porque `test_git_tools.py`
+substitui `pydantic.BaseModel` em `sys.modules`) agora vive no conftest
+global (`tests/conftest.py`), que é carregado antes deste — não precisa
+ser repetido aqui.
 
 collect_ignore: exclui arquivos com problemas pré-existentes:
 - test_filesystem_tools.py — conflito de merge não resolvido (SyntaxError)
@@ -15,63 +18,98 @@ collect_ignore: exclui arquivos com problemas pré-existentes:
   na consolidação dos Times)
 """
 
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Callable
+
+import pytest
+
 collect_ignore = [
     "test_filesystem_tools.py",
     "test_geracao_condicional.py",
 ]
 
-# Pré-cache de todos os módulos de agente com dependência em pydantic/ADK.
-# Nenhum desses imports é executado durante os testes — servem apenas para
-# popular sys.modules antes que test_git_tools.py substitua pydantic.BaseModel.
 
-from src.agents.requirements import schemas as _req_schemas  # noqa: F401
-from src.agents.workflow_coding_review.reviewer import schemas as _rev_schemas  # noqa: F401
-from shared.tools.coding_tools import harness_schemas as _harness_schemas  # noqa: F401
-from src.agents.implementation_validator import schemas as _implval_schemas  # noqa: F401
-from src.agents.workflow_coding_review.context_engineer import schemas as _ce_schemas  # noqa: F401
-from shared.tools.coding_tools.context_engineer_tools import tool_salvar_task  # noqa: F401
-from src.agents.workflow_coding_review.agent import agent as _cr  # noqa: F401
-from src.agents.workflow_requirements.agent import agent as _req  # noqa: F401
-from src.agents.workflow_design_pipeline.agent import agent as _design  # noqa: F401
-from src.agents.workflow_qa.agent import agent as _qa  # noqa: F401
-from src.agents.orchestrator.agent import root_agent as _orch  # noqa: F401
+# ---------------------------------------------------------------------------
+# Fixtures de mocks/wrappers de tools
+# ---------------------------------------------------------------------------
 
-# app.main dispara a cadeia de import da ADK (google.adk.cli.fast_api →
-# evaluation) e cria a FastAPI app no import. Pré-importamos aqui — antes de
-# test_git_tools.py stubar pydantic.BaseModel = object — para cachear esses
-# módulos com o Pydantic real. Forçamos ADK_LLM_MODEL para um provider
-# não-Copilot para que o preflight de credencial executado no import retorne
-# cedo, sem tentar autenticação de rede; o valor original é restaurado depois.
-import os as _os  # noqa: E402
-
-_prev_model = _os.environ.get("ADK_LLM_MODEL")
-_os.environ["ADK_LLM_MODEL"] = "none/x"
-try:
-    import app.main as _main  # noqa: F401
-finally:
-    if _prev_model is None:
-        _os.environ.pop("ADK_LLM_MODEL", None)
-    else:
-        _os.environ["ADK_LLM_MODEL"] = _prev_model
+@pytest.fixture
+def tool_base_dir(tmp_path: Path) -> Path:
+    """Diretório base isolado para tools que aceitam `base_dir` (workspace-bound)."""
+    return tmp_path
 
 
-import pytest  # noqa: E402
-from shared.preflight import PreflightResult  # noqa: E402
+@pytest.fixture
+def tool_criar_arquivo_bound(tool_base_dir: Path) -> Callable[..., dict]:
+    """`tool_criar_arquivo` pré-vinculada a um `base_dir` isolado por teste.
 
+    Evita repetir `base_dir=str(tmp_path)` em cada chamada dentro do teste::
 
-@pytest.fixture(autouse=True)
-def _stub_llm_preflight(monkeypatch):
-    """Neutraliza o health-check de LLM do orchestrator nos testes unitários.
-
-    ensure_llm_ready faria chamadas de rede reais (validação de credencial +
-    ping ao endpoint). Substituímos por um no-op ok=True para manter os testes
-    determinísticos e offline; o comportamento do preflight em si é coberto por
-    test_preflight_healthcheck.py chamando shared.preflight diretamente.
+        def test_algo(tool_criar_arquivo_bound):
+            resultado = tool_criar_arquivo_bound("modulo.py", "print(1)")
+            assert resultado["sucesso"]
     """
+    from shared.tools.coding_tools.filesystem_coding import tool_criar_arquivo
 
-    async def _ok(model=None):
-        return PreflightResult(ok=True)
+    def _chamar(caminho: str, conteudo: str, **kwargs: Any) -> dict:
+        return tool_criar_arquivo(caminho, conteudo, base_dir=str(tool_base_dir), **kwargs)
 
-    monkeypatch.setattr(
-        "src.agents.orchestrator.agent.ensure_llm_ready", _ok, raising=False
+    return _chamar
+
+
+@pytest.fixture
+def tool_ler_arquivo_bound(tool_base_dir: Path) -> Callable[..., str]:
+    """`tool_ler_arquivo` pré-vinculada ao mesmo `base_dir` de `tool_criar_arquivo_bound`."""
+    from shared.tools.coding_tools.filesystem_coding import tool_ler_arquivo
+
+    def _chamar(caminho: str, **kwargs: Any) -> str:
+        return tool_ler_arquivo(caminho, base_dir=str(tool_base_dir), **kwargs)
+
+    return _chamar
+
+
+@pytest.fixture
+def mock_docker_client():
+    """`MagicMock` mínimo com a superfície do SDK `docker` usada pelo harness.
+
+    Cobre `images.build`, `containers.run/get` e `exec_run` com um retorno
+    de sucesso "neutro" — testes que precisam de comportamento específico
+    (ex.: falha de build) devem sobrescrever os atributos relevantes.
+    """
+    from unittest.mock import MagicMock
+
+    client = MagicMock()
+    client.images.build.return_value = (
+        MagicMock(),
+        [{"stream": "Successfully built abc123"}],
     )
+    container = MagicMock()
+    container.status = "running"
+    container.attrs = {"State": {"ExitCode": 0}}
+    container.logs.return_value = b""
+    client.containers.run.return_value = container
+    return client
+
+
+# ---------------------------------------------------------------------------
+# Fixtures de schemas Pydantic (instâncias de exemplo)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def sample_phase_manifest() -> dict:
+    """Dict válido para `shared.manifest.PhaseManifest.model_validate(...)`."""
+    from tests.fixtures.test_data import SAMPLE_CODING_MANIFEST
+
+    return dict(SAMPLE_CODING_MANIFEST)
+
+
+@pytest.fixture
+def sample_manifest_model():
+    """Instância já validada de `PhaseManifest`, pronta para uso direto no teste."""
+    from shared.manifest import PhaseManifest
+
+    from tests.fixtures.test_data import SAMPLE_CODING_MANIFEST
+
+    return PhaseManifest.model_validate(SAMPLE_CODING_MANIFEST)

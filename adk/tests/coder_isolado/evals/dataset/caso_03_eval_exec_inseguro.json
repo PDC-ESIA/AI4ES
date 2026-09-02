@@ -1,0 +1,21 @@
+{
+  "id": "caso_03_eval_exec_inseguro",
+  "categoria": "seguranca",
+  "descricao_curta": "Uso de eval() sobre string derivada de input externo",
+  "arquivos": {
+    "calculadora_expressao.py": "def calcular_expressao(expressao_usuario: str):\n    \"\"\"Calcula o resultado de uma expressão matemática fornecida pelo usuário.\"\"\"\n    resultado = eval(expressao_usuario)\n    return resultado\n"
+  },
+  "arquivos_teste": {
+    "test_calculadora_expressao.py": "from calculadora_expressao import calcular_expressao\n\n\ndef test_calcular_expressao_soma_simples():\n    assert calcular_expressao(\"2 + 2\") == 4\n"
+  },
+  "veredito_esperado": "BLOQUEADO",
+  "severidade_esperada": "critical",
+  "palavras_chave_deterministicas": [
+    "eval",
+    "exec",
+    "insegur",
+    "arbitr[áa]ri",
+    "execu[çc][ãa]o de c[óo]digo"
+  ],
+  "problema_para_judge": "O código usa eval() sobre uma string vinda diretamente do usuário, permitindo execução arbitrária de código Python malicioso."
+}

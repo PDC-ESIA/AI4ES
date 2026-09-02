@@ -1,0 +1,15 @@
+{
+  "id": "caso_10_codigo_limpo_com_validacao",
+  "categoria": "codigo_limpo",
+  "descricao_curta": "Função com validação de entrada correta, bem testada",
+  "arquivos": {
+    "calculadora_desconto.py": "def calcular_desconto(preco: float, percentual: float) -> float:\n    \"\"\"Calcula o preço final aplicando um desconto percentual.\n\n    Args:\n        preco: preço original, deve ser positivo.\n        percentual: percentual de desconto, entre 0 e 100.\n\n    Raises:\n        ValueError: se `preco` for negativo ou `percentual` estiver fora de [0, 100].\n    \"\"\"\n    if preco < 0:\n        raise ValueError(\"preco não pode ser negativo\")\n    if not (0 <= percentual <= 100):\n        raise ValueError(\"percentual deve estar entre 0 e 100\")\n    return preco * (1 - percentual / 100)\n"
+  },
+  "arquivos_teste": {
+    "test_calculadora_desconto.py": "import pytest\n\nfrom calculadora_desconto import calcular_desconto\n\n\ndef test_calcula_desconto_valido():\n    assert calcular_desconto(100.0, 10) == 90.0\n\n\ndef test_preco_negativo_levanta_erro():\n    with pytest.raises(ValueError):\n        calcular_desconto(-10.0, 10)\n\n\ndef test_percentual_fora_do_intervalo_levanta_erro():\n    with pytest.raises(ValueError):\n        calcular_desconto(100.0, 150)\n"
+  },
+  "veredito_esperado": "APROVADO",
+  "severidade_esperada": null,
+  "palavras_chave_deterministicas": [],
+  "problema_para_judge": "O código valida corretamente os parâmetros de entrada (preço não-negativo, percentual entre 0 e 100) antes de processar, e os testes cobrem tanto o caso feliz quanto os casos de entrada inválida — não há problemas reais; o reviewer deve reconhecer isso e aprovar."
+}
