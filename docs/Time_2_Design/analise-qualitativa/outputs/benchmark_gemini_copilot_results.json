@@ -1,0 +1,2674 @@
+[
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5-mini",
+    "model_name": "GPT 5 mini",
+    "scenario_id": "P04",
+    "scenario_name": "Biblioteca Pessoal de Livros (P04)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 224.74,
+    "tokens": {
+      "prompt_tokens": 1862,
+      "completion_tokens": 5297,
+      "total_tokens": 7159
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_P04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "graph",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 18,
+      "neutrality_compliant": false,
+      "neutrality_violations": [
+        "graphql"
+      ],
+      "has_gap_analysis": true,
+      "gap_mentions": 12
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 2,
+      "justificativa_correcao": "Arquitetura coerente e neutra em tecnologia, cobrindo autenticação/isolamento, CRUDs, busca/índice, estatísticas e exportação. Decisões justificadas por RNFs. Porém, há sobre-engenharia potencial (serviço de busca/índice e WebSocket) para um domínio pessoal de pequeno volume, sem discussão de trade-off ou alternativa mais simples (ex.: índices de banco).",
+      "justificativa_modularidade": "Responsabilidades bem separadas (Book, Genre, Collection, Search, Stats, Export, Auth) com tabela de comunicação. Contudo, BookSvc comunica-se com quase todos os demais, indicando acoplamento moderado que poderia ser mitigado por barramento de eventos explícito; contratos de interface não são detalhados.",
+      "justificativa_gaps": "Dez gaps relevantes e acionáveis (concorrência multi-dispositivo, volumetria/SLA, auditoria de histórico, limites de exportação, segurança operacional, backup). Falta profundidade em pontos específicos do domínio, como unicidade de nomes de gênero/coleção por usuário, paginação/ordenação da listagem e comportamento de duplicatas de livros.",
+      "justificativa_fidelidade": "Captura corretamente regras-chave: obrigatoriedade de título/autor, enums de status e tipo, N:N com gênero, 0..1 com coleção, desvinculação sem exclusão em cascata, atualização em tempo real das estatísticas. Menos explícito quanto a 'limpar todos os filtros', busca incremental (debounce) e escolha de formato na exportação, tratados apenas superficialmente.",
+      "justificativa_diagramas": "O diagrama de sequência é bom, mas o diagrama de componentes tem sintaxe Mermaid inválida (arestas escritas como 'A -- B: texto' sem seta/rótulo válido) e colchetes com parênteses/barras que quebram o parser; no classDiagram, o uso de '<<enum>>' inline em atributos e a cardinalidade '0..1' em relação o-- também são frágeis. Não há diagrama de implantação nem fluxos de exceção.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita HU→RF→Componentes em tabelas claras",
+        "Gap analysis extensa, priorizada e acionável",
+        "Modelo de dados fiel às cardinalidades exigidas (N:N gêneros, 0..1 coleção)"
+      ],
+      "pontos_fracos": [
+        "Erros de sintaxe Mermaid no diagrama de componentes que impedem renderização",
+        "Ausência de fluxos de exceção/erro e de diagrama de implantação",
+        "Possível sobre-engenharia (índice de busca dedicado, WebSocket) sem análise de trade-off frente a alternativas simples"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 2,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 24,
+      "pct_score": 80.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5.3-codex",
+    "model_name": "GPT 5.3 Codex",
+    "scenario_id": "P04",
+    "scenario_name": "Biblioteca Pessoal de Livros (P04)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 27.35,
+    "tokens": {
+      "prompt_tokens": 1860,
+      "completion_tokens": 3378,
+      "total_tokens": 5238
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_P04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 51,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas com serviços de domínio é adequada e proporcional ao problema (CRUD pessoal com filtros e estatísticas). Decisões estão justificadas com motivo/impacto e o isolamento por usuário é tratado como política transversal. Faltam, porém, escolhas tecnológicas concretas, estratégia de índices/paginação para o RNF03 e trade-offs explícitos (ex.: recomputar estatísticas a cada escrita vs. contadores incrementais/cache), o que limita a nota máxima.",
+      "justificativa_modularidade": "Responsabilidades bem separadas por domínio (Livros, Gêneros, Coleções, Busca, Estatísticas, Exportação), com repositório único compartilhado — pragmático, mas gera acoplamento de dados não discutido. A comunicação é majoritariamente via orquestração, evitando dependências cruzadas, embora o acoplamento Livros→Estatísticas apareça na tabela sem estar refletido no diagrama.",
+      "justificativa_gaps": "Boa lista de pendências acionáveis (volumetria/SLO, política de sessão, ordenação/paginação, schema de exportação, normalização textual, duplicidade, auditoria, acessibilidade). Faltam lacunas relevantes como estratégia de backup/recuperação, tratamento de erros/concorrência, LGPD/privacidade e limites de tamanho da exportação.",
+      "justificativa_fidelidade": "Cobre bem os critérios centrais: obrigatoriedade de título/autor, três status, N:N gênero, 1 coleção por livro, desvinculação sem exclusão, filtros combináveis, busca parcial dinâmica. Alguns critérios são apenas mencionados superficialmente (limpar todos os filtros com um clique, escolha de formato e download pelo navegador, exportação de todos os campos) e o RNF07 foi mapeado como origem de HU08 sem citar RF/HU de forma totalmente consistente.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; o diagrama de sequência é o ponto alto, com fluxo alternativo de validação e atualização de estatísticas. O diagrama de componentes é simples, com setas de retorno para a UI que quebram levemente a coerência do fluxo em camadas, e não há diagrama de dados/entidades que ajudaria dado o peso do modelo relacional nas HU03/HU04.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita HU → RF/RNF → componentes, com tabela de cobertura e classificação parcial/completa honesta",
+        "Diagrama de sequência com caminho de exceção (validação) e atualização de resumo, aderente aos critérios de aceite"
+      ],
+      "pontos_fracos": [
+        "Ausência de modelo de dados/diagrama de entidades e de estratégias concretas para RNF03 (índices, paginação, debounce na busca)",
+        "Trade-offs arquiteturais pouco explorados (recomputação vs. contadores incrementais, repositório único vs. repositórios por agregado); diagrama de componentes com retornos inconsistentes"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.7-flash",
+    "model_name": "Gemini 3.7 Flash",
+    "scenario_id": "P04",
+    "scenario_name": "Biblioteca Pessoal de Livros (P04)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 38.63,
+    "tokens": {
+      "prompt_tokens": 1990,
+      "completion_tokens": 4158,
+      "total_tokens": 6441
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_P04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "graph",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 43,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas coerente e adequada ao domínio (CRUD pessoal com autenticação). Decisões justificadas (isolamento por usuário, não-cascata na remoção de taxonomias, recálculo de métricas). Pontos frágeis: RNF03 tratado de forma genérica, sem estratégia concreta de indexação/paginação; RF03 (remoção) mapeado a HU01, o que é impreciso; acoplamento direto Book_Service→Stats_Service poderia ser resolvido por evento explícito.",
+      "justificativa_modularidade": "Serviços bem separados por capacidade (livros, taxonomias, busca, estatísticas, exportação, autenticação), com repositórios distintos e responsabilidades claras na tabela de componentes. Pequenos ruídos: Stats_Service invocado pelo Book_Service (dependência síncrona) e Serviço de Gêneros/Coleções acessando Repositório de Livros, o que cria acoplamento cruzado não plenamente justificado.",
+      "justificativa_gaps": "Gaps relevantes e acionáveis (ISBN, exportação com filtros ativos, volumetria/streaming, livro sem gênero). Pendências sobre autenticação/recuperação de senha bem levantadas. Falta abordar lacunas como ordenação/paginação da listagem, importação, edição em massa, offline e política de exclusão definitiva/soft delete.",
+      "justificativa_fidelidade": "Cobre praticamente todos RF/RNF e critérios de aceite, incluindo obrigatoriedade de título/autor, unicidade de coleção por livro e desvinculação sem exclusão. Falhas: a multiplicidade Livro–Gênero foi definida como 1..* no diagrama e na decisão 2, contradizendo o critério de que um livro pode ficar sem gênero após remoção (o próprio relatório reconhece a contradição em G4); 'limpar filtros' e busca incremental pouco detalhados no fluxo.",
+      "justificativa_diagramas": "Mermaid sintaticamente válido e legível: componentes por camada, sequência detalhada de cadastro com atualização de estatísticas e classes de domínio com enums. Cobertura limitada: só um diagrama de sequência, sem fluxos de exportação, filtragem ou remoção de gênero/coleção; erro de multiplicidade no diagrama de classes.",
+      "pontos_fortes": [
+        "Rastreabilidade completa RF/RNF/HU→componentes em tabelas claras",
+        "Decisões arquiteturais justificadas, com destaque para isolamento por usuário e não-cascata de taxonomias"
+      ],
+      "pontos_fracos": [
+        "Multiplicidade Livro–Gênero como 1..* contradiz o critério de desvinculação (livro pode ficar sem gênero)",
+        "Estratégia de desempenho (RNF03) genérica, sem índices, paginação ou debounce; apenas um diagrama de sequência cobrindo poucos fluxos"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.6-flash",
+    "model_name": "Gemini 3.6 Flash",
+    "scenario_id": "P04",
+    "scenario_name": "Biblioteca Pessoal de Livros (P04)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 40.13,
+    "tokens": {
+      "prompt_tokens": 1990,
+      "completion_tokens": 3887,
+      "total_tokens": 7565
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_P04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 45,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas coerente e adequada ao domínio simples de catalogação: autenticação com isolamento por usuário (tenantId), serviços de negócio bem definidos, persistência em banco. Decisões justificadas (SET NULL na remoção de taxonomias, debounce na busca, exportação client-side). Pequenas inconsistências: a exportação client-side é justificada por RNF06 (compatibilidade de navegadores) de forma imprecisa, e HU08 é mapeada a RNF06/RNF07 sem RF correspondente; o recálculo integral de estatísticas a cada evento não discute cache ou agregação incremental.",
+      "justificativa_modularidade": "Componentes com responsabilidades claras e coesas (Catalogação, Taxonomia, Busca, Estatísticas, Exportação, Auth, Repositório). Acoplamento razoável, embora BookService->StatsEngine seja síncrono no diagrama de sequência, contradizendo levemente a decisão declarada de 'orientado a eventos/desacoplado'. O ViewEngine acessa quase todos os serviços, o que é aceitável mas concentra dependências.",
+      "justificativa_gaps": "Gaps relevantes e acionáveis: paginação para grandes volumes vs RNF03, extensibilidade de metadados físico/digital, sincronização multi-dispositivo via SSE/WebSocket, Web Workers para exportação pesada. Faltam lacunas sobre logs/auditoria, LGPD, testes, importação, tratamento de erros e conflitos de nomes duplicados de gêneros/coleções.",
+      "justificativa_fidelidade": "Regras principais capturadas: obrigatoriedade de título/autor, enum de três status, N gêneros x 1 coleção, desvinculação sem exclusão em cascata, atualização imediata das estatísticas, busca parcial dinâmica, escolha de formato de exportação. Menos explícitos: limpar todos os filtros com um clique, combinação simultânea de filtros (citada mas não modelada), filtro por tipo (HU05) e download direto no navegador aparecem apenas superficialmente.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida, subgrafos por camada e sequência com autonumber/activate legível e coerente com o fluxo de cadastro + atualização de estatísticas. Limitações: apenas dois diagramas, sem modelo de dados/ER ou fluxos de exceção (validação falha, remoção de gênero, exportação); há erro de digitação 'Visão Visão'.",
+      "pontos_fortes": [
+        "Rastreabilidade completa HU-RF-RNF-componentes com tabelas de cobertura",
+        "Decisões arquiteturais justificadas e alinhadas a critérios de aceite (SET NULL, multi-tenancy lógico)",
+        "Gap analysis acionável com recomendações técnicas concretas"
+      ],
+      "pontos_fracos": [
+        "Contradição entre decisão 'event-driven desacoplado' e fluxo síncrono do diagrama de sequência",
+        "Mapeamentos imprecisos (HU08 associada a RNF06; ausência de RF02/RF03 em HUs)",
+        "Ausência de diagrama de dados/entidades e de fluxos de exceção; erro de digitação no título do diagrama"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-sonnet-5",
+    "model_name": "Claude Sonnet 5",
+    "scenario_id": "P04",
+    "scenario_name": "Biblioteca Pessoal de Livros (P04)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 49.21,
+    "tokens": {
+      "prompt_tokens": 3242,
+      "completion_tokens": 5901,
+      "total_tokens": 9143
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_P04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 4,
+        "total_blocks": 4,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 73,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 3
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas coerente e adequada ao domínio CRUD com estatísticas; decisões justificadas e rastreadas a requisitos. Falta profundidade em trade-offs (ex.: cálculo de estatísticas em memória vs. agregação no banco, paginação, cache) e a neutralidade tecnológica, embora defensável, reduz a concretude (RNF03/RNF06 sem estratégia técnica).",
+      "justificativa_modularidade": "Serviços com responsabilidade única bem delimitada (livros, gêneros, coleções, filtro, estatísticas, exportação) e persistência abstraída por repositório. Pequenas inconsistências: a UI orquestra a notificação ao serviço de estatísticas (acoplamento de orquestração na apresentação) e associação livro-gênero/coleção aparece duplicada entre serviços.",
+      "justificativa_gaps": "Sete gaps relevantes e acionáveis (paginação, concorrência, soft delete, volume, autenticação), além de bloqueios distintos. Contudo há sobreposição entre BP e G, e faltam lacunas como estratégia de índices/busca textual, exportação de grandes volumes e ausência de RF explícito para exportação.",
+      "justificativa_fidelidade": "Cobre bem os critérios centrais: obrigatoriedade de título/autor, três status, N:N gênero, 0..1 coleção, desvinculação ao remover, limpar filtros, atualização em tempo real do resumo. Menos explícitos: busca parcial incremental (debounce), escolha de formato e download no navegador, e RF02/RF03 não aparecem em diagramas.",
+      "justificativa_diagramas": "Quatro diagramas Mermaid sintaticamente válidos e legíveis, com camadas, sequências (incluindo alt de erro) e modelo de domínio consistente com as regras. Faltam fluxos de exportação, edição/remoção e gestão de gêneros/coleções; setas N:N no classDiagram poderiam ser associações não direcionadas.",
+      "pontos_fortes": [
+        "Rastreabilidade forte entre HU, RF, RNF, componentes e decisões",
+        "Modelo de domínio fiel às regras (multi-gênero, coleção única, desvinculação em remoção)"
+      ],
+      "pontos_fracos": [
+        "Ausência de diagramas para exportação e edição/remoção; RF02/RF03 pouco explorados",
+        "UI orquestrando estatísticas e falta de trade-offs técnicos concretos (paginação, indexação, cache)"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-opus-4.8",
+    "model_name": "Claude Opus 4.8",
+    "scenario_id": "P04",
+    "scenario_name": "Biblioteca Pessoal de Livros (P04)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 65.03,
+    "tokens": {
+      "prompt_tokens": 3242,
+      "completion_tokens": 5718,
+      "total_tokens": 8960
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_P04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 4,
+        "total_blocks": 4,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 71,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 3
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas clássica, coerente e adequada ao domínio simples de biblioteca pessoal. Decisões documentadas com justificativa e rastreio a requisitos. Fraquezas: falta escolha tecnológica concreta, trade-offs alternativos (ex.: monolito vs SPA+API, cache, índices, paginação) são apenas mencionados superficialmente; RF08 (associação livro-gênero/coleção) é atribuído aos serviços de Gênero/Coleção quando naturalmente pertenceria ao Serviço de Livros.",
+      "justificativa_modularidade": "Serviços bem segregados por capacidade (Livros, Gêneros, Coleções, Busca, Estatísticas, Exportação, Auth) com coesão alta. O padrão de notificação por evento para estatísticas reduz acoplamento. Contudo, no diagrama a Entidade de Domínio chama diretamente o Repositório (inversão de dependência invertida/incorreta em relação ao padrão de camadas), e os serviços de Gênero/Coleção acessam o Domínio Livro, gerando acoplamento cruzado não justificado.",
+      "justificativa_gaps": "Gap analysis excelente e acionável: ciclo de vida de conta, esquema de exportação, top-N de gêneros, metas de desempenho, ausência de importação, histórico de status (insight muito pertinente ao 'progresso ao longo do tempo' da HU02), conflito de coleção e duplicidade. Recomendações concretas e com responsáveis atribuídos.",
+      "justificativa_fidelidade": "Cobre todos os RF e RNF com matriz de rastreabilidade e captura regras-chave (N:N gêneros, N:1 coleção, desvinculação sem exclusão, validação de título/autor, limpar filtros). Falta detalhar critérios como busca parcial case-insensitive, atualização dinâmica while-typing (debounce), e a exportação 'com todos os campos' permanece só como pendência.",
+      "justificativa_diagramas": "Quatro diagramas Mermaid sintaticamente válidos e legíveis, cobrindo componentes, classes e dois fluxos principais. Faltam sequências para exportação, remoção de gênero/coleção (regra de desvinculação) e atualização de estatísticas em tempo real; o diagrama de classes é raso em atributos/tipos e a direção das dependências no diagrama de componentes é discutível.",
+      "pontos_fortes": [
+        "Rastreabilidade completa HU→RF→RNF→componentes com tabela de cobertura",
+        "Gap analysis profundo e acionável, incluindo lacunas não óbvias (histórico de status, importação, duplicidade)"
+      ],
+      "pontos_fracos": [
+        "Dependências invertidas no diagrama de componentes (domínio→repositório) e acoplamento cruzado entre serviços de Gênero/Coleção e domínio Livro",
+        "Ausência de decisões técnicas concretas e trade-offs quantitativos (indexação, paginação, cache) para atender RNF03"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 27,
+      "pct_score": 90.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-fable-5",
+    "model_name": "Claude Fable 5",
+    "scenario_id": "P04",
+    "scenario_name": "Biblioteca Pessoal de Livros (P04)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 62.92,
+    "tokens": {
+      "prompt_tokens": 3242,
+      "completion_tokens": 5654,
+      "total_tokens": 8896
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_P04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 65,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 3
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 5,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 5,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas coerente com o domínio (CRUD pessoal com estatísticas), decisões justificadas e rastreadas a requisitos (isolamento por usuário, indexação/paginação, exclusão sem cascata, exportação sob demanda). Não prescreve tecnologia desnecessariamente, mas mantém coerência; nenhum erro lógico relevante.",
+      "justificativa_modularidade": "Serviços bem delimitados (Livros, Taxonomia, Consulta, Estatísticas, Exportação) com alta coesão e comunicação via gateway; uso de evento para desacoplar estatísticas. Pequena fragilidade: todos os serviços compartilham um único repositório genérico e o Serviço de Autenticação também acessa o repositório sem detalhamento, além de não discutir trade-off monolito modular vs. microsserviços.",
+      "justificativa_gaps": "Gap analysis rica e acionável: ciclo de vida de contas, exportação assíncrona, paginação como requisito derivado, concorrência multi-sessão, histórico de status, acessibilidade e importação. Impactos e ações claras, com priorização final.",
+      "justificativa_fidelidade": "Captura corretamente obrigatoriedade de título/autor, enum de status, N:N gênero e 0..1 coleção, desvinculação sem cascata, filtros combináveis e limpar filtros, busca parcial incremental, escolha de formato e download no navegador, atualização em tempo real das estatísticas. Rastreabilidade HU→componente é explícita.",
+      "justificativa_diagramas": "Três diagramas válidos e legíveis cobrindo componentes, sequência crítica e domínio. Faltam fluxos de exportação, filtro/busca e remoção de gênero/coleção em sequência, e o diagrama de classes usa apenas associações direcionadas sem atributos de chave; ainda assim boa cobertura.",
+      "pontos_fortes": [
+        "Rastreabilidade completa requisito→decisão→componente com tabela de cobertura",
+        "Gap analysis profunda e acionável, incluindo crítica realista ao RNF03"
+      ],
+      "pontos_fracos": [
+        "Ausência de diagramas de sequência para exportação e filtragem/busca",
+        "Pouca discussão de trade-offs tecnológicos (estilo arquitetural, cache, modelo de dados para agregados)"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 5,
+      "architectural_clarity": 5,
+      "total_score": 29,
+      "pct_score": 96.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5-mini",
+    "model_name": "GPT 5 mini",
+    "scenario_id": "P05",
+    "scenario_name": "Reservas para Quadras Esportivas (P05)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 63.33,
+    "tokens": {
+      "prompt_tokens": 1588,
+      "completion_tokens": 6324,
+      "total_tokens": 7912
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_P05.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 32,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 13
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões sólidas e adequadas ao domínio: separação de API pública/admin, atomicidade via chave única quadra+slot, cache com invalidação para o RNF02, notificações assíncronas com retry. Alternativas e implicações são registradas em cada decisão. Faltam, porém, detalhes de modelo de dados, contratos de API e visão de implantação (deployment/HA concreta), o que limita a profundidade.",
+      "justificativa_modularidade": "Componentes com responsabilidades bem delimitadas (Availability, Reservation, Pricing, Notification, Auth, Audit) e dependências majoritariamente unidirecionais. Pequenas inconsistências: AdminFrontend acessando BookingStore e AuditService diretamente na tabela (contradizendo o diagrama), e AvailabilityService dependendo de PricingService sem justificativa clara.",
+      "justificativa_gaps": "Gap analysis excelente e acionável: granularidade de slots, timezone, formato/TTL e brute-force do código de confirmação, política de cancelamento, LGPD/retenção, DLQ de e-mails, testes de concorrência, roles de operador e DR/backup. Cada lacuna tem impacto e recomendação prática.",
+      "justificativa_fidelidade": "Todos os RF, RNF e HUs estão mapeados com rastreabilidade em tabelas. Contudo, alguns critérios de aceite específicos são citados sem tratamento arquitetural explícito (ex.: 'quadra aparece imediatamente' via invalidação de cache, 'horário volta a ficar disponível imediatamente' após cancelamento, navegação entre datas na agenda, e-mail obrigatório de notificação de cancelamento ao cliente é apenas indireto).",
+      "justificativa_diagramas": "Sintaxe Mermaid válida; o diagrama de sequência cobre bem o caminho feliz e o conflito 409. Porém há uma imprecisão lógica (BookingStore retorna sucesso e depois retorna erro de conflito dentro do else, com 'COMITAR' após retorno de sucesso). O diagrama de classes é mais um diagrama de componentes com métodos genéricos, sem atributos, cardinalidades ou entidades de domínio (Quadra, Reserva, Bloqueio). Faltam diagramas de cancelamento e de bloqueio de horários.",
+      "pontos_fortes": [
+        "Rastreabilidade completa RF/RNF/HU → componentes em tabelas claras",
+        "Gap analysis e pendências profundas, priorizadas e acionáveis (timezone, granularidade, segurança do código, concorrência)",
+        "Tratamento explícito da atomicidade (RNF05) com constraint única e estratégia de lock/otimista"
+      ],
+      "pontos_fracos": [
+        "Diagrama de sequência com inconsistência lógica no ramo alt/commit",
+        "Ausência de modelo de dados/entidades de domínio e contratos de API",
+        "Divergência entre diagrama de componentes e tabela de comunicação (AdminFrontend → BookingStore)",
+        "Alguns critérios de aceite (atualização imediata da disponibilidade, navegação entre datas) tratados de forma superficial"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 27,
+      "pct_score": 90.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5.3-codex",
+    "model_name": "GPT 5.3 Codex",
+    "scenario_id": "P05",
+    "scenario_name": "Reservas para Quadras Esportivas (P05)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 30.74,
+    "tokens": {
+      "prompt_tokens": 1586,
+      "completion_tokens": 3735,
+      "total_tokens": 5321
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_P05.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 38,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões coerentes com o domínio: modelo orientado a slot, revalidação atômica na confirmação, separação de canais público/administrativo e notificação assíncrona. Pontos fracos: granularidade excessiva de 'serviços' para um sistema pequeno, sem justificar trade-off entre monolito modular e microsserviços; RNF04 (99%) e RNF02 tratados de forma superficial (sem cache, réplicas ou índices concretos).",
+      "justificativa_modularidade": "Responsabilidades bem delimitadas e coesas, com tabela de comunicação. Contudo, a API de Orquestração concentra todas as interações (hub central com acoplamento alto) e o 'Repositório Transacional' único compartilhado por todos os serviços contraria a autonomia sugerida, o que não é discutido.",
+      "justificativa_gaps": "Lacunas relevantes e acionáveis (granularidade de slot, política de cancelamento, falha de e-mail, volume de carga, privacidade/LGPD, feriados recorrentes). Faltam gaps sobre pagamento/no-show, idempotência de requisições, recuperação de código de confirmação e autorização granular de perfis.",
+      "justificativa_fidelidade": "Todos os RF mapeados e RNF classificados com honestidade (parcial/coberto). Critérios de aceite parcialmente refletidos: campos obrigatórios de HU01, navegação entre datas em HU03, motivo obrigatório em HU04 aparecem; porém 'quadra aparece imediatamente na listagem', 'liberação imediata do horário após cancelamento' e validação de código inválido não têm fluxo/regra explícita.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida, sequências claras com alt para conflito de concorrência e autenticação. Faltam diagramas para consulta de disponibilidade (UC-CR2) e cancelamento por cliente (HU07), e o diagrama de componentes é estrelado no orquestrador, reduzindo expressividade das camadas.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita RF/RNF/HU → componentes",
+        "Tratamento correto de concorrência com fluxo alternativo no diagrama de sequência",
+        "Gap analysis com recomendações acionáveis e classificação honesta de RNFs parciais"
+      ],
+      "pontos_fracos": [
+        "Excesso de decomposição em serviços sem justificativa de trade-off para o porte do sistema",
+        "API de Orquestração como ponto único de acoplamento e repositório compartilhado não problematizados",
+        "Ausência de diagrama para consulta de disponibilidade e cancelamento pelo cliente",
+        "RNF02/RNF04 sem estratégias técnicas concretas (cache, índices, redundância)"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.7-flash",
+    "model_name": "Gemini 3.7 Flash",
+    "scenario_id": "P05",
+    "scenario_name": "Reservas para Quadras Esportivas (P05)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 48.4,
+    "tokens": {
+      "prompt_tokens": 1713,
+      "completion_tokens": 4646,
+      "total_tokens": 7646
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_P05.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 56,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 6
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 5,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões arquiteturais bem fundamentadas e adequadas ao domínio: atomicidade transacional com lock em nível de slot (RNF05/RF07), segregação de contexto público/administrativo, notificação assíncrona desacoplada e motor de precificação hierárquico. Justificativas explícitas e coerentes com os requisitos, sem alucinações relevantes. Faltam apenas trade-offs mais explícitos (ex.: custo do lock pessimista vs. constraint única, impacto na escalabilidade).",
+      "justificativa_modularidade": "Componentes com responsabilidades bem delimitadas e alta coesão (Quadras/Tarifas, Agenda, Reservas, Notificação, Auth, Persistência). A fronteira entre 'Motor de Disponibilidade' e 'Gerenciador de Reservas' é levemente ambígua — o Motor executa lock de escrita no fluxo transacional, o que mistura responsabilidade de leitura/consulta com controle de concorrência. Painel Admin comunica-se com quase todos os serviços, gerando acoplamento aceitável mas não minimizado.",
+      "justificativa_gaps": "Gap analysis rigorosa e acionável: pré-reserva com TTL, conflito bloqueio x reserva ativa, contingência de notificação e privacidade/expurgo de dados de contato. Recomendações concretas e implementáveis; seção de pendências complementa bem com prazo de cancelamento. Poderia abordar observabilidade/backup para RNF04 (99%) e auditoria.",
+      "justificativa_fidelidade": "Rastreabilidade completa RF/RNF ↔ HU ↔ componente, com todos os itens cobertos. Contudo, alguns critérios de aceite ficam apenas declarados como 'Total' sem mecanismo arquitetural evidente (RNF04 99% sem estratégia de HA/redundância; RNF02 2s sem cache/índices explícitos; RNF06 navegadores sem estratégia). Também não detalha 'navegação entre datas' nem obrigatoriedade de motivo (embora modelada em HistoricoCancelamento).",
+      "justificativa_diagramas": "Três diagramas Mermaid sintaticamente válidos e complementares (contexto/componentes, sequência com alt de conflito, modelo de domínio com cardinalidades). Boa legibilidade. Pontos fracos: 'deactivate DB' apenas em um ramo do alt (risco de inconsistência semântica), uso de ícones fa: que pode não renderizar em todos os renderers, e ausência de diagrama para os fluxos de cancelamento e bloqueio.",
+      "pontos_fortes": [
+        "Matriz de cobertura e rastreabilidade completa e consistente entre RF/RNF, HU e componentes",
+        "Tratamento explícito e correto de concorrência/atomicidade no fluxo crítico de reserva",
+        "Gap analysis acionável com recomendações concretas (pré-reserva com TTL, política de bloqueio x reserva, expurgo LGPD)"
+      ],
+      "pontos_fracos": [
+        "RNF04 (disponibilidade 99%) e RNF02 (2s) marcados como cobertura 'Total' sem mecanismos arquiteturais concretos (HA, cache, índices, monitoramento)",
+        "Fronteira difusa entre Motor de Disponibilidade e Gerenciador de Reservas quanto ao controle de lock",
+        "Ausência de diagramas de sequência para cancelamento (cliente e operador) e para bloqueio de horários",
+        "Poucos trade-offs alternativos discutidos (lock pessimista vs. unique constraint/otimista)"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 5,
+      "total_score": 28,
+      "pct_score": 93.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.6-flash",
+    "model_name": "Gemini 3.6 Flash",
+    "scenario_id": "P05",
+    "scenario_name": "Reservas para Quadras Esportivas (P05)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 41.96,
+    "tokens": {
+      "prompt_tokens": 1713,
+      "completion_tokens": 4232,
+      "total_tokens": 7713
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_P05.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "flowchart_inferred",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 38,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 2,
+      "justificativa_correcao": "Decisões sólidas e adequadas ao domínio: segregação público/administrativo, lock por (QuadraID, DataHora) para atomicidade, notificação assíncrona e modularização por domínio. ADRs bem estruturados com contexto/decisão/consequência. Fraquezas: RNF04 (99% disponibilidade) é tratado superficialmente ('modular sem estado'), sem redundância, monitoramento ou estratégia de deploy; RNF02 não menciona cache/índices/pré-computação do calendário, apenas afirmações genéricas.",
+      "justificativa_modularidade": "Componentes com responsabilidades claras e coesas (Quadras, Tarifas, Agendamentos, Atomicidade, Notificações, Agenda Consolidada, Autenticação) e tabela de comunicação explícita. Pequena ambiguidade: bloqueios de horário aparecem tanto no Gerenciador de Quadras quanto no Motor de Agendamentos (RF03), o que gera responsabilidade difusa; o Controlador de Atomicidade também aparece efetivando persistência, misturando concerns.",
+      "justificativa_gaps": "Lacunas relevantes e acionáveis: pagamento/no-show com estado 'pendente com TTL', política de janela de cancelamento, granularidade dos slots (com premissa explícita de 60 min) e flexibilidade das regras tarifárias. Faltou abordar gaps importantes como segurança/entropia do código de confirmação (enumeração/brute force), idempotência, LGPD sobre dados pessoais do cliente sem cadastro, fuso horário e o que ocorre com reservas existentes ao bloquear/remover uma quadra.",
+      "justificativa_fidelidade": "Rastreabilidade RF/RNF/HU é completa e a matriz de cobertura é consistente. Captura critérios como validação no momento da confirmação, código exibido e enviado por e-mail e notificação de cancelamento. Contudo, alguns critérios de aceite não são explicitamente endereçados na arquitetura: aparecer 'imediatamente' na listagem (HU01), remoção de bloqueio e liberação imediata do slot pós-cancelamento (HU02/HU07), navegação entre datas (HU03) só é citada tangencialmente, e RF12 ficou sem HU associada (marcado N/A) sem maior elaboração.",
+      "justificativa_diagramas": "Erro sintático grave: 'componentDiagram' não é um tipo válido em Mermaid (a notação usada é de PlantUML), portanto o primeiro diagrama não renderiza — alucinação de notação. O diagrama de sequência é bom e cobre bem o caminho feliz e o de conflito, mas o rótulo do ator com parênteses pode quebrar o parser e faltam diagramas para cancelamento e agenda consolidada.",
+      "pontos_fortes": [
+        "ADRs claros e bem justificados, especialmente a estratégia de atomicidade e a notificação assíncrona",
+        "Rastreabilidade completa entre HU, RF, RNF e componentes, com tabela de cobertura e gap analysis acionável"
+      ],
+      "pontos_fracos": [
+        "Diagrama de componentes usa sintaxe PlantUML sob rótulo Mermaid — não renderiza (falha de rigor notacional)",
+        "RNF02 e RNF04 tratados de forma genérica, sem cache, replicação ou métricas; ausência de fluxos de exceção para cancelamento e gaps de segurança do código de confirmação"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 2,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 24,
+      "pct_score": 80.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-sonnet-5",
+    "model_name": "Claude Sonnet 5",
+    "scenario_id": "P05",
+    "scenario_name": "Reservas para Quadras Esportivas (P05)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 51.84,
+    "tokens": {
+      "prompt_tokens": 2806,
+      "completion_tokens": 6017,
+      "total_tokens": 8823
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_P05.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 62,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas com serviços de domínio bem escolhidos para o problema; decisões justificadas (notificação assíncrona, autenticação só no operador, agenda como leitura derivada). Falta maior rigor na estratégia de atomicidade (delegada a fase futura) e nas táticas para RNF02/RNF04 (cache, redundância), que ficam apenas indicadas.",
+      "justificativa_modularidade": "Responsabilidades claras por domínio e persistência abstraída por repositórios, apoiando RNF07. Pequenos ruídos: dependência bidirecional aparente entre Serviço de Reservas e Disponibilidade, e Disponibilidade acessando o Repositório de Reservas diretamente, o que fere um pouco a propriedade de dados por serviço.",
+      "justificativa_gaps": "Gap analysis abrangente e acionável: concorrência, SLA/RTO-RPO, auditoria, perfis de operador, precificação exibida ao cliente, rate limiting anti-abuso e fuso horário — este último especialmente pertinente ao domínio de agendamento.",
+      "justificativa_fidelidade": "Rastreabilidade HU→RF→RNF→componente bem construída e cobertura completa dos RFs, com honestidade nas coberturas parciais. Contudo, alguns critérios de aceite não são explicitamente tratados: remoção de bloqueio (HU02), navegação entre datas na agenda (HU03), obrigatoriedade do motivo (HU04) e liberação imediata do horário após cancelamento aparecem apenas de forma implícita.",
+      "justificativa_diagramas": "Mermaid sintaticamente válido, com subgraphs coerentes e dois diagramas de sequência com ramificações alt para cenários de exceção. Faltam fluxos do operador (bloqueio de horário, cancelamento com motivo, agenda consolidada) e o e-mail é enviado diretamente ao ator, sem representar o gateway externo/assincronia declarada nas decisões.",
+      "pontos_fortes": [
+        "Matriz de rastreabilidade e cobertura de requisitos completa e transparente quanto a itens parciais",
+        "Gap analysis profunda e acionável (fuso horário, anti-abuso, auditoria, RTO/RPO)"
+      ],
+      "pontos_fracos": [
+        "Mecanismo de atomicidade (RNF05) permanece conceitual, sem trade-off entre lock otimista/pessimista",
+        "Ausência de diagramas para fluxos do operador e tratamento apenas implícito de vários critérios de aceite"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 27,
+      "pct_score": 90.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-opus-4.8",
+    "model_name": "Claude Opus 4.8",
+    "scenario_id": "P05",
+    "scenario_name": "Reservas para Quadras Esportivas (P05)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 71.67,
+    "tokens": {
+      "prompt_tokens": 2806,
+      "completion_tokens": 6197,
+      "total_tokens": 9003
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_P05.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 4,
+        "total_blocks": 4,
+        "diagram_types": [
+          "graph",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 68,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em camadas coerente com o domínio, com serviços bem escolhidos (Disponibilidade computada dinamicamente, tarifação parametrizável, notificação desacoplada). Decisões justificadas e rastreadas a requisitos. Falta maior concretude tecnológica e do mecanismo de atomicidade (apenas conceitual), além de estratégia real para 99% de disponibilidade e meta de 2s (cache, índices).",
+      "justificativa_modularidade": "Responsabilidades bem delimitadas por serviço, com coesão alta e dependências plausíveis. Pequena ambiguidade: ReservaService depende de DisponibilidadeService e este é chamado para 'liberarHorario' embora a disponibilidade seja declarada como computada dinamicamente — leve inconsistência de responsabilidade. AgendaService poderia ser visto como caso particular de Disponibilidade.",
+      "justificativa_gaps": "Gap analysis extenso e acionável: concorrência, SLA/carga, fuso horário/DST, LGPD, recuperação de código perdido, ambiguidade de faixas tarifárias, falha de e-mail. Recomendações concretas e ligadas a requisitos; também há tabela de bloqueios coerente.",
+      "justificativa_fidelidade": "Todos os 12 RFs e 7 RNFs mapeados, com critérios de aceite refletidos (bloqueio removível, código obrigatório para cancelamento, exibição em tela + e-mail). Porém, o cancelamento pelo operador com motivo obrigatório e notificação ao cliente (HU04) não tem diagrama de sequência, e o critério 'quadra aparece imediatamente na listagem' não é explicitamente tratado.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida, quatro diagramas complementares com fluxos alternativos (conflito de concorrência, código inválido). Faltam sequência para HU04/HU02/HU03 e um diagrama de implantação; no diagrama de classes, o vínculo Bloqueio/FaixaTarifária com repositórios e o motivo do cancelamento pelo operador poderiam ser mais explícitos.",
+      "pontos_fortes": [
+        "Rastreabilidade completa entre HU, RF/RNF, decisões e componentes",
+        "Tratamento explícito da atomicidade (RNF05) com fluxo alternativo de conflito",
+        "Gap analysis maduro incluindo fuso horário, LGPD e recuperação de código"
+      ],
+      "pontos_fracos": [
+        "Mecanismo concreto de controle de concorrência e estratégias de desempenho/disponibilidade permanecem indefinidos",
+        "Ausência de diagramas de sequência para HU02, HU03 e HU04 e de visão de implantação",
+        "Leve inconsistência: 'liberarHorario' no DisponibilidadeService contradiz disponibilidade calculada dinamicamente"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 27,
+      "pct_score": 90.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-fable-5",
+    "model_name": "Claude Fable 5",
+    "scenario_id": "P05",
+    "scenario_name": "Reservas para Quadras Esportivas (P05)",
+    "scale": "Pequeno",
+    "elapsed_time_s": 66.67,
+    "tokens": {
+      "prompt_tokens": 2806,
+      "completion_tokens": 5838,
+      "total_tokens": 8644
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_P05.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 64,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 5,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões coerentes e bem justificadas: unicidade de slot transacional para atomicidade (RNF05/RF07), notificação assíncrona, cache invalidado para RNF02, código imprevisível como token de autorização do cliente. Adequadas ao domínio e ao porte do sistema, com trade-offs explícitos.",
+      "justificativa_modularidade": "Serviços com responsabilidades claras e gateway como fachada; acoplamento razoável. Pequenas imprecisões: dependência Reservas→Disponibilidade e Quadras→Precificação poderiam ser melhor justificadas, e bloqueios estão em 'Gestão de Quadras' embora conceitualmente pertençam à Disponibilidade.",
+      "justificativa_gaps": "Gap analysis rica e acionável: granularidade de slots, fuso horário, anti-abuso/bots, LGPD, falha de e-mail, auditoria, resiliência. Pendências com responsáveis sugeridos e impacto arquitetural descrito.",
+      "justificativa_fidelidade": "Rastreabilidade HU→RF→componente completa e critérios de aceite citados (motivo obrigatório, código na tela e por e-mail, navegação entre datas, liberação imediata do horário). Faltou detalhar remoção de bloqueio e o critério de 'quadra aparecer imediatamente' via invalidação de cache de forma mais explícita.",
+      "justificativa_diagramas": "Mermaid sintaticamente válido, legível, com componentes e dois fluxos-chave incluindo caminho de exceção (conflito de concorrência). Faltam diagramas para consulta de disponibilidade cacheada, cancelamento pelo cliente (HU07) e bloqueio de horários.",
+      "pontos_fortes": [
+        "Tratamento explícito de concorrência com alternativa no diagrama de sequência",
+        "Cobertura 100% de RF/RNF com rastreabilidade e pendências marcadas honestamente",
+        "Gap analysis com recomendações concretas (timezone, anti-bot, retenção de dados)"
+      ],
+      "pontos_fracos": [
+        "Sem diagrama para HU07 (cancelamento por código) e para bloqueio de horários",
+        "Ausência de modelo de dados/entidades que sustentaria a discussão de slots e sobreposição",
+        "Localização de bloqueios no Serviço de Quadras gera leve ambiguidade de responsabilidade"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 5,
+      "total_score": 28,
+      "pct_score": 93.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5-mini",
+    "model_name": "GPT 5 mini",
+    "scenario_id": "M04",
+    "scenario_name": "Sistema de Gestão de Condomínio (M04)",
+    "scale": "Médio",
+    "elapsed_time_s": 65.44,
+    "tokens": {
+      "prompt_tokens": 3525,
+      "completion_tokens": 6071,
+      "total_tokens": 9596
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_M04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 18,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 13
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 3,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 3,
+      "justificativa_correcao": "As decisões são coerentes com o domínio: modularização por subdomínio, idempotência de webhooks de pagamento, auditoria append-only, notificações assíncronas, backup/retenção e conformidade LGPD/PCI-DSS. Falta profundidade em trade-offs (não compara monólito modular vs microsserviços, nem discute estratégias de concorrência para RF27 além de citar 'lógica de reserva'), e a consistência transacional do lote (RNF11) é tratada de forma genérica.",
+      "justificativa_modularidade": "Os componentes têm responsabilidades razoavelmente coesas e a tabela indica comunicação. Porém o diagrama de componentes exibe acoplamentos duvidosos/injustificados (Users->Units, Units->Finance, Notif->Storage, Backup->Audit) sugerindo cadeia hierárquica em vez de interfaces claras; comunicados foram fundidos em 'Assembleias' sem componente próprio, e não há barramento de eventos explícito apesar de decisões assíncronas.",
+      "justificativa_gaps": "Gap analysis extensa e acionável: regras de taxas/multas, layout de boleto, chargeback/estorno, SLA de e-mail, políticas de reserva, RTO/RPO, LGPD, matriz de permissões. Recomendações concretas e passos imediatos. Poderia quantificar impacto/prioridade e abordar lacunas como fuso horário, multi-condomínio e concorrência em reservas.",
+      "justificativa_fidelidade": "Cobertura ampla dos RF/RNF, mas vários critérios de aceite específicos não são tratados explicitamente na arquitetura: CPF único, obrigatoriedade de bloco/número, fixação de comunicados no topo, exportação CSV (citada), cancelamento de reserva dentro do prazo, cancelamento de pré-autorização, vinculação entrada↔pré-autorização (mencionada de forma superficial), destaque de pré-autorização na portaria. RF08 (veículos) aparece só na tabela. Cobertura ampla porém rasa em regras.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida na maior parte; o diagrama de sequência é razoável e cobre HU02 com autonumber e notas, embora o Notif responda diretamente ao Síndico (fluxo logicamente estranho) e não modele explicitamente falha parcial/rollback. O componente diagram usa rótulos com parênteses em colchetes (ex.: 'Notif[Serviço de Notificações (e-mail/sms)]'), o que quebra o parser Mermaid sem aspas — risco de erro sintático. Apenas um fluxo dinâmico coberto entre 14 HUs.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita HU→RF→componentes em tabela clara",
+        "Gap analysis e bloqueios ricos, acionáveis e alinhados ao domínio (pagamentos, LGPD, SLA)"
+      ],
+      "pontos_fracos": [
+        "Diagrama de componentes com acoplamentos arbitrários e possível erro de sintaxe por parênteses em rótulos",
+        "Critérios de aceite específicos (CPF único, fixar comunicado, prazo de cancelamento, vínculo pré-autorização/entrada) pouco refletidos na arquitetura; apenas um diagrama de sequência para 14 HUs"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 3,
+      "component_traceability": 4,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 23,
+      "pct_score": 76.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5.3-codex",
+    "model_name": "GPT 5.3 Codex",
+    "scenario_id": "M04",
+    "scenario_name": "Sistema de Gestão de Condomínio (M04)",
+    "scale": "Médio",
+    "elapsed_time_s": 30.11,
+    "tokens": {
+      "prompt_tokens": 3523,
+      "completion_tokens": 3830,
+      "total_tokens": 7353
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_M04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 60,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 3
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 3,
+      "justificativa_correcao": "Decisões (DA01-DA10) são pertinentes ao domínio: modularização por domínio, RBAC, auditoria imutável, notificações assíncronas, abstração de gateway PCI-DSS e desativação lógica. Faltam trade-offs explícitos (alternativas descartadas), estratégia de disponibilidade 99,5% (RNF07 fica como 'requer desenho operacional') e detalhamento de transacionalidade do lote (RNF11 é citado mas a sequência com chamadas síncronas ao gateway dentro de loop não trata compensação/idempotência).",
+      "justificativa_modularidade": "Componentes bem delimitados por subdomínio, com responsabilidades coesas e comunicação declarada. Ponto fraco: um único 'Repositório de Dados de Domínio' compartilhado por todos os módulos gera acoplamento de dados, e o Portal concentra chamadas a todos os componentes sem gateway/BFF. Ausência de contratos/interfaces explícitas entre módulos.",
+      "justificativa_gaps": "Gap analysis consistente e acionável: regras financeiras (multa/juros), SLA do gateway, LGPD operacional, política de anexos, contingência de e-mail, permissões do admin, bloqueios de agenda e volumetria de CSV. Poderia aprofundar em disponibilidade, escalabilidade, idempotência/webhooks de pagamento e observabilidade.",
+      "justificativa_fidelidade": "Rastreabilidade HU→RF→componente é boa e cobre todos os RFs e RNFs. Alguns critérios específicos ficam superficiais: unicidade de CPF, fixação de comunicado no topo, antecedência mínima/máxima de reserva, cancelamento de pré-autorização, vínculo entrada↔pré-autorização e exportação CSV aparecem citados mas sem tratamento arquitetural. HU02 mapeia RF09/RF15 de forma um pouco expandida.",
+      "justificativa_diagramas": "Apenas dois diagramas: componentes e uma sequência (HU02). Sintaxe válida, embora o uso de '\\n' em rótulos flowchart possa não renderizar corretamente. Cobertura limitada — fluxos críticos como pagamento via gateway (webhook), reserva sem sobreposição e controle de visitantes não têm diagramas. Falta diagrama de dados/deployment.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita HU→RF/RNF→componente em tabelas claras",
+        "Gap analysis acionável com recomendações concretas e pendências bem identificadas"
+      ],
+      "pontos_fracos": [
+        "Poucos diagramas; fluxos críticos (pagamento/confirmação, reserva concorrente, visitantes) não modelados",
+        "Repositório de dados único e ausência de contratos entre módulos; RNF07/RNF11 tratados de forma superficial sem trade-offs explícitos"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 3,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.7-flash",
+    "model_name": "Gemini 3.7 Flash",
+    "scenario_id": "M04",
+    "scenario_name": "Sistema de Gestão de Condomínio (M04)",
+    "scale": "Médio",
+    "elapsed_time_s": 75.95,
+    "tokens": {
+      "prompt_tokens": 3822,
+      "completion_tokens": 7959,
+      "total_tokens": 12790
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_M04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 4,
+        "total_blocks": 4,
+        "diagram_types": [
+          "graph",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 73,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 8
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 5,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura em serviços de domínio coesos com gateway/RBAC, notificações assíncronas, auditoria append-only e tratamento explícito de concorrência e transacionalidade em lote. As ADRs são pertinentes ao domínio e justificadas por RNFs específicos (RNF05, RNF06, RNF11, RNF04). Poderia detalhar melhor infraestrutura para uptime 99,5% e backup (RNF07/RNF12), tratados de forma genérica.",
+      "justificativa_modularidade": "Responsabilidades bem delimitadas por bounded context e comunicação assíncrona para notificações reduz acoplamento. Pequenas imprecisões: um único 'Repositório Central de Dados' compartilhado entre todos os serviços contraria o isolamento pregado na ADR-01; 'Assembleias e Comunicados' agrupa dois conceitos distintos sem justificativa explícita.",
+      "justificativa_gaps": "Gap analysis rigorosa e acionável: idempotência de webhooks e emissão em lote, armazenamento de anexos com validação MIME, cache/visões materializadas para SLA de 3s, extensibilidade multicanal via Strategy, além de pendências como modo degradado da portaria e conflito LGPD vs retenção fiscal. Muito acima da média.",
+      "justificativa_fidelidade": "Cobertura completa de RF/RNF e HUs com matriz de rastreabilidade. Alguns critérios de aceite finos não aparecem explicitamente: exportação CSV de inadimplentes, fixação de comunicados no topo (mencionada só como 'destaque'), unicidade de CPF (presente no modelo apenas como atributo), filtros por bloco/faixa de atraso, cancelamento de pré-autorização e registro de saída encerrando visita. Alguns mapeamentos HU estão trocados (RF14 → HU03, RF22 → HU05, RF10 → HU08).",
+      "justificativa_diagramas": "Quatro diagramas Mermaid sintaticamente válidos e legíveis, cobrindo containers, dois fluxos críticos (emissão/liquidação e reserva concorrente) e modelo de domínio rico. Ressalvas: setas de associação invertidas/atípicas no classDiagram (Usuario \"1\" <-- MoradorUnidade), Boleto --> LogAuditoria semanticamente discutível, e ausência de diagrama para fluxos de portaria/ocorrências.",
+      "pontos_fortes": [
+        "ADRs bem fundamentadas ligadas diretamente a RNFs (transacionalidade em lote, lock de reservas, auditoria imutável)",
+        "Gap analysis e pendências profundas e acionáveis (idempotência, cache, anexos, modo offline da portaria)",
+        "Matriz de rastreabilidade completa RF/RNF → componente → HU"
+      ],
+      "pontos_fracos": [
+        "Repositório de dados único contradiz parcialmente o isolamento de serviços proposto",
+        "Critérios de aceite finos omitidos (exportação CSV, fixação de comunicados, cancelamento de pré-autorização, unicidade de CPF como regra)",
+        "Alguns mapeamentos RF→HU imprecisos e notação de relacionamentos do class diagram inconsistente"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 5,
+      "total_score": 28,
+      "pct_score": 93.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.6-flash",
+    "model_name": "Gemini 3.6 Flash",
+    "scenario_id": "M04",
+    "scenario_name": "Sistema de Gestão de Condomínio (M04)",
+    "scale": "Médio",
+    "elapsed_time_s": 54.0,
+    "tokens": {
+      "prompt_tokens": 3822,
+      "completion_tokens": 8304,
+      "total_tokens": 13331
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_M04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 78,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 10
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 5,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 5,
+      "justificativa_correcao": "Monólito modular DDD é escolha adequada ao domínio e escala; decisões sobre RBAC, PCI-DSS (tokenização, sem armazenar cartão), auditoria append-only, webhook assíncrono para confirmação de pagamento, tolerância a falhas parciais no lote e locking/exclusion constraints para reservas são tecnicamente sólidas e diretamente ancoradas nos RNFs. Faltou maior detalhe sobre disponibilidade (RNF07), backup (RNF12) e estratégia de fila/idempotência de notificações, tratados de forma superficial.",
+      "justificativa_modularidade": "Módulos bem delimitados por domínio, com serviços transversais (notificação e auditoria) isolados, evitando acoplamento direto entre domínios e provedores externos. Pequenas imprecisões: o API Gateway acumula autenticação e controle de sessão além de roteamento; não há detalhamento de contratos/eventos internos (ex.: barramento de eventos) que reduziriam acoplamento entre módulos e o serviço de notificação.",
+      "justificativa_gaps": "Os quatro gaps são reais e acionáveis (push em tempo real para portaria, taxa de uso de área comum integrada ao financeiro, exportação CSV auditável, ambiguidade proprietário x inquilino), além de pendências pertinentes (LGPD vs retenção, modo offline da portaria, retry do gateway, limites de anexos). Faltaram lacunas relevantes como ausência de RF explícito para notificação de assembleia (exigida em HU06), prazo de cancelamento configurável (RF28) e votação em assembleia.",
+      "justificativa_fidelidade": "A maior parte dos critérios de aceite foi capturada (CPF único, múltiplos moradores por unidade, relatório de falhas do lote, filtros do painel, fixação de comunicados, vinculação pré-autorização↔entrada, registro de saída). Pequenos erros de mapeamento: RF22 mapeado a HU05 em vez de origem funcionário, RF14 associado a HU03, RF28 ligado a HU07 e não ao condômino, e o RNF13 associado apenas ao serviço de auditoria. Regras como antecedência mínima/máxima e prazo de cancelamento são citadas apenas superficialmente.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida, com classDef, subgraphs coerentes e separação clara entre apresentação, núcleo, integrações e persistência. Os dois diagramas de sequência cobrem fluxos críticos (emissão em lote com alt/loop e webhook assíncrono; pré-autorização e liberação na portaria) com autonumber e participantes bem definidos. Poderia incluir fluxo de reserva com concorrência, mas a cobertura é boa.",
+      "pontos_fortes": [
+        "Rastreabilidade praticamente completa RF/RNF/HU com matriz explícita",
+        "Decisões arquiteturais bem fundamentadas em RNFs (auditoria imutável, PCI-DSS, tolerância a falhas parciais, controle de concorrência)",
+        "Diagramas Mermaid corretos, legíveis e com cenários de exceção (alt/loop, webhook)"
+      ],
+      "pontos_fracos": [
+        "Alguns mapeamentos RF↔HU imprecisos (RF22, RF14, RF28)",
+        "Tratamento superficial de disponibilidade (RNF07) e backup (RNF12), sem visão de deployment",
+        "Ausência de barramento de eventos/idempotência para notificações e integração assíncrona"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 5,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 5,
+      "total_score": 28,
+      "pct_score": 93.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-sonnet-5",
+    "model_name": "Claude Sonnet 5",
+    "scenario_id": "M04",
+    "scenario_name": "Sistema de Gestão de Condomínio (M04)",
+    "scale": "Médio",
+    "elapsed_time_s": 54.36,
+    "tokens": {
+      "prompt_tokens": 6159,
+      "completion_tokens": 6256,
+      "total_tokens": 12415
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_M04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 60,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 11
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura modular por domínios é adequada ao porte e ao domínio; decisões (adaptador de gateway PCI-DSS, auditoria append-only, identidade centralizada) são coerentes e justificadas com rastreio a RF/RNF. Falta, porém, tratamento explícito de disponibilidade 99,5% (RNF07), estratégia de persistência/cache para desempenho (RNF08) e de assincronia real (fila) para notificações; o backup lendo de todos os módulos é modelagem discutível.",
+      "justificativa_modularidade": "Responsabilidades bem separadas, com serviços transversais reutilizados (notificação, auditoria) e baixo acoplamento mediado por API Gateway. Pequenas imprecisões: 'Painel de Inadimplência' como módulo separado do Financeiro é coesão questionável, e o Serviço de Backup acoplado a todos os módulos gera dependências desnecessárias.",
+      "justificativa_gaps": "Gap analysis robusto e acionável: conciliação de pagamento manual x gateway, versionamento de taxas, auditoria de exportações CSV sob LGPD, fallback do gateway, concorrência em cadastro. Bloqueios e pendências complementam bem com responsáveis sugeridos.",
+      "justificativa_fidelidade": "Rastreabilidade tabular é boa e a cobertura declarada é 100%, mas vários critérios de aceite finos não aparecem no design: unicidade de CPF, múltiplos moradores por unidade, fixação de comunicados (parcialmente citada), filtros por bloco/faixa de atraso, vínculo do registro de entrada à pré-autorização, cancelamento de pré-autorização, cancelamento de reserva pelo síndico com notificação, anexos em atas. A afirmação de cobertura total é otimista e não demonstrada requisito a requisito.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; componentes agrupados por subgráficos e dois fluxos de sequência relevantes com caminhos alternativos e de exceção. Faltam diagramas para fluxos críticos como pagamento via gateway/confirmação assíncrona e controle de acesso de visitantes; o diagrama macro tem certo emaranhado de setas para LOG/BKP.",
+      "pontos_fortes": [
+        "Gap analysis e pendências profundos, específicos e acionáveis",
+        "Tabela de componentes com responsabilidades, comunicação e rastreabilidade clara",
+        "Decisões arquiteturais justificadas com ligação explícita a RF/RNF"
+      ],
+      "pontos_fracos": [
+        "Critérios de aceite detalhados pouco refletidos nas regras de negócio do design",
+        "RNF07 (disponibilidade) e RNF08 (desempenho) tratados superficialmente, sem estratégia concreta",
+        "Cobertura de 100% declarada sem demonstração item a item; faltam diagramas para pagamento e portaria"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-opus-4.8",
+    "model_name": "Claude Opus 4.8",
+    "scenario_id": "M04",
+    "scenario_name": "Sistema de Gestão de Condomínio (M04)",
+    "scale": "Médio",
+    "elapsed_time_s": 80.73,
+    "tokens": {
+      "prompt_tokens": 6159,
+      "completion_tokens": 6952,
+      "total_tokens": 13111
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_M04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 4,
+        "total_blocks": 4,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 81,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decomposição por contextos de domínio coerente com o problema (financeiro, reservas, acesso, comunicados), com decisões justificadas e mapeadas a requisitos (RBAC, notificação assíncrona, auditoria append-only, delegação PCI-DSS, soft delete). Faltam trade-offs mais explícitos (ex.: monolito modular vs. microsserviços, custo operacional da abordagem para um condomínio, escolha tecnológica de fila/DB) e a justificativa de RNF07 (99,5%) é superficial, sem redundância/estratégia de deploy.",
+      "justificativa_modularidade": "Responsabilidades bem delimitadas por serviço e tabela de comunicação explícita; Notify e Audit corretamente isolados como serviços transversais. Pequenos ruídos: acoplamento direto Unit→Finance, Notify listado comunicando-se bidirecionalmente com vários serviços e ausência de definição clara de contratos/eventos (barramento) que reduziriam o acoplamento.",
+      "justificativa_gaps": "Gap analysis robusto e acionável: idempotência de webhook, lock otimista em reservas, reprocessamento de lote falho, estorno de pagamento manual, retenção LGPD, antivírus em anexos, volumetria. Combina bloqueios e lacunas de forma distinta e útil ao cliente.",
+      "justificativa_fidelidade": "Boa cobertura de RFs (33/33) e RNFs (13/13), com captura de regras como CPF único, múltiplos moradores por unidade e falhas parciais no lote. Contudo, alguns critérios de aceite finos ficam implícitos ou ausentes: exportação CSV de inadimplentes (HU03), fixar comunicado no topo (mencionado só em componente), cancelamento de reserva pelo síndico com notificação, cancelamento de pré-autorização (HU11), registro de saída encerrando visita, prazo configurável de cancelamento (RF28) e antecedência mínima/máxima. Mapeamento HU13 a RF22 é questionável.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; componente macro completo com subgrafos e três sequências cobrindo fluxos críticos com alt/loop e cenários de exceção. Limitações: ausência de diagrama de dados/entidades e de fluxo de pagamento/webhook (o mais crítico), e o loop 'transacional' na emissão em lote é ambíguo quanto à fronteira transacional.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita HU↔RF↔RNF↔componente em múltiplas tabelas",
+        "Gap analysis e bloqueios profundos e acionáveis (idempotência, lock otimista, LGPD, reprocessamento)",
+        "Diagramas de sequência com tratamento de exceções (conflito de reserva, falha parcial)"
+      ],
+      "pontos_fracos": [
+        "Trade-offs arquiteturais (monolito modular vs. serviços, tecnologia, custo) pouco discutidos",
+        "Alguns critérios de aceite não refletidos (CSV, cancelamentos, prazos configuráveis, registro de saída)",
+        "Falta diagrama do fluxo de pagamento/confirmação e de modelo de dados"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 27,
+      "pct_score": 90.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-fable-5",
+    "model_name": "Claude Fable 5",
+    "scenario_id": "M04",
+    "scenario_name": "Sistema de Gestão de Condomínio (M04)",
+    "scale": "Médio",
+    "elapsed_time_s": 84.87,
+    "tokens": {
+      "prompt_tokens": 6159,
+      "completion_tokens": 7731,
+      "total_tokens": 13890
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_M04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 84,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 5,
+      "modularidade_acoplamento": 5,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões arquiteturais (DA01–DA15) são sólidas, bem justificadas e ancoradas em requisitos específicos: RBAC, delegação PCI-DSS com callback, lote idempotente com isolamento por unidade, auditoria append-only, soft delete, controle de concorrência em reservas e separação de repositório de documentos. Coerentes com o domínio condominial e proporcionais à escala do sistema.",
+      "justificativa_modularidade": "Módulos definidos por contexto de negócio com responsabilidades claras e sem sobreposição; notificações e auditoria como serviços transversais orientados a eventos reduzem acoplamento. Gateway único como ponto de entrada é adequado. Pequeno ponto: dependência direta módulos→auditoria/notificação poderia ser mais explicitamente via barramento de eventos.",
+      "justificativa_gaps": "Gap analysis excepcional: multi-tenancy, conflito LGPD vs. imutabilidade da auditoria, ausência de estorno/segunda via de boleto, race condition entre cancelamento de pré-autorização e registro de entrada, exportação CSV síncrona vs. RNF08, perfil administrador sem funcionalidades, acessibilidade. Recomendações acionáveis e separação clara entre bloqueios e pendências.",
+      "justificativa_fidelidade": "Boa cobertura de critérios de aceite (CPF único, campos obrigatórios, indicação de falhas no lote, exportação CSV, fixação de comunicados, vínculo pré-autorização↔visita). Contudo alguns critérios ficam apenas citados em tabela sem tratamento arquitetural: notificação da criação de assembleia (HU06), cancelamento de reserva pelo síndico com notificação (HU07), antecedência mín/máx por área, download de boleto/ata em PDF, e RF22/RF14 admitidos como sem HU sem elaboração.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida, diagrama de componentes completo com camadas e sistemas externos, e dois diagramas de sequência com alt/loop cobrindo os fluxos mais críticos. Fluxos de visitantes/pré-autorização (HU11/HU13/HU14) e autenticação não têm diagrama, e o diagrama de componentes tem alta densidade de arestas, reduzindo legibilidade.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita e consistente entre HUs, RFs, RNFs, decisões e componentes",
+        "Gap analysis profunda com riscos reais (multi-tenancy, LGPD vs. auditoria imutável, race conditions)"
+      ],
+      "pontos_fracos": [
+        "Ausência de diagrama de sequência para o fluxo de portaria/pré-autorização, um dos mais críticos e com race condition identificada",
+        "Alguns critérios de aceite (PDF de atas/boletos, notificação de assembleia, regras de antecedência) apenas mencionados sem tratamento arquitetural"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 5,
+      "total_score": 28,
+      "pct_score": 93.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5-mini",
+    "model_name": "GPT 5 mini",
+    "scenario_id": "G03",
+    "scenario_name": "ERP para Indústria Manufatureira (G03)",
+    "scale": "Grande",
+    "elapsed_time_s": 87.32,
+    "tokens": {
+      "prompt_tokens": 5064,
+      "completion_tokens": 7990,
+      "total_tokens": 13054
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_G03.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 34,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 15
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decomposição em bounded contexts coerente com o domínio ERP de manufatura; decisões cobrem fiscal, contingência, MDM, criptografia, observabilidade e BI store para DRE near-real-time. Faltam trade-offs mais profundos (consistência eventual vs. contábil, multi-tenancy, estratégia de dados por serviço) e neutralidade tecnológica excessiva reduz acionabilidade.",
+      "justificativa_modularidade": "Componentes bem delimitados com responsabilidades claras e tabela de comunicação. Alguns pontos frágeis: componentes citados na tabela e não no diagrama (Recebimento, Shipping/TMS, Clock Adapter), seta invertida EncryptedDB->serviços, e sobreposição entre RH e PAY, FIN e CONT sem justificar a separação.",
+      "justificativa_gaps": "Dez gaps relevantes e acionáveis (MDM, matriz tributária, SLAs MES, reconciliação de contingência, SoD, tenancy, LGPD, SRE). Recomendações práticas, embora sem priorização por risco/esforço nem quantificação de impacto.",
+      "justificativa_fidelidade": "Mapeamento HU→RF existe, mas superficial: critérios de aceite são apenas resumidos, sem tradução em regras de negócio verificáveis (ex.: 3 cliques de drill-down, alerta de prazo de 5 dias úteis, bloqueio de lote até liberação formal, remessa bancária). Erros pontuais de rastreabilidade (RNF48 inexistente; RF18, RF30, RF34/RF35 pouco tratados; RF04 pouco explorado).",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e o diagrama de componentes tem boa cobertura de domínios e sistemas externos. A sequência do HU01 é clara, com alt para necessidade não coberta, mas há apenas um fluxo — falta sequência para NF-e/contingência ou bloqueio de lote, cenários de exceção mais críticos. Grafo denso, com algumas arestas semanticamente questionáveis.",
+      "pontos_fortes": [
+        "Cobertura ampla de domínios e integrações externas (SEFAZ, MES, bancos, órgãos) com rastreabilidade tabular",
+        "Gap analysis pragmático e focado em riscos regulatórios e de dimensionamento"
+      ],
+      "pontos_fracos": [
+        "Critérios de aceite não desdobrados em regras verificáveis; erros de referência (RNF48) e RFs pouco endereçados (RF18, RF30, RF04)",
+        "Apenas um diagrama de sequência, sem fluxos de exceção fiscais/qualidade; direções de dependência imprecisas no diagrama de componentes"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5.3-codex",
+    "model_name": "GPT 5.3 Codex",
+    "scenario_id": "G03",
+    "scenario_name": "ERP para Indústria Manufatureira (G03)",
+    "scale": "Grande",
+    "elapsed_time_s": 37.47,
+    "tokens": {
+      "prompt_tokens": 5062,
+      "completion_tokens": 4654,
+      "total_tokens": 9716
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_G03.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 79,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 3
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decomposição por domínios coerente com ERP industrial (PCP, MRP, Qualidade/lote, Fiscal com contingência, RH, Contábil, BI), com ADRs justificadas e ligadas a requisitos. Contudo, faltam decisões concretas de tecnologia/persistência, estratégia de consistência entre módulos (saga/transações), particionamento multiempresa e plano para RNF12/21/22 (HA, backup/WAL, on-premises/nuvem), tratados de forma genérica.",
+      "justificativa_modularidade": "Responsabilidades bem separadas e componentes transversais (IAM, Auditoria, Notificação, Gateway de Integração, Motor Tributário, Motor de Alçada) corretamente extraídos. O barramento de eventos reduz acoplamento, mas o diagrama mostra chamadas diretas ponto a ponto extensas (Qualidade→PCP/SUP/LOG, todos→AUD) sem definir contratos/eventos, e a UI conversa diretamente com 9 serviços sem API Gateway/BFF explícito.",
+      "justificativa_gaps": "Gap analysis rica e acionável: SoD, catálogo tributário por UF/regime, genealogia de lote (split/merge/reprocesso), política cambial, LGPD, testes de carga. Recomendações são concretas. Faltam lacunas de infraestrutura (DR/RTO, retenção de 10 anos, observabilidade) e priorização/custo mais explícita além da tabela.",
+      "justificativa_fidelidade": "Rastreabilidade HU→componente é boa e alguns critérios de aceite são referenciados diretamente (HU07 c1/c4, HU03 c3, HU01 c2/c3). Porém a cobertura de RF é apresentada por faixas agregadas, não item a item, e critérios como 'drill-down em até 3 cliques', exportação PDF/Excel, alerta de 5 dias úteis e limites de desempenho (10 min MRP, 30s NF-e) não têm mecanismos arquiteturais detalhados.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; dois diagramas de sequência cobrem fluxos de exceção relevantes (contingência SEFAZ, bloqueio de lote). O diagrama de componentes é denso e sem camadas/subgraphs, e faltam fluxos-chave como MRP (HU01), folha (HU09) e dashboard/drill-down (HU12), além de diagramas de implantação/dados.",
+      "pontos_fortes": [
+        "Cobertura de cenários de exceção críticos (contingência fiscal e bloqueio de lote reprovado) em sequência",
+        "Componentes transversais bem isolados (auditoria imutável, motor tributário, alçada, gateway industrial) com ADRs rastreadas a RF/RNF"
+      ],
+      "pontos_fracos": [
+        "Ausência de decisões técnicas concretas (persistência, consistência distribuída, HA/DR, particionamento multi-unidade) para RNF de infraestrutura e desempenho",
+        "Cobertura de requisitos agregada por faixas e diagramas incompletos (sem fluxos de MRP, folha e drill-down; sem visão de implantação/dados)"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.7-flash",
+    "model_name": "Gemini 3.7 Flash",
+    "scenario_id": "G03",
+    "scenario_name": "ERP para Indústria Manufatureira (G03)",
+    "scale": "Grande",
+    "elapsed_time_s": 61.87,
+    "tokens": {
+      "prompt_tokens": 5460,
+      "completion_tokens": 5335,
+      "total_tokens": 12389
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_G03.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 30,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões (EDA por domínios, gateway fiscal com contingência, MRP batch, auditoria append-only, multitenancy hierárquico) são adequadas ao domínio ERP de manufatura e ligadas a RNFs específicos. Faltam, porém, detalhes de persistência, estratégia de consistência transacional entre módulos (saga/outbox) e tratamento explícito de RNF12/RNF21/RNF22 (deployment on-prem/híbrido, backup), citados apenas na tabela de cobertura sem decisão correspondente.",
+      "justificativa_modularidade": "Componentes bem delimitados por bounded context, com responsabilidades coesas e comunicação majoritariamente via barramento de eventos, reduzindo acoplamento. Ainda há chamadas diretas ponto a ponto no diagrama de sequência (PCP→Logística, Qualidade→Logística) que contradizem parcialmente a decisão DA-01, e o módulo Contábil+Financeiro concentra muitas responsabilidades heterogêneas.",
+      "justificativa_gaps": "Gap analysis é sólida e acionável: edge buffer offline, conflito drill-down vs OLTP, custódia de certificados A1/A3 e estorno contábil são lacunas reais e relevantes. Faltam lacunas sobre DR/HA para 99,5%, versionamento de leiautes fiscais e migração/carga de dados legados.",
+      "justificativa_fidelidade": "Rastreabilidade RF/RNF→componente é ampla, mas superficial: a cobertura é declarada em blocos agregados ('RF01 a RF04 cobertos por...') sem demonstrar regras específicas dos critérios de aceite (ex.: notificações por e-mail, exportação PDF/Excel, alerta de 5 dias úteis para obrigações, validação de arquivo antes do envio, distinção realizado vs projetado no fluxo de caixa, 3 cliques de drill-down). Risco de cobertura nominal e não efetiva.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; o diagrama de componentes cobre bem as fronteiras e o de sequência inclui fluxo alternativo (alt aprovado/reprovado) e impacto contábil/auditoria. Contudo, apenas um fluxo de sequência foi modelado, deixando sem representação cenários críticos como emissão de NF-e com contingência SEFAZ, MRP e folha de pagamento.",
+      "pontos_fortes": [
+        "Decisões arquiteturais bem justificadas com contexto, decisão e consequências ligadas a RNFs específicos",
+        "Gap analysis pragmática com recomendações acionáveis (edge buffer, views materializadas, certificado A1, estorno referenciado)"
+      ],
+      "pontos_fracos": [
+        "Cobertura de requisitos apresentada em blocos agregados, sem evidenciar critérios de aceite finos das HUs",
+        "Apenas um diagrama de sequência; fluxos críticos (NF-e/contingência, MRP, folha) não modelados"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.6-flash",
+    "model_name": "Gemini 3.6 Flash",
+    "scenario_id": "G03",
+    "scenario_name": "ERP para Indústria Manufatureira (G03)",
+    "scale": "Grande",
+    "elapsed_time_s": 61.8,
+    "tokens": {
+      "prompt_tokens": 5460,
+      "completion_tokens": 8315,
+      "total_tokens": 15328
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_G03.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 77,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 8
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Escolha de monolito modular com eventos é bem justificada para o domínio ERP fiscal/industrial, com decisões coerentes (CQRS para dashboards, store-and-forward para contingência, multitenancy lógico, auditoria append-only). Faltam detalhes de trade-offs alternativos rejeitados, estratégia de HA/DR concreta para RNF12/RNF21/RNF22 e tratamento explícito de SoD (RNF03) além de menção superficial.",
+      "justificativa_modularidade": "Componentes bem delimitados por contexto de domínio, com responsabilidades e interfaces declaradas na tabela de rastreabilidade. Contudo, o diagrama usa ligações de subgraph inteiro (Domain_Services --> Transactional_DB), o que obscurece o acoplamento real, e o Motor Fiscal acumula NF-e, tributos, SPED e CT-e — coesão discutível. Serviço de Logística aparece na tabela mas não no diagrama de componentes.",
+      "justificativa_gaps": "Três lacunas relevantes e acionáveis (ingestão de telemetria, concorrência de MRP multi-planta, tiered storage de auditoria), com impacto arquitetural claro. Porém omite gaps importantes: ausência de RF para pedidos de venda/CRM que alimenta expedição e NF-e, integração bancária, versionamento de regras fiscais retroativas, e conflito entre 'DRE em tempo real' e read models assíncronos.",
+      "justificativa_fidelidade": "Cobertura completa de RF01–RF53 e RNF01–RNF24 com mapeamento explícito; critérios de aceite chave sintetizados por HU. Alguns pontos ficam genéricos (alertas de prazo de 5 dias úteis em HU10, drill-down em ≤3 cliques, remessa bancária, exportação PDF de rastreabilidade) sem mecanismo arquitetural correspondente. Há erro no diagrama de sequência ('alt OEE ou Desvio abaixo do Threshold' invertido em relação à semântica).",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; dois diagramas de sequência bem construídos, com alt/opt cobrindo contingência SEFAZ. O diagrama de componentes é claro, mas usa arestas entre subgraphs (menos preciso) e não representa todos os componentes (Logística, notificações). Faltam diagramas de dados/deployment e fluxos de MRP, folha e rastreabilidade.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita e completa de RF/RNF para componentes e HUs",
+        "Fluxo de contingência fiscal NF-e modelado com rigor e realismo regulatório brasileiro",
+        "Decisões arquiteturais justificadas (monolito modular, CQRS, multitenancy lógico, auditoria imutável)"
+      ],
+      "pontos_fracos": [
+        "Componente de Logística e notificações ausentes no diagrama de componentes; uso de arestas entre subgraphs mascara acoplamento",
+        "Condição 'alt' invertida no diagrama de OEE e cobertura limitada de fluxos (MRP, folha, rastreabilidade não diagramados)",
+        "Gap analysis não aborda ausência de módulo de vendas/pedidos, integração bancária e versionamento de regras fiscais"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 26,
+      "pct_score": 86.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-sonnet-5",
+    "model_name": "Claude Sonnet 5",
+    "scenario_id": "G03",
+    "scenario_name": "ERP para Indústria Manufatureira (G03)",
+    "scale": "Grande",
+    "elapsed_time_s": 67.22,
+    "tokens": {
+      "prompt_tokens": 9027,
+      "completion_tokens": 7473,
+      "total_tokens": 16500
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_G03.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 68,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Arquitetura modular por domínio, com adaptadores para integrações externas (SEFAZ, MES, bancário), IAM centralizado, DWH segregado e eventos assíncronos — decisões adequadas ao domínio ERP de manufatura e rastreadas a requisitos. Faltam, porém, trade-offs explícitos (monolito modular vs. microsserviços), estratégia de consistência transacional entre módulos (saga/outbox), e tratamento concreto de disponibilidade (RNF12), backup e multi-tenancy além da menção conceitual.",
+      "justificativa_modularidade": "Responsabilidades bem delimitadas por serviço (PCP, OEE, Suprimentos, Qualidade, Rastreabilidade, Estoque, Fiscal, SPED, RH, Contábil, Dashboards) com serviços transversais (auditoria, notificação). O diagrama macro, contudo, mostra acoplamento em estrela via gateway e não representa o barramento de eventos citado nas decisões, gerando inconsistência entre texto e diagrama.",
+      "justificativa_gaps": "Gap analysis com 8 itens relevantes e acionáveis (versionamento de regras fiscais por vigência é um achado forte), além de 7 bloqueios/pendências plausíveis. Faltam gaps sobre integridade transacional, estratégia de migração/legado, custo de conformidade contínua e testes/validação de leiautes.",
+      "justificativa_fidelidade": "Rastreabilidade tabular boa e ampla, mas há erros: HU06 mapeada a RF17 (recebimento) como se fosse RF... imprecisão; HU09 omite RF41/RF42 e remessa bancária só aparece parcialmente; critérios de aceite específicos (drill-down em 3 cliques, alerta 5 dias úteis, 30s SEFAZ, MRP 10min/50k itens) não são traduzidos em decisões arquiteturais concretas. Cobertura declarada de 100% é otimista e pouco evidenciada para RNF12/RNF21/RNF24.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; visão macro em camadas clara e dois diagramas de sequência com fluxos alternativos (contingência SEFAZ, lote reprovado). Porém, apenas 2 de 12 HUs têm sequência, faltando fluxos críticos como MRP, folha e dashboard/drill-down; ausência de diagrama de dados/implantação.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita componente → RF/RNF/HU e decisões justificadas",
+        "Tratamento de cenários de exceção (contingência fiscal, bloqueio de lote) nos diagramas de sequência"
+      ],
+      "pontos_fracos": [
+        "Requisitos quantitativos de desempenho (MRP 10min, dashboard 5s, NF-e 30s) sem estratégia arquitetural concreta",
+        "Barramento de eventos e multi-tenancy citados nas decisões mas ausentes dos diagramas; cobertura de 100% pouco sustentada"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-opus-4.8",
+    "model_name": "Claude Opus 4.8",
+    "scenario_id": "G03",
+    "scenario_name": "ERP para Indústria Manufatureira (G03)",
+    "scale": "Grande",
+    "elapsed_time_s": 181.34,
+    "tokens": {
+      "prompt_tokens": 9027,
+      "completion_tokens": 7619,
+      "total_tokens": 16646
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_G03.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 4,
+        "total_blocks": 4,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 80,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decomposição por domínios coerente com ERP de manufatura, com adaptadores para SEFAZ, SCADA/MES e órgãos governamentais, motor tributário parametrizável, contingência fiscal e separação OLTP/OLAP. Decisões (AD01–AD12) são justificadas e rastreadas a requisitos. Faltam trade-offs mais profundos (ex.: monolito modular vs. microsserviços, saga/consistência entre módulos, estratégia de eventos/mensageria explícita) e detalhamento de disponibilidade (RNF12) e RTO.",
+      "justificativa_modularidade": "Responsabilidades bem definidas por módulo e serviços transversais (Auth, Auditoria, Notificações, BI). O diagrama, porém, mostra acoplamento em estrela ('todos os módulos → Contabilidade e Auditoria') sem barramento de eventos explícito, o que pode gerar alto acoplamento; a Contabilidade dirigida por eventos é citada em AD06 mas não representada como broker.",
+      "justificativa_gaps": "Gap analysis com 10 itens relevantes e acionáveis (recall, versionamento de leiautes fiscais, conflito LGPD x retenção 10 anos, DRE tempo real vs batch, câmbio, particionamento MRP), além de 7 bloqueios pertinentes. Poderia aprofundar lacunas em disponibilidade/DR, migração de dados legados e testes de conformidade.",
+      "justificativa_fidelidade": "Cobertura formal de 53 RF e 24 RNF, mas parte do mapeamento é superficial e há erros: HU10 mapeada a RF41/RF42 (férias/benefícios) em vez de focar obrigações; HU06 sem RF25; célula 'RNF49? (RF49)' evidencia inconsistência. Critérios de aceite específicos (alerta de prazo com 5 dias úteis, validação de arquivos antes do envio, exportação PDF/Excel, drill-down em 3 cliques, distinção realizado vs projetado) não foram modelados em fluxos ou componentes dedicados.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; diagrama de componentes com subgrafos claros e três sequências cobrindo NF-e (com alt de contingência), MRP e inspeção de lote. Faltam fluxos para folha/obrigações, dashboards com drill-down e diagrama de dados/deployment; algumas arestas agrupadas reduzem precisão semântica.",
+      "pontos_fortes": [
+        "Rastreabilidade explícita entre HUs, RFs, RNFs, decisões e componentes",
+        "Tratamento adequado de aspectos regulatórios brasileiros (NF-e, SPED, eSocial, contingência, auditoria imutável)"
+      ],
+      "pontos_fracos": [
+        "Ausência de barramento de eventos explícito e estratégia de consistência entre módulos, gerando acoplamento em estrela",
+        "Erros e superficialidade em alguns mapeamentos HU↔RF/RNF e critérios de aceite quantitativos não modelados"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": false,
+    "error": "litellm.Timeout: APITimeoutError - Request timed out. Error_str: Request timed out.",
+    "scenario": "G03",
+    "model_name": "Claude Fable 5"
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5-mini",
+    "model_name": "GPT 5 mini",
+    "scenario_id": "G04",
+    "scenario_name": "Plataforma de Logística e Rastreamento de Cargas (G04)",
+    "scale": "Grande",
+    "elapsed_time_s": 47.93,
+    "tokens": {
+      "prompt_tokens": 5270,
+      "completion_tokens": 5764,
+      "total_tokens": 11034
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_G04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 19,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 12
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 2,
+      "justificativa_correcao": "Estilo orientado a serviços com event bus é adequado ao domínio logístico; decisões sobre offline-first, contingência CT-e, retry/DLQ, séries temporais para telemetria e auditoria imutável são pertinentes. Faltam trade-offs explícitos (comparação de alternativas), estratégia de consistência entre serviços, e detalhamento de disponibilidade/multi-região para os 99,5% e RNF13/RNF15.",
+      "justificativa_modularidade": "Componentes bem delimitados por capacidade de negócio (Order, Routing, Ranking, CT-e GW, POD, Financial, Tracking, Notification), com gateways isolando integrações externas — bom desacoplamento. Porém o Order Service concentra muitas orquestrações (acoplamento central) e alguns elementos são utilitários genéricos (Scheduler, Metrics, Contracts Registry) mais que serviços de domínio.",
+      "justificativa_gaps": "Lista de 10 gaps é relevante e acionável (volumetria de telemetria, fórmula de ranking, timestamping jurídico, retenção, failover, reconciliação financeira, testes offline). Falta priorização com impacto quantificado e algumas lacunas do próprio requisito (política de cancelamento RF08, gestão de veículos, ETA/algoritmo de previsão, roteirização otimizada RF29) não foram apontadas.",
+      "justificativa_fidelidade": "Cobertura ampla de RFs/RNFs em tabela, mas em nível superficial: critérios de aceite quantitativos (POD ≤60s, ranqueamento ≤10s, ≤4 interações, expiração do link, justificativa de recusa por lista predefinida, exportação CSV/PDF, preferências de notificação) aparecem apenas como menções, sem tratamento arquitetural. RF08 (cancelamento configurável), RF20 (validação NF-e), RF29 (rotas otimizadas) e RF40 quase não são endereçados por componentes específicos.",
+      "justificativa_diagramas": "O diagrama de sequência é coerente e usa autonumber com alt para recusa/timeout, mas o diagrama de componentes tem erros de sintaxe Mermaid: rótulos com parênteses não escapados ('Notification Service (email/SMS/push)', 'Tracking Service (time-series)') e nó 'Ranking' declarado inline dentro de uma aresta, fora do subgraph. Faltam também diagramas de fluxos críticos (offline sync, POD, sinistro, faturamento).",
+      "pontos_fortes": [
+        "Rastreabilidade explícita HU→RF/RNF→Componentes em tabela",
+        "Gap analysis acionável com pendências externas bem identificadas (SEFAZ, seguradoras, timestamping)",
+        "Isolamento de integrações externas por gateways versionados, alinhado ao RNF24"
+      ],
+      "pontos_fracos": [
+        "Erros de sintaxe no diagrama de componentes Mermaid (parênteses em labels, nó declarado inline)",
+        "Critérios de aceite quantitativos e regras de negócio detalhadas não traduzidos em decisões arquiteturais",
+        "Ausência de trade-offs comparativos e de fluxos alternativos/exceção (offline sync, contingência CT-e, sinistro) em diagramas"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 2,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 23,
+      "pct_score": 76.7
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gpt-5.3-codex",
+    "model_name": "GPT 5.3 Codex",
+    "scenario_id": "G04",
+    "scenario_name": "Plataforma de Logística e Rastreamento de Cargas (G04)",
+    "scale": "Grande",
+    "elapsed_time_s": 35.81,
+    "tokens": {
+      "prompt_tokens": 5268,
+      "completion_tokens": 4689,
+      "total_tokens": 9957
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_G04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 65,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decomposição por domínios coerente com o negócio (frete, fiscal CT-e, rastreamento, POD, seguro, financeiro), com escolhas adequadas: assíncrono para oferta/aceite e telemetria, persistência especializada geoespacial/série temporal, offline-first idempotente, integração externa versionada. Faltam, contudo, trade-offs explícitos (alternativas descartadas), definição de tecnologias/padrões de comunicação (evento vs. síncrono por interação) e desenho de disponibilidade/escala para atingir 99,5% e RNF12–RNF16 de forma concreta.",
+      "justificativa_modularidade": "Responsabilidades bem separadas e tabela de componentes clara, incluindo serviços transversais (Auditoria, Documentos, Notificações, Preferências). Pontos frágeis: o Serviço de Rastreamento concentra ingestão, histórico, notificação e alimentação de SLA; POD chamando Financeiro diretamente cria acoplamento que seria melhor via evento; 'Serviço de Operação Mobile' e 'Índice de Desempenho' não aparecem no diagrama de componentes, gerando inconsistência entre visões.",
+      "justificativa_gaps": "Gap analysis relevante e acionável: ranking sem pesos, política de cancelamento, contingência CT-e, LGPD, RPO/backup, antifraude de evidências e SLAs de integrações. Poderia aprofundar em multi-tenancy, idempotência/ordem de eventos de geolocalização, estratégia de retenção fiscal de 5 anos e custos.",
+      "justificativa_fidelidade": "Cobertura ampla dos RF/RNF com rastreabilidade por faixa, mas a granularidade é grosseira (agrupa RF por intervalos) e vários critérios de aceite específicos não são tratados arquiteturalmente: exportação CSV/PDF (HU07/HU14), POD em até 60s, expiração do link após entrega, máximo de 4 interações, justificativa de recusa a partir de lista predefinida, aceite automático configurável. Declarar tudo 'Coberto' sem evidência de mecanismo reduz a fidelidade.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida; o de componentes cobre atores, serviços e integrações externas, e a sequência usa alt/loop cobrindo o fluxo E2E crítico. Falta separação em camadas/subgraphs, ausência de fluxos de sinistro, contingência CT-e e sincronização offline; alguns componentes citados na tabela não aparecem no diagrama.",
+      "pontos_fortes": [
+        "Decomposição por domínios coerente com boa rastreabilidade HU→RF→componente",
+        "Diagrama de sequência com cenários alternativos (aceite/recusa/timeout) cobrindo o fluxo ponta a ponta",
+        "Gap analysis e pendências concretas e acionáveis (ranking, contingência CT-e, LGPD, RPO)"
+      ],
+      "pontos_fracos": [
+        "Cobertura de RNF/RF declarada em blocos, sem mecanismo específico para vários critérios de aceite (60s do POD, exportações, expiração de link, 4 interações)",
+        "Inconsistência entre tabela de componentes e diagrama (Operação Mobile, Índice de Desempenho ausentes)",
+        "Ausência de trade-offs explícitos, escolhas tecnológicas e desenho de disponibilidade/escalabilidade quantificado"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.7-flash",
+    "model_name": "Gemini 3.7 Flash",
+    "scenario_id": "G04",
+    "scenario_name": "Plataforma de Logística e Rastreamento de Cargas (G04)",
+    "scale": "Grande",
+    "elapsed_time_s": 65.88,
+    "tokens": {
+      "prompt_tokens": 5678,
+      "completion_tokens": 6850,
+      "total_tokens": 13881
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_G04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "graph",
+          "sequencediagram",
+          "classdiagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 51,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 4
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões (offline-first idempotente, segregação time-series/transacional, tokens efêmeros, motor fiscal assíncrono com contingência, POD imutável com ACT) são pertinentes ao domínio brasileiro de CT-e/POD e bem justificadas com contexto/consequências. Pontos frágeis: RNF12 (99,5%), RNF22 (backup/RPO) e RNF24 (versionamento de contratos) são apenas declarados como 'cobertos' sem estratégia arquitetural real; não há tratamento explícito de eventos/streaming ou cache para o rastreamento em tempo real além da menção genérica.",
+      "justificativa_modularidade": "Serviços de domínio bem delimitados por bounded context (fretes, matchmaking, fiscal, telemetria, POD, financeiro, seguros, notificações) com persistência poliglota adequada. O acoplamento é razoável, porém o diagrama de componentes mostra o API Gateway ligado diretamente a todos os serviços e pouca comunicação assíncrona/barramento de eventos explícito, o que enfraquece o desacoplamento defendido nas ADRs.",
+      "justificativa_gaps": "Quatro lacunas relevantes e não triviais (devolução parcial com CT-e de retorno, custódia de certificados A1, precificação multi-parada vs. frete unitário, incompatibilidade de cargas perigosas), todas com ação recomendada e componente responsável. Pendências adicionais (conflito offline vs. cancelamento, expiração de token) reforçam o rigor. Faltam gaps sobre LGPD/retenção de geolocalização, conciliação de pagamentos/inadimplência e DR/multi-região.",
+      "justificativa_fidelidade": "Rastreabilidade tabular abrangente RF/RNF→componente, mas parte da cobertura é declarativa. Critérios de aceite finos são omitidos: gerenciamento de preferências de notificação pelo destinatário (HU12), contato direto motorista-transportadora (HU06), exportação CSV/PDF e filtros (HU07/HU14), POD em até 60s (HU09), máximo de 4 interações (RNF21), justificativa de recusa por lista predefinida aparece apenas de forma genérica, e MFA/RBAC sem detalhamento de perfis.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; sequência cobre bem o ciclo ponta a ponta com anotações de RF/HU; componentes bem organizado em camadas. Falha notável no modelo de domínio: uso de herança (<|--) entre PedidoFrete e ConhecimentoTransporte, que é semanticamente incorreto (deveria ser associação); ausência de entidades como Usuário/Perfil, Apólice e Fatura do embarcador vs. repasse distintos. Faltam diagramas de fluxos de exceção (recusa/cascata, contingência SEFAZ, sinistro).",
+      "pontos_fortes": [
+        "ADRs bem estruturadas com contexto, decisão e consequências, aderentes a especificidades regulatórias brasileiras (CT-e, Lei 14.063, CTN)",
+        "Segregação de persistência transacional vs. séries temporais/geoespacial coerente com RNF16/RNF23 e boa rastreabilidade RF/RNF por componente",
+        "Gap analysis acionável com lacunas reais de domínio (certificado A1, devolução parcial, multi-parada)"
+      ],
+      "pontos_fracos": [
+        "Erro de notação no diagrama de classes (herança usada onde cabe associação)",
+        "Cobertura de vários RNFs (disponibilidade, backup/RPO, versionamento de API, observabilidade) apenas declarada, sem mecanismo arquitetural",
+        "Critérios de aceite específicos de HUs (exportação CSV/PDF, preferências de notificação, contato com motorista, prazos de 60s e limite de 4 interações) não refletidos nos componentes",
+        "Ausência de barramento de eventos explícito apesar das ADRs assumirem assincronismo"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/gemini-3.6-flash",
+    "model_name": "Gemini 3.6 Flash",
+    "scenario_id": "G04",
+    "scenario_name": "Plataforma de Logística e Rastreamento de Cargas (G04)",
+    "scale": "Grande",
+    "elapsed_time_s": 58.99,
+    "tokens": {
+      "prompt_tokens": 5678,
+      "completion_tokens": 9485,
+      "total_tokens": 17301
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_G04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 2,
+        "total_blocks": 2,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 110,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 6
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 3,
+      "justificativa_correcao": "Arquitetura orientada a serviços com barramento de eventos é adequada ao domínio (alto volume de telemetria + transações fiscais). ADRs coerentes e bem contextualizados (offline-first, persistência híbrida, TSA para POD, tokenização do rastreamento público). Faltam detalhes sobre cache/ETA, estratégia de contingência de disponibilidade (RNF12) e desenho concreto do pipeline de streaming, além de tratamento superficial de RNF22/RNF25.",
+      "justificativa_modularidade": "Componentes com responsabilidades claras e coesas (fiscal, POD, geolocalização, financeiro, notificações, auditoria). Uso de eventos reduz acoplamento. Porém há sobreposições: 'Serviço de Operações Mobile' acumula coleta, rotas, ocorrências e parte do POD; RF03 (gestão de frota) foi alocado ao Gerenciador de Pedidos/IAM sem um serviço de cadastro/frota próprio; o Portal Público de Rastreamento aparece ora como componente de backend, ora como cliente.",
+      "justificativa_gaps": "Quatro gaps relevantes e acionáveis (conflito de timestamps offline, rejeição SEFAZ bloqueando coleta, ciclo de vida do token de rastreio, consumo de bateria/dados). Recomendações concretas com estados e políticas. Contudo, não aborda lacunas importantes como política de cancelamento configurável (RF08), critérios de inadimplência (RF49), cálculo de ad valorem, SLA/ETA e reconciliação financeira.",
+      "justificativa_fidelidade": "Cobertura declarada de 100% dos RF/RNF com matriz plausível e consistente. Alguns mapeamentos são superficiais ou imprecisos (RF34 ligado a HU10, RF47 a HU03; exportação CSV/PDF de HU07/HU14 e preferências de notificação de HU12 não detalhadas; contato direto com motorista de HU06 ausente; máximo 4 interações interpretado como 'telas/toques'). Regras de negócio como timeout de aceite e justificativa predefinida são citadas, mas sem modelagem detalhada.",
+      "justificativa_diagramas": "Diagrama de componentes é claro e bem agrupado. O diagrama de sequência contém erros de notação: participantes DB_REL e TSA_EXT são usados sem declaração, o App Mobile chama diretamente o POD sem passar pelo API Gateway, e não há fluxos alternativos (recusa da transportadora, contingência SEFAZ, ocorrências, sinistro, financeiro). Ausência de diagramas de estados/implantação.",
+      "pontos_fortes": [
+        "ADRs bem estruturadas com contexto, decisão e consequências positivas/negativas explícitas",
+        "Rastreabilidade abrangente HU→RF/RNF→componentes, com matriz de RNF indicando mecanismos concretos",
+        "Gap analysis prático com soluções técnicas específicas (dual timestamp, estado AGUARDANDO_AUTORIZACAO_FISCAL, amostragem adaptativa de GPS)"
+      ],
+      "pontos_fracos": [
+        "Diagrama de sequência com participantes não declarados e violação do padrão de acesso via gateway",
+        "Ausência de fluxos de exceção nos diagramas (recusa/reoferta, contingência CT-e, sinistro, faturamento)",
+        "Componente de cadastro/gestão de frota e veículos (RF03) e módulo de configuração de políticas (RF08, RF12, RF15) não modelados explicitamente",
+        "Alguns mapeamentos HU/RF forçados para alegar cobertura de 100%"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 3,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-sonnet-5",
+    "model_name": "Claude Sonnet 5",
+    "scenario_id": "G04",
+    "scenario_name": "Plataforma de Logística e Rastreamento de Cargas (G04)",
+    "scale": "Grande",
+    "elapsed_time_s": 64.97,
+    "tokens": {
+      "prompt_tokens": 9367,
+      "completion_tokens": 7429,
+      "total_tokens": 16796
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_G04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 73,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 4,
+      "fidelidade_criterios_aceite": 3,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decomposição por domínios coerente com o problema (pedidos, roteamento, CT-e, rastreamento, POD, seguros, financeiro, auditoria), com decisões justificadas e vinculadas a RNFs específicos (RNF15/16/23 para rastreamento, RNF17 para offline-first, RNF24 para adaptadores versionados). Faltam trade-offs explícitos (alternativas descartadas), detalhamento de tecnologias/estratégia de mensageria, e tratamento de disponibilidade 99,5% (redundância, DR, RPO 1h) permanece superficial — a tabela de cobertura declara 'coberto' sem evidência de design.",
+      "justificativa_modularidade": "Responsabilidades bem delimitadas e coesas, com auditoria e notificações como serviços transversais e integrações isoladas por adaptadores. Pontos discutíveis: dependência Financeiro→Índice de Desempenho é pouco justificada, TrackingService apontando para TrackingLink inverte a direção natural de chamada, e o MobileApp aparece ligado tanto ao Gateway quanto diretamente ao DriverOps, criando ambiguidade de fronteira.",
+      "justificativa_gaps": "Oito gaps relevantes e acionáveis, com destaque para idempotência/reconciliação de eventos offline (G05), retenção/expurgo de geolocalização (G04) e contrato assíncrono da SEFAZ (G03). Bloqueios também são pertinentes. Contudo, há sobreposição entre bloqueios e gaps (preço/comissão, ranqueamento) e faltam lacunas de maior impacto arquitetural, como estratégia de multi-tenancy, consistência entre CT-e e faturamento, LGPD (consentimento/anonimização) e plano de DR.",
+      "justificativa_fidelidade": "A rastreabilidade RF/HU→componente é boa em nível macro, mas os critérios de aceite quantitativos e comportamentais quase não aparecem no design: POD em até 60s, entrega em no máximo 4 interações, expiração do token após conclusão da entrega, preferências de notificação gerenciáveis pelo destinatário, exportação CSV/PDF, contato direto com o motorista, contingência de reassignação manual pelo admin. Alguns RFs não aparecem no mapeamento das HUs (RF08, RF19-RF22, RF29, RF45, RF47) e a seção de cobertura afirma 'coberto' de forma genérica, sem demonstrar como.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida; o diagrama de componentes tem boa cobertura de subsistemas e o de sequência de pedido→aceite→CT-e usa alt/else adequadamente para recusa/timeout. O segundo diagrama cobre coleta, telemetria em loop e POD. Faltam, porém, diagramas para fluxos críticos como sincronização offline, sinistro e faturamento, e não há representação de barramento de eventos apesar de D04 afirmar arquitetura orientada a eventos; o grafo macro é denso e com algumas setas de direção questionável.",
+      "pontos_fortes": [
+        "Decomposição de domínio coerente com forte alinhamento a RNFs críticos (rastreamento desacoplado, offline-first, auditoria imutável, adaptadores versionados)",
+        "Rastreabilidade explícita entre HUs, RFs, decisões e componentes, com bloqueios e gaps acionáveis (idempotência offline, retenção geoespacial)"
+      ],
+      "pontos_fracos": [
+        "Critérios de aceite quantitativos e detalhes de UX/negócio pouco absorvidos (60s do POD, 4 interações, expiração do token, exportação CSV/PDF, preferências de notificação)",
+        "Cobertura de RNFs declarada de forma genérica sem design correspondente (disponibilidade, backup/RPO, LGPD) e ausência de barramento de eventos nos diagramas apesar de decisão event-driven"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 4,
+      "ca_fidelity": 3,
+      "architectural_clarity": 4,
+      "total_score": 25,
+      "pct_score": 83.3
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-opus-4.8",
+    "model_name": "Claude Opus 4.8",
+    "scenario_id": "G04",
+    "scenario_name": "Plataforma de Logística e Rastreamento de Cargas (G04)",
+    "scale": "Grande",
+    "elapsed_time_s": 178.74,
+    "tokens": {
+      "prompt_tokens": 9367,
+      "completion_tokens": 7258,
+      "total_tokens": 16625
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_G04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "graph",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 78,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 2
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 4,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decomposição por domínios é adequada ao problema (fiscal, rastreio, financeiro, POD, seguros), com decisões justificadas e ligadas a requisitos (ADRs sucintos). Faltam, porém, elementos concretos de resiliência e escala: não há broker/streaming explícito para ingestão de geolocalização (RNF16), nem estratégia de cache/WebSocket para o rastreio em tempo real (RNF15), nem detalhamento de disponibilidade 99,5% (redundância, circuit breaker nas integrações SEFAZ). A contingência de CT-e é citada como decisão mas não modelada em fluxo.",
+      "justificativa_modularidade": "Responsabilidades bem separadas e coesas, com tabela de comunicação entre componentes. Contudo, o diagrama mostra o serviço de Pedidos como hub central acoplado a quase todos os demais (orquestração síncrona), e o uso de eventos é apenas insinuado — não há barramento de eventos explícito, o que enfraquece o desacoplamento defendido nas ADRs. Bases de dados compartilhadas ('Base Transacional' única) também não são delimitadas por serviço.",
+      "justificativa_gaps": "Gap analysis é o ponto mais forte: 10 lacunas reais e não triviais (conflito LGPD x retenção fiscal, nível de assinatura na Lei 14.063, reconciliação de eventos offline atrasados, preferências de notificação sem cadastro, ambiguidade do auto-aceite), cada uma com impacto e ação recomendada acionável. Somam-se 8 bloqueios com responsável de decisão.",
+      "justificativa_fidelidade": "Cobertura de 49 RF e 25 RNF com mapeamento por faixas e rastreabilidade HU→RF→RNF. Porém o mapeamento por faixa é grosseiro em alguns pontos e há imprecisões: HU06 associada a RF30 (rastreio do destinatário) em vez do painel da transportadora; contato direto com motorista (HU06), exportação CSV/PDF (HU07/HU14), limite de 60s do POD (HU09) e ≤4 interações (RNF21) não são tratados arquiteturalmente, apenas citados. Critérios quantitativos raramente viram mecanismos de projeto.",
+      "justificativa_diagramas": "Mermaid sintaticamente válido, com subgraphs bem organizados e dois diagramas de sequência cobrindo os fluxos críticos (pedido→roteamento→seguro→CT-e; entrega offline→POD→notificação). Faltam fluxos de exceção relevantes (recusa/timeout de transportadora com escalonamento RF15, contingência CT-e, sinistro) e não há diagrama de implantação ou de dados; o diagrama de componentes tem alta densidade de arestas do Gateway.",
+      "pontos_fortes": [
+        "Gap analysis e bloqueios de alta qualidade, com impacto e ação acionável e responsável de decisão",
+        "Rastreabilidade explícita entre HU, RF, RNF, componentes e decisões arquiteturais"
+      ],
+      "pontos_fracos": [
+        "Ausência de barramento de eventos/streaming explícito e de mecanismos concretos para RNF12/15/16 (escala do rastreio e disponibilidade)",
+        "Fluxos de exceção não diagramados (recusa/timeout de transportadora, contingência CT-e, sinistro) e alguns mapeamentos HU→RF imprecisos"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 4,
+      "total_score": 27,
+      "pct_score": 90.0
+    }
+  },
+  {
+    "success": true,
+    "model_id": "github_copilot/claude-fable-5",
+    "model_name": "Claude Fable 5",
+    "scenario_id": "G04",
+    "scenario_name": "Plataforma de Logística e Rastreamento de Cargas (G04)",
+    "scale": "Grande",
+    "elapsed_time_s": 180.23,
+    "tokens": {
+      "prompt_tokens": 9367,
+      "completion_tokens": 7966,
+      "total_tokens": 17333
+    },
+    "artifact_file": "docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_G04.md",
+    "objective_metrics": {
+      "template_adherence_count": 7,
+      "template_adherence_pct": 100.0,
+      "sections_found": {
+        "identificação das hus": true,
+        "diagramas de arquitetura": true,
+        "decisões de arquitetura": true,
+        "tabela de componentes": true,
+        "bloqueios e pendências": true,
+        "cobertura de": true,
+        "gap analysis": true
+      },
+      "mermaid": {
+        "has_mermaid": true,
+        "valid": true,
+        "valid_count": 3,
+        "total_blocks": 3,
+        "diagram_types": [
+          "flowchart",
+          "sequencediagram"
+        ],
+        "has_autonumber": true,
+        "has_participants": true
+      },
+      "has_component_table": true,
+      "has_traceability_column": true,
+      "estimated_components": 77,
+      "neutrality_compliant": true,
+      "neutrality_violations": [],
+      "has_gap_analysis": true,
+      "gap_mentions": 3
+    },
+    "judge_metrics": {
+      "correcao_arquitetural": 5,
+      "modularidade_acoplamento": 4,
+      "profundidade_gap_analysis": 5,
+      "fidelidade_criterios_aceite": 4,
+      "qualidade_diagramas_mermaid": 4,
+      "justificativa_correcao": "Decisões (DA01–DA12) são sólidas e aderentes ao domínio logístico/fiscal brasileiro: barramento de eventos para alto volume de geolocalização, offline-first com sincronização idempotente, anti-corruption layer para SEFAZ/seguradoras, contingência de CT-e, auditoria append-only com retenção de 5 anos, máquina de estados formal do frete como fonte única para rastreamento/SLA/financeiro. Justificativas ligadas a requisitos explícitos. Faltam trade-offs mais explícitos (alternativas descartadas, custos do modelo de eventos, consistência eventual).",
+      "justificativa_modularidade": "Serviços bem delimitados por capacidade de negócio, com coesão alta e comunicação majoritariamente assíncrona. A tabela de componentes define responsabilidades e interlocutores. Pontos de atenção: o Serviço de Pedidos aparece como orquestrador central (chama Roteamento, CT-e, Notificações diretamente), gerando acoplamento síncrono que contraria parcialmente o DA01; e o Painel de Monitoramento tem dependências difusas.",
+      "justificativa_gaps": "Gap analysis excelente: 10 lacunas relevantes e não óbvias (ausência de fluxo de pagamento, MDF-e, reentrega/redespacho, conflitos de sincronização offline, multi-tenancy, LGPD operacional, critério de SLA em risco, ciclo de vida do token, resiliência de integrações externas), cada uma com impacto arquitetural e ação acionável. Complementada por 8 bloqueios/pendências consistentes.",
+      "justificativa_fidelidade": "Boa rastreabilidade HU→RF/RNF e cobertura declarada de 49 RFs/25 RNFs, com incorporação de limites quantitativos (10s, 30s, 60s, 4 interações). Contudo, algumas HUs estão sub-mapeadas na Seção 1 (HU03 não cita RF03? HU07 omite exportação CSV/PDF e RF48 detalhado; HU11 não cita expiração de token além do RNF05; HU12 omite ETA no 'saiu para entrega'), e RNF12/RNF22 (backup/RPO) são declarados cobertos sem decisão arquitetural correspondente.",
+      "justificativa_diagramas": "Sintaxe Mermaid válida e legível; diagrama de componentes com subgraphs claros e dois fluxos de sequência bem escolhidos (contratação de frete e entrega offline com POD). Faltam diagramas de estados do frete (apesar de DA12 ser central), fluxo de rastreamento/ingestão de geolocalização e cenários de exceção (recusa de transportadora e fallback, contingência SEFAZ), que são pontos críticos do domínio.",
+      "pontos_fortes": [
+        "Máquina de estados do frete como decisão unificadora para rastreamento, SLA, notificações e financeiro",
+        "Gap analysis profunda e acionável, incluindo lacunas regulatórias (MDF-e, LGPD operacional) e de pagamento"
+      ],
+      "pontos_fracos": [
+        "Serviço de Pedidos atua como orquestrador com chamadas síncronas, criando acoplamento não justificado frente ao barramento de eventos",
+        "Ausência de diagrama de estados e de fluxos de exceção (recusa/timeout de transportadora, contingência SEFAZ); RNF12/RNF22 tratados superficialmente"
+      ]
+    },
+    "scores": {
+      "template_adherence": 5,
+      "diagram_quality": 4,
+      "component_traceability": 5,
+      "gap_analysis": 5,
+      "ca_fidelity": 4,
+      "architectural_clarity": 5,
+      "total_score": 28,
+      "pct_score": 93.3
+    }
+  }
+]
