@@ -80,6 +80,14 @@ def _node_command(
         return None, framework, "Node.js não está disponível no ambiente."
     relative_test = test.relative_to(root).as_posix()
     if framework == "node:test":
+        # node:test não faz transpile próprio; sem esta flag, Node 22.6+ rejeita
+        # arquivos .ts com ERR_UNKNOWN_FILE_EXTENSION antes mesmo de rodar o teste.
+        if test.suffix.casefold() in {".ts", ".mts", ".cts"}:
+            return (
+                [node, "--experimental-strip-types", "--test", relative_test],
+                framework,
+                None,
+            )
         return [node, "--test", relative_test], framework, None
     entry = root / _NODE_ENTRIES[framework]
     if not entry.is_file():

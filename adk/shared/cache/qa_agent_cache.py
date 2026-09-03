@@ -16,8 +16,6 @@ from .sql_cache import PostgresCache, create_cache_backend
 
 logger = logging.getLogger(__name__)
 
-_METADATA_KEY = "qa_agent_cache"
-
 
 class _SingleFlightCoordinator:
     def __init__(self) -> None:
@@ -65,6 +63,15 @@ class QaAgentResponseCache:
         self.clock = clock or datetime.utcnow
         self._coordinator = _SingleFlightCoordinator()
         self._backend = create_cache_backend(self.database_url) if self.database_url else None
+        # ADK cria uma instância nova de CallbackContext a cada hook (before/after/
+        # on_error), então o estado pendente não pode viver como atributo do
+        # contexto: guardamos aqui, correlacionado pelo EventActions compartilhado
+        # entre os hooks de uma mesma chamada de modelo.
+        self._pending: dict[int, dict[str, Any]] = {}
+
+    @staticmethod
+    def _pending_key(callback_context: Any) -> int:
+        return id(callback_context.actions)
 
     @classmethod
     def from_env(cls, *, prompt_text: str) -> "QaAgentResponseCache":
@@ -89,7 +96,7 @@ class QaAgentResponseCache:
         if self._backend is None:
             return None
 
-        if callback_context.custom_metadata.get(_METADATA_KEY):
+        if self._pending.get(self._pending_key(callback_context)):
             return None
 
         identity = self._build_identity(llm_request)
@@ -130,7 +137,7 @@ class QaAgentResponseCache:
                 self._coordinator.complete(identity.cache_key)
                 return _response_from_text(cached_value)
 
-            callback_context.custom_metadata[_METADATA_KEY] = {
+            self._pending[self._pending_key(callback_context)] = {
                 "cache_key": identity.cache_key,
                 "lock_handle": lock_handle,
             }
@@ -146,7 +153,7 @@ class QaAgentResponseCache:
     async def after_model_callback(
         self, callback_context: Any, llm_response: LlmResponse
     ) -> LlmResponse | None:
-        pending = callback_context.custom_metadata.get(_METADATA_KEY)
+        pending = self._pending.get(self._pending_key(callback_context))
         if not pending:
             return None
 
@@ -173,7 +180,7 @@ class QaAgentResponseCache:
         llm_request: LlmRequest,
         error: Exception,
     ) -> LlmResponse | None:
-        pending = callback_context.custom_metadata.get(_METADATA_KEY)
+        pending = self._pending.get(self._pending_key(callback_context))
         if pending:
             logger.warning("QA cache releasing in-flight entry after model error: %s", error)
             await self._finalize_pending(callback_context, store_value=None)
@@ -188,7 +195,7 @@ class QaAgentResponseCache:
         )
 
     async def _finalize_pending(self, callback_context: Any, store_value: str | None) -> None:
-        pending = callback_context.custom_metadata.pop(_METADATA_KEY, None)
+        pending = self._pending.pop(self._pending_key(callback_context), None)
         if not pending:
             return
 

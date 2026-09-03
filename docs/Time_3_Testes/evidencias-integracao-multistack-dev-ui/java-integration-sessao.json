@@ -1,0 +1,206 @@
+[
+  {
+    "content": {
+      "parts": [
+        {
+          "text": "Execute somente testes de integração para este projeto Java/Spring. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-5d454812-4e52-4b70-aad4-7e87581f5157",
+    "author": "user",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "b1203833-178d-4098-8866-93626e35d085",
+    "timestamp": 1788394055.2391636
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "function_call": {
+            "id": "call_RKCN9pMhn2zLv7X2hvpVl9qQ",
+            "args": {
+              "request": "Execute somente testes de integração para este projeto Java/Spring. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+            },
+            "name": "invocar_planejamento_qa"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 0,
+      "candidates_token_count": 111,
+      "prompt_token_count": 2500,
+      "total_token_count": 2611
+    },
+    "invocation_id": "e-5d454812-4e52-4b70-aad4-7e87581f5157",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "long_running_tool_ids": [],
+    "id": "fa35710e-f8d9-43c2-9c88-b65b71e88e5e",
+    "timestamp": 1788394055.8701563
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "function_response": {
+            "id": "call_RKCN9pMhn2zLv7X2hvpVl9qQ",
+            "name": "invocar_planejamento_qa",
+            "response": {
+              "result": "{\"tipo_entrada\": \"requisito\", \"modo\": \"requisito\", \"tools\": [\"integration_tests_agent\"], \"casos_de_teste_propostos\": [\"Executar somente teste integração conforme os critérios da entrada.\"], \"lifecycle\": {\"status\": \"planejado_para_execucao\", \"execution_allowed\": true, \"next_step\": \"executar_plano\"}, \"hitl_checkpoint\": {\"required\": false, \"checkpoint_id\": null, \"pause_reason\": null, \"approval_question\": null, \"allowed_decisions\": []}, \"risk_assessment\": {\"nivel\": \"baixo\", \"motivos\": [\"Teste local, reversível e com escopo único explícito.\"], \"acoes_reversiveis\": true, \"efeito_externo\": false}, \"autonomy_decision\": {\"mode\": \"autonomous\", \"reason\": \"O nível de teste foi delimitado explicitamente.\", \"less_prompt_more_action\": true}, \"analise_inicial\": {\"linguagem_suspeita\": \"java\", \"funcao_suspeita_do_codigo\": null, \"nivel_de_confianca\": 1.0}, \"analise_progressiva\": [{\"observacao\": \"A entrada solicita somente teste integração.\", \"hipotese\": \"O perfil pode ser detectado no código persistido.\", \"validacao_planejada\": \"Inspecionar, gerar, executar e normalizar.\"}], \"resumo_do_requisito\": \"Execute somente testes de integração para este projeto Java/Spring. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado.\", \"criterios_verificaveis\": [\"Perfil compatível detectado.\", \"Teste gerado e executado.\", \"Resultado normalizado retornado.\"], \"objetivo_qa\": \"Executar somente o fluxo integração solicitado.\", \"estrategia\": [\"Inspecionar o projeto persistido.\", \"Gerar e executar teste integração pelo perfil detectado.\", \"Retornar resultado normalizado.\"], \"checklist_inicial\": [{\"id\": \"CHK-01\", \"descricao\": \"Detectar perfil.\", \"status\": \"pendente\"}, {\"id\": \"CHK-02\", \"descricao\": \"Executar testes.\", \"status\": \"pendente\"}, {\"id\": \"CHK-03\", \"descricao\": \"Normalizar resultado.\", \"status\": \"pendente\"}], \"handoff_context\": {\"objetivo\": \"Executar somente teste integração.\", \"contexto_compacto\": \"Escopo único explícito; código já persistido.\", \"entrada_original\": \"Execute somente testes de integração para este projeto Java/Spring. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado.\", \"artefatos_relevantes\": [\"workspace_output/coder/src\"], \"decisoes_tomadas\": [\"Selecionar somente integration_tests_agent.\"], \"riscos_e_duvidas\": [], \"evidencias_necessarias\": [\"Arquivo gerado\", \"Resultado normalizado\"]}, \"relatorio_conformidade_esperado\": {\"comparar_planejado_vs_executado\": true, \"incluir_evidencias\": true, \"incluir_divergencias\": true, \"status_possiveis\": [\"conforme\", \"parcialmente_conforme\", \"nao_conforme\"]}, \"doubt\": null}"
+            }
+          }
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-5d454812-4e52-4b70-aad4-7e87581f5157",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "bd44a8db-31d1-49f4-b4a0-185253fa2c6d",
+    "timestamp": 1788394060.0705621
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "function_call": {
+            "id": "call_DrYAQgNYbnJeogCFcsVUcanV",
+            "args": {
+              "request": "Execute somente testes de integração para este projeto Java/Spring. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+            },
+            "name": "integration_tests_agent"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 1792,
+      "candidates_token_count": 108,
+      "prompt_token_count": 3480,
+      "total_token_count": 3588
+    },
+    "invocation_id": "e-5d454812-4e52-4b70-aad4-7e87581f5157",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "long_running_tool_ids": [],
+    "id": "dce2e470-0bcd-4455-9e59-9b54e173eed2",
+    "timestamp": 1788394060.1186383
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "function_response": {
+            "id": "call_DrYAQgNYbnJeogCFcsVUcanV",
+            "name": "integration_tests_agent",
+            "response": {
+              "result": "{\n  \"status\": \"bloqueado\",\n  \"tipo_teste\": \"integracao\",\n  \"inspecao\": {\n    \"status\": \"suportado\",\n    \"tipo_teste\": \"integracao\",\n    \"projeto\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\",\n    \"perfil\": {\n      \"profile_id\": \"java-integration\",\n      \"test_type\": \"integracao\",\n      \"stack\": \"java\",\n      \"framework\": \"junit\",\n      \"source_suffixes\": [\".java\"],\n      \"marker_files\": [\"pom.xml\", \"build.gradle\", \"build.gradle.kts\"],\n      \"test_file_pattern\": \"<Componente>IntegrationTest.java\",\n      \"generator\": \"junit_integration_generator\",\n      \"executor\": \"junit_integration_runner\",\n      \"aliases\": [\"spring\", \"java-spring\", \"java/spring\"],\n      \"implemented\": true\n    },\n    \"confianca\": 0.3333333333333333,\n    \"evidencias\": [\"marcador:pom.xml\", \"fontes:2\"],\n    \"arquivos_fonte\": [\n      \"src/main/java/com/example/CheckoutService.java\",\n      \"src/main/java/com/example/InventoryRepository.java\"\n    ],\n    \"bloqueios\": []\n  },\n  \"perfil\": {\n    \"profile_id\": \"java-integration\",\n    \"test_type\": \"integracao\",\n    \"stack\": \"java\",\n    \"framework\": \"junit\",\n    \"source_suffixes\": [\".java\"],\n    \"marker_files\": [\"pom.xml\", \"build.gradle\", \"build.gradle.kts\"],\n    \"test_file_pattern\": \"<Componente>IntegrationTest.java\",\n    \"generator\": \"junit_integration_generator\",\n    \"executor\": \"junit_integration_runner\",\n    \"aliases\": [\"spring\", \"java-spring\", \"java/spring\"],\n    \"implemented\": true\n  },\n  \"resumo\": {\n    \"total\": 1,\n    \"sucessos\": 0,\n    \"bloqueados\": 1,\n    \"falhas\": 0,\n    \"executados\": 0\n  },\n  \"arquivos_gerados\": [\n    \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\"\n  ],\n  \"detalhes\": [\n    {\n      \"id_artefato\": \"SEM_ID\",\n      \"status\": \"bloqueado\",\n      \"fluxo\": \"A\",\n      \"framework\": \"junit\",\n      \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\",\n      \"arquivos_apoio\": [\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\CheckoutService.java\",\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\InventoryRepository.java\"\n      ],\n      \"resultado_execucao\": {\n        \"status\": \"bloqueado\",\n        \"tipo_teste\": \"integracao\",\n        \"perfil\": \"java-integration\",\n        \"framework\": \"desconhecido\",\n        \"comando\": [],\n        \"codigo_saida\": null,\n        \"testes\": {\n          \"total\": 0,\n          \"sucessos\": 0,\n          \"falhas\": 0,\n          \"ignorados\": 0\n        },\n        \"saida\": \"\",\n        \"erros\": [\n          {\n            \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n            \"mensagem\": \"Maven não está disponível.\"\n          }\n        ],\n        \"resultado_bruto\": {\n          \"status\": \"bloqueado\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"java-integration\",\n          \"framework\": null,\n          \"comando\": [],\n          \"codigo_saida\": null,\n          \"stdout\": \"\",\n          \"stderr\": \"\",\n          \"bloqueios\": [\n            {\n              \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n              \"mensagem\": \"Maven não está disponível.\"\n            }\n          ]\n        }\n      },\n      \"erro\": null,\n      \"resultado_bruto\": {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"junit\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\CheckoutService.java\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\InventoryRepository.java\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"bloqueado\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"java-integration\",\n          \"framework\": null,\n          \"comando\": [],\n          \"codigo_saida\": null,\n          \"stdout\": \"\",\n          \"stderr\": \"\",\n          \"bloqueios\": [\n            {\n              \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n              \"mensagem\": \"Maven não está disponível.\"\n            }\n          ]\n        },\n        \"erro\": null\n      }\n    }\n  ],\n  \"bloqueios\": [\n    {\n      \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n      \"mensagem\": \"Maven não está disponível.\"\n    }\n  ],\n  \"resultado_bruto\": {\n    \"status\": \"concluido\",\n    \"perfil\": \"java-integration\",\n    \"detalhes\": [\n      {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"junit\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\CheckoutService.java\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\InventoryRepository.java\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"bloqueado\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"java-integration\",\n          \"framework\": null,\n          \"comando\": [],\n          \"codigo_saida\": null,\n          \"stdout\": \"\",\n          \"stderr\": \"\",\n          \"bloqueios\": [\n            {\n              \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n              \"mensagem\": \"Maven não está disponível.\"\n            }\n          ]\n        },\n        \"erro\": null\n      }\n    ]\n  },\n  \"adaptador\": {\n    \"gerador\": \"junit_integration_generator\",\n    \"executor\": \"junit_integration_runner\"\n  }\n}"
+            }
+          }
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-5d454812-4e52-4b70-aad4-7e87581f5157",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {
+        "last_integration_test_result": "{\n  \"status\": \"bloqueado\",\n  \"tipo_teste\": \"integracao\",\n  \"inspecao\": {\n    \"status\": \"suportado\",\n    \"tipo_teste\": \"integracao\",\n    \"projeto\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\",\n    \"perfil\": {\n      \"profile_id\": \"java-integration\",\n      \"test_type\": \"integracao\",\n      \"stack\": \"java\",\n      \"framework\": \"junit\",\n      \"source_suffixes\": [\".java\"],\n      \"marker_files\": [\"pom.xml\", \"build.gradle\", \"build.gradle.kts\"],\n      \"test_file_pattern\": \"<Componente>IntegrationTest.java\",\n      \"generator\": \"junit_integration_generator\",\n      \"executor\": \"junit_integration_runner\",\n      \"aliases\": [\"spring\", \"java-spring\", \"java/spring\"],\n      \"implemented\": true\n    },\n    \"confianca\": 0.3333333333333333,\n    \"evidencias\": [\"marcador:pom.xml\", \"fontes:2\"],\n    \"arquivos_fonte\": [\n      \"src/main/java/com/example/CheckoutService.java\",\n      \"src/main/java/com/example/InventoryRepository.java\"\n    ],\n    \"bloqueios\": []\n  },\n  \"perfil\": {\n    \"profile_id\": \"java-integration\",\n    \"test_type\": \"integracao\",\n    \"stack\": \"java\",\n    \"framework\": \"junit\",\n    \"source_suffixes\": [\".java\"],\n    \"marker_files\": [\"pom.xml\", \"build.gradle\", \"build.gradle.kts\"],\n    \"test_file_pattern\": \"<Componente>IntegrationTest.java\",\n    \"generator\": \"junit_integration_generator\",\n    \"executor\": \"junit_integration_runner\",\n    \"aliases\": [\"spring\", \"java-spring\", \"java/spring\"],\n    \"implemented\": true\n  },\n  \"resumo\": {\n    \"total\": 1,\n    \"sucessos\": 0,\n    \"bloqueados\": 1,\n    \"falhas\": 0,\n    \"executados\": 0\n  },\n  \"arquivos_gerados\": [\n    \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\"\n  ],\n  \"detalhes\": [\n    {\n      \"id_artefato\": \"SEM_ID\",\n      \"status\": \"bloqueado\",\n      \"fluxo\": \"A\",\n      \"framework\": \"junit\",\n      \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\",\n      \"arquivos_apoio\": [\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\CheckoutService.java\",\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\InventoryRepository.java\"\n      ],\n      \"resultado_execucao\": {\n        \"status\": \"bloqueado\",\n        \"tipo_teste\": \"integracao\",\n        \"perfil\": \"java-integration\",\n        \"framework\": \"desconhecido\",\n        \"comando\": [],\n        \"codigo_saida\": null,\n        \"testes\": {\n          \"total\": 0,\n          \"sucessos\": 0,\n          \"falhas\": 0,\n          \"ignorados\": 0\n        },\n        \"saida\": \"\",\n        \"erros\": [\n          {\n            \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n            \"mensagem\": \"Maven não está disponível.\"\n          }\n        ],\n        \"resultado_bruto\": {\n          \"status\": \"bloqueado\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"java-integration\",\n          \"framework\": null,\n          \"comando\": [],\n          \"codigo_saida\": null,\n          \"stdout\": \"\",\n          \"stderr\": \"\",\n          \"bloqueios\": [\n            {\n              \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n              \"mensagem\": \"Maven não está disponível.\"\n            }\n          ]\n        }\n      },\n      \"erro\": null,\n      \"resultado_bruto\": {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"junit\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\CheckoutService.java\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\InventoryRepository.java\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"bloqueado\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"java-integration\",\n          \"framework\": null,\n          \"comando\": [],\n          \"codigo_saida\": null,\n          \"stdout\": \"\",\n          \"stderr\": \"\",\n          \"bloqueios\": [\n            {\n              \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n              \"mensagem\": \"Maven não está disponível.\"\n            }\n          ]\n        },\n        \"erro\": null\n      }\n    }\n  ],\n  \"bloqueios\": [\n    {\n      \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n      \"mensagem\": \"Maven não está disponível.\"\n    }\n  ],\n  \"resultado_bruto\": {\n    \"status\": \"concluido\",\n    \"perfil\": \"java-integration\",\n    \"detalhes\": [\n      {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"junit\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\test\\\\java\\\\com\\\\example\\\\CheckoutServiceIntegrationTest.java\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\CheckoutService.java\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\java-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\main\\\\java\\\\com\\\\example\\\\InventoryRepository.java\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"bloqueado\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"java-integration\",\n          \"framework\": null,\n          \"comando\": [],\n          \"codigo_saida\": null,\n          \"stdout\": \"\",\n          \"stderr\": \"\",\n          \"bloqueios\": [\n            {\n              \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n              \"mensagem\": \"Maven não está disponível.\"\n            }\n          ]\n        },\n        \"erro\": null\n      }\n    ]\n  },\n  \"adaptador\": {\n    \"gerador\": \"junit_integration_generator\",\n    \"executor\": \"junit_integration_runner\"\n  }\n}"
+      },
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "9460f789-2826-41fb-bf92-62383bfabe2e",
+    "timestamp": 1788394075.4042087
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "text": "A execução do teste de integração foi planejada corretamente para o projeto Java/Spring, com detecção automática do perfil, mas o processo foi BLOQUEADO devido à ausência da ferramenta Maven no ambiente de execução, impedindo a compilação e execução dos testes JUnit.\n\n### Resumo dos Resultados\n\n- **Total de testes gerados:** 1\n- **Sucessos:** 0\n- **Bloqueados:** 1\n- **Falhas:** 0\n\n#### Caminho do teste gerado\n\n- `workspace_output/coder/src/src/test/java/com/example/CheckoutServiceIntegrationTest.java`\n\n#### Detalhes do bloqueio\n\n- **Tipo:** Integração (JUnit)\n- **Framework identificado:** JUnit (Java/Spring)\n- **Arquivos de apoio:** \n  - `src/main/java/com/example/CheckoutService.java`\n  - `src/main/java/com/example/InventoryRepository.java`\n- **Motivo do bloqueio:** Maven não está disponível para gerenciar as dependências e executar o teste.\n- **Código do erro:** RUNTIME_DEPENDENCY_MISSING\n- **Mensagem:** \"Maven não está disponível.\"\n- **Saída do teste:** (vazia)\n- **Executados:** 0\n\n### Evidências do bloqueio\n\n```json\n{\n  \"codigo\": \"RUNTIME_DEPENDENCY_MISSING\",\n  \"mensagem\": \"Maven não está disponível.\"\n}\n```\n\n### Próximos Passos Possíveis\n\n- O teste de integração está corretamente gerado. Para executar e validar o fluxo de checkout solicitado, é necessário garantir que o Maven esteja disponível no ambiente CI/CD ou de execução, permitindo assim rodar o comando que executa os testes (usual: `mvn test`).\n\n### Artifacts/Doubt\n\nNenhum Doubt Artifact formal foi gerado pois a causa do bloqueio foi claramente identificada na execução.\n\n---\n\n**Resumo final:**  \nOs testes de integração para o fluxo de checkout foram preparados, mas a execução está bloqueada por ausência do Maven. Recomenda-se disponibilizar Maven no ambiente para que o runner JUnit conclua a validação conforme o plano. O arquivo de teste está presente no caminho acima e pronto para execução assim que as dependências do ambiente forem sanadas."
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 2432,
+      "candidates_token_count": 465,
+      "prompt_token_count": 5697,
+      "total_token_count": 6162
+    },
+    "invocation_id": "e-5d454812-4e52-4b70-aad4-7e87581f5157",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "7fada182-a223-462c-afea-dea97e1a6286",
+    "timestamp": 1788394075.4702756
+  },
+  {
+    "invocation_id": "e-5d454812-4e52-4b70-aad4-7e87581f5157",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {
+        "qa_manifest": {
+          "phase": "qa",
+          "status": "partial",
+          "artifacts": [],
+          "doubts": [],
+          "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+        },
+        "phase_manifests": [
+          {
+            "phase": "qa",
+            "status": "partial",
+            "artifacts": [],
+            "doubts": [],
+            "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+          }
+        ]
+      },
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "15beb8f5-470d-4cbd-97d1-834e2c327254",
+    "timestamp": 1788394078.6390147
+  }
+]

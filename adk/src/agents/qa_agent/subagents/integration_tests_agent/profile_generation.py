@@ -11,6 +11,7 @@ from shared.testing.integration_adapters import (
     execute_integration_adapter,
 )
 from src.agents.qa_agent.subagents.unit_test_generator.profile_generation import (
+    _artifact_requirement,
     _available_target,
     _completion_content,
     _materialize_inline_sources,
@@ -140,7 +141,7 @@ def _generate_code(
 Artefato: {artifact.get('id_artefato', 'SEM_ID')}
 Tipo: {artifact.get('tipo', 'RF')}
 Módulo: {artifact.get('modulo', 'geral')}
-Requisito: {str(artifact.get('conteudo') or '').strip()}
+Requisito: {_artifact_requirement(artifact)}
 
 {source_rule}
 
@@ -176,14 +177,18 @@ def run_integration_profile_adapter(
 
     for artifact in artifacts:
         artifact_id = str(artifact.get("id_artefato") or "SEM_ID")
-        if not str(artifact.get("conteudo") or "").strip():
+        if not _artifact_requirement(artifact):
             details.append(
                 {
                     "id_artefato": artifact_id,
                     "status": "bloqueado",
                     "arquivo_gerado": None,
                     "resultado_execucao": None,
-                    "erro": "Campo 'conteudo' vazio.",
+                    "erro": (
+                        "Nenhum requisito textual encontrado (campos aceitos: "
+                        "conteudo, descricao, requisito, resumo, titulo, "
+                        "criterios_aceite, criterios_verificaveis)."
+                    ),
                 }
             )
             continue

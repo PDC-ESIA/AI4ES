@@ -1,0 +1,206 @@
+[
+  {
+    "content": {
+      "parts": [
+        {
+          "text": "Execute somente testes de integração para este projeto TypeScript/Node. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-71179cee-650f-4b12-ba4f-fd1c4bade78d",
+    "author": "user",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "5cd03c61-7d7f-4527-84a0-c5b14f521bb4",
+    "timestamp": 1788393919.3253245
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "function_call": {
+            "id": "call_kGY4bTPvgpJ3OSgaWcZqTw5T",
+            "args": {
+              "request": "Execute somente testes de integração para este projeto TypeScript/Node. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+            },
+            "name": "invocar_planejamento_qa"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 0,
+      "candidates_token_count": 112,
+      "prompt_token_count": 2501,
+      "total_token_count": 2613
+    },
+    "invocation_id": "e-71179cee-650f-4b12-ba4f-fd1c4bade78d",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "long_running_tool_ids": [],
+    "id": "33b25290-8d1a-4f5d-8af2-2ae4388d9e06",
+    "timestamp": 1788393920.1676762
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "function_response": {
+            "id": "call_kGY4bTPvgpJ3OSgaWcZqTw5T",
+            "name": "invocar_planejamento_qa",
+            "response": {
+              "result": "{\"tipo_entrada\": \"requisito\", \"modo\": \"requisito\", \"tools\": [\"integration_tests_agent\"], \"casos_de_teste_propostos\": [\"Executar somente teste integração conforme os critérios da entrada.\"], \"lifecycle\": {\"status\": \"planejado_para_execucao\", \"execution_allowed\": true, \"next_step\": \"executar_plano\"}, \"hitl_checkpoint\": {\"required\": false, \"checkpoint_id\": null, \"pause_reason\": null, \"approval_question\": null, \"allowed_decisions\": []}, \"risk_assessment\": {\"nivel\": \"baixo\", \"motivos\": [\"Teste local, reversível e com escopo único explícito.\"], \"acoes_reversiveis\": true, \"efeito_externo\": false}, \"autonomy_decision\": {\"mode\": \"autonomous\", \"reason\": \"O nível de teste foi delimitado explicitamente.\", \"less_prompt_more_action\": true}, \"analise_inicial\": {\"linguagem_suspeita\": \"typescript\", \"funcao_suspeita_do_codigo\": null, \"nivel_de_confianca\": 1.0}, \"analise_progressiva\": [{\"observacao\": \"A entrada solicita somente teste integração.\", \"hipotese\": \"O perfil pode ser detectado no código persistido.\", \"validacao_planejada\": \"Inspecionar, gerar, executar e normalizar.\"}], \"resumo_do_requisito\": \"Execute somente testes de integração para este projeto TypeScript/Node. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado.\", \"criterios_verificaveis\": [\"Perfil compatível detectado.\", \"Teste gerado e executado.\", \"Resultado normalizado retornado.\"], \"objetivo_qa\": \"Executar somente o fluxo integração solicitado.\", \"estrategia\": [\"Inspecionar o projeto persistido.\", \"Gerar e executar teste integração pelo perfil detectado.\", \"Retornar resultado normalizado.\"], \"checklist_inicial\": [{\"id\": \"CHK-01\", \"descricao\": \"Detectar perfil.\", \"status\": \"pendente\"}, {\"id\": \"CHK-02\", \"descricao\": \"Executar testes.\", \"status\": \"pendente\"}, {\"id\": \"CHK-03\", \"descricao\": \"Normalizar resultado.\", \"status\": \"pendente\"}], \"handoff_context\": {\"objetivo\": \"Executar somente teste integração.\", \"contexto_compacto\": \"Escopo único explícito; código já persistido.\", \"entrada_original\": \"Execute somente testes de integração para este projeto TypeScript/Node. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado.\", \"artefatos_relevantes\": [\"workspace_output/coder/src\"], \"decisoes_tomadas\": [\"Selecionar somente integration_tests_agent.\"], \"riscos_e_duvidas\": [], \"evidencias_necessarias\": [\"Arquivo gerado\", \"Resultado normalizado\"]}, \"relatorio_conformidade_esperado\": {\"comparar_planejado_vs_executado\": true, \"incluir_evidencias\": true, \"incluir_divergencias\": true, \"status_possiveis\": [\"conforme\", \"parcialmente_conforme\", \"nao_conforme\"]}, \"doubt\": null}"
+            }
+          }
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-71179cee-650f-4b12-ba4f-fd1c4bade78d",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "f93b02ef-b1df-4f6e-a4d1-29e060ac9713",
+    "timestamp": 1788393924.3901963
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "function_call": {
+            "id": "call_8OIopUTm09FMd74U0HoYNmfV",
+            "args": {
+              "request": "Execute somente testes de integração para este projeto TypeScript/Node. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+            },
+            "name": "integration_tests_agent"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 2560,
+      "candidates_token_count": 109,
+      "prompt_token_count": 3484,
+      "total_token_count": 3593
+    },
+    "invocation_id": "e-71179cee-650f-4b12-ba4f-fd1c4bade78d",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "long_running_tool_ids": [],
+    "id": "1bf6d515-23b9-4cf3-9440-f39c05775dc1",
+    "timestamp": 1788393924.4438176
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "function_response": {
+            "id": "call_8OIopUTm09FMd74U0HoYNmfV",
+            "name": "integration_tests_agent",
+            "response": {
+              "result": "{\n  \"status\": \"sucesso\",\n  \"tipo_teste\": \"integracao\",\n  \"inspecao\": {\n    \"status\": \"suportado\",\n    \"tipo_teste\": \"integracao\",\n    \"projeto\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\",\n    \"perfil\": {\n      \"profile_id\": \"node-integration\",\n      \"test_type\": \"integracao\",\n      \"stack\": \"node\",\n      \"framework\": \"project-declared\",\n      \"source_suffixes\": [\".js\", \".jsx\", \".mjs\", \".cjs\", \".ts\", \".tsx\"],\n      \"marker_files\": [\"package.json\"],\n      \"test_file_pattern\": \"<componente>.integration.test.ts\",\n      \"generator\": \"node_integration_generator\",\n      \"executor\": \"node_integration_runner\",\n      \"aliases\": [\n        \"javascript\",\n        \"typescript\",\n        \"javascript-typescript\",\n        \"express\",\n        \"node-express\",\n        \"node/express\"\n      ],\n      \"implemented\": true\n    },\n    \"confianca\": 0.3333333333333333,\n    \"evidencias\": [\"marcador:package.json\", \"fontes:2\"],\n    \"arquivos_fonte\": [\"src/repository.ts\", \"src/service.ts\"],\n    \"bloqueios\": []\n  },\n  \"perfil\": {\n    \"profile_id\": \"node-integration\",\n    \"test_type\": \"integracao\",\n    \"stack\": \"node\",\n    \"framework\": \"project-declared\",\n    \"source_suffixes\": [\".js\", \".jsx\", \".mjs\", \".cjs\", \".ts\", \".tsx\"],\n    \"marker_files\": [\"package.json\"],\n    \"test_file_pattern\": \"<componente>.integration.test.ts\",\n    \"generator\": \"node_integration_generator\",\n    \"executor\": \"node_integration_runner\",\n    \"aliases\": [\n      \"javascript\",\n      \"typescript\",\n      \"javascript-typescript\",\n      \"express\",\n      \"node-express\",\n      \"node/express\"\n    ],\n    \"implemented\": true\n  },\n  \"resumo\": {\n    \"total\": 1,\n    \"sucessos\": 1,\n    \"bloqueados\": 0,\n    \"falhas\": 0,\n    \"executados\": 1\n  },\n  \"arquivos_gerados\": [\n    \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\"\n  ],\n  \"detalhes\": [\n    {\n      \"id_artefato\": \"SEM_ID\",\n      \"status\": \"sucesso\",\n      \"fluxo\": \"A\",\n      \"framework\": \"node:test\",\n      \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\",\n      \"arquivos_apoio\": [\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\repository.ts\",\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\service.ts\"\n      ],\n      \"resultado_execucao\": {\n        \"status\": \"sucesso\",\n        \"tipo_teste\": \"integracao\",\n        \"perfil\": \"node-integration\",\n        \"framework\": \"node:test\",\n        \"comando\": [\n          \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n          \"--experimental-strip-types\",\n          \"--test\",\n          \"tests/integration/artefato.integration.test.ts\"\n        ],\n        \"codigo_saida\": 0,\n        \"testes\": {\n          \"total\": 2,\n          \"sucessos\": 2,\n          \"falhas\": 0,\n          \"ignorados\": 0\n        },\n        \"saida\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\",\n        \"erros\": [],\n        \"resultado_bruto\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"node-integration\",\n          \"framework\": \"node:test\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n            \"--experimental-strip-types\",\n            \"--test\",\n            \"tests/integration/artefato.integration.test.ts\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        }\n      },\n      \"erro\": null,\n      \"resultado_bruto\": {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"node:test\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\repository.ts\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\service.ts\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"node-integration\",\n          \"framework\": \"node:test\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n            \"--experimental-strip-types\",\n            \"--test\",\n            \"tests/integration/artefato.integration.test.ts\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    }\n  ],\n  \"bloqueios\": [],\n  \"resultado_bruto\": {\n    \"status\": \"concluido\",\n    \"perfil\": \"node-integration\",\n    \"detalhes\": [\n      {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"node:test\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\repository.ts\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\service.ts\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"node-integration\",\n          \"framework\": \"node:test\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n            \"--experimental-strip-types\",\n            \"--test\",\n            \"tests/integration/artefato.integration.test.ts\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    ]\n  },\n  \"adaptador\": {\n    \"gerador\": \"node_integration_generator\",\n    \"executor\": \"node_integration_runner\"\n  }\n}"
+            }
+          }
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-71179cee-650f-4b12-ba4f-fd1c4bade78d",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {
+        "last_integration_test_result": "{\n  \"status\": \"sucesso\",\n  \"tipo_teste\": \"integracao\",\n  \"inspecao\": {\n    \"status\": \"suportado\",\n    \"tipo_teste\": \"integracao\",\n    \"projeto\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\",\n    \"perfil\": {\n      \"profile_id\": \"node-integration\",\n      \"test_type\": \"integracao\",\n      \"stack\": \"node\",\n      \"framework\": \"project-declared\",\n      \"source_suffixes\": [\".js\", \".jsx\", \".mjs\", \".cjs\", \".ts\", \".tsx\"],\n      \"marker_files\": [\"package.json\"],\n      \"test_file_pattern\": \"<componente>.integration.test.ts\",\n      \"generator\": \"node_integration_generator\",\n      \"executor\": \"node_integration_runner\",\n      \"aliases\": [\n        \"javascript\",\n        \"typescript\",\n        \"javascript-typescript\",\n        \"express\",\n        \"node-express\",\n        \"node/express\"\n      ],\n      \"implemented\": true\n    },\n    \"confianca\": 0.3333333333333333,\n    \"evidencias\": [\"marcador:package.json\", \"fontes:2\"],\n    \"arquivos_fonte\": [\"src/repository.ts\", \"src/service.ts\"],\n    \"bloqueios\": []\n  },\n  \"perfil\": {\n    \"profile_id\": \"node-integration\",\n    \"test_type\": \"integracao\",\n    \"stack\": \"node\",\n    \"framework\": \"project-declared\",\n    \"source_suffixes\": [\".js\", \".jsx\", \".mjs\", \".cjs\", \".ts\", \".tsx\"],\n    \"marker_files\": [\"package.json\"],\n    \"test_file_pattern\": \"<componente>.integration.test.ts\",\n    \"generator\": \"node_integration_generator\",\n    \"executor\": \"node_integration_runner\",\n    \"aliases\": [\n      \"javascript\",\n      \"typescript\",\n      \"javascript-typescript\",\n      \"express\",\n      \"node-express\",\n      \"node/express\"\n    ],\n    \"implemented\": true\n  },\n  \"resumo\": {\n    \"total\": 1,\n    \"sucessos\": 1,\n    \"bloqueados\": 0,\n    \"falhas\": 0,\n    \"executados\": 1\n  },\n  \"arquivos_gerados\": [\n    \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\"\n  ],\n  \"detalhes\": [\n    {\n      \"id_artefato\": \"SEM_ID\",\n      \"status\": \"sucesso\",\n      \"fluxo\": \"A\",\n      \"framework\": \"node:test\",\n      \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\",\n      \"arquivos_apoio\": [\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\repository.ts\",\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\service.ts\"\n      ],\n      \"resultado_execucao\": {\n        \"status\": \"sucesso\",\n        \"tipo_teste\": \"integracao\",\n        \"perfil\": \"node-integration\",\n        \"framework\": \"node:test\",\n        \"comando\": [\n          \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n          \"--experimental-strip-types\",\n          \"--test\",\n          \"tests/integration/artefato.integration.test.ts\"\n        ],\n        \"codigo_saida\": 0,\n        \"testes\": {\n          \"total\": 2,\n          \"sucessos\": 2,\n          \"falhas\": 0,\n          \"ignorados\": 0\n        },\n        \"saida\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\",\n        \"erros\": [],\n        \"resultado_bruto\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"node-integration\",\n          \"framework\": \"node:test\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n            \"--experimental-strip-types\",\n            \"--test\",\n            \"tests/integration/artefato.integration.test.ts\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        }\n      },\n      \"erro\": null,\n      \"resultado_bruto\": {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"node:test\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\repository.ts\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\service.ts\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"node-integration\",\n          \"framework\": \"node:test\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n            \"--experimental-strip-types\",\n            \"--test\",\n            \"tests/integration/artefato.integration.test.ts\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    }\n  ],\n  \"bloqueios\": [],\n  \"resultado_bruto\": {\n    \"status\": \"concluido\",\n    \"perfil\": \"node-integration\",\n    \"detalhes\": [\n      {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"node:test\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\tests\\\\integration\\\\artefato.integration.test.ts\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\repository.ts\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\node-integration\\\\workspace_output\\\\coder\\\\src\\\\src\\\\service.ts\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"node-integration\",\n          \"framework\": \"node:test\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\nodejs\\\\node.EXE\",\n            \"--experimental-strip-types\",\n            \"--test\",\n            \"tests/integration/artefato.integration.test.ts\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"TAP version 13\\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\\n# (Use `node.EXE --trace-warnings ...` to show where the warning was created)\\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\\n  ---\\n  duration_ms: 4.129\\n  type: 'test'\\n  ...\\n# Subtest: Estoque insuficiente rejeita o checkout com erro\\nok 2 - Estoque insuficiente rejeita o checkout com erro\\n  ---\\n  duration_ms: 1.7003\\n  type: 'test'\\n  ...\\n1..2\\n# tests 2\\n# suites 0\\n# pass 2\\n# fail 0\\n# cancelled 0\\n# skipped 0\\n# todo 0\\n# duration_ms 659.0513\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    ]\n  },\n  \"adaptador\": {\n    \"gerador\": \"node_integration_generator\",\n    \"executor\": \"node_integration_runner\"\n  }\n}"
+      },
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "ab66b56a-4f7a-44ae-b476-1389f37b0cd2",
+    "timestamp": 1788393946.684337
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "text": "Resumo da Execução dos Testes de Integração\n\n- Tipo de teste: Integração\n- Stack detectada: Node.js + TypeScript, com framework declarado pelo projeto (node:test)\n- Caminho do projeto inspecionado: workspace_output/coder/src\n\nCenários validados:\n1. Reserva de estoque bem-sucedida realiza o checkout.\n2. Estoque insuficiente rejeita o checkout com erro.\n\nResultados:\n- Total de testes: 2\n- Sucessos: 2\n- Falhas: 0\n- Bloqueados: 0\n\nArquivo de teste gerado e executado:\n- tests/integration/artefato.integration.test.ts\n\nResumo da execução (normalizado):\n\nSaída do comando node:test:\n```\nTAP version 13\n# (node:50160) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time\n# Subtest: Reserva de estoque bem-sucedida realiza o checkout\nok 1 - Reserva de estoque bem-sucedida realiza o checkout\n  ---\n  duration_ms: 4.129\n  type: 'test'\n  ...\n# Subtest: Estoque insuficiente rejeita o checkout com erro\nok 2 - Estoque insuficiente rejeita o checkout com erro\n  ---\n  duration_ms: 1.7003\n  type: 'test'\n  ...\n1..2\n# tests 2\n# suites 0\n# pass 2\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 659.0513\n```\n- Comando executado: node --experimental-strip-types --test tests/integration/artefato.integration.test.ts\n- Código de saída: 0\n- Nenhum erro foi registrado.\n\nObservações:\n- A stack e framework foram detectados automaticamente e o perfil de integração foi corretamente selecionado (\"node-integration\").\n- Não foram executados testes unitários nem E2E, conforme solicitado.\n- Não foram encontrados bloqueios ou dúvidas.\n- Todos os critérios do fluxo de checkout solicitados foram validados com sucesso.\n\nSe desejar consultar ou auditar o teste executado, utilize o caminho relativo:\n- workspace_output/coder/src/tests/integration/artefato.integration.test.ts\n\nNenhum Doubt Artifact foi necessário. Não houve prompts de autocorreção, pois todos os testes passaram."
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 0,
+      "candidates_token_count": 499,
+      "prompt_token_count": 6592,
+      "total_token_count": 7091
+    },
+    "invocation_id": "e-71179cee-650f-4b12-ba4f-fd1c4bade78d",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "354ec756-fcfb-4046-aa0b-a26cab7c7987",
+    "timestamp": 1788393946.7390897
+  },
+  {
+    "invocation_id": "e-71179cee-650f-4b12-ba4f-fd1c4bade78d",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {
+        "qa_manifest": {
+          "phase": "qa",
+          "status": "partial",
+          "artifacts": [],
+          "doubts": [],
+          "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+        },
+        "phase_manifests": [
+          {
+            "phase": "qa",
+            "status": "partial",
+            "artifacts": [],
+            "doubts": [],
+            "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+          }
+        ]
+      },
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "3c0d403e-e509-4a25-bdfa-e1176587b636",
+    "timestamp": 1788393950.088893
+  }
+]

@@ -33,7 +33,20 @@ def preparar_testes_integracao(
     workspace_projeto: str = "",
     stack_declarada: str = "",
 ) -> dict:
-    """Seleciona e executa o adaptador de integração da stack."""
+    """Seleciona e executa o adaptador de integração da stack.
+
+    artefatos_json: JSON de um objeto ou lista de objetos. O código-fonte é
+    lido automaticamente do projeto; cada objeto só precisa descrever o
+    requisito/cenário a validar, com estes campos:
+    - id_artefato (str, opcional): identificador do artefato (ex: "RF-01").
+    - tipo (str, opcional): tipo do artefato (ex: "RF", "HU").
+    - modulo (str, opcional): componente/módulo alvo.
+    - conteudo (str): texto do requisito ou cenário de integração a validar
+      (ex: "Reserva de estoque bem-sucedida realiza o checkout; estoque
+      insuficiente rejeita o checkout com erro."). Aceita também os campos
+      alternativos descricao, requisito, resumo, titulo, criterios_aceite ou
+      criterios_verificaveis caso conteudo não seja usado.
+    """
     prepared = prepare_request(
         INTEGRATION_TEST_PROFILES,
         artifacts_json=artefatos_json,

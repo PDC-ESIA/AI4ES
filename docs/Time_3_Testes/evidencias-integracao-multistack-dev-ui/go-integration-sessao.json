@@ -1,0 +1,340 @@
+[
+  {
+    "content": {
+      "parts": [
+        {
+          "text": "Execute somente testes de integração para este projeto Go. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-ec06a774-2e5b-48b0-b02c-211e3f0cd6a3",
+    "author": "user",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "03cabd06-adc1-4df1-8cc6-f8cc3ea9707c",
+    "timestamp": 1788394242.889027
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "function_call": {
+            "id": "call_182MCZSQh6Zv9zCgewZiTefu",
+            "args": {
+              "request": "Execute somente testes de integração para este projeto Go. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+            },
+            "name": "invocar_planejamento_qa"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 1792,
+      "candidates_token_count": 109,
+      "prompt_token_count": 2498,
+      "total_token_count": 2607
+    },
+    "invocation_id": "e-ec06a774-2e5b-48b0-b02c-211e3f0cd6a3",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "long_running_tool_ids": [],
+    "id": "2ed456d2-5c8d-4c63-8163-0258601443ef",
+    "timestamp": 1788394243.5344114
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "function_response": {
+            "id": "call_182MCZSQh6Zv9zCgewZiTefu",
+            "name": "invocar_planejamento_qa",
+            "response": {
+              "result": "{\"tipo_entrada\": \"requisito\", \"modo\": \"requisito\", \"tools\": [\"integration_tests_agent\"], \"casos_de_teste_propostos\": [\"Executar somente teste integração conforme os critérios da entrada.\"], \"lifecycle\": {\"status\": \"planejado_para_execucao\", \"execution_allowed\": true, \"next_step\": \"executar_plano\"}, \"hitl_checkpoint\": {\"required\": false, \"checkpoint_id\": null, \"pause_reason\": null, \"approval_question\": null, \"allowed_decisions\": []}, \"risk_assessment\": {\"nivel\": \"baixo\", \"motivos\": [\"Teste local, reversível e com escopo único explícito.\"], \"acoes_reversiveis\": true, \"efeito_externo\": false}, \"autonomy_decision\": {\"mode\": \"autonomous\", \"reason\": \"O nível de teste foi delimitado explicitamente.\", \"less_prompt_more_action\": true}, \"analise_inicial\": {\"linguagem_suspeita\": \"desconhecida\", \"funcao_suspeita_do_codigo\": null, \"nivel_de_confianca\": 0.5}, \"analise_progressiva\": [{\"observacao\": \"A entrada solicita somente teste integração.\", \"hipotese\": \"O perfil pode ser detectado no código persistido.\", \"validacao_planejada\": \"Inspecionar, gerar, executar e normalizar.\"}], \"resumo_do_requisito\": \"Execute somente testes de integração para este projeto Go. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado.\", \"criterios_verificaveis\": [\"Perfil compatível detectado.\", \"Teste gerado e executado.\", \"Resultado normalizado retornado.\"], \"objetivo_qa\": \"Executar somente o fluxo integração solicitado.\", \"estrategia\": [\"Inspecionar o projeto persistido.\", \"Gerar e executar teste integração pelo perfil detectado.\", \"Retornar resultado normalizado.\"], \"checklist_inicial\": [{\"id\": \"CHK-01\", \"descricao\": \"Detectar perfil.\", \"status\": \"pendente\"}, {\"id\": \"CHK-02\", \"descricao\": \"Executar testes.\", \"status\": \"pendente\"}, {\"id\": \"CHK-03\", \"descricao\": \"Normalizar resultado.\", \"status\": \"pendente\"}], \"handoff_context\": {\"objetivo\": \"Executar somente teste integração.\", \"contexto_compacto\": \"Escopo único explícito; código já persistido.\", \"entrada_original\": \"Execute somente testes de integração para este projeto Go. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado.\", \"artefatos_relevantes\": [\"workspace_output/coder/src\"], \"decisoes_tomadas\": [\"Selecionar somente integration_tests_agent.\"], \"riscos_e_duvidas\": [], \"evidencias_necessarias\": [\"Arquivo gerado\", \"Resultado normalizado\"]}, \"relatorio_conformidade_esperado\": {\"comparar_planejado_vs_executado\": true, \"incluir_evidencias\": true, \"incluir_divergencias\": true, \"status_possiveis\": [\"conforme\", \"parcialmente_conforme\", \"nao_conforme\"]}, \"doubt\": null}"
+            }
+          }
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-ec06a774-2e5b-48b0-b02c-211e3f0cd6a3",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "81071123-2030-48e5-91fc-71541249728f",
+    "timestamp": 1788394248.0402641
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "function_call": {
+            "id": "call_yJYDbwVAqGeXOMAp3dglvQPw",
+            "args": {
+              "request": "Execute somente testes de integração para este projeto Go. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+            },
+            "name": "integration_tests_agent"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 2432,
+      "candidates_token_count": 106,
+      "prompt_token_count": 3475,
+      "total_token_count": 3581
+    },
+    "invocation_id": "e-ec06a774-2e5b-48b0-b02c-211e3f0cd6a3",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "long_running_tool_ids": [],
+    "id": "d8ac778d-9770-4f9c-bec4-91f820265efe",
+    "timestamp": 1788394248.091596
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "text": "Reporte o resultado normalizado da última execução de teste de integração (last_integration_test_result), sem executar novamente."
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-6a74b0d8-2843-4452-920c-57f3250e46f7",
+    "author": "user",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "315dee00-091a-41c2-8047-a3356d2d1e49",
+    "timestamp": 1788394806.3279068
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "text": "No momento, não há registro disponível de uma execução anterior de teste de integração (last_integration_test_result) neste contexto. Isso pode ocorrer caso:\n\n- Seja a primeira execução deste pedido.\n- A execução de teste de integração anterior não foi completada ou persistida.\n- O agente foi reinicializado ou o contexto anterior não foi recuperado.\n\nCaso possua um resultado prévio de execução de teste de integração salvo, por favor, informe o caminho ou conteúdo para que eu possa normalizar e reportar. Caso contrário, será necessário executar o teste de integração conforme solicitado para obter e normalizar o resultado. Deseja prosseguir com uma nova execução?"
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 3456,
+      "candidates_token_count": 133,
+      "prompt_token_count": 3635,
+      "total_token_count": 3768
+    },
+    "invocation_id": "e-6a74b0d8-2843-4452-920c-57f3250e46f7",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "0c9f720e-3aea-44f8-b5fd-155c175050dd",
+    "timestamp": 1788394806.4193566
+  },
+  {
+    "invocation_id": "e-6a74b0d8-2843-4452-920c-57f3250e46f7",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {
+        "qa_manifest": {
+          "phase": "qa",
+          "status": "partial",
+          "artifacts": [],
+          "doubts": [],
+          "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+        },
+        "phase_manifests": [
+          {
+            "phase": "qa",
+            "status": "partial",
+            "artifacts": [],
+            "doubts": [],
+            "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+          }
+        ]
+      },
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "8466d4c0-9fc3-4378-9a32-564e3dcce31a",
+    "timestamp": 1788394809.130049
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "text": "Execute somente testes de integração para este projeto Go. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-cacf7a30-a689-4226-9202-c270bf6ac710",
+    "author": "user",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "cf2ed288-8b18-4c62-89a3-b09b72bb5d79",
+    "timestamp": 1788394859.3149366
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "function_call": {
+            "id": "call_ES3BYbAnT79Da0ELJFY0sIsn",
+            "args": {
+              "request": "Execute somente testes de integração para este projeto Go. O código-fonte já está persistido no workspace do Coder. Detecte automaticamente a stack e o framework, sem usar stack_declarada. Não execute testes unitários ou E2E. Valide o fluxo de checkout: reserva de estoque bem-sucedida deve confirmar o checkout, e estoque insuficiente deve rejeitar o checkout com erro. Gere, execute e retorne o resultado normalizado."
+            },
+            "name": "integration_tests_agent"
+          }
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 1792,
+      "candidates_token_count": 106,
+      "prompt_token_count": 3867,
+      "total_token_count": 3973
+    },
+    "invocation_id": "e-cacf7a30-a689-4226-9202-c270bf6ac710",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "long_running_tool_ids": [],
+    "id": "de50c7a3-f7d0-4c89-992f-4d3bbfd527e2",
+    "timestamp": 1788394859.3650012
+  },
+  {
+    "content": {
+      "parts": [
+        {
+          "function_response": {
+            "id": "call_ES3BYbAnT79Da0ELJFY0sIsn",
+            "name": "integration_tests_agent",
+            "response": {
+              "result": "{\n  \"status\": \"sucesso\",\n  \"tipo_teste\": \"integracao\",\n  \"inspecao\": {\n    \"status\": \"suportado\",\n    \"tipo_teste\": \"integracao\",\n    \"projeto\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\",\n    \"perfil\": {\n      \"profile_id\": \"go-integration\",\n      \"test_type\": \"integracao\",\n      \"stack\": \"go\",\n      \"framework\": \"testing\",\n      \"source_suffixes\": [\".go\"],\n      \"marker_files\": [\"go.mod\"],\n      \"test_file_pattern\": \"<componente>_integration_test.go\",\n      \"generator\": \"go_integration_generator\",\n      \"executor\": \"go_integration_runner\",\n      \"aliases\": [\"golang\"],\n      \"implemented\": true\n    },\n    \"confianca\": 0.3333333333333333,\n    \"evidencias\": [\"marcador:go.mod\", \"fontes:3\"],\n    \"arquivos_fonte\": [\n      \"repository.go\",\n      \"repository_integration_test.go\",\n      \"service.go\"\n    ],\n    \"bloqueios\": []\n  },\n  \"perfil\": {\n    \"profile_id\": \"go-integration\",\n    \"test_type\": \"integracao\",\n    \"stack\": \"go\",\n    \"framework\": \"testing\",\n    \"source_suffixes\": [\".go\"],\n    \"marker_files\": [\"go.mod\"],\n    \"test_file_pattern\": \"<componente>_integration_test.go\",\n    \"generator\": \"go_integration_generator\",\n    \"executor\": \"go_integration_runner\",\n    \"aliases\": [\"golang\"],\n    \"implemented\": true\n  },\n  \"resumo\": {\n    \"total\": 1,\n    \"sucessos\": 1,\n    \"bloqueados\": 0,\n    \"falhas\": 0,\n    \"executados\": 1\n  },\n  \"arquivos_gerados\": [\n    \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\"\n  ],\n  \"detalhes\": [\n    {\n      \"id_artefato\": \"SEM_ID\",\n      \"status\": \"sucesso\",\n      \"fluxo\": \"A\",\n      \"framework\": \"go-testing\",\n      \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\",\n      \"arquivos_apoio\": [\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository.go\",\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\service.go\"\n      ],\n      \"resultado_execucao\": {\n        \"status\": \"sucesso\",\n        \"tipo_teste\": \"integracao\",\n        \"perfil\": \"go-integration\",\n        \"framework\": \"go-testing\",\n        \"comando\": [\n          \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n          \"test\",\n          \"-json\",\n          \".\"\n        ],\n        \"codigo_saida\": 0,\n        \"testes\": {\n          \"total\": 1,\n          \"sucessos\": 1,\n          \"falhas\": 0,\n          \"ignorados\": 0\n        },\n        \"saida\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\",\n        \"erros\": [],\n        \"resultado_bruto\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"go-integration\",\n          \"framework\": \"go-testing\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n            \"test\",\n            \"-json\",\n            \".\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        }\n      },\n      \"erro\": null,\n      \"resultado_bruto\": {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"go-testing\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository.go\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\service.go\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"go-integration\",\n          \"framework\": \"go-testing\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n            \"test\",\n            \"-json\",\n            \".\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    }\n  ],\n  \"bloqueios\": [],\n  \"resultado_bruto\": {\n    \"status\": \"concluido\",\n    \"perfil\": \"go-integration\",\n    \"detalhes\": [\n      {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"go-testing\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository.go\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\service.go\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"go-integration\",\n          \"framework\": \"go-testing\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n            \"test\",\n            \"-json\",\n            \".\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    ]\n  },\n  \"adaptador\": {\n    \"gerador\": \"go_integration_generator\",\n    \"executor\": \"go_integration_runner\"\n  }\n}"
+            }
+          }
+        }
+      ],
+      "role": "user"
+    },
+    "invocation_id": "e-cacf7a30-a689-4226-9202-c270bf6ac710",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {
+        "last_integration_test_result": "{\n  \"status\": \"sucesso\",\n  \"tipo_teste\": \"integracao\",\n  \"inspecao\": {\n    \"status\": \"suportado\",\n    \"tipo_teste\": \"integracao\",\n    \"projeto\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\",\n    \"perfil\": {\n      \"profile_id\": \"go-integration\",\n      \"test_type\": \"integracao\",\n      \"stack\": \"go\",\n      \"framework\": \"testing\",\n      \"source_suffixes\": [\".go\"],\n      \"marker_files\": [\"go.mod\"],\n      \"test_file_pattern\": \"<componente>_integration_test.go\",\n      \"generator\": \"go_integration_generator\",\n      \"executor\": \"go_integration_runner\",\n      \"aliases\": [\"golang\"],\n      \"implemented\": true\n    },\n    \"confianca\": 0.3333333333333333,\n    \"evidencias\": [\"marcador:go.mod\", \"fontes:3\"],\n    \"arquivos_fonte\": [\n      \"repository.go\",\n      \"repository_integration_test.go\",\n      \"service.go\"\n    ],\n    \"bloqueios\": []\n  },\n  \"perfil\": {\n    \"profile_id\": \"go-integration\",\n    \"test_type\": \"integracao\",\n    \"stack\": \"go\",\n    \"framework\": \"testing\",\n    \"source_suffixes\": [\".go\"],\n    \"marker_files\": [\"go.mod\"],\n    \"test_file_pattern\": \"<componente>_integration_test.go\",\n    \"generator\": \"go_integration_generator\",\n    \"executor\": \"go_integration_runner\",\n    \"aliases\": [\"golang\"],\n    \"implemented\": true\n  },\n  \"resumo\": {\n    \"total\": 1,\n    \"sucessos\": 1,\n    \"bloqueados\": 0,\n    \"falhas\": 0,\n    \"executados\": 1\n  },\n  \"arquivos_gerados\": [\n    \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\"\n  ],\n  \"detalhes\": [\n    {\n      \"id_artefato\": \"SEM_ID\",\n      \"status\": \"sucesso\",\n      \"fluxo\": \"A\",\n      \"framework\": \"go-testing\",\n      \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\",\n      \"arquivos_apoio\": [\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository.go\",\n        \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\service.go\"\n      ],\n      \"resultado_execucao\": {\n        \"status\": \"sucesso\",\n        \"tipo_teste\": \"integracao\",\n        \"perfil\": \"go-integration\",\n        \"framework\": \"go-testing\",\n        \"comando\": [\n          \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n          \"test\",\n          \"-json\",\n          \".\"\n        ],\n        \"codigo_saida\": 0,\n        \"testes\": {\n          \"total\": 1,\n          \"sucessos\": 1,\n          \"falhas\": 0,\n          \"ignorados\": 0\n        },\n        \"saida\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\",\n        \"erros\": [],\n        \"resultado_bruto\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"go-integration\",\n          \"framework\": \"go-testing\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n            \"test\",\n            \"-json\",\n            \".\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        }\n      },\n      \"erro\": null,\n      \"resultado_bruto\": {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"go-testing\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository.go\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\service.go\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"go-integration\",\n          \"framework\": \"go-testing\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n            \"test\",\n            \"-json\",\n            \".\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    }\n  ],\n  \"bloqueios\": [],\n  \"resultado_bruto\": {\n    \"status\": \"concluido\",\n    \"perfil\": \"go-integration\",\n    \"detalhes\": [\n      {\n        \"id_artefato\": \"SEM_ID\",\n        \"status\": \"gerado\",\n        \"fluxo\": \"A\",\n        \"framework\": \"go-testing\",\n        \"arquivo_gerado\": \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository_integration_test.generated.go\",\n        \"arquivos_apoio\": [\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\repository.go\",\n          \"C:\\\\Users\\\\Filipe\\\\Documents\\\\GitHub\\\\AI4ES\\\\adk\\\\evidencias_multilevel\\\\dev_ui_workspaces\\\\go-integration\\\\workspace_output\\\\coder\\\\src\\\\service.go\"\n        ],\n        \"resultado_execucao\": {\n          \"status\": \"sucesso\",\n          \"tipo_teste\": \"integracao\",\n          \"perfil\": \"go-integration\",\n          \"framework\": \"go-testing\",\n          \"comando\": [\n            \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.EXE\",\n            \"test\",\n            \"-json\",\n            \".\"\n          ],\n          \"codigo_saida\": 0,\n          \"stdout\": \"{\\\"Time\\\":\\\"2026-09-02T21:21:11.7037262-03:00\\\",\\\"Action\\\":\\\"start\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1935105-03:00\\\",\\\"Action\\\":\\\"run\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"=== RUN   TestCheckoutService_Integration_SuccessAndFailure\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1958864-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Output\\\":\\\"--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Test\\\":\\\"TestCheckoutService_Integration_SuccessAndFailure\\\",\\\"Elapsed\\\":0}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.1965502-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"PASS\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2099127-03:00\\\",\\\"Action\\\":\\\"output\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Output\\\":\\\"ok  \\\\texample.com/qa-integration\\\\t1.503s\\\\n\\\"}\\n{\\\"Time\\\":\\\"2026-09-02T21:21:13.2529255-03:00\\\",\\\"Action\\\":\\\"pass\\\",\\\"Package\\\":\\\"example.com/qa-integration\\\",\\\"Elapsed\\\":1.55}\\n\",\n          \"stderr\": \"\",\n          \"bloqueios\": []\n        },\n        \"erro\": null\n      }\n    ]\n  },\n  \"adaptador\": {\n    \"gerador\": \"go_integration_generator\",\n    \"executor\": \"go_integration_runner\"\n  }\n}"
+      },
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "1d91480f-4cc2-4fe0-800e-8696214cb4bc",
+    "timestamp": 1788394887.26637
+  },
+  {
+    "model_version": "github_copilot/gpt-4.1-2025-04-14",
+    "content": {
+      "parts": [
+        {
+          "text": "Segue o resultado normalizado da última execução de teste de integração para o projeto Go, conforme solicitado:\n\nResumo da Execução\n- Status geral: sucesso\n- Tipo de teste: integração\n- Stack detectada: Go (framework \"testing\")\n- Total de testes executados: 1\n    - Sucessos: 1\n    - Falhas: 0\n    - Bloqueados: 0\n\nArquivo de teste gerado e executado:\n- C:\\Users\\Filipe\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\dev_ui_workspaces\\go-integration\\workspace_output\\coder\\src\\repository_integration_test.generated.go\n\nArquivos de apoio utilizados:\n- repository.go\n- service.go\n\nComando executado:\n- go test -json .\n\nSaída relevante do teste (stdout Go):\n- Teste executado: TestCheckoutService_Integration_SuccessAndFailure\n- Resultado: PASS (validação de ambos os fluxos solicitados -- confirmação de checkout com estoque suficiente e erro com estoque insuficiente)\n\nTrecho do log:\n```\n=== RUN   TestCheckoutService_Integration_SuccessAndFailure\n--- PASS: TestCheckoutService_Integration_SuccessAndFailure (0.00s)\nPASS\nok  \texample.com/qa-integration\t1.503s\n```\n\nNormalização do status:\n- Nenhum bloqueio ou erro identificado no runner Go.\n- Todos os critérios da solicitação foram contemplados.\n- Não foram gerados artifacts de dúvida, nem prompts de autocorreção.\n\nSe necessitar do arquivo gerado, do log bruto de execução ou deseja ampliar/ajustar a cobertura, por favor, informe."
+        }
+      ],
+      "role": "model"
+    },
+    "partial": false,
+    "finish_reason": "STOP",
+    "usage_metadata": {
+      "cached_content_token_count": 1792,
+      "candidates_token_count": 351,
+      "prompt_token_count": 8431,
+      "total_token_count": 8782
+    },
+    "invocation_id": "e-cacf7a30-a689-4226-9202-c270bf6ac710",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {},
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "9bb3e827-555b-4679-bfaf-055555f5beba",
+    "timestamp": 1788394887.3228548
+  },
+  {
+    "invocation_id": "e-cacf7a30-a689-4226-9202-c270bf6ac710",
+    "author": "qa_pipeline",
+    "actions": {
+      "state_delta": {
+        "qa_manifest": {
+          "phase": "qa",
+          "status": "partial",
+          "artifacts": [],
+          "doubts": [],
+          "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+        },
+        "phase_manifests": [
+          {
+            "phase": "qa",
+            "status": "partial",
+            "artifacts": [],
+            "doubts": [],
+            "summary": "QA gerou 0 teste(s); pytest: 0 passed, 0 failed, 0 skipped; dúvidas bloqueantes: 0."
+          }
+        ]
+      },
+      "artifact_delta": {},
+      "requested_auth_configs": {},
+      "requested_tool_confirmations": {}
+    },
+    "id": "3eadf772-3856-4af1-842c-f8919b3cfbc1",
+    "timestamp": 1788394890.0249596
+  }
+]
