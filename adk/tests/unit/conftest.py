@@ -35,6 +35,7 @@ from src.agents.workflow_requirements.agent import agent as _req  # noqa: F401
 from src.agents.workflow_design_pipeline.agent import agent as _design  # noqa: F401
 from src.agents.workflow_qa.agent import agent as _qa  # noqa: F401
 from src.agents.orchestrator.agent import root_agent as _orch  # noqa: F401
+from src.agents.workflow_taco.agent import root_agent as _wt  # noqa: F401
 
 # app.main dispara a cadeia de import da ADK (google.adk.cli.fast_api →
 # evaluation) e cria a FastAPI app no import. Pré-importamos aqui — antes de
