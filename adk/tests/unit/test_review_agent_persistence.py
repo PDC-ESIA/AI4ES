@@ -119,6 +119,61 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(tmp_pa
     assert "- app/main.py" in rendered
 
 
+def test_review_analyzer_instruction_provider_inclui_aceitacao_com_ressalvas(tmp_path, monkeypatch):
+    """O reviewer recebe status, conceito e ressalva publicados pelo TaskIterator."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from shared.tools.coding_tools import review_tools
+    import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+    importlib.reload(review_tools)
+    importlib.reload(cr_reviewer)
+
+    class _FakeCtx:
+        state = {
+            "task_iteration_summary": {
+                "expected_task_ids": ["TASK-001"],
+                "accepted_task_ids": ["TASK-001"],
+                "cobertura_completa": True,
+                "qualidade_completa": False,
+                "task_results": {
+                    "TASK-001": {
+                        "status": "aceito_com_ressalvas",
+                        "conceito": "B",
+                        "nota_final": 0.8,
+                        "motivo_terminacao": "aceito_com_ressalvas_plato_nota",
+                        "blocking_reason": "Dois testes ainda falham.",
+                    }
+                },
+            }
+        }
+
+    rendered = cr_reviewer._analyzer_instruction_provider(_FakeCtx())
+
+    assert "Tasks aceitas com ressalvas: TASK-001" in rendered
+    assert "status=aceito_com_ressalvas" in rendered
+    assert "conceito=B" in rendered
+    assert "Dois testes ainda falham." not in rendered
+    assert "isoladamente, NÃO bloqueiam o pipeline" in rendered
+
+
+def test_review_analyzer_instruction_preserva_bloqueios_criticos(tmp_path, monkeypatch):
+    """A política de ressalvas não encobre segurança, dados ou base inexequível."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from shared.tools.coding_tools import review_tools
+    import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+    importlib.reload(review_tools)
+    importlib.reload(cr_reviewer)
+
+    rendered = cr_reviewer._analyzer_instruction_provider(type("Ctx", (), {"state": {}})())
+
+    assert "Vulnerabilidade séria" in rendered
+    assert "perda/corrupção de dados" in rendered
+    assert "continuam sendo `critical`" in rendered
+
+
 def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monkeypatch):
     """tool_ler_arquivo do analyzer resolve paths relativos contra _CODER_WS."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
@@ -355,3 +410,96 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
         "verificacao_revisao.md não foi criado"
     )
     assert "APROVADO" in relatorio.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Dimensão de aceite no contexto do reviewer (Fase 7)
+# ---------------------------------------------------------------------------
+
+
+def _reviewer_recarregado(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+
+    import importlib
+    from shared.tools.coding_tools import review_tools
+    import src.agents.workflow_coding_review.reviewer.agent as cr_reviewer
+
+    importlib.reload(review_tools)
+    return importlib.reload(cr_reviewer)
+
+
+def _ctx_com_aceite(**aceite):
+    dados = {
+        "total": 4,
+        "atendidos": 1,
+        "nao_atendidos": 0,
+        "criterios_enderecaveis": ["CA-02"],
+    }
+    dados.update(aceite)
+
+    class _FakeCtx:
+        state = {
+            "task_iteration_summary": {
+                "expected_task_ids": ["TASK-001"],
+                "accepted_task_ids": [],
+                "cobertura_completa": True,
+                "qualidade_completa": True,
+                "task_results": {
+                    "TASK-001": {
+                        "status": "aprovado",
+                        "conceito": "A",
+                        "nota_final": 0.95,
+                        "nota_aceite": 1.0,
+                        "cobertura_criterios": 0.25,
+                        "motivo_terminacao": "aprovado",
+                        "aceite": dados,
+                    }
+                },
+            }
+        }
+
+    return _FakeCtx()
+
+
+def test_reviewer_recebe_nota_cobertura_e_criterios_sem_teste(tmp_path, monkeypatch):
+    cr_reviewer = _reviewer_recarregado(tmp_path, monkeypatch)
+
+    rendered = cr_reviewer._analyzer_instruction_provider(_ctx_com_aceite())
+
+    assert "critérios de aceite: nota=1.00" in rendered
+    assert "cobertura=25%" in rendered
+    assert "1 atendidos, 0 não atendidos, 3 sem verificação" in rendered
+    assert "sem teste que os cubra: CA-02" in rendered
+
+
+def test_reviewer_e_instruido_a_nao_bloquear_por_cobertura(tmp_path, monkeypatch):
+    """Cobertura baixa é limite da instrumentação, não defeito do código."""
+    cr_reviewer = _reviewer_recarregado(tmp_path, monkeypatch)
+
+    rendered = cr_reviewer._analyzer_instruction_provider(_ctx_com_aceite())
+
+    assert "NÃO bloqueie a entrega por causa dela" in rendered
+    assert "lacuna ENDEREÇÁVEL" in rendered
+
+
+def test_task_sem_criterios_nao_gera_ruido_no_contexto(tmp_path, monkeypatch):
+    cr_reviewer = _reviewer_recarregado(tmp_path, monkeypatch)
+
+    rendered = cr_reviewer._analyzer_instruction_provider(
+        _ctx_com_aceite(total=0, atendidos=0, criterios_enderecaveis=[])
+    )
+
+    assert "critérios de aceite: nenhum registrado" in rendered
+
+
+def test_nota_de_aceite_ausente_e_reportada_como_nao_apuravel(tmp_path, monkeypatch):
+    """`None` é 'não verifiquei' — não pode ser renderizado como zero."""
+    cr_reviewer = _reviewer_recarregado(tmp_path, monkeypatch)
+
+    ctx = _ctx_com_aceite(atendidos=0, nao_atendidos=0)
+    ctx.state["task_iteration_summary"]["task_results"]["TASK-001"]["nota_aceite"] = None
+
+    rendered = cr_reviewer._analyzer_instruction_provider(ctx)
+
+    assert "nota=não apurável" in rendered
+    assert "nota=0.00" not in rendered
