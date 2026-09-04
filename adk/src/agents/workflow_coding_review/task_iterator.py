@@ -326,11 +326,11 @@ def _progresso(state: dict) -> dict:
 
 
 def conceito_da_nota(nota: Optional[float]) -> Optional[str]:
-"""Converte a nota normalizada (0..1) no conceito público da task.
+    """Converte a nota normalizada (0..1) no conceito público da task.
 
-Fronteiras (equivalentes a 6/10 e 9/10): até 0.6 (inclusive) é C; acima de 0.6 até
-0.9 é B; acima de 0.9 é A. ``None`` significa que não houve rodada mensurável.
-"""
+    Fronteiras (equivalentes a 6/10 e 9/10): até 0.6 (inclusive) é C; acima de 0.6 até
+    0.9 é B; acima de 0.9 é A. ``None`` significa que não houve rodada mensurável.
+    """
     if nota is None:
         return None
     if nota <= _LIMITE_CONCEITO_C:
