@@ -7,266 +7,258 @@
 
 | HU | Título | Perfil | RFs Relacionados | RNFs Relacionados |
 |----|--------|--------|------------------|-------------------|
-| HU01 | Cadastrar quadra | Operador | RF01, RF02 | RNF03, RNF07 |
+| HU01 | Cadastrar quadra | Operador | RF01, RF02, RF12 | RF07-indireto, RNF03, RNF07 |
 | HU02 | Bloquear horários para manutenção | Operador | RF03 | RNF03 |
 | HU03 | Visualizar agenda consolidada | Operador | RF11 | RNF02, RNF03 |
 | HU04 | Cancelar reserva com justificativa | Operador | RF09, RF10 | RNF03 |
 | HU05 | Consultar disponibilidade sem cadastro | Cliente | RF04, RF07 | RNF01, RNF02, RNF06 |
-| HU06 | Realizar reserva | Cliente | RF05, RF06, RF07, RF10 | RNF01, RNF05 |
-| HU07 | Cancelar minha reserva | Cliente | RF08 | RNF01 |
+| HU06 | Realizar reserva | Cliente | RF05, RF06, RF07, RF10 | RNF05, RNF01 |
+| HU07 | Cancelar minha reserva | Cliente | RF08 | RNF05, RNF01 |
 
-**Requisitos transversais não vinculados diretamente a uma HU:** RF12 (valores diferenciados por faixa de horário), RNF04 (disponibilidade 24/7).
+**Observação:** RF12 (valores por faixa de horário) não possui HU dedicada — ver Seção 7.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Componentes (Visão Macro)
+### 2.1 Diagrama de Componentes (visão macro)
 
 ```mermaid
 graph TD
-    subgraph Cliente_Final["Camada de Apresentação"]
-        UICliente["UI Cliente Responsiva<br/>(sem login)"]
-        UIOperador["UI Administrativa<br/>(autenticada)"]
+    subgraph Cliente_Publico
+        UIC[Interface Pública do Cliente]
+    end
+    subgraph Area_Administrativa
+        UIA[Interface Administrativa do Operador]
     end
 
-    subgraph Backend["Camada de Aplicação / Domínio"]
-        AuthService["Serviço de Autenticação"]
-        QuadraService["Serviço de Quadras"]
-        BloqueioService["Serviço de Bloqueios"]
-        DisponibilidadeService["Serviço de Disponibilidade"]
-        ReservaService["Serviço de Reservas"]
-        AgendaService["Serviço de Agenda Consolidada"]
-        TarifacaoService["Serviço de Tarifação"]
-        NotificacaoService["Serviço de Notificação (E-mail)"]
-    end
+    GW[API Gateway / Camada de Entrada]
+    AUTH[Serviço de Autenticação]
+    QRY[Serviço de Consulta de Disponibilidade]
+    RES[Serviço de Reservas]
+    QUA[Serviço de Gestão de Quadras]
+    AGD[Serviço de Agenda Consolidada]
+    NOT[Serviço de Notificação por E-mail]
+    PRC[Serviço de Precificação]
 
-    subgraph Persistencia["Camada de Persistência"]
-        RepoQuadra[("Repositório de Quadras")]
-        RepoBloqueio[("Repositório de Bloqueios")]
-        RepoReserva[("Repositório de Reservas")]
-    end
+    REPO[(Repositório de Persistência)]
 
-    ProvedorEmail["Provedor de E-mail (externo)"]
-
-    UICliente --> DisponibilidadeService
-    UICliente --> ReservaService
-    UIOperador --> AuthService
-    UIOperador --> QuadraService
-    UIOperador --> BloqueioService
-    UIOperador --> AgendaService
-    UIOperador --> ReservaService
-    UIOperador --> TarifacaoService
-
-    QuadraService --> RepoQuadra
-    BloqueioService --> RepoBloqueio
-    DisponibilidadeService --> RepoQuadra
-    DisponibilidadeService --> RepoBloqueio
-    DisponibilidadeService --> RepoReserva
-    ReservaService --> RepoReserva
-    ReservaService --> DisponibilidadeService
-    ReservaService --> TarifacaoService
-    ReservaService --> NotificacaoService
-    AgendaService --> RepoReserva
-    AgendaService --> RepoQuadra
-    TarifacaoService --> RepoQuadra
-    NotificacaoService --> ProvedorEmail
+    UIC --> GW
+    UIA --> GW
+    GW --> AUTH
+    GW --> QRY
+    GW --> RES
+    GW --> QUA
+    GW --> AGD
+    QUA --> REPO
+    QRY --> REPO
+    RES --> REPO
+    AGD --> REPO
+    RES --> NOT
+    RES --> PRC
+    QUA --> PRC
+    AGD --> QRY
+    AUTH --> REPO
 ```
 
-### 2.2 Diagrama de Sequência — HU06 Realizar Reserva (com atomicidade RNF05)
+### 2.2 Diagrama de Sequência — Realizar Reserva (HU06 / RF05, RF06, RF07, RF10, RNF05)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Cliente (UI)
-    participant RS as ReservaService
-    participant DS as DisponibilidadeService
-    participant TS as TarifacaoService
-    participant RR as Repositório de Reservas
-    participant NS as NotificacaoService
-    participant EM as Provedor de E-mail
+    participant C as Cliente (Navegador)
+    participant GW as API Gateway
+    participant QRY as Serviço de Consulta
+    participant RES as Serviço de Reservas
+    participant PRC as Serviço de Precificação
+    participant REPO as Repositório
+    participant NOT as Serviço de Notificação
 
-    C->>RS: solicitarReserva(quadra, data, horário, dados contato)
-    RS->>DS: verificarDisponibilidade(quadra, data, horário)
-    DS-->>RS: horário disponível
-    RS->>TS: calcularValor(quadra, faixaHorário)
-    TS-->>RS: valor calculado
-    Note over RS,RR: Operação atômica (bloqueio/transação)
-    RS->>RR: reservarComExclusividade(quadra, horário)
-    alt horário já ocupado (concorrência)
-        RR-->>RS: conflito
-        RS-->>C: erro: horário indisponível
-    else reserva confirmada
-        RR-->>RS: reserva persistida + código único gerado
-        RS->>NS: enviarConfirmacao(email, dados reserva)
-        NS->>EM: dispatch e-mail
-        EM-->>NS: aceito
-        RS-->>C: código de confirmação exibido
+    C->>GW: Solicita horários disponíveis (quadra, data)
+    GW->>QRY: Consultar disponibilidade
+    QRY->>REPO: Buscar reservas/bloqueios
+    REPO-->>QRY: Lista de horários
+    QRY-->>C: Horários disponíveis
+
+    C->>GW: Enviar reserva (nome, email, telefone, horário)
+    GW->>RES: Criar reserva
+    RES->>PRC: Calcular valor da faixa de horário
+    PRC-->>RES: Valor aplicado
+    RES->>REPO: Bloqueio atômico do horário (transação)
+    alt Horário ainda disponível
+        REPO-->>RES: Sucesso (registro criado)
+        RES->>RES: Gerar código de confirmação único
+        RES->>REPO: Persistir código
+        RES-->>C: Exibir código de confirmação
+        RES->>NOT: Enviar e-mail (quadra, data, horário, código)
+        NOT-->>C: E-mail de confirmação
+    else Horário já ocupado (conflito)
+        REPO-->>RES: Falha (violação de unicidade)
+        RES-->>C: Erro - horário indisponível
     end
 ```
 
-### 2.3 Diagrama de Sequência — HU07 Cancelar reserva pelo cliente
+### 2.3 Diagrama de Sequência — Cancelamento pelo Cliente (HU07 / RF08)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Cliente (UI)
-    participant RS as ReservaService
-    participant RR as Repositório de Reservas
-    participant DS as DisponibilidadeService
-    participant NS as NotificacaoService
+    participant C as Cliente
+    participant GW as API Gateway
+    participant RES as Serviço de Reservas
+    participant REPO as Repositório
+    participant NOT as Serviço de Notificação
 
-    C->>RS: cancelarReserva(códigoConfirmação)
-    RS->>RR: buscarPorCodigo(código)
-    alt código inválido
-        RR-->>RS: não encontrado
-        RS-->>C: erro: código inválido
-    else código válido
-        RR-->>RS: reserva encontrada
-        RS->>RR: marcarComoCancelada(reserva)
-        RR-->>RS: ok
-        RS->>DS: liberarHorario(quadra, horário)
-        DS-->>RS: horário disponível novamente
-        RS-->>C: cancelamento confirmado
+    C->>GW: Solicitar cancelamento (código de confirmação)
+    GW->>RES: Validar código
+    RES->>REPO: Buscar reserva por código
+    alt Código válido
+        REPO-->>RES: Reserva encontrada
+        RES->>REPO: Liberar horário (transação)
+        REPO-->>RES: Horário liberado
+        RES-->>C: Cancelamento confirmado
+        RES->>NOT: (opcional) Notificar cancelamento
+    else Código inválido
+        REPO-->>RES: Não encontrado
+        RES-->>C: Erro - código inválido
     end
 ```
 
-### 2.4 Diagrama de Classes de Domínio
+### 2.4 Diagrama de Classes (modelo de domínio)
 
 ```mermaid
 classDiagram
     class Quadra {
-        +String id
-        +String nome
-        +String tipo
-        +Horario funcionamentoInicio
-        +Horario funcionamentoFim
-        +Decimal valorHora
+        +id
+        +nome
+        +tipo
+        +horarioFuncionamento
+        +valorHora
         +editar()
         +remover()
     }
-    class FaixaTarifaria {
-        +String id
-        +Horario inicio
-        +Horario fim
-        +Decimal valor
+    class FaixaHorario {
+        +id
+        +horaInicio
+        +horaFim
+        +valorDiferenciado
     }
     class Bloqueio {
-        +String id
-        +Data data
-        +Horario inicio
-        +Horario fim
-        +String motivo
-        +remover()
+        +id
+        +data
+        +horaInicio
+        +horaFim
+        +motivo
     }
     class Reserva {
-        +String codigoConfirmacao
-        +Data data
-        +Horario horario
-        +StatusReserva status
-        +String motivoCancelamento
+        +id
+        +codigoConfirmacao
+        +data
+        +horario
+        +status
         +cancelar()
     }
     class Cliente {
-        +String nome
-        +String email
-        +String telefone
+        +nome
+        +email
+        +telefone
+    }
+    class Cancelamento {
+        +motivo
+        +origem
+        +dataHora
     }
     class Operador {
-        +String id
-        +String usuario
+        +id
+        +credenciais
     }
 
-    Quadra "1" --> "0..*" FaixaTarifaria
-    Quadra "1" --> "0..*" Bloqueio
-    Quadra "1" --> "0..*" Reserva
-    Reserva "0..*" --> "1" Cliente
-    Operador ..> Reserva : cancela
-    Operador ..> Quadra : gerencia
+    Quadra "1" --> "*" FaixaHorario
+    Quadra "1" --> "*" Bloqueio
+    Quadra "1" --> "*" Reserva
+    Reserva "1" --> "1" Cliente
+    Reserva "1" --> "0..1" Cancelamento
+    Operador "1" --> "*" Quadra : gerencia
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-| ID | Decisão | Justificativa | Requisitos Atendidos |
-|----|---------|---------------|----------------------|
-| DA01 | Separação em dois canais de interface (UI Cliente pública e UI Administrativa autenticada) | Cliente consulta/reserva sem login; operador exige autenticação | RF04, RNF03, HU05 |
-| DA02 | Modularização por serviços de domínio (Quadra, Bloqueio, Reserva, Disponibilidade, Tarifação, Notificação) | Permite incluir novas modalidades e regras com baixo acoplamento | RNF07 |
-| DA03 | Confirmação de reserva mediante controle de exclusividade transacional/atômico sobre o par (quadra, horário) | Impede duplo agendamento em concorrência | RF07, RNF05, HU06 |
-| DA04 | Geração de código de confirmação único e imutável por reserva | Serve como chave para cancelamento pelo cliente sem cadastro | RF06, RF08, HU07 |
-| DA05 | Serviço de Notificação desacoplado da confirmação (dispatch assíncrono ao provedor externo) | Falha de e-mail não deve invalidar reserva já confirmada | RF10, HU04 |
-| DA06 | Disponibilidade computada dinamicamente a partir de funcionamento − bloqueios − reservas | Fonte única de verdade para consulta e agenda | RF03, RF04, RF11 |
-| DA07 | Serviço de Tarifação parametrizável por faixa de horário | Suporta valores diferenciados (horário nobre) | RF12 |
-| DA08 | Camada de apresentação responsiva e compatível com navegadores modernos | Acesso mobile/desktop e cross-browser | RNF01, RNF06 |
-| DA09 | Desenho voltado a operação contínua (componentes stateless na aplicação, estado em persistência) | Suporta regime 24/7 com 99% de disponibilidade | RNF04 |
+| ID | Decisão | Justificativa | Requisito |
+|----|---------|---------------|-----------|
+| DA01 | Separação entre Interface Pública (sem login) e Interface Administrativa (autenticada). | RF04/HU05 exige acesso sem cadastro; RNF03 exige proteção da área administrativa. | RF04, RNF03 |
+| DA02 | Serviço de Reservas com operação de confirmação **atômica/transacional** e restrição de unicidade sobre (quadra, data, horário). | Impedir duplo agendamento em requisições simultâneas. | RF07, RNF05 |
+| DA03 | Modularização por serviços de responsabilidade única (Quadras, Reservas, Consulta, Agenda, Precificação, Notificação). | Facilita inclusão de novas modalidades e evolução independente. | RNF07 |
+| DA04 | Serviço de Notificação desacoplado e assíncrono. | Falhas no envio de e-mail não devem impedir a conclusão da reserva. | RF10, RNF04, RNF05 |
+| DA05 | Serviço de Precificação separado, aplicando regras de faixa de horário. | Isolar regras de valor diferenciado (horário nobre). | RF12 |
+| DA06 | Consulta de disponibilidade otimizada e servida com resposta ≤ 2s (leitura desacoplada de escrita). | Atender meta de desempenho do calendário. | RNF02 |
+| DA07 | Interface do cliente responsiva e compatível com navegadores modernos. | Uso em dispositivos móveis e desktops. | RNF01, RNF06 |
+| DA08 | Código de confirmação como identificador único e chave de operações do cliente (cancelamento sem login). | Permite cancelamento sem cadastro. | RF06, RF08 |
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|-----------|----------------------------|-----------------|----------------------------------|
-| UI Cliente Responsiva | Consulta de disponibilidade, realizar e cancelar reserva sem login | DisponibilidadeService, ReservaService | HU05, HU06, HU07 / RNF01, RNF06 |
-| UI Administrativa | Gestão de quadras, bloqueios, agenda, cancelamentos e tarifas | AuthService e serviços de operador | HU01–HU04 / RNF03 |
-| AuthService | Autenticar operador e proteger área administrativa | UI Administrativa | RNF03 / "acessível sem login" (contraste HU05) |
-| QuadraService | Cadastrar, editar, remover quadras | RepoQuadra | HU01 / RF01, RF02 |
-| BloqueioService | Criar e remover bloqueios de horário | RepoBloqueio | HU02 / RF03, "remover bloqueio a qualquer momento" |
-| DisponibilidadeService | Calcular horários livres/ocupados por quadra e data | RepoQuadra, RepoBloqueio, RepoReserva | HU05 / RF04, RF07, RNF02 |
-| ReservaService | Orquestrar reserva atômica, gerar código, cancelamento | DisponibilidadeService, TarifacaoService, RepoReserva, NotificacaoService | HU06, HU07, HU04 / RF05–RF09, RNF05 |
-| AgendaService | Consolidar agenda diária de todas as quadras | RepoReserva, RepoQuadra | HU03 / RF11 |
-| TarifacaoService | Calcular valor por hora e faixas diferenciadas | RepoQuadra | RF12 / HU01 |
-| NotificacaoService | Enviar confirmações e avisos de cancelamento por e-mail | Provedor de E-mail | HU06, HU04 / RF10 |
-| Repositório de Quadras | Persistir quadras e faixas tarifárias | QuadraService, DisponibilidadeService, AgendaService, TarifacaoService | RF01, RF02, RF12 |
-| Repositório de Bloqueios | Persistir bloqueios de horário | BloqueioService, DisponibilidadeService | RF03 |
-| Repositório de Reservas | Persistir reservas com garantia de unicidade horário/quadra | ReservaService, DisponibilidadeService, AgendaService | RF05–RF08, RNF05 |
-| Provedor de E-mail | Entregar mensagens ao cliente | NotificacaoService | RF10 |
+|------------|---------------------------|-----------------|----------------------------------|
+| Interface Pública do Cliente | Exibir disponibilidade, coletar dados de reserva e cancelamento, responsiva | API Gateway | HU05, HU06, HU07 / RNF01, RNF06 |
+| Interface Administrativa do Operador | Gestão de quadras, bloqueios, agenda e cancelamentos | API Gateway | HU01–HU04 / RNF03 |
+| API Gateway / Camada de Entrada | Roteamento, ponto único de acesso, encaminhar autenticação | Todos os serviços | Todas as HUs |
+| Serviço de Autenticação | Autenticar/autorizar operador na área administrativa | API Gateway, Repositório | RNF03 / HU01–HU04 |
+| Serviço de Gestão de Quadras | CRUD de quadras, bloqueios de horários, faixas de horário | Repositório, Precificação | HU01, HU02 / RF01, RF02, RF03 |
+| Serviço de Consulta de Disponibilidade | Calcular horários livres/ocupados por quadra e data | Repositório, Agenda | HU05 / RF04, RF07, RNF02 |
+| Serviço de Reservas | Criar reserva atômica, gerar código, cancelar, liberar horário | Repositório, Precificação, Notificação | HU06, HU07, HU04 / RF05–RF09, RNF05 |
+| Serviço de Precificação | Calcular valor conforme hora e faixa (horário nobre) | Reservas, Gestão de Quadras | RF12 |
+| Serviço de Agenda Consolidada | Consolidar ocupação diária de todas as quadras, navegação por data | Repositório, Consulta | HU03 / RF11 |
+| Serviço de Notificação por E-mail | Enviar confirmações e avisos de cancelamento | Serviço de Reservas | HU04, HU06 / RF10 |
+| Repositório de Persistência | Armazenar quadras, reservas, bloqueios, códigos, operadores | Todos os serviços | Transversal |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| ID | Descrição | Impacto | Necessário para |
-|----|-----------|---------|-----------------|
-| BL01 | Regras de gerenciamento de operadores não especificadas (cadastro, papéis, recuperação de senha) | Impede detalhar AuthService | RNF03 |
-| BL02 | Política de retenção/expiração de reservas não confirmadas ou passadas não definida | Afeta persistência e agenda | RF11 |
-| BL03 | Prazo/limite para cancelamento pelo cliente (ex.: antecedência mínima) não especificado | Regra de negócio de HU07 indefinida | HU07 |
-| BL04 | Comportamento em caso de falha no envio de e-mail (retry, fila) não especificado | Confiabilidade da notificação | RF10, HU04 |
-| BL05 | Definição das faixas de "horário nobre" (limites, sobreposição) ambígua | Cálculo de tarifa | RF12 |
-| BL06 | Ausência de forma de o cliente recuperar código de confirmação perdido | Usabilidade/cancelamento | HU07 |
+| ID | Descrição | Impacto | Status |
+|----|-----------|---------|--------|
+| BL01 | Não há definição de política de retenção/validade de reservas não confirmadas (hold temporário). | Afeta lógica de concorrência e liberação de horários. | Pendente esclarecimento |
+| BL02 | RF12 não especifica critérios das faixas (dias da semana, feriados, múltiplas faixas). | Regras de precificação incompletas. | Pendente |
+| BL03 | Não especificado provedor/mecanismo de envio de e-mail nem tratamento de falha/reenvio. | Confiabilidade da notificação. | Pendente |
+| BL04 | RNF04 (99%) não define janela de manutenção nem métricas de SLA. | Estratégia de disponibilidade indefinida. | Pendente |
+| BL05 | Não há definição sobre proteção contra abuso na reserva pública (rate limiting, verificação de e-mail/telefone). | Segurança e integridade de dados. | Pendente |
+| BL06 | HU04 exige notificação de cancelamento; RF09 não menciona e-mail explicitamente — alinhamento necessário. | Escopo do fluxo de cancelamento pelo operador. | Menor |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
 ### Requisitos Funcionais
-| RF | Coberto | Componente(s) |
-|----|---------|---------------|
-| RF01 | ✅ | QuadraService |
-| RF02 | ✅ | QuadraService |
-| RF03 | ✅ | BloqueioService |
-| RF04 | ✅ | DisponibilidadeService, UI Cliente |
-| RF05 | ✅ | ReservaService |
-| RF06 | ✅ | ReservaService |
-| RF07 | ✅ | DisponibilidadeService, ReservaService |
-| RF08 | ✅ | ReservaService |
-| RF09 | ✅ | ReservaService |
-| RF10 | ✅ | NotificacaoService |
-| RF11 | ✅ | AgendaService |
-| RF12 | ✅ | TarifacaoService |
+
+| RF | Componente(s) Responsável(is) | Coberto |
+|----|-------------------------------|---------|
+| RF01 | Serviço de Gestão de Quadras | ✅ |
+| RF02 | Serviço de Gestão de Quadras | ✅ |
+| RF03 | Serviço de Gestão de Quadras | ✅ |
+| RF04 | Serviço de Consulta / Interface Pública | ✅ |
+| RF05 | Serviço de Reservas | ✅ |
+| RF06 | Serviço de Reservas | ✅ |
+| RF07 | Serviço de Reservas / Consulta | ✅ |
+| RF08 | Serviço de Reservas | ✅ |
+| RF09 | Serviço de Reservas | ✅ |
+| RF10 | Serviço de Notificação | ✅ |
+| RF11 | Serviço de Agenda Consolidada | ✅ |
+| RF12 | Serviço de Precificação | ⚠️ Parcial (regras incompletas — BL02) |
 
 ### Requisitos Não Funcionais
-| RNF | Coberto | Abordagem |
-|-----|---------|-----------|
-| RNF01 | ✅ | UI responsiva (DA08) |
-| RNF02 | ⚠️ Parcial | DisponibilidadeService otimizado; meta de 2s exige validação de desempenho não detalhada |
-| RNF03 | ✅ | AuthService (DA01) |
-| RNF04 | ⚠️ Parcial | Design stateless (DA09); estratégia de redundância/infra não especificada |
-| RNF05 | ✅ | Reserva atômica (DA03) |
-| RNF06 | ✅ | Compatibilidade cross-browser (DA08) |
-| RNF07 | ✅ | Arquitetura modular (DA02) |
 
-**Cobertura Funcional: 12/12 (100%). Cobertura Não Funcional: 5 plenos + 2 parciais.**
+| RNF | Tratamento Arquitetural | Coberto |
+|-----|------------------------|---------|
+| RNF01 | Interface responsiva | ✅ |
+| RNF02 | Serviço de consulta otimizado (leitura desacoplada) | ✅ |
+| RNF03 | Serviço de Autenticação na área administrativa | ✅ |
+| RNF04 | Necessita definição de SLA/janela | ⚠️ Parcial (BL04) |
+| RNF05 | Transação atômica no Serviço de Reservas | ✅ |
+| RNF06 | Compatibilidade com navegadores modernos | ✅ |
+| RNF07 | Arquitetura modular por serviços | ✅ |
 
 ---
 
@@ -274,17 +266,16 @@ classDiagram
 
 | # | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
 |---|---------------------|----------------------|------------------|
-| G01 | **Gestão de identidade do operador** não especificada (criação de contas, papéis, MFA) | AuthService fica subespecificado; risco de segurança | Definir modelo de contas e política de senhas; considerar múltiplos operadores com auditoria |
-| G02 | **Estratégia de garantia de atomicidade** (RNF05) descrita conceitualmente, sem definir mecanismo | Ponto crítico de concorrência; risco de double-booking | Especificar controle de concorrência (lock pessimista/constraint de unicidade) na fase de projeto detalhado |
-| G03 | **Meta de desempenho de 2s (RNF02)** sem definição de volume/carga esperada | Dificulta validação e dimensionamento | Definir SLA quantitativo, volumes de quadras/reservas e estratégia de cache de disponibilidade |
-| G04 | **Disponibilidade 99% 24/7 (RNF04)** sem estratégia de tolerância a falhas/backup | Sem plano de contingência | Definir requisitos de redundância, monitoramento e recuperação (RTO/RPO) |
-| G05 | **Falha de notificação por e-mail** sem tratamento definido | Cliente pode não receber código embora reserva exista | Adotar dispatch assíncrono com reprocessamento; sempre exibir código na tela como fallback |
-| G06 | **Recuperação de código de confirmação perdido** ausente | Cliente sem cadastro pode ficar impossibilitado de cancelar | Prever reenvio por e-mail informando dados de contato originais |
-| G07 | **Regras de faixas tarifárias (RF12)** ambíguas (sobreposição, prioridade) | Cálculo de valor inconsistente | Definir modelo de faixas não sobrepostas e regra de resolução |
-| G08 | **Ausência de fuso horário / DST** na modelagem de horários | Riscos em cálculo de disponibilidade e bloqueios | Padronizar tratamento temporal e formato de datas/horas |
-| G09 | **Validação de dados de contato do cliente** (e-mail/telefone) não especificada | Impacta confiabilidade da notificação | Definir regras de validação de formato e verificação de e-mail |
-| G10 | **Política de dados pessoais (LGPD)** para dados de contato não mencionada | Conformidade legal | Definir retenção, consentimento e anonimização de dados de clientes |
+| G01 | **Ausência de "hold"/reserva temporária** durante o preenchimento de dados pelo cliente. | Risco de má experiência (horário aparece disponível e falha na confirmação) sob concorrência. | Definir mecanismo de bloqueio temporário com expiração no Serviço de Reservas. |
+| G02 | **Regras de precificação (RF12) subespecificadas** — quantidade de faixas, aplicação em feriados/fim de semana. | Modelo de dados e Serviço de Precificação incompletos. | Detalhar regras com o cliente antes da implementação. |
+| G03 | **Falha e reenvio de e-mail não tratados.** | Cliente pode não receber código; confiabilidade comprometida. | Definir fila assíncrona com retentativas e exibir código sempre em tela (fallback já previsto). |
+| G04 | **Sem gestão de identidade do cliente** — cancelamento depende apenas do código. | Código perdido = sem recuperação; possível enumeração de códigos. | Usar códigos não sequenciais/aleatórios e considerar validação por e-mail. |
+| G05 | **RNF04 sem SLA mensurável** e sem definição de estratégia de resiliência. | Impossível validar disponibilidade 24/7. | Definir métricas, monitoramento e janela de manutenção. |
+| G06 | **Proteção da reserva pública contra abuso** não especificada. | Vulnerabilidade a spam/reservas falsas. | Definir rate limiting e validação de contato. |
+| G07 | **Fuso horário e horário de funcionamento** não detalhados para geração de slots. | Erros de cálculo de disponibilidade. | Padronizar tratamento de datas/horários e granularidade dos slots. |
+| G08 | **Concorrência na agenda consolidada (RF11)** com atualizações em tempo real não especificada. | Operador pode ver dados desatualizados. | Definir estratégia de atualização/refresh da agenda. |
+| G09 | **Divergência RF09 × HU04** sobre notificação de cancelamento pelo operador. | Escopo do fluxo. | Alinhar: adotar notificação por e-mail também no cancelamento pelo operador. |
 
 ---
 
-*Fim do Relatório Canônico — AI4ES Time 2.*
+*Relatório gerado pelo Sistema Multi-Agente AI4ES — Time 2, conforme Template Canônico de 7 Seções e Regra de Neutralidade Tecnológica.*

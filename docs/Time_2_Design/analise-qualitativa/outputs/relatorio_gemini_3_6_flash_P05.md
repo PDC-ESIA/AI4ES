@@ -1,214 +1,244 @@
 # Relatório Técnico de Arquitetura de Software
 
----
-
 ## 1. Identificação das HUs
 
-A tabela a seguir consolida a rastreabilidade entre os Perfis de Usuário, Histórias de Usuário (HUs), Requisitos Funcionais (RF) e Requisitos Não Funcionais (RNF) associados:
+A tabela abaixo correlaciona as Histórias de Usuário (HUs) com seus respectivos Requisitos Funcionais (RF), Requisitos Não Funcionais (RNF), Perfis de Acesso (Personas) e Nível de Prioridade Arquitetural.
 
-| HU ID | Perfil | História de Usuário (Resumo) | Requisitos Funcionais (RF) | Requisitos Não Funcionais (RNF) |
-|---|---|---|---|---|
-| **HU01** | Operador | Cadastrar quadra informando nome, tipo, horário de funcionamento e valor base da hora. | RF01, RF02 | RNF03, RNF07 |
-| **HU02** | Operador | Bloquear horários específicos para manutenção ou feriados. | RF03 | RNF03 |
-| **HU03** | Operador | Visualizar agenda diária consolidada de todas as quadras. | RF11 | RNF01, RNF03 |
-| **HU04** | Operador | Cancelar reserva informando motivo e notificando o cliente. | RF09, RF10 | RNF03 |
-| **HU05** | Cliente | Consultar disponibilidade de horários sem necessidade de login. | RF04 | RNF01, RNF02, RNF06 |
-| **HU06** | Cliente | Realizar reserva com dados de contato, gerando código único e envio de confirmação. | RF05, RF06, RF07, RF10 | RNF01, RNF05, RNF06 |
-| **HU07** | Cliente | Cancelar a própria reserva mediante informe de código de confirmação. | RF08 | RNF01, RNF06 |
-| **N/A** | Operador | Configuração de tarifação diferenciada por faixa de horário (horário nobre). | RF12 | RNF03, RNF07 |
+| HU ID | Descrição Sucinta | Perfil / Persona | RFs Relacionados | RNFs Relacionados | Prioridade |
+|-------|-------------------|------------------|------------------|-------------------|------------|
+| **HU01** | Cadastrar e disponibilizar quadras com atributos (tipo, horário, valor) | Operador | RF01, RF02 | RNF03, RNF07 | Alta |
+| **HU02** | Bloquear horários para manutenção/feriados | Operador | RF03 | RNF03, RNF05 | Média |
+| **HU03** | Visualizar agenda consolidada diária de todas as quadras | Operador | RF11 | RNF01, RNF03, RNF06 | Média |
+| **HU04** | Cancelar reserva informando justificativa obrigatória | Operador | RF09 | RNF03, RNF05 | Média |
+| **HU05** | Consultar horários disponíveis por data e quadra sem autenticação | Cliente | RF04 | RNF01, RNF02, RNF06 | Alta |
+| **HU06** | Realizar reserva informando contato e gerando código único | Cliente | RF05, RF06, RF07, RF10 | RNF01, RNF02, RNF05 | Crítica |
+| **HU07** | Cancelar reserva própria via código de confirmação | Cliente | RF08 | RNF01, RNF05 | Média |
+| **N/A** | Configuração de faixas de preço (Horário Nobre) *(Requisito de Sistema)* | Operador | RF12 | RNF03, RNF07 | Média |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Diagrama de Componentes da Arquitetura
+### 2.1. Diagrama de Visão Geral de Componentes (Component Diagram)
 
-O diagrama abaixo ilustra a segregação de responsabilidades entre as interfaces dos perfis, os serviços de negócio centrais, os mecanismos de consistência e o barramento/serviço de notificação.
+O diagrama de componentes ilustra a separação conceitual das camadas, a exposição pública para clientes sem necessidade de login e o canal restrito e autenticado para operadores.
 
 ```mermaid
-componentDiagram
-    [Interface Pública - Cliente] as UI_Cliente
-    [Interface Administrativa - Operador] as UI_Operador
+graph TD
+    %% Interface e Acesso
+    subgraph Camada_Apresentacao [Camada de Apresentação]
+        UI_Pub[Interface Pública do Cliente - Web/Mobile]
+        UI_Adm[Interface Administrativa do Operador]
+    end
 
-    package "Módulo de Segurança & Acesso" {
-        [Componente de Autenticação] as AuthComp
-    }
+    %% Segurança e Autenticação
+    subgraph Camada_Seguranca [Camada de Segurança]
+        Sec_Auth[Serviço de Autenticação e Autorização]
+    end
 
-    package "Módulo de Gestão do Esporte" {
-        [Gerenciador de Quadras] as QuadraComp
-        [Gerenciador de Tarifas] as TarifaComp
-    }
+    %% Serviços de Negócio
+    subgraph Camada_Negocio [Camada de Domínio / Serviços]
+        Comp_Quadra[Gestor de Quadras e Grade de Horários]
+        Comp_Reserva[Gestor de Reservas e Atomicidade]
+        Comp_Preco[Motor de Precificação Dinâmica]
+        Comp_Agenda[Visualizador de Agenda Consolidada]
+        Comp_Notif[Serviço de Notificações Assíncronas]
+    end
 
-    package "Módulo de Reservas & Concorrência" {
-        [Motor de Agendamentos] as AgendamentoComp
-        [Controlador de Concorrência e Atomicidade] as AtomicComp
-        [Visualizador de Agenda Consolidada] as AgendaComp
-    }
+    %% Persistência e Integrações
+    subgraph Camada_Dados [Camada de Dados e Eventos]
+        Repo_Dados[(Repositório Central de Dados)]
+        Gateway_Email[Serviço Externo de Notificação por E-mail]
+    end
 
-    package "Módulo de Comunicação" {
-        [Serviço de Notificações] as NotificationComp
-    }
+    %% Conexões Cliente
+    UI_Pub -->|Consulta Pública / Criar Reserva| Comp_Quadra
+    UI_Pub -->|Efetuar / Cancelar Reserva| Comp_Reserva
 
-    UI_Cliente --> QuadraComp : Consulta disponibilidade (Sem Auth)
-    UI_Cliente --> AgendamentoComp : Solicita reserva / cancelamento
+    %% Conexões Operador
+    UI_Adm -->|Autenticação| Sec_Auth
+    Sec_Auth -->|Token/Sessão Válida| Comp_Quadra
+    Sec_Auth -->|Token/Sessão Válida| Comp_Agenda
+    Sec_Auth -->|Token/Sessão Válida| Comp_Reserva
 
-    UI_Operador --> AuthComp : Autentica
-    UI_Operador --> QuadraComp : Cadastra/Edita quadra (Com Auth)
-    UI_Operador --> TarifaComp : Configura horários nobres (Com Auth)
-    UI_Operador --> AgendamentoComp : Bloqueia horários / Cancela reserva (Com Auth)
-    UI_Operador --> AgendaComp : Visualiza matriz consolidada (Com Auth)
+    %% Conexões Internas
+    Comp_Reserva -->|Consulta Tarifas| Comp_Preco
+    Comp_Reserva -->|Valida Disponibilidade / Bloqueio| Comp_Quadra
+    Comp_Reserva -->|Dispara Evento de Confirmação/Cancelamento| Comp_Notif
+    Comp_Agenda -->|Agrega Agendamentos| Comp_Reserva
+    Comp_Agenda -->|Agrega Bloqueios| Comp_Quadra
 
-    AgendamentoComp --> AtomicComp : Valida e garante slot único
-    AgendamentoComp --> TarifaComp : Consulta valor do horário
-    AgendamentoComp --> NotificationComp : Dispara confirmação/cancelamento
+    %% Persistência
+    Comp_Quadra --> Repo_Dados
+    Comp_Reserva --> Repo_Dados
+    Comp_Preco --> Repo_Dados
+    Comp_Notif --> Gateway_Email
 ```
 
-### 2.2. Diagrama de Sequência: Realização de Reserva Atômica (HU06, RF05, RF06, RF07, RNF05)
+### 2.2. Diagrama de Sequência: Realização de Reserva com Garantia de Atomicidade (HU06 / RNF05)
 
-O fluxo a seguir garante a atomicidade da reserva, impedindo o duplo agendamento concorrente e finalizando com a notificação ao cliente.
+O diagrama a seguir detalha a interação para garantir a prevenção de duplo agendamento simultâneo (race conditions).
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Cliente as Cliente (Navegador/Mobile)
-    participant UI as Interface Pública
-    participant Agendamento as Motor de Agendamento
-    participant Atomic as Controlador de Atomicidade
-    participant Tarifa as Gerenciador de Tarifas
-    participant Notif as Serviço de Notificação
+    actor Cliente as Cliente (Sem Login)
+    participant UI as Interface Pública (Web/Mobile)
+    participant Core as Gestor de Reservas
+    participant Quadra as Gestor de Quadras
+    participant Repo as Repositório de Dados
+    participant Notif as Serviço de Notificações
 
-    Cliente ->> UI: Preenche dados (Nome, Email, Telefone) e seleciona Slot
-    UI ->> Agendamento: SolicitacaoReserva (QuadraID, DataHora, DadosCliente)
+    Cliente ->> UI: Seleciona Quadra, Data, Horário e Informa Contato
+    UI ->> Core: Solicitar Criação de Reserva (Dados Cliente, Horário ID)
     
-    activate Agendamento
-    Agendamento ->> Atomic: BloquearSlotProvisorio (QuadraID, DataHora)
-    activate Atomic
-    
-    alt Slot Ocupado ou Bloqueado
-        Atomic -->> Agendamento: Falha (Slot Indisponível)
-        Agendamento -->> UI: Retorna erro ("Horário já reservado")
-        UI -->> Cliente: Exibe mensagem de indisponibilidade
-    else Slot Livre
-        Atomic -->> Agendamento: Sucesso (Lock Adquirido)
-        deactivate Atomic
+    rect rgb(235, 245, 255)
+        note over Core, Repo: Mecanismo de Isolamento e Atomicidade (RNF05)
+        Core ->> Repo: Iniciar Transação Atômica
+        Core ->> Quadra: Verificar Disponibilidade e Bloqueios Existentes
+        Quadra ->> Repo: Consulta Estado Atual do Slot
+        Repo -->> Quadra: Slot Livre
 
-        Agendamento ->> Tarifa: ObterValorHorario (QuadraID, DataHora)
-        Tarifa -->> Agendamento: Retorna valor calculado
-
-        Agendamento ->> Agendamento: GerarCodigoConfirmacaoUnico()
-        Agendamento ->> Atomic: EfetivarReserva (Codigo, DadosCliente)
-        
-        Agendamento ->> Notif: DispararEmailConfirmacao (Email, Quadra, DataHora, Codigo)
-        activate Notif
-        Notif -->> Agendamento: Notificação Enfileirada
-        deactivate Notif
-
-        Agendamento -->> UI: Sucesso (CodigoConfirmacao)
-        UI -->> Cliente: Exibe tela de confirmação com Código
+        alt Horário já Ocupado / Bloqueado
+            Quadra -->> Core: Horário Indisponível
+            Core ->> Repo: Abortar Transação
+            Core -->> UI: Retornar Erro "Horário indisponível"
+            UI -->> Cliente: Exibe Mensagem de Conflito de Horário
+        else Horário Disponível
+            Core ->> Repo: Registrar Reserva (Status: Confirmado, Código Único)
+            Core ->> Repo: Bloquear Slot para Novas Requisições
+            Repo -->> Core: Transação Confirmada (Commit)
+            Core -->> UI: Retorna Confirmação + Código Único da Reserva
+            UI -->> Cliente: Exibe Sucesso e Código na Tela
+            
+            %% Envio de E-mail Assíncrono
+            Core ->> Notif: Disparar Evento "ReservaCriada" (Dados Reserva, E-mail)
+            Notif -->> Cliente: Envia E-mail de Confirmação (RF10)
+        end
     end
-    deactivate Agendamento
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### ADR 01: Segregação de Contextos de Acesso (Público vs. Autenticado)
-* **Status:** Aprovado.
-* **Contexto:** Clientes devem consultar disponibilidade e efetuar reservas sem criar conta (RF04, HU05), enquanto Operadores necessitam de controle restrito sobre parametrizações e agendas (RF01-RF03, RNF03).
-* **Decisão:** A arquitetura expõe duas zonas funcionais distintas na camada de apresentação/API. A zona pública dispõe de rotas otimizadas apenas para leitura de disponibilidade e criação de reservas. A zona administrativa exige validação de credenciais via *Componente de Autenticação* antes de autorizar qualquer operação de escrita ou visualização global.
-* **Consequência:** Garante o cumprimento do RNF03 e facilita a escalabilidade independente dos acessos de clientes e operadores.
+### ADR-01: Desacoplamento do Acesso Público e Gestão Administrativa
+* **Contexto:** Os clientes devem consultar disponibilidades e realizar reservas sem a necessidade de criação de conta ou autenticação (RF04, HU05), enquanto os operadores necessitam de acesso estritamente autenticado para gerenciar a estrutura (RF01-RF03, RF09, RNF03).
+* **Decisão:** Adotar uma arquitetura de rotas e componentes onde as rotas de consulta/reserva do cliente utilizam endpoints públicos com limitação de taxa (rate-limiting), enquanto as ações do operador trafegam por um gateway que exige token/sessão de autenticação prévia.
+* **Consequências:** Maximiza a usabilidade para o cliente final (reduz fricção), mantendo a segurança da camada administrativa.
 
-### ADR 02: Garantia de Atomicidade na Reserva de Horários (Prevenção de Race Condition)
-* **Status:** Aprovado.
-* **Contexto:** Múltiplos clientes podem tentar reservar a mesma quadra no mesmo milissegundo (RF07, RNF05).
-* **Decisão:** Incorporar um *Controlador de Concorrência e Atomicidade* no domínio de agendamento. Toda transação de criação de reserva deve adquirir uma trava de exclusão mútua isolada por `(QuadraID, DataHora)` durante a validação e persistência do registro. Se duas requisições simultâneas chegarem, uma adquire a trava e a outra é rejeitada imediatamente com falha de conflito.
-* **Consequência:** Elimina integralmente o risco de duplo agendamento (overbooking), cumprindo o RNF05.
+### ADR-02: Garantia de Atomicidade na Reserva de Horários (Prevenção de Race Condition)
+* **Contexto:** Múltiplos clientes podem tentar reservar a mesma quadra no mesmo horário simultaneamente (RNF05, RF07).
+* **Decisão:** A validação e o registro da reserva devem ser processados dentro de um contexto transacional isolado (nível de isolamento estrito ou mecanismo de trava de concorrência no nível do banco/entidade de slot). Caso ocorram requisições simultâneas para o mesmo slot, apenas a primeira transação será concluída e as demais serão rejeitadas explicitamente.
+* **Consequências:** Elimina a possibilidade de duplicidade de agendamento (duplo agendamento), garantindo a confiabilidade exigida pelo RNF05.
 
-### ADR 03: Arquitetura Modular Baseada em Domínios Desacoplados
-* **Status:** Aprovado.
-* **Contexto:** O sistema precisa permitir a inclusão de novas modalidades esportivas e regras de tarifação variáveis sem impactar o núcleo de agendamentos (RF12, RNF07).
-* **Decisão:** O domínio de *Gestão do Esporte* (Quadras e Tarifas) é desacoplado do *Motor de Agendamentos*. O Motor de Agendamento consulta regras de precificação por meio de interfaces abstratas. Novas modalidades ou regras tarifárias agregam apenas novos tipos e tabelas de consulta, mantendo o fluxo principal intocado.
-* **Consequência:** Alta manutenibilidade e facilidade de extensão (RNF07).
+### ADR-03: Processamento Assíncrono de Notificações
+* **Contexto:** O envio de e-mails de confirmação (RF10) e cancelamento (HU04) depende de serviços externos de e-mail e não deve bloquear o tempo de resposta da transação do usuário (RNF02 - limite de 2 segundos).
+* **Decisão:** Separar a criação da reserva da emissão do e-mail. A confirmação da reserva responde imediatamente ao cliente gerando o código único na tela, enquanto uma mensagem/evento é postado internamente para o Serviço de Notificações emitir o e-mail em segundo plano.
+* **Consequências:** Melhora expressiva no tempo de resposta percebido pelo cliente e resiliência a falhas temporárias nos provedores externos de e-mail.
 
-### ADR 04: Processamento Assíncrono de Notificações
-* **Status:** Aprovado.
-* **Contexto:** A confirmação de reserva deve emitir e-mails ao cliente (RF10). Lentidões no envio de e-mail não podem impactar o tempo de resposta da transação do cliente.
-* **Decisão:** A emissão de e-mails será tratada de forma assíncrona. O *Motor de Agendamento* conclui a transação atômica, gera o código e envia um evento para o *Serviço de Notificações*, liberando a resposta para a interface gráfica imediatamente.
-* **Consequência:** Garante tempos de resposta rápidos para o usuário (alinhado ao RNF02) e desacopla a aplicação de eventuais instabilidades em serviços de terceiros de e-mail.
+### ADR-04: Modularidade do Motor de Precificação e Tipos de Quadra
+* **Contexto:** O sistema deve suportar diferentes modalidades esportivas (RNF07) e diferentes faixas de tarifação por horário (RF12 - ex.: horário nobre).
+* **Decisão:** O cálculo do valor da reserva será delegado a um componente especialista (`Motor de Precificação`), que recebe a quadra, a data e a hora, aplicando regras dinâmicas parametrizáveis sem impactar a estrutura das entidades de agendamento.
+* **Consequências:** Alta manutenibilidade e facilidade para inclusão de novos tipos de quadras, regras de feriados ou reajustes sazonais de tarifas.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|---|---|---|---|
-| **Interface Pública - Cliente** | Renderização responsiva da consulta de horários, formulário de reserva e solicitação de cancelamento. | `Gerenciador de Quadras`, `Motor de Agendamentos` | HU05, HU06, HU07, RNF01, RNF06 |
-| **Interface Administrativa - Operador** | Painel restrito para gestão de quadras, bloqueios, valores e visão consolidada. | `Componente de Autenticação`, `Gerenciador de Quadras`, `Gerenciador de Tarifas`, `Motor de Agendamentos`, `Visualizador de Agenda Consolidada` | HU01, HU02, HU03, HU04, RNF01, RNF03 |
-| **Componente de Autenticação** | Validar credenciais do operador e proteger endpoints administrativos. | `Interface Administrativa - Operador` | RNF03 |
-| **Gerenciador de Quadras** | Manter o cadastro de quadras, tipos esportivos, horários de funcionamento e bloqueios administrativos. | `Interface Pública`, `Interface Administrativa`, `Motor de Agendamentos` | HU01, HU02, RF01, RF02, RF03 |
-| **Gerenciador de Tarifas** | Calcular o preço da hora com base em faixas de horário (ex.: horário nobre) e configurações da quadra. | `Motor de Agendamentos`, `Interface Administrativa` | RF12, HU01 (Critério de Aceite) |
-| **Motor de Agendamentos** | Orquestrar criação de reservas, geração de código único e cancelamentos (cliente/operador). | `Controlador de Concorrência e Atomicidade`, `Gerenciador de Tarifas`, `Serviço de Notificações` | HU04, HU06, HU07, RF05, RF06, RF08, RF09 |
-| **Controlador de Concorrência e Atomicidade** | Garantir exclusão mútua na alocação de slots de quadras no mesmo dia/horário. | `Motor de Agendamentos` | RF07, RNF05 |
-| **Serviço de Notificações** | Formatar e disparar mensagens de e-mail (confirmação/cancelamento com motivo). | `Motor de Agendamentos` | RF10, HU04, HU06 |
-| **Visualizador de Agenda Consolidada** | Montar a matriz diária consolidada de ocupação de todas as quadras para navegação por data. | `Interface Administrativa`, `Gerenciador de Quadras`, `Motor de Agendamentos` | HU03, RF11 |
+|------------|----------------------------|-----------------|----------------------------------|
+| **Interface Pública do Cliente** | Apresentar catálogo de quadras, grade de horários disponíveis e formulário de reserva/cancelamento sem exigir login. | Gestor de Quadras, Gestor de Reservas | HU05, HU06, HU07 / RF04, RF05, RF08 |
+| **Interface Administrativa do Operador** | Permitir o cadastro de quadras, bloqueio de horários, cancelamento com justificativa e visualização da agenda consolidada. | Serviço de Autenticação, Gestor de Quadras, Gestor de Reservas, Visualizador de Agenda | HU01, HU02, HU03, HU04 / RF01, RF02, RF03, RF09, RF11, RF12 |
+| **Serviço de Autenticação e Autorização** | Validar a identidade dos operadores e gerenciar permissões de acesso às funcionalidades restritas. | Interface Administrativa, Repositório de Dados | RNF03 |
+| **Gestor de Quadras e Grade** | Manter o cadastro de quadras, controlar os horários de funcionamento e gerenciar os bloqueios administrativos (manutenção/feriados). | Repositório de Dados, Gestor de Reservas | HU01, HU02 / RF01, RF02, RF03, RNF07 |
+| **Gestor de Reservas e Atomicidade** | Processar criação e cancelamento de reservas, gerar o código único de confirmação e garantir a exclusividade do horário reservado. | Gestor de Quadras, Motor de Precificação, Servicio de Notificações, Repositório de Dados | HU04, HU06, HU07 / RF05, RF06, RF07, RF08, RF09, RNF05 |
+| **Motor de Precificação Dinâmica** | Calcular o valor aplicável a cada reserva com base em tabela base, horários nobres e exceções configuradas. | Gestor de Reservas, Repositório de Dados | RF12, HU01 (Critérios) |
+| **Visualizador de Agenda Consolidada** | Consolidar e formatar a visão diária inter-quadras de horários ocupados, livres e bloqueados para a gestão do operador. | Gestor de Reservas, Gestor de Quadras, Repositório de Dados | HU03 / RF11 |
+| **Serviço de Notificações Assíncronas** | Disparar e-mails de confirmação e cancelamento contendo dados da reserva e código de validação. | Serviço Externo de E-mail | HU04, HU06 / RF10 |
+| **Repositório Central de Dados** | Armazenar o estado persistente de quadras, bloqueios, reservas, usuários operadores e regras de tarifação. | Todos os componentes da camada de negócio | RNF04, RNF05 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Ausência de Especificação Financeira / Meio de Pagamento:**
-   * *Descrição:* Os requisitos definem valor da hora (RF01, RF12) e confirmação da reserva (RF05), mas não esclarecem se o pagamento é realizado online no momento da reserva ou presencialmente no local.
-   * *Impacto Arquitetural:* Se o pagamento for online, há necessidade de integração com Gateway de Pagamento, fluxo de reserva temporária (hold) e tratamento de *webhooks* de confirmação.
+1. **Ausência de Fluxo de Pagamento Integrado:**
+   * *Pendência:* O requisito define o registro do valor da hora (RF01/RF12), mas não especifica se a confirmação da reserva depende de pagamento online prévio (ex.: cartão, PIX) ou se o pagamento ocorre presencialmente na quadra.
+   * *Impacto:* Risco de "no-show" (cliente reserva e não comparece), travando a quadra sem cobrança.
 
-2. **Política e Janela de Cancelamento:**
-   * *Descrição:* Não há definição de regras de antecedência mínima para cancelamento (ex.: até 24h antes) tanto para clientes (HU07) quanto para operadores (HU04).
-   * *Impacto Arquitetural:* Necessidade de implementar regras configuráveis no *Motor de Agendamentos* para permitir/recusar solicitações de cancelamento fora da janela permitida.
+2. **Políticas de Tempo de Antecedência para Reservas e Cancelamentos:**
+   * *Pendência:* Não há regra explicitando até quantos minutos/horas antes do horário a reserva ou o cancelamento pelo cliente pode ser realizado (HU07 / RF08).
+   * *Impacto:* Risco de cancelamentos a poucos minutos do horário, impossibilitando a reocupação da quadra.
 
-3. **Granularidade dos Slots de Horário:**
-   * *Descrição:* Os requisitos tratam "valor da hora", mas não detalham se o sistema permite frações (ex.: reservas de 30 minutos ou 1h30).
-   * *Impacto Arquitetural:* Afeta o algoritmo do *Controlador de Concorrência* e a geração da matriz no *Visualizador de Agenda Consolidada*. Assumiu-se inicialmente a alocação em blocos fixos de 60 minutos.
+3. **Tempo de Retenção Temporária do Slot (Hold Time):**
+   * *Pendência:* Ao selecionar um horário, a interface segura o slot enquanto o cliente digita seus dados (nome, e-mail, telefone)?
+   * *Impacto:* Se duas pessoas abrirem o formulário ao mesmo tempo, uma delas receberá erro no momento de clicar em "confirmar". Requer definição da experiência do usuário (UX).
+
+4. **Recuperação de Código de Confirmação:**
+   * *Pendência:* Caso o cliente perca o e-mail ou o código único de confirmação, não há especificação de um fluxo de recuperação pública por e-mail/telefone (HU07).
+   * *Impacto:* Aumento de demanda manual sobre o operador para consultar ou cancelar reservas.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-### Requisitos Funcionais (RF)
+A matriz abaixo atesta a cobertura completa de todos os Requisitos Funcionais (RF) e Não Funcionais (RNF) pela arquitetura proposta.
 
-| Requisito | Coberto? | Componente / Elemento de Arquitetura Responsável |
-|---|:---:|---|
-| **RF01** (Cadastrar quadra) | Sí | Gerenciador de Quadras |
-| **RF02** (Editar/remover quadra) | Sí | Gerenciador de Quadras |
-| **RF03** (Bloquear horários) | Sí | Gerenciador de Quadras / Motor de Agendamentos |
-| **RF04** (Exibir horários livres sem login) | Sí | Interface Pública - Cliente / Gerenciador de Quadras |
-| **RF05** (Realizar reserva) | Sí | Motor de Agendamentos / Interface Pública |
-| **RF06** (Gerar código único) | Sí | Motor de Agendamentos |
-| **RF07** (Impedir duplo agendamento) | Sí | Controlador de Concorrência e Atomicidade |
-| **RF08** (Cliente cancelar com código) | Sí | Motor de Agendamentos |
-| **RF09** (Operador cancelar com motivo) | Sí | Motor de Agendamentos / Interface Administrativa |
-| **RF10** (Enviar e-mail de confirmação) | Sí | Serviço de Notificações |
-| **RF11** (Agenda diária consolidada) | Sí | Visualizador de Agenda Consolidada |
-| **RF12** (Valores por faixa de horário) | Sí | Gerenciador de Tarifas |
-
-### Requisitos Não Funcionais (RNF)
-
-| Requisito | Coberto? | Estratégia Arquitetural |
-|---|:---:|---|
-| **RNF01** (Usabilidade / Responsivo) | Sí | Camadas de UI (Pública e Administrativa) projetadas sob princípios de design adaptativo para web/mobile. |
-| **RNF02** (Desempenho <= 2s) | Sí | Separação de leituras de disponibilidade sem autenticação e notificação assíncrona fora da thread principal de resposta. |
-| **RNF03** (Segurança / Autenticação Operador) | Sí | Proteção de todos os endpoints e telas administrativas via Componente de Autenticação. |
-| **RNF04** (Disponibilidade 99% 24/7) | Sí | Arquitetura modular sem estado no núcleo de serviços, permitindo execução contínua. |
-| **RNF05** (Atomicidade / Sem overbooking) | Sí | Isolamento de transações via Controlador de Concorrência e Atomicidade (ADR 02). |
-| **RNF06** (Compatibilidade de Navegadores) | Sí | Interfaces construídas sobre padrões web universais suportados por navegadores modernos. |
-| **RNF07** (Manutenibilidade / Modularidade) | Sí | Desacoplamento de domínios (Quadras, Agendamentos, Tarifas, Comunicação) via interfaces bem definidas (ADR 03). |
+| Requisito | Tipo | História de Usuário Mapeada | Componente Arquitetural Responsável | Atendido? |
+|-----------|------|-----------------------------|-------------------------------------|-----------|
+| **RF01** | Funcional | HU01 | Gestor de Quadras e Grade | Sim |
+| **RF02** | Funcional | HU01 | Gestor de Quadras e Grade | Sim |
+| **RF03** | Funcional | HU02 | Gestor de Quadras e Grade | Sim |
+| **RF04** | Funcional | HU05 | Interface Pública / Gestor de Quadras | Sim |
+| **RF05** | Funcional | HU06 | Gestor de Reservas e Atomicidade | Sim |
+| **RF06** | Funcional | HU06 | Gestor de Reservas e Atomicidade | Sim |
+| **RF07** | Funcional | HU06 | Gestor de Reservas e Atomicidade | Sim |
+| **RF08** | Funcional | HU07 | Gestor de Reservas e Atomicidade | Sim |
+| **RF09** | Funcional | HU04 | Gestor de Reservas / Interf. Adm. | Sim |
+| **RF10** | Funcional | HU06 | Serviço de Notificações Assíncronas | Sim |
+| **RF11** | Funcional | HU03 | Visualizador de Agenda Consolidada | Sim |
+| **RF12** | Funcional | N/A (Admin) | Motor de Precificação Dinâmica | Sim |
+| **RNF01** | Não Funcional | HU03, HU05, HU06, HU07 | Interface Pública / Interface Adm. | Sim |
+| **RNF02** | Não Funcional | HU05, HU06 | Gestor de Quadras (Otimização de Leitura) | Sim |
+| **RNF03** | Não Funcional | HU01, HU02, HU03, HU04 | Serviço de Autenticação e Autorização | Sim |
+| **RNF04** | Não Funcional | Todas | Infraestrutura / Repositório de Dados | Sim |
+| **RNF05** | Não Funcional | HU02, HU04, HU06, HU07 | Gestor de Reservas (Mecanismo Transacional) | Sim |
+| **RNF06** | Não Funcional | HU03, HU05 | Camada de Apresentação (Web Standard) | Sim |
+| **RNF07** | Não Funcional | HU01, N/A | Desenho Modular (Serviços e Precificação) | Sim |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna Identificada | Impacto Arquitetural | Ação Recomendada para a Equipe de Dev |
-|---|---|---|
-| **Falta de fluxo de pagamento no agendamento** | O sistema atual reserva o slot imediatamente. Se o pagamento for presencial, há risco de *no-show* (cliente reserva e não comparece). Se for online, falta integrar gateway de pagamento. | Alinhar com o Product Owner se haverá integração com Gateway de Pagamento. Caso positivo, projetar o estado "Reserva Pendente de Pagamento" com tempo de expiração (*TTL*). |
-| **Ausência de motivo e histórico no cancelamento do cliente** | RF09 exige motivo para cancelamento do Operador, mas RF08/HU07 não preveem justificativa do Cliente. | Incluir campo opcional/obrigatório de motivo no cancelamento do cliente para fins de auditoria e métricas de desistência. |
-| **Regras de tarifação dinâmica não especificadas em detalhes** | RF12 menciona "horário nobre", mas não define se a variação é por dia da semana, feriados ou sazonalidade. | Modelar o `Gerenciador de Tarifas` aceitando matrizes de regras flexíveis (ex.: Tabela por Dia da Semana + Faixa Horária + Exceções/Datas Especiais). |
-| **Ausência de política de reativação de horários bloqueados** | HU02 prevê remoção de bloqueio manual pelo operador, mas não especifica notificação de clientes interessados. | Definir se a liberação de um bloqueio apenas disponibiliza o slot no calendário público ou se requer uma fila de espera/notificação. |
+A análise a seguir detalha as lacunas identificadas entre a especificação de requisitos original e os cenários reais de operação do sistema, indicando o impacto técnico e as ações recomendadas.
+
+```
++---------------------------------------------------------------------------------------------------+
+|                                        MATRIZ DE GAP ANALYSIS                                     |
++------------------------------------+--------------------------------+-----------------------------+
+| Lacuna / Especificação Faltante    | Impacto Arquitetural / Operação | Ação Recomendada para o Time|
++------------------------------------+--------------------------------+-----------------------------+
+| 1. Falta de Confirmação/Validação  | Risco de cadastros maliciosos  | Implementar validação básica|
+|    de E-mail e Telefone do Cliente | (spam) reservando quadras com  | de sintaxe e considerar     |
+|    (RF05).                         | e-mails inexistentes.          | envio de OTP/token via SMS/ |
+|                                    |                                | e-mail para confirmação.    |
++------------------------------------+--------------------------------+-----------------------------+
+| 2. Ausência de Mecanismo de Pagam. | Insegurança financeira para o  | Definir se haverá integração|
+|    ou Sinal/Garantia financeiro    | estabelecimento; taxa elevada  | com Gateway de Pagamento    |
+|    (RF05/RF06).                    | de absenteísmo (no-show).      | ou se o modelo é 100% pay-  |
+|                                    |                                | on-arrival.                 |
++------------------------------------+--------------------------------+-----------------------------+
+| 3. Inexistência de Regra de Tempo  | Clientes cancelando minutos    | Criar parametrizador de     |
+|    Limite para Cancelamento sem    | antes do horário, inviabiliz.  | política de cancelamento    |
+|    Penalidade (RF08).              | a ocupação da quadra.          | (ex.: cancelamento grátis   |
+|                                    |                                | até 2h antes).              |
++------------------------------------+--------------------------------+-----------------------------+
+| 4. Falta de Paginação/Filtros na   | Degradação de desempenho ao    | Implementar paginação e     |
+|    Agenda Consolidada para grandes | carregar dezenas de quadras em | filtros por tipo de quadra e|
+|    períodos (RF11 / RNF02).        | telas pequenas (mobile/tab).   | intervalo de horas na UI.   |
++------------------------------------+--------------------------------+-----------------------------+
+| 5. Ausência de Tratamento para     | Notificações falhas podem criar| Adicionar fila de retentativa|
+|    Falha na Entrega de E-mails     | incerteza no cliente sobre a   | (retry mechanism) e log de  |
+|    (RF10 / RNF04).                 | confirmação do código.         | status de envio.            |
++------------------------------------+--------------------------------+-----------------------------+
+```

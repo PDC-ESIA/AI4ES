@@ -2,169 +2,144 @@
 
 ## 1. Identificação das HUs
 
-### 1.1 Perfis e objetivos de negócio
-- **Operador (HU01–HU04)**: administrar catálogo de quadras, bloquear horários, acompanhar agenda consolidada e cancelar reservas com justificativa.
-- **Cliente (HU05–HU07)**: consultar disponibilidade sem login, reservar horário e cancelar com código de confirmação.
+### 1.1 Visão consolidada das Histórias de Usuário
 
-### 1.2 HUs consolidadas por capacidades arquiteturais
-1. **Gestão de Quadras e Regras de Uso**
-   - HU01 (cadastrar quadra), HU02 (bloqueios de horário)
-2. **Consulta Pública de Disponibilidade**
-   - HU05 (consulta sem cadastro/login)
-3. **Ciclo de Reserva**
-   - HU06 (realizar reserva com validação concorrente e código único)
-4. **Ciclo de Cancelamento**
-   - HU07 (cancelamento por código) e HU04 (cancelamento por operador com motivo + notificação)
-5. **Operação Diária**
-   - HU03 (agenda consolidada por dia e navegação por datas)
+| HU | Perfil | Objetivo | RFs relacionados | RNFs relacionados |
+|---|---|---|---|---|
+| HU01 | Operador | Cadastrar quadra com tipo, horário e valor | RF01, RF02 | RNF07 |
+| HU02 | Operador | Bloquear/remover bloqueio de horários | RF03, RF04 | RNF02, RNF07 |
+| HU03 | Operador | Visualizar agenda diária consolidada | RF11 | RNF02, RNF01 |
+| HU04 | Operador | Cancelar reserva com justificativa | RF09, RF10 | RNF03, RNF07 |
+| HU05 | Cliente | Consultar disponibilidade sem login | RF04, RF07 | RNF01, RNF02, RNF06 |
+| HU06 | Cliente | Realizar reserva com dados de contato | RF05, RF06, RF07, RF10 | RNF05, RNF02 |
+| HU07 | Cliente | Cancelar reserva por código | RF08 | RNF05, RNF01 |
 
-### 1.3 Casos de uso arquiteturalmente críticos
-- **UC-CR1: Confirmar reserva de forma atômica** (RNF05 + RF07 + HU06)
-- **UC-CR2: Exibir disponibilidade em até 2s** (RNF02 + HU05)
-- **UC-CR3: Segregar área administrativa autenticada** (RNF03 + HU01-HU04)
-- **UC-CR4: Notificação por e-mail em reserva/cancelamento** (RF10 + HU04/HU06)
+### 1.2 Atores e fronteiras
+
+- **Cliente (público):** consulta disponibilidade, reserva, cancela via código.
+- **Operador (administrativo):** gerencia quadras, bloqueios, agenda e cancelamentos administrativos.
+- **Serviço de notificação (externo conceitual):** entrega e-mails de confirmação/cancelamento.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Componentes (visão lógica)
+### 2.1 Diagrama de componentes (visão lógica)
 
 ```mermaid
 flowchart LR
-    C[Cliente] --> PUB[Interface Pública]
-    O[Operador] --> ADM[Interface Administrativa]
+  subgraph Canais
+    ClienteUI["Canal Cliente (web responsivo)"]
+    OperadorUI["Canal Operador (área autenticada)"]
+  end
 
-    PUB --> ORQ[API de Orquestração de Reservas]
-    ADM --> ORQ
+  subgraph Aplicacao
+    API["Interface de Aplicação"]
+    Auth["Autenticação do Operador"]
+    Quadras["Gestão de Quadras"]
+    Agenda["Gestão de Agenda/Disponibilidade"]
+    Precos["Gestão de Faixas de Preço"]
+    Reservas["Orquestração de Reservas"]
+    Cancelamentos["Gestão de Cancelamentos"]
+    Codigos["Gerador de Código de Confirmação"]
+    Notificacoes["Serviço de Notificações"]
+    Auditoria["Registro de Eventos/Auditoria"]
+  end
 
-    ORQ --> AUTH[Serviço de Autenticação Administrativa]
-    ORQ --> DISP[Serviço de Disponibilidade]
-    ORQ --> RESV[Serviço de Reservas]
-    ORQ --> COURT[Serviço de Gestão de Quadras]
-    ORQ --> BLOCK[Serviço de Bloqueios]
-    ORQ --> PRICE[Serviço de Precificação]
-    ORQ --> AGENDA[Serviço de Agenda Consolidada]
-    ORQ --> CANCEL[Serviço de Cancelamentos]
-    ORQ --> NOTIF[Serviço de Notificações]
+  subgraph Dados
+    Repo["Repositórios de Dados\n(quadras, bloqueios, reservas, preços)"]
+  end
 
-    DISP --> REPO[(Repositórios Transacionais)]
-    RESV --> REPO
-    COURT --> REPO
-    BLOCK --> REPO
-    PRICE --> REPO
-    AGENDA --> REPO
-    CANCEL --> REPO
+  ClienteUI --> API
+  OperadorUI --> API
 
-    NOTIF --> MAIL[Canal de E-mail]
+  API --> Auth
+  API --> Quadras
+  API --> Agenda
+  API --> Precos
+  API --> Reservas
+  API --> Cancelamentos
+
+  Quadras --> Repo
+  Agenda --> Repo
+  Precos --> Repo
+  Reservas --> Repo
+  Cancelamentos --> Repo
+
+  Reservas --> Codigos
+  Reservas --> Notificacoes
+  Cancelamentos --> Notificacoes
+  Cancelamentos --> Auditoria
 ```
 
-### 2.2 Diagrama de Sequência — Realizar Reserva (atômica)
+### 2.2 Diagrama de sequência — realização de reserva (HU06)
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    participant C as Cliente
-    participant UI as Interface Pública
-    participant API as API de Orquestração
-    participant DISP as Serviço de Disponibilidade
-    participant RESV as Serviço de Reservas
-    participant REPO as Repositório Transacional
-    participant NOTIF as Serviço de Notificações
-    participant MAIL as Canal de E-mail
+  autonumber
+  participant C as Cliente
+  participant UI as Canal Cliente
+  participant API as Interface de Aplicação
+  participant DISP as Serviço de Disponibilidade
+  participant RES as Serviço de Reservas
+  participant REP as Repositório de Reservas
+  participant COD as Gerador de Código
+  participant NOTI as Serviço de Notificação
 
-    C->>UI: Seleciona quadra, data e horário + dados de contato
-    UI->>API: Solicitar confirmação de reserva
-    API->>DISP: Validar disponibilidade em tempo real
-    DISP->>REPO: Consultar slot (quadra/data/horário)
-    REPO-->>DISP: Slot livre
-    DISP-->>API: Disponível
+  C->>UI: Informar quadra, data, horário e contato
+  UI->>API: Solicitar criação de reserva
+  API->>DISP: Validar disponibilidade em tempo real
+  DISP->>REP: Consultar conflitos (quadra/data/horário)
+  REP-->>DISP: Resultado da consulta
 
-    API->>RESV: Confirmar reserva atômica
-    RESV->>REPO: Iniciar confirmação transacional do slot
-    alt Slot ainda livre
-        REPO->>REPO: Persistir reserva + gerar código único
-        REPO-->>RESV: Reserva confirmada (código)
-        RESV-->>API: Sucesso + código
-        API->>NOTIF: Solicitar e-mail de confirmação
-        NOTIF->>MAIL: Enviar confirmação (quadra/data/horário/código)
-        MAIL-->>NOTIF: Entrega aceita
-        API-->>UI: Exibir confirmação e código
-        UI-->>C: Reserva concluída
-    else Slot ocupado por corrida concorrente
-        REPO-->>RESV: Falha de confirmação
-        RESV-->>API: Horário indisponível
-        API-->>UI: Solicitar nova escolha de horário
-        UI-->>C: Reserva não concluída
-    end
-```
-
-### 2.3 Diagrama de Sequência — Cancelamento por Operador com motivo
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant O as Operador
-    participant ADM as Interface Administrativa
-    participant API as API de Orquestração
-    participant AUTH as Serviço de Autenticação
-    participant CANCEL as Serviço de Cancelamentos
-    participant REPO as Repositório Transacional
-    participant NOTIF as Serviço de Notificações
-    participant MAIL as Canal de E-mail
-
-    O->>ADM: Solicita cancelamento de reserva + motivo
-    ADM->>API: Requisição autenticada
-    API->>AUTH: Validar credenciais e autorização
-    AUTH-->>API: Acesso permitido
-    API->>CANCEL: Cancelar reserva com justificativa obrigatória
-    CANCEL->>REPO: Atualizar status da reserva e registrar motivo
-    REPO-->>CANCEL: Cancelamento persistido
-    CANCEL-->>API: Horário liberado
-    API->>NOTIF: Notificar cliente sobre cancelamento
-    NOTIF->>MAIL: Enviar e-mail com motivo
-    MAIL-->>NOTIF: Entrega aceita
-    API-->>ADM: Cancelamento concluído
+  alt Horário disponível
+    API->>RES: Confirmar reserva (operação atômica)
+    RES->>REP: Persistir reserva com controle de concorrência
+    REP-->>RES: Reserva criada
+    RES->>COD: Gerar código único de confirmação
+    COD-->>RES: Código gerado
+    RES->>REP: Associar código à reserva
+    RES->>NOTI: Enviar e-mail de confirmação
+    NOTI-->>C: E-mail com quadra/data/horário/código
+    RES-->>API: Reserva confirmada
+    API-->>UI: Exibir confirmação e código
+  else Horário indisponível
+    DISP-->>API: Horário já ocupado/bloqueado
+    API-->>UI: Retornar indisponibilidade
+  end
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-1. **Separação entre canal público e canal administrativo**
-   - **Decisão:** duas interfaces lógicas com políticas distintas de acesso.
-   - **Motivo:** HU05 exige consulta sem login, RNF03 exige autenticação na administração.
-   - **Consequência:** segurança sem fricção para cliente.
+1. **Separação de contextos público e administrativo**
+   - Público sem autenticação (consulta, reserva, cancelamento por código).
+   - Administrativo com autenticação obrigatória (RNF03).
 
-2. **Serviço de disponibilidade desacoplado da confirmação**
-   - **Decisão:** disponibilidade para consulta rápida e confirmação final no ato da reserva.
-   - **Motivo:** RNF02 (até 2s) e HU06 (revalidar no momento da confirmação).
-   - **Consequência:** boa performance sem comprometer consistência.
+2. **Núcleo modular por capacidades**
+   - Módulos: Quadras, Agenda/Disponibilidade, Reservas, Cancelamentos, Preços, Notificações.
+   - Suporta manutenibilidade e evolução (RNF07).
 
-3. **Confirmação transacional atômica de reserva**
-   - **Decisão:** operação de confirmação com controle de concorrência no slot.
-   - **Motivo:** RNF05 + RF07 (evitar duplo agendamento).
-   - **Consequência:** integridade forte em cenários simultâneos.
+3. **Confirmação de reserva atômica**
+   - A confirmação só ocorre com validação + gravação indivisível.
+   - Mitiga duplo agendamento em concorrência (RNF05, RF07).
 
-4. **Modelo de domínio orientado a “slot” (quadra + data + horário)**
-   - **Decisão:** slot como unidade central para disponibilidade, bloqueio e reserva.
-   - **Motivo:** simplifica RF03, RF07, HU02, HU06, HU07.
-   - **Consequência:** rastreabilidade clara e regras uniformes.
+4. **Código de confirmação como chave de autoatendimento**
+   - Código único associado à reserva (RF06) para cancelamento do cliente (RF08).
 
-5. **Notificação assíncrona após eventos de negócio**
-   - **Decisão:** reserva e cancelamento disparam solicitação de e-mail.
-   - **Motivo:** RF10 e HU04; reduz acoplamento do fluxo principal.
-   - **Consequência:** maior resiliência operacional.
+5. **Bloqueios como “indisponibilidade de agenda” de primeira classe**
+   - Bloqueio de manutenção/feriado afeta diretamente consulta pública (RF03, RF04).
 
-6. **Precificação por faixa horária como regra de domínio configurável**
-   - **Decisão:** componente dedicado de precificação consultado na reserva/consulta.
-   - **Motivo:** RF12.
-   - **Consequência:** facilita evoluções de políticas comerciais.
+6. **Notificação desacoplada da lógica de reserva**
+   - Reserva é registrada primeiro; envio de e-mail é responsabilidade dedicada.
+   - Permite reenvio e tratamento de falhas sem quebrar fluxo principal (RF10, HU04).
 
-7. **Arquitetura modular por capacidades**
-   - **Decisão:** componentes independentes por responsabilidade.
-   - **Motivo:** RNF07 (manutenibilidade e expansão de modalidades).
-   - **Consequência:** menor impacto em mudanças futuras.
+7. **Modelo de preços por faixa horária**
+   - Camada de precificação independente da reserva para suportar horário nobre (RF12).
+
+8. **Agenda consolidada baseada em projeção diária**
+   - Visão agregada por data e por quadra para operador (RF11), com foco em desempenho (RNF02).
 
 ---
 
@@ -172,43 +147,35 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---|---|---|
-| Interface Pública | Exibir disponibilidade e coletar dados de reserva/cancelamento por código | API de Orquestração | HU05 (sem login), HU06 (entrada de dados), HU07 (cancelar por código) |
-| Interface Administrativa | Gestão operacional autenticada (quadras, bloqueios, agenda, cancelamentos) | API de Orquestração, Serviço de Autenticação | HU01, HU02, HU03, HU04 |
-| API de Orquestração | Coordenar fluxos e validações entre serviços de domínio | Todos os serviços de domínio | Todos os RF/HU |
-| Serviço de Autenticação Administrativa | Validar identidade e autorização do operador | API, Interface Administrativa | RNF03 |
-| Serviço de Gestão de Quadras | Cadastrar/editar/remover quadras e atributos operacionais | API, Repositório | HU01; RF01, RF02 |
-| Serviço de Bloqueios | Registrar/remover bloqueios por quadra/data/horário | API, Repositório | HU02 (bloqueio não disponível ao cliente) |
-| Serviço de Disponibilidade | Consolidar slots livres/ocupados/bloqueados para consulta rápida | API, Repositório, Precificação | HU05; RNF02 |
-| Serviço de Reservas | Confirmar reserva, gerar código único, persistir confirmação atômica | API, Repositório, Notificações | HU06; RF06, RF07, RNF05 |
-| Serviço de Cancelamentos | Cancelar por código (cliente) ou por operador com motivo | API, Repositório, Notificações | HU07, HU04 (motivo obrigatório) |
-| Serviço de Agenda Consolidada | Exibir visão diária de todas as quadras e navegação por data | API, Repositório | HU03 |
-| Serviço de Precificação | Aplicar valor base e faixas horárias diferenciadas | API, Disponibilidade, Reservas, Repositório | RF12 |
-| Serviço de Notificações | Enviar confirmações e cancelamentos por e-mail | API, Reservas, Cancelamentos, Canal de E-mail | RF10; HU04/HU06 |
-| Repositórios Transacionais | Persistência de quadras, slots, reservas, bloqueios, cancelamentos e tabelas de preço | Serviços de domínio | RF01–RF12; RNF05 |
+| Canal Cliente | Exibir disponibilidade, receber reserva/cancelamento por código | Interface de Aplicação | HU05, HU06, HU07 |
+| Canal Operador | Gestão administrativa autenticada | Interface de Aplicação, Autenticação | HU01, HU02, HU03, HU04 |
+| Interface de Aplicação | Orquestrar casos de uso e validações de entrada | Todos os serviços de domínio | Todas as HUs |
+| Autenticação do Operador | Controlar acesso da área administrativa | Canal Operador, Interface de Aplicação | RNF03, HU01-HU04 |
+| Gestão de Quadras | Cadastrar/editar/remover quadras | Repositórios, Agenda | HU01, RF01, RF02 |
+| Gestão de Agenda/Disponibilidade | Calcular horários livres/ocupados/bloqueados | Repositórios, Reservas, Bloqueios | HU02, HU03, HU05 |
+| Gestão de Bloqueios | Criar/remover bloqueios de horários | Agenda, Repositórios | HU02 (bloqueio não aparece disponível) |
+| Orquestração de Reservas | Confirmar reserva com atomicidade e conflito | Disponibilidade, Repositórios, Códigos, Notificações | HU06, RF07, RNF05 |
+| Gerador de Código de Confirmação | Produzir código único por reserva | Reservas | HU06, RF06 |
+| Gestão de Cancelamentos | Cancelar por operador (com motivo) e cliente (com código) | Repositórios, Notificações, Auditoria | HU04, HU07, RF08, RF09 |
+| Gestão de Preços por Faixa | Definir e aplicar valor por horário | Reservas, Repositórios | RF12 |
+| Agenda Consolidada | Projeção diária de ocupação por quadra | Agenda, Repositórios | HU03, RF11 |
+| Notificações | Enviar confirmação e cancelamento por e-mail | Reservas, Cancelamentos | RF10, HU04 |
+| Repositórios de Dados | Persistir quadras, reservas, bloqueios, preços, motivos | Serviços de domínio | Todas as HUs |
+| Auditoria/Registro | Guardar eventos críticos (cancelamentos, alterações) | Cancelamentos, Gestão administrativa | HU04 (motivo obrigatório) |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Granularidade do horário**
-   - Pendência: intervalo fixo (ex.: 30/60 min) não especificado.
-   - Impacto: modelagem de slot, agenda e precificação.
-
-2. **Política de cancelamento**
-   - Pendência: prazo limite para cancelamento pelo cliente não definido.
-   - Impacto: regras de negócio e UX de HU07.
-
-3. **Fuso horário e calendário especial**
-   - Pendência: tratamento de feriados locais/regionais não detalhado.
-   - Impacto: bloqueios automáticos (RF03) e consistência de agenda.
-
-4. **Confiabilidade de entrega de e-mail**
-   - Pendência: comportamento em falha de envio não definido (reenvio, tentativas, alerta).
-   - Impacto: atendimento de RF10 e experiência do cliente.
-
-5. **Escopo de auditoria**
-   - Pendência: nível de trilha de auditoria para ações do operador não explícito.
-   - Impacto: governança e suporte operacional.
+| Item | Tipo | Impacto Arquitetural | Prioridade |
+|---|---|---|---|
+| Granularidade do horário (ex.: 30 min, 60 min) | Pendência funcional | Afeta modelo de agenda, conflito e preço | Alta |
+| Política de fuso horário e horário de verão | Pendência técnica | Pode gerar inconsistência em disponibilidade | Alta |
+| Regra de antecedência mínima/máxima para reservar/cancelar | Pendência de negócio | Impacta validações de API e UX | Média |
+| Formato e validade do código de confirmação | Pendência funcional | Impacta segurança/usabilidade de HU07 | Média |
+| Política de reenvio em falha de e-mail | Pendência operacional | Impacta confiabilidade percebida | Média |
+| Requisitos de acessibilidade além de responsividade | Gap de qualidade | Impacta conformidade de UX e inclusão | Média |
+| Definição de volume esperado de acessos simultâneos | Pendência de capacidade | Necessário para garantir RNF02/RNF04 | Alta |
 
 ---
 
@@ -216,44 +183,45 @@ sequenceDiagram
 
 ### 6.1 Cobertura de RF
 
-| Requisito | Coberto por | Situação |
+| RF | Cobertura Arquitetural | Status |
 |---|---|---|
-| RF01, RF02 | Serviço de Gestão de Quadras + Interface Administrativa | Coberto |
-| RF03 | Serviço de Bloqueios + Disponibilidade | Coberto |
-| RF04 | Interface Pública + Serviço de Disponibilidade | Coberto |
-| RF05 | Interface Pública + Serviço de Reservas | Coberto |
-| RF06 | Serviço de Reservas (geração de código único) | Coberto |
-| RF07 | Confirmação transacional atômica no Serviço de Reservas | Coberto |
-| RF08 | Serviço de Cancelamentos por código | Coberto |
-| RF09 | Serviço de Cancelamentos com motivo obrigatório (operador) | Coberto |
-| RF10 | Serviço de Notificações (e-mail de confirmação) | Coberto |
-| RF11 | Serviço de Agenda Consolidada | Coberto |
-| RF12 | Serviço de Precificação por faixa horária | Coberto |
+| RF01 | Gestão de Quadras + Canal Operador | Coberto |
+| RF02 | Gestão de Quadras (edição/remoção) | Coberto |
+| RF03 | Gestão de Bloqueios + Agenda | Coberto |
+| RF04 | Canal Cliente + Agenda/Disponibilidade pública | Coberto |
+| RF05 | Canal Cliente + Orquestração de Reservas | Coberto |
+| RF06 | Gerador de Código único | Coberto |
+| RF07 | Validação de conflito + confirmação atômica | Coberto |
+| RF08 | Cancelamento por código | Coberto |
+| RF09 | Cancelamento administrativo com motivo | Coberto |
+| RF10 | Notificações de confirmação/cancelamento | Coberto |
+| RF11 | Agenda Consolidada diária | Coberto |
+| RF12 | Gestão de Preços por faixa horária | Coberto |
 
 ### 6.2 Cobertura de RNF
 
-| Requisito | Estratégia Arquitetural | Situação |
+| RNF | Estratégia Arquitetural | Status |
 |---|---|---|
-| RNF01 (responsividade) | Interface pública e administrativa compatíveis com múltiplos formatos de tela | Parcial (depende de design de UI) |
-| RNF02 (2s calendário) | Serviço de disponibilidade dedicado, consultas otimizadas por slot | Parcial (depende de testes de desempenho) |
-| RNF03 (autenticação admin) | Serviço de autenticação e autorização no canal administrativo | Coberto |
-| RNF04 (99% 24/7) | Componentes desacoplados e operação contínua | Parcial (depende de estratégia operacional/SRE) |
-| RNF05 (atomicidade) | Confirmação transacional com controle de concorrência | Coberto |
-| RNF06 (navegadores modernos) | Contratos web padronizados e testes de compatibilidade | Parcial |
-| RNF07 (modularidade) | Separação por serviços de domínio e interfaces claras | Coberto |
+| RNF01 Usabilidade | Canais responsivos com foco mobile/desktop | Coberto |
+| RNF02 Desempenho | Serviço de disponibilidade e projeção de agenda otimizados | Parcial (depende de metas de capacidade detalhadas) |
+| RNF03 Segurança | Autenticação para área do operador | Coberto |
+| RNF04 Disponibilidade 99% | Componentes desacoplados e operação contínua | Parcial (faltam requisitos operacionais detalhados) |
+| RNF05 Confiabilidade | Reserva atômica com controle de concorrência | Coberto |
+| RNF06 Compatibilidade | Interface web para navegadores modernos | Coberto |
+| RNF07 Manutenibilidade | Arquitetura modular por domínio | Coberto |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna | Impacto Arquitetural | Recomendação |
+| Lacuna | Impacto Arquitetural | Ação Recomendada |
 |---|---|---|
-| Não define unidade mínima de horário | Ambiguidade em disponibilidade, preço e conflito de reserva | Formalizar “duração padrão de slot” e regras de arredondamento |
-| Não define políticas de antecedência/atraso de cancelamento | Regras de cancelamento inconsistentes | Especificar janelas de cancelamento por perfil (cliente/operador) |
-| Não define comportamento para falha de e-mail | Cliente pode não receber confirmação/cancelamento | Definir política de reenvio, status de notificação e suporte |
-| Não define volume esperado de acessos | Risco em RNF02/RNF04 sem dimensionamento | Levantar metas de carga (picos por minuto, concorrência) |
-| Não define requisitos de privacidade dos dados de contato | Risco regulatório e de segurança | Estabelecer política de retenção, mascaramento e consentimento |
-| Não define regras de feriados recorrentes | Bloqueios manuais excessivos | Incluir calendário configurável com recorrência |
-| Não define escopo de relatórios operacionais | Possível retrabalho futuro | Priorizar backlog de relatórios (ocupação, cancelamentos, receita) |
+| Não há regra explícita de duração de reserva e intervalos | Ambiguidade no cálculo de conflitos e preço | Definir unidade de slot e políticas de encaixe |
+| Não há SLA de entrega de e-mail | Dificulta critérios de aceite para RF10 | Definir prazo máximo de envio e política de reenvio |
+| Não há definição de retenção de histórico/auditoria | Risco de inconsistência legal/operacional | Estabelecer tempo de retenção e trilha mínima de eventos |
+| Falta política de autenticação (sessão, expiração, recuperação) | Risco de segurança e UX na área administrativa | Especificar fluxo de autenticação e critérios de segurança |
+| Não há critérios de prioridade em concorrência (requisições simultâneas) | Possíveis disputas não determinísticas | Definir regra determinística de “primeiro confirmado” |
+| Não há meta de observabilidade (logs/métricas/alertas) | Dificulta sustentar RNF04 e RNF02 em produção | Definir indicadores operacionais mínimos e alarmes |
+| Não há política para dados pessoais (nome/e-mail/telefone) | Risco de privacidade e governança | Definir diretrizes de proteção, minimização e consentimento |
 
-**Conclusão:** a arquitetura proposta cobre integralmente os RF e endereça os RNF no nível estrutural. Os principais riscos remanescentes estão em regras operacionais ainda não especificadas e critérios de operação contínua, que devem virar requisitos detalhados antes da implementação.
+**Conclusão:** a arquitetura proposta cobre integralmente os RFs e a maior parte dos RNFs no nível de design lógico. As principais lacunas remanescentes estão em regras operacionais, parâmetros de negócio e governança de dados — itens que devem ser fechados antes da implementação para reduzir retrabalho e risco de produção.

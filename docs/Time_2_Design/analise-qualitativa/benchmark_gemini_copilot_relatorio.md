@@ -1,7 +1,7 @@
 # 📊 Relatório de Avaliação Comparativa de LLMs — Agente de Design (AI4ES)
 
 > **Foco:** Avaliação Experimental da Família Gemini (Série 3.x) via GitHub Copilot como Núcleo Cognitivo do Pipeline de Design
-> **Data da Análise:** 2026-09-02
+> **Data da Análise:** 2026-09-05
 > **Protocolo de Referência:** `03. Protocolo de Avaliação Comparativa de Modelos de Linguagem (Agente de Design)`
 > **Avaliador Juiz (Cross-Family):** `github_copilot/claude-opus-5` (Mitigação de Self-Enhancement Bias — Seção 6.1)
 
@@ -9,19 +9,19 @@
 
 ## 1. Sumário Executivo & Ranking Consolidado
 
-O presente estudo executou a avaliação experimental comparativa dos modelos candidatos submetidos ao pipeline completo do Agente de Design (Análise Arquitetural, Diagramação Mermaid, Modularização de Componentes e Síntese de Relatório Canônico) sobre 5 cenário(s) do dataset mockado de requisitos (P04 - Pequeno, P05 - Pequeno, M04 - Médio, G03 - Grande, G04 - Grande).
+O presente estudo executou a avaliação experimental comparativa dos modelos candidatos submetidos ao pipeline completo do Agente de Design (Análise Arquitetural, Diagramação Mermaid, Modularização de Componentes e Síntese de Relatório Canônico) sobre 13 cenário(s) do dataset mockado de requisitos (P01 - Pequeno, P02 - Pequeno, P03 - Pequeno, P04 - Pequeno, P05 - Pequeno, M01 - Médio, M02 - Médio, M03 - Médio, M04 - Médio, G01 - Grande, G02 - Grande, G03 - Grande, G04 - Grande).
 
 ### 🏆 Ranking Geral (Média das Rodadas Experimentais)
 
 | Posição | Modelo | Pontuação Média (Máx 30) | Aderência / Qualidade (%) | Desvio Padrão | Latência Média | Validade Mermaid | Rastreabilidade |
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| 🥇 | **Claude Fable 5** | **28.25/30** | **94.2%** | ±0.5 | 98.67s | 4/4 | 4/4 |
-| 🥈 | **Claude Opus 4.8** | **26.6/30** | **88.7%** | ±0.89 | 115.5s | 5/5 | 5/5 |
-| 🥉 | **Gemini 3.7 Flash** | **26.4/30** | **88.0%** | ±1.52 | 58.15s | 5/5 | 5/5 |
-| 4º | **Gemini 3.6 Flash** | **25.8/30** | **86.0%** | ±1.48 | 51.38s | 5/5 | 5/5 |
-| 5º | **Claude Sonnet 5** | **25.8/30** | **86.0%** | ±0.84 | 57.52s | 5/5 | 5/5 |
-| 6º | **GPT 5.3 Codex** | **25.6/30** | **85.3%** | ±0.55 | 32.3s | 5/5 | 5/5 |
-| 7º | **GPT 5 mini** | **24.4/30** | **81.3%** | ±1.67 | 97.75s | 5/5 | 5/5 |
+| 🥇 | **Claude Fable 5** | **27.92/30** | **93.1%** | ±0.49 | 81.46s | 13/13 | 13/13 |
+| 🥈 | **Gemini 3.7 Flash** | **26.85/30** | **89.5%** | ±1.28 | 49.82s | 13/13 | 13/13 |
+| 🥉 | **Claude Opus 4.8** | **26.77/30** | **89.2%** | ±0.44 | 78.06s | 13/13 | 13/13 |
+| 4º | **Claude Sonnet 5** | **26.54/30** | **88.5%** | ±0.78 | 61.24s | 13/13 | 13/13 |
+| 5º | **GPT 5 mini** | **25.38/30** | **84.6%** | ±1.26 | 63.44s | 13/13 | 13/13 |
+| 6º | **GPT 5.3 Codex** | **25.38/30** | **84.6%** | ±1.04 | 36.7s | 12/13 | 13/13 |
+| 7º | **Gemini 3.6 Flash** | **25.23/30** | **84.1%** | ±1.3 | 36.61s | 12/13 | 13/13 |
 
 ---
 
@@ -44,80 +44,185 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 
 | Modelo | D1: Template | D2: Diagramas | D3: Componentes | D4: Gap Analysis | D5: Fidelidade CAs | D6: Clareza Arq. | **Total Médio** |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Claude Fable 5** | 5/5 | 4/5 | 5/5 | 5/5 | 4.2/5 | 5/5 | **28.25/30 (94.2%)** |
-| **Claude Opus 4.8** | 5/5 | 4/5 | 5/5 | 4.8/5 | 3.8/5 | 4/5 | **26.6/30 (88.7%)** |
-| **Gemini 3.7 Flash** | 5/5 | 4/5 | 5/5 | 4.4/5 | 3.6/5 | 4.4/5 | **26.4/30 (88.0%)** |
-| **Gemini 3.6 Flash** | 5/5 | 3.6/5 | 5/5 | 4/5 | 4/5 | 4.2/5 | **25.8/30 (86.0%)** |
-| **Claude Sonnet 5** | 5/5 | 4/5 | 5/5 | 4.4/5 | 3.4/5 | 4/5 | **25.8/30 (86.0%)** |
-| **GPT 5.3 Codex** | 5/5 | 3.8/5 | 5/5 | 4/5 | 3.8/5 | 4/5 | **25.6/30 (85.3%)** |
-| **GPT 5 mini** | 5/5 | 3/5 | 4.8/5 | 4.2/5 | 3.4/5 | 4/5 | **24.4/30 (81.3%)** |
+| **Claude Fable 5** | 5/5 | 4/5 | 5/5 | 5/5 | 4.1/5 | 4.8/5 | **27.92/30 (93.1%)** |
+| **Gemini 3.7 Flash** | 5/5 | 3.9/5 | 5/5 | 4.5/5 | 3.8/5 | 4.6/5 | **26.85/30 (89.5%)** |
+| **Claude Opus 4.8** | 5/5 | 3.9/5 | 5/5 | 4.9/5 | 3.9/5 | 4/5 | **26.77/30 (89.2%)** |
+| **Claude Sonnet 5** | 5/5 | 4/5 | 5/5 | 4.8/5 | 3.8/5 | 4/5 | **26.54/30 (88.5%)** |
+| **GPT 5 mini** | 5/5 | 3.2/5 | 4.9/5 | 4.8/5 | 3.5/5 | 4/5 | **25.38/30 (84.6%)** |
+| **GPT 5.3 Codex** | 5/5 | 3.2/5 | 5/5 | 4.5/5 | 3.7/5 | 4/5 | **25.38/30 (84.6%)** |
+| **Gemini 3.6 Flash** | 5/5 | 3.5/5 | 5/5 | 4.1/5 | 3.7/5 | 4/5 | **25.23/30 (84.1%)** |
 
 ---
 
 ## 3. Detalhamento dos Resultados por Cenário de Teste
 
+### 📦 Cenário P01 — Cardápio Digital para Restaurante (P01) (Escopo Pequeno)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 27 | 90.0% | 77.27s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 25 | 83.3% | 29.19s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 27 | 90.0% | 36.9s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 25 | 83.3% | 31.54s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 45.11s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 65.95s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 55.55s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
+### 📦 Cenário P02 — Agendador de Consultas para Clínica Pequena (P02) (Escopo Pequeno)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 27 | 90.0% | 37.14s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 27 | 90.0% | 35.03s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 28 | 93.3% | 40.66s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 27 | 90.0% | 33.62s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 46.04s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 76.25s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 74.17s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
+### 📦 Cenário P03 — Controle de Estoque para Loja Física (P03) (Escopo Pequeno)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 26 | 86.7% | 32.38s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 24 | 80.0% | 38.72s | 7/7 (100.0%) | ❌ Inválido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 28 | 93.3% | 36.92s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 22 | 73.3% | 32.13s | 7/7 (100.0%) | ❌ Inválido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 46.63s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 70.06s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 77.83s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
 ### 📦 Cenário P04 — Biblioteca Pessoal de Livros (P04) (Escopo Pequeno)
 
 | Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GPT 5 mini** | 24 | 80.0% | 224.74s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | graphql |
-| **GPT 5.3 Codex** | 26 | 86.7% | 27.35s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.7 Flash** | 26 | 86.7% | 38.63s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.6 Flash** | 26 | 86.7% | 40.13s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Sonnet 5** | 26 | 86.7% | 49.21s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Opus 4.8** | 27 | 90.0% | 65.03s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Fable 5** | 29 | 96.7% | 62.92s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5 mini** | 27 | 90.0% | 63.06s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | graphql |
+| **GPT 5.3 Codex** | 25 | 83.3% | 31.33s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 28 | 93.3% | 36.86s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 25 | 83.3% | 27.46s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 26 | 86.7% | 46.26s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 26 | 86.7% | 67.48s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 27 | 90.0% | 58.34s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
 
 
 ### 📦 Cenário P05 — Reservas para Quadras Esportivas (P05) (Escopo Pequeno)
 
 | Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GPT 5 mini** | 27 | 90.0% | 63.33s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **GPT 5.3 Codex** | 26 | 86.7% | 30.74s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.7 Flash** | 28 | 93.3% | 48.4s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.6 Flash** | 24 | 80.0% | 41.96s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Sonnet 5** | 27 | 90.0% | 51.84s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Opus 4.8** | 27 | 90.0% | 71.67s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Fable 5** | 28 | 93.3% | 66.67s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5 mini** | 26 | 86.7% | 35.57s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 27 | 90.0% | 27.79s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 28 | 93.3% | 42.84s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 26 | 86.7% | 31.06s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 54.94s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 65.47s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 29 | 96.7% | 79.85s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
+### 📦 Cenário M01 — Plataforma de Cursos Online (M01) (Escopo Médio)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 25 | 83.3% | 50.62s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | graphql |
+| **GPT 5.3 Codex** | 25 | 83.3% | 32.62s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 26 | 86.7% | 41.81s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 26 | 86.7% | 36.41s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 63.67s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 73.68s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 27 | 90.0% | 64.04s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
+### 📦 Cenário M02 — Gestão para Clínica Odontológica (M02) (Escopo Médio)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 25 | 83.3% | 54.63s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 27 | 90.0% | 35.99s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 26 | 86.7% | 66.65s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 26 | 86.7% | 32.73s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 64.17s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 84.62s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 83.15s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
+### 📦 Cenário M03 — Marketplace de Produtos Artesanais (M03) (Escopo Médio)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 25 | 83.3% | 30.15s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 25 | 83.3% | 42.15s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 28 | 93.3% | 66.78s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | graphql |
+| **Gemini 3.6 Flash** | 24 | 80.0% | 33.92s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 69.99s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 26 | 86.7% | 71.15s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 67.36s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
 
 
 ### 📦 Cenário M04 — Sistema de Gestão de Condomínio (M04) (Escopo Médio)
 
 | Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GPT 5 mini** | 23 | 76.7% | 65.44s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **GPT 5.3 Codex** | 25 | 83.3% | 30.11s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.7 Flash** | 28 | 93.3% | 75.95s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.6 Flash** | 28 | 93.3% | 54.0s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Sonnet 5** | 26 | 86.7% | 54.36s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Opus 4.8** | 27 | 90.0% | 80.73s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Fable 5** | 28 | 93.3% | 84.87s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5 mini** | 26 | 86.7% | 50.1s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 25 | 83.3% | 37.67s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 28 | 93.3% | 68.76s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 26 | 86.7% | 42.3s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 75.19s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 79.44s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 82.07s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
+### 📦 Cenário G01 — Sistema Bancário Digital (G01) (Escopo Grande)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 23 | 76.7% | 51.09s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 24 | 80.0% | 35.23s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 25 | 83.3% | 41.22s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 25 | 83.3% | 39.08s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 26 | 86.7% | 75.79s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 26 | 86.7% | 92.0s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 103.58s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+
+
+### 📦 Cenário G02 — Plataforma de Telemedicina (G02) (Escopo Grande)
+
+| Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5 mini** | 25 | 83.3% | 139.48s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 25 | 83.3% | 42.06s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 25 | 83.3% | 37.59s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 26 | 86.7% | 53.06s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 27 | 90.0% | 76.13s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 71.1s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 99.8s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
 
 
 ### 📦 Cenário G03 — ERP para Indústria Manufatureira (G03) (Escopo Grande)
 
 | Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GPT 5 mini** | 25 | 83.3% | 87.32s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **GPT 5.3 Codex** | 26 | 86.7% | 37.47s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.7 Flash** | 25 | 83.3% | 61.87s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.6 Flash** | 26 | 86.7% | 61.8s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Sonnet 5** | 25 | 83.3% | 67.22s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Opus 4.8** | 25 | 83.3% | 181.34s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5 mini** | 24 | 80.0% | 136.63s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 26 | 86.7% | 49.76s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 25 | 83.3% | 52.44s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 24 | 80.0% | 39.71s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 25 | 83.3% | 64.08s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 92.28s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 108.25s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
 
 
 ### 📦 Cenário G04 — Plataforma de Logística e Rastreamento de Cargas (G04) (Escopo Grande)
 
 | Modelo | Pontuação (30) | % | Latência (s) | Aderência Template | Mermaid Válido | Rastreabilidade | Violações Neutralidade |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GPT 5 mini** | 23 | 76.7% | 47.93s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **GPT 5.3 Codex** | 25 | 83.3% | 35.81s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.7 Flash** | 25 | 83.3% | 65.88s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Gemini 3.6 Flash** | 25 | 83.3% | 58.99s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Sonnet 5** | 25 | 83.3% | 64.97s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Opus 4.8** | 27 | 90.0% | 178.74s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
-| **Claude Fable 5** | 28 | 93.3% | 180.23s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5 mini** | 24 | 80.0% | 66.64s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **GPT 5.3 Codex** | 25 | 83.3% | 39.54s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.7 Flash** | 27 | 90.0% | 78.27s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Gemini 3.6 Flash** | 26 | 86.7% | 42.85s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Sonnet 5** | 25 | 83.3% | 68.06s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Opus 4.8** | 27 | 90.0% | 105.24s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
+| **Claude Fable 5** | 28 | 93.3% | 104.94s | 7/7 (100.0%) | ✅ Válido | ✅ Presente | 0 |
 
 
 ---
@@ -126,90 +231,91 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 
 ### 🔍 Claude Fable 5
 
-- **Desempenho Geral:** 28.25/30 pontos (94.2% de conformidade).
-- **Latência Média:** 98.67 segundos por pipeline completo.
+- **Desempenho Geral:** 27.92/30 pontos (93.1% de conformidade).
+- **Latência Média:** 81.46 segundos por pipeline completo.
 - **Pontos Fortes:**
-  - Rastreabilidade completa requisito→decisão→componente com tabela de cobertura
-  - Gap analysis profunda e acionável, incluindo crítica realista ao RNF03
+  - Rastreabilidade completa HU→RF→componente→decisão, com tabela de cobertura e status honesto (RNF04 parcial)
+  - Identificação madura de lacunas de alto impacto (multi-tenancy, integridade referencial, rate limiting, auditoria) com ações concretas
 - **Oportunidades de Melhoria / Lacunas:**
-  - Ausência de diagramas de sequência para exportação e filtragem/busca
-  - Pouca discussão de trade-offs tecnológicos (estilo arquitetural, cache, modelo de dados para agregados)
-
-
-### 🔍 Claude Opus 4.8
-
-- **Desempenho Geral:** 26.6/30 pontos (88.7% de conformidade).
-- **Latência Média:** 115.5 segundos por pipeline completo.
-- **Pontos Fortes:**
-  - Rastreabilidade completa HU→RF→RNF→componentes com tabela de cobertura
-  - Gap analysis profundo e acionável, incluindo lacunas não óbvias (histórico de status, importação, duplicidade)
-- **Oportunidades de Melhoria / Lacunas:**
-  - Dependências invertidas no diagrama de componentes (domínio→repositório) e acoplamento cruzado entre serviços de Gênero/Coleção e domínio Livro
-  - Ausência de decisões técnicas concretas e trade-offs quantitativos (indexação, paginação, cache) para atender RNF03
+  - Ausência de diagramas para HU02 (ordenação de categorias) e HU05 (exclusão com confirmação); 2.2 mistura dois fluxos
+  - Não discute trade-offs de persistência compartilhada entre serviços nem estratégia concreta de acessibilidade/compatibilidade além da menção a padrões
 
 
 ### 🔍 Gemini 3.7 Flash
 
-- **Desempenho Geral:** 26.4/30 pontos (88.0% de conformidade).
-- **Latência Média:** 58.15 segundos por pipeline completo.
+- **Desempenho Geral:** 26.85/30 pontos (89.5% de conformidade).
+- **Latência Média:** 49.82 segundos por pipeline completo.
 - **Pontos Fortes:**
-  - Rastreabilidade completa RF/RNF/HU→componentes em tabelas claras
-  - Decisões arquiteturais justificadas, com destaque para isolamento por usuário e não-cascata de taxonomias
+  - Rastreabilidade explícita e completa de RF/RNF/HU até componentes e mecanismos
+  - Decisões arquiteturais bem contextualizadas e proporcionais ao escopo do sistema
 - **Oportunidades de Melhoria / Lacunas:**
-  - Multiplicidade Livro–Gênero como 1..* contradiz o critério de desvinculação (livro pode ficar sem gênero)
-  - Estratégia de desempenho (RNF03) genérica, sem índices, paginação ou debounce; apenas um diagrama de sequência cobrindo poucos fluxos
+  - Nomenclatura 'ItensAtivos' na consulta conflita com o requisito de exibir itens indisponíveis
+  - Ausência de fluxos de exceção/validação nos diagramas de sequência e tratamento raso do RNF04 (disponibilidade)
 
 
-### 🔍 Gemini 3.6 Flash
+### 🔍 Claude Opus 4.8
 
-- **Desempenho Geral:** 25.8/30 pontos (86.0% de conformidade).
-- **Latência Média:** 51.38 segundos por pipeline completo.
+- **Desempenho Geral:** 26.77/30 pontos (89.2% de conformidade).
+- **Latência Média:** 78.06 segundos por pipeline completo.
 - **Pontos Fortes:**
-  - Rastreabilidade completa HU-RF-RNF-componentes com tabelas de cobertura
-  - Decisões arquiteturais justificadas e alinhadas a critérios de aceite (SET NULL, multi-tenancy lógico)
-  - Gap analysis acionável com recomendações técnicas concretas
+  - Rastreabilidade completa HU→RF/RNF→componente com matriz de cobertura e status parciais honestos
+  - Gap analysis profundo, priorizado e com responsáveis por decisão claramente indicados
 - **Oportunidades de Melhoria / Lacunas:**
-  - Contradição entre decisão 'event-driven desacoplado' e fluxo síncrono do diagrama de sequência
-  - Mapeamentos imprecisos (HU08 associada a RNF06; ausência de RF02/RF03 em HUs)
-  - Ausência de diagrama de dados/entidades e de fluxos de exceção; erro de digitação no título do diagrama
+  - Ausência de diagramas de sequência para HU02, HU03 e HU05 (incluindo o passo de confirmação de exclusão)
+  - Direção de dependência questionável no diagrama de componentes (entidades → repositório) e tratamento superficial de RNF02/RNF04
 
 
 ### 🔍 Claude Sonnet 5
 
-- **Desempenho Geral:** 25.8/30 pontos (86.0% de conformidade).
-- **Latência Média:** 57.52 segundos por pipeline completo.
+- **Desempenho Geral:** 26.54/30 pontos (88.5% de conformidade).
+- **Latência Média:** 61.24 segundos por pipeline completo.
 - **Pontos Fortes:**
-  - Rastreabilidade forte entre HU, RF, RNF, componentes e decisões
-  - Modelo de domínio fiel às regras (multi-gênero, coleção única, desvinculação em remoção)
+  - Rastreabilidade explícita HU→RF→componentes e tabela de cobertura com status parcial honesto
+  - Gap analysis detalhada e acionável, com responsáveis sugeridos
 - **Oportunidades de Melhoria / Lacunas:**
-  - Ausência de diagramas para exportação e edição/remoção; RF02/RF03 pouco explorados
-  - UI orquestrando estatísticas e falta de trade-offs técnicos concretos (paginação, indexação, cache)
-
-
-### 🔍 GPT 5.3 Codex
-
-- **Desempenho Geral:** 25.6/30 pontos (85.3% de conformidade).
-- **Latência Média:** 32.3 segundos por pipeline completo.
-- **Pontos Fortes:**
-  - Rastreabilidade explícita HU → RF/RNF → componentes, com tabela de cobertura e classificação parcial/completa honesta
-  - Diagrama de sequência com caminho de exceção (validação) e atualização de resumo, aderente aos critérios de aceite
-- **Oportunidades de Melhoria / Lacunas:**
-  - Ausência de modelo de dados/diagrama de entidades e de estratégias concretas para RNF03 (índices, paginação, debounce na busca)
-  - Trade-offs arquiteturais pouco explorados (recomputação vs. contadores incrementais, repositório único vs. repositórios por agregado); diagrama de componentes com retornos inconsistentes
+  - Não trata estratégias concretas para RNF02/RNF04 (cache, CDN, redundância), delegando integralmente à infraestrutura
+  - Falta cobertura de fluxos de exclusão com confirmação, login e modelo de dados; acoplamento AUTH↔serviços não justificado
 
 
 ### 🔍 GPT 5 mini
 
-- **Desempenho Geral:** 24.4/30 pontos (81.3% de conformidade).
-- **Latência Média:** 97.75 segundos por pipeline completo.
+- **Desempenho Geral:** 25.38/30 pontos (84.6% de conformidade).
+- **Latência Média:** 63.44 segundos por pipeline completo.
 - **Pontos Fortes:**
-  - Rastreabilidade explícita HU→RF→Componentes em tabelas claras
-  - Gap analysis extensa, priorizada e acionável
-  - Modelo de dados fiel às cardinalidades exigidas (N:N gêneros, 0..1 coleção)
+  - Rastreabilidade completa RF/RNF/HU → componentes em tabelas claras
+  - Gap analysis e bloqueios altamente detalhados e acionáveis
+  - Neutralidade tecnológica mantida com decisões justificadas por RNFs
 - **Oportunidades de Melhoria / Lacunas:**
-  - Erros de sintaxe Mermaid no diagrama de componentes que impedem renderização
-  - Ausência de fluxos de exceção/erro e de diagrama de implantação
-  - Possível sobre-engenharia (índice de busca dedicado, WebSocket) sem análise de trade-off frente a alternativas simples
+  - Possível sobre-engenharia (CQRS/read model) para domínio simples, sem análise de alternativa mais leve
+  - Poucos diagramas: ausência de modelo de dados e de fluxos de exclusão/indisponibilidade
+  - Validações de negócio (campos obrigatórios, preço) tratadas superficialmente na camada de domínio
+
+
+### 🔍 GPT 5.3 Codex
+
+- **Desempenho Geral:** 25.38/30 pontos (84.6% de conformidade).
+- **Latência Média:** 36.7 segundos por pipeline completo.
+- **Pontos Fortes:**
+  - Rastreabilidade explícita entre HU, RF/RNF e componentes
+  - Gap analysis e pendências específicas e acionáveis, com severidade
+  - Modelagem correta da indisponibilidade como estado e ordenação de categorias
+- **Oportunidades de Melhoria / Lacunas:**
+  - Inconsistência entre diagrama de componentes e de sequência (acesso direto ao repositório)
+  - Cobertura de diagramas limitada: sem fluxos de exceção nem modelo de domínio
+  - Orquestrador genérico como possível ponto de acoplamento central; poucos trade-offs técnicos discutidos
+
+
+### 🔍 Gemini 3.6 Flash
+
+- **Desempenho Geral:** 25.23/30 pontos (84.1% de conformidade).
+- **Latência Média:** 36.61 segundos por pipeline completo.
+- **Pontos Fortes:**
+  - Rastreabilidade completa HU/RF/RNF com tabela de cobertura por componente
+  - Gap analysis acionável com recomendações concretas (ordem_exibicao, bloqueio de exclusão, multi-tenancy)
+- **Oportunidades de Melhoria / Lacunas:**
+  - Critérios de aceite comportamentais (confirmação de exclusão, validações obrigatórias, atualização imediata) pouco refletidos na arquitetura
+  - RNF04 e otimização de leitura tratados de forma superficial, sem cache/CDN/redundância explícitos
+  - Ausência de diagramas para fluxos de cadastro/exclusão e leve inconsistência de atribuição do RF05
 
 
 ---
@@ -217,7 +323,7 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 ## 5. Respostas Formais às Questões de Pesquisa (QPs do Protocolo)
 
 ### **QP1. Quais famílias/modelos apresentam maior aptidão para raciocínio arquitetural, diagramação e modularização?**
-> **Resposta:** Entre os modelos avaliados, **Claude Fable 5** demonstrou a maior solidez analítica e aderência metodológica, alcançando **94.2%** de aproveitamento geral. O modelo se destacou especialmente na geração de diagramas Mermaid sintaticamente corretos com `autonumber` e participantes explicitados, além de rigor na rastreabilidade entre componentes e critérios de aceite das HUs.
+> **Resposta:** Entre os modelos avaliados, **Claude Fable 5** demonstrou a maior solidez analítica e aderência metodológica, alcançando **93.1%** de aproveitamento geral. O modelo se destacou especialmente na geração de diagramas Mermaid sintaticamente corretos com `autonumber` e participantes explicitados, além de rigor na rastreabilidade entre componentes e critérios de aceite das HUs.
 
 ### **QP2. Quais lacunas de cobertura e comportamento persistiram na prática?**
 > **Resposta:** As principais lacunas observadas foram:
@@ -240,6 +346,48 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 | Modelo | Cenário | Status | Arquivo de Saída |
 
 | :--- | :---: | :---: | :--- |
+
+| GPT 5 mini | P01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_P01.md` |
+
+| GPT 5.3 Codex | P01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_P01.md` |
+
+| Gemini 3.7 Flash | P01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_P01.md` |
+
+| Gemini 3.6 Flash | P01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_P01.md` |
+
+| Claude Sonnet 5 | P01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_P01.md` |
+
+| Claude Opus 4.8 | P01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_P01.md` |
+
+| Claude Fable 5 | P01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_P01.md` |
+
+| GPT 5 mini | P02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_P02.md` |
+
+| GPT 5.3 Codex | P02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_P02.md` |
+
+| Gemini 3.7 Flash | P02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_P02.md` |
+
+| Gemini 3.6 Flash | P02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_P02.md` |
+
+| Claude Sonnet 5 | P02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_P02.md` |
+
+| Claude Opus 4.8 | P02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_P02.md` |
+
+| Claude Fable 5 | P02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_P02.md` |
+
+| GPT 5 mini | P03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_P03.md` |
+
+| GPT 5.3 Codex | P03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_P03.md` |
+
+| Gemini 3.7 Flash | P03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_P03.md` |
+
+| Gemini 3.6 Flash | P03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_P03.md` |
+
+| Claude Sonnet 5 | P03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_P03.md` |
+
+| Claude Opus 4.8 | P03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_P03.md` |
+
+| Claude Fable 5 | P03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_P03.md` |
 
 | GPT 5 mini | P04 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_P04.md` |
 
@@ -269,6 +417,48 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 
 | Claude Fable 5 | P05 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_P05.md` |
 
+| GPT 5 mini | M01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_M01.md` |
+
+| GPT 5.3 Codex | M01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_M01.md` |
+
+| Gemini 3.7 Flash | M01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_M01.md` |
+
+| Gemini 3.6 Flash | M01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_M01.md` |
+
+| Claude Sonnet 5 | M01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_M01.md` |
+
+| Claude Opus 4.8 | M01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_M01.md` |
+
+| Claude Fable 5 | M01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_M01.md` |
+
+| GPT 5 mini | M02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_M02.md` |
+
+| GPT 5.3 Codex | M02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_M02.md` |
+
+| Gemini 3.7 Flash | M02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_M02.md` |
+
+| Gemini 3.6 Flash | M02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_M02.md` |
+
+| Claude Sonnet 5 | M02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_M02.md` |
+
+| Claude Opus 4.8 | M02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_M02.md` |
+
+| Claude Fable 5 | M02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_M02.md` |
+
+| GPT 5 mini | M03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_M03.md` |
+
+| GPT 5.3 Codex | M03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_M03.md` |
+
+| Gemini 3.7 Flash | M03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_M03.md` |
+
+| Gemini 3.6 Flash | M03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_M03.md` |
+
+| Claude Sonnet 5 | M03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_M03.md` |
+
+| Claude Opus 4.8 | M03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_M03.md` |
+
+| Claude Fable 5 | M03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_M03.md` |
+
 | GPT 5 mini | M04 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_M04.md` |
 
 | GPT 5.3 Codex | M04 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_M04.md` |
@@ -283,6 +473,34 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 
 | Claude Fable 5 | M04 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_M04.md` |
 
+| GPT 5 mini | G01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_G01.md` |
+
+| GPT 5.3 Codex | G01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_G01.md` |
+
+| Gemini 3.7 Flash | G01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_G01.md` |
+
+| Gemini 3.6 Flash | G01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_G01.md` |
+
+| Claude Sonnet 5 | G01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_G01.md` |
+
+| Claude Opus 4.8 | G01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_G01.md` |
+
+| Claude Fable 5 | G01 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_G01.md` |
+
+| GPT 5 mini | G02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_G02.md` |
+
+| GPT 5.3 Codex | G02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_G02.md` |
+
+| Gemini 3.7 Flash | G02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_7_flash_G02.md` |
+
+| Gemini 3.6 Flash | G02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gemini_3_6_flash_G02.md` |
+
+| Claude Sonnet 5 | G02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_G02.md` |
+
+| Claude Opus 4.8 | G02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_G02.md` |
+
+| Claude Fable 5 | G02 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_G02.md` |
+
 | GPT 5 mini | G03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_G03.md` |
 
 | GPT 5.3 Codex | G03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_3_codex_G03.md` |
@@ -294,6 +512,8 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 | Claude Sonnet 5 | G03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_sonnet_5_G03.md` |
 
 | Claude Opus 4.8 | G03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_G03.md` |
+
+| Claude Fable 5 | G03 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_G03.md` |
 
 | GPT 5 mini | G04 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_gpt_5_mini_G04.md` |
 
@@ -308,8 +528,3 @@ O presente estudo executou a avaliação experimental comparativa dos modelos ca
 | Claude Opus 4.8 | G04 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_opus_4_8_G04.md` |
 
 | Claude Fable 5 | G04 | ✅ OK | `docs/Time_2_Design/analise-qualitativa/outputs/relatorio_claude_fable_5_G04.md` |
-
-| Claude Fable 5 | G03 | ❌ **Falhou** | _litellm.Timeout: APITimeoutError - Request timed out. Error_str: Request timed out._ |
-
-
-> ⚠️ **1 execução(ões) falharam** e foram excluídas do ranking e do scorecard acima. Motivos comuns: rate-limit do Copilot (429), slug de modelo inválido, ou timeout. Rode `python benchmark_gemini_copilot.py --resume` para tentar novamente só o que falta.

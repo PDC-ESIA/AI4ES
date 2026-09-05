@@ -1,336 +1,343 @@
 # Relatório Técnico de Arquitetura de Software
 
 ## 1. Identificação das HUs
+Lista de Histórias de Usuário e critério(s) de aceite diretamente atendidos pelo projeto arquitetural:
 
-Tabela resumo das Histórias de Usuário (HU) e rastreabilidade inicial para requisitos funcionais (RF):
+- HU01 — Cadastrar livro  
+  - Critérios: título e autor obrigatórios; status entre não lido/ lendo/ concluído; aparecimento imediato no acervo.  
+  - Relacionado: RF01, RF04, RF05, RF13, RNF04, RNF05.
 
-| HU ID | Resumo | RF(s) cobertos |
-|-------|--------|----------------|
-| HU01 | Cadastrar livro (título, autor, editora, tipo físico/digital, status) | RF01, RF04, RF05, RF13 |
-| HU02 | Atualizar status de leitura | RF05, RF10 |
-| HU03 | Criar/editar/remover gêneros e associar livros | RF06, RF08, RF11 |
-| HU04 | Criar/editar/remover coleções e associar livros (1 coleção por livro) | RF07, RF08 |
-| HU05 | Filtrar acervo por atributos e combinar filtros | RF09 |
-| HU06 | Buscar por título/autor com retorno parcial e dinâmico | RF12 |
-| HU07 | Visualizar resumo estatístico (totais por status, gêneros frequentes) | RF10, RF11, RNF05 |
-| HU08 | Exportar acervo em CSV/JSON para download no navegador | RNF07, RNF04 |
+- HU02 — Atualizar status de leitura  
+  - Critérios: alteração entre estados a qualquer momento; refletido imediatamente nas estatísticas.  
+  - Relacionado: RF05, RF10, RNF05.
 
-Observações:
-- Cada HU é mapeada para os RFs mais diretamente relacionados; RFs transversais (ex.: persistência, segurança, usabilidade) são considerados nas decisões arquiteturais.
-- Critérios de aceite de cada HU foram utilizados como origem para componentes que suportam validação, consistência e atualizações em tempo-real.
+- HU03 — Organizar livros por gênero  
+  - Critérios: criar/renomear/remover gêneros; associação múltipla; remoção desvincula (não exclui livros).  
+  - Relacionado: RF06, RF08, RNF04.
+
+- HU04 — Organizar livros por coleção  
+  - Critérios: criar/renomear/remover coleções; livro pertence a 1 coleção; remoção desvincula.  
+  - Relacionado: RF07, RF08, RNF04.
+
+- HU05 — Filtrar o acervo  
+  - Critérios: combinar múltiplos filtros; atualização dinâmica; limpar filtros.  
+  - Relacionado: RF09, RNF02, RNF03.
+
+- HU06 — Pesquisar livros por título ou autor  
+  - Critérios: busca parcial; resultados dinâmicos enquanto digita.  
+  - Relacionado: RF12, RNF03, RNF05.
+
+- HU07 — Visualizar resumo do acervo  
+  - Critérios: total geral e por status; gêneros mais frequentes; atualizações automáticas.  
+  - Relacionado: RF10, RF11, RNF05.
+
+- HU08 — Exportar o acervo  
+  - Critérios: incluir todos os campos; escolha CSV/JSON; arquivo disponível para download.  
+  - Relacionado: RF07 (dados de coleção), RNF07, RNF04.
+
+Observação: cada HU resume e foca critérios de aceite que serão rastreados na Tabela de Componentes (Seção 4) e na Cobertura de Requisitos (Seção 6).
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-Abaixo estão os diagramas conceituais principais. Todos os diagramas são neutros em tecnologia e mostram responsabilidades e interfaces.
-
-2.1 Diagrama de sequência: cadastro de livro (fluxo completo, atualização de índice de busca e atualização de estatísticas em tempo-real)
-
+Diagrama de Sequência — fluxo típico: cadastro de livro e atualização de estatísticas (autonumber obrigatório)
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Usuário as Usuário (Frontend)
-    participant UI as Interface (Browser)
-    participant API as API Aplicacional
-    participant Auth as Serviço de Autenticação
-    participant Book as Serviço de Livro
-    participant Genre as Serviço de Gênero
-    participant Coll as Serviço de Coleção
-    participant Search as Serviço de Busca/Indexação
-    participant Stats as Serviço de Estatísticas
-    participant DB as Persistência (Repositório)
+    participant Usuário
+    participant UI as "Interface (Browser/App)"
+    participant App as "Aplicação Cliente"
+    participant API as "API Backend"
+    participant Auth as "Serviço de Autenticação"
+    participant Catalog as "Serviço de Catalogação"
+    participant DB as "Armazenamento Persistente"
+    participant Index as "Serviço de Indexação/Busca"
+    participant Notif as "Serviço de Notificação / Atualização em Tempo Real"
 
-    Usuário->>UI: Preenche formulário de cadastro
-    UI->>API: POST /books {payload, token}
-    API->>Auth: Validar token/identidade
-    Auth-->>API: Autorizado / user-id
-    API->>Book: Criar livro (valida campos obrigatórios)
-    Book->>DB: Inserir registro do livro (book + associações)
-    DB-->>Book: Confirmação de persistência (id)
-    Book->>Genre: Atualizar associações de gêneros (criar vínculo)
-    Book->>Coll: Atualizar associação de coleção (vínculo único)
-    Book-->>API: Retorna recurso criado (201, book-id)
-    API-->>UI: 201 Created + representação do livro
-    UI-->>Usuário: Exibir livro recém-criado no acervo (optimistic refresh)
-    par Atualizar índices e estatísticas
-        Book->>Search: Enfileirar indexação do novo livro
-        Search-->>Search: Atualiza índice invertido / cache de busca
-        Book->>Stats: Notificar mudança para atualização de resumo
-        Stats->>DB: Ler agregações atualizadas
-        Stats-->>API: Evento/resultado agregações
-    end
-    API->>UI: Push/Event (ou via WebSocket) para atualizar estatísticas
-    UI-->>Usuário: Estatísticas atualizadas em tempo-real
+    Usuário->>UI: Preenche formulário (título, autor, editora, tipo, status, gêneros, coleção)
+    UI->>App: Submete comando "CriarLivro"
+    App->>API: POST /livros (token)
+    API->>Auth: Validar token de usuário
+    Auth-->>API: Token válido / identificador do usuário
+    API->>Catalog: request CreateBook(dto, userId)
+    Catalog->>DB: Begin transaction; INSERT livro + relacionamentos
+    DB-->>Catalog: Confirmação persistência
+    Catalog->>Index: Indexar novo registro (assíncrono possível)
+    Index-->>Catalog: Ok (ou acknowledgment)
+    Catalog->>Notif: Emitir evento "LivroCriado" (contendo resumo de alterações)
+    Notif-->>API: Distribui evento para sessões do usuário
+    API-->>App: 201 Created + payload do livro
+    App-->>UI: Atualiza lista local e limpa formulário
+    Notif->>UI: Evento "LivroCriado" recebido -> atualizar estatísticas e listas
+    UI-->>Usuário: Livro aparece no acervo; resumo atualizado
 ```
 
-2.2 Diagrama de componentes (visão lógica e interfaces)
-
+Diagrama de Componentes (visão lógica): principais módulos e interações
 ```mermaid
-graph TD
-    subgraph Cliente
-        UI[Interface (Web/Mobile responsiva)]
-    end
+graph LR
+  subgraph Cliente
+    UI["UI (Responsividade, filtros, busca dinâmica)"]
+    Sync["Camada de Sincronização / Cache Local"]
+  end
 
-    subgraph Backend
-        API[API Aplicacional (REST/HTTP/GraphQL)]
-        Auth[Serviço de Autenticação & Autorização]
-        BookSvc[Serviço de Livro (CRUD)]
-        GenreSvc[Serviço de Gênero]
-        CollSvc[Serviço de Coleção]
-        SearchSvc[Serviço de Busca / Filtro / Indexação]
-        StatsSvc[Serviço de Estatísticas e Agregações]
-        ExportSvc[Serviço de Exportação (CSV/JSON)]
-    end
+  subgraph Backend
+    API["API Gateway / Endpoints REST/GraphQL"]
+    Auth["Serviço de Autenticação & Autorização"]
+    Catalog["Serviço de Catalogação (CRUD Livros)"]
+    Genre["Serviço de Gêneros"]
+    Collection["Serviço de Coleções"]
+    Search["Serviço de Indexação/Busca"]
+    Export["Serviço de Exportação (CSV/JSON)"]
+    Stats["Serviço de Estatísticas / Agregações"]
+    Notif["Serviço de Notificação / Push (tempo real)"]
+    Storage["Persistência (BD Relacional/Documental abstrato)"]
+  end
 
-    subgraph Persistência
-        DB[Repositorio Persistente (dados do usuário, livros, relações)]
-        IndexCache[Índice de Busca / Cache]
-    end
-
-    UI -- API: Requisições HTTP + WS/Push
-    API -- Auth: Validar identidade/autorização
-    API -- BookSvc: Operações CRUD livro
-    API -- GenreSvc: CRUD gêneros
-    API -- CollSvc: CRUD coleções
-    BookSvc -- DB: Persistir livro, associações
-    GenreSvc -- DB: Persistir gêneros
-    CollSvc -- DB: Persistir coleções
-    BookSvc -- SearchSvc: Atualizar índice
-    SearchSvc -- IndexCache: Indexação/consulta rápida
-    BookSvc -- StatsSvc: Emitir eventos de mudança
-    StatsSvc -- DB: Calcular agregações (ou ler agregações pré-computadas)
-    ExportSvc -- DB: Ler conjuntos para gerar CSV/JSON
-    API -- ExportSvc: Solicitar exportação + fornecer arquivo para download
+  UI -->|chama| API
+  API --> Auth
+  API --> Catalog
+  API --> Genre
+  API --> Collection
+  Catalog --> Storage
+  Genre --> Storage
+  Collection --> Storage
+  Catalog --> Search
+  Catalog --> Stats
+  Catalog --> Notif
+  Search --> Storage
+  Export --> Storage
+  Stats --> Storage
+  Notif --> UI
+  Sync --> UI
+  Sync --> API
 ```
 
-2.3 Diagrama de classes / entidades (modelo conceitual de dados)
-
+Diagrama de Classes/Entidades (modelo conceitual)
 ```mermaid
 classDiagram
-    class Usuário {
-        +id
-        +nome
-        +email
-        +hashedPassword
-    }
-    class Livro {
-        +id
-        +titulo
-        +autor
-        +editora
-        +tipo  <<enum: Físico, Digital>>
-        +status  <<enum: Não Lido, Lendo, Concluído>>
-        +dataCadastro
-    }
-    class Gênero {
-        +id
-        +nome
-    }
-    class Coleção {
-        +id
-        +nome
-    }
+  class Usuario {
+    +id: UUID
+    +nome: string
+    +email: string
+  }
 
-    Usuário "1" o-- "N" Livro : possui
-    Livro "N" o-- "N" Gênero : pertence_a
-    Livro "N" o-- "0..1" Coleção : pertence_a
+  class Livro {
+    +id: UUID
+    +titulo: string
+    +autor: string
+    +editora: string
+    +tipo: enum {Fisico, Digital}
+    +status: enum {NaoLido, Lendo, Concluido}
+    +dataCriacao: datetime
+    +usuarioId: UUID
+  }
+
+  class Genero {
+    +id: UUID
+    +nome: string
+    +usuarioId: UUID
+  }
+
+  class Colecao {
+    +id: UUID
+    +nome: string
+    +usuarioId: UUID
+  }
+
+  Usuario "1" o-- "*" Livro : possui
+  Livro "*" o-- "*" Genero : pertence_a
+  Livro "*" --> "0..1" Colecao : pertence_a
+  Genero o-- Usuario : pertence_a
+  Colecao o-- Usuario : pertence_a
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-Lista das decisões arquiteturais principais, justificativas e implicações:
+1. Arquitetura geral: Aplicação cliente + API backend (separação clara de responsabilidades), com serviços lógicos para Catalogação, Gêneros, Coleções, Busca/Indexação, Estatísticas, Exportação e Notificações.
+   - Racional: modularidade, testabilidade e escalabilidade.
 
-D1 — Isolamento por usuário e autenticação obrigatória
-- Decisão: todo acesso requer autenticação; dados isolados por identificador do usuário.
-- Justificativa: RNF01 exige acervo pessoal e isolado.
-- Impacto: serviços e persistência devem filtrar por user-id; testes de autorização precisam cobrir todas as APIs.
+2. Segurança e isolamento por usuário (RNF01):
+   - Todas as operações autenticadas e autorizadas por identificador do usuário.
+   - Dados do usuário isolados por scoping (campo usuarioId em todas as entidades relevantes).
 
-D2 — API única com serviços lógicos separados (Book, Genre, Collection, Search, Stats, Export)
-- Decisão: separar responsabilidades em componentes lógicos (serviços) para clareza, testabilidade e escalabilidade.
-- Justificativa: facilita manutenção, cobertura dos HUs e evolução (adicionar features como histórico).
-- Impacto: definir contratos/contratos internos entre serviços; orquestração via API.
+3. Modelo de dados e integridade:
+   - Entidades principais: Livro, Genero, Colecao, Usuario.
+   - Restrições lógicas:
+     - Livro.titulo e Livro.autor obrigatórios.
+     - Livro.tipo: enum Físico/Digital (RF13).
+     - Livro.status: enum (não lido, lendo, concluído).
+     - Relacionamento Livro <-> Genero: muitos-para-muitos.
+     - Relacionamento Livro -> Colecao: zero ou um (um por vez).
 
-D3 — Indexação/serviço de busca separado para atender filtros e buscas parciais com desempenho (<= 2s)
-- Decisão: consultas de listagem/filtragem delegadas a componente de busca/index.
-- Justificativa: RNF03 (performace) e HUs de busca/filtragem dinâmicas.
-- Impacto: requisito de consistência eventual entre dados persistidos e índice; necessidade de estratégias de atualização (síncrona leve ou fila assíncrona).
+4. Consistência e transações:
+   - Operações de escrita (criar/editar/remover livro) são transacionais localmente ao serviço de catalogação para garantir persistência (RNF04).
+   - Indexação para busca e atualizações de estatísticas podem seguir consistência eventual: criar/editar -> persistir no armazenamento primário -> publicar evento para indexação/estatísticas/notifications.
+   - Racional: baixa latência no caminho crítico de escrita; aceita pequena janela de sincronização para busca/estatísticas.
 
-D4 — Atualizações em tempo-real do resumo estatístico
-- Decisão: evento de mudança disparado em operações CRUD para StatsSvc que atualiza vistas/aggregations e notifica UI.
-- Justificativa: RNF05 e critérios de aceitação HU02/HU07.
-- Impacto: implementar mecanimos de entrega (push/long-polling/WS) e garantir latência baixa para atualizações.
+5. Busca, filtragem e performance (RNF03, RNF05, HU05, HU06):
+   - Buscar e filtrar devem usar um componente de indexação otimizado (estrutura indexável) para garantir respostas rápidas e busca parcial (prefixo/substring) e combinada por múltiplos filtros.
+   - Resultado paginado e com limites por página; suporte a combinação de filtros e busca incremental (typed search).
+   - Racional: atendimento ao requisito de resposta em até 2s sob cargas por evitar varreduras completas no armazenamento primário.
 
-D5 — Modelo de dados: Livro com relacionamentos N:N com Gênero e 0..1 com Coleção
-- Decisão: modelar gêneros como N:N; coleção como associação única.
-- Justificativa: HU03 (vários gêneros) e HU04 (uma coleção por livro).
-- Impacto: operações de remoção de gênero/coleção devem desvincular sem excluir livros (critério explícito).
+6. Atualização em tempo real das estatísticas (RNF05, HU02, HU07):
+   - Publicação de eventos (LivroCriado, LivroAtualizado, LivroRemovido) internos; propagação para front-end por canal de atualização em tempo real (push) ou por polling curto conforme capacidade do cliente.
+   - Racional: garantir atualização imediata do resumo do acervo sem recarregar página completa.
 
-D6 — Exportação sob demanda gerada no servidor e entregue ao cliente
-- Decisão: ExportSvc prepara CSV/JSON com todos os campos e disponibiliza download via API.
-- Justificativa: RNF07 e HU08.
-- Impacto: considerar limitações de memória e streaming para grandes bases; fornecer feedback ao usuário.
+7. Exportação (RNF07, HU08):
+   - Serviço de exportação gera arquivo CSV ou JSON a partir do armazenamento persistente; para exportes grandes, geração por streaming e disponibilização para download.
+   - Racional: evitar tempo de espera indefinido e memória excessiva.
 
-D7 — Validação e regras de negócio no backend
-- Decisão: validações críticas (campos obrigatórios, enums de status/tipo, unicidade) aplicadas no backend.
-- Justificativa: segurança e integridade dos dados.
-- Impacto: frontend realiza validação UX, backend garante consistência.
+8. Gerenciamento de exclusões de domínio (HU03/HU04):
+   - Remover gênero/coleção apenas desvincula relações; não exclui livros.
+   - Regra: ao deletar gênero -> remover associações; ao deletar coleção -> definir coleçãoId=null para livros associados.
 
-D8 — UI responsiva e progressiva
-- Decisão: front-end deve ser responsivo e oferecer feedback imediato (optimistic updates) e acessível em navegadores citados.
-- Justificativa: RNF02, RNF06, e dinamicidade exigida pelas HUs.
-- Impacto: testes em múltiplos navegadores; desacoplamento UI/API.
+9. Responsabilidade de UI:
+   - Responsividade (RNF02) e compatibilidade com navegadores modernos (RNF06) exigem UI que adapte layout e recursos de entrada.
+   - Busca dinâmica (HU06) implementada com debounce no cliente e chamadas incrementais ao backend.
 
-Observação: todas as decisões preservam neutralidade tecnológica — não são prescritos produtos ou frameworks.
+10. Observabilidade e operações:
+    - Instrumentação para métricas de latência de listagem/filtragem, contagem de eventos, erros e uso de exportação; logs correlacionados por request-id.
+
+Observação: todas as decisões são apresentadas em termos conceituais (sem prescrever produtos/fabricantes) conforme Diretriz de Neutralidade Tecnológica.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|------------|---------------------------|------------------|----------------------------------|
-| Interface (UI) | Capturar entrada do usuário, renderizar acervo, filtros e estatísticas, fornecer download | API Aplicacional | HU01, HU05, HU06, HU07, RNF02, RNF06 |
-| API Aplicacional | Contrato público das operações (auth, livros, gêneros, coleções, busca, export) | UI, Auth, BookSvc, GenreSvc, CollSvc, SearchSvc, ExportSvc, StatsSvc | Todos (orquestração) |
-| Serviço de Autenticação (Auth) | Autenticar e autorizar requisições; prover user-id para operações | API Aplicacional, DB (usuários) | RNF01 |
-| Serviço de Livro (BookSvc) | CRUD de livros; validação de campos obrigatórios; garantir tipo e status válidos | DB, GenreSvc, CollSvc, SearchSvc, StatsSvc, API | HU01, HU02, HU03, HU04, RF01, RF02, RF03, RF13 |
-| Serviço de Gênero (GenreSvc) | CRUD de gêneros; manter vínculos de livros sem excluir livros ao remover gênero | DB, BookSvc, API | HU03, RF06 |
-| Serviço de Coleção (CollSvc) | CRUD de coleções; garantir 1 coleção por livro; desvincular sem excluir livros | DB, BookSvc, API | HU04, RF07 |
-| Serviço de Busca/Indexação (SearchSvc) | Indexar livros; executar filtros combinados e buscas parciais com latência baixa | DB, IndexCache, API, UI | HU05, HU06, RF09, RF12, RNF03 |
-| Serviço de Estatísticas (StatsSvc) | Calcular e manter resumo do acervo (totais por status, gêneros frequentes) e notificar UI | DB, API, BookSvc, SearchSvc | HU07, RF10, RF11, RNF05 |
-| Serviço de Exportação (ExportSvc) | Gerar CSV/JSON contendo todos os campos do acervo e entregar para download | DB, API, UI | HU08, RNF07 |
-| Persistência (DB) | Armazenar livros, gêneros, coleções, usuários e relações | BookSvc, GenreSvc, CollSvc, StatsSvc, ExportSvc, Auth | RNF04 |
-| Índice/Camada de Cache (IndexCache) | Armazenamento otimizado para consultas de busca/filtragem | SearchSvc, API | RNF03 |
+|------------|----------------------------|------------------|----------------------------------|
+| Interface (UI) | Fornecer interface responsiva para cadastro, edição, filtros, busca dinâmica, visualização de resumo e exportação | API, Camada de Sincronização Local, Serviço de Notificação | HU01 (aparecer imediatamente), HU05 (filtros dinâmicos), HU06 (busca dinâmica), RNF02 |
+| API Gateway / Endpoints | Validar autenticação, rotear chamadas para serviços apropriados, aplicar autorização por usuário | UI, Auth, Catalog, Genre, Collection, Search, Export, Stats | RNF01, HU01, HU05, HU08 |
+| Serviço de Autenticação & Autorização | Autenticar usuários, emitir/validar tokens, prover identidade para scoping de dados | API | RNF01 |
+| Serviço de Catalogação (CRUD Livros) | CRUD de livros, aplicar validações (título/autor obrigatórios), gerenciar relacionamentos com gêneros/coleções | Storage, Search, Stats, Notif, API | HU01 (campos obrigatórios), RF01, RF02, RF03, RF05, RF13 |
+| Serviço de Gêneros | Criar/editar/remover gêneros, gerenciar relação livros↔gêneros (muitos-para-muitos) | Storage, Catalog, API | HU03 (criar/renomear/remover; desvincular sem excluir livros), RF06, RF08 |
+| Serviço de Coleções | Criar/editar/remover coleções, gerenciar associação livros↔coleção (0..1) | Storage, Catalog, API | HU04 (1 coleção por livro; remoção desvincula), RF07, RF08 |
+| Serviço de Indexação/Busca | Indexar registros para busca parcial e combinada; atender consultas de filtro/ordenacao/paginação | Storage, Catalog, API | HU05, HU06, RF09, RNF03 |
+| Serviço de Estatísticas (Agregação) | Calcular totais por status, frequência de gêneros, e manter resumo atualizado (pode consumir eventos) | Storage, Catalog, Notif, API | HU07, RF10, RF11, RNF05 |
+| Serviço de Notificação / Tempo Real | Entregar eventos de alteração (criação/atualização/exclusão) ao cliente para atualização imediata do resumo/acervo | Catalog, API, UI | HU01, HU02, HU07, RNF05 |
+| Serviço de Exportação | Gerar arquivos CSV/JSON contendo todos os campos; suportar streaming para grandes volumes | Storage, API | HU08, RNF07 |
+| Persistência (Armazenamento) | Persistir entidades com garantia de durabilidade; suportar consultas primárias e transações | Catalog, Genre, Collection, Search, Stats, Export | RNF04 |
+| Camada de Sincronização / Cache Local (Cliente) | Cache de acervo no cliente para UX offline limitado e reduzir latência de navegação; aplica estratégias de invalidation | UI, API | RNF02, RNF05 |
 
-Observações:
-- A coluna “Origem” refere-se à HU ou critério de aceite que motivou o componente.
-- Comunicação entre componentes pode ser sincrona (chamada API) ou assíncrona (eventos/filas) dependendo da operação (definido nas decisões).
+Rastreabilidade de componentes para requisitos-chave:
+- Filtragem e busca (RF09 / RF12 / HU05 / HU06): API + Serviço de Indexação/Busca + UI.
+- Estatísticas em tempo real (RF10 / RF11 / HU07 / RNF05): Serviço de Estatísticas + Serviço de Notificação + UI.
+- Export (RNF07 / HU08): Serviço de Exportação + API + Persistência.
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-Lista de itens pendentes que impactam projeto/implementação:
+1. Especificação de escala alvo / volume de dados (RNF03 ambíguo):
+   - Pendência: definir número esperado de registros por usuário e carga simultânea para validar a meta "independentemente do volume".
+   - Impacto: sem essa definição, dimensionamento de indexação, paginação e requisitos de infra podem ficar sub ou superdimensionados.
+   - Recomendação: time de produto deve fornecer estimativas (ex.: média/percentil de livros por usuário, número de usuários simultâneos).
 
-1. Política de Autenticação e Gerenciamento de Conta
-   - Pendência: especificar métodos de inscrição/recuperação de conta e requisitos de senha.
-   - Impacto: bloqueia definições de fluxos de Auth e UX.
+2. Estratégia de autenticação/identidade:
+   - Pendência: não há detalhes sobre gestão de contas (cadastro, recuperação, provedores).  
+   - Impacto: implementação de fluxo de login/registro/recuperação indefinida; políticas de senha/2FA não especificadas.  
+   - Recomendação: definir fluxo de onboarding e políticas mínimas de senha (ou provedor externo).
 
-2. Volume estimado de dados e SLAs de desempenho reais
-   - Pendência: estimativa do número médio e pico de livros por usuário e número de usuários concorrentes.
-   - Impacto: dimensionamento de indexação, cache e estratégias de paginação.
+3. Critérios exatos para "atualização em tempo real" (RNF05):
+   - Pendência: latência aceitável para "tempo real" (ex.: <1s, <5s).  
+   - Impacto: escolha entre push persistente (maior complexidade) vs polling curto.  
+   - Recomendação: definir SLA de latência do resumo e volume de conexões simultâneas.
 
-3. Estratégia de sincronização e multi-dispositivo
-   - Pendência: definir se há suporte offline e sincronização conflitante.
-   - Impacto: necessário para garantir consistência eventual e UX em dispositivos móveis.
+4. Exportação de grandes volumes:
+   - Pendência: comportamento desejado para export de acervos muito grandes (streaming, processamento assíncrono).  
+   - Impacto: sem definição, risco de timeouts ou consumo excessivo de memória.  
+   - Recomendação: adotar geração assíncrona com notificação de conclusão e limite por arquivo.
 
-4. Critérios de retenção e limites de exportação
-   - Pendência: definir limites máximos por exportação (tamanho/linhas) e políticas de chunking/streaming.
-   - Impacto: implementação de ExportSvc streaming/assíncrono.
+5. Regras de negócio não totalmente explicitadas:
+   - Ao editar/remover gêneros ou coleções, confirmar comportamento esperado para sincronização de índices/estatísticas em janelas de eventual consistência.
+   - Recomendação: documentar contrato de eventos (formatos, campos mínimos).
 
-5. Requisitos de auditoria/historicidade
-   - Pendência: especificar se histórico de alterações (ex.: histórico de status) deve ser mantido.
-   - Impacto: altera modelagem de dados e necessidade de tabela de histórico/event-sourcing.
+6. Políticas de retenção e backup:
+   - Pendência: frequência de backups, requisitos de restauração.  
+   - Impacto: RNF04 (persistência) não define RPO/RTO.  
+   - Recomendação: definir política mínima de backup e testes de restauração.
 
-6. Requisitos de acessibilidade e internacionalização
-   - Pendência: decisão sobre suporte a múltiplos idiomas / normas de acessibilidade.
-   - Impacto: UI e mensagens server-side.
-
-7. Testes cross-browser e matriz de dispositivos
-   - Pendência: listar navegadores/versões alvo para cumprir RNF06.
-   - Impacto: planejamento de testes e possíveis polyfills.
+7. Requisitos de acessibilidade e internacionalização:
+   - Pendência: não há menção sobre idiomas e acessibilidade.  
+   - Recomendação: decidir priorização se necessário.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-Mapeamento direto RF/HU -> Componentes responsáveis e status de cobertura (Concluído/Planejado/Parcial):
+Mapeamento conciso dos RF / RNF / HUs para componentes e mecanismo de atendimento:
 
-- RF01 (Cadastrar livro): BookSvc, API, UI, Auth, DB — Planejado
-- RF02 (Editar livro): BookSvc, API, UI, DB — Planejado
-- RF03 (Remover livro): BookSvc, API, UI, DB, StatsSvc — Planejado
-- RF04 (Três status de leitura): BookSvc, UI — Concluído (especificado no modelo)
-- RF05 (Atualizar status a qualquer momento): BookSvc, API, UI, StatsSvc — Planejado
-- RF06 (CRUD gêneros): GenreSvc, API, UI, DB — Planejado
-- RF07 (CRUD coleções): CollSvc, API, UI, DB — Planejado
-- RF08 (Associação livro ↔ gêneros/coleção): BookSvc, GenreSvc, CollSvc, DB — Planejado
-- RF09 (Filtrar por qualquer atributo): SearchSvc, API, UI, IndexCache — Planejado (requer index)
-- RF10 (Resumo total por status): StatsSvc, API, UI, DB — Planejado
-- RF11 (Gêneros mais frequentes): StatsSvc, API, DB — Planejado
-- RF12 (Pesquisa por título/autor via campo): SearchSvc, API, UI — Planejado
-- RF13 (Diferenciar físico/digital): BookSvc, UI, DB — Concluído (incluído no modelo)
+- RF01 (Cadastrar livro) — Atendido por: UI -> API -> Serviço de Catalogação -> Persistência. Validações no serviço e resposta imediata via Notificação para UI (HU01).
+- RF02 (Editar livro) — Serviço de Catalogação com transação; eventos publicados para Search/Stats/Notif.
+- RF03 (Remover livro) — Serviço de Catalogação remove (ou marca soft-delete se necessário); eventos para atualizar índices e estatísticas.
+- RF04 (Três status) — Definido no modelo (enum); UI e validação no backend (HU01).
+- RF05 (Atualizar status) — Endpoint para atualização de status; evento para Stats e Notif (HU02).
+- RF06 (CRUD gêneros) — Serviço de Gêneros; operações garantem desvinculação sem deleção de livros (HU03).
+- RF07 (CRUD coleções) — Serviço de Coleções; garante at most 1 colecao por livro (HU04).
+- RF08 (Associações) — Repositórios e serviços que gerenciam relacionamentos muitos-para-muitos (gêneros) e 0..1 (coleção).
+- RF09 (Filtrar por qualquer atributo) — Serviço de Indexação/Busca com suporte a combinações de filtros; UI permite composição de filtros (HU05).
+- RF10 (Resumo total por status) — Serviço de Estatísticas calcula e responde em tempo real via Notif e endpoints (HU07).
+- RF11 (Gêneros mais frequentes) — Stats mantém agregações de frequência e expõe ao UI.
+- RF12 (Pesquisa por título/autor) — Indexação suporta busca parcial; UI com busca incremental (HU06).
+- RF13 (Diferenciar físico/digital) — Campo tipo em Livro; UI apresenta seleção/filtragem por tipo (HU01).
 
-HU Coverage (sumário)
-- HU01: Coberto por BookSvc + API + UI + Auth (Planejado)
-- HU02: Coberto por BookSvc + StatsSvc + UI (Planejado)
-- HU03: Coberto por GenreSvc + BookSvc + UI (Planejado)
-- HU04: Coberto por CollSvc + BookSvc + UI (Planejado)
-- HU05: Coberto por SearchSvc + API + UI (Planejado)
-- HU06: Coberto por SearchSvc + UI (Planejado)
-- HU07: Coberto por StatsSvc + UI (Planejado)
-- HU08: Coberto por ExportSvc + API + UI (Planejado)
+Não funcionais:
+- RNF01 (Segurança) — Autenticação/Autorização e scoping por usuarioId aplicados em todos os serviços e queries.
+- RNF02 (Usabilidade responsiva) — Requisitos de UI responsiva e compatibilidade com navegadores implementados na camada cliente.
+- RNF03 (Desempenho listagem/filtragem <=2s) — Meta atendida por arquitetura de indexação, paginação e cache; requer parâmetros de escala para validação.
+- RNF04 (Persistência durável) — Armazenamento persistente com transações e políticas de backup (detalhes operacionais pendentes).
+- RNF05 (Resumo atualizado em tempo real) — Eventos + Notif + atualização cliente com debounce/merge para evitar flapping.
+- RNF06 (Compatibilidade de navegadores) — UI desenvolvida com práticas compatíveis (testes em navegadores modernos).
+- RNF07 (Export CSV/JSON) — Serviço de Exportação que gera e disponibiliza arquivo via API.
 
-Observações:
-- “Planejado” significa que o componente e a interface foram identificados e modelados; falta detalhamento de APIs e testes de integração.
-- Áreas com cobertura parcial dependem de decisões pendentes (Seção 5).
+Cobertura: Todos os RF e HUs têm componentes atribuídos; RNFs têm soluções arquiteturais propostas, embora algumas dependam de escolhas operacionais e SLAs (ver Seção 5).
 
 ---
 
 ## 7. Gap Analysis
 
-Identificação de lacunas na especificação, impactos arquiteturais e recomendações de ação.
+1. Gap: Escopo e métricas de "independentemente do volume" (RNF03)
+   - Impacto arquitetural: seleção e dimensionamento de indexação, requisitos de cache, paginização e integração assíncrona dependem de número esperado de registros por usuário e número de usuários simultâneos.
+   - Ação recomendada: produto deve fornecer estimativas (ex.: 95% usuários < X livros, maiores acervos até Y registros) e nível de simultaneidade esperada; incluir testes de carga com cenários representativos.
 
-Gap G1 — Autenticação/gestão de conta incompleta
-- Impacto: sem detalhes, não é possível definir fluxos de login/recuperação e políticas de segurança.
-- Recomendação: especificar fluxos (registro, login, reset de senha, sessões) e requisitos de segurança (ex.: expiração de sessão, MFA opcional).
+2. Gap: Detalhes de autenticação e gestão de contas (RNF01)
+   - Impacto: definição de fluxos de registro/recuperação, políticas de sessão, expiração de tokens e suporte a múltiplos dispositivos.
+   - Ação: decidir fluxo de identidade (registro por email/senha, SSO, recuperação) e documentar políticas de segurança.
 
-Gap G2 — Conflitos de edição concorrente e multi-dispositivo
-- Impacto: risco de perda de alterações se o mesmo livro for editado em múltiplos dispositivos simultaneamente.
-- Recomendação: definir política de concorrência (último grava vence; locking otimista com versão/timestamp; ou histórico de mudanças).
+3. Gap: SLA de "tempo real" e política de atualização (RNF05)
+   - Impacto: se latência aceitável for muito baixa (<500ms), exigirá infra de push persistente e dimensionamento de conexões; se mais relaxada permite polling.
+   - Ação: definir latência alvo e taxa máxima de eventos por usuário.
 
-Gap G3 — Comportamento offline / sincronização
-- Impacto: UX em dispositivos móveis sem conexão não especificada; inconsistências na estatística em tempo real podem surgir.
-- Recomendação: decidir se haverá suporte offline; se sim, definir estratégia de sincronização e resolução de conflitos.
+4. Gap: Exportação de exportes massivos e interface do usuário para export (RNF07 / HU08)
+   - Impacto: sem definição de limites, export pode causar timeouts. Também faltam especificações de cabeçalho/ordem de campos no CSV.
+   - Ação: definir limitação de tamanho por arquivo, opções de export assíncrono e esquema de colunas para CSV.
 
-Gap G4 — Volume e performance não dimensionados
-- Impacto: RNF03 (<=2s) depende de dados reais; sem estimativas, não é possível dimensionar index e cache.
-- Recomendação: coletar estimativas (média e percentil de número de livros por usuário, usuários concorrentes) e definir requisitos de SLA detalhados.
+5. Gap: Políticas de concorrência e conflitos multi-dispositivo
+   - Impacto: comportamento quando dois clientes editam o mesmo livro simultaneamente não está descrito (last-write-wins, locks, merge).
+   - Ação: definir política de resolução de conflitos e UX esperado (aviso de edição concorrente ou controle de versão).
 
-Gap G5 — Auditoria e histórico de status
-- Impacto: HU02 e análises futuras podem demandar histórico de mudanças (quando e por quem o status mudou).
-- Recomendação: esclarecer necessidade de manter histórico; se necessário, incluir componente de audit logs/historicidade.
+6. Gap: Requisitos de auditoria e histórico de alterações
+   - Impacto: sem esses requisitos, não há rastreabilidade de mudanças (quem alterou o status quando). Pode ser exigido por produto.
+   - Ação: decidir se manter histórico de alterações e eventos (recomendado para rastreabilidade e undo).
 
-Gap G6 — Regras de validação e limites (tamanho de campos, caracteres especiais, limites de exportação)
-- Impacto: inconsistências de validação entre UI e backend.
-- Recomendação: definir regras de domínio (tamanho máximo de título/autor/editora, formatos aceitos) e limites de export (max linhas/MB).
+7. Gap: Backup/retention e requisitos de recuperação (RNF04)
+   - Impacto: falta RPO/RTO impede definição de estratégia de persistência e plano de recuperação.
+   - Ação: definir objetivos de backup/retention.
 
-Gap G7 — Segurança adicional: proteção contra brute-force, rate limiting, e exposição de dados via export
-- Impacto: RNF01 exige segurança; detalhes operacionais não estão especificados.
-- Recomendação: definir políticas de rate limiting, logs de acesso, e validações na exportação para evitar vazamento acidental.
+8. Gap: Internacionalização e acessibilidade
+   - Impacto: mercado/alvos dependem de suporte a múltiplos idiomas e padrões de acessibilidade.
+   - Ação: decidir prioridade e incluir requisitos se aplicável.
 
-Gap G8 — Requisitos de testes (cross-browser, responsividade) não detalhados
-- Impacto: RNF02/RNF06 dependem da matriz de navegadores/dispositivos.
-- Recomendação: definir a matriz alvo (versões mínimas) e critérios de aceitação em testes automáticos.
-
-Gap G9 — Internacionalização e acessibilidade não definidas
-- Impacto: UX pode não atender requisitos legais/regulatórios de acessibilidade.
-- Recomendação: decidir nível de compatibilidade com padrões de acessibilidade e suporte a idiomas.
-
-Gap G10 — Backups, retenção e restauração
-- Impacto: RNF04 pede persistência sem perda; detalhes operacionais de backup e restauração não especificados.
-- Recomendação: definir frequência de backup, testes de restauração e formatos exportáveis para backup manual.
-
-Resumo das Ações Recomendadas (priorizadas)
-1. Definir política de autenticação e gestão de contas (G1) — ALTA prioridade.
-2. Fornecer estimativas de volume e SLAs (G4) — ALTA prioridade para dimensionamento.
-3. Decidir sobre suporte offline e política de concorrência (G2, G3) — MÉDIA/ALTA.
-4. Especificar requisitos de audit/history e políticas de exportação (G5, G6, G7) — MÉDIA.
-5. Definir matriz de testes e requisitos de acessibilidade (G8, G9) — MÉDIA.
-6. Definir backup/retention/restore (G10) — MÉDIA.
+Resumo das ações críticas para mitigação:
+- Obter estimativas de escala e SLAs de latência (prioridade alta).
+- Definir fluxo de autenticação e políticas de sessão (prioridade alta).
+- Especificar comportamento de exportação e limites (prioridade média).
+- Especificar política de concorrência/versão para edições simultâneas (prioridade média).
+- Definir retenção/backups e observabilidade (prioridade média).
 
 ---
 
-Fim do Relatório.
-
-Observação final: este relatório provê uma base neutra e arquitetural adequada para iniciar iterações de desenvolvimento. Recomenda-se que o time realize workshops técnicos para transformar decisões em contratos de API, modelos de dados físicos e planilhas de dimensionamento antes da implementação.
+Documento preparado para guiar o time de implementação. Para avançar, recomenda-se: 1) validação das pendências listadas com o Product Owner; 2) elaboração de contratos (API) e contratos de evento (payloads); 3) plano de testes de carga focado nas metas de desempenho.

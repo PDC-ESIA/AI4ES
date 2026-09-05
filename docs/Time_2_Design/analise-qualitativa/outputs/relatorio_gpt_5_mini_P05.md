@@ -1,339 +1,322 @@
 # Relatório Técnico de Arquitetura de Software
 
 ## 1. Identificação das HUs
-Lista das Histórias de Usuário tratadas diretamente pela arquitetura:
 
-- HU01 — Cadastrar quadra  
-  - Critérios: Nome, tipo e valor obrigatórios; quadra aparece imediatamente na listagem de disponibilidade do cliente.
-- HU02 — Bloquear horários para manutenção  
-  - Critérios: Horários bloqueados não aparecem; operador pode remover bloqueio.
-- HU03 — Visualizar agenda consolidada  
-  - Critérios: Exibe todas as quadras e seus horários reservados/livres no dia; navegação entre datas.
-- HU04 — Cancelar reserva com justificativa (Operador)  
-  - Critérios: Motivo obrigatório; cliente notificado por e-mail.
-- HU05 — Consultar disponibilidade sem cadastro (Cliente)  
+Resumo das Histórias de Usuário (HU) mapeadas para requisitos funcionais (RF) e critérios de aceite principais.
+
+- HU01 — Cadastrar quadra
+  - RF: RF01, RF02
+  - Critérios: Nome, tipo e valor obrigatórios; aparecimento imediato na disponibilidade.
+- HU02 — Bloquear horários para manutenção
+  - RF: RF03
+  - Critérios: Horários bloqueados não aparecem; remoção de bloqueio possível.
+- HU03 — Visualizar agenda consolidada
+  - RF: RF11
+  - Critérios: Agenda diária de todas as quadras; navegação por data.
+- HU04 — Cancelar reserva com justificativa (Operador)
+  - RF: RF09, RF10
+  - Critérios: Motivo obrigatório; notificação por e-mail ao cliente.
+- HU05 — Consultar disponibilidade sem cadastro (Cliente)
+  - RF: RF04
   - Critérios: Acesso sem login; horários ocupados mostrados como indisponíveis.
-- HU06 — Realizar reserva (Cliente)  
-  - Critérios: Validação de disponibilidade no momento da confirmação; geração e exibição/envio de código de confirmação.
-- HU07 — Cancelar minha reserva (Cliente)  
-  - Critérios: Cancelamento por código válido; horário volta a ficar disponível imediatamente.
+- HU06 — Realizar reserva (Cliente)
+  - RF: RF05, RF06, RF07, RF10
+  - Critérios: Validação de disponibilidade no momento da confirmação; código de confirmação exibido e enviado por e-mail.
+- HU07 — Cancelar minha reserva (Cliente)
+  - RF: RF08
+  - Critérios: Cancelamento mediante código válido; horário liberado imediatamente.
 
-Cobertura adicional: todos os RFs e RNFs listados no enunciado estão considerados ao longo do relatório (ver Seção 6).
-
----
+Observações de rastreabilidade: todos os RFs têm correspondência a pelo menos uma HU. RNFs são transversais e abordados na seção de decisões arquiteturais e na cobertura de requisitos (Seção 6).
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-2.1 Diagrama de Sequência: fluxo de reserva (inclui verificação de disponibilidade, criação atômica da reserva, geração de código e envio de e‑mail)
+A seguir estão dois diagramas: sequência de Reserva (fluxo cliente) e Diagrama de Componentes (visão global). Ambos em sintaxe mermaid válida.
+
+Diagrama de sequência: processo de consulta e realização de reserva (inclui atomiticidade/controle de concorrência conceitual).
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    participant Cliente
-    participant Frontend
-    participant API
-    participant AvailabilityService
-    participant ReservationService
-    participant BookingStore
-    participant NotificationService
-    participant EmailService
+  autonumber
+  participant Cliente as Cliente (Navegador)
+  participant Frontend as Frontend (UI pública)
+  participant API as API Gateway / Public API
+  participant Availability as Serviço de Disponibilidade
+  participant Pricing as Serviço de Preços
+  participant Reservation as Serviço de Reservas (Scheduling Engine)
+  participant Persistence as Repositório de Persistência
+  participant Notification as Serviço de Notificação (Email)
+  participant AdminUI as UI Operador
 
-    Cliente->>Frontend: Ver disponibilidade (quadra, data)
-    Frontend->>API: GET /availability?court=&date=
-    API->>AvailabilityService: Consultar disponibilidade(quadra,data)
-    AvailabilityService->>BookingStore: Ler reservas + bloqueios (quadra,data)
-    BookingStore-->>AvailabilityService: Reservas e bloqueios
-    AvailabilityService-->>API: Disponibilidade calculada
-    API-->>Frontend: Lista de horários (livres/ocupados/bloqueados)
+  Cliente->>Frontend: Abrir página de quadras / selecionar data
+  Frontend->>API: GET /quadras/{id}/disponibilidade?data=DD-MM-AAAA
+  API->>Availability: Solicitar slots disponíveis (inclui bloqueios)
+  Availability->>Persistence: Consultar quadra, horários de funcionamento, bloqueios e reservas
+  Persistence-->>Availability: Dados de disponibilidade
+  Availability->>Pricing: Solicitar preço por faixa de horário (por slot)
+  Pricing-->>Availability: Preço por slot
+  Availability-->>API: Slots disponíveis enriquecidos com preço
+  API-->>Frontend: Lista de horários disponíveis (<=2s objetivo de carregamento)
+  Frontend-->>Cliente: Exibir calendário/slots
 
-    Cliente->>Frontend: Solicita reservar (nome,email,tel,horário)
-    Frontend->>API: POST /reservations {dados}
-    API->>ReservationService: CriarReserva(request)
-    ReservationService->>BookingStore: INICIAR TRANSAÇÃO; Checar disponibilidade & inserir reserva provisória
-    BookingStore-->>ReservationService: Sucesso/Conflito (único)
-    alt Reserva bem sucedida
-        ReservationService->>BookingStore: COMITAR transação; persistir código único
-        ReservationService->>NotificationService: Enfileirar e-mail de confirmação
-        NotificationService->>EmailService: Enviar e-mail assíncrono
-        EmailService-->>NotificationService: Ack
-        ReservationService-->>API: 201 Created {codigo_confirmacao}
-    else Horário já ocupado
-        BookingStore-->>ReservationService: Erro de conflito (409)
-        ReservationService-->>API: 409 Conflito
-    end
-    API-->>Frontend: Exibir resultado e/ou código de confirmação
+  Cliente->>Frontend: Preencher dados (nome, e-mail, telefone) + selecionar slot e confirmar
+  Frontend->>API: POST /reservas {quadra, slot, cliente, idempotencyToken}
+  API->>Reservation: Solicitar reserva atômica (validação e criação)
+  Reservation->>Persistence: Transação: verificar disponibilidade (read), criar reserva (write) e gerar código único
+  Persistence-->>Reservation: Confirmação transacional (sucesso) / erro (conflito)
+  alt sucesso
+    Reservation->>Notification: Enfileirar e-mail de confirmação (assíncrono)
+    Reservation-->>API: 201 Created {codigoReserva, resumo}
+    API-->>Frontend: Resultado sucesso com código de confirmação
+    Frontend-->>Cliente: Exibir código e mensagem
+    Notification->>Persistence: Registrar envio / status do e-mail
+    Notification-->>Cliente: Enviar e-mail contendo quadra, data, horário e código
+  else conflito/disponibilidade alterada
+    Reservation-->>API: 409 Conflict {mensagem: horário indisponível}
+    API-->>Frontend: Mostrar erro e solicitar re-tentativa
+    Frontend-->>Cliente: Aviso de conflito
+  end
+
+  Note over AdminUI, Persistence: Operador pode bloquear/editar/visualizar\n(HU01, HU02, HU03, HU04)
+  AdminUI->>API: POST/PUT/DELETE /quadras, /bloqueios, /cancelamentos
+  API->>Persistence: Atualizar quadra/bloqueio/reserva (com auditoria)
+  Persistence-->>API: Confirmação
+  API-->>AdminUI: Atualização refletida imediatamente
 ```
 
-2.2 Diagrama de Componentes / Classes (visão lógica)
+Diagrama de componentes: visão lógica dos componentes e interfaces principais.
 
 ```mermaid
-classDiagram
-    class Frontend {
-        +ConsultarDisponibilidade()
-        +ExibirAgenda()
-        +SolicitarReserva()
-        +CancelarReservaPorCodigo()
-    }
-    class AdminFrontend {
-        +AutenticarOperador()
-        +GerirQuadras()
-        +BloquearHorarios()
-        +VisualizarAgendaConsolidada()
-        +CancelarReservaComMotivo()
-    }
-    class API {
-        +EndpointsPublicos()
-        +EndpointsAdmin()
-        +ValidaçãoBasica()
-    }
-    class AvailabilityService {
-        +CalcularDisponibilidade(quadra,data)
-        +Cache/Invalidacao()
-    }
-    class ReservationService {
-        +CriarReserva(dados)
-        +GerarCodigoUnico()
-        +CancelarReserva(codigo, motivo?)
-        +GarantirAtomicidade()
-    }
-    class PricingService {
-        +CalcularValor(quadra,horario)
-        +RegraFaixaHoraria()
-    }
-    class BookingStore {
-        +ReservasCRUD()
-        +BloqueiosCRUD()
-        +Transações/Locks()
-    }
-    class NotificationService {
-        +EnfileirarNotificacao(tipo, payload)
-        +RetryLogic()
-    }
-    class AuthService {
-        +AutenticarOperador()
-        +GerenciarSessões()
-        +ControleDeAcesso()
-    }
-    class AuditService {
-        +RegistrarAcoesOperador()
-        +RegistrarCancelamentos(motivo)
-    }
+graph LR
+  UI_PUBLIC[Frontend - UI Pública (Cliente)]
+  UI_ADMIN[Frontend - UI Operador (Admin)]
+  API[API Gateway / Facade]
+  AUTH[Auth Service (Admin)]
+  AVAIL[Serviço de Disponibilidade]
+  PRICING[Serviço de Preços / Tarifação]
+  RESERVE[Serviço de Reservas (Scheduling Engine)]
+  BLOCKS[Gestor de Bloqueios / Calendário]
+  NOTIF[Serviço de Notificação (Email)]
+  PERSIST[Repositório de Persistência (Autoritativo)]
+  AUDIT[Audit & Logging]
+  JOBS[Agendador de Jobs / Tarefas Assíncronas]
+  MON[Monitoramento / Health Checks]
 
-    Frontend --> API
-    AdminFrontend --> API
-    API --> AvailabilityService
-    API --> ReservationService
-    API --> AuthService
-    API --> PricingService
-    AvailabilityService --> BookingStore
-    ReservationService --> BookingStore
-    ReservationService --> NotificationService
-    ReservationService --> AuditService
-    AdminFrontend --> AuthService
-    AdminFrontend --> AuditService
+  UI_PUBLIC --> API
+  UI_ADMIN --> API
+  API --> AUTH
+  API --> AVAIL
+  API --> RESERVE
+  API --> BLOCKS
+  AVAIL --> PERSIST
+  BLOCKS --> PERSIST
+  RESERVE --> PERSIST
+  RESERVE --> PRICING
+  AVAIL --> PRICING
+  RESERVE --> NOTIF
+  NOTIF --> PERSIST
+  API --> AUDIT
+  RESERVE --> AUDIT
+  BLOCKS --> AUDIT
+  JOBS --> PERSIST
+  JOBS --> NOTIF
+  MON --> API
+  MON --> PERSIST
 ```
 
----
+Legenda conceitual: API = ponto único de entrada; Serviços modularizados por responsabilidade (Disponibilidade, Reservas, Preços, Bloqueios); Persistence = armazenamento autoritativo; Notificação = envio de e-mails assíncrono; Audit = trilha de alterações.
 
 ## 3. Decisões de Arquitetura
-Cada decisão inclui justificativa, opção escolhida, implicações e alternativas consideradas.
 
-D1 — Separação de responsabilidades por serviços (Services orientados a capacidades: Availability, Reservation, Pricing, Notification, Auth, Audit)  
-- Justificativa: facilita modularidade, testabilidade e manutenção; atende RNF07 (modularidade para novas modalidades).  
-- Implicações: contratos de interface bem definidos; testes de integração entre serviços; versionamento de API.  
-- Alternativas: aplicação monolítica; rejeitada por comprometer modularidade.
+Principais decisões arquiteturais, justificativas e impactos.
 
-D2 — API pública para clientes (sem autenticação) e API admin protegida (autenticação + controle de acesso)  
-- Justificativa: atende HU05 (consulta sem cadastro) e RNF03 (autenticação área administrativa).  
-- Implicações: segregação de endpoints, regras CORS, políticas de rate limiting.  
-- Alternativas: tudo via mesma interface com feature flags (menos seguro).
+1. Arquitetura modular por domínio (Serviço de Disponibilidade, Serviço de Reservas, Serviço de Preços, Serviço de Notificação, Gestor de Bloqueios)
+   - Justificativa: atende RNF07 (manutenibilidade) e facilita inclusão de novas modalidades esportivas.
+   - Impacto: permite evolução isolada de regras por modalidade; requer contratos de API bem definidos.
 
-D3 — Consistência e atomicidade na confirmação de reserva (transação atômica + checagem única)  
-- Justificativa: atende RNF05 (impedir duplo agendamento frente a requisições simultâneas) e HU06.  
-- Escolha: operação de "checar-e-criar" feita como unidade atômica na camada de persistência (transação, verificação única por chave composta horário+quadra, mecanismo de lock/optimistic/compare-and-swap dependendo do ambiente).  
-- Implicações: necessidade de suporte de operações transacionais ou mecanismos de resolução de conflitos; pode afetar latência de escrita.  
-- Alternativas: reserva tentadora com confirmação posterior (fila) — rejeitada por UX e RNF05.
+2. Reservas atômicas centralizadas (Scheduling Engine autoritativo)
+   - Justificativa: RNF05 (confiabilidade / atômico) — a validação de disponibilidade e criação da reserva devem ocorrer em uma operação transacional/comparar-e-gravar para impedir duplo agendamento.
+   - Implementação conceitual: operação única no Serviço de Reservas que realiza check-and-create em autoridade de persistência; suporte a idempotency token para repetição segura.
+   - Impacto: reduz conflitos concorrentes; exige suporte a transações ou mecanismo equivalente no repositório e/ou estratégia de bloqueio (optimista com verifica-then-write ou pessimista via bloqueio curto).
 
-D4 — Cache de disponibilidade com invalidação em escrita  
-- Justificativa: cumprir RNF02 (carregar calendário em até 2 segundos).  
-- Escolha: cache de leituras sobre AvailabilityService com TTL curtos e invalidação imediata quando uma reserva/bloqueio é criada/removido.  
-- Implicações: complexidade de invalidação; necessidade de priorizar consistência para frames próximos no tempo.  
-- Alternativas: sempre consultar origem de dados (pior latência).
+3. Interface pública sem autenticação para consulta (leitura pública) e API protegida para operações administrativas
+   - Justificativa: RF04 e RNF03. Consultas públicas sem cadastro; operações de operador requerem autenticação.
+   - Impacto: necessidade de camadas de autorização e proteção de endpoints administrativos; separar superfícies de ataque.
 
-D5 — Notificações por e-mail em modo assíncrono e idempotente (fila + retries)  
-- Justificativa: não bloquear a confirmação da reserva por latência de entrega de e‑mail; garantir RNF04 (disponibilidade) e boa UX (HU06/HU04).  
-- Implicações: garantir idempotência e eventual consistency para notificações; necessidade de monitoramento de filas e retries.  
-- Alternativas: síncrono (bloqueia fluxo de reserva — rejeitado).
+4. Notificações assíncronas (envio de e-mail)
+   - Justificativa: evitar latência em fluxo crítico de reserva; resiliente a falhas temporárias.
+   - Impacto: confirmação visual imediata ao cliente (código exibido) enquanto envio de e-mail é processado assincronamente; registrar falhas de envio e permitir reenvio.
 
-D6 — Logging/Auditoria para ações administrativas e cancelamentos (com motivo)  
-- Justificativa: atender HU04 e requisitos de rastreabilidade.  
-- Implicações: armazenamento de logs/auditoria, políticas de retenção e acesso restrito.
+5. Cache/Read-optimized para disponibilidade (com invalidação rápida)
+   - Justificativa: RNF02 (carregamento <= 2s) e RNF04 (disponibilidade). Disponibilidade consultada com alta frequência.
+   - Padrão: cache de leitura com janela curta e mecanismo de invalidação quando reservas/bloqueios são criados/alterados.
+   - Impacto: reduz latência; exige estratégia forte de invalidação para evitar exposição de slots já reservados.
 
-D7 — UI responsiva (design adaptativo) e separação de camadas UI/API  
-- Justificativa: atender RNF01 (responsividade) e RNF06 (compatibilidade com navegadores).  
-- Implicações: necessidade de testes responsivos e de compatibilidade.
+6. Pricing Service com regras por faixa de horário
+   - Justificativa: RF12. Separar lógica de tarifação para manter flexibilidade.
+   - Impacto: permite composição de regras (horário nobre, promoções) sem acoplar ao Serviço de Reservas.
 
-D8 — Estratégia de alta disponibilidade e monitoramento (redundância, health checks, escalonamento)  
-- Justificativa: atender RNF04 (99% disponibilidade).  
-- Implicações: planejamento de recuperação, failover e roteiros de manutenção.
+7. Auditoria e logs de domínio (todas as alterações são auditadas)
+   - Justificativa: rastreabilidade para cancelamentos (motivo obrigatório), diagnóstico e conformidade.
+   - Impacto: armazenamento adicional e operações de retenção definidas por políticas.
 
-Observações sobre neutralidade: todas as decisões são expressas em termos de responsabilidades, propriedades transacionais e padrões arquiteturais — sem prescrição de produtos específicos.
+8. Alta disponibilidade e monitoramento
+   - Justificativa: RNF04 (99% 24/7). Projetar redundância, health checks e recuperação automatizada.
+   - Impacto: exigirá infraestrutura redundante e testes de failover (detalhes operacionais a definir).
 
----
+9. Proteção contra abuso e controle de taxa
+   - Justificativa: proteger endpoints públicos (ex.: scraping de disponibilidade) e evitar sobrecarga.
+   - Impacto: definir limites e políticas de rate limiting.
+
+Decisões não especificadas propositalmente: não foram escolhidos produtos ou frameworks — o desenho permanece agnóstico.
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|---|---:|---|---|
-| Frontend (Cliente) | Interface pública para consulta e reserva; responsiva | API | HU05, HU06; RNF01, RNF06 |
-| AdminFrontend (Operador) | Interface administrativa para gerir quadras, bloquear horários, visualizar agenda | API, AuthService | HU01, HU02, HU03, HU04; RNF03 |
-| API Gateway / Controlador | Roteamento, validação básica, limites de taxa, exposição de endpoints públicos/admin | Frontend, AdminFrontend, Services | Todos os HUs |
-| AvailabilityService | Calcular e servir disponibilidade consolidada; cache/invalidar | BookingStore, API, PricingService | HU05, HU03; RNF02, RNF07 |
-| ReservationService | Gerenciar ciclo de vida da reserva (criar, cancelar), garantir atomicidade | BookingStore, NotificationService, AuditService | HU06, HU07, HU04; RF06, RF07, RNF05 |
-| PricingService | Aplicar regras de preço por faixa horária e calcular valor da hora | API, AvailabilityService, BookingStore | RF12; HU01 |
-| BookingStore (persistência lógica) | Persistência de quadras, reservas, bloqueios, índices para checagem única | AvailabilityService, ReservationService, AdminFrontend | HU01, HU02, HU06 |
-| NotificationService | Gerenciar envio assíncrono de e-mails; retries e idempotência | ReservationService, EmailService | RF10, HU06, HU04 |
-| EmailService (integração) | Envio efetivo das mensagens (assíncrono) | NotificationService | RF10, HU04 |
-| AuthService | Autenticação e autorização para área administrativa | AdminFrontend, API | RNF03 |
-| AuditService / Logging | Registrar ações críticas e motivos de cancelamento | ReservationService, AdminFrontend | HU04 |
-| BackgroundWorker / Scheduler | Tarefas assíncronas, limpeza, reenvio de notificações | NotificationService, BookingStore | RNF04, RF03 |
-| Monitoring & Health | Saúde dos componentes e métricas de SLA | Operações | RNF04 |
+|------------|---------------------------|------------------|----------------------------------|
+| Frontend - UI Pública | Interface responsiva para consulta e criação de reservas sem login | API Gateway | HU05, HU06 (RNF01) |
+| Frontend - UI Operador | Interface autenticada para cadastro/edição de quadras, bloqueios e agenda consolidada | API Gateway, Auth Service | HU01, HU02, HU03, HU04 (RF01, RF02, RF03, RF11) |
+| API Gateway / Facade | Entrada unificada, roteamento, validação superficial, aplicação de rate limits | Frontends, Auth, Serviços de domínio | Transversal (todos HUs) |
+| Auth Service (Admin) | Autenticação/autorização para área administrativa | API Gateway, UI Operador | RNF03 (Área administrativa protegida) |
+| Serviço de Disponibilidade | Calcular e expor slots disponíveis por quadra/data (considera horário de funcionamento, bloqueios e reservas) | Persistence, Pricing Service, Block Manager | HU05, HU03, RF04 |
+| Serviço de Reservas (Scheduling Engine) | Realizar reservas atômicas, gerar código único, validar concorrência | Persistence, Notification, Pricing, Audit | HU06, HU07, RF05, RF06, RNF05 |
+| Serviço de Preços | Aplicar regras de preço por faixa de horário (horário nobre, descontos) | Availability, Reservation | RF12 |
+| Gestor de Bloqueios / Calendário | Criar/gerenciar bloqueios por quadra (manutenção/feriado) | Persistence, Availability, Audit | HU02, RF03 |
+| Serviço de Notificação (Email) | Enviar confirmações e notificações de cancelamento por e-mail (assíncrono) | Reservation, Persistence, Jobs | RF10, HU04 |
+| Repositório de Persistência (Autoritativo) | Armazenar quadras, reservas, bloqueios, preços, logs de auditoria | Todos os serviços de domínio | Todos os RFs/HUs |
+| Audit & Logging | Registrar alterações (cadastro, cancelamento, motivo) e eventos operacionais | Persistence, API, Reservation, Block Manager | HU04 (motivo obrigatório), requisitos de rastreabilidade |
+| Agendador de Jobs / Tarefas Assíncronas | Reenvio de notificações, limpeza de expired tokens, relatórios | Persistence, Notification | Operações de manutenção |
+| Monitoramento / Health Checks | Verificação de saúde, métricas de disponibilidade e alertas | API, Persistence, Serviços | RNF04 |
 
-Notas:
-- "BookingStore" é um conceito de armazenamento lógico (tabelas/coleções/entidades para quadras, reservas, bloqueios). Requisitos de atomicidade e unicidade devem ser implementados na camada de persistência com apoio do ReservationService.
-- Interfaces entre componentes deverão ser explicitadas como contratos REST/HTTP ou RPC funcionais, com payloads e erros padronizados (ex.: 201, 409 para conflito).
-
----
+Observação: "Repositório de Persistência" é o armazenamento autoritativo; a implementação concreta fica a cargo do time (seguir neutralidade tecnológica).
 
 ## 5. Bloqueios e Pendências
-Itens que impedem decisões finais ou exigem esclarecimentos do produto/negócio:
 
-1. Definição de granularidade de tempo dos horários (p.ex. 30min, 60min, múltiplos de hora) — impacto direto em modelo de dados, checagem de conflitos e UX. (Prioridade: alta)  
-   - Ação recomendada: decidir granularity antes do design detalhado de BookingStore.
+Itens que exigem decisão/entrada do Product Owner / time para prosseguimento de implementação:
 
-2. Regras completas de precificação por faixa horária (como são definidas faixas, heranças entre quadras, preços por dia da semana) — necessário para PricingService. (Prioridade: média)  
-   - Ação: especificar UI/estrutura para definir faixas e precedência.
+1. Política de granularidade de tempo
+   - Pergunta: duração mínima de slot (30 min, 60 min, variável)? Permite reservas parciais?
+   - Impacto: afeta modelagem de slots, pricing e regras de conflito.
 
-3. Política de cancelamento (prazos, penalidades, reembolsos) — não definida nos requisitos. Afeta disponibilidade automática e regras de negócio. (Prioridade: alta)  
-   - Ação: confirmar regras de negócio.
+2. Regras de fatiamento de horário e sobreposição
+   - Pergunta: é permitida sobreposição parcial entre reservas? Como tratar tempos de buffer (tempo de troca entre jogos)?
+   - Impacto: lógica de disponibilidade e atomiticidade.
 
-4. Formato, comprimento e políticas de segurança dos códigos de confirmação (randomização, colisões, expiração). (Prioridade: alta)  
-   - Ação: definir formato e TTL do código; critérios de auditabilidade.
+3. Regras de cancelamento (prazos, taxas)
+   - Pergunta: cancelamento sem custos? Janelas mínimas para cancelamento?
+   - Impacto: fluxo de cancelamento, notificação e possíveis integrações financeiras (se houver).
 
-5. Quotas e expectativas de carga (número de quadras, reservas/dia, picos) — necessário para projetar escalabilidade e caches. (Prioridade: média-alta)  
-   - Ação: coletar estimativas de uso.
+4. SLA de entrega de e-mail / canal alternativo (SMS)
+   - Pergunta: qual SLA aceitável para notificações e se SMS deve ser suportado?
+   - Impacto: escolha de estratégias de retry e ops; requisito de canal alternativo não está explicitado.
 
-6. Política de retenção/privacidade de dados pessoais (e-mail, telefone) e conformidade legal (ex.: políticas de consentimento para e-mails) — impacto legal e de armazenamento. (Prioridade: alta)  
-   - Ação: alinhar com time de conformidade.
+5. Política de retenção e conformidade de dados
+   - Pergunta: por quanto tempo manter registros de reservas, logs e dados pessoais?
+   - Impacto: dimensionamento de armazenamento e requisitos legais.
 
-7. SLA definindo o que compõe os 99% (manutenções programadas, janelas de backup) — para planejar HA. (Prioridade: média)  
-   - Ação: acordar manutenção planejada e janelas.
+6. Requisitos de escala e carga esperada
+   - Pergunta: estimativa de requisições por segundo/usuários simultâneos nos picos?
+   - Impacto: dimensionamento e estratégia de cache/particionamento.
 
-8. Estratégia para envio de e-mails (taxas, testes de entrega, fallback) — configuração de retries e dead-letter handling. (Prioridade: média)  
-   - Ação: especificar requisitos operacionais para NotificationService.
+7. Timezone e regras de horário
+   - Pergunta: suporte a múltiplos fusos horários ou somente local? Como tratar horário de verão?
+   - Impacto: cálculo de disponibilidade, exibição para cliente e lógica de bloqueios.
 
-9. Definição de fusos horários e comportamento em caso de clientes/operadores em fusos diferentes — especialmente importante para reservas. (Prioridade: alta)  
-   - Ação: padronizar uso de timezone e exibir localmente.
+8. Mecanismo de autenticação para operadores
+   - Pergunta: tipos de credenciais (usuário/senha, MFA) e gestão de usuários?
+   - Impacto: requisito de segurança e integração com sistema de identidade.
 
-10. Requisitos não declarados: pagamentos não estão no escopo (confirmar se haverá cobrança online ou pagamento local). (Prioridade: média)  
-   - Ação: confirmar necessidade de integração com fluxo de pagamentos.
+9. Unicidade do código de confirmação
+   - Pergunta: formato (alfanumérico, comprimentos) e políticas de colisão?
+   - Impacto: geração e armazenamento.
 
----
+10. Métricas e testes de aceitação para RNF02 (<=2s)
+    - Pergunta: definição de cenários de teste e SLAs de P95/P99.
+    - Impacto: escolhas de caching e otimizações.
+
+Esses bloqueios devem ser resolvidos antes do detalhamento de implementação e seleção de tecnologias.
 
 ## 6. Cobertura de Requisitos
 
-6.1 Mapeamento RF -> Componentes principais (resumo)
+Mapeamento sintético de como cada requisito é coberto pela arquitetura proposta.
 
-| RF ID | Descrição | Componentes responsáveis |
-|---|---|---|
-| RF01 | Cadastro de quadras | AdminFrontend, API, BookingStore, PricingService (valor hora) — HU01 |
-| RF02 | Editar/remover quadra | AdminFrontend, API, BookingStore, AvailabilityService — HU01 |
-| RF03 | Bloquear horários | AdminFrontend, API, BookingStore, AvailabilityService — HU02 |
-| RF04 | Exibir disponibilidade sem login | Frontend, API, AvailabilityService, BookingStore — HU05 |
-| RF05 | Cliente realiza reserva com dados | Frontend, API, ReservationService, BookingStore, NotificationService — HU06 |
-| RF06 | Gerar código de confirmação | ReservationService, BookingStore, NotificationService — HU06 |
-| RF07 | Impedir reserva de horário ocupado | ReservationService, BookingStore (checagem atômica) — RNF05 |
-| RF08 | Cliente cancela reserva por código | Frontend, API, ReservationService, BookingStore, NotificationService — HU07 |
-| RF09 | Operador cancela reserva com motivo | AdminFrontend, API, ReservationService, AuditService, NotificationService — HU04 |
-| RF10 | Enviar confirmação por e-mail | NotificationService, EmailService — HU06, HU04 |
-| RF11 | Visualizar agenda consolidada | AdminFrontend, API, AvailabilityService, BookingStore — HU03 |
-| RF12 | Valores por faixa horária | PricingService, AdminFrontend, BookingStore — HU01 |
+Requisitos Funcionais:
+- RF01 (cadastro quadra): UI Operador -> API -> Persistence; Audit; Aceite HU01.
+- RF02 (editar/remover quadra): UI Operador -> API -> Persistence; validações; Audit.
+- RF03 (bloquear horários): Gestor de Bloqueios -> Persistence; Availability consulta bloqueios; HU02.
+- RF04 (consulta sem login): Frontend Público -> API -> Availability (leitura pública); HU05.
+- RF05 (realizar reserva): Frontend Público -> API -> Reservation (atômico) -> Persistence; HU06.
+- RF06 (gerar código único): Serviço de Reservas gera código durante transação; HU06.
+- RF07 (impedir reserva já ocupada): Serviço de Reservas faz check-and-create atômico; RNF05 aplicado.
+- RF08 (cliente cancela com código): Endpoint público de cancelamento com validação de código -> Reservation -> Persistence; HU07.
+- RF09 (operador cancela com motivo): UI Operador -> API -> Reservation with cancel reason -> Persistence + Notification; HU04.
+- RF10 (enviar confirmação por e-mail): Reservation enfileira tarefa para Serviço de Notificação; Notification envia e-mail; HU06/HU04.
+- RF11 (agenda consolidada): UI Operador -> API -> Availability + filtros por data -> exibe todas quadras; HU03.
+- RF12 (valores por faixa): Serviço de Preços aplica regras por faixa e é consultado por Availability/Reservation; HU01, HU06.
 
-6.2 Mapeamento RNF -> Contramedidas arquiteturais
+Requisitos Não Funcionais:
+- RNF01 (usabilidade/responsividade): Frontends responsivos; design mobile-first; componentes de UI leves.
+- RNF02 (desempenho calendar <=2s): Availability e cache read-optimized; indexação/queries otimizadas; métricas de P95.
+- RNF03 (segurança área admin): Auth Service + proteção de endpoints; logging de auditoria.
+- RNF04 (disponibilidade 99%): redundância, health checks, monitoração, tratamento de falhas.
+- RNF05 (confiabilidade/atômico): Reservas atômicas via Scheduling Engine e operações transacionais; idempotency tokens.
+- RNF06 (compatibilidade navegadores): Frontend com práticas web compatíveis com navegadores modernos.
+- RNF07 (manutenibilidade): modularização por serviço, plugins para novas modalidades.
 
-| RNF ID | Descrição | Tratamento arquitetural |
-|---|---|---|
-| RNF01 | Responsividade UI | Frontend responsivo; testes cross-browser; design adaptativo |
-| RNF02 | Calendar load <= 2s | Cache (AvailabilityService), consultas otimizadas, paginação/visualização incremental |
-| RNF03 | Admin protegido | AuthService (autenticação + autorização), endpoints protegidos |
-| RNF04 | Disponibilidade 99% | Redundância de componentes, health checks, fila para tarefas assíncronas, monitoramento/alertas |
-| RNF05 | Confirmação atômica | Operação transacional no ReservationService/BookingStore; chave única por quadra+slot; lock/optimistic retry |
-| RNF06 | Compatibilidade navegadores | Frontend com padrões web; testes em navegadores suportados |
-| RNF07 | Modularidade | Serviços separados por responsabilidade, extensibilidade de modelagem de modalidades |
-
----
+Cobertura: todas as RFs e RNFs possuem correspondência com componentes/decisões. Pontos dependentes de decisões pendentes listadas em Seção 5.
 
 ## 7. Gap Analysis
-Identificação de lacunas, impacto e ações recomendadas.
 
-GAP 1 — Granularidade dos horários (ausente)  
-- Impacto: definição de modelo de dados para reservas, conflitos, UI de seleção de horários, cálculo de preço por faixa.  
-- Risco: implementação errada pode exigir grande retrabalho de dados.  
-- Recomendação: decidir se slots são em minutos (ex.: 30m) ou por hora, e se são compostos (várias unidades por reserva). Definir compatibilidade para reservas de múltiplas unidades (ex.: 90 minutos).
+Identificação de lacunas na especificação, impacto arquitetural e recomendações.
 
-GAP 2 — Regras de precificação e sua modelagem (detalhes de faixas)  
-- Impacto: PricingService e UX de operador; cálculo em HU06.  
-- Recomendação: especificar formato de faixa (início/fim, dias da semana, exceções) e ordem de precedência.
+1. Lacuna: Granularidade de tempo e regras de duração de reservas
+   - Impacto: modelagem de slots, checagem de conflito e cálculo de preço.
+   - Recomendação: definir duração mínima/maior e se reservas podem ter durações múltiplas (p.ex. 30/60 min). Criar critérios de teste de aceitação (ex.: reserva de 90 minutos permitida?).
 
-GAP 3 — Política de cancelamento e janelas (quando é permitido cancelar, reembolso/punição)  
-- Impacto: regras do ReservationService e comunicação ao cliente, possíveis integrações externas de pagamento.  
-- Recomendação: definir política (p.ex. sem multa até X horas antes) e refletir no contrato de API.
+2. Lacuna: Comportamento de sobreposição e buffers entre reservas
+   - Impacto: necessidade de lógica para impedir reservas adjacentes sem tempo de limpeza; complexidade na disponibilidade.
+   - Recomendação: especificar política de buffer por quadra (0 por padrão) e incluir no modelo de disponibilidade.
 
-GAP 4 — Formato e segurança do código de confirmação (comprimento, validade, exposição pública)  
-- Impacto: colisões, brute-force, usabilidade do cancelamento por código.  
-- Recomendação: definir comprimento, caracteres permitidos, TTL e limite de tentativas de uso. Implementar mecanismos de rate-limiting/brute-force para endpoint de cancelamento por código.
+3. Lacuna: Regras de cancelamento (prazos e possíveis taxas)
+   - Impacto: UI, notificações, relatórios e possíveis integrações com pagamentos.
+   - Recomendação: definir política de cancelamento com exemplos e fluxos de negócio.
 
-GAP 5 — Fuso horário/normalização temporal  
-- Impacto: reservas incorretas se cliente/operador em fusos diferentes; interface confusa.  
-- Recomendação: padronizar armazenamento em UTC e exibir localmente com clear timezone; aceitar entrada com timezone explícito.
+4. Lacuna: Requisitos de carga/escala e padrões de uso
+   - Impacto: dimensionamento de cache, capacidade do Serviço de Reservas e tolerância a picos.
+   - Recomendação: obter estimativas de pico (req/s, reservas por minuto) para dimensionar e definir SLAs de performance.
 
-GAP 6 — Volume esperado e dimensionamento (capacidade)  
-- Impacto: escolhas de caching, dimensionamento horizontal, configuração de filas e limites de concorrência.  
-- Recomendação: coletar estimativas de uso (reservas/dia, picos simultâneos) para definir SLAs de infra.
+5. Lacuna: Política de retenção de dados e privacidade
+   - Impacto: compliance, armazenamento e limpeza de dados pessoais (e-mail/telefone).
+   - Recomendação: definir retenção mínima/máxima e necessidades legais (ex.: logs de auditoria por X anos).
 
-GAP 7 — Entrega de e-mails (SLA, taxa, fallback)  
-- Impacto: confirmações não entregues afetam UX; perda de notificações.  
-- Recomendação: definir SLA de entrega, políticas de retry e DLQ, e processo de monitoração/alerta para falhas.
+6. Lacuna: Formato e entrega de notificações (retries, SLA, fallback)
+   - Impacto: entrega de confirmações e cancelamentos; experiência do cliente.
+   - Recomendação: definir SLA de envio, política de retry e se canais alternativos (SMS) serão suportados.
 
-GAP 8 — Requisitos regulatórios e proteção de dados (consentimento para e-mail, retenção)  
-- Impacto: obrigações legais e riscos de compliance.  
-- Recomendação: definir políticas de retenção, aviso de privacidade e mecanismo de opt-out; registrar consentimento em AuditService.
+7. Lacuna: Timezone e horário de verão
+   - Impacto: cálculo de disponibilidade e exibição para cliente.
+   - Recomendação: definir comportamento (usar horário local da quadra / do cliente) e testes de borda.
 
-GAP 9 — Testes de concorrência e estratégia para conflitos de reserva  
-- Impacto: possível dupla reserva em cenários de alta concorrência sem testes adequados.  
-- Recomendação: criar cenários de teste de carga e de concorrência; testar mecanismos de lock/unique constraint.
+8. Lacuna: Gestão de identidades do operador
+   - Impacto: segurança administrativa e auditoria.
+   - Recomendação: definir políticas de autenticação (ex.: senha + MFA) e fluxos de recuperação.
 
-GAP 10 — Níveis de permissão do operador (roles) e multi-operador simultâneo  
-- Impacto: segurança e auditoria; ações conflitantes entre operadores.  
-- Recomendação: definir papéis (p.ex. operador, administrador), regras de permissão e processo de audit trail.
+9. Lacuna: Procedência e unicidade do código de confirmação
+   - Impacto: chance muito baixa de colisão e usabilidade do código (tamanho/legibilidade).
+   - Recomendação: definir formato e política de geração (ex.: aleatório com verificação de unicidade).
 
-GAP 11 — Backup / Restauração e políticas de retenção | DR plan  
-- Impacto: proteger dados críticos (reservas/quadras).  
-- Recomendação: definir RPO/RTO e estratégia para backups consistentes.
+10. Lacuna: Métricas detalhadas e critérios de aceitação para RNF02/RNF04
+    - Impacto: não haverá critérios objetivos para homologação.
+    - Recomendação: definir métricas (P95, P99) e cenários de teste para disponibilidade e latência.
 
----
+Prioridade das ações recomendadas:
+- Alta: definir granularidade de tempo, regras de sobreposição/buffer, e regras de cancelamento.
+- Média: definições de carga/escala, timezone, e políticas de retenção/dados.
+- Baixa: formatos de código de confirmação e canais alternativos.
 
-Observações finais e passos recomendados imediatos
-1. Validar e priorizar as pendências críticas (granularidade de horários, política de cancelamento, formato de código de confirmação, timezone).  
-2. Elaborar contratos de API (endpoints, payloads, códigos de erro) e modelagem de dados para BookingStore com foco em constraints de unicidade (quadra + slot).  
-3. Projetar e implementar testes de concorrência e carga antes do go-live para validar RNF05 e RNF02.  
-4. Definir métricas e alertas (tempo médio de resposta do calendário, taxa de erros, filas de notificação, entregas de e-mail) para cumprir RNF04.  
-5. Documentar processos operacionais para manutenção e rollback de bloqueios de quadra (HU02) e para cancelamentos operacionais com justificativa (HU04).
+Conclusão e próximos passos curtos:
+- Validar as pendências listadas com Product Owner/Stakeholders.
+- Firmar critérios de aceitação operacional (latência, SLAs de notificação, carga).
+- Projetar testes de concorrência intensiva para validar atomicidade de reservas.
+- Com as decisões tomadas, detalhar contratos de API e modelos de dados (UML/ER) antes da implementação.
 
----
-
-Fim do Relatório Canônico.  
-Se desejar, posso:
-- Gerar um esboço de API (endpoints, parâmetros, exemplos de payload) mantendo neutralidade tecnológica;  
-- Fornecer um modelo de dados inicial para BookingStore (entidades/reservas/quadras/bloqueios);  
-- Produzir cenários de teste de concorrência e scripts de carga. Qual prefere primeiro?
+Fim do relatório.

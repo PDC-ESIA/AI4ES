@@ -178,7 +178,7 @@ def call_llm(model: str, messages: list, temperature: float = 0.2, max_tokens: i
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                timeout=90,
+                timeout=180,
                 extra_headers=extra_headers,
             )
             elapsed = time.time() - start_t
