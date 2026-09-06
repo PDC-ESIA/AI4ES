@@ -6,6 +6,12 @@ benchmarks/coding_review/humaneval/datasets/
 benchmarks/coding_review/humaneval/results/
 benchmarks/construcao/resultados/
 
+# Benchmark do agente de requisitos (LLM-as-a-Judge) — versionamos apenas o
+# harness; artefatos coletados, julgamentos e tabelas são dados de execução.
+benchmark/runs/
+benchmark/judgments/
+benchmark/results/
+
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
 adk/workspace_output/
 workspace_output/
