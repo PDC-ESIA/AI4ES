@@ -58,7 +58,7 @@ Use `ADK_AGENTS_DIR=src/agents` e abra
 ```
 
 Os comandos completos de reprodução e os caminhos das evidências estão em
-[`QA_AUTOMATED_HANDOFF.md`](../../../../docs/Time_3_Testes/evidencias/QA_AUTOMATED_HANDOFF.md).
+[`PR_QA_MULTISTACK.md`](../../../../docs/Time_3_Testes/evidencias/PR_QA_MULTISTACK.md).
 
 ## Contrato de saída
 

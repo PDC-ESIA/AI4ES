@@ -125,6 +125,36 @@ Na pasta `adk`, a validação local pode ser reproduzida com:
   --level all --profile all
 ```
 
+### Execução pela Dev UI
+
+Inicie a aplicação na pasta `adk`:
+
+```powershell
+$env:ADK_AGENTS_DIR = "src/agents"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8081
+```
+
+Abra `http://127.0.0.1:8081/dev-ui/?app=workflow_qa`. Para preparar um
+workspace unitário isolado, execute:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\unit_profile_evidence.py `
+  prepare-dev-ui --profile node-jest
+```
+
+Configure `WORKSPACE_OUTPUT_DIR` com o `workspace_output` criado. Para
+integração, use a fixture correspondente em
+`tests/fixtures/integration_profiles/<perfil>/project`. Para E2E,
+disponibilize a aplicação local antes de enviar o prompt:
+
+```powershell
+.\.venv\Scripts\python.exe -m http.server 8765 `
+  --bind 127.0.0.1 --directory tests/fixtures/e2e_profiles
+```
+
+O alvo E2E da fixture fica disponível em
+`http://127.0.0.1:8765/index.html`.
+
 ## Resultados automatizados
 
 | Escopo | Perfis validados | Resultado registrado |
@@ -170,7 +200,7 @@ execução retornou o bloqueio ambiental esperado porque Maven não estava no
 `PATH`. O mesmo perfil Java está aprovado na matriz automatizada, executada em
 ambiente com o runtime preparado.
 
-As transcrições legíveis e os eventos brutos estão no
+As transcrições completas estão no
 [resumo das sessões de integração](evidencias_integracao_dev_ui/RESUMO.md).
 
 ### Testes E2E
