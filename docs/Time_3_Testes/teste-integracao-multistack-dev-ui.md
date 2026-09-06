@@ -53,15 +53,15 @@ só devolve a imagem para visualização inline, sem opção de salvar em disco.
 vez disso, o histórico completo de cada sessão (prompt, chamadas de tool,
 detecção de perfil, geração e resultado normalizado) foi exportado do banco
 de sessões do ADK (`adk/src/agents/workflow_qa/.adk/session.db`) para a pasta
-[evidencias-integracao-multistack-dev-ui/](evidencias-integracao-multistack-dev-ui/),
+[evidencias/evidencias_integracao_dev_ui/](evidencias/evidencias_integracao_dev_ui/),
 em formato bruto (`.json`) e legível (`.md`):
 
 | Perfil | Transcript legível | Eventos brutos |
 | --- | --- | --- |
-| `python-integration` | [python-integration-sessao.md](evidencias-integracao-multistack-dev-ui/python-integration-sessao.md) | [python-integration-sessao.json](evidencias-integracao-multistack-dev-ui/python-integration-sessao.json) |
-| `node-integration` | [node-integration-sessao.md](evidencias-integracao-multistack-dev-ui/node-integration-sessao.md) | [node-integration-sessao.json](evidencias-integracao-multistack-dev-ui/node-integration-sessao.json) |
-| `java-integration` | [java-integration-sessao.md](evidencias-integracao-multistack-dev-ui/java-integration-sessao.md) | [java-integration-sessao.json](evidencias-integracao-multistack-dev-ui/java-integration-sessao.json) |
-| `go-integration` | [go-integration-sessao.md](evidencias-integracao-multistack-dev-ui/go-integration-sessao.md) | [go-integration-sessao.json](evidencias-integracao-multistack-dev-ui/go-integration-sessao.json) |
+| `python-integration` | [python-integration-sessao.md](evidencias/evidencias_integracao_dev_ui/python-integration-sessao.md) | [python-integration-sessao.json](evidencias/evidencias_integracao_dev_ui/python-integration-sessao.json) |
+| `node-integration` | [node-integration-sessao.md](evidencias/evidencias_integracao_dev_ui/node-integration-sessao.md) | [node-integration-sessao.json](evidencias/evidencias_integracao_dev_ui/node-integration-sessao.json) |
+| `java-integration` | [java-integration-sessao.md](evidencias/evidencias_integracao_dev_ui/java-integration-sessao.md) | [java-integration-sessao.json](evidencias/evidencias_integracao_dev_ui/java-integration-sessao.json) |
+| `go-integration` | [go-integration-sessao.md](evidencias/evidencias_integracao_dev_ui/go-integration-sessao.md) | [go-integration-sessao.json](evidencias/evidencias_integracao_dev_ui/go-integration-sessao.json) |
 
 ## Checklist — `python-integration`
 
@@ -85,7 +85,7 @@ Tempo aproximado: ~1 min
 Status final: sucesso
 Quantidade de testes: 2
 Caminho do teste gerado: adk/evidencias_multilevel/dev_ui_workspaces/python-integration/workspace_output/coder/src/tests/integration/test_artefato_integration.py
-Sessão completa: evidencias-integracao-multistack-dev-ui/python-integration-sessao.md
+Sessão completa: evidencias/evidencias_integracao_dev_ui/python-integration-sessao.md
 Observações: nenhuma.
 ```
 
@@ -111,7 +111,7 @@ Tempo aproximado: ~1 min
 Status final: sucesso
 Quantidade de testes: 2
 Caminho do teste gerado: adk/evidencias_multilevel/dev_ui_workspaces/node-integration/workspace_output/coder/src/tests/integration/artefato.integration.test.generated.ts
-Sessão completa: evidencias-integracao-multistack-dev-ui/node-integration-sessao.md
+Sessão completa: evidencias/evidencias_integracao_dev_ui/node-integration-sessao.md
 Observações: 1ª tentativa (sessão 83df9c90, sem evidencias exportadas) falhou
   na execução — Node 22.17 instalado nesta máquina rejeita `.ts` no
   `node --test` sem a flag `--experimental-strip-types`. Corrigido em
@@ -140,7 +140,7 @@ Tempo aproximado: ~1 min
 Status final: bloqueado
 Quantidade de testes: 0
 Caminho do teste gerado: adk/evidencias_multilevel/dev_ui_workspaces/java-integration/workspace_output/coder/src/src/test/java/com/example/CheckoutServiceIntegrationTest.java
-Sessão completa: evidencias-integracao-multistack-dev-ui/java-integration-sessao.md
+Sessão completa: evidencias/evidencias_integracao_dev_ui/java-integration-sessao.md
 Observações: bloqueio ambiental, não é bug de código — ver seção "Se der
   algum erro" abaixo.
 ```
@@ -164,21 +164,22 @@ Tempo aproximado: ~1 min
 [x] Retornou o resultado normalizado
 [x] Não teve bloqueio inesperado
 
-Status final: sucesso
-Quantidade de testes: 1 (cobre os dois cenários no mesmo teste)
-Caminho do teste gerado: adk/evidencias_multilevel/dev_ui_workspaces/go-integration/workspace_output/coder/src/repository_integration_test.go
-Sessão completa: evidencias-integracao-multistack-dev-ui/go-integration-sessao.md
-Observações: nenhuma.
+Status final: requer nova captura em workspace limpo
+Quantidade de testes: 1 teste antigo executado
+Caminho do teste gerado na sessão: adk/evidencias_multilevel/dev_ui_workspaces/go-integration/workspace_output/coder/src/repository_integration_test.generated.go
+Sessão completa: evidencias/evidencias_integracao_dev_ui/go-integration-sessao.md
+Observações: o nome `*_test.generated.go` não é descoberto pelo `go test`; a
+  convenção foi corrigida para `*_generated_test.go` após a análise da sessão.
 ```
 
 ## Resumo
 
 | Perfil | Entrada | Detecção | Geração | Execução | Status | Sessão |
 | --- | --- | --- | --- | --- | --- | --- |
-| `python-integration` | workflow_qa | ✅ pytest | ✅ | ✅ | sucesso | [ver](evidencias-integracao-multistack-dev-ui/python-integration-sessao.md) |
-| `node-integration` | workflow_qa | ✅ node:test | ✅ | ✅ (após fix) | sucesso | [ver](evidencias-integracao-multistack-dev-ui/node-integration-sessao.md) |
-| `java-integration` | workflow_qa | ✅ JUnit/Maven | ✅ | ❌ Maven ausente | bloqueado | [ver](evidencias-integracao-multistack-dev-ui/java-integration-sessao.md) |
-| `go-integration` | workflow_qa | ✅ go-testing | ✅ | ✅ | sucesso | [ver](evidencias-integracao-multistack-dev-ui/go-integration-sessao.md) |
+| `python-integration` | workflow_qa | ✅ pytest | ✅ | ✅ | sucesso | [ver](evidencias/evidencias_integracao_dev_ui/python-integration-sessao.md) |
+| `node-integration` | workflow_qa | ✅ node:test | ✅ | ✅ (após fix) | sucesso | [ver](evidencias/evidencias_integracao_dev_ui/node-integration-sessao.md) |
+| `java-integration` | workflow_qa | ✅ JUnit/Maven | ✅ | ❌ Maven ausente | bloqueado | [ver](evidencias/evidencias_integracao_dev_ui/java-integration-sessao.md) |
+| `go-integration` | workflow_qa | ✅ go-testing | ✅ | ⚠️ executou teste anterior | repetir captura | [ver](evidencias/evidencias_integracao_dev_ui/go-integration-sessao.md) |
 
 ## Se der algum erro
 
@@ -193,7 +194,7 @@ Comando executado: não chegou a montar comando completo — bloqueado antes por
 Mensagem completa: status=bloqueado, código RUNTIME_DEPENDENCY_MISSING,
   "Maven não está disponível."
 Caminho do arquivo gerado: adk/evidencias_multilevel/dev_ui_workspaces/java-integration/workspace_output/coder/src/src/test/java/com/example/CheckoutServiceIntegrationTest.java
-Sessão completa: evidencias-integracao-multistack-dev-ui/java-integration-sessao.md
+Sessão completa: evidencias/evidencias_integracao_dev_ui/java-integration-sessao.md
 ```
 
 Causa confirmada em terminal: `mvn` não está instalado no PATH desta máquina

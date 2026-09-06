@@ -27,6 +27,8 @@ Execute na pasta `adk`:
 - [Resultados unitários](evidencias_unit_profiles/runs/handoff-final-20260831/SUMMARY.md).
 - [Resultados de integração e E2E](evidencias_multilevel/runs/handoff-final-20260831/SUMMARY.md).
 - [Prints da Dev UI — unitários](evidencias_unit_profiles/DEV_UI_EVIDENCIAS.md).
+- [Sessões da Dev UI — integração](evidencias_integracao_dev_ui/RESUMO.md).
+- [Prints da Dev UI — E2E multistack](evidencias_e2e_dev_ui/RESUMO.md).
 - Cada perfil possui um `evidence.json` com runtime, comando, hashes, logs e
   resultado normalizado.
 

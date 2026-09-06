@@ -8,6 +8,7 @@ from google.genai import types
 
 from .orchestration import inspecionar_projeto_e2e, preparar_testes_e2e
 from .prompt import E2E_TEST_GENERATOR_PROMPT
+from .tools.obter_plano_acao import obter_plano_acao
 
 
 agent = LlmAgent(
@@ -19,6 +20,7 @@ agent = LlmAgent(
     ),
     instruction=E2E_TEST_GENERATOR_PROMPT,
     tools=[
+        FunctionTool(obter_plano_acao),
         FunctionTool(inspecionar_projeto_e2e),
         FunctionTool(preparar_testes_e2e),
     ],

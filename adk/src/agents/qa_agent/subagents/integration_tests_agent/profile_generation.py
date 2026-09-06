@@ -12,6 +12,8 @@ from shared.testing.integration_adapters import (
 )
 from src.agents.qa_agent.subagents.unit_test_generator.profile_generation import (
     _artifact_requirement,
+    _available_go_target,
+    _available_java_target,
     _available_target,
     _completion_content,
     _materialize_inline_sources,
@@ -58,7 +60,7 @@ def _test_target(
     if profile_id == "java-integration":
         package, class_name = _package_and_type(primary, module)
         package_path = Path(*package.split(".")) if package else Path()
-        return _available_target(
+        return _available_java_target(
             root
             / "src"
             / "test"
@@ -72,7 +74,7 @@ def _test_target(
             if primary
             else root / f"{artifact_slug}_integration_test.go"
         )
-        return _available_target(preferred)
+        return _available_go_target(preferred)
     raise ValueError(f"Perfil de integração não suportado: {profile_id}")
 
 
@@ -138,9 +140,9 @@ def _generate_code(
         else "Gere um esqueleto explicitamente ignorado pelo framework."
     )
     prompt = f"""Gere o arquivo {target.relative_to(root).as_posix()}.
-Artefato: {artifact.get('id_artefato', 'SEM_ID')}
-Tipo: {artifact.get('tipo', 'RF')}
-Módulo: {artifact.get('modulo', 'geral')}
+Artefato: {artifact.get("id_artefato", "SEM_ID")}
+Tipo: {artifact.get("tipo", "RF")}
+Módulo: {artifact.get("modulo", "geral")}
 Requisito: {_artifact_requirement(artifact)}
 
 {source_rule}

@@ -159,7 +159,7 @@ def test_execucao_de_integracao_e_sem_shell_e_define_ci(tmp_path, monkeypatch):
             "package sample\nfunc Execute() bool { return true }\n",
             (
                 "package sample\n"
-                "import \"testing\"\n"
+                'import "testing"\n'
                 "func TestIntegration(t *testing.T) {}\n"
             ),
             "go-testing",
@@ -224,6 +224,50 @@ def test_gerador_de_integracao_despacha_todos_os_perfis(
     assert observed["profile"] == profile_id
     assert observed["target"].is_file()
     assert observed["target"].read_text(encoding="utf-8") == generated
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "source_relative", "source", "existing_relative", "expected"),
+    [
+        (
+            "java-integration",
+            "src/main/java/com/example/Service.java",
+            "package com.example; public class Service {}\n",
+            "src/test/java/com/example/ServiceIntegrationTest.java",
+            "src/test/java/com/example/ServiceIntegrationGeneratedTest.java",
+        ),
+        (
+            "go-integration",
+            "service.go",
+            "package sample\nfunc Execute() bool { return true }\n",
+            "service_integration_test.go",
+            "service_integration_generated_test.go",
+        ),
+    ],
+)
+def test_destino_alternativo_preserva_convencao_do_runner(
+    tmp_path,
+    profile_id,
+    source_relative,
+    source,
+    existing_relative,
+    expected,
+):
+    source_path = tmp_path / source_relative
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path.write_text(source, encoding="utf-8")
+    existing = tmp_path / existing_relative
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    existing.write_text("teste existente\n", encoding="utf-8")
+
+    target = integration_generation._test_target(
+        profile_id,
+        tmp_path,
+        {"id_artefato": "RF-001", "modulo": "service"},
+        [source_path],
+    )
+
+    assert target == tmp_path / expected
 
 
 @pytest.mark.parametrize(
