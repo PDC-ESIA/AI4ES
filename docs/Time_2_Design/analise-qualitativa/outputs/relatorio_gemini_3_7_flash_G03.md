@@ -2,187 +2,169 @@
 
 ## 1. Identificação das HUs
 
-| Identificador | Perfil do Usuário | Meta do Usuário (Objetivo) | Valor de Negócio |
+Abaixo está o mapeamento consolidado das Histórias de Usuário identificadas no domínio do ERP Manufatureiro, associando perfis operacionais, objetivos de negócio e valor agregado:
+
+| ID | Perfil / Persona | Objetivo de Negócio | Valor Agregado |
 | :--- | :--- | :--- | :--- |
-| **HU01** | Planejador de Produção (PCP) | Criar ordens de produção (OP) e executar o cálculo de MRP com base no estoque e pedidos. | Assegura disponibilidade de matérias-primas e evita paradas na linha de manufatura. |
-| **HU02** | Planejador de Produção (PCP) | Monitorar OEE dos centros de trabalho e receber alertas de desvios operacionais em tempo real. | Minimiza perdas de eficiência produtiva e viabiliza ações corretivas imediatas. |
-| **HU03** | Comprador / Gestor de Suprimentos | Disparar cotações simultâneas para múltiplos fornecedores e comparar propostas com workflow de alçadas. | Otimiza custos de aquisição e garante governança no processo de compras. |
-| **HU04** | Gestor de Suprimentos | Analisar o histórico de pontualidade, qualidade e custos de fornecedores por item e período. | Embaseia decisões de qualificação, homologação e descredenciamento de parceiros. |
-| **HU05** | Analista de Qualidade | Registrar laudos de inspeção por lote e bloquear lotes reprovados no estoque. | Impede o avanço e a expedição de insumos ou produtos acabados não conformes. |
-| **HU06** | Analista de Qualidade | Executar rastreabilidade bidirecional de lotes (do insumo recebido ao cliente final). | Atende a normas regulatórias e viabiliza auditorias e operações de recall com precisão. |
-| **HU07** | Analista Fiscal / Faturamento | Emitir NF-e com motor de cálculo tributário automático e transmissão direta à SEFAZ (com contingência). | Garante conformidade fiscal, reduz tempo de faturamento e elimina erros de tributação. |
-| **HU08** | Analista Fiscal | Manter registros do SPED Fiscal gerados a partir dos eventos transacionais de entrada/saída. | Garante integridade das obrigações acessórias sem necessidade de conciliação manual. |
-| **HU09** | Analista de RH / DP | Processar a folha de pagamento integrada ao ponto eletrônico e gerar arquivos de remessa/eSocial. | Assegura pontualidade no pagamento e cumprimento rigoroso das leis trabalhistas. |
-| **HU10** | Analista de RH | Emitir arquivos e obrigações trabalhistas oficiais (eSocial, CAGED, RAIS, DIRF) validados. | Evita autuações e multas por descumprimento de prazos e leiautes fiscais/trabalhistas. |
-| **HU11** | Controller / Diretor Financeiro | Visualizar DRE e Fluxo de Caixa consolidados e por centro de custo em tempo real com drill-down. | Fornece visibilidade da saúde financeira da organização sem atraso de fechamento contábil. |
-| **HU12** | Diretor / CEO (Executivo) | Acompanhar indicadores consolidados (OEE, receita, margem, qualidade) via painéis com drill-down. | Suporta a tomada de decisão estratégica fundamentada em dados em tempo real. |
+| **HU01** | Planejador de Produção (PCP) | Criar ordens de produção (OP) e executar cálculo de MRP automatizado. | Evita paradas de linha garantindo disponibilidade de insumos e alocação ótima de recursos. |
+| **HU02** | Planejador de Produção (PCP) | Monitorar índice OEE e desvios de processo fabril em tempo real. | Agilidade na contenção de perdas operacionais e elevação do rendimento dos centros de trabalho. |
+| **HU03** | Comprador / Suprimentos | Executar cotações multifornecedor com equalização e fluxo de alçadas. | Redução de custos de aquisição e garantia de conformidade na esteira de aprovações de compra. |
+| **HU04** | Gestor de Suprimentos | Avaliar e auditar o desempenho de fornecedores por pontualidade, preço e qualidade. | Governança na cadeia de suprimentos e suporte a decisões de homologação e descredenciamento. |
+| **HU05** | Analista de Qualidade | Registrar inspeções de lote com bloqueio automático de não conformidades. | Barreira contra evasão de defeitos para o processo produtivo subsequente ou expedição a clientes. |
+| **HU06** | Analista de Qualidade | Rastrear a genealogia bidirecional do lote (insumo $\leftrightarrow$ produto acabado $\leftrightarrow$ cliente). | Atendimento a auditorias regulatórias, compliance e capacidade imediata de *recall*. |
+| **HU07** | Analista Fiscal / Faturamento | Emitir NF-e/CT-e com cálculo tributário automatizado e contingência operacional. | Mitigação de risco tributário, agilidade no faturamento e conformidade estrita com a SEFAZ. |
+| **HU08** | Analista Fiscal | Alimentar e gerar escriturações fiscais digitais (SPED Fiscal/Contribuições). | Redução de esforço manual de fechamento fiscal e garantia de integridade nas obrigações acessórias. |
+| **HU09** | Analista de RH / DP | Processar folha de pagamento integrada a ponto eletrônico e encargos legais. | Precisão no cálculo trabalhista (CLT/Convenções) e tempestividade de crédito e encargos. |
+| **HU10** | Analista de RH / DP | Gerar e validar eventos do eSocial e obrigações anuais/mensais do departamento de pessoal. | Conformidade trabalhista perante órgãos governamentais sem retrabalho de consolidação. |
+| **HU11** | Controller / Finanças | Acompanhar DRE, Balanço e Fluxo de Caixa projetado/realizado em tempo real. | Visibilidade financeira instantânea e suporte analítico com *drill-down* direto à origem transacional. |
+| **HU12** | Diretor / Executivo (C-Level) | Visualizar painéis unificados de KPIs operacionais, de qualidade e financeiros. | Governança executiva baseada em dados em tempo real com controle de desvios por meta. |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Visão Geral de Componentes e Fronteiras de Contexto
+### 2.1. Visão de Componentes e Fronteiras de Domínio do Sistema
+
+O diagrama abaixo expressa a decomposição modular do ERP corporativo, as camadas de integração com o chão de fábrica e sistemas governamentais, e as fronteiras de responsabilidade.
 
 ```mermaid
-flowchart TB
-    subgraph ClientLayer [Camada de Apresentação e Borda]
-        UI[Interface Web Responsiva / PWA]
-        SSO[Serviço Corporativo de Identidade / LDAP / AD]
-        API_GW[API Gateway & Rate Limiting Engine]
+graph TB
+    subgraph "Camada de Apresentação e Canais"
+        UI_SPA["Interface Web Responsiva (Painéis Operacionais e Dashboards)"]
+        UI_EXT["APIs de Integração com Parceiros / Clientes (B2B / REST)"]
     end
 
-    subgraph CoreServices [Núcleo de Serviços de Negócio]
-        AuthModule[Serviço de Autenticação, RBAC e Auditoria]
-        PCPModule[Motor de PCP, MRP e Capacidade]
-        ProcurementModule[Módulo de Suprimentos e Compras]
-        QualityModule[Módulo de Controle de Qualidade e Rastreabilidade]
-        LogisticsModule[Módulo de Logística e Armazenagem WMS]
-        FiscalModule[Motor Fiscal e Emissor SEFAZ]
-        HRModule[Módulo de Recursos Humanos e Folha]
-        FinanceModule[Motor Contábil, DRE e Financeiro]
-        AnalyticsModule[Processador Analítico e KPIs]
+    subgraph "Camada de Borda e Segurança"
+        APIGW["API Gateway & Roteador de Serviços"]
+        IAM["Módulo de Identidade, Autenticação (SSO/LDAP) & RBAC/SoD"]
+        AUDIT["Barramento de Auditoria e Trilha Imutável"]
     end
 
-    subgraph IntegrationLayer [Camada de Integração Industrial e Mensageria]
-        IndustrialGW[Gateway de Integração SCADA / MES - OPC-UA / MQTT]
-        EventBroker[Barramento Corporativo de Eventos Transacionais]
+    subgraph "Núcleo Transacional do ERP (Domínios de Negócio)"
+        PCP["Módulo PCP & Chão de Fábrica (Ordens de Produção, MRP, OEE)"]
+        SUP["Módulo de Suprimentos & Compras (Cotação, OC, Fornecedores)"]
+        QLT["Módulo de Qualidade & Rastreabilidade de Lotes"]
+        LOG["Módulo de Logística, WMS & Distribuição (Romaneios, RMA)"]
+        FIS["Motor Fiscal & Emissão Eletrônica (NF-e, CT-e, SPED)"]
+        HRM["Módulo de RH & Folha de Pagamento (Ponto, Encargos, eSocial)"]
+        ACC["Módulo Contábil & Financeiro (DRE Real-Time, Fluxo de Caixa, Balanço)"]
+        KPI["Motor de Consolidação Analítica & KPIs Executivos"]
     end
 
-    subgraph PersistenceLayer [Camada de Persistência e Armazenamento Criptografado]
-        TransactionalDB[(Repositório Transacional Central)]
-        AuditStore[(Trilha de Auditoria Imutável - WORM)]
-        DocumentStore[(Armazenamento de Documentos Fiscais e XMLs)]
+    subgraph "Camada de Interoperabilidade Industrial & Externa"
+        IOT_GW["Gateway Industrial (Protocolos OPC-UA / MQTT / SCADA / MES)"]
+        SEFAZ_GW["Conector de Integração SEFAZ & Mensageria Fiscal XSD"]
+        BANK_GW["Conector Bancário (Arquivos de Remessa / Retorno)"]
+        GOV_GW["Conector eSocial / Órgãos Governamentais"]
     end
 
-    subgraph ExternalEntities [Entidades e Sistemas Externos]
-        SEFAZ[Serviços SEFAZ / Portais Governamentais]
-        PlantFloor[Equipamentos de Chão de Fábrica / Sensores]
-        BankingSystem[Sistemas Bancários / Remessas]
+    subgraph "Camada de Armazenamento e Persistência"
+        DB_TX["Repositório Transacional Isolado por Unidade Fabril (Criptografia AES-256)"]
+        DB_AUDIT["Armazenamento de Logs de Auditoria com Retenção de Longo Prazo"]
+        CACHE_KPI["Camada de Cache e Agregação de Indicadores em Tempo Real"]
     end
 
-    %% Conexões de Borda
-    UI -->|HTTPS / TLS 1.2+| API_GW
-    API_GW --> AuthModule
-    AuthModule -.->|SSO Sync| SSO
+    %% Conexões
+    UI_SPA --> APIGW
+    UI_EXT --> APIGW
+    APIGW --> IAM
+    APIGW --> PCP & SUP & QLT & LOG & FIS & HRM & ACC & KPI
 
-    %% Conexões do Gateway para os Serviços
-    API_GW --> PCPModule
-    API_GW --> ProcurementModule
-    API_GW --> QualityModule
-    API_GW --> LogisticsModule
-    API_GW --> FiscalModule
-    API_GW --> HRModule
-    API_GW --> FinanceModule
-    API_GW --> AnalyticsModule
-
-    %% Integração Industrial
-    PlantFloor -->|Protocolo Industrial| IndustrialGW
-    IndustrialGW -->|Eventos de Apontamento/Status| EventBroker
-    EventBroker --> PCPModule
-
-    %% Eventos e Acoplamento Assíncrono
-    PCPModule -->|Evento de Consumo/Produção| EventBroker
-    ProcurementModule -->|Evento de Recebimento| EventBroker
-    QualityModule -->|Bloqueio de Lote/Laudo| EventBroker
-    LogisticsModule -->|Evento de Expedição| EventBroker
-    FiscalModule -->|Lançamento Fiscal Concluído| EventBroker
-    HRModule -->|Fechamento de Folha| EventBroker
-
-    EventBroker --> FinanceModule
-    EventBroker --> AnalyticsModule
+    %% Interação Cruzada de Domínio
+    PCP --> QLT
+    PCP --> SUP
+    LOG --> FIS
+    FIS --> ACC
+    SUP --> ACC
+    HRM --> ACC
+    PCP & SUP & QLT & LOG & FIS & HRM & ACC --> AUDIT
+    PCP & SUP & QLT & LOG & FIS & HRM & ACC --> KPI
 
     %% Integrações Externas
-    FiscalModule -->|Transmissão e Contingência| SEFAZ
-    HRModule -->|Transmissão eSocial| SEFAZ
-    FinanceModule -->|Arquivos CNAB / Pagamentos| BankingSystem
+    IOT_GW --> PCP
+    FIS --> SEFAZ_GW
+    HRM --> GOV_GW
+    HRM & ACC --> BANK_GW
 
     %% Persistência
-    CoreServices --> TransactionalDB
-    AuthModule --> AuditStore
-    FiscalModule --> DocumentStore
+    PCP & SUP & QLT & LOG & FIS & HRM & ACC --> DB_TX
+    AUDIT --> DB_AUDIT
+    KPI --> CACHE_KPI
 ```
 
-### 2.2. Diagrama de Sequência: Apontamento Produtivo, Inspeção, Faturamento e Reflexo Contábil
+---
+
+### 2.2. Diagrama de Sequência: Execução de Produção, Apontamento, Controle de Qualidade e Faturamento Fiscal
+
+O diagrama a seguir descreve o fluxo ponta a ponta desde o apontamento de chão de fábrica via protocolo industrial até o fechamento contábil e emissão fiscal, contemplando bloqueios automáticos de qualidade.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Op as Operador / MES
-    participant IndGW as Gateway Industrial
-    participant PCP as Motor de PCP/MRP
-    participant Qual as Motor de Qualidade
-    participant WMS as WMS / Estoque
-    participant Fisc as Motor Fiscal
-    participant SEFAZ as WebService SEFAZ
-    participant Fin as Motor Contábil/DRE
-    participant Aud as Trilha de Auditoria
+    participant SCADA as Equipamento / SCADA (Chão de Fábrica)
+    participant IOT as Gateway Industrial
+    participant PCP as Módulo de PCP
+    participant QLT as Módulo de Qualidade
+    participant LOG as Módulo WMS / Logística
+    participant FIS as Motor Fiscal
+    participant SEFAZ as Web Service SEFAZ
+    participant ACC as Módulo Contábil-Financeiro
+    participant AUDIT as Trilha de Auditoria
 
-    Op->>IndGW: Apontamento de Fim de OP e Lote Produzido
-    IndGW->>PCP: Notifica Término de Operação (OP_ID, Lote_ID, Qtd)
-    activate PCP
-    PCP->>Aud: Registra Log de Operação (Transacional)
-    PCP->>Qual: Solicita Inspeção de Qualidade por Lote (Lote_ID)
-    deactivate PCP
+    %% 1. Ingestão de Apontamento
+    SCADA->>IOT: Telemetria de Produção e Ciclo de Peça (OPC-UA/MQTT)
+    IOT->>PCP: Apontamento de Produção (Qtd Produzida, Tempo, Paradas)
+    PCP->>PCP: Recalcula OEE e Dedução de Estoque de Insumos (Baixa Automática)
+    PCP->>AUDIT: Registra Log de Consumo e Operação Fabril
 
-    activate Qual
-    Qual->>Qual: Valida Parâmetros vs. Plano de Inspeção
+    %% 2. Inspeção de Qualidade e Bloqueio/Liberação
+    PCP->>QLT: Notifica Conclusão de Lote para Inspeção Obrigatória
+    QLT->>QLT: Avalia Parâmetros Técnicos vs. Plano de Inspeção
     alt Lote Aprovado
-        Qual->>WMS: Libera Lote para Estoque Disponível
-        Qual->>Aud: Registra Laudo de Aprovação
+        QLT->>LOG: Libera Lote no Endereçamento de Armazém (Status: Liberado)
+        QLT->>AUDIT: Registra Certificado de Liberação de Lote
     else Lote Reprovado
-        Qual->>WMS: Bloqueia Lote no Endereçamento de Quarentena
-        Qual->>PCP: Emite Alerta de Desvio de Qualidade
-        Qual->>Aud: Registra Não Conformidade (NC)
-    end
-    deactivate Qual
-
-    Note over WMS,Fisc: Processo de Expedição e Faturamento Iniciado
-    WMS->>Fisc: Solicita Emissão de NF-e para Pedido de Venda com Lote Liberado
-    activate Fisc
-    Fisc->>Fisc: Calcula Tributos (ICMS, IPI, PIS, COFINS) via Motor Fiscal
-    Fisc->>SEFAZ: Transmite Lote NF-e (Schema XSD / Assinatura Digital)
-    
-    alt SEFAZ Disponível e Autorizada
-        SEFAZ-->>Fisc: Protocolo de Autorização de Uso
-        Fisc->>Fisc: Persiste XML Autorizado e Gera DANFE
-    else Indisponibilidade SEFAZ
-        Fisc->>Fisc: Ativa Emissão em Contingência Offline
-        Fisc->>Fisc: Gera Documento Provisório e Enfileira Sincronização
+        QLT->>LOG: Aplica Bloqueio Automático de Movimentação/Expedição
+        QLT->>AUDIT: Registra Abertura de Não Conformidade (NC) e Alerta Gestão
     end
 
-    Fisc->>Fin: Publica Fato Contábil / Fiscal (Entrada/Saída/Estoque)
-    deactivate Fisc
+    %% 3. Expedição e Faturamento (Fluxo de Lote Aprovado)
+    LOG->>FIS: Solicita Faturamento de Pedido com Reserva do Lote
+    FIS->>FIS: Calcula Impostos (ICMS, IPI, PIS, COFINS, DIFAL) via Motor de Regras
+    FIS->>SEFAZ: Transmite Lote NF-e (XML assinado digitalmente)
+    alt Retorno Autorizado SEFAZ (Tempo <= 30s)
+        SEFAZ-->>FIS: Protocolo de Autorização de Uso
+        FIS->>LOG: Libera Romaneio e Emissão de Danfe / CT-e
+    else SEFAZ Indisponível
+        FIS->>FIS: Ativa Emissão em Contingência (Assinatura e Numeração Offline)
+        FIS->>LOG: Libera Impressão em Contingência com Registro de Pendência de Sync
+    end
 
-    activate Fin
-    Fin->>Fin: Efetua Partida Dobrada Contábil Automática
-    Fin->>Fin: Atualiza Balancete, DRE em Tempo Real e Contas a Receber
-    Fin->>Aud: Registra Log de Escrituração Contábil Imutável
-    deactivate Fin
+    %% 4. Contabilização em Tempo Real
+    FIS->>ACC: Dispara Evento de Faturamento com Lançamento de Receita/Impostos
+    ACC->>ACC: Atualiza DRE em Tempo Real, Contas a Receber e Balancete
+    ACC->>AUDIT: Registra Lançamento Contábil Imutável Vinculado à NF-e
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### Decisão 01: Arquitetura Orientada a Serviços Modulares com Comunicação Híbrida (Síncrona/Assíncrona)
-* **Contexto:** O sistema atende múltiplos domínios funcionais complexos (PCP, Fiscal, Qualidade, RH, Contabilidade) com exigências simultâneas de consistência transacional imediata (emissão de NF-e, bloqueio de estoque) e processamento em lote/tempo real com alto throughput (integração SCADA/MES, recálculo de DRE e MRP).
-* **Decisão:** Adota-se o padrão de Serviços Modulares desacoplados internamente por contratos bem definidos. Operações de comando e consulta diretas de interface utilizam APIs com protocolo de comunicação segura; fluxos intermodulares de propagação de eventos (como lançamentos contábeis a partir de produção ou compras) operam via Barramento Corporativo de Eventos com semântica de entrega garantida.
-* **Consequências:** Garante baixo acoplamento entre os módulos, resiliência do sistema (falhas em módulos não críticos não interrompem a fábrica) e facilita a manutenção independente dos domínios.
+### 3.1. Isolamento Multitenancy Hierárquico por Unidade Fabril (RF01, RF04, RNF16)
+* **Decisão:** A arquitetura adota particionamento lógico rígido por Unidade Fabril (*Plant-Level Tenancy*), controlado nativamente na camada de aplicação e reforçado nas chaves compostas de persistência (`Company_ID`, `Plant_ID`, `Business_Unit_ID`).
+* **Justificativa:** Atende à restrição de visibilidade de dados interplantas estabelecida pela hierarquia organizacional, permitindo ao mesmo tempo consolidações financeiras e corporativas globais (como DRE corporativa e planejamento mestre) de forma transparente sem quebra de privacidade fabril.
 
-### Decisão 02: Motor de Rastreabilidade e Isolamento Multi-Unidade com Segregação por Domínio Organizacional
-* **Contexto:** RF01, RF04 e RNF16 exigem operação corporativa centralizada para múltiplas plantas industriais, isolando o acesso a dados transacionais entre unidades conforme a hierarquia da organização, mantendo a consolidação contábil/analítica corporativa.
-* **Decisão:** Implementação de chave de particionamento lógico-organizacional transversal (*Tenant/Plant Identifier*) em todas as entidades e modelos de persistência, acoplado ao contexto de segurança validado no API Gateway e no módulo de Autorização (RBAC). Acesso cruzado entre unidades fabris é bloqueado por padrão nas camadas de aplicação e repositório, exceto para perfis executivos/corporativos consolidados.
-* **Consequências:** Elimina vazamento de dados operacionais entre fábricas, permite consolidação analítica imediata e mantém a governança de acesso estrita.
+### 3.2. Desacoplamento Assíncrono com Mensageria para Processamento Intensivo (RF06, RF11, RNF13, RNF18)
+* **Decisão:** O cálculo de necessidade de materiais (MRP) e a ingestão de telemetria industrial de chão de fábrica operam desacoplados da esteira de requisições transacionais síncronas através de filas de trabalho e canais de mensageria assíncrona.
+* **Justificativa:** Processamentos pesados de explosão de lista de materiais (BOM) para bases de até 50.000 itens não bloqueiam as operações de cadastro ou apontamento. A ingestão industrial contínua de telemetria é absorvida sem degradação do tempo de resposta da interface com o usuário.
 
-### Decisão 03: Motor de Processamento Transacional Contábil e DRE Baseado em Livro-Razão Contínuo
-* **Contexto:** RF43, RF45 e HU11 determinam que toda e qualquer movimentação física ou financeira (vendas, compras, consumo de insumos, folha) deve gerar lançamentos contábeis automáticos e manter a DRE e Fluxo de Caixa atualizados em tempo real sem dependência de rotinas batch de fechamento manual.
-* **Decisão:** Adoção do padrão de *Contabilidade por Eventos de Domínio*. Cada evento transacional aprovado dispara um manipulador contábil síncrono ou quase real-time que converte o fato em lançamentos em partidas dobradas, atualizando saldos pré-agregados por centro de custo em estruturas otimizadas para leitura rápida (Read-Optimized Models).
-* **Consequências:** Disponibilidade imediata da DRE e Balanço com suporte total a drill-down até a transação originadora, reduzindo a complexidade de conciliação no encerramento de períodos fiscais.
+### 3.3. Motor Fiscal Baseado em Regras Externas e Máquina de Estados com Contingência (RF31–RF34, RNF06, RNF07, RNF17)
+* **Decisão:** O Motor de Regras Fiscais é estruturado como um componente desacoplado e versionável, isolando parametrizações tributárias (regras de NCM, CFOP, alíquotas interestaduais) da lógica transacional. A emissão de documentos eletrônicos implementa uma Máquina de Estados com transição imediata para modo de contingência em caso de *timeout* com a SEFAZ.
+* **Justificativa:** Garante adaptação ágil às alterações frequentes da legislação tributária nacional sem necessidade de refatoração do núcleo do ERP, cumprindo o requisito de faturamento contínuo sem interrupções nas docas de expedição.
 
-### Decisão 04: Estratégia de Resiliência Fiscal e Chaveamento Automático de Contingência
-* **Contexto:** RF31, RF34, RNF07 e RNF17 exigem que o faturamento e a expedição de mercadorias não sejam paralisados por instabilidade ou queda de comunicação com os servidores estaduais da SEFAZ.
-* **Decisão:** Implementação do padrão *Circuit Breaker* associado a um Motor de Emissão em Contingência. Se a comunicação síncrona com a SEFAZ falhar ou atingir timeout limite (30 segundos), o motor fiscal comuta automaticamente para o modo de emissão em contingência autorizado (geração do documento assinado com marcação específica), liberando a expedição física e enfileirando o documento para sincronização e conciliação assim que o circuito for restabelecido.
-* **Consequências:** Elimina o represamento na expedição fabril, mitigando perdas financeiras e operacionais causadas por fatores externos.
+### 3.4. Governança, SoD e Trilha de Auditoria Imutável (RF02, RF03, RNF02, RNF03, RNF10)
+* **Decisão:** Integração com Provedor de Identidade Corporativo (Single Sign-On / LDAP) acoplada a uma matriz de Segregação de Funções (SoD - *Segregation of Duties*). Todas as mutações de dados financeiros, fiscais e de RH são interceptadas e emitidas para uma trilha de auditoria append-only, armazenada com criptografia de dados em repouso padrão AES-256.
+* **Justificativa:** Cumpre a conformidade com o Código Tributário Nacional (retenção de 10 anos), regras do eSocial/SPED, além de mitigar fraudes e garantir conformidade com a LGPD.
 
 ---
 
@@ -190,64 +172,57 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 | :--- | :--- | :--- | :--- |
-| **Auth & Security Core** | Gerenciar autenticação SSO/LDAP, RBAC, segregação de funções (SoD), rate limiting e trilha de auditoria imutável criptografada (AES-256). | API Gateway, Diretório Corporativo (LDAP/AD), Repositório de Auditoria, Todos os Módulos de Negócio. | RF01, RF02, RF03, RF04, RNF01, RNF02, RNF03, RNF04, RNF05, RNF09, RNF10. |
-| **PCP & MRP Engine** | Planejar capacidade, gerar OPs, calcular necessidades líquidas de materiais (MRP) em até 10 min, apontar ordens e gerenciar OEE. | Gateway Industrial, Suprimentos, Qualidade, WMS/Estoque, Barramento de Eventos. | RF05, RF06, RF07, RF08, RF09, RF10, RF12, RNF13, HU01, HU02. |
-| **Industrial Gateway** | Realizar a ingestão em tempo real de telemetria, eventos e apontamentos de máquinas via protocolos padrão (OPC-UA, MQTT, REST). | Chão de Fábrica (SCADA/MES), Barramento de Eventos, PCP Engine. | RF11, RNF18, HU02. |
-| **Procurement Core** | Gerenciar fornecedores, compras automáticas por ponto de reabastecimento, cotações comparativas, fluxo de alçadas de OC e devoluções. | Barramento de Eventos, PCP Engine, WMS/Estoque, Qualidade, Financeiro. | RF13, RF14, RF15, RF16, RF17, RF18, RF19, HU03, HU04. |
-| **Quality & Traceability Manager** | Gerenciar planos de inspeção, registrar laudos, executar bloqueio automático de lotes não conformes e prover rastreabilidade bidirecional fim a fim. | WMS/Estoque, PCP Engine, Procurement, Fiscal, Barramento de Eventos. | RF20, RF21, RF22, RF23, RF24, RF25, HU05, HU06. |
-| **WMS & Logistics Core** | Controlar endereçamento de armazenagem de insumos e acabados, romaneios, planejamento de expedição e rastreamento de entregas/RMA. | Qualidade, Fiscal Engine, PCP Engine, Barramento de Eventos. | RF26, RF27, RF28, RF29, RF30, HU06, HU07. |
-| **Fiscal Engine & SEFAZ Gateway** | Calcular tributos (ICMS, IPI, PIS, COFINS, ISS), gerar XMLs, transmitir NF-e/CT-e à SEFAZ, gerenciar contingência offline e alimentar SPED. | SEFAZ, WMS/Expedição, Barramento de Eventos, Motor Contábil. | RF31, RF32, RF33, RF34, RF35, RF36, RNF06, RNF07, RNF08, RNF15, RNF17, HU07, HU08. |
-| **HR & Payroll Engine** | Processar ponto eletrônico, calcular folha de pagamento, encargos trabalhistas, benefícios e gerar obrigações (eSocial, CAGED, RAIS, DIRF). | Ponto Eletrônico, Entidades Bancárias, Órgãos do Governo (eSocial), Motor Contábil. | RF37, RF38, RF39, RF40, RF41, RF42, RNF08, RNF09, RNF11, HU09, HU10. |
-| **Accounting & Financial Core** | Realizar lançamentos em partidas dobradas automáticos, gerenciar contas a pagar/receber, conciliação multimoeda, DRE e Balanço em tempo real. | Barramento de Eventos, Todos os Módulos de Origem Transacional, Repositório Central. | RF43, RF44, RF45, RF46, RF47, RF48, RF49, HU11. |
-| **Executive Analytics & KPI Processor** | Consolidar indicadores de desempenho (OEE, faturamento, margem, desvios) com suporte a drill-down em tempo real e exportação. | Todos os Módulos de Negócio, Interface Web Responsiva, Repositório de Leitura. | RF50, RF51, RF52, RF53, RNF14, HU02, HU04, HU11, HU12. |
+| **Módulo de Identidade & Acesso (IAM)** | Gerenciar identidades, autenticação SSO/LDAP, autorização granular RBAC e regras de Segregação de Funções (SoD). | Todos os Módulos do Sistema, Diretório Corporativo (AD/LDAP). | RF01, RF02, RF04, RNF03 |
+| **Trilha de Auditoria & Segurança** | Interceptar operações, gravar logs imutáveis e garantir retenção de longo prazo com criptografia AES-256. | Todos os Módulos do Sistema, Armazenamento Seguro de Logs. | RF03, RNF02, RNF04, RNF09, RNF10 |
+| **Motor de PCP & MRP** | Gestão de OPs, cálculo de necessidade líquida de materiais (MRP), sequenciamento e cálculo de OEE. | Módulo de Suprimentos, Qualidade, Gateway Industrial, Armazém/WMS. | HU01, HU02, RF05–RF10, RF12, RNF13 |
+| **Gateway de Interoperabilidade Industrial** | Ingestão e tradução de telemetria industrial (OPC-UA, MQTT, REST) e comunicação com SCADA/MES. | SCADA/MES, Sensores de Linha, Motor de PCP. | RF11, RNF18 |
+| **Módulo de Suprimentos & Compras** | Gestão de catálogo de fornecedores, cotações multifornecedor, emissão de OC com alçadas e recebimento. | Motor de PCP, Qualidade, Módulo Fiscal, Contábil-Financeiro. | HU03, HU04, RF13–RF19 |
+| **Módulo de Qualidade & Rastreabilidade** | Planos de inspeção, bloqueio automático de não conformidades, genealogia bidirecional de lotes e custos da não qualidade. | Motor de PCP, Módulo de Suprimentos, WMS/Logística, Contábil. | HU05, HU06, RF20–RF25 |
+| **Módulo de Logística, WMS & Expedição** | Endereçamento de armazém, romaneios de carga, controle de frotas/rotas, rastreamento de entregas e RMA. | Módulo de Qualidade, Módulo Fiscal, Painel de KPIs. | RF26–RF30 |
+| **Motor Fiscal & Emissão Tributária** | Motor de regras de tributação (ICMS, IPI, PIS, COFINS), mensageria XSD SEFAZ, emissão de NF-e/CT-e, contingência e SPED. | Logística, Suprimentos, Contábil-Financeiro, Web Services SEFAZ. | HU07, HU08, RF31–RF36, RNF06, RNF07, RNF15, RNF17 |
+| **Módulo de RH & Folha de Pagamento** | Cadastro de colaboradores, apuração de ponto eletrônico, processamento de folha, encargos e mensageria eSocial/DIRF/RAIS. | Relógios de Ponto, Conector eSocial, Contábil-Financeiro, Bancos. | HU09, HU10, RF37–RF42, RNF08, RNF11 |
+| **Módulo Contábil & Financeiro** | Lançamentos contábeis automáticos por partidas dobradas, apuração de DRE real-time, fluxo de caixa, contas a pagar/receber e SPED ECD/EFD. | Suprimentos, Faturamento Fiscal, RH, Painéis Executivos. | HU11, RF43–RF49 |
+| **Motor Analítico & Dashboards de KPIs** | Consolidação de métricas em tempo real, engine de drill-down analítico, verificação de limites/metas e exportação. | Todos os módulos de domínio de negócio, Interface Web. | HU12, RF50–RF53, RNF14, RNF24 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Topologia de Implantação e Latência entre Plantas (RNF22 / RNF16):**
-   * *Pendência:* A definição da infraestrutura híbrida ou nuvem privada necessita de validação quanto ao link de dados de cada unidade fabril, para assegurar que a latência não degrade o tempo de resposta do apontamento de chão de fábrica e do motor fiscal.
-   * *Ação:* Estabelecer arquitetura com buffer local no Gateway Industrial para permitir apontamentos offline no chão de fábrica sem parada de linha.
-
-2. **Certificados Digitais A1/A3 e Hardware de Assinatura (RNF07 / RF31):**
-   * *Pendência:* Os requisitos não especificam o modelo de custódia dos certificados digitais (A1 em nuvem/servidor seguro corporativo ou A3 local por CNPJ de filial).
-   * *Ação:* Homologar o uso de certificados padrão A1 centralizados em cofre seguro com gestão automatizada de ciclo de vida para viabilizar a automação de alta performance na emissão de NF-e/CT-e.
-
-3. **Complexidade Algorítmica do MRP vs. SLA de 10 minutos (RNF13 / RF06):**
-   * *Pendência:* O cálculo do MRP em estruturas de produtos com alta profundidade de níveis (BOM multinível) para 50.000 itens exige paralelização de processamento em memória para garantir execução em menos de 10 minutos.
-   * *Ação:* Isolar a execução do MRP em rotina assíncrona dedicada com modelo de dados em grafo/árvore carregado em memória, desacoplado das transações operacionais correntes.
+1. **Definição dos Padrões de Protocolos de Relógios de Ponto (REP):** O requisito RF38 prevê integração com relógios de ponto, porém não especifica os layouts/portarias ministeriais suportadas (ex: Portaria 671 MTP) para coleta automática dos arquivos AFD/AFDT.
+2. **Estratégia de Atualização de Taxas de Câmbio Multimoeda (RF49):** Falta a indicação da fonte oficial de ingestão das taxas de câmbio (ex: Banco Central do Brasil - PTAX) e a frequência de sincronização automática para conversão das transações para a moeda funcional.
+3. **Mecanismo de Assinatura Digital de Documentos Fiscais:** Embora RNF07 exija validade jurídica via XSD da SEFAZ, é necessária a definição técnica sobre o suporte a certificados digitais em nuvem (A3 / HSM em nuvem) versus certificados em arquivo (A1 local/servidor).
+4. **Resolução de Conflitos em Cenário de Contingência Fiscal Prolongada:** Pendente detalhamento das regras de reconciliação de numeração e cancelamento de notas fiscais caso ocorra emissão em contingência off-line concomitantemente a restabelecimento instável de links com a SEFAZ.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-```
-[RF01 - RF04] (Acesso/Auditoria)  --> Coberto por: Auth & Security Core / Audit Store
-[RF05 - RF12] (PCP/OEE/Chão)      --> Coberto por: PCP & MRP Engine / Industrial Gateway
-[RF13 - RF19] (Suprimentos)       --> Coberto por: Procurement Core / Barramento de Eventos
-[RF20 - RF25] (Qualidade/Lote)    --> Coberto por: Quality & Traceability Manager
-[RF26 - RF30] (Logística/WMS)     --> Coberto por: WMS & Logistics Core
-[RF31 - RF36] (Fiscal/NF-e/SPED)  --> Coberto por: Fiscal Engine & SEFAZ Gateway
-[RF37 - RF42] (RH/Folha/eSocial)  --> Coberto por: HR & Payroll Engine
-[RF43 - RF49] (Contábil/DRE/Fin)  --> Coberto por: Accounting & Financial Core
-[RF50 - RF53] (KPIs/Dashboards)   --> Coberto por: Executive Analytics & KPI Processor
+A matriz abaixo estabelece a cobertura dos Requisitos Funcionais e Não Funcionais pelos componentes e diretrizes arquiteturais desenhados:
 
-[RNF01 - RNF05] (Segurança)       --> Coberto por: TLS 1.2+, AES-256 em repouso, RBAC/SoD, Cofragem
-[RNF06 - RNF11] (Conformidade)    --> Coberto por: Motor Fiscal XSD, SPED/eSocial Engines, LGPD Core
-[RNF12 - RNF17] (Performance)    --> Coberto por: Contingência Automática, Modelos de Leitura Rápida
-[RNF18 - RNF20] (Integração)     --> Coberto por: Industrial GW (OPC-UA/MQTT), REST APIs Abertas
-[RNF21 - RNF24] (Infra/Usab)      --> Coberto por: WAL Contínuo (RPO<1h), Interface Web Responsiva
-
-[HU01 - HU12] (Histórias Usuário) --> Mapeadas integralmente aos 10 componentes funcionais.
-```
+| Grupo / ID | Descrição Resumida | Componente / Mecanismo de Cobertura | Status |
+| :--- | :--- | :--- | :--- |
+| **RF01–RF04** | Gestão de Usuários, SSO, Auditoria e Hierarquia Fabril | Módulo IAM + Módulo de Auditoria + Multitenancy Plant-Level | Integral |
+| **RF05–RF12** | PCP, MRP, Capacidade, Apontamentos, OEE e SCADA | Motor de PCP & MRP + Gateway de Interoperabilidade Industrial | Integral |
+| **RF13–RF19** | Suprimentos, Ponto de Pedido, Cotações, OC e Devoluções | Módulo de Suprimentos & Compras + Motor de Alçadas | Integral |
+| **RF20–RF25** | Planos de Qualidade, Inspeção, Bloqueio, Rastreabilidade e NC | Módulo de Qualidade & Rastreabilidade de Lotes | Integral |
+| **RF26–RF30** | WMS, Expedição, Romaneios, Rastreamento e RMA | Módulo de Logística, WMS & Distribuição | Integral |
+| **RF31–RF36** | Emissão NF-e/CT-e, Tributos, Contingência, SPED Fiscal | Motor Fiscal & Emissão Tributária + Conector SEFAZ | Integral |
+| **RF37–RF42** | Cadastro RH, Ponto, Folha, eSocial e Benefícios | Módulo de RH & Folha de Pagamento + Conector eSocial | Integral |
+| **RF43–RF49** | Lançamentos Contábeis, DRE Real-Time, SPED ECD/EFD, Câmbio | Módulo Contábil & Financeiro | Integral |
+| **RF50–RF53** | Dashboards Executivos, Metas, Drill-Down e Exportação | Motor Analítico & Dashboards de KPIs | Integral |
+| **RNF01–RNF05** | TLS 1.2+, Criptografia AES-256, RBAC/SoD, Rate Limit | Camada de Borda, Gateway de Segurança e Persistência Segura | Integral |
+| **RNF06–RNF11** | Conformidade Legislação Brasileira, SPED, LGPD, 10 anos retenção | Motor Fiscal, Motor Contábil, RH e Trilha de Auditoria | Integral |
+| **RNF12–RNF17** | SLA 99,5%, MRP <10min, Painéis <5s, NF-e <30s, Contingência | Camada Assíncrona de Processamento + Cache Analítico | Integral |
+| **RNF18–RNF20** | Interoperabilidade OPC-UA/MQTT, RESTful APIs, Formatos Padrão | Gateway Industrial + API Gateway + Conectores B2B | Integral |
+| **RNF21–RNF24** | Backup WAL (RPO 1h), Implantação Híbrida, Monitoramento TI, UI Web | Arquitetura Portável de Infraestrutura e Interface Responsiva | Integral |
 
 ---
 
 ## 7. Gap Analysis
 
-| Item Identificado (Gap) | Impacto Arquitetural | Ação Técnica Recomendada |
+| Lacuna de Especificação | Impacto Arquitetural Potencial | Ação Recomendada para o Time de Engenharia |
 | :--- | :--- | :--- |
-| **1. Política de Expiração e Revogação de Certificados Digitais SEFAZ** | Paralisação inesperada do faturamento e expedição caso o certificado de alguma filial expire. | Implementar serviço de monitoramento preventivo de validade de certificados digitais com alertas automatizados (30/15/5 dias de antecedência). |
-| **2. Volume e Retenção de Dados de Telemetria Industrial (SCADA/MES)** | Sobrecarga e degradação de performance do banco relacional principal com dados de alta frequência (milissegundos) vindos do chão de fábrica. | Aplicar segregação de dados: Gateway Industrial agrega e resume os dados de telemetria antes de disparar eventos de apontamento para a base transacional do ERP. |
-| **3. Tratamento de Exceções em Contingência Fiscal Offline Prolongada** | Risco de conflito de numeração de notas fiscais e quebra de sequência da SEFAZ durante contingência estendida. | Implementar serviço de gestão de numeração fiscal estrita com controle de faixas exclusivas por série e mecanismo autônomo de conciliação pós-restabelecimento. |
-| **4. Estratégia de Consentimento e Anonimização LGPD para RH** | Não conformidade legal ao reter dados de colaboradores demitidos além do prazo legal sem mascaramento. | Adicionar motor de gestão do ciclo de vida de dados pessoais com anonimização automática após o decurso do prazo prescricional de retenção trabalhista/fiscal (10 anos). |
+| **Comportamento em Falha de Conexão com Chão de Fábrica (SCADA offline)** | Perda de apontamentos de produção e desbalanceamento no cálculo instantâneo do OEE e consumo de insumos. | Especificar um mecanismo de *Store-and-Forward* no Gateway Industrial local da fábrica, permitindo bufferização de telemetria e sincronização resiliente pós-restabelecimento de rede. |
+| **Volume e Estratégia de Arquivamento de Dados de IoT Industrial** | Degradação de performance na base de dados transacional devido ao elevado fluxo de mensagens/segundo dos sensores industriais. | Separar a trilha de dados de alta frequência (série temporal da telemetria de máquinas) da base de registros operacionais transacionais do ERP, aplicando políticas de agregação e expurgo. |
+| **Tratamento de Lotes Misto / Segregação Parcial em Linha** | Ausência de regra para situações em que apenas uma fração do lote de produção é reprovada pela inspeção de processo. | Projetar o Módulo de Qualidade com suporte a sub-lotes e desdobramento (*split*) de ordens de produção, isolando frações reprovadas sem reter a parcela conforme. |
+| **Matriz de Alçadas de Aprovação de Compras Dinâmica** | Dificuldade em manter fluxos de aprovação quando há mudanças organizacionais ou ausências temporárias de gestores. | Implementar um motor de regras de delegação de alçadas configurável baseado em papéis hierárquicos, centro de custo e limites financeiros, com delegação temporária de autoridade. |

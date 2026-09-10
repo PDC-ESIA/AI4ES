@@ -1,186 +1,239 @@
 # Relatório Técnico de Arquitetura de Software
 
----
-
 ## 1. Identificação das HUs
 
-A tabela abaixo correlaciona as Histórias de Usuário (HUs) com o escopo funcional e não funcional correspondente, estabelecendo a base para a rastreabilidade arquitetural.
+A tabela abaixo mapeia a rastreabilidade entre as Histórias de Usuário (HUs), os Requisitos Funcionais (RFs) e os Requisitos Não Funcionais (RNFs) associados.
 
-| ID HU | Titulo | Ator | Objetivo Principal | RFs Cobertos | RNFs Cobertos |
-|---|---|---|---|---|---|
-| **HU01** | Cadastrar livro | Usuário | Registrar um novo livro (físico ou digital) com título, autor, editora e status de leitura. | RF01, RF04, RF13 | RNF01, RNF04 |
-| **HU02** | Atualizar status de leitura | Usuário | Alterar o estado de leitura de um livro (não lido, lendo, concluído) com reflexo dinâmico. | RF04, RF05 | RNF01, RNF04, RNF05 |
-| **HU03** | Organizar livros por gênero | Usuário | Gerenciar gêneros literários (CRUD) e associar múltiplos gêneros a cada livro. | RF06, RF08 | RNF01, RNF04 |
-| **HU04** | Organizar livros por coleção | Usuário | Gerenciar coleções personalizadas (CRUD) e agrupar livros em no máximo uma coleção. | RF07, RF08 | RNF01, RNF04 |
-| **HU05** | Filtrar o acervo | Usuário | Consultar livros combinando múltiplos critérios com atualização dinâmica e limpeza simples. | RF09 | RNF01, RNF02, RNF03 |
-| **HU06** | Pesquisar livros | Usuário | Buscar livros por correspondência parcial de título ou autor em tempo de digitação. | RF12 | RNF01, RNF02, RNF03 |
-| **HU07** | Visualizar resumo do acervo | Usuário | Consultar estatísticas em tempo real sobre status de leitura e gêneros mais frequentes. | RF10, RF11 | RNF01, RNF03, RNF05 |
-| **HU08** | Exportar o acervo | Usuário | Gerar arquivo baixável nos formatos CSV ou JSON contendo todos os dados do acervo. | N/A | RNF01, RNF06, RNF07 |
+| ID HU | Título | Ator | Descrição Resumida | RFs Cobertos | RNFs Cobertos |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **HU01** | Cadastrar livro | Usuário | Permite o cadastro de um livro com atributos obrigatórios (título, autor), tipo (físico/digital) e status de leitura. | RF01, RF04, RF13 | RNF01, RNF04 |
+| **HU02** | Atualizar status de leitura | Usuário | Permite atualizar o estado de leitura (não lido, lendo, concluído) com reflexo imediato no acervo. | RF04, RF05 | RNF04, RNF05 |
+| **HU03** | Organizar livros por gênero | Usuário | Permite gerenciar gêneros literários (CRUD) e associar N gêneros a um livro. | RF06, RF08 | RNF04 |
+| **HU04** | Organizar livros por coleção | Usuário | Permite gerenciar coleções (CRUD) e associar um livro a no máximo uma coleção. | RF07, RF08 | RNF04 |
+| **HU05** | Filtrar o acervo | Usuário | Permite a aplicação de múltiplos filtros simultâneos e limpeza de filtros. | RF09 | RNF02, RNF03, RNF06 |
+| **HU06** | Pesquisar livros por título ou autor | Usuário | Permite busca textual dinâmica por correspondência parcial de título ou autor. | RF12 | RNF02, RNF03, RNF06 |
+| **HU07** | Visualizar resumo do acervo | Usuário | Exibe o total de livros por status e os gêneros mais frequentes com atualização em tempo real. | RF10, RF11 | RNF05 |
+| **HU08** | Exportar o acervo | Usuário | Permite o download de todo o acervo do usuário em arquivo estruturado (CSV ou JSON). | N/A | RNF07 |
+| **N/A** | Remoção e edição de livros | Usuário | Manutenção direta dos dados dos livros existentes. | RF02, RF03 | RNF04, RNF05 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Visão Geral de Componentes (Abstrato)
+### 2.1 Diagrama de Componentes (Visão de Visão Geral)
 
 ```mermaid
 graph TD
-    subgraph Cliente ["Camada de Apresentação (Navegador Web)"]
-        UI["Interface de Usuário Responsiva"]
-        StateMgr["Gerenciador de Estado Local & Filtros"]
-        ExportEngine["Módulo de Exportação Client-Side"]
+    subgraph Camada_Apresentacao [Camada de Apresentação]
+        UI[Interface do Usuário Responsiva]
+        FilterView[Módulo Visual de Busca e Filtros]
+        StatsView[Módulo Visual de Estatísticas]
     end
 
-    subgraph Fronteira ["Camada de Controle de Acesso"]
-        AuthGuard["Serviço de Autenticação e Autorização"]
+    subgraph Camada_Negocio [Camada de Serviços e Negócio]
+        AuthService[Serviço de Autenticação e Controle de Acesso]
+        CatalogService[Gestor de Acervo e Livros]
+        TaxonomyService[Gestor de Gêneros e Coleções]
+        SearchService[Módulo de Filtragem e Busca]
+        StatsService[Calculador de Métricas e Estatísticas]
+        ExportService[Processador de Exportação]
     end
 
-    subgraph Dominio ["Camada de Serviços do Domínio"]
-        CatalogSvc["Serviço de Gestão de Acervo e Livros"]
-        TaxonomySvc["Serviço de Taxonomia (Gêneros e Coleções)"]
-        SearchFilterSvc["Serviço de Busca e Filtragem"]
-        StatsSvc["Serviço de Estatísticas e Resumos"]
+    subgraph Camada_Dados [Camada de Persistência]
+        Persistence[Mecanismo de Persistência de Dados]
     end
 
-    subgraph Persistencia ["Camada de Dados"]
-        DataStore[("Repositório de Dados Persistente")]
-    end
+    UI --> AuthService
+    UI --> CatalogService
+    UI --> TaxonomyService
+    FilterView --> SearchService
+    StatsView --> StatsService
+    UI --> ExportService
 
-    UI --> AuthGuard
-    AuthGuard --> CatalogSvc
-    AuthGuard --> TaxonomySvc
-    AuthGuard --> SearchFilterSvc
-    AuthGuard --> StatsSvc
+    CatalogService --> Persistence
+    TaxonomyService --> Persistence
+    SearchService --> Persistence
+    StatsService --> Persistence
+    ExportService --> Persistence
+    AuthService --> Persistence
 
-    CatalogSvc --> DataStore
-    TaxonomySvc --> DataStore
-    SearchFilterSvc --> DataStore
-    StatsSvc --> DataStore
-
-    CatalogSvc -- "Notifica Alteração" --> StatsSvc
-    StateMgr --> ExportEngine
+    CatalogService -. Notifica Alteração .-> StatsService
 ```
 
-### 2.2 Diagrama de Sequência: Cadastro de Livro e Atualização de Estatísticas (HU01 + HU07 / RNF05)
+---
+
+### 2.2 Diagrama de Sequência: Cadastrar Livro e Atualizar Estatísticas em Tempo Real (HU01, HU07)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant U as Usuário
-    participant UI as Interface de Usuário
-    participant AG as Guardião de Autenticação
-    participant CS as Serviço de Acervo
-    participant SS as Serviço de Estatísticas
-    participant DS as Repositório de Dados
+    participant UI as Interface Visual
+    participant Auth as Serviço Autenticação
+    participant Cat as Gestor de Acervo
+    participant Stats as Calculador Estatísticas
+    participant DB as Mecanismo Persistência
 
-    U->>UI: Preenche formulário e clica em "Salvar Livro"
-    UI->>AG: Envia requisição de cadastro com Token do Usuário
-    AG->>AG: Valida identidade e isolamento de dados do Usuário
-    AG->>CS: Encaminha comando de criação do livro
-    CS->>CS: Validar campos obrigatórios (Título, Autor, Status)
-    CS->>DS: Persistir registro do livro (associado ao ID do Usuário)
-    DS-->>CS: Confirmação de persistência
-    CS->>SS: Evento / Notificação: "LivroAdicionado" (ID Usuário)
-    SS->>DS: Recalcula/Atualiza agregação estatística do Usuário
-    DS-->>SS: Dados estatísticos atualizados
-    SS-->>CS: Confirmação de atualização do resumo
-    CS-->>UI: Resposta de sucesso (Dados do livro cadastrado)
-    UI->>UI: Atualiza lista exibida e painel de estatísticas em tempo real
-    UI-->>U: Exibe confirmação visual de sucesso
+    U->>UI: Solicita cadastro de novo livro (Dados, Status, Gênero/Coleção)
+    UI->>Auth: Valida sessão ativa e identidade do usuário
+    Auth-->>UI: Sessão Válida (UsuarioID)
+    UI->>Cat: RegistrarLivro(dadosLivro, usuarioID)
+    
+    activate Cat
+    Cat->>Cat: Validar campos obrigatórios (Título, Autor, Status válido)
+    Cat->>DB: Salvar registro do livro isolado por usuarioID
+    DB-->>Cat: Confirmação de persistência
+    
+    Cat->>Stats: Emitir Evento "LivroAdicionado" (usuarioID)
+    activate Stats
+    Stats->>DB: Recalcular totais por status e gêneros mais frequentes
+    DB-->>Stats: Dados consolidados atualizados
+    Stats-->>UI: Notifica atualização das estatísticas em tempo real
+    deactivate Stats
+
+    Cat-->>UI: Retorna confirmação de cadastro do livro
+    deactivate Cat
+    
+    UI-->>U: Exibe novo livro no acervo e estatísticas atualizadas
+```
+
+---
+
+### 2.3 Diagrama de Classes Conceptual
+
+```mermaid
+classDiagram
+    class Usuario {
+        +String id
+        +String email
+        +String nome
+    }
+
+    class Livro {
+        +String id
+        +String titulo
+        +String autor
+        +String editora
+        +TipoLivro tipo
+        +StatusLeitura status
+        +DateTime dataCadastro
+    }
+
+    class Genero {
+        +String id
+        +String nome
+    }
+
+    class Colecao {
+        +String id
+        +String nome
+    }
+
+    class StatusLeitura {
+        <<enumeration>>
+        NAO_LIDO
+        LENDO
+        CONCLUIDO
+    }
+
+    class TipoLivro {
+        <<enumeration>>
+        FISICO
+        DIGITAL
+    }
+
+    Usuario "1" -- "*" Livro : possui
+    Usuario "1" -- "*" Genero : define
+    Usuario "1" -- "*" Colecao : possui
+    Livro "*" -- "*" Genero : categorizado por
+    Livro "*" -- "0..1" Colecao : pertence a
+    Livro --> StatusLeitura
+    Livro --> TipoLivro
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### ADR-01: Isolamento de Dados por Usuário (Multi-tenancy Lógico)
-* **Contexto:** RNF01 especifica que o acervo deve ser estritamente pessoal e protegido por autenticação.
-* **Decisão:** Adotar isolamento lógico na camada de dados baseado em identificador único de usuário (`user_id`). Todas as requisições de leitura, escrita, filtragem e atualização devem injetar obrigatoriamente o contexto de identidade validado na camada de segurança, impedindo acesso cruzado.
+1. **Isolamento Multitenant Lógico por Usuário (RNF01)**
+   * **Decisão:** Toda e qualquer consulta, alteração ou deleção no acervo exige a injeção implícita da identidade do usuário autenticado no contexto da execução.
+   * **Justificativa:** Garante a segurança e a privacidade total dos acervos pessoais sem permitir vazamento inter-usuários.
 
-### ADR-02: Cardinalidade e Desvinculação Graciosa de Taxonomias
-* **Contexto:** HU03 e HU04 definem regras de categorização: Livro ↔ Gênero (1:N) e Livro ↔ Coleção (N:1). Ao remover gêneros ou coleções, os livros não podem ser excluídos.
-* **Decisão:** A relação entre Livro e Gêneros será mapeada via tabela/estrutura de associação N:M. A relação entre Livro e Coleção será feita por associação opcional (chave estrangeira anulável). A exclusão de uma entidade taxonômica executará umaoperação de desvinculação em cascata (desassociar relacões), preservando a integridade e persistência do registro do livro.
+2. **Padrão de Disparo de Eventos para Atualização de Estatísticas (RNF05)**
+   * **Decisão:** A alteração do estado de qualquer livro (cadastro, edição, remoção ou mudança de status) dispara assincronamente a atualização dos agregados de estatísticas.
+   * **Justificativa:** Garante que o painel estatístico esteja sempre em tempo real para o usuário sem congelar a interface de cadastro.
 
-### ADR-03: Processamento e Atualização Dinâmica de Estatísticas em Tempo Real
-* **Contexto:** RNF05 e HU07 exigem que o resumo estatístico seja atualizado em tempo real conforme livros são adicionados, editados ou removidos.
-* **Decisão:** Utilizar o padrão de Notificação de Eventos de Domínio no momento em que ocorrem alterações no ciclo de vida do livro. O Serviço de Estatísticas reagirá a esses eventos recalculando o resumo das contagens por status e gêneros mais frequentes, garantindo reatividade na interface de usuário.
+3. **Estratégia de Desvinculação em Cascata Suave (HU03, HU04)**
+   * **Decisão:** A deleção de entidades agregadoras (Gêneros e Coleções) remove apenas o vínculo (chave estrangeira/referência) nas entidades `Livro`, mantendo a integridade e existência dos livros.
+   * **Justificativa:** Atende estritamente aos critérios de aceite que impedem a perda de livros ao excluir categorias ou coleções.
 
-### ADR-04: Processamento de Exportação Client-Side / Streaming
-* **Contexto:** RNF07 e HU08 estabelecem a necessidade de exportar o acervo em CSV ou JSON diretamente via navegador.
-* **Decisão:** A exportação será acionada solicitando os dados estruturados do acervo do usuário e processando a transformação de formato (CSV/JSON) e o download do arquivo diretamente no ambiente da Interface de Usuário (Client-Side), minimizando overhead no servidor e garantindo conformidade com o RNF06.
+4. **Desacoplamento de Formatos de Exportação via Estratégia de Formatação (HU08, RNF07)**
+   * **Decisão:** O módulo de exportação emprega o padrão de projeto *Strategy*, onde a geração estruturada dos dados (CSV ou JSON) é independente do mecanismo de extração.
+   * **Justificativa:** Facilita a inclusão futura de novos formatos de arquivo sem alterar o fluxo principal de dados.
+
+5. **Filtragem e Busca In-Memory com Resposta de Baixa Latência (RNF03, HU05, HU06)**
+   * **Decisão:** Consultas dinâmicas aplicam indexação prévia e filtros combináveis no motor de pesquisa da aplicação para garantir tempos de resposta inferiores a 2 segundos.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|---|---|---|---|
-| **Interface de Usuário (UI)** | Renderização responsiva, formulários de edição, busca dinâmica e exibição do painel estatístico. | Guardião de Autenticação, Módulo de Exportação Client-Side | RNF02, RNF06, HU01 a HU07 |
-| **Guardião de Autenticação** | Garantir segurança de acesso, autoria das requisições e isolamento de acervo por usuário. | Interface de Usuário, Serviços de Domínio | RNF01 |
-| **Serviço de Gestão de Acervo** | Executar operações de CRUD de livros, validação de dados obrigatórios e classificação (físico/digital). | Guardião de Autenticação, Repositório de Dados, Serviço de Estatísticas | RF01, RF02, RF03, RF04, RF05, RF13, HU01, HU02 |
-| **Serviço de Taxonomia** | Gerenciar o ciclo de vida de Gêneros e Coleções e desvincular associações aquando de exclusões. | Guardião de Autenticação, Repositório de Dados, Serviço de Acervo | RF06, RF07, RF08, HU03, HU04 |
-| **Serviço de Busca e Filtragem** | Realizar filtragens combinadas multi-atributos e pesquisas parciais por título/autor. | Guardião de Autenticação, Repositório de Dados | RF09, RF12, RNF03, HU05, HU06 |
-| **Serviço de Estatísticas** | Agregar dados do acervo, calcular contadores por status e listar gêneros mais frequentes em tempo real. | Serviço de Acervo, Repositório de Dados | RF10, RF11, RNF05, HU07 |
-| **Módulo de Exportação** | Converter dados do acervo para formatos CSV/JSON e disponibilizar arquivo para download. | Interface de Usuário | RNF07, HU08 |
-| **Repositório de Dados Persistente** | Armazenar e garantir a persistência duradoura dos registros do acervo, taxonomias e vínculos. | Todos os Serviços de Domínio | RNF04 |
+| :--- | :--- | :--- | :--- |
+| **Interface de Usuário Responsiva** | Prover navegação intuitiva, formulários responsivos e renderização dinâmica em tempo real para web/mobile. | Servidor de Autenticação, Gestor de Acervo, Gestor de Categorização, Processador de Exportação | RNF02, RNF06, HU01 a HU08 |
+| **Serviço de Autenticação e Controle de Acesso** | Autenticar o usuário e garantir o contexto de isolamento de dados por conta. | Camada de Persistência | RNF01 |
+| **Gestor de Acervo e Livros** | Executar operações de criação, leitura, atualização e remoção de livros (CRUD) e seus atributos. | Camada de Persistência, Calculador de Estatísticas | RF01, RF02, RF03, RF04, RF05, RF13, HU01, HU02 |
+| **Gestor de Gêneros e Coleções** | Gerenciar o ciclo de vida de gêneros e coleções e tratar desvinculações. | Camada de Persistência, Gestor de Acervo | RF06, RF07, RF08, HU03, HU04 |
+| **Módulo de Filtragem e Busca** | Realizar buscas dinâmicas parciais por texto e aplicação de múltiplos filtros simultâneos. | Camada de Persistência | RF09, RF12, RNF03, HU05, HU06 |
+| **Calculador de Métricas e Estatísticas** | Computar totais por status de leitura e ranqueamento de gêneros mais frequentes em tempo real. | Camada de Persistência, Interface do Usuário | RF10, RF11, RNF05, HU07 |
+| **Processador de Exportação** | Gerar arquivos para download contendo o acervo completo nos formatos CSV ou JSON. | Camada de Persistência, Interface do Usuário | RNF07, HU08 |
+| **Camada de Persistência de Dados** | Prover o armazenamento seguro e duradouro das entidades do sistema isoladas por usuário. | Serviço de Autenticação, Gestor de Acervo, Gestor de Categorização, Calculador de Estatísticas | RNF04 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Definição do Mecanismo de Autenticação:**
-   * *Pendência:* O RNF01 explicita necessidade de autenticação e isolamento por usuário, mas os requisitos não especificam o fluxo de cadastro/recuperação de usuários.
-   * *Impacto:* Dependência externa para integração do módulo de identidade.
-
-2. **Limite Padrão e Paginação de Consultas:**
-   * *Pendência:* O RNF03 exige resposta de busca/filtragem em até 2 segundos "independentemente do volume". Não há especificação de limitação (paginação) para acervos massivos.
-   * *Impacto:* Riscos de degradação de desempenho em acervos extremamente grandes sem estratégia de paginação definida.
-
-3. **Critério de Classificação dos "Gêneros Mais Frequentes":**
-   * *Pendência:* A HU07 menciona listar os "gêneros mais frequentes", contudo não define a quantidade limite (ex: Top 3, Top 5) para exibição na interface.
-   * *Impacto:* Pendência na definição de UX e na consulta de agregação estatística.
+1. **Tratamento de Livros Duplicados:** Não há definição nos requisitos sobre o comportamento do sistema ao tentar cadastrar dois livros idênticos (mesmo título e mesmo autor).
+2. **Definição de Limite de Exibição nos "Gêneros Mais Frequentes":** O RF11 especifica a exibição dos gêneros mais frequentes, mas não limita a quantidade (ex: top 3, top 5 ou lista completa).
+3. **Mapeamento de Campos de Exportação para Formato CSV:** Para relacionamentos de 1 N (um livro com múltiplos gêneros), não está especificado o caractere separador internamente à coluna do arquivo CSV.
+4. **Política de Sessão e Expiratação:** Falta detalhamento sobre tempo de expiração de sessão e renovação de acesso para a RNF01.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-### Cobertura dos Requisitos Funcionais (RF)
+A matriz abaixo comprova a totalização da cobertura de requisitos funcionais e não funcionais na solução proposta:
 
-| ID RF | Coberto pelo Componente | Coberto pela HU | Situação |
-|---|---|---|---|
-| **RF01** | Serviço de Gestão de Acervo | HU01 | Coberto |
-| **RF02** | Serviço de Gestão de Acervo | N/A (Subentendido na manutenção) | Coberto |
-| **RF03** | Serviço de Gestão de Acervo | N/A (Subentendido no CRUD de acervo) | Coberto |
-| **RF04** | Serviço de Gestão de Acervo | HU01, HU02 | Coberto |
-| **RF05** | Serviço de Gestão de Acervo | HU02 | Coberto |
-| **RF06** | Serviço de Taxonomia | HU03 | Coberto |
-| **RF07** | Serviço de Taxonomia | HU04 | Coberto |
-| **RF08** | Serviço de Taxonomia / Serviço de Acervo | HU03, HU04 | Coberto |
-| **RF09** | Serviço de Busca e Filtragem | HU05 | Coberto |
-| **RF10** | Serviço de Estatísticas | HU07 | Coberto |
-| **RF11** | Serviço de Estatísticas | HU07 | Coberto |
-| **RF12** | Serviço de Busca e Filtragem | HU06 | Coberto |
-| **RF13** | Serviço de Gestão de Acervo | HU01 | Coberto |
-
-### Cobertura dos Requisitos Não Funcionais (RNF)
-
-| ID RNF | Categoria | Coberto pela Estrutura Arquitetural | Situação |
-|---|---|---|---|
-| **RNF01** | Segurança | Guardião de Autenticação + Isolamento lógico no Repositório de Dados. | Coberto |
-| **RNF02** | Usabilidade | Interface de Usuário Responsiva. | Coberto |
-| **RNF03** | Desempenho | Índices de busca no Repositório de Dados e Serviço de Busca otimizado. | Coberto |
-| **RNF04** | Persistência | Repositório de Dados Persistente com controle ACID / consistência. | Coberto |
-| **RNF05** | Usabilidade | Comunicação orientada a eventos entre Serviço de Acervo e Serviço de Estatísticas. | Coberto |
-| **RNF06** | Compatibilidade | Interface de Usuário desenvolvida sob padrões web universais (HTML/JS/CSS). | Coberto |
-| **RNF07** | Manutenibilidade | Módulo de Exportação Client-Side. | Coberto |
+| Requisito | Coberto no Arquitetura? | Componente / Mecanismo Arquitetural Responsável |
+| :--- | :---: | :--- |
+| **RF01** | Sim | Gestor de Acervo e Livros |
+| **RF02** | Sim | Gestor de Acervo e Livros |
+| **RF03** | Sim | Gestor de Acervo e Livros |
+| **RF04** | Sim | Enumeração `StatusLeitura` / Gestor de Acervo |
+| **RF05** | Sim | Gestor de Acervo e Livros |
+| **RF06** | Sim | Gestor de Gêneros e Coleções |
+| **RF07** | Sim | Gestor de Gêneros e Coleções |
+| **RF08** | Sim | Modelagem de Relacionamento (Livro-Gênero N:N, Livro-Coleção N:1) |
+| **RF09** | Sim | Módulo de Filtragem e Busca |
+| **RF10** | Sim | Calculador de Métricas e Estatísticas |
+| **RF11** | Sim | Calculador de Métricas e Estatísticas |
+| **RF12** | Sim | Módulo de Filtragem e Busca |
+| **RF13** | Sim | Enumeração `TipoLivro` / Gestor de Acervo |
+| **RNF01**| Sim | Serviço de Autenticação e Controle de Acesso |
+| **RNF02**| Sim | Interface de Usuário Responsiva |
+| **RNF03**| Sim | Módulo de Filtragem e Busca (Otimização de Consultas In-Memory) |
+| **RNF04**| Sim | Camada de Persistência de Dados |
+| **RNF05**| Sim | Notificação Event-Driven entre Gestor de Acervo e Calculador de Métricas |
+| **RNF06**| Sim | Interface de Usuário Responsiva |
+| **RNF07**| Sim | Processador de Exportação (Estratégia CSV/JSON) |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna Identificada | Tipo | Impacto Arquitetural | Ação Recomendada |
-|---|---|---|---|
-| Ausência de especificação sobre deleção lógica (Soft Delete) vs física. | Requisito de Dados | Se a remoção de um livro for física, histórico e estatísticas passadas podem ser impactados sem capacidade de recuperação. | Adotar padrão de deleção lógica (marcação de inativo) no Repositório de Dados para possibilitar restauração e auditoria. |
-| Inexistência de especificação para paginação de listas de livros. | Desempenho / UX | Consultas que retornam milhares de itens podem violar o tempo limite de 2s (RNF03) e travar a interface. | Especificar e implementar paginação orientada a cursor ou offset no Serviço de Busca e Filtragem. |
-| Tratamento de conflitos de nomenclatura em Gêneros/Coleções. | Regra de Negócio | Usuário pode criar gêneros duplicados com grafias idênticas ou similares (ex: "Ficção" e "ficção"). | Adicionar validação de unicidade (case-insensitive) por usuário no Serviço de Taxonomia. |
-| Ausência de limites no tamanho/quantidade para exportação. | Escalabilidade | Arquivos de exportação extremamente grandes em clientes com poucos recursos de memória podem travar o navegador. | Adotar geração de arquivo via streaming de dados no Módulo de Exportação para lotes elevados. |
+| Lacuna Identificada | Impacto Arquitetural | Ação Recomendada para o Time de Desenvolvimento |
+| :--- | :--- | :--- |
+| **Falta de paginação especificada na listagem geral do acervo** | Acervos com milhares de livros podem degradar a renderização da interface e violar o limite de 2 segundos (RNF03). | Implementar paginação ou rolagem infinita virtualizada (*virtual scrolling*) no frontend mantendo o tempo de consulta controlado. |
+| **Ausência de mecanismo de busca fonética ou tolerância a falhas na digitação** | A busca por título/autor (RF12) pode falhar em pequenas divergências ortográficas (ex: acentuação). | Implementar normalização de texto (remoção de acentos e *case-insensitive*) na camada de busca. |
+| **Formatação de múltiplos gêneros em exportação CSV** | Risco de quebra de formatação de colunas ao abrir em leitores de planilha convencionais. | Padronizar a junção dos gêneros com separador de lista delimitado por aspas (ex: `"Ficção Sci-Fi; Aventura"`). |
+| **Comportamento off-line em dispositivos móveis** | Caso ocorra perda de conexão em dispositivos móveis (RNF02), o usuário pode perder cadastros não sincronizados. | Implementar uma camada temporária de cache/armazenamento local na interface para sincronização no reconectamento. |

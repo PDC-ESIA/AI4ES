@@ -1,431 +1,348 @@
 # Relatório Técnico de Arquitetura de Software
 
 ## 1. Identificação das HUs
+Lista consolidada das Histórias de Usuário (HU) mapeadas diretamente dos requisitos fornecidos:
 
-Lista das Histórias de Usuário consideradas no projeto (referência direta às HUs fornecidas):
+- HU01 — Registrar pedido de frete (RF05, RF06, RF09, RF10, RF13)
+- HU02 — Selecionar transportadora e contratar seguro (RF10, RF11, RF12, RF41, RF17)
+- HU03 — Acompanhar pedidos e receber comprovante de entrega (RF07, RF37, RF39, RF31)
+- HU04 — Abrir sinistro por avaria ou extravio (RF42, RF43, RF44)
+- HU05 — Aceitar pedidos de frete e gerenciar frota (RF10, RF13, RF14, RF03)
+- HU06 — Acompanhar operação dos motoristas em tempo real (RF25, RF30, RF31, RF26)
+- HU07 — Consultar demonstrativo financeiro de repasse (RF48, RF47, RF46)
+- HU08 — Executar coleta com registro de evidências (RF24, RF23, RF09)
+- HU09 — Registrar entrega com assinatura digital do destinatário (RF27, RF38, RF37, RNF10, RNF17)
+- HU10 — Registrar ocorrência durante o transporte (RF26, RF31, RF33, RF34)
+- HU11 — Rastrear carga em tempo real sem cadastro (RF30, RNF05, HU12)
+- HU12 — Receber notificações de cada etapa da entrega (RF33, RNF05)
+- HU13 — Monitorar SLA de fretes e acionar contingência (RF16, RNF12, RNF15)
+- HU14 — Acompanhar painel financeiro da plataforma (RF49, RF45, RF46)
 
-- HU01 — Registrar pedido de frete (embarque, documentos, roteamento automático)
-- HU02 — Selecionar transportadora e contratar seguro (ranking e contratação)
-- HU03 — Acompanhar pedidos e receber comprovante de entrega (POD)
-- HU04 — Abrir sinistro por avaria ou extravio (integração com seguradora)
-- HU05 — Aceitar pedidos de frete e gerenciar frota (transportadora)
-- HU06 — Acompanhar operação dos motoristas em tempo real (painel transportadora)
-- HU07 — Consultar demonstrativo financeiro de repasse (transportadora)
-- HU08 — Executar coleta com registro de evidências (motorista)
-- HU09 — Registrar entrega com assinatura digital do destinatário (POD legal)
-- HU10 — Registrar ocorrência durante o transporte (ocorrências)
-- HU11 — Rastrear carga em tempo real sem cadastro (link público com token)
-- HU12 — Receber notificações de cada etapa da entrega (destinatário)
-- HU13 — Monitorar SLA de fretes e acionar contingência (administrador)
-- HU14 — Acompanhar painel financeiro da plataforma (administrador financeiro)
-
-As HUs acima cobrem os fluxos primários de usuários embarcador, transportadora, motorista, destinatário e administrador, e servem de base para rastreabilidade dos requisitos nesta arquitetura.
+Observação: cada HU aqui sintetiza os RFs relacionados e será utilizada para rastreabilidade nas seções seguintes.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-Observação: Diagramas descrevem responsabilidades e interfaces conceituais (neutralidade tecnológica).
-
-2.1 Sequência: Registro de pedido, roteamento, aceite e emissão de CT-e
+- Diagrama de sequência (fluxo principal: registro de pedido → roteamento → aceite → emissão CT-e → operação motorista → POD)
 ```mermaid
 sequenceDiagram
-autonumber
-participant Embarcador
-participant API_Gateway
-participant FreightService as "Serviço de Pedidos (FreightService)"
-participant RoutingService as "Serviço de Roteamento e Ranking"
-participant PartnerService as "Gestão de Transportadoras"
-participant NotificationService as "Serviço de Notificações"
-participant Transportador
-participant AcceptanceService as "Serviço de Aceite"
-participant CTeService as "Serviço de Emissão CT-e"
-participant SEFAZ
-Embarcador->>API_Gateway: POST /pedidos {dados do frete + documentos}
-API_Gateway->>FreightService: forward pedido
-FreightService->>RoutingService: solicitar roteamento (origem, destino, tipo carga)
-RoutingService->>PartnerService: consultar transportadoras habilitadas
-PartnerService-->>RoutingService: lista de parceiros + capacidades
-RoutingService->>FreightService: opções ranqueadas (preço, prazo, desempenho)
-FreightService->>NotificationService: notificar embarcador com opções
-NotificationService-->>Embarcador: apresentar opções (UI / e-mail)
-Embarcador->>API_Gateway: POST /confirmar-frete {transportadoraId, opção seguro}
-API_Gateway->>FreightService: confirmar frete
-FreightService->>AcceptanceService: criar solicitação de aceite para transportadora
-AcceptanceService->>NotificationService: notificar transportadora (push / e-mail)
-NotificationService-->>Transportador: aviso de novo pedido
-Transportador->>AcceptanceService: responder aceite/recusa
-AcceptanceService->>FreightService: atualizar status aceite/recusa
-alt em caso de aceite
-  FreightService->>CTeService: solicitar emissão CT-e
-  CTeService->>SEFAZ: transmitir CT-e
-  SEFAZ-->>CTeService: retorno autorização
-  CTeService->>FreightService: informar status CT-e
-  FreightService->>NotificationService: notificar embarcador e transportadora
-else recusa ou timeout
-  AcceptanceService->>RoutingService: acionar próxima transportadora ranqueada
-  RoutingService->>AcceptanceService: novo pedido de aceite
-end
+  autonumber
+  participant Embarcador
+  participant PortalWeb as "Portal / API"
+  participant Auth as "Serviço de Autenticação"
+  participant OrderSvc as "Serviço de Pedidos"
+  participant Routing as "Serviço de Roteamento / Ranking"
+  participant Notif as "Serviço de Notificações"
+  participant Carrier as "Transportadora (externo)"
+  participant Fleet as "Serviço de Frota"
+  participant DriverApp as "Aplicativo Motorista"
+  participant CTESvc as "Serviço CT-e"
+  participant SEFAZ as "SEFAZ (externo)"
+  participant Docs as "Armazenamento de Documentos"
+  participant Audit as "Serviço de Auditoria"
+
+  Embarcador->>PortalWeb: 1. Submete pedido de frete (HU01)
+  PortalWeb->>Auth: 2. Valida token / MFA
+  PortalWeb->>OrderSvc: 3. Cria pedido + metadados e documentos
+  OrderSvc->>Docs: 4. Armazena documentos vinculados (NF-e, fichas)
+  OrderSvc->>Audit: 5. Registra evento: criação de pedido
+  OrderSvc->>Routing: 6. Solicita roteamento e ranking (RF10-RF12)
+  Routing->>Fleet: 7. Consulta transportadoras habilitadas e frota (RF03)
+  Routing->>OrderSvc: 8. Retorna lista ranqueada
+  OrderSvc->>PortalWeb: 9. Notifica embarcador com opções (HU02)
+  PortalWeb->>Notif: 10. Envia notificações para transportadoras/alerts (RF13)
+  Notif->>Carrier: 11. Transportadora recebe notificação
+  Carrier->>PortalWeb: 12. Aceite/Recusa do pedido (HU05)
+  PortalWeb->>OrderSvc: 13. Atualiza status e grava justificativa se recusa
+  OrderSvc->>Routing: 14. Em caso de recusa/timeout aciona próxima (RF15)
+  Carrier->>OrderSvc: 15. Confirma aceite -> dispara emissão fiscal
+  OrderSvc->>CTESvc: 16. Gera CT-e com dados do pedido (RF17)
+  CTESvc->>SEFAZ: 17. Transmite CT-e e consulta autorização (RF18)
+  SEFAZ-->>CTESvc: 18. Retorna status de autorização
+  CTESvc->>Docs: 19. Armazena CT-e e DACTE para download (RF22)
+  CTESvc->>OrderSvc: 20. Retorna status emissão
+  OrderSvc->>Audit: 21. Registra emissão CT-e e resposta SEFAZ (RNF11)
+  OrderSvc->>DriverApp: 22. Atribui ordem ao motorista (HU08/HU09)
+  DriverApp->>DriverApp: 23. Operações offline possíveis (sincronização posterior) (RNF17)
+  DriverApp->>OrderSvc: 24. Registra coleta/entrega/ocorrência + evidências (HU08, HU09, HU10)
+  OrderSvc->>Docs: 25. Armazena fotos, assinaturas, POD (RF37, RF38)
+  OrderSvc->>Notif: 26. Notifica embarcador/destinatário/transportadora (RF33-RF35)
+  OrderSvc->>Audit: 27. Registra POD e eventos finais (RNF11)
 ```
 
-2.2 Sequência: Fluxo do motorista (coleta, rastreamento, entrega, POD)
+- Diagrama de componentes (visão de alto nível mostrando responsabilidades e interfaces)
 ```mermaid
-sequenceDiagram
-autonumber
-participant MotoristaApp as "App Motorista"
-participant SyncService as "Serviço de Sincronização Móvel"
-participant TrackingService as "Serviço de Rastreamento em Tempo Real"
-participant Geodb as "BD Séries Temporais (Geolocalização)"
-participant FreightService as "Serviço de Pedidos"
-participant NotificationService as "Serviço de Notificações"
-participant PODService as "Serviço POD / Assinatura"
-MotoristaApp->>SyncService: request sincronização / autenticação
-SyncService->>MotoristaApp: enviar ordens do dia
-MotoristaApp->>SyncService: POST evento coleta {foto, volumes, assinatura}
-SyncService->>FreightService: registrar evento coleta
-FreightService->>NotificationService: notificar embarcador (coleta realizada)
-MotoristaApp->>TrackingService: enviar posição periódica
-TrackingService->>Geodb: armazenar ponto (timestamp, lat, lon)
-TrackingService->>NotificationService: atualizar painel transportadora/embarcardor
-MotoristaApp->>SyncService: POST evento entrega {foto, assinatura, geo}
-SyncService->>PODService: gerar POD com timestamp jurídico
-PODService->>FreightService: anexar POD ao pedido
-FreightService->>NotificationService: disponibilizar POD para embarcador/transportadora/destinatário
-```
+graph TD
+  subgraph Frontend
+    PortalWeb["Portal Web / API Gateway"]
+    DriverApp["Aplicativo Motorista"]
+    TrackingLink["Interface de Rastreamento (link público)"]
+  end
 
-2.3 Diagrama de Componentes (classDiagram)
-```mermaid
-classDiagram
-class API_Gateway {
-  +validarToken()
-  +rateLimit()
-  +rodarRoteamento()
-}
-class AuthService {
-  +autenticar()
-  +autorizar(perfil)
-  +mfaVerify()
-}
-class FreightService {
-  +criarPedido()
-  +atualizarStatus()
-  +anexarDocumentos()
-}
-class RoutingService {
-  +avaliarTransportadoras()
-  +rankearOpcoes()
-  +aplicarRegrasConfig()
-}
-class PartnerService {
-  +gerenciarTransportadoras()
-  +gerenciarMotoristasFrota()
-}
-class AcceptanceService {
-  +solicitarAceite()
-  +tratarRecusaTimeout()
-}
-class CTeService {
-  +gerarCTe()
-  +transmitirSEFAZ()
-  +consultarStatus()
-  +modoContingencia()
-}
-class TrackingService {
-  +receberPosicao()
-  +calcularETA()
-  +fornecerRastreamentoPublico()
-}
-class TimeSeriesDB {
-  +armazenarPosicoes()
-  +consultasGeoespaciais()
-}
-class DocumentStorage {
-  +armazenarDocumento()
-  +controleAcesso()
-}
-class NotificationService {
-  +enviarEmail()
-  +enviarSMS()
-  +pushMobile()
-}
-class InsuranceService {
-  +cotacaoSeguro()
-  +contratarSeguro()
-  +abrirSinistro()
-}
-class FinancialService {
-  +calcularFrete()
-  +calcularComissao()
-  +gerarFaturas()
-}
-class PODService {
-  +gerarPOD()
-  +aplicarTimestamp()
-}
-class AuditService {
-  +registrarOperacaoImutavel()
-  +consultaAuditoria()
-}
-class Monitoring {
-  +exporMetricas()
-  +alertasSLA()
-}
-API_Gateway --> AuthService
-API_Gateway --> FreightService
-FreightService --> RoutingService
-RoutingService --> PartnerService
-FreightService --> AcceptanceService
-AcceptanceService --> NotificationService
-FreightService --> CTeService
-CTeService --> "SEFAZ (externo)"
-TrackingService --> TimeSeriesDB
-FreightService --> DocumentStorage
-FreightService --> PODService
-FreightService --> NotificationService
-FreightService --> InsuranceService
-FinancialService --> FreightService
-AuditService <.. FreightService
-Monitoring <.. TrackingService
-Monitoring <.. CTeService
+  subgraph Core
+    Auth["Serviço de Autenticação & Autorização"]
+    OrderSvc["Serviço de Pedidos"]
+    Routing["Serviço de Roteamento & Ranking"]
+    Fleet["Serviço de Gestão de Frota e Motoristas"]
+    CTESvc["Serviço de CT-e & Fiscal"]
+    Insurance["Serviço de Integração com Seguradoras"]
+    Notification["Serviço de Notificações (e-mail/SMS/push)"]
+    Finance["Serviço Financeiro & Faturamento"]
+    Realtime["Serviço de Rastreamento em Tempo Real"]
+    Audit["Serviço de Auditoria Imutável"]
+    Docs["Armazenamento de Documentos & POD"]
+    TSDB["Banco de Séries Temporais (posições)"]
+    GeoSvc["Serviço de Consultas Geoespaciais/Mapas"]
+    Metrics["Monitoramento & Métricas Operacionais"]
+  end
+
+  subgraph Integrations
+    SEFAZ["SEFAZ / Autoridade Fiscal (API)"]
+    Carriers["Sistemas das Transportadoras (API)"]
+    Payment["Provedor de Pagamentos (externo)"]
+    Insurers["Sistemas Seguradoras (API)"]
+  end
+
+  PortalWeb -->|REST/gRPC| Auth
+  PortalWeb -->|REST/gRPC| OrderSvc
+  DriverApp -->|Sync / push| Realtime
+  DriverApp -->|API / sync| OrderSvc
+  TrackingLink -->|read only token| Realtime
+  OrderSvc -->|events / commands| Routing
+  Routing -->|consulta| Fleet
+  OrderSvc -->|documentos| Docs
+  OrderSvc -->|emitir CT-e| CTESvc
+  CTESvc -->|API (contrato versionado)| SEFAZ
+  CTESvc -->|armazenar DACTE| Docs
+  OrderSvc -->|dispatch| Notification
+  OrderSvc -->|movimentações| Audit
+  Realtime -->|armazenar posições| TSDB
+  Realtime -->|geocoding/route| GeoSvc
+  Finance -->|dados| OrderSvc
+  Finance -->|repasse| Carriers
+  Insurance -->|cotação/contratação| Insurers
+  Metrics -->|coleta| OrderSvc
+  Metrics -->|dashboard| PortalWeb
+  Docs -->|acesso protegido| PortalWeb
+  Audit -->|imutável| Docs
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-Listagem das decisões arquiteturais principais (conceituais, neutras quanto a produtos):
+1. Estilo arquitetural: arquitetura orientada a serviços com comunicação por APIs e eventos
+   - Racional: clara separação de responsabilidades (pedidos, roteamento, CT-e, rastreamento), facilita escalabilidade independente de cada domínio (alta taxa de updates de geolocalização vs operações transacionais de CT-e).
+   - Trade-off: maior complexidade de orquestração e observabilidade; exige contrato de APIs e governança de versão.
 
-1. Estilo arquitetural
-   - Arquitetura orientada a serviços (serviços independentes por domínio funcional): Serviços centrais para Pedidos, Roteamento, Aceite, Emissão CT-e, Rastreamento, Notificações, Financeiro, Seguro, POD, Autenticação, Auditoria e Armazenamento de documentos.
-   - Motivação: modularidade, autonomia de implantação, escalabilidade por domínio (ex.: rastreamento com alto volume).
+2. Comunicação síncrona e assíncrona combinada
+   - Síncrono: operações transacionais que exigem resposta imediata (autenticação, consulta de status, emissão inicial de CT-e).
+   - Assíncrono/Events: notificações, processamento de ranking em lote, atualização de indicadores, replicação de eventos para auditoria e faturamento.
+   - Racional: garante responsividade ao usuário e tolerância a picos; permite reprocessamento de eventos.
 
-2. Comunicação e integração
-   - APIs versionadas e contratadas para todas as integrações externas (SEFAZ, seguradoras, emissores de CT-e, provedores de SMS/Email). Interfaces claramente definidas (REST/HTTP + contratos de mensagem).
-   - Assincronia por eventos para fluxos que toleram latência (aceite transporte, sinistros, atualização de índice de desempenho) via barramento de mensagens interno, garantindo desacoplamento entre serviços e resiliência a picos.
+3. Serviços independentes para funcionalidades de negócios críticas
+   - Serviços identificados: Pedido, Roteamento/Ranking, Frota, Rastreamento (tempo real), CT-e, Financeiro, Insurance, Notificação, Auditoria.
+   - Racional: isolamento de falhas, deploys independentes, escalabilidade por carga (p.ex. TSDB para geolocalização).
 
-3. Modelo de persistência
-   - Dados transacionais (pedidos, faturas, usuários) em armazenamento transacional consistente.
-   - Geolocalização em banco otimizado para séries temporais e consultas geoespaciais (armazenamento e índices próprios).
-   - Documentos (NF-e, fotos, DACTE, POD, laudos) em storage de objetos com controle de acesso.
-   - Auditoria imutável: trilha de auditoria com garantias de imutabilidade e retenção legal (por ex., assinatura de eventos ou ledger append-only conceitual).
+4. Armazenamento diferenciado por característica dos dados
+   - Dados transacionais e documentos vinculados precisam de armazenamento com suporte a ACID/consistência; posições precisam de armazenamento otimizado para séries temporais e consultas geoespaciais; audit logs devem ser imutáveis.
+   - Racional: respeitar os RNFs sobre criptografia em repouso, retenção e consulta eficiente.
 
-4. Disponibilidade, escalabilidade e resiliência
-   - Serviços críticos (rastreamento, roteamento, emissão CT-e, notificações) dimensionados horizontalmente.
-   - Circuit-breakers e fallback para integrações externas (SEFAZ, seguradoras); modo de contingência para emissão CT-e com sincronização posterior.
-   - Aplicativo móvel operando em modo offline com sincronização eventual e resolução de conflitos por versão/timestamp.
+5. Autenticação e autorização centralizada com políticas MFA
+   - Perfis com papéis (embar., transportadora, motorista, destinatário, admin) e controles de acesso por recurso.
+   - Racional: cumprimento dos RNFs (MFA para admins/embarcadores) e princípio de menor privilégio.
 
-5. Segurança e conformidade
-   - Comunicação cliente-servidor obrigatoriamente por TLS 1.2+.
-   - Criptografia em repouso para dados sensíveis (finanças, fiscais, localização) com chaves gerenciadas por serviço de gerenciamento de chaves (conceitual).
-   - Autenticação centralizada com MFA obrigatório para perfis administrativos e embarcadores.
-   - Permissões finas: controle de acesso por cargo/perfil (embarcardor vs transportadora vs motorista vs destinatário).
-   - Link de rastreamento público protegido por token único com expiração e escopo restrito.
-   - Suporte à LGPD: minimização, consentimento quando aplicável, e ferramentas para atendimento a solicitações de titulares.
+6. Proteção de rastreamento via token de acesso com prazo limitado
+   - Token único para cada link de rastreamento, expiração automática, escopo limitado ao frete.
+   - Racional: atender RNF05 (não expor dados de outros fretes).
 
-6. Legalidade da assinatura e timestamp
-   - POD deve incorporar carimbo de tempo com validade jurídica (fluxo de assinatura eletrônica auditado e com evidências). Arquitetura prevê componentes para aplicar timestamp legal ao POD no momento da assinatura.
+7. Offline-first para aplicativo do motorista
+   - Sincronização eventual, fila local de eventos, resolução de conflitos por versão/timestamps, garantia de persistência local até confirmação.
+   - Racional: RNF17 (modo offline completo) e usabilidade em campo.
 
-7. Observabilidade e operação
-   - Exposição de métricas operacionais e de negócio (latência de roteamento, taxa de aceitação, disponibilidade de integrações) em painel de monitoramento.
-   - Logs estruturados e tracing distribuído entre serviços para investigação de incidentes.
+8. Emissão fiscal com modo contingência
+   - Workflow suportando emissão normal e contingência offline com posterior sincronização e tratamento de erros/rollback.
+   - Racional: atender RF19 e RNF07/RNF08; exigir mecanismo de retry e logs fiscais.
 
-8. Governança de contratos externos
-   - Todas integrações externas (SEFAZ, seguradoras, emissores) com contratos versionados e teste de compatibilidade automatizado antes de atualização em produção.
+9. Auditoria imutável e retenção fiscal
+   - Logs de auditoria append-only com retenção mínima indicada (>=5 anos) e proteção contra alteração.
+   - Racional: RNF11, requisitos fiscais.
 
-Decisões recusadas (resumo conceitual)
-- Centralizar todos os domínios em uma única base de dados transacional para simplificar consultas: recusado por impacto em escalabilidade e isolamento de falhas (especialmente para rastreamento em tempo real).
+10. Observabilidade e monitoramento operacional
+    - Métricas aplicacionais: latência de roteamento (RNF13), throughput de geolocalização (RNF16), disponibilidade (RNF12), integrações externas.
+    - Racional: apoio às operações e SLA.
+
+11. Governança de contratos de integração
+    - APIs de integração versionadas para SEFAZ, seguradoras e transportadoras.
+    - Racional: RNF24 para permitir evolução independente.
+
+Observação: todas as decisões acima explicitam responsabilidades e padrões; não são prescritivas quanto a produtos ou fornecedores.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
-| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite / RF / RNF) |
-|---|---|---:|---|
-| API_Gateway | Entrada única de APIs, roteamento, validação tokens, rate limiting | AuthService, FreightService, TrackingService, other services | HU01, HU02, RF01, RNF01 |
-| AuthService (Gestão de Acesso) | Autenticação, autorização, MFA, gestão de sessões | API_Gateway, UserManagement | RF01, RF02, RNF03, RNF04 |
-| UserManagement | Cadastro/gerência de usuários/perfis (embar., trans., motorista, destinatário, admin) | AuthService, PartnerService | RF01, RF03, HU05 |
-| FreightService (Pedidos) | Criação/atualização de pedidos, armazenamento metadados, anexos | RoutingService, AcceptanceService, DocumentStorage, CTeService, PODService, FinancialService, AuditService | RF05, RF06, RF07, RF08, RF09, HU01, HU03 |
-| DocumentStorage | Armazenamento seguro de arquivos (NF-e, fotos, DACTE, POD, laudos) | FreightService, PODService, InsuranceService | RF09, RF22, RNF02 |
-| RoutingService | Roteamento automático, critérios configuráveis, ranqueamento e fallback | PartnerService, FreightService, AcceptanceService, Monitoring | RF10, RF11, RF12, RF15, RNF13 |
-| PartnerService (Transportadoras / Frota) | Gerenciar cadastro de transportadoras, motoristas, veículos | RoutingService, AcceptanceService, TrackingService | RF03, HU05 |
-| AcceptanceService | Gerenciar ciclo de convite/aceite/recusa/timeout | NotificationService, FreightService, RoutingService | RF13, RF14, RF15, HU05 |
-| NotificationService | Envio de e-mail/SMS/push; preferências de notificação | FreightService, AcceptanceService, TrackingService, UserManagement | RF33, RF34, RF35, RNF05, HU12 |
-| CTeService | Geração/Transmissão/Contingência/Cancelamento de CT-e; controle de status | FreightService, SEFAZ (externo) | RF17, RF18, RF19, RF20, RF21, RNF07, RNF08 |
-| SEFAZ (integração externa) | Autoridade fiscal externa para autorização CT-e | CTeService | RF18, RF20, RNF07 |
-| TrackingService | Receber posições, calcular ETA, apresentar rastreamento público | MotoristaApp/SyncService, Geodb, NotificationService, FreightService | RF25, RF30, RF31, RF32, RNF15, RNF16 |
-| TimeSeriesDB (Geolocation DB) | Armazenar pontos de localização e consultas geoespaciais | TrackingService, Monitoring | RNF23, RF25 |
-| SyncService (Mobile Sync) | Sincronização offline/online do app do motorista; fila local | MotoristaApp, FreightService, TrackingService, DocumentStorage | RF23, RF24, RF28, RNF17 |
-| PODService | Gerar POD, aplicar assinatura/timestamp jurídica, disponibilizar download | SyncService, FreightService, DocumentStorage, AuditService | RF37, RF38, RF39, RNF10, HU09 |
-| InsuranceService | Cotação/contratação seguro por viagem e abertura de sinistros | FreightService, NotificationService, Insurance Partners | RF41, RF42, RF43, RF44, HU02, HU04 |
-| FinancialService | Calcular frete, comissão, gerar faturas e demonstrativos | FreightService, PartnerService, NotificationService | RF45, RF46, RF47, RF48, RF49, HU07, HU14 |
-| AuditService | Registro imutável de operações críticas para conformidade | Todos os serviços críticos (FreightService, FinancialService, CTeService) | RF04, RNF11 |
-| Monitoring | Métricas e alertas (latência, taxa de aceite, disponibilidade) | RoutingService, TrackingService, CTeService, AcceptanceService | RNF25, RNF12, RNF13 |
-| Admin Portal | Interfaces de operação: painel SLA, painéis financeiros, reassign manual | FreightService, Monitoring, FinancialService, NotificationService | HU13, HU14 |
-| PublicTrackingGateway | Acesso público ao rastreamento via token temporário | TrackingService, DocumentStorage | RF30, HU11, RNF05 |
+| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
+|---|---:|---|---|
+| Portal Web / API Gateway | Interface web para embarcadores/transportadoras/admins; roteia requisições e aplica políticas de autenticação/autorização | Auth, OrderSvc, Finance, Metrics, Notification | HU01, HU02, HU03, RNF03, RNF20 |
+| Aplicativo Motorista (Driver App) | UI/UX para motoristas: ordens, coleta, entrega, ocorrências; suporte offline e sincronização | OrderSvc, Realtime, Docs, Auth | HU08, HU09, HU10, RNF17, RNF18, RNF21 |
+| Interface de Rastreamento por Link | Página pública/protegida para destinatários visualizar posição e histórico | Realtime, OrderSvc, Docs | HU11, RNF05, RF30 |
+| Serviço de Autenticação & Autorização (Auth) | Gestão de identidade, MFA, tokens, roles & permissions | PortalWeb, DriverApp, OrderSvc, Fleet | RF01, RF02, RNF03, RNF04 |
+| Serviço de Pedidos (OrderSvc) | CRUD de pedidos, status workflow, vínculo de documentos, orquestra eventos de negócio | Docs, Routing, CTESvc, Notification, Audit, Finance | HU01, RF05-RF09, RF14, HU03 |
+| Serviço de Roteamento & Ranking (Routing) | Seleção e ranqueamento de transportadoras por critérios configuráveis; fallback em caso de recusa | Fleet, Notification, OrderSvc, Metrics | RF10-RF16, HU02, RNF13 |
+| Serviço de Gestão de Frota e Motoristas (Fleet) | Cadastro/associação de veículos, motoristas, vinculação por transportadora | Auth, Routing, OrderSvc, Realtime | RF03, HU05 |
+| Serviço de CT-e & Fiscal (CTESvc) | Geração, validação, transmissão e controle de CT-e; contingência e cancelamento | SEFAZ, Docs, OrderSvc, Audit | RF17-RF22, RNF07, RNF08, RNF11 |
+| Serviço de Notificações (Notification) | Orquestra envio de e-mails, SMS e push conforme eventos configurados | OrderSvc, Realtime, PortalWeb | RF33-RF36, HU12 |
+| Serviço de Rastreamento em Tempo Real (Realtime) | Recebe e processa streams de posicionamento; expõe feeds em tempo real e histórico | DriverApp, TSDB, GeoSvc, TrackingLink | RF25, RF30-RF32, RNF15, RNF16 |
+| Banco de Séries Temporais / Geoespacial (TSDB) | Armazenamento otimizado para posições e consultas espaciais | Realtime, GeoSvc, Metrics | RNF23, RF31, RNF16 |
+| Serviço de Geoespacial / Roteamento de Mapas (GeoSvc) | Cálculo de previsões de chegada, rotas otimizadas e consultas geoespaciais | Realtime, Routing, PortalWeb | RF29, RF32 |
+| Armazenamento de Documentos & POD (Docs) | Armazenamento criptografado de NF-e, fotos, assinaturas, POD, DACTE | OrderSvc, CTESvc, PortalWeb, Audit | RF09, RF22, RF37-RF39, RNF02 |
+| Serviço de Auditoria Imutável (Audit) | Trilhas de auditoria append-only com retenção e exportação | Todos os serviços críticos | RF04, RNF11 |
+| Serviço Financeiro & Faturamento (Finance) | Cálculo de frete, comissão, geração de faturas e demonstrativos de repasse | OrderSvc, Payment, PortalWeb | RF45-RF49, HU07, HU14 |
+| Serviço de Integração com Seguradoras (Insurance) | Cotação, contratação e acompanhamento de sinistros | OrderSvc, Insurers, Docs, Notification | RF41-RF44, HU02, HU04 |
+| Monitoramento & Métricas (Metrics) | Métricas operacionais, alertas e dashboards | Todos os serviços | RNF25, RNF12, RNF13 |
+| Gateways/Adapters de Integração Externa | Abstração e versionamento dos contratos (SEFAZ, seguradoras, transportadoras, pagamentos) | CTESvc, Insurance, Carriers, Payment | RNF24, RF17-RF19, RF41 |
+| Módulo de Gerenciamento de Políticas (Config) | Parametrização de regras: critérios de ranking, prazos de respostas, políticas de cancelamento | Routing, OrderSvc, Notification | RF11, RF15, RF08 |
+| Sistema de Fila/Event Bus (mensageria) | Backbone para comunicação assíncrona e desacoplamento (notificações, auditoria, faturamento) | OrderSvc, Notification, Audit, Metrics | RF13, RF16, RNF16 |
 
-Observações:
-- "Comunica-se com" indica dependências mínimas necessárias para o comportamento do componente. Implementação concreta dos protocolos e formatos fica a cargo do time de integração (must use APIs versionadas).
-- Origem combina HU, RF e RNF para rastreabilidade do requisito que motiva o componente.
+Observação: "Origem" referencia HU e critérios de aceite relevantes ou RFs diretamente atendidos.
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-Listagem dos pontos que exigem decisão/entregas externas antes da implementação completa:
+1. Contratos e especificações da SEFAZ
+   - Pendência: confirmação do leiaute XSD e SLAs de transmissão/autorização (exatidão de versionamento).
+   - Impacto: impede testes de integração e validação da fila de contingência (RF17-RF19).
+   - Ação recomendada: obter contrato/endpoint de homologação e XSD oficiais; definir time-window para testes.
 
-1. Integração com SEFAZ
-   - Pendências: definição do contrato técnico, certificados digitais, fluxo de contingência (exigências operacionais), testes de homologação com autoridade fiscal.
-   - Impacto: sem integração e certificação não é possível cumprir RF17–RF22; testa modo contingência (RF19).
+2. Acordos com seguradoras e contratos de API
+   - Pendência: disponibilidade de APIs para cotação/contratação e fluxo de sinistros (RF41-RF44).
+   - Impacto: bloqueia implementação do fluxo de contratação integrada e automação de sinistros.
+   - Ação: negociar contratos de integração e ambientes de homologação.
 
-2. Contratos e APIs das seguradoras parceiras
-   - Pendências: especificação de APIs de cotação, contratação e acompanhamento de sinistros; SLAs e formatos de documentos aceitos.
-   - Impacto: sem isso, HU02 e HU04 ficam limitadas à interface manual ou a um mock de integração.
+3. Políticas de segurança e chaves de criptografia
+   - Pendência: definição de gestão de chaves (KMS), políticas de rotação e acesso (RNF02, RNF11).
+   - Impacto: sem definição, não é possível implementar criptografia conforme RNF02 e compliance LGPD.
+   - Ação: definir política de chaves e armazenamento seguro antes do armazenamento de dados sensíveis.
 
-3. Requisitos legais e de timestamp
-   - Pendências: especificar o mecanismo aceito para timestamp e assinatura eletrônica com validade jurídica (provedor de serviços de assinatura ou forma legal aplicável).
-   - Impacto: implementação do POD com validade jurídica (RF38, RNF10) depende dessa definição.
+4. Regras de negócio incompletas/parametrizações
+   - Ex.: critérios de cálculo de frete (tabela, tarifas), regras exatas de ranking (ponderação), política de cancelamento (prazos e penalidades).
+   - Impacto: bloqueia entrega de componentes de roteamento, financeiro e UI de seleção.
+   - Ação: definir matriz de critérios e exemplos de cálculo; priorizar workshops com stakeholders de pricing.
 
-4. Token de rastreamento público e gestão de expiração
-   - Pendências: definição dos parâmetros de segurança do token (comprimento, criptografia, validade máxima) e políticas de reuso/renovação.
-   - Impacto: segurança do rastreamento público (RNF05, HU11).
+5. Definição de SLA de aceitação pela transportadora
+   - Pendência: timeout padrão para resposta/aceitação, comportamento de retries e justificativas aceitas.
+   - Impacto: comportamento de fallback (RF15) fica indefinido.
+   - Ação: documentar timeouts e ações automáticas; parametrizar no módulo Config.
 
-5. Fornecedores de notificação (SMS/Email/push)
-   - Pendências: seleção de provedores e acordos de nível de serviço para envio massivo e internacional (se aplicável).
-   - Impacto: confiabilidade e custo das notificações (RF33–RF36).
+6. Requisitos legais sobre timestamp / validade jurídica de assinatura
+   - Pendência: confirmar nível de assinatura eletrônica exigido (assinatura avançada/qualificada) e requisitos técnicos para timestamping (RNF10).
+   - Impacto: implementação do POD com validade jurídica pode exigir integração/serviço de carimbo de tempo.
+   - Ação: consultar área jurídica e provedor de timestamp legalmente reconhecido no país.
 
-6. Política de retenção e chave de criptografia
-   - Pendências: definição de KMS/SGP conceitual (procedimentos de rotação de chave, backup de chaves) e políticas de retenção além do mínimo legal.
-   - Impacto: conformidade com RNF02 e RNF11.
+7. Dados de base para ranking e índice de desempenho
+   - Pendência: definição de fontes históricas, métricas e janela temporal para cálculo do índice (RF16).
+   - Impacto: ranking poderá ser inconsistente enquanto não houver dados históricos.
+   - Ação: definir scoring inicial, regras de bootstrap e política de recalculo.
 
-7. Requisitos de desempenho e dimensionamento quantitativo
-   - Pendências: estimativas de volume (número médio e pico de updates de geolocalização por minuto, número de pedidos/dia, fotos por dia) para dimensionamento.
-   - Impacto: arquitetura precisa de números para dimensionar TimeSeriesDB e barramento de eventos (RNF16, RNF12).
-
-8. Especificação detalhada do algoritmo de ranqueamento
-   - Pendências: definição de pesos padrão/fluxo de ajuste por usuários (como UI de configuração de critérios) e limites de tolerância.
-   - Impacto: comportamento de roteamento e satisfação do embarcador (RF11, RF12).
-
-9. Regras de cancelamento e política configurável
-   - Pendências: definição precisa da política (prazos, penalidades) para permitir a lógica de cancelamento (RF08).
-   - Impacto: regras de negócio em FreightService e cobrança/reversão financeira.
-
-Ações recomendadas: priorizar negociações e provas de conceito com SEFAZ e seguradoras; obter estimativas de carga e escolher proveniência de requisitos legais (timestamp) antes do MVP.
+8. Capacidade / Volume esperados e contratos de escalabilidade
+   - Pendência: previsão de picos de atualizações de localização e número de fretes concorrentes por período.
+   - Impacto: dimensionamento de TSDB, Realtime e filas.
+   - Ação: coletar estimativas de carga para testes de performance.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-Mapeamento objetivo entre requisitos (RF / RNF / HU) e componentes/decisões arquiteturais.
+Sumário de mapeamento entre componentes e RFs/HUs principais (resumo — cobertura funcional):
 
-- RF01, RF02 (Gestão de Usuários e Acesso)
-  - Coberto por: AuthService, UserManagement, API_Gateway
-  - Atende RNF03 (MFA) via AuthService.
+- Gestão de usuários e acesso
+  - RF01–RF04: Auth, PortalWeb, Audit
+- Pedidos de frete
+  - RF05–RF09: OrderSvc, Docs, Routing, Notification
+- Roteamento e seleção de transportadoras
+  - RF10–RF16: Routing, Fleet, Notification, Config
+- Documento de Transporte — CT-e
+  - RF17–RF22: CTESvc, Gateways, Docs, Audit
+- Operação do motorista
+  - RF23–RF29: DriverApp, Realtime, OrderSvc, Docs, GeoSvc
+- Rastreamento em tempo real
+  - RF30–RF32: Realtime, TSDB, TrackingLink, GeoSvc
+- Notificações
+  - RF33–RF36: Notification, OrderSvc, DriverApp
+- Comprovante de Entrega Digital (POD)
+  - RF37–RF40: Docs, OrderSvc, Audit (timestamping componente a confirmar), Auth
+- Seguros e sinistros
+  - RF41–RF44: Insurance, Docs, OrderSvc, Notification
+- Financeiro e faturamento
+  - RF45–RF49: Finance, OrderSvc, Docs, Notification, Audit
 
-- RF03 (Transportadora gerencia motoristas/veículos)
-  - Coberto por: PartnerService, UserManagement.
-
-- RF04 (Log de auditoria operações críticas)
-  - Coberto por: AuditService (append-only), integração com FreightService, FinancialService, CTeService.
-
-- RF05–RF09 (Pedidos de Frete e documentos)
-  - Coberto por: FreightService, DocumentStorage, RoutingService, NotificationService, AcceptanceService.
-
-- RF10–RF16 (Roteamento e seleção)
-  - Coberto por: RoutingService, PartnerService, AcceptanceService, Monitoring.
-  - RNF13 (tempo ≤10s) tratado via dimensionamento de RoutingService e cache de dados de capacidade.
-
-- RF17–RF22 (CT-e e SEFAZ)
-  - Coberto por: CTeService com integração contratada com SEFAZ, modo de contingência e controle de cancelamento.
-
-- RF23–RF29 (Operação do Motorista / Mobile)
-  - Coberto por: MotoristaApp (offline), SyncService, TrackingService, DocumentStorage, PODService.
-  - RNF17 (offline completo) e RNF18/RNF21 (usabilidade) considerados no design do app e do SyncService.
-
-- RF30–RF32 (Rastreamento em tempo real)
-  - Coberto por: PublicTrackingGateway, TrackingService, TimeSeriesDB, NotificationService.
-  - RNF15 (atualização ≤30s) garantida por perfil de envio do app e processamento do TrackingService.
-
-- RF33–RF36 (Notificações)
-  - Coberto por: NotificationService, integração de preferências baseada em DocumentStorage/UserManagement.
-
-- RF37–RF40 (POD)
-  - Coberto por: PODService, DocumentStorage, AuditService.
-  - RNF10 (validade jurídica) previsto via componente de assinatura/timestamp (pendência: definição do provedor de timestamp legal).
-
-- RF41–RF44 (Seguros e Sinistros)
-  - Coberto por: InsuranceService, FreightService, DocumentStorage, NotificationService.
-
-- RF45–RF49 (Financeiro e Faturamento)
-  - Coberto por: FinancialService (cálculo de frete, retenção de comissão, geração de faturas e demonstrativos) e integração com FreightService/PartnerService.
-
-- RNF01–RNF06 (Segurança)
-  - Coberto por: API_Gateway (TLS enforcement), AuthService (MFA), encryption-at-rest definido para DocumentStorage, TimeSeriesDB e bancos de dados transacionais; tokenização de link de rastreamento pelo PublicTrackingGateway.
-
-- RNF07–RNF11 (Conformidade)
-  - Coberto por: CTeService (XSD/versionamento) — pendência de XSD vigente; AuditService para trilha imutável; PODService para assinatura conforme RNF10.
-
-- RNF12–RNF17 (Disponibilidade, Desempenho, Escalabilidade, Resiliência)
-  - Coberto por: desenho de serviços escaláveis, TimeSeriesDB otimizado, barramento de eventos assíncrono e mecanismos de fallback/contingência; necessita dimensionamento numérico.
-
-- RNF18–RNF21 (Usabilidade/Compatibilidade)
-  - Coberto por: diretrizes de UI/UX aplicadas em Apps e Portal (conceitual); compatibilidade web/mobile considerada.
-
-- RNF22–RNF25 (Infraestrutura e Dados)
-  - Coberto por: backup diário e RPO/RTO definidos no plano operacional; TimeSeriesDB e APIs versionadas; Monitoring para métricas.
-
-Cobertura: arquitetura cobre funcionalmente todos os RF e RNF listados, com bloqueios principalmente em integrações externas e definições quantitativas (ver seção 5).
+Observações específicas de cobertura:
+- RNF01–RNF06 (Segurança): contemplados com Auth centralizado, TLS obrigatório no trânsito, tokenização do link de rastreamento; implementação de MFA e controles de sessão devem ser definidos pela equipe de segurança.
+- RNF07–RNF11 (Conformidade): CTESvc e Audit contemplam requisitos fiscais e de retenção; integração de timestamp legal precisa confirmação.
+- RNF12–RNF17 (Disponibilidade/Desempenho): arquitetura orientada a serviços, TSDB para posições, Realtime e mensageria suportam escalabilidade; políticas de monitoração (Metrics) mapeadas.
+- RNF18–RNF21 (Usabilidade/Compatibilidade): DriverApp e PortalWeb especificam diretrizes; detalhes UX para luvas/baixa luminosidade devem ser detalhados na fase de design de produto.
+- RNF22–RNF25 (Infra/Dados): Backup, TSDB e APIs versionadas contemplados; exigem definição de RPO/RTO concretos e contratos de armazenamento.
 
 ---
 
 ## 7. Gap Analysis
 
-Identificação de lacunas na especificação original, impactos arquiteturais e recomendações:
+1. Gap: Critérios e pesos do algoritmo de ranking (RF11, RF12)
+   - Impacto arquitetural: sem critérios definidos não é possível modelar a interface de Config e as APIs de ranking; teste de desempenho e escalabilidade do algoritmo fica indefinido.
+   - Risco: decisões arbitrárias no run-time podem causar rejeição por transportadoras/embarcadores.
+   - Recomendação: realizar workshop para definir critérios (preço, prazo, tipo veículo, performance histórica) e pesos iniciais; implementar mecanismo de parametrização e A/B testing.
 
-1. Gap: Ausência de estimativas de carga (QPS, número de motoristas ativos, frequência de updates de geolocalização)
-   - Impacto: impossibilita dimensionamento preciso do TimeSeriesDB, do barramento de mensagens e do plano de escalabilidade (RNF16).
-   - Recomendação: coletar estimativas por classe de uso (pico/normal) para planejar testes de carga e SLOs.
+2. Gap: Regras comerciais de precificação e tabela de frete (RF45)
+   - Impacto: módulo financeiro não poderá calcular valores corretos; integração de comissionamento ficará ambígua.
+   - Recomendação: obter regras de cálculo (ex.: tarifas por km, tarifa mínima, adicionais por tipo de carga) e validar com contabilidade.
 
-2. Gap: Falta de definição do provedor/mecanismo de timestamp jurídico e requisitos técnicos para assinatura eletrônica (ex.: formatos aceitos, cadeia de confiança)
-   - Impacto: não é possível garantir conformidade de RF38/RNF10 até validar mecanismo legalmente aceito.
-   - Recomendação: validar com área jurídica e provedor(es) de assinatura eletrônica; definir formato de documento assinado e integração.
+3. Gap: Política de cancelamento e penalidades (RF08)
+   - Impacto: exigência de lógica no OrderSvc e na interface de cobrança; risco jurídico e disputa em operações.
+   - Recomendação: definir política clara com prazos configuráveis e cenários (aceito vs não aceito).
 
-3. Gap: Especificação incompleta do algoritmo de ranqueamento (pesos e critérios configuráveis, regras de negócio em empate)
-   - Impacto: comportamento de roteamento pode divergir das expectativas do negócio; testes de aceitação ambíguos.
-   - Recomendação: definir política padrão de ranqueamento e UI/endpoint para configurar pesos; incluir histórico para recalibração.
+4. Gap: Contrato de integração e SLAs com SEFAZ e seguradoras (RF17, RF41)
+   - Impacto: impede testes de homologação e dimensionamento de retry/backoff; CT-e em contingência não pode ser completamente verificado.
+   - Recomendação: obter ambientes de homologação, XSDs e acordos com tempo de resposta esperados.
 
-4. Gap: Política de cancelamento pouco detalhada (prazos exatos, penalidades, como reverter cobrança)
-   - Impacto: fluxo de cancelamento (RF08) e cálculo financeiro (RF45–RF49) pode ficar inconsistente.
-   - Recomendação: especificar regras contratuais e de negócio, e modelar efeitos financeiros no FinancialService.
+5. Gap: Especificação técnica do timestamp e assinatura com validade jurídica (RF38, RNF10)
+   - Impacto: a validade jurídica do POD depende de conformidade com lei; a arquitetura precisa integrar serviço de timestamping legal.
+   - Recomendação: confirmar requisitos legais com jurídico e escolher modelo de integração compatível (assinatura avançada/qualificada ou carimbo equivalente).
 
-5. Gap: Especificação de dados pessoais e políticas de anonimização/eliminação para LGPD (RNF09)
-   - Impacto: necessidade de processos e endpoints para excluir/anonimizar dados; impactos em auditoria e contabilidade.
-   - Recomendação: definir mapa de tratamento de dados, prazos de retenção por tipo e API para atendimento de titulares.
+6. Gap: Política de retenção e anonimização de dados pessoais (RNF09, RNF11)
+   - Impacto: arquitetura de dados precisa suportar requests de exclusão/anonimização e retenção para fiscais.
+   - Recomendação: definir políticas por tipo de dado (p.ex. motoristas vs destinatários) e implementar mecanismos de pseudonimização/anonimização.
 
-6. Gap: Requisitos de SLA operacionais (alertas exatos, SLAs para integrações externas, RTO/RPO detalhados)
-   - Impacto: Monitoring e resposta a incidentes precisam de metas testáveis.
-   - Recomendação: detalhar SLOs por serviço (ex.: tempo de resposta roteamento 10s, taxa de sucesso de CT-e 99%) e acordos com provedores externos.
+7. Gap: Detalhes do fluxo de sinistro e nível de integração com seguradora (RF42, RF43, RF44)
+   - Impacto: sem contrato, não é possível automatizar o acompanhamento do sinistro; documentação e evidências podem ficar inconsistentes.
+   - Recomendação: mapear o fluxo de sinistro com seguradora piloto e estudar API para encaminhamento e callback de status.
 
-7. Gap: Regras detalhadas para operação em modo offline (prioridade de eventos, ordenação, resolução de conflitos)
-   - Impacto: risco de perda ou duplicação de eventos (coleta/entrega) e inconsistência temporal dos eventos.
-   - Recomendação: especificar modelo de filas locais do app, strategy de retry/exponential backoff, e esquema de versionamento por evento (event IDs, timestamps e reconciliador no SyncService).
+8. Gap: Mecanismo de entrega de notificações escalável e fallback (RF33–RF36)
+   - Impacto: não há definição de provedores preferenciais, retry, SLA de entrega de SMS/email, e preferências do destinatário.
+   - Recomendação: definir políticas de retry, templates de mensagem e permitir fallback entre canais.
 
-8. Gap: Não há definição explícita de níveis de acesso em multi-tenancy (por ex.: transportadora não deve ver dados de outra)
-   - Impacto: risco de exposição indevida de dados (RNF06).
-   - Recomendação: definir modelo de scoping por tenant (transportadora/embarcardor) e políticas de autorização no AuthService.
+9. Gap: Resolução de conflitos em sincronização offline do motorista (RNF17)
+   - Impacto: possíveis duplicações de eventos, perda de ordem temporal e inconsistências no status do pedido.
+   - Recomendação: definir estratégia de versão (event timestamps, monotonically increasing sequence per device), regras de merge e validações de negócio no OrderSvc.
 
-9. Gap: Integração com provedores de SMS e limites de custo/budget
-   - Impacto: custos e entregabilidade das notificações podem afetar experiência do destinatário (RF33).
-   - Recomendação: avaliar múltiplos provedores e fallback por canal (e-mail) e permitir preferências do destinatário.
+10. Gap: Definição de volumes e metas de desempenho (RNF12, RNF16)
+    - Impacto: dimensionamento da infra e testes de carga não podem ser realizados com precisão.
+    - Recomendação: coletar estimativas de transações por minuto, número médio de posições por veículo por minuto, crescimento previsto.
 
-10. Gap: Faltam critérios precisos para cálculo e retenção de índice de desempenho das transportadoras (RF16)
-    - Impacto: Ranking e decisões automáticas poderão se basear em métricas mal definidas.
-    - Recomendação: definir fórmulas (peso por atraso, ocorrências por volume, taxa de aceite) e janela de avaliação.
+11. Gap: Regras para tokenização do link público (RNF05)
+    - Impacto: segurança do rastreamento e risco de exposição de dados.
+    - Recomendação: especificar algoritmo de geração de token, política de expiração e revogação e mecanismos de rate-limit.
 
-Ações gerais recomendadas:
-- Realizar workshops com stakeholders (jurídico, fiscal, operações, financeiro e TI) para fechar gaps críticos (SEFAZ, assinatura, cargas).
-- Priorizar PoCs para integração SEFAZ e para carga de rastreamento em tempo real.
-- Elaborar documentos de contratos técnicos com seguradoras e provedores de notificação.
-- Produzir especificações de testes de carga e de aceitação (incluindo teste de offline e contingência CT-e).
+12. Gap: Processo de bootstrap do índice de desempenho da transportadora (RF16)
+    - Impacto: novos parceiros podem não ter índice; ranking pode ser enviesado.
+    - Recomendação: definir política de bootstrap com reputação inicial, penalidades por falta de histórico e atualização incremental.
+
+Ações recomendadas de priorização:
+- Curto prazo (próximas sprints): obter contratos com SEFAZ e seguradoras, definir políticas de segurança e chaves, parametrizar timeout de aceitação de transportadora, definir política de cancelamento e pesos iniciais de ranking.
+- Médio prazo: projetar e implementar mecanismos de offline sync e resolução de conflitos; integrar serviço de timestamping; criar pipelines para cálculo de índice de desempenho.
+- Longo prazo: testes de performance e escalabilidade baseados em estimativas reais de carga; otimizações e ajustes após pilotos.
 
 ---
 

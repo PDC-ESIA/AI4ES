@@ -58,6 +58,31 @@ litellm.drop_params = True
 litellm.request_timeout = float(os.environ.get("AI4ES_LLM_TIMEOUT", "120"))
 litellm.num_retries = int(os.environ.get("AI4ES_LLM_NUM_RETRIES", "1"))
 
+# gpt-6-astra só aceita o endpoint /responses (confira em GET
+# https://api.githubcopilot.com/models: "supported_endpoints": ["/responses",
+# "ws:/responses"]), mas o catálogo interno do litellm ainda não tem entrada
+# para ele — sem isso o litellm assume /chat/completions e a API recusa com
+# 'model "gpt-6-astra" is not accessible via the /chat/completions endpoint'.
+#
+# Registrar o modelo com "mode": "responses" faz o litellm rotear pelo bridge
+# de /responses, exatamente como já faz com github_copilot/gpt-5.3-codex (que
+# tem essa entrada de fábrica, e por isso funcionou desde a primeira rodada).
+# Remova este bloco quando o litellm passar a trazer o gpt-6-astra nativamente.
+litellm.register_model({
+    "github_copilot/gpt-6-astra": {
+        "litellm_provider": "github_copilot",
+        "max_input_tokens": 272000,
+        "max_output_tokens": 128000,
+        "max_tokens": 128000,
+        "mode": "responses",
+        "supported_endpoints": ["/v1/responses"],
+        "supports_function_calling": True,
+        "supports_parallel_function_calling": True,
+        "supports_response_schema": True,
+        "supports_vision": True,
+    }
+})
+
 # Headers de "IDE" exigidos pela API do Copilot (mesmos valores de adk/shared/llm.py).
 _COPILOT_VERSION = "0.26.7"
 _COPILOT_IDE_HEADERS = {
@@ -68,6 +93,21 @@ _COPILOT_IDE_HEADERS = {
     "openai-intent": "conversation-panel",
     "x-github-api-version": "2025-04-01",
     "x-vscode-user-agent-library-version": "electron-fetch",
+}
+
+
+# Modelos de raciocínio que RECUSAM 'temperature' (erro invalid_request_body:
+# "Unsupported parameter: 'temperature' is not supported with this model").
+# O litellm.drop_params não cobre este caso: a config do Copilot para
+# /responses declara suportar todos os parâmetros padrão da Responses API e
+# repassa 'temperature' adiante — quem recusa é o servidor do GitHub. Por isso
+# omitimos o parâmetro na origem, em vez de confiar no drop.
+#
+# ATENÇÃO METODOLÓGICA: estes modelos rodam na temperatura DEFAULT do provider,
+# não nos 0.2 dos demais candidatos (nem nos 0.0 do juiz). A comparação deixa
+# de ter esse fator controlado — registre isso ao interpretar o ranking.
+_MODELOS_SEM_TEMPERATURE = {
+    "github_copilot/gpt-6-astra",
 }
 
 
@@ -90,11 +130,17 @@ def _copilot_extra_headers() -> dict:
 # que a API recusa com model_not_supported (claude-sonnet-4.5, claude-opus-4.5,
 # gpt-5.2, copilot-search-*, exec-agent-*, goldeneye-*). Use o /models.
 #
-# Todos os 7 candidatos abaixo constam do /models desta conta, com teto de
+# Os 7 primeiros candidatos abaixo constam do /models desta conta, com teto de
 # saída de 64k (Claude/Gemini/gpt-5-mini) a 128k (gpt-5.3-codex).
+#
+# gpt-6-astra consta do /models desta conta (128k de saída, 272k de prompt),
+# mas só atende no endpoint /responses — depende do litellm.register_model lá
+# em cima para ser roteado corretamente. Sem aquele bloco, ele falha com
+# 'not accessible via the /chat/completions endpoint'.
 CANDIDATE_MODELS = [
     {"id": "github_copilot/gpt-5-mini", "name": "GPT 5 mini", "family": "GPT 5.x"},
     {"id": "github_copilot/gpt-5.3-codex", "name": "GPT 5.3 Codex", "family": "GPT 5.x"},
+    {"id": "github_copilot/gpt-6-astra", "name": "GPT 6 Astra", "family": "GPT 6.x"},
     {"id": "github_copilot/gemini-3.7-flash", "name": "Gemini 3.7 Flash", "family": "Gemini 3.x"},
     {"id": "github_copilot/gemini-3.6-flash", "name": "Gemini 3.6 Flash", "family": "Gemini 3.x"},
     {"id": "github_copilot/claude-sonnet-5", "name": "Claude Sonnet 5", "family": "Claude 5.x"},
@@ -173,14 +219,21 @@ def call_llm(model: str, messages: list, temperature: float = 0.2, max_tokens: i
     for attempt in range(max_retries):
         try:
             start_t = time.time()
-            resp = litellm.completion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=180,
-                extra_headers=extra_headers,
-            )
+            parametros = {
+                "model": model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                # 600s: o GPT 6 Astra é modelo de raciocínio e ficou com média de
+                # 179s no teto anterior de 180 — as 5 execuções que falharam (M03 e
+                # os quatro cenários Grandes) foram todas timeout, não erro de API.
+                # Os demais modelos ficam entre 36s e 82s de média, então este teto
+                # não muda o comportamento deles: só deixa de cortar o mais lento.
+                "timeout": 600,
+                "extra_headers": extra_headers,
+            }
+            if model not in _MODELOS_SEM_TEMPERATURE:
+                parametros["temperature"] = temperature
+            resp = litellm.completion(**parametros)
             elapsed = time.time() - start_t
             content = resp.choices[0].message.content or ""
             usage_obj = getattr(resp, "usage", None)

@@ -1,255 +1,238 @@
 # Relatório Técnico de Arquitetura de Software
+## Sistema Integrado de Gestão Empresarial para Manufatura (ERP) — G03
+
+---
 
 ## 1. Identificação das HUs
 
-| HU | Título | Perfil | RFs Relacionados | RNFs Relacionados |
-|----|--------|--------|-------------------|---------------------|
-| HU01 | Gerar OP e calcular MRP | Planejador de Produção | RF05, RF06, RF14 | RNF13 |
-| HU02 | Monitorar OEE e desvios | Planejador de Produção | RF10, RF11, RF12, RF50, RF52 | RNF18 |
-| HU03 | Gerenciar cotações com fornecedores | Comprador | RF13, RF15, RF16 | - |
-| HU04 | Acompanhar desempenho de fornecedores | Gestor de Suprimentos | RF19, RF53 | - |
-| HU05 | Registrar inspeção e bloquear lotes | Analista de Qualidade | RF20, RF21, RF22 | - |
-| HU06 | Rastrear lote insumo→acabado | Analista de Qualidade | RF23, RF17, RF28 | - |
-| HU07 | Emitir NF-e com impostos automáticos | Analista Fiscal | RF31, RF32, RF33, RF34 | RNF15, RNF17, RNF07 |
-| HU08 | Manter SPED Fiscal atualizado | Analista Fiscal | RF36 | RNF08 |
-| HU09 | Processar folha de pagamento | Analista de RH | RF38, RF39 | RNF11 |
-| HU10 | Gerar obrigações acessórias RH | Analista de RH | RF40 | RNF08 |
-| HU11 | Visualizar DRE e Fluxo de Caixa | Controller | RF45, RF46, RF47, RF52 | - |
-| HU12 | Dashboard executivo | Diretor/CEO | RF50, RF51, RF52, RF53 | RNF14 |
+| HU | Título | Módulo(s) Relacionado(s) | RFs Associados |
+|----|--------|---------------------------|-----------------|
+| HU01 | Gerar ordens de produção e calcular MRP | PCP / Suprimentos | RF05, RF06, RF14 |
+| HU02 | Monitorar OEE e desvios em tempo real | PCP / Chão de Fábrica | RF08, RF10, RF11, RF12, RF50-RF52 |
+| HU03 | Gerenciar cotações com múltiplos fornecedores | Suprimentos | RF13, RF15, RF16 |
+| HU04 | Acompanhar desempenho de fornecedores | Suprimentos | RF19, RF53 |
+| HU05 | Registrar inspeção de lote e bloquear reprovados | Qualidade | RF20, RF21, RF22 |
+| HU06 | Rastrear lote do insumo ao produto acabado | Qualidade / Logística | RF23, RF17, RF28 |
+| HU07 | Emitir NF-e com cálculo automático de impostos | Fiscal | RF31, RF32, RF33, RF34 |
+| HU08 | Manter SPED Fiscal atualizado | Fiscal/Contábil | RF36, RF48 |
+| HU09 | Processar folha de pagamento mensal | RH | RF38, RF39, RF40 |
+| HU10 | Gerar obrigações acessórias de RH | RH | RF40 |
+| HU11 | Visualizar DRE e Fluxo de Caixa em tempo real | Contábil/Financeiro | RF43, RF45, RF46, RF47 |
+| HU12 | Acompanhar indicadores executivos | Dashboards | RF50, RF51, RF52 |
+
+---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Componentes (Visão Macro)
+### 2.1 Visão Macro de Componentes
 
 ```mermaid
 flowchart TB
-    subgraph Camada de Acesso
-        GW[API Gateway / Portal Web]
+    subgraph Acesso["Camada de Acesso e Identidade"]
+        GW[API Gateway / Porta de Entrada]
+        AUTH[Serviço de Autenticação e Autorização]
+        AUD[Serviço de Auditoria]
     end
 
-    subgraph Módulos de Domínio
-        IAM[Módulo de Identidade e Acesso]
-        PCP[Módulo PCP e Produção]
-        SUP[Módulo de Suprimentos]
-        QUAL[Módulo de Qualidade]
-        LOG[Módulo de Logística]
+    subgraph Nucleo["Módulos de Domínio"]
+        PCP[Módulo PCP - Planejamento e Controle da Produção]
+        SUP[Módulo Suprimentos]
+        QUAL[Módulo Qualidade]
+        LOG[Módulo Logística e Distribuição]
         FISC[Módulo Fiscal e Faturamento]
-        RH[Módulo de RH e Folha]
+        RH[Módulo RH e Folha]
         CONT[Módulo Contábil e Financeiro]
-        BI[Módulo de Dashboards e KPIs]
+        BI[Módulo Dashboards e KPIs]
     end
 
-    subgraph Integração
-        ESB[Barramento de Integração / Adaptador de Protocolos]
-        MES[Adaptador SCADA/MES]
-        SEFAZ[Adaptador SEFAZ]
-        LDAP[Adaptador Diretório Corporativo]
+    subgraph Integracao["Camada de Integração"]
+        ESB[Barramento de Integração / Orquestrador de Eventos]
+        MES_ADAPT[Adaptador SCADA/MES]
+        FISC_ADAPT[Adaptador SEFAZ]
+        RH_ADAPT[Adaptador eSocial/Órgãos Governamentais]
     end
 
-    subgraph Infraestrutura Transversal
-        AUD[Serviço de Auditoria e Trilha]
-        NOTIF[Serviço de Notificações]
-        REPO[Repositório de Dados Transacionais]
-        MON[Serviço de Monitoramento]
+    subgraph Dados["Camada de Persistência"]
+        DB_TRANS[(Repositório Transacional)]
+        DB_HIST[(Repositório Histórico/Auditoria)]
+        DB_BI[(Repositório Analítico)]
     end
 
-    GW --> IAM
-    GW --> PCP
-    GW --> SUP
-    GW --> QUAL
-    GW --> LOG
-    GW --> FISC
-    GW --> RH
-    GW --> CONT
-    GW --> BI
+    CLIENTE[Cliente Web Responsivo] --> GW
+    GW --> AUTH
+    AUTH --> AUD
+    GW --> Nucleo
 
-    IAM --> LDAP
-    PCP --> ESB
-    ESB --> MES
-    FISC --> SEFAZ
+    PCP <--> ESB
+    SUP <--> ESB
+    QUAL <--> ESB
+    LOG <--> ESB
+    FISC <--> ESB
+    RH <--> ESB
+    CONT <--> ESB
+    BI <--> ESB
 
-    PCP --> QUAL
-    SUP --> QUAL
-    QUAL --> LOG
-    LOG --> FISC
-    RH --> CONT
-    PCP --> CONT
-    SUP --> CONT
-    FISC --> CONT
-    CONT --> BI
-    PCP --> BI
-    QUAL --> BI
-    LOG --> BI
+    ESB <--> MES_ADAPT
+    ESB <--> FISC_ADAPT
+    ESB <--> RH_ADAPT
 
-    IAM --> AUD
-    FISC --> AUD
-    RH --> AUD
-    CONT --> AUD
+    MES_ADAPT --- CHAOFAB[Equipamentos de Chão de Fábrica]
+    FISC_ADAPT --- SEFAZ[SEFAZ]
+    RH_ADAPT --- ORGAOS[Órgãos Governamentais]
 
-    PCP --> NOTIF
-    QUAL --> NOTIF
-    SUP --> NOTIF
-    RH --> NOTIF
-
-    IAM --> REPO
-    PCP --> REPO
-    SUP --> REPO
-    QUAL --> REPO
-    LOG --> REPO
-    FISC --> REPO
-    RH --> REPO
-    CONT --> REPO
-
-    MON --> PCP
-    MON --> SUP
-    MON --> QUAL
-    MON --> FISC
-    MON --> RH
-    MON --> CONT
+    Nucleo --> DB_TRANS
+    AUD --> DB_HIST
+    BI --> DB_BI
+    Nucleo -.-> DB_BI
 ```
 
-### 2.2 Diagrama de Sequência — HU07: Emissão de NF-e com Contingência
+### 2.2 Diagrama de Sequência — HU01 (Geração de OP e cálculo de MRP)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Usuario as Analista Fiscal
-    participant Portal as Portal Web
-    participant Fisc as Módulo Fiscal
-    participant Trib as Serviço de Cálculo Tributário
-    participant Adapt as Adaptador SEFAZ
-    participant Sefaz as SEFAZ (Externo)
-    participant Cont as Módulo Contábil
-    participant Aud as Serviço de Auditoria
+    participant U as Planejador de Produção
+    participant GW as API Gateway
+    participant PCP as Serviço PCP
+    participant EST as Serviço de Estoque
+    participant MRP as Motor de Cálculo MRP
+    participant SUP as Serviço de Suprimentos
+    participant AUD as Serviço de Auditoria
 
-    Usuario->>Portal: Solicita emissão de NF-e
-    Portal->>Fisc: Envia dados do documento fiscal
-    Fisc->>Trib: Calcula ICMS/IPI/PIS/COFINS
-    Trib-->>Fisc: Retorna valores calculados
-    Fisc->>Adapt: Transmite XML da NF-e
-    Adapt->>Sefaz: Envia lote de autorização
-    alt SEFAZ disponível
-        Sefaz-->>Adapt: Retorna protocolo de autorização
-        Adapt-->>Fisc: Confirma autorização
-        Fisc->>Cont: Gera lançamento contábil de venda
-        Fisc->>Aud: Registra evento de emissão
-        Fisc-->>Portal: Exibe status "Autorizada"
-    else SEFAZ indisponível
-        Adapt-->>Fisc: Timeout / erro de comunicação
-        Fisc->>Fisc: Ativa modo de contingência
-        Fisc-->>Portal: Exibe status "Emitida em contingência"
-        Note over Fisc,Adapt: Sincronização posterior agendada
-        Fisc->>Adapt: Reenvia lote quando SEFAZ disponível
-        Adapt->>Sefaz: Retransmite documento
-        Sefaz-->>Adapt: Retorna protocolo definitivo
-        Adapt-->>Fisc: Atualiza status final
-        Fisc->>Aud: Registra evento de contingência e sincronização
-    end
-    Portal-->>Usuario: Notifica status final da NF-e
+    U->>GW: Criar Ordem de Produção (produto, qtd, data)
+    GW->>PCP: Encaminha requisição autenticada
+    PCP->>AUD: Registra evento de criação de OP
+    PCP->>EST: Consulta estoque disponível
+    EST-->>PCP: Retorna saldo de itens
+    PCP->>MRP: Solicita cálculo de necessidade líquida
+    MRP->>EST: Consulta OPs abertas e pedidos em andamento
+    EST-->>MRP: Retorna dados consolidados
+    MRP-->>PCP: Retorna necessidades não cobertas
+    PCP->>SUP: Notifica necessidade de compra (itens faltantes)
+    SUP->>AUD: Registra solicitação de compra gerada
+    SUP-->>PCP: Confirma solicitação criada
+    PCP-->>GW: Retorna status da OP e MRP
+    GW-->>U: Exibe resultado (OP criada + necessidades de compra)
 ```
 
-### 2.3 Diagrama de Sequência — HU05/HU06: Inspeção e Bloqueio de Lote
+### 2.3 Diagrama de Sequência — HU05 (Inspeção de Lote)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Analista as Analista de Qualidade
-    participant Portal as Portal Web
-    participant Qual as Módulo de Qualidade
-    participant Estoque as Módulo PCP (Estoque)
-    participant Notif as Serviço de Notificações
-    participant Aud as Serviço de Auditoria
+    participant Q as Analista de Qualidade
+    participant GW as API Gateway
+    participant QUAL as Serviço de Qualidade
+    participant EST as Serviço de Estoque
+    participant NOT as Serviço de Notificação
+    participant AUD as Serviço de Auditoria
 
-    Analista->>Portal: Registra resultado de inspeção do lote
-    Portal->>Qual: Envia parâmetros medidos e status
-    Qual->>Qual: Compara valores com plano de inspeção
-    alt Lote aprovado
-        Qual->>Estoque: Libera lote para consumo/expedição
-        Qual->>Aud: Registra aprovação
-    else Lote reprovado
-        Qual->>Estoque: Bloqueia movimentação do lote
-        Qual->>Notif: Notifica produção e suprimentos
-        Qual->>Aud: Registra não conformidade
+    Q->>GW: Registrar resultado de inspeção (lote, parâmetros)
+    GW->>QUAL: Encaminha dados de inspeção
+    QUAL->>AUD: Registra evento de inspeção
+    QUAL->>QUAL: Avalia critérios de aceitação
+    alt Lote Reprovado
+        QUAL->>EST: Solicita bloqueio do lote
+        EST-->>QUAL: Confirma bloqueio aplicado
+        QUAL->>NOT: Dispara alerta para produção/suprimentos
+        NOT-->>Q: Confirma notificação enviada
+    else Lote Aprovado
+        QUAL->>EST: Libera lote para uso
+        EST-->>QUAL: Confirma liberação
     end
-    Qual-->>Portal: Retorna status de inspeção
-    Portal-->>Analista: Exibe confirmação
+    QUAL-->>GW: Retorna status da inspeção
+    GW-->>Q: Exibe resultado
 ```
+
+---
 
 ## 3. Decisões de Arquitetura
 
-| # | Decisão | Justificativa |
-|---|---------|----------------|
-| D01 | Arquitetura modular orientada a domínios de negócio (PCP, Suprimentos, Qualidade, Logística, Fiscal, RH, Contábil, BI) | Reflete os agrupamentos naturais de RF e permite evolução/escala independente por módulo, alinhado a RNF16 (multiplantas). |
-| D02 | Camada de integração dedicada (adaptadores) para SEFAZ, SCADA/MES e Diretório Corporativo | Isola protocolos externos variáveis (OPC-UA, MQTT, REST/JSON, webservices SEFAZ) do núcleo de domínio, atendendo RNF18, RNF19. |
-| D03 | Serviço transversal de Auditoria com trilha imutável | Atende RF03, RNF10 (retenção 10 anos) de forma centralizada, evitando duplicação de lógica de auditoria em cada módulo. |
-| D04 | Motor de Cálculo Tributário como serviço desacoplado do Módulo Fiscal | Permite atualização isolada de regras fiscais (RNF06) sem impactar emissão/transmissão de documentos. |
-| D05 | Modo de contingência para emissão fiscal com fila de sincronização assíncrona | Atende RF34 e RNF17, garantindo continuidade operacional em indisponibilidade da SEFAZ. |
-| D06 | Módulo de BI/Dashboards consumindo dados consolidados via camada de agregação, não diretamente das tabelas transacionais | Suporta RNF14 (5s de carregamento) e drill-down (RF52) sem sobrecarregar módulos operacionais. |
-| D07 | Controle de acesso RBAC com escopo hierárquico por unidade fabril centralizado no Módulo de Identidade | Atende RF01, RF04, RNF03 de forma única e reutilizável por todos os módulos. |
-| D08 | Isolamento lógico de dados por unidade fabril com consolidação centralizada | Atende RNF16, permitindo múltiplas plantas com segregação e visão corporativa. |
-| D09 | Integração entre módulos via eventos/mensagens de domínio (ex.: "OP encerrada", "Lote reprovado") | Reduz acoplamento direto entre PCP, Qualidade, Suprimentos e Contábil, favorecendo consistência eventual e rastreabilidade. |
-| D10 | Neutralidade tecnológica: nenhum produto específico de banco de dados, mensageria ou framework prescrito | Conforme diretriz de neutralidade; decisões de implementação ficam a cargo do time de engenharia. |
+| # | Decisão | Justificativa | Requisitos Relacionados |
+|---|---------|----------------|--------------------------|
+| D01 | Arquitetura modular orientada a domínios (PCP, Suprimentos, Qualidade, Logística, Fiscal, RH, Contábil, BI) comunicando-se via barramento de integração | Isola responsabilidades funcionais complexas e permite evolução independente por área de negócio | RF05-RF53 |
+| D02 | Uso de camada de adaptadores para integrações externas (SCADA/MES, SEFAZ, órgãos governamentais) | Reduz acoplamento entre núcleo de negócio e protocolos/formatos externos variáveis | RF11, RF31-RF36, RF40, RNF18 |
+| D03 | Serviço de Auditoria centralizado e imutável, consumido de forma transversal por todos os módulos | Atende requisito de trilha auditável com retenção de longo prazo | RF03, RNF10 |
+| D04 | Repositório analítico segregado do repositório transacional | Garante desempenho de dashboards sem impactar operações transacionais críticas | RF50-RF53, RNF14 |
+| D05 | Motor de MRP como serviço computacional dedicado, desacoplado do serviço de PCP | Permite escalar o processamento intensivo de cálculo sem afetar operações de cadastro/consulta | RF06, RNF13 |
+| D06 | Módulo Fiscal com suporte a modo de contingência local | Garante continuidade operacional em caso de indisponibilidade de serviços externos (SEFAZ) | RF34, RNF17 |
+| D07 | Controle de acesso (RBAC) e segregação de funções aplicados na camada de Autenticação/Autorização, transversal a todos os módulos | Atende requisitos de segurança e conformidade fiscal/financeira | RF01, RF04, RNF03 |
+| D08 | Isolamento lógico de dados por unidade fabril com consolidação centralizada no módulo de BI/Contábil | Suporta múltiplas plantas mantendo governança de dados | RF04, RNF16 |
+| D09 | Comunicação entre módulos preferencialmente assíncrona via eventos, com fallback síncrono via API para operações críticas (bloqueio de lote, aprovação de OC) | Equilibra desempenho, resiliência e consistência transacional | RF12, RF22, RNF13-RNF15 |
+
+---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|---|---|---|---|
-| Módulo de Identidade e Acesso (IAM) | Autenticação SSO, gestão de perfis/permissões, RBAC hierárquico por unidade | Adaptador de Diretório, Serviço de Auditoria, todos os módulos de domínio | RF01-RF04, RNF03, RNF04 |
-| Módulo PCP e Produção | Gestão de OPs, MRP, sequenciamento de capacidade, apontamento, cálculo de OEE | Adaptador SCADA/MES, Módulo de Qualidade, Módulo Contábil, Serviço de Notificações | RF05-RF12, HU01, HU02 |
-| Adaptador SCADA/MES | Tradução de protocolos industriais (OPC-UA/MQTT/REST) para eventos de domínio | Módulo PCP | RF11, RNF18, HU02 |
-| Serviço de Cálculo de MRP | Cálculo de necessidades líquidas de materiais | Módulo PCP, Módulo de Suprimentos | RF06, HU01, RNF13 |
-| Módulo de Suprimentos | Cadastro de fornecedores, solicitações de compra automáticas, cotações, OCs, recebimento | Módulo PCP, Módulo de Qualidade, Módulo Contábil | RF13-RF19, HU03, HU04 |
-| Módulo de Qualidade | Planos de inspeção, registro de resultados, bloqueio de lotes, NC, rastreabilidade | Módulo PCP, Módulo de Suprimentos, Módulo de Logística, Serviço de Notificações | RF20-RF25, HU05, HU06 |
-| Módulo de Logística | Endereçamento de estoque, expedição, romaneios, rastreamento de entregas, RMA | Módulo de Qualidade, Módulo Fiscal | RF26-RF30 |
-| Módulo Fiscal e Faturamento | Emissão de NF-e/CT-e, cálculo tributário, contingência, SPED Fiscal | Serviço de Cálculo Tributário, Adaptador SEFAZ, Módulo Contábil | RF31-RF36, HU07, HU08 |
-| Serviço de Cálculo Tributário | Cálculo de ICMS/IPI/PIS/COFINS/ISS por NCM e UF | Módulo Fiscal | RF32, HU07 |
-| Adaptador SEFAZ | Transmissão/recepção de documentos fiscais eletrônicos, gestão de contingência | Módulo Fiscal | RF31, RF34, RNF15, RNF17 |
-| Módulo de RH e Folha | Cadastro de colaboradores, ponto eletrônico, folha, obrigações acessórias, benefícios | Módulo Contábil, Serviço de Notificações | RF37-RF42, HU09, HU10 |
-| Módulo Contábil e Financeiro | Lançamentos automáticos, plano de contas, DRE, Balanço, Fluxo de Caixa, SPED Contábil, multimoeda | Módulo PCP, Suprimentos, Fiscal, RH, Módulo BI | RF43-RF49, HU11 |
-| Módulo de Dashboards e KPIs (BI) | Consolidação de indicadores, metas, alertas visuais, drill-down, exportação | Módulo Contábil, PCP, Qualidade, Logística | RF50-RF53, HU02, HU11, HU12 |
-| Serviço de Auditoria e Trilha | Registro imutável de operações críticas, retenção de longo prazo | Todos os módulos | RF03, RNF10 |
-| Serviço de Notificações | Envio de alertas (e-mail/painel) sobre desvios, reprovações, prazos | Módulo PCP, Qualidade, Suprimentos, RH | RF12, HU02, HU05, HU10 |
-| Serviço de Monitoramento Operacional | Exposição de métricas de todos os módulos para equipe de TI | Todos os módulos | RNF23 |
-| Barramento de Integração (ESB) | Roteamento de eventos/dados entre módulos e adaptadores externos | Todos os módulos e adaptadores | RNF19, RNF20 |
+|------------|------------------------------|-------------------|-------------------------------------|
+| API Gateway | Ponto único de entrada, roteamento e validação inicial de requisições | Serviço de Autenticação, todos os módulos de domínio | Transversal — todas as HUs |
+| Serviço de Autenticação e Autorização | SSO, controle de perfis, RBAC/SoD, restrição por unidade fabril | API Gateway, Serviço de Auditoria | RF01-RF04, RNF03, RNF04 |
+| Serviço de Auditoria | Registro imutável de operações por usuário/módulo | Todos os módulos de domínio | RF03, RNF10 |
+| Módulo PCP | Gestão de OPs, sequenciamento, apontamento e OEE | Motor MRP, Serviço de Estoque, Adaptador SCADA/MES | HU01, HU02 |
+| Motor de Cálculo MRP | Cálculo de necessidade líquida de materiais | Módulo PCP, Serviço de Estoque | HU01 (critério: MRP considera estoque, OPs e compras) |
+| Módulo Suprimentos | Cotações, ordens de compra, recebimento, desempenho de fornecedores | Módulo PCP, Serviço de Estoque, Serviço de Notificação | HU01, HU03, HU04 |
+| Módulo Qualidade | Planos de inspeção, resultados, bloqueio de lotes, rastreabilidade, NC | Serviço de Estoque, Serviço de Notificação, Módulo Logística | HU05, HU06 |
+| Módulo Logística | Endereçamento de estoque, expedição, romaneios, RMA | Módulo Qualidade, Módulo Fiscal | RF26-RF30, HU06 |
+| Módulo Fiscal | Emissão de NF-e/CT-e, cálculo de impostos, SPED | Adaptador SEFAZ, Módulo Contábil | HU07, HU08 |
+| Módulo RH | Cadastro, ponto eletrônico, folha, obrigações acessórias | Adaptador Órgãos Governamentais, Módulo Contábil | HU09, HU10 |
+| Módulo Contábil/Financeiro | Lançamentos automáticos, DRE, fluxo de caixa, contas a pagar/receber | Módulo Fiscal, Módulo RH, Módulo BI | HU11 |
+| Módulo Dashboards/BI | Consolidação de KPIs, drill-down, exportação | Repositório Analítico, todos os módulos de domínio (leitura) | HU02, HU04, HU11, HU12 |
+| Adaptador SCADA/MES | Tradução de protocolos industriais para eventos internos | Módulo PCP, ESB | RF11, RNF18 |
+| Adaptador SEFAZ | Transmissão/recebimento de documentos fiscais eletrônicos | Módulo Fiscal, ESB | RF31, RF33, RF34, RNF17 |
+| Adaptador Órgãos Governamentais | Geração/envio de arquivos eSocial, CAGED, RAIS, DIRF | Módulo RH, ESB | HU10 |
+| Serviço de Notificação | Disparo de alertas (e-mail, painel) sobre desvios e eventos críticos | Módulo PCP, Módulo Qualidade, Módulo Suprimentos | HU02, HU05, HU10 |
+| Serviço de Estoque | Controle centralizado de saldo, bloqueio/liberação de lotes | Módulo PCP, Suprimentos, Qualidade, Logística | RF09, RF22, RF26 |
+| Barramento de Integração (ESB) | Orquestração de eventos e mensagens entre módulos e adaptadores | Todos os módulos e adaptadores | Transversal |
+| Repositório Transacional | Persistência de dados operacionais correntes | Todos os módulos de domínio | Transversal |
+| Repositório Analítico | Base otimizada para consultas de BI/dashboards | Módulo BI | RF50-RF53, RNF14 |
+| Repositório Histórico/Auditoria | Armazenamento de trilhas de auditoria de longo prazo | Serviço de Auditoria | RNF10 |
+
+---
 
 ## 5. Bloqueios e Pendências
 
-| # | Item | Descrição | Impacto |
-|---|------|-----------|---------|
-| B01 | Definição de threshold de desvio de produção (RF12) | Não há especificação de valores default ou faixa de configuração | Impede definição de contrato do serviço de alertas |
-| B02 | Regras de alçada de aprovação de OC (RF16) | Política de aprovação não detalhada (níveis, valores, exceções) | Bloqueia modelagem do fluxo de aprovação e matriz RBAC associada |
-| B03 | Definição de convenções coletivas aplicáveis por categoria (RNF11) | Variação por sindicato/categoria não especificada | Impacta motor de cálculo de folha, necessidade de parametrização externa |
-| B04 | Critérios de comparação de propostas de cotação (RF15) | "Critérios configuráveis" sem pesos ou fórmula definida | Bloqueia especificação do serviço de comparação automática |
-| B05 | Protocolo definitivo de integração SCADA/MES por planta (RNF18) | Múltiplos protocolos possíveis sem regra de seleção/prioridade | Impacta design do Adaptador SCADA/MES |
-| B06 | Estratégia de consolidação multi-planta (RNF16) | Não especifica se consolidação é em tempo real ou batch | Afeta arquitetura do Módulo Contábil/BI |
+| # | Descrição do Bloqueio/Pendência | Impacto | Ação Recomendada |
+|---|-----------------------------------|---------|-------------------|
+| B01 | Não há definição de protocolo específico priorizado entre OPC-UA, MQTT ou REST/JSON para integração com SCADA/MES | Impacta o design do Adaptador SCADA/MES e capacidade de plug-and-play multi-fábrica | Definir com stakeholders de TI de planta qual(is) protocolo(s) serão suportados por unidade fabril |
+| B02 | Ausência de detalhamento sobre política de alçada de aprovação de OC | Impacta modelagem do fluxo de aprovação e notificações | Levantar matriz de alçadas junto à área de Suprimentos/Financeiro |
+| B03 | Não especificado o SLA de sincronização entre emissão em contingência e SEFAZ | Impacta garantias de consistência fiscal pós-reconexão | Definir RPO/RTO específico para o cenário de contingência fiscal |
+| B04 | Ausência de definição sobre política de retenção/exclusão de dados pessoais conforme LGPD (direito ao esquecimento) versus retenção de 10 anos para dados fiscais | Conflito potencial entre RNF09 e RNF10 | Definir regras de anonimização/pseudonimização para conciliar ambos requisitos |
+| B05 | Não há detalhamento de como o isolamento de dados por unidade fabril coexiste com a consolidação centralizada (RNF16) | Impacta modelo de particionamento de dados | Especificar estratégia de multi-tenancy (isolamento lógico vs. físico) |
+| B06 | Não definidos os thresholds padrão de alertas de desvio de produção (RF12) e KPIs (RF51) | Impacta parametrização inicial do sistema | Levantar valores de referência junto a PCP e áreas executivas |
+
+---
 
 ## 6. Cobertura de Requisitos
 
-| Categoria | RFs Cobertos | RNFs Cobertos | Observações |
-|---|---|---|---|
-| Usuários e Acesso | RF01-RF04 | RNF03, RNF04 | Cobertura completa via Módulo IAM |
-| PCP | RF05-RF12 | RNF13, RNF18 | Cobertura completa; dependência de B01, B05 |
-| Suprimentos | RF13-RF19 | - | Cobertura completa; dependência de B02, B04 |
-| Qualidade | RF20-RF25 | - | Cobertura completa |
-| Logística | RF26-RF30 | - | Cobertura completa |
-| Fiscal | RF31-RF36 | RNF06-RNF08, RNF15, RNF17 | Cobertura completa |
-| RH | RF37-RF42 | RNF11 | Dependência de B03 |
-| Contábil | RF43-RF49 | RNF02, RNF10 | Cobertura completa |
-| BI/Dashboards | RF50-RF53 | RNF14 | Cobertura completa |
-| Segurança/Conformidade transversal | - | RNF01-RNF10 | Cobertos por IAM, Auditoria, camada de comunicação |
-| Infraestrutura | - | RNF12, RNF21-RNF24 | Requer detalhamento operacional na fase de implantação |
+| Categoria | Requisitos Cobertos | Observação |
+|-----------|----------------------|------------|
+| Gestão de Usuários e Acesso | RF01-RF04 | Totalmente endereçados via componentes de Autenticação/Autorização/Auditoria |
+| PCP | RF05-RF12 | Cobertos por Módulo PCP, Motor MRP e Adaptador SCADA/MES |
+| Suprimentos | RF13-RF19 | Cobertos pelo Módulo Suprimentos |
+| Qualidade | RF20-RF25 | Cobertos pelo Módulo Qualidade |
+| Logística | RF26-RF30 | Cobertos pelo Módulo Logística |
+| Fiscal | RF31-RF36 | Cobertos pelo Módulo Fiscal e Adaptador SEFAZ |
+| RH | RF37-RF42 | Cobertos pelo Módulo RH e Adaptador Órgãos Governamentais |
+| Contábil/Financeiro | RF43-RF49 | Cobertos pelo Módulo Contábil/Financeiro |
+| Dashboards | RF50-RF53 | Cobertos pelo Módulo BI |
+| Segurança (RNF01-05) | Atendidos de forma transversal via Gateway, Autenticação e Auditoria | Detalhamento técnico de criptografia/TLS não prescrito (neutralidade tecnológica) |
+| Conformidade (RNF06-11) | Atendidos pelos módulos Fiscal, RH e Contábil | Dependem de atualização contínua de regras externas |
+| Disponibilidade/Desempenho (RNF12-17) | Atendidos por decisões de desacoplamento (D05, D06, D09) | Necessário validação de capacidade em ambiente real |
+| Interoperabilidade (RNF18-20) | Atendidos pela Camada de Integração e Adaptadores | Protocolo específico pendente (ver B01) |
+| Infraestrutura (RNF21-24) | Parcialmente atendidos — backup, monitoramento e responsividade endereçados conceitualmente | Estratégia de implantação (on-premises/nuvem) neutra, a definir em fase posterior |
 
-Todos os RFs (RF01-RF53) e RNFs (RNF01-RNF24) possuem componente arquitetural correspondente identificado, exceto os itens em aberto na Seção 5.
+---
 
 ## 7. Gap Analysis
 
-| # | Gap Identificado | Impacto Arquitetural | Ação Recomendada |
-|---|---|---|---|
-| G01 | Ausência de especificação de SLA para o Barramento de Integração em cenários de pico (ex.: fechamento de folha + emissão de NF-e simultâneos) | Risco de contenção de recursos entre módulos críticos | Definir política de priorização/quotas por tipo de evento no ESB |
-| G02 | Não há requisito explícito sobre versionamento de esquemas de dados fiscais/contábeis ao longo do tempo (mudanças de legislação) | Dificuldade em manter histórico de conformidade retroativa (RNF10, 10 anos) | Especificar estratégia de versionamento de regras fiscais e schemas por período de vigência |
-| G03 | Falta de requisito sobre reconciliação entre dados MES/SCADA e apontamento manual em caso de divergência | Risco de inconsistência no cálculo de OEE | Definir regra de precedência e processo de reconciliação de dados |
-| G04 | Ausência de definição de RTO (Recovery Time Objective) complementar ao RPO definido em RNF21 | Incompleto plano de continuidade de negócio | Estabelecer RTO para módulos críticos (Fiscal, Contábil, PCP) |
-| G05 | Não especificado processo de homologação/descredenciamento de fornecedores mencionado em HU04 | Falta de fluxo de estado (ativo/suspenso/descredenciado) para fornecedores | Modelar máquina de estados do ciclo de vida do fornecedor |
-| G06 | Ausência de requisito sobre gestão de identidade de dispositivos/máquinas na integração MES | Risco de autenticação insegura entre chão de fábrica e ERP | Definir mecanismo de autenticação/autorização para dispositivos industriais |
-| G07 | Não há requisito de idempotência para reprocessamento de eventos (ex.: reenvio de NF-e em contingência, reprocessamento de folha) | Risco de duplicidade de lançamentos contábeis/fiscais | Exigir chave de idempotência em todos os serviços transacionais críticos |
-| G08 | Falta de requisito sobre internacionalização/localização além de multimoeda (RF49) | Pode limitar expansão para operações multi-país | Avaliar necessidade de i18n na camada de apresentação, se aplicável ao escopo futuro |
+| # | Gap Identificado | Impacto Arquitetural | Ação Recomendada para o Time de Desenvolvimento |
+|---|--------------------|------------------------|----------------------------------------------------|
+| G01 | Falta de especificação sobre versionamento e retrocompatibilidade das APIs RESTful expostas (RNF19) | Risco de quebra de integrações com parceiros/legados em evoluções futuras | Estabelecer política de versionamento de contrato de API desde o primeiro release |
+| G02 | Ausência de definição sobre estratégia de recuperação de desastre (DR) além do backup (RNF21) | Risco de indisponibilidade prolongada em cenário de falha catastrófica | Definir RTO/RPO específicos para cenário de disaster recovery, não apenas backup rotineiro |
+| G03 | Não há requisito claro sobre gestão de concorrência em atualizações simultâneas de estoque (múltiplas OPs consumindo o mesmo lote) | Risco de inconsistência de saldo em cenários de alta concorrência | Especificar mecanismo de controle de concorrência otimista/pessimista no Serviço de Estoque |
+| G04 | Falta de definição sobre idempotência das integrações fiscais (reenvio de NF-e em caso de timeout) | Risco de duplicidade de documentos fiscais | Definir contrato de idempotência e chaves de correlação nas integrações com SEFAZ |
+| G05 | Não especificado o tratamento de múltiplas moedas em nível de arredondamento/precisão (RF49) | Divergências contábeis em operações multi-moeda | Definir regras de precisão decimal e arredondamento no Módulo Contábil |
+| G06 | Ausência de requisito sobre internacionalização/localização de interface além do idioma implícito (português/legislação BR) | Limitação para expansão futura da solução | Avaliar necessidade de suporte multi-idioma na camada de apresentação |
+| G07 | Não há menção a testes de carga específicos para o cenário de múltiplas unidades fabris simultâneas | Risco de degradação de desempenho não identificado antes da operação real | Incluir plano de testes de carga multi-tenant no roadmap de qualidade |
+| G08 | Falta de detalhamento sobre o processo de homologação/descredenciamento de fornecedores mencionado na HU04 | Fluxo de negócio incompleto para decisão automatizada ou semi-automatizada | Levantar regras de negócio específicas com a área de Suprimentos antes do detalhamento funcional |

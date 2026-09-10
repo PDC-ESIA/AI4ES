@@ -2,58 +2,59 @@
 
 ## 1. Identificação das HUs
 
-| HU | Título | Perfil | RFs Relacionados |
-|----|--------|--------|-------------------|
-| HU01 | Cadastrar item no cardápio | Estabelecimento | RF01 |
-| HU02 | Organizar itens por categoria | Estabelecimento | RF04, RF05 |
-| HU03 | Editar item do cardápio | Estabelecimento | RF02 |
-| HU04 | Marcar item como indisponível | Estabelecimento | RF06, RF07 |
-| HU05 | Remover item do cardápio | Estabelecimento | RF03 |
-| HU06 | Visualizar o cardápio sem cadastro | Cliente | RF08 |
-| HU07 | Navegar pelo cardápio por categorias | Cliente | RF09 |
-| HU08 | Identificar itens indisponíveis | Cliente | RF10, RF11 |
+| HU | Título | Perfil | RFs Relacionados | RNFs Relacionados |
+|----|--------|--------|-------------------|---------------------|
+| HU01 | Cadastrar item no cardápio | Estabelecimento | RF01 | RNF03, RNF05 |
+| HU02 | Organizar itens por categoria | Estabelecimento | RF04, RF05 | RNF05 |
+| HU03 | Editar item do cardápio | Estabelecimento | RF02 | RNF02, RNF03 |
+| HU04 | Marcar item como indisponível | Estabelecimento | RF06, RF07 | RNF03 |
+| HU05 | Remover item do cardápio | Estabelecimento | RF03 | RNF03 |
+| HU06 | Visualizar cardápio sem cadastro | Cliente | RF08 | RNF01, RNF02, RNF04, RNF06 |
+| HU07 | Navegar por categorias | Cliente | RF09 | RNF01, RNF06, RNF07 |
+| HU08 | Identificar itens indisponíveis | Cliente | RF10, RF11 | RNF01, RNF07 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Componentes
+### 2.1 Diagrama de Componentes (Visão Macro)
 
 ```mermaid
-graph TB
-    subgraph Cliente["Ambiente do Cliente"]
-        WC[Web Client - Visualização de Cardápio]
+flowchart TB
+    subgraph Cliente["Camada Cliente (Navegador)"]
+        UICliente["Interface Web Pública<br/>(Cardápio do Cliente)"]
     end
 
-    subgraph Admin["Ambiente do Estabelecimento"]
-        WA[Web Admin - Painel de Gestão]
+    subgraph Admin["Camada Administrativa"]
+        UIAdmin["Interface Web Administrativa"]
+        Auth["Componente de Autenticação"]
     end
 
     subgraph Backend["Camada de Aplicação"]
-        GW[API Gateway / Fachada de Serviços]
-        AUTH[Serviço de Autenticação]
-        ITEM[Serviço de Gestão de Itens]
-        CAT[Serviço de Gestão de Categorias]
-        CARD[Serviço de Composição de Cardápio]
+        GatewayAPI["Gateway de API / Fachada de Serviços"]
+        ItemService["Serviço de Itens do Cardápio"]
+        CategoriaService["Serviço de Categorias"]
+        DisponibilidadeService["Serviço de Disponibilidade"]
+        CardapioPublicoService["Serviço de Consulta Pública do Cardápio"]
     end
 
     subgraph Persistencia["Camada de Persistência"]
-        REPO_ITEM[(Repositório de Itens)]
-        REPO_CAT[(Repositório de Categorias)]
+        RepoItens["Repositório de Itens"]
+        RepoCategorias["Repositório de Categorias"]
     end
 
-    WC -->|HTTP GET cardápio| GW
-    WA -->|HTTP CRUD autenticado| GW
-    GW --> AUTH
-    GW --> ITEM
-    GW --> CAT
-    GW --> CARD
-    ITEM --> REPO_ITEM
-    CAT --> REPO_CAT
-    CARD --> REPO_ITEM
-    CARD --> REPO_CAT
-    AUTH -.valida sessão.-> ITEM
-    AUTH -.valida sessão.-> CAT
+    UICliente -->|Requisição HTTP/HTTPS| CardapioPublicoService
+    UIAdmin -->|Requisição autenticada| Auth
+    Auth --> GatewayAPI
+    GatewayAPI --> ItemService
+    GatewayAPI --> CategoriaService
+    GatewayAPI --> DisponibilidadeService
+
+    ItemService --> RepoItens
+    CategoriaService --> RepoCategorias
+    DisponibilidadeService --> RepoItens
+    CardapioPublicoService --> RepoItens
+    CardapioPublicoService --> RepoCategorias
 ```
 
 ### 2.2 Diagrama de Sequência — Cadastro de Item (HU01)
@@ -61,56 +62,55 @@ graph TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant EST as Estabelecimento
-    participant WA as Web Admin
-    participant GW as API Gateway
-    participant AUTH as Serviço de Autenticação
-    participant ITEM as Serviço de Gestão de Itens
-    participant REPO as Repositório de Itens
+    participant Admin as Usuário Estabelecimento
+    participant UIAdmin as Interface Administrativa
+    participant Auth as Componente de Autenticação
+    participant GatewayAPI as Gateway de API
+    participant ItemService as Serviço de Itens
+    participant RepoItens as Repositório de Itens
+    participant CardapioPublico as Serviço de Consulta Pública
 
-    EST->>WA: Preenche formulário (nome, descrição, preço)
-    WA->>GW: POST /itens (dados do item + token)
-    GW->>AUTH: Validar sessão/token
-    AUTH-->>GW: Sessão válida
-    GW->>ITEM: Criar item(dados)
-    ITEM->>ITEM: Validar campos obrigatórios (nome, preço)
+    Admin->>UIAdmin: Preenche formulário (nome, descrição, preço)
+    UIAdmin->>Auth: Envia credenciais/sessão
+    Auth-->>UIAdmin: Sessão válida
+    UIAdmin->>GatewayAPI: POST /itens (dados do item)
+    GatewayAPI->>ItemService: Validar e criar item
+    ItemService->>ItemService: Validar campos obrigatórios (nome, preço)
     alt Dados inválidos
-        ITEM-->>GW: Erro de validação
-        GW-->>WA: 400 Bad Request
-        WA-->>EST: Exibe mensagem de erro
+        ItemService-->>GatewayAPI: Erro de validação
+        GatewayAPI-->>UIAdmin: 400 - Dados inválidos
+        UIAdmin-->>Admin: Exibe mensagem de erro
     else Dados válidos
-        ITEM->>REPO: Persistir novo item
-        REPO-->>ITEM: Confirmação de persistência
-        ITEM-->>GW: Item criado (id, dados)
-        GW-->>WA: 201 Created
-        WA-->>EST: Confirma cadastro e exibe item no cardápio
+        ItemService->>RepoItens: Persistir novo item
+        RepoItens-->>ItemService: Confirmação de gravação
+        ItemService-->>GatewayAPI: Item criado (ID gerado)
+        GatewayAPI-->>UIAdmin: 201 - Item criado
+        UIAdmin-->>Admin: Confirmação visual
+        ItemService->>CardapioPublico: Notificar atualização do cardápio
+        CardapioPublico-->>ItemService: Ack
     end
 ```
 
-### 2.3 Diagrama de Sequência — Visualização do Cardápio (HU06/HU07/HU08)
+### 2.3 Diagrama de Sequência — Consulta do Cardápio pelo Cliente (HU06, HU07, HU08)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant CLI as Cliente
-    participant WC as Web Client
-    participant GW as API Gateway
-    participant CARD as Serviço de Composição de Cardápio
-    participant REPO_CAT as Repositório de Categorias
-    participant REPO_ITEM as Repositório de Itens
+    participant Cliente as Cliente (Navegador)
+    participant UICliente as Interface Web Pública
+    participant CardapioPublico as Serviço de Consulta Pública
+    participant RepoItens as Repositório de Itens
+    participant RepoCategorias as Repositório de Categorias
 
-    CLI->>WC: Acessa URL do cardápio
-    WC->>GW: GET /cardapio (sem autenticação)
-    GW->>CARD: Solicitar cardápio completo
-    CARD->>REPO_CAT: Buscar categorias ordenadas
-    REPO_CAT-->>CARD: Lista de categorias
-    CARD->>REPO_ITEM: Buscar itens por categoria (incl. status disponibilidade)
-    REPO_ITEM-->>CARD: Lista de itens
-    CARD->>CARD: Agrupar itens por categoria
-    CARD-->>GW: Estrutura de cardápio (categorias + itens)
-    GW-->>WC: 200 OK (JSON/dados renderizáveis)
-    WC->>WC: Renderizar itens, indicar indisponibilidade
-    WC-->>CLI: Exibe cardápio agrupado e responsivo
+    Cliente->>UICliente: Acessa URL do cardápio
+    UICliente->>CardapioPublico: GET /cardapio
+    CardapioPublico->>RepoCategorias: Buscar categorias ativas
+    RepoCategorias-->>CardapioPublico: Lista de categorias
+    CardapioPublico->>RepoItens: Buscar itens (com status disponibilidade)
+    RepoItens-->>CardapioPublico: Lista de itens
+    CardapioPublico->>CardapioPublico: Agrupar itens por categoria
+    CardapioPublico-->>UICliente: Cardápio estruturado (categorias + itens)
+    UICliente-->>Cliente: Renderiza cardápio com indicação de indisponibilidade
 ```
 
 ---
@@ -118,15 +118,15 @@ sequenceDiagram
 ## 3. Decisões de Arquitetura
 
 | ID | Decisão | Justificativa | Requisitos Relacionados |
-|----|---------|----------------|--------------------------|
-| DA01 | Separação entre canal público (cliente) e canal administrativo (estabelecimento) | Atende RF08 (sem autenticação para cliente) e RNF03 (autenticação obrigatória para admin) | RF08, RNF03 |
-| DA02 | Uso de um Serviço de Composição de Cardápio dedicado, independente dos serviços de CRUD | Permite otimizar leitura pública (RNF02) sem acoplar à lógica de escrita administrativa | RF09, RNF02 |
-| DA03 | Arquitetura modular em serviços de responsabilidade única (Itens, Categorias, Autenticação, Composição) | Atende RNF05 (manutenibilidade) e facilita evolução incremental | RNF05 |
-| DA04 | Exclusão lógica não obrigatória — decisão de exclusão física vs. lógica delegada à implementação | RF03/HU05 exigem confirmação, mas não especificam retenção de histórico | RF03 |
-| DA05 | Modelo de dados prevê que um item pertence a exatamente uma categoria | Conforme critério de aceite de HU02 | RF05, HU02 |
-| DA06 | Interface do cliente desacoplada via contrato de API, permitindo múltiplos front-ends compatíveis com RNF06 | Suporta acesso multi-navegador sem dependência de tecnologia específica | RNF06, RNF01 |
-| DA07 | Autenticação centralizada em serviço próprio, reutilizável por futuros módulos administrativos | Facilita extensibilidade (RNF05) | RNF03, RNF05 |
-| DA08 | Disponibilidade tratada como requisito de infraestrutura/operação, não definida na camada de aplicação | RNF04 depende de decisões de implantação fora do escopo de design lógico | RNF04 |
+|----|---------|----------------|---------------------------|
+| DA01 | Separação clara entre interface administrativa (autenticada) e interface pública (sem autenticação) | Atende à exigência de acesso sem fricção para o cliente (RF08) e segurança para o estabelecimento (RNF03) | RF08, RNF03 |
+| DA02 | Adoção de arquitetura modular em camadas (apresentação, aplicação, persistência) | Facilita manutenibilidade e extensão futura sem acoplamento rígido | RNF05 |
+| DA03 | Serviço de Consulta Pública desacoplado dos serviços administrativos | Permite otimizar desempenho e disponibilidade da leitura pública sem impactar operações de escrita | RNF02, RNF04 |
+| DA04 | Marcação de indisponibilidade como atributo de estado do item, não como exclusão | Preserva histórico e permite reativação (RF06, RF07) | RF06, RF07 |
+| DA05 | Item associado a exatamente uma categoria (relação 1:N) | Simplifica navegação e agrupamento, conforme critério de aceite da HU02 | HU02 |
+| DA06 | Autenticação centralizada em componente dedicado | Permite reuso e evolução do mecanismo de autenticação sem afetar demais serviços | RNF03 |
+| DA07 | Interface pública desenhada com foco em responsividade e acessibilidade desde a concepção | Atende RNF01, RNF06, RNF07 sem necessidade de retrabalho futuro | RNF01, RNF06, RNF07 |
+| DA08 | Neutralidade tecnológica mantida em toda a documentação | Requisitos não especificam tecnologias; decisão de implementação fica a cargo do time de desenvolvimento | Todos |
 
 ---
 
@@ -134,64 +134,64 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |------------|------------------------------|-------------------|-------------------------------------|
-| Web Client | Renderizar cardápio para o cliente sem exigir login; responsividade e acessibilidade | API Gateway | HU06, HU07, HU08, RNF01, RNF06, RNF07 |
-| Web Admin | Interface de gestão para o estabelecimento (CRUD de itens/categorias, login) | API Gateway | HU01–HU05, RNF03 |
-| API Gateway | Ponto único de entrada, roteamento de requisições, aplicação de políticas de acesso | Web Client, Web Admin, Serviço de Autenticação, Serviço de Itens, Serviço de Categorias, Serviço de Composição | Todas as HUs |
-| Serviço de Autenticação | Validar credenciais e sessões de acesso administrativo | API Gateway, Serviço de Itens, Serviço de Categorias | RNF03 |
-| Serviço de Gestão de Itens | Criar, editar, remover, ativar/desativar itens; validar campos obrigatórios | Repositório de Itens, API Gateway | HU01, HU03, HU04, HU05 (critérios de validação e confirmação) |
-| Serviço de Gestão de Categorias | Criar, editar, remover categorias; controlar ordenação | Repositório de Categorias, API Gateway | HU02 (critérios de nomeação e ordenação) |
-| Serviço de Composição de Cardápio | Agregar itens e categorias para exibição pública, incluindo status de disponibilidade | Repositório de Itens, Repositório de Categorias, API Gateway | HU06, HU07, HU08 |
-| Repositório de Itens | Persistir e recuperar dados de itens (nome, descrição, preço, status, categoria associada) | Serviço de Gestão de Itens, Serviço de Composição | RF01, RF02, RF03, RF06, RF07 |
-| Repositório de Categorias | Persistir e recuperar categorias e sua ordem de exibição | Serviço de Gestão de Categorias, Serviço de Composição | RF04, RF05, HU02 (ordem controlável) |
+| Interface Web Administrativa | Prover telas para cadastro, edição, remoção e gestão de disponibilidade de itens e categorias | Componente de Autenticação, Gateway de API | HU01, HU02, HU03, HU04, HU05 |
+| Interface Web Pública | Exibir cardápio ao cliente sem autenticação, de forma responsiva e acessível | Serviço de Consulta Pública do Cardápio | HU06, HU07, HU08 |
+| Componente de Autenticação | Validar credenciais e controlar acesso à área administrativa | Interface Web Administrativa, Gateway de API | RNF03 |
+| Gateway de API / Fachada de Serviços | Rotear requisições autenticadas para os serviços de domínio apropriados | Componente de Autenticação, Serviço de Itens, Serviço de Categorias, Serviço de Disponibilidade | HU01–HU05 |
+| Serviço de Itens do Cardápio | Gerenciar criação, edição e remoção de itens | Repositório de Itens, Gateway de API | HU01 (critério: validação de campos), HU03, HU05 |
+| Serviço de Categorias | Gerenciar criação, edição, remoção e ordenação de categorias | Repositório de Categorias, Gateway de API | HU02 (critérios: criação livre, ordem controlável) |
+| Serviço de Disponibilidade | Controlar marcação/desmarcação de indisponibilidade de itens | Repositório de Itens, Gateway de API | HU04 (critérios: indicação visual, reversibilidade) |
+| Serviço de Consulta Pública do Cardápio | Consolidar itens e categorias para exibição pública, sem exigir autenticação | Repositório de Itens, Repositório de Categorias, Interface Web Pública | HU06, HU07, HU08 |
+| Repositório de Itens | Persistir e recuperar dados de itens (nome, descrição, preço, status) | Serviço de Itens, Serviço de Disponibilidade, Serviço de Consulta Pública | RF01, RF06, RF07 |
+| Repositório de Categorias | Persistir e recuperar dados de categorias, incluindo ordenação | Serviço de Categorias, Serviço de Consulta Pública | RF04, RF05 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| ID | Descrição | Impacto | Responsável Sugerido |
-|----|-----------|---------|------------------------|
-| BP01 | Não há definição de política de exclusão (física vs. lógica) para itens removidos (HU05) | Afeta modelagem de dados e auditoria futura | Equipe de Modelagem de Dados |
-| BP02 | Ausência de especificação sobre múltiplas imagens/fotos de itens | Requisitos atuais cobrem apenas texto e preço; pode gerar retrabalho se demandado depois | Product Owner |
-| BP03 | Não há definição de mecanismo de recuperação de senha para área administrativa | RNF03 exige autenticação, mas fluxo de recuperação não foi especificado | Equipe de Segurança |
-| BP04 | RNF04 (disponibilidade 99%) não possui detalhamento sobre estratégia de redundância/monitoramento | Decisão de infraestrutura pendente, fora do escopo lógico atual | Equipe de Infraestrutura |
-| BP05 | Ausência de definição sobre múltiplos estabelecimentos (multi-tenant) | Requisitos parecem assumir um único estabelecimento; impacta escalabilidade do modelo | Arquitetura/Product Owner |
-| BP06 | Não há critério de aceite sobre ordenação dos itens dentro de uma categoria | HU02 define ordenação de categorias, mas não de itens | Product Owner |
+| ID | Descrição do Bloqueio/Pendência | Impacto | Responsável Sugerido |
+|----|-----------------------------------|---------|------------------------|
+| BP01 | Não há definição de política de recuperação de senha ou expiração de sessão para o acesso administrativo | Pode comprometer segurança operacional contínua | Equipe de Segurança/Backend |
+| BP02 | Não há especificação de limite de tamanho para descrição de itens ou formato de preço (moeda, casas decimais) | Pode gerar inconsistência de validação entre front e back | Equipe de Produto/Negócio |
+| BP03 | Ausência de definição sobre múltiplos estabelecimentos (multi-tenant) ou instância única | Impacta diretamente o modelo de dados e isolamento de acesso | Stakeholder de Negócio |
+| BP04 | Não há requisito sobre imagens dos itens do cardápio | Pode ser uma lacuna funcional relevante para UX, mas fora do escopo atual | Product Owner |
+| BP05 | RF04 menciona reordenação implícita de categorias (HU02), mas não há RF explícito para isso | Necessária clarificação para evitar retrabalho | Analista de Requisitos |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
 | Requisito | Coberto? | Componente(s) Responsável(is) |
-|-----------|----------|----------------------------------|
-| RF01 | Sim | Serviço de Gestão de Itens, Repositório de Itens |
-| RF02 | Sim | Serviço de Gestão de Itens |
-| RF03 | Sim | Serviço de Gestão de Itens |
-| RF04 | Sim | Serviço de Gestão de Categorias |
-| RF05 | Sim | Serviço de Gestão de Itens, Repositório de Categorias |
-| RF06 | Sim | Serviço de Gestão de Itens |
-| RF07 | Sim | Serviço de Gestão de Itens |
-| RF08 | Sim | Web Client, API Gateway (rota pública) |
-| RF09 | Sim | Serviço de Composição de Cardápio |
-| RF10 | Sim | Web Client, Serviço de Composição de Cardápio |
-| RF11 | Sim | Web Client, Serviço de Composição de Cardápio |
-| RNF01 | Parcial | Web Client (decisão de design de UI não detalhada) |
-| RNF02 | Parcial | Serviço de Composição (arquitetura suporta, mas SLA depende de infraestrutura) |
-| RNF03 | Sim | Serviço de Autenticação |
-| RNF04 | Não coberto no design lógico | Depende de decisões de infraestrutura (fora do escopo) |
-| RNF05 | Sim | Arquitetura modular geral |
-| RNF06 | Parcial | Web Client (depende de implementação de front-end) |
-| RNF07 | Parcial | Web Client (depende de implementação de front-end) |
+|-----------|----------|-------------------------------|
+| RF01 | Sim | Serviço de Itens, Interface Web Administrativa |
+| RF02 | Sim | Serviço de Itens |
+| RF03 | Sim | Serviço de Itens |
+| RF04 | Sim | Serviço de Categorias |
+| RF05 | Sim | Serviço de Categorias, Serviço de Itens |
+| RF06 | Sim | Serviço de Disponibilidade |
+| RF07 | Sim | Serviço de Disponibilidade |
+| RF08 | Sim | Interface Web Pública, Serviço de Consulta Pública |
+| RF09 | Sim | Serviço de Consulta Pública |
+| RF10 | Sim | Interface Web Pública, Serviço de Consulta Pública |
+| RF11 | Sim | Interface Web Pública, Serviço de Consulta Pública |
+| RNF01 | Sim | Interface Web Pública (design responsivo) |
+| RNF02 | Parcial | Serviço de Consulta Pública (decisão arquitetural de desacoplamento); métrica de desempenho depende de infraestrutura não especificada |
+| RNF03 | Sim | Componente de Autenticação |
+| RNF04 | Parcial | Depende de estratégia de implantação/infraestrutura não detalhada nos requisitos |
+| RNF05 | Sim | Arquitetura modular em camadas (DA02) |
+| RNF06 | Sim | Interface Web Pública |
+| RNF07 | Sim | Interface Web Pública (diretrizes WCAG) |
 
 ---
 
 ## 7. Gap Analysis
 
-| Gap Identificado | Impacto Arquitetural | Ação Recomendada |
-|-------------------|------------------------|----------------------|
-| Ausência de definição sobre unicidade/multiplicidade de estabelecimentos no sistema | Modelo de dados e serviços podem precisar de segmentação por tenant futuramente | Confirmar com stakeholders se o sistema é single-tenant ou multi-tenant antes da modelagem de dados definitiva |
-| RNF04 (disponibilidade 99%) não possui estratégia arquitetural definida | Decisões de redundância, monitoramento e recuperação de falhas ficam em aberto | Elaborar plano de disponibilidade e resiliência em fase de infraestrutura |
-| Falta de critério sobre ordenação de itens dentro da categoria | Pode gerar inconsistência de exibição entre estabelecimentos | Adicionar critério de aceite explícito em HU02 ou HU07 |
-| Ausência de mecanismo de recuperação/redefinição de senha administrativa | Risco de bloqueio de acesso sem plano de contingência | Especificar fluxo de recuperação de credenciais junto ao Serviço de Autenticação |
-| Não há definição sobre limites de caracteres, formatos de preço (moeda) ou upload de imagens | Pode impactar validações no Serviço de Gestão de Itens | Detalhar regras de validação de dados com o Product Owner |
-| RNF07 exige WCAG 2.1 nível A, mas não há critérios de aceite associados a nenhuma HU | Dificulta validação objetiva de conformidade | Criar critérios de aceite específicos de acessibilidade vinculados às HUs de visualização (HU06–HU08) |
-| Não há indicação de necessidade de histórico/auditoria de alterações (preço, disponibilidade) | Pode ser demandado futuramente para rastreabilidade de mudanças | Avaliar necessidade de registro de auditoria como requisito futuro |
+| Gap Identificado | Descrição | Impacto Arquitetural | Ação Recomendada |
+|-------------------|-----------|------------------------|---------------------|
+| G01 | Ausência de requisito sobre autorização/perfis diferenciados dentro da área administrativa (ex.: múltiplos usuários com papéis distintos) | Componente de Autenticação pode precisar evoluir para suportar RBAC no futuro | Levantar com stakeholders se há necessidade de múltiplos perfis administrativos |
+| G02 | Não há definição de estratégia de auditoria/histórico de alterações nos itens (quem editou, quando) | Pode ser necessário para rastreabilidade operacional futura | Avaliar necessidade de componente de auditoria em versão futura |
+| G03 | RNF02 (3 segundos) e RNF04 (99% disponibilidade) não possuem estratégia de medição ou monitoramento definida nos requisitos | Arquitetura não contempla componente de observabilidade/monitoramento | Incluir requisito específico de monitoramento em iteração futura |
+| G04 | Não há tratamento explícito para concorrência (ex.: dois administradores editando o mesmo item simultaneamente) | Pode gerar inconsistência de dados sem estratégia de controle de concorrência | Definir política de bloqueio otimista/pessimista com o time técnico |
+| G05 | Ausência de requisito sobre internacionalização (idioma, moeda) | Pode limitar expansão futura do produto | Confirmar com stakeholders se é escopo atual ou futuro |
+| G06 | Não há especificação de comportamento do sistema em caso de falha de rede no lado do cliente (ex.: cache offline) | Pode afetar experiência do usuário em conexões instáveis | Avaliar necessidade de estratégia de cache/fallback na interface pública |
+| G07 | Reordenação de categorias mencionada apenas na HU02, sem RF correspondente | Risco de divergência entre times de produto e desenvolvimento | Formalizar RF específico para ordenação de categorias |

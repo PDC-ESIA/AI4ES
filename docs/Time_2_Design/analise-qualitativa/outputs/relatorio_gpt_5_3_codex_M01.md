@@ -2,113 +2,136 @@
 
 ## 1. Identificação das HUs
 
-### 1.1 Escopo funcional identificado
-A solução cobre dois perfis principais:
+### 1.1 Perfis e objetivos de negócio
 
-- **Instrutor**: criação/estruturação/publicação de cursos, acompanhamento de matrículas e engajamento.
-- **Estudante**: cadastro, aquisição, consumo de aulas, progresso e certificado.
+- **Instrutor**
+  - Criar, estruturar, publicar/despublicar cursos (HU01, HU02)
+  - Acompanhar desempenho comercial e pedagógico (HU03, HU04)
 
-### 1.2 Histórias de Usuário mapeadas
-- **HU01** — Criar e estruturar curso (curso, módulos, aulas, vídeo)
-- **HU02** — Publicar/despublicar curso com controle de visibilidade
-- **HU03** — Acompanhar matrículas por curso
-- **HU04** — Acompanhar engajamento por aula
-- **HU05** — Cadastro de estudante
-- **HU06** — Aquisição de curso e liberação imediata de acesso
-- **HU07** — Assistir aulas, marcar conclusão e atualizar progresso
-- **HU08** — Emissão automática e download de certificado
-- **HU09** — Área centralizada de cursos adquiridos com progresso
+- **Estudante**
+  - Cadastrar-se e autenticar-se (HU05, HU16 implícita por RF16)
+  - Adquirir cursos e consumir conteúdo (HU06, HU07, HU09)
+  - Obter certificado de conclusão (HU08)
 
-### 1.3 Domínios lógicos (visão de modelagem ágil)
-1. **Identidade e Acesso** (cadastro, login/logout, senha segura, sessão)
-2. **Catálogo e Conteúdo** (curso, módulo, aula, publicação)
-3. **Mídia** (upload, armazenamento externo, entrega por streaming)
-4. **Aquisição e Matrícula** (compra, elegibilidade de acesso, anti-duplicidade)
-5. **Aprendizado e Progresso** (conclusão de aula e percentual)
-6. **Certificação** (emissão automática e download PDF)
-7. **Analytics Instrutor** (matrículas e engajamento por aula)
-8. **Observabilidade/Auditoria** (logs críticos)
+### 1.2 Agrupamento funcional por domínio
+
+1. **Identidade e Acesso**
+   - Cadastro, login/logout, autorização por perfil e por matrícula.
+   - HUs: HU05, HU06 (pré-condição), HU07, HU08, HU09, HU16/RF16.
+
+2. **Catálogo e Gestão de Curso**
+   - Criação, edição, remoção, estrutura em módulos/aulas, publicação.
+   - HUs: HU01, HU02.
+
+3. **Aquisição e Matrícula**
+   - Compra/aquisição de curso, bloqueio de recompra, liberação de acesso.
+   - HUs: HU06.
+
+4. **Consumo de Conteúdo e Progresso**
+   - Streaming de vídeo, marcação de aula concluída, cálculo de percentual.
+   - HUs: HU07, HU09.
+
+5. **Certificação**
+   - Emissão automática ao concluir curso, download posterior em PDF.
+   - HUs: HU08.
+
+6. **Analytics para Instrutor**
+   - Matrículas por curso e engajamento por aula (views e taxa de conclusão).
+   - HUs: HU03, HU04.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de componentes (conceitual)
+### 2.1 Diagrama de Componentes (visão lógica)
 
 ```mermaid
 flowchart LR
-    U[Usuário\nInstrutor/Estudante] --> UI[Interface Web Responsiva]
+    U1[Instrutor] --> UI[Canal de Experiência Web/Mobile Responsivo]
+    U2[Estudante] --> UI
 
-    UI --> API[Camada de API de Aplicação]
+    UI --> API[API de Aplicação]
+    API --> IAM[Serviço de Identidade e Acesso]
+    API --> COURSE[Serviço de Gestão de Cursos]
+    API --> ENROLL[Serviço de Aquisição e Matrícula]
+    API --> LEARN[Serviço de Aprendizagem e Progresso]
+    API --> CERT[Serviço de Certificação]
+    API --> ANALYTICS[Serviço de Métricas e Painel]
+    API --> MEDIA[Serviço de Mídia e Streaming]
+    API --> LOG[Serviço de Auditoria e Logs]
 
-    API --> IAM[Componente de Identidade e Acesso]
-    API --> CAT[Componente de Catálogo de Cursos]
-    API --> CNT[Componente de Gestão de Conteúdo\nMódulos/Aulas]
-    API --> MED[Componente de Mídia e Streaming]
-    API --> ENR[Componente de Aquisição/Matrícula]
-    API --> PRG[Componente de Progresso]
-    API --> CERT[Componente de Certificação]
-    API --> ANL[Componente de Analytics do Instrutor]
-    API --> LOG[Componente de Logs Críticos]
+    COURSE --> REPO[(Repositório Transacional)]
+    ENROLL --> REPO
+    LEARN --> REPO
+    IAM --> REPO
+    CERT --> REPO
+    ANALYTICS --> READ[(Repositório Analítico/Leitura)]
+    ANALYTICS --> REPO
 
-    MED --> OBJ[(Armazenamento Externo de Objetos)]
-    IAM --> DB[(Repositório Transacional)]
-    CAT --> DB
-    CNT --> DB
-    ENR --> DB
-    PRG --> DB
-    CERT --> DB
-    ANL --> DB
-    LOG --> DB
+    MEDIA --> OBJ[(Armazenamento Externo de Objetos)]
+    LEARN --> EVENTS[Canal de Eventos de Domínio]
+    ENROLL --> EVENTS
+    CERT --> EVENTS
+    EVENTS --> ANALYTICS
+    EVENTS --> LOG
 ```
 
-### 2.2 Diagrama de sequência (aquisição, consumo e certificação)
+### 2.2 Diagrama de Sequência — aquisição, acesso e certificação
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant E as Estudante
-    participant UI as Interface da Plataforma
-    participant IAM as Identidade/Acesso
-    participant ENR as Aquisição/Matrícula
-    participant CAT as Catálogo/Cursos
-    participant MED as Mídia/Streaming
-    participant PRG as Progresso
-    participant CERT as Certificação
-    participant LOG as Logs Críticos
+    participant Est as Estudante
+    participant UI as Canal de Experiência
+    participant API as API de Aplicação
+    participant IAM as Serviço de Identidade e Acesso
+    participant ENR as Serviço de Aquisição e Matrícula
+    participant CRS as Serviço de Gestão de Cursos
+    participant LRN as Serviço de Aprendizagem e Progresso
+    participant MED as Serviço de Mídia e Streaming
+    participant CER as Serviço de Certificação
+    participant LOG as Serviço de Auditoria e Logs
 
-    E->>UI: Login (e-mail/senha)
-    UI->>IAM: Autenticar credenciais
-    IAM-->>UI: Sessão autenticada
+    Est->>UI: Login (e-mail/senha)
+    UI->>API: Solicitar autenticação
+    API->>IAM: Validar credenciais
+    IAM-->>API: Token e perfil
+    API-->>UI: Sessão autenticada
 
-    E->>UI: Adquirir curso publicado
-    UI->>ENR: Solicitar aquisição (estudante, curso)
-    ENR->>CAT: Validar curso disponível/publicado
-    CAT-->>ENR: Curso elegível
-    ENR->>ENR: Verificar duplicidade de aquisição
-    ENR->>ENR: Registrar matrícula/aquisição
-    ENR->>LOG: Registrar evento crítico de aquisição
-    ENR-->>UI: Aquisição confirmada + acesso liberado
+    Est->>UI: Adquirir curso
+    UI->>API: Requisição de aquisição(cursoId)
+    API->>ENR: Registrar aquisição
+    ENR->>ENR: Verificar matrícula prévia
+    alt Já adquirido
+        ENR-->>API: Rejeitar duplicidade
+        API-->>UI: Mensagem "curso já adquirido"
+    else Nova aquisição
+        ENR-->>API: Aquisição confirmada
+        API->>LOG: Log de evento crítico (aquisição)
+        API-->>UI: Acesso liberado imediatamente
+    end
 
-    E->>UI: Abrir aula do curso adquirido
-    UI->>ENR: Validar direito de acesso ao curso
-    ENR-->>UI: Acesso autorizado
-    UI->>MED: Solicitar stream da aula
-    MED-->>UI: URL/sessão de streaming
-    UI-->>E: Reprodução de vídeo
+    Est->>UI: Abrir aula
+    UI->>API: Solicitar reprodução(aulaId)
+    API->>LRN: Verificar acesso por matrícula
+    LRN->>ENR: Confirmar aquisição do curso
+    ENR-->>LRN: Aquisição válida
+    LRN->>MED: Gerar sessão de streaming
+    MED-->>LRN: URL/token temporário de streaming
+    LRN-->>API: Permissão + dados de reprodução
+    API-->>UI: Iniciar player via streaming
 
-    E->>UI: Marcar aula como concluída
-    UI->>PRG: Registrar conclusão da aula
-    PRG->>PRG: Recalcular percentual do curso
-    PRG-->>UI: Progresso atualizado imediatamente
+    Est->>UI: Marcar aula como concluída
+    UI->>API: Concluir aula(aulaId)
+    API->>LRN: Persistir conclusão e recalcular progresso
+    LRN-->>API: Progresso atualizado (%)
+    API-->>UI: Exibir progresso atualizado
 
-    alt Progresso == 100%
-        PRG->>CERT: Solicitar emissão automática
-        CERT->>CERT: Gerar certificado PDF
-        CERT->>LOG: Registrar emissão de certificado
-        CERT-->>UI: Certificado disponível para download
-    else Progresso < 100%
-        PRG-->>UI: Continuar trilha de aulas
+    alt Curso 100% concluído
+        API->>CER: Emitir certificado
+        CER-->>API: Certificado disponível (PDF)
+        API->>LOG: Log de evento crítico (certificado)
+        API-->>UI: Disponibilizar download
     end
 ```
 
@@ -116,41 +139,41 @@ sequenceDiagram
 
 ## 3. Decisões de Arquitetura
 
-1. **Arquitetura modular por domínio de negócio**  
-   Separação em componentes coesos (Identidade, Catálogo, Aquisição, Progresso, Certificação, Analytics, Mídia) para facilitar evolução e manutenção.  
-   **Motivação:** RF01–RF16, RNF09, RNF05.
+1. **Arquitetura modular por capacidades de domínio**
+   - Separação em serviços/componentes: Identidade, Curso, Matrícula, Progresso, Certificação, Métricas e Mídia.
+   - **Motivo:** reduz acoplamento e facilita evolução por HU.
 
-2. **Controle de acesso baseado em aquisição (matrícula)**  
-   Todo acesso a conteúdo de curso exige validação de elegibilidade por matrícula ativa do estudante.  
-   **Motivação:** RF08, RNF01, HU06/HU07.
+2. **Controle de acesso orientado a matrícula**
+   - Toda solicitação de aula valida autenticação + aquisição do curso.
+   - **Atende:** RF08, RNF01.
 
-3. **Publicação independente de acesso de alunos já adquirentes**  
-   Curso despublicado sai da vitrine, mas alunos com aquisição mantêm acesso.  
-   **Motivação:** HU02 (critério de aceite), RF05.
+3. **Fluxo de mídia por streaming com armazenamento externo**
+   - Upload e entrega de vídeo desacoplados do núcleo transacional.
+   - **Atende:** RF03, RNF03, RNF04.
 
-4. **Mídia desacoplada da aplicação transacional**  
-   Upload e entrega de vídeo via componente de mídia integrado a **armazenamento externo de objetos** e reprodução por streaming.  
-   **Motivação:** RF03, RNF03, RNF04.
+4. **Modelo de progresso com persistência imediata por conclusão**
+   - Marcação manual de conclusão dispara gravação transacional e recálculo instantâneo.
+   - **Atende:** RF09, RF10, RF12, RNF07.
 
-5. **Progresso com persistência imediata por evento de conclusão**  
-   Ao marcar aula como concluída, o sistema persiste e recalcula progresso sem atraso perceptível.  
-   **Motivação:** RF09, RF10, RF12, RNF07, HU07.
+5. **Emissão automática de certificado por regra de completude**
+   - Gatilho ao atingir 100% das aulas concluídas.
+   - **Atende:** RF11, RF15, HU08.
 
-6. **Certificação orientada a regra de conclusão total**  
-   Emissão automática quando progresso atingir 100%, com disponibilidade contínua para download em PDF.  
-   **Motivação:** RF11, RF15, HU08.
+6. **Painel de métricas com visão de leitura otimizada**
+   - Dados de engajamento e matrículas consolidados para leitura rápida.
+   - **Atende:** RF13, RF14, RNF06, HU03/HU04.
 
-7. **Analytics de instrutor por leitura otimizada e atualização periódica**  
-   Métricas de matrículas e engajamento por aula com latência máxima de 1h e objetivo de carga do painel em até 3s.  
-   **Motivação:** RF13, RF14, RNF06, HU03, HU04.
+7. **Auditoria de eventos críticos**
+   - Registro obrigatório para aquisição, emissão de certificado e falhas de upload.
+   - **Atende:** RNF09.
 
-8. **Observabilidade com trilha de eventos críticos**  
-   Registro obrigatório para aquisição, emissão de certificado e falhas de upload.  
-   **Motivação:** RNF09.
+8. **Design responsivo e compatível com navegadores modernos**
+   - Camada de experiência preparada para desktop/mobile e compatibilidade cruzada.
+   - **Atende:** RNF05, RNF08.
 
-9. **Diretrizes de segurança e UX transversal**  
-   Senhas com hash seguro (ex.: bcrypt), interface responsiva, compatibilidade entre navegadores e controles básicos de acessibilidade no player.  
-   **Motivação:** RNF02, RNF05, RNF08, RNF10.
+9. **Segurança de credenciais**
+   - Senhas armazenadas com hash seguro e política mínima de senha.
+   - **Atende:** RNF02, HU05.
 
 ---
 
@@ -158,38 +181,48 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---|---|---|
-| Interface Web Responsiva | Fluxos de instrutor/estudante, navegação, formulários, painel, player | API de Aplicação | HU01–HU09; RNF05; RNF08 |
-| API de Aplicação | Orquestrar casos de uso e contratos de integração | Todos os componentes de domínio | Todos os RF (camada de exposição) |
-| Identidade e Acesso | Cadastro, login/logout, validação de sessão, política de senha e hash | API, Repositório Transacional | HU05, RF06, RF16, RNF02 |
-| Catálogo de Cursos | Dados de curso (título, descrição, capa, preço, status) | API, Gestão de Conteúdo, Aquisição | HU01, HU02, RF01, RF05 |
-| Gestão de Conteúdo (Módulos/Aulas) | CRUD, ordenação e remoção de módulos/aulas | API, Catálogo, Mídia | HU01 (reordenar/remover), RF02, RF04 |
-| Mídia e Streaming | Upload de vídeo por aula, entrega em streaming, controles de player | API, Armazenamento Externo | HU01, HU07, RF03, RNF03, RNF04, RNF10 |
-| Aquisição/Matrícula | Registrar aquisição, impedir duplicidade, liberar acesso ao curso | API, Catálogo, Progresso, Logs | HU06, HU09, RF07, RF08 |
-| Progresso | Marcar aula concluída, cálculo de percentual e status de curso | API, Aquisição, Certificação | HU07, HU09, RF09, RF10, RF12, RNF07 |
-| Certificação | Emissão automática em conclusão total, download PDF posterior | API, Progresso, Logs | HU08, RF11, RF15 |
-| Analytics do Instrutor | Matrículas por curso, visualizações e taxa de conclusão por aula | API, Repositório, Painel | HU03, HU04, RF13, RF14, RNF06 |
-| Logs Críticos | Persistir eventos críticos e erros de upload | API, Aquisição, Certificação, Mídia | RNF09 |
-| Repositório Transacional | Persistência de usuários, cursos, matrículas, progresso, certificados | Componentes de domínio | Suporte a RF01–RF16 |
-| Armazenamento Externo de Objetos | Armazenar arquivos de vídeo desacoplados da aplicação | Mídia e Streaming | RNF04 |
+| Canal de Experiência (Web/Mobile) | Interfaces para instrutor/estudante, responsividade, fluxo de navegação | API de Aplicação | HU01–HU09; RNF05; RNF08 |
+| API de Aplicação | Orquestra casos de uso, valida entrada, aplica políticas | Todos os serviços de domínio | Todos os RF/HUs (camada de aplicação) |
+| Serviço de Identidade e Acesso | Cadastro, login/logout, hash de senha, sessão e autorização por papel | API, Repositório Transacional | RF06, RF16; HU05; RNF02 |
+| Serviço de Gestão de Cursos | CRUD de curso/módulo/aula, ordenação, status publicado/rascunho | API, Repositório, Serviço de Mídia | RF01, RF02, RF04, RF05; HU01, HU02 |
+| Serviço de Mídia e Streaming | Upload de vídeos, integração com object storage, sessão de reprodução | API, Gestão de Cursos, Aprendizagem, Armazenamento de Objetos | RF03; HU01/HU07; RNF03, RNF04, RNF10 |
+| Serviço de Aquisição e Matrícula | Registrar aquisição, impedir duplicidade, liberar vínculo estudante-curso | API, Repositório, Aprendizagem, Logs | RF07, RF08; HU06; RNF01, RNF09 |
+| Serviço de Aprendizagem e Progresso | Marcar aula concluída, calcular percentual, consultar cursos adquiridos | API, Matrícula, Repositório, Certificação, Métricas | RF09, RF10, RF12; HU07, HU09; RNF07 |
+| Serviço de Certificação | Emissão automática ao concluir curso, armazenamento e download de PDF | API, Aprendizagem, Repositório, Logs | RF11, RF15; HU08; RNF09 |
+| Serviço de Métricas e Painel | Matrículas por curso e engajamento por aula, leitura para dashboard | API, Repositório Transacional, Repositório Analítico | RF13, RF14; HU03, HU04; RNF06 |
+| Serviço de Auditoria e Logs | Registro de eventos críticos e erros operacionais | API, Matrícula, Certificação, Mídia | RNF09 |
+| Repositório Transacional | Persistência de entidades operacionais (usuários, cursos, matrículas, progresso) | Serviços de domínio | Suporte a RF01–RF16 |
+| Repositório Analítico/Leitura | Consulta otimizada para dashboard de instrutor | Serviço de Métricas | RF13, RF14; RNF06 |
+| Armazenamento Externo de Objetos | Armazenamento de vídeos desacoplado da aplicação | Serviço de Mídia | RNF04 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Fluxo de pagamento não especificado**  
-   - Impacta HU06 (aquisição) e regras de confirmação/falha.
-2. **Política de cancelamento/reembolso ausente**  
-   - Impacta manutenção de acesso (RF08/HU02) e métricas.
-3. **Definição de “visualização de aula” para analytics**  
-   - Falta regra objetiva (ex.: início do play, tempo mínimo assistido).
-4. **SLA exato para “tempo real ou até 1 hora”**  
-   - HU03 permite duas interpretações; precisa consolidar para arquitetura de atualização.
-5. **Regras de certificado (assinatura, validação pública, layout institucional)**  
-   - Impacta componente de certificação e requisitos legais.
-6. **Limites de upload e formatos de vídeo**  
-   - Necessário para validação, UX e capacidade operacional.
-7. **Política de autorização de instrutor sobre cursos próprios**  
-   - Falta regra explícita de ownership para edição/publicação (RF04/RF05).
+1. **Aquisição sem regra financeira detalhada**
+   - Não há definição de pagamento, estorno, moeda, tributos.
+   - **Risco:** fluxo de RF07 incompleto em produção.
+   - **Pendência:** definir escopo: aquisição “simulada” vs integração financeira real.
+
+2. **Definição de “visualização de aula” para métrica**
+   - Não está especificado o que conta como view (início, 30s, 80% etc.).
+   - **Risco:** inconsistência em RF14/HU04.
+   - **Pendência:** formalizar regra de negócio de engajamento.
+
+3. **Critério de “tempo real” no painel (HU03)**
+   - Aceita até 1 hora de defasagem, mas não define por métrica.
+   - **Risco:** expectativa divergente entre produto e engenharia.
+   - **Pendência:** SLA por indicador (matrículas, views, conclusão).
+
+4. **Política de reordenação concorrente de módulos/aulas**
+   - Não há regra para edição simultânea por múltiplas sessões do instrutor.
+   - **Risco:** perda de alterações.
+   - **Pendência:** definir estratégia de concorrência (bloqueio lógico/versão).
+
+5. **Acessibilidade do player parcialmente definida**
+   - Apenas controles básicos listados; faltam requisitos como teclado/legendas.
+   - **Risco:** conformidade limitada.
+   - **Pendência:** ampliar critérios de acessibilidade.
 
 ---
 
@@ -197,60 +230,50 @@ sequenceDiagram
 
 ### 6.1 Requisitos Funcionais (RF)
 
-| Requisito | Cobertura Arquitetural | Componentes envolvidos | Status |
-|---|---|---|---|
-| RF01 | Criação de curso com metadados | Catálogo, API, UI | Atendido |
-| RF02 | Organização em módulos/aulas | Gestão de Conteúdo, Catálogo, UI | Atendido |
-| RF03 | Upload de vídeo por aula | Mídia e Streaming, Armazenamento Externo | Atendido |
-| RF04 | Edição/remoção de curso/módulo/aula | Catálogo, Gestão de Conteúdo | Atendido |
-| RF05 | Publicar/despublicar visibilidade | Catálogo, UI | Atendido |
-| RF06 | Cadastro de estudante | Identidade e Acesso | Atendido |
-| RF07 | Aquisição de cursos | Aquisição/Matrícula | Atendido |
-| RF08 | Acesso apenas após aquisição | Aquisição/Matrícula, Autorização | Atendido |
-| RF09 | Registrar conclusão de aula | Progresso | Atendido |
-| RF10 | Controlar progresso por aulas concluídas | Progresso | Atendido |
-| RF11 | Emitir certificado ao concluir curso | Certificação, Progresso | Atendido |
-| RF12 | Exibir percentual de progresso | Progresso, UI | Atendido |
-| RF13 | Painel com matrículas por curso | Analytics do Instrutor | Atendido |
-| RF14 | Métricas de engajamento por aula | Analytics do Instrutor | Atendido |
-| RF15 | Download de certificado | Certificação, UI | Atendido |
-| RF16 | Login/logout estudante e instrutor | Identidade e Acesso | Atendido |
+| RF | Cobertura Arquitetural |
+|---|---|
+| RF01–RF05 | Serviço de Gestão de Cursos + API + UI |
+| RF06, RF16 | Serviço de Identidade e Acesso + UI |
+| RF07 | Serviço de Aquisição e Matrícula |
+| RF08 | Autorização por matrícula (Aprendizagem + Matrícula + IAM) |
+| RF09, RF10, RF12 | Serviço de Aprendizagem e Progresso |
+| RF11, RF15 | Serviço de Certificação |
+| RF13, RF14 | Serviço de Métricas e Painel |
 
 ### 6.2 Requisitos Não Funcionais (RNF)
 
-| Requisito | Cobertura Arquitetural | Componentes envolvidos | Status |
-|---|---|---|---|
-| RNF01 | Autorização por matrícula para acesso ao conteúdo | Aquisição/Matrícula, API | Atendido |
-| RNF02 | Senha com hash seguro | Identidade e Acesso | Atendido |
-| RNF03 | Reprodução por streaming | Mídia e Streaming | Atendido |
-| RNF04 | Vídeo em armazenamento externo de objetos | Mídia, Armazenamento Externo | Atendido |
-| RNF05 | Interface responsiva | UI | Atendido |
-| RNF06 | Painel até 3s | Analytics + estratégia de leitura otimizada | Parcial (depende metas operacionais e testes de carga) |
-| RNF07 | Salvamento automático do progresso | Progresso | Atendido |
-| RNF08 | Compatibilidade com navegadores modernos | UI + estratégia de testes de compatibilidade | Parcial (depende plano de testes) |
-| RNF09 | Logs de eventos críticos | Logs Críticos | Atendido |
-| RNF10 | Controles de acessibilidade no player | Mídia/UI | Atendido |
+| RNF | Cobertura Arquitetural |
+|---|---|
+| RNF01 | Verificação obrigatória de aquisição para acesso ao conteúdo |
+| RNF02 | Armazenamento de senha com hash seguro |
+| RNF03 | Entrega de vídeo por streaming |
+| RNF04 | Armazenamento em serviço externo de objetos |
+| RNF05 | Canal de experiência responsivo |
+| RNF06 | Camada analítica de leitura otimizada para dashboard |
+| RNF07 | Persistência imediata a cada conclusão de aula |
+| RNF08 | Compatibilidade com navegadores modernos (estratégia de frontend e testes) |
+| RNF09 | Serviço de auditoria para eventos críticos |
+| RNF10 | Player com controles básicos de acessibilidade |
+
+### 6.3 Histórias de Usuário (HU)
+
+- **Cobertas integralmente:** HU01, HU02, HU05, HU06, HU07, HU08, HU09.  
+- **Cobertura com dependência de definição de SLA/métrica:** HU03, HU04.
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna | Impacto Arquitetural | Ação Recomendada |
+| Lacuna | Impacto Arquitetural | Recomendação |
 |---|---|---|
-| Ausência de fluxo de pagamento detalhado | Incerteza no gatilho de “aquisição confirmada” e antifraude/estorno | Definir estados da aquisição (pendente, confirmada, falha, cancelada) e eventos |
-| Regra de engajamento não formalizada | Métricas inconsistentes (RF14/HU04) | Especificar fórmula de visualização e taxa de conclusão |
-| Ambiguidade de atualização “tempo real ou 1h” | Pode superdimensionar ou subdimensionar analytics | Fixar SLA por métrica (ex.: matrículas 5 min, engajamento 1h) |
-| Falta de requisitos de governança de certificado | Risco jurídico/operacional (autenticidade) | Definir padrão do PDF, assinatura, identificador único e verificação |
-| Sem limites técnicos de mídia (tamanho, duração, codecs) | Risco de falhas de upload e custo imprevisível | Definir política de upload + validações no componente de mídia |
-| Regras de autorização do instrutor não explícitas | Possível edição indevida de cursos de terceiros | Definir controle de ownership por curso e permissões por papel |
-| Sem metas explícitas de auditoria/retenção de logs | Dificulta conformidade e investigação | Definir retenção mínima, níveis de severidade e trilha de auditoria |
+| Ausência de fluxo de pagamento detalhado na aquisição | Serviço de Matrícula incompleto para cenário real | Definir fronteira do MVP (aquisição sem pagamento x com pagamento), estados da transação e falhas |
+| Regra ambígua para “visualização” em engajamento | Métricas podem divergir e comprometer HU04 | Especificar eventos canônicos (play iniciado, tempo mínimo, percentual assistido) |
+| Não há política de cancelamento/reembolso | Acesso e certificados podem precisar revogação | Definir regras de reversão: matrícula, progresso, certificado |
+| Não há definição de autorização fina por papel em endpoints | Risco de exposição indevida de operações de instrutor | Matriz de autorização por caso de uso (instrutor/estudante) |
+| Falta de requisitos de retenção de logs e dados | Pode afetar auditoria e custos operacionais | Definir políticas de retenção, mascaramento e ciclo de vida de logs |
+| Falta de requisitos de disponibilidade/backup | Risco para continuidade e recuperação | Estabelecer objetivos de continuidade e estratégia de recuperação |
+| Certificado sem regras de validação pública/autenticidade | Baixa confiança externa no documento | Definir identificador único verificável e trilha de emissão |
 
-### Prioridade sugerida para próxima iteração
-1. Pagamento/aquisição (criticamente bloqueante para HU06).  
-2. Definições de analytics e SLA (HU03/HU04 + RNF06).  
-3. Governança de certificado (HU08).  
-4. Regras de autorização de instrutor e política de mídia.  
+---
 
---- 
-
-Se quiser, no próximo passo eu transformo este relatório em **backlog técnico priorizado** (épicos, histórias técnicas e critérios de pronto) já alinhado com as lacunas da Seção 7.
+Se quiser, no próximo passo eu converto este relatório em **backlog arquitetural executável** (épicos técnicos + critérios de pronto + ordem de implementação).

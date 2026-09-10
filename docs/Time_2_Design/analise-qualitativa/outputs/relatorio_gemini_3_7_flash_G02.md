@@ -1,216 +1,164 @@
 # Relatório Técnico de Arquitetura de Software
 
----
-
 ## 1. Identificação das HUs
 
-Abaixo constam as Histórias de Usuário mapeadas a partir das necessidades dos stakeholders da Plataforma Integrada de Saúde Digital:
-
-*   **HU01 — Cadastrar-se e consentir com o tratamento de dados de saúde**
-    *   *Ator:* Paciente
-    *   *Objetivo:* Cadastro na plataforma com registro formal e auditável de consentimento para tratamento de dados sensíveis de saúde (LGPD art. 11).
-*   **HU02 — Agendar consulta presencial ou por videochamada**
-    *   *Ator:* Paciente
-    *   *Objetivo:* Agendamento de atendimentos com validação automática de cobertura e elegibilidade de plano de saúde em tempo real.
-*   **HU03 — Participar de consulta por videochamada**
-    *   *Ator:* Paciente / Médico
-    *   *Objetivo:* Realização de teleconsulta segura via infraestrutura integrada com criptografia ponta a ponta e controle de sessão.
-*   **HU04 — Visualizar prontuário e resultados de exames**
-    *   *Ator:* Paciente
-    *   *Objetivo:* Consulta unificada de histórico clínico, documentos, evoluções e exames com gestão de controle de acesso.
-*   **HU05 — Acessar e compartilhar prescrição digital**
-    *   *Ator:* Paciente
-    *   *Objetivo:* Visualização e exportação de receituários eletrônicos com assinatura digital e mecanismo de verificação pública.
-*   **HU06 — Receber notificação de resultado de exame disponível**
-    *   *Ator:* Paciente
-    *   *Objetivo:* Notificação multicanal proativa assim que laudos e exames forem integrados ao repositório clínico.
-*   **HU07 — Validar cadastro com CRM ativo**
-    *   *Ator:* Médico
-    *   *Objetivo:* Validação federada de credenciais profissionais junto ao Conselho Federal de Medicina (CFM) no onboarding e de forma periódica.
-*   **HU08 — Registrar evolução clínica no prontuário**
-    *   *Ator:* Médico
-    *   *Objetivo:* Lançamento estruturado de prontuário eletrônico (anamnese, CID, conduta) com imutabilidade garantida por assinatura digital.
-*   **HU09 — Emitir prescrição digital com validade jurídica**
-    *   *Ator:* Médico
-    *   *Objetivo:* Prescrição eletrônica de medicamentos com checagem de interações medicamentosas e assinatura digital padrão ICP-Brasil.
-*   **HU10 — Solicitar exame e receber resultado com alerta de valor crítico**
-    *   *Ator:* Médico
-    *   *Objetivo:* Pedido eletrônico de exames para laboratórios parceiros e monitoramento de laudos com sinalização de biomarcadores críticos.
-*   **HU11 — Acessar prontuário compartilhado entre especialidades**
-    *   *Ator:* Médico
-    *   *Objetivo:* Acesso transversal ao histórico clínico unificado do paciente, condicionado à verificação de consentimento prévio.
-*   **HU12 — Gerenciar médicos e agendas da unidade**
-    *   *Ator:* Administrador de Clínica / Hospital
-    *   *Objetivo:* Governança de grades de atendimento, alocação de salas/equipamentos e monitoramento de capacidade instalada.
-*   **HU13 — Acompanhar faturamento por convênio**
-    *   *Ator:* Administrador de Clínica / Hospital
-    *   *Objetivo:* Rastreamento de guias TISS geradas, autorizações prévias, faturamento e controle de glosas de operadoras de planos de saúde.
-*   **HU14 — Processar autorização prévia de procedimentos**
-    *   *Ator:* Operador de Plano de Saúde
-    *   *Objetivo:* Recepção, análise de cobertura e retorno padronizado (TISS) de solicitações de autorização de procedimentos e consultas.
+| ID | Perfil | Título / Descrição Sintética | Critérios-Chave de Aceite |
+| :--- | :--- | :--- | :--- |
+| **HU01** | Paciente | Cadastro e consentimento para tratamento de dados | Coleta de dados pessoais/plano; registro temporal de consentimento explícito (LGPD Art. 11); capacidade de revogação. |
+| **HU02** | Paciente | Agendamento de consulta presencial/remota | Consulta à disponibilidade em tempo real; validação prévia de cobertura com operadora; disparos de confirmação (push/e-mail). |
+| **HU03** | Paciente | Participação em consulta por videochamada | Liberação de sala 5 min antes; transmissão E2EE sem gravação; troca de arquivos durante a sessão. |
+| **HU04** | Paciente | Visualização de prontuário e exames | Acesso unificado a histórico, laudos e receitas; download de exames em PDF; bloqueio de acesso sem consentimento. |
+| **HU05** | Paciente | Acesso e compartilhamento de prescrição digital | Exibição de assinatura digital e QR Code; exportação e compartilhamento; segregação de receituário de controle especial. |
+| **HU06** | Paciente | Notificação de disponibilização de exames | Alerta imediato multicanal; identificação de laboratório/tipo de exame; integração automática ao prontuário. |
+| **HU07** | Médico | Validação cadastral com CRM ativo | Consulta automatizada ao CFM/CRM; bloqueio em caso de inativação/suspensão; rotina periódica de revalidação. |
+| **HU08** | Médico | Registro de evolução clínica no prontuário | Registro estruturado (anamnese, CID, conduta); imutabilidade pós-assinatura digital; suporte a adendos auditados. |
+| **HU09** | Médico | Emissão de prescrição digital homologada | Assinatura digital ICP-Brasil; validação de interações medicamentosas; vinculação automática ao prontuário. |
+| **HU10** | Médico | Solicitação de exames e alerta de valores críticos | Envio eletrônico ao laboratório; alerta prioritário para valores críticos fora do intervalo de referência. |
+| **HU11** | Médico | Acesso a prontuário compartilhado | Acesso condicionado a consentimento explícito; log detalhado de auditoria com justificativa clínica. |
+| **HU12** | Administrador | Gestão de médicos e agendas da unidade | Configuração de grade de atendimento; painel de taxa de ocupação; proteção contra cancelamentos indevidos. |
+| **HU13** | Administrador | Gestão financeira e faturamento TISS | Relatório de faturamento consolidado por convênio, glosas e autorizações; exportação de dados (CSV/PDF). |
+| **HU14** | Operadora | Autorização prévia de procedimentos (TISS) | Recepção de guias no padrão TISS; resposta eletrônica com prazo máximo e codificação formal de eventuais negativas. |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Diagrama de Contexto e Componentes Lógicos
+### 2.1. Visão Estrutural de Componentes
 
 ```mermaid
-graph TB
-    subgraph Clientes ["Camada de Apresentação (Multi-Dispositivo)"]
-        WebPortal["Portal Web Responsivo"]
-        MobileApp["Aplicativo Mobile (iOS / Android)"]
+flowchart TB
+    subgraph ClientTier["Camada de Apresentação"]
+        PortalWeb["Portal Web Responsivo"]
+        AppMobile["Aplicativo Mobile (iOS / Android)"]
     end
 
-    subgraph Gateway ["Camada de Borda e Segurança"]
-        APIGateway["API Gateway & Reverse Proxy\n(Rate Limiting / TLS Termination)"]
-        AuthMFA["Serviço de Identidade, Autenticação MFA & RBAC"]
+    subgraph APIGateway["Borda e Roteamento de Segurança"]
+        GW["API Gateway / Reverse Proxy"]
+        AuthModule["Serviço de Identidade, MFA & RBAC"]
+        RateLimiter["Módulo de Rate Limiting & Detecção Anômala"]
     end
 
-    subgraph Nucleo ["Núcleo de Serviços da Plataforma"]
-        UserService["Serviço de Gestão de Usuários & CRM"]
-        ConsentService["Serviço de Gestão de Consentimento (LGPD)"]
-        ScheduleService["Serviço de Agendamento & Gestão de Grades"]
-        EHRService["Serviço de Prontuário Eletrônico Único (EHR)"]
-        PrescriptionService["Serviço de Prescrição Digital & Interações"]
-        LabService["Serviço de Integração Laboratorial"]
-        HealthPlanService["Serviço de Integração TISS / TUSS & Faturamento"]
-        AdminService["Serviço de Gestão Administrativa & Recursos"]
-        NotificationService["Serviço de Notificações Multicanal"]
-        AuditService["Serviço de Trilha de Auditoria Imutável"]
-        SignEngine["Serviço de Assinatura Digital ICP-Brasil"]
-        RTCService["Serviço de Sinalização & Mídia WebRTC (E2EE)"]
+    subgraph CoreServices["Serviços de Negócio da Plataforma"]
+        ScheduleSvc["Serviço de Agendamento & Grade"]
+        VideoSvc["Serviço de Sinalização & Gestão de Videochamada"]
+        EHRSvc["Serviço de Prontuário Eletrônico (PEP) & Consentimento"]
+        PrescriptionSvc["Serviço de Prescrição Digital & Interações"]
+        TISSSvc["Serviço de Integração TISS & Faturamento"]
+        LabGatewaySvc["Gateway de Integração Laboratorial (HL7 FHIR)"]
+        AdminSvc["Serviço de Gestão Administrativa & Clínicas"]
+        NotifySvc["Serviço de Notificações Multicanal"]
+        AuditSvc["Serviço de Trilha de Auditoria & Conformidade"]
     end
 
-    subgraph Persistencia ["Camada de Persistência e Armazenamento"]
-        DBRelational[("Repositório Transacional & Cadastros")]
-        EHRStore[("Repositório Clínico Criptografado (AES-256)")]
-        ObjectStorage[("Object Storage Redundante (Documentos/Exames)")]
-        AuditLogStore[("Append-Only Store de Auditoria (20 Anos)")]
+    subgraph DataAndMedia["Armazenamento e Mídia"]
+        RelationalData[("Repositório Transacional Criptografado (AES-256)")]
+        ObjectStorage[("Object Storage Redundante (Documentos/Imagens)")]
+        AuditLogStore[("Repositório Imutável de Auditoria (Retenção 20 Anos)")]
+        VideoMediaServer["Servidor de Mídia em Tempo Real (E2EE / WebRTC)"]
     end
 
-    subgraph Externos ["Ecossistema Externo & Regulatório"]
-        CFM_API["Barramento CFM (Validação CRM)"]
-        Lab_Partner["Laboratórios de Análise Clínica (HL7/FHIR)"]
-        Operadoras_TISS["Operadoras de Saúde Suplementar (Padrão TISS/ANS)"]
-        ICP_Cert["Autoridade Certificadora / HSM em Nuvem"]
+    subgraph ExternalSystems["Ecossistema Externo & Regulatório"]
+        CFM_API["Barramento CFM / CRM"]
+        ICP_PKI["Autoridade Certificadora ICP-Brasil"]
+        HealthInsurers["Operadoras de Planos de Saúde (Padrão TISS)"]
+        PartnerLabs["Laboratórios Parceiros (Padrão HL7 FHIR)"]
     end
 
-    Clientes --> APIGateway
-    APIGateway --> AuthMFA
-    APIGateway --> Nucleo
+    ClientTier --> GW
+    GW --> AuthModule
+    GW --> RateLimiter
 
-    UserService --> CFM_API
-    PrescriptionService --> SignEngine
-    EHRService --> SignEngine
-    SignEngine --> ICP_Cert
-    PrescriptionService --> PrescriptionService
-    HealthPlanService --> Operadoras_TISS
-    LabService --> Lab_Partner
-    
-    EHRService --> ConsentService
-    ScheduleService --> HealthPlanService
-    ScheduleService --> NotificationService
-    LabService --> NotificationService
-    LabService --> EHRService
+    GW --> ScheduleSvc
+    GW --> VideoSvc
+    GW --> EHRSvc
+    GW --> PrescriptionSvc
+    GW --> TISSSvc
+    GW --> LabGatewaySvc
+    GW --> AdminSvc
 
-    Nucleo -.-> AuditService
-    AuditService --> AuditLogStore
-    
-    UserService --> DBRelational
-    ScheduleService --> DBRelational
-    AdminService --> DBRelational
-    HealthPlanService --> DBRelational
-    EHRService --> EHRStore
-    EHRService --> ObjectStorage
-    LabService --> ObjectStorage
-    RTCService <--> Clientes
+    AuthModule --> CFM_API
+    PrescriptionSvc --> ICP_PKI
+    TISSSvc --> HealthInsurers
+    LabGatewaySvc --> PartnerLabs
+
+    ScheduleSvc --> TISSSvc
+    ScheduleSvc --> NotifySvc
+    VideoSvc --> VideoMediaServer
+    EHRSvc --> AuditSvc
+    EHRSvc --> ObjectStorage
+    PrescriptionSvc --> EHRSvc
+
+    ScheduleSvc --> RelationalData
+    EHRSvc --> RelationalData
+    AdminSvc --> RelationalData
+    AuditSvc --> AuditLogStore
 ```
 
----
-
-### 2.2. Diagrama de Sequência: Agendamento com Elegibilidade e Atendimento Telemedicina com Prontuário e Prescrição
+### 2.2. Diagrama de Sequência: Ciclo de Atendimento, Prontuário e Prescrição
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Paciente as Paciente (App Mobile)
-    participant Gateway as API Gateway
-    participant Agendamento as Serviço de Agendamento
-    participant TISS as Serviço TISS / Planos
-    participant Operadora as Operadora de Saúde (TISS)
-    participant Medico as Médico (Portal Web)
-    participant Teleconsulta as Serviço de Sinalização WebRTC
-    participant EHR as Serviço de Prontuário (EHR)
-    participant Prescricao as Serviço de Prescrição
-    participant SignService as Motor de Assinatura ICP
-    participant Auditoria as Serviço de Auditoria
+    actor Medico as Médico
+    actor Paciente as Paciente
+    participant WebApp as Portal / App Mobile
+    participant APIGW as API Gateway
+    participant VideoSvc as Serviço de Videochamada
+    participant EHRSvc as Serviço de Prontuário (PEP)
+    participant PrescSvc as Serviço de Prescrição
+    participant ICP as Autoridade ICP-Brasil
+    participant AuditSvc as Serviço de Auditoria
+    participant NotifySvc as Serviço de Notificação
 
-    %% Fase 1: Agendamento e Validação de Cobertura
-    Note over Paciente, Operadora: Fase 1: Agendamento e Verificação de Elegibilidade
-    Paciente->>Gateway: Solicitar Agendamento(Médico, Horário, Plano)
-    Gateway->>Agendamento: CriarAgendamento(Dados)
-    Agendamento->>TISS: VerificarElegibilidadeECobertura(Beneficiário, Procedimento)
-    TISS->>Operadora: Solicitar Elegibilidade em Tempo Real (Padrão TISS)
-    Operadora-->>TISS: Retorno Elegibilidade: Autorizado
-    TISS-->>Agendamento: Cobertura Confirmada
-    Agendamento->>Auditoria: Log Transação de Agendamento
-    Agendamento-->>Gateway: Confirmação de Agendamento
-    Gateway-->>Paciente: Agendamento Confirmado + Link Consulta
+    Note over Medico, Paciente: Início do Atendimento Telepresencial
+    WebApp->>APIGW: Requisitar ingresso na videochamada
+    APIGW->>VideoSvc: Validar agendamento e permissões
+    VideoSvc-->>WebApp: Credenciais efêmeras de sessão E2EE
+    Medico->>WebApp: Acessar prontuário do paciente
+    WebApp->>APIGW: Solicitar histórico clínico
+    APIGW->>EHRSvc: Verificar consentimento ativo do paciente
+    EHRSvc->>AuditSvc: Registrar log de leitura de prontuário
+    EHRSvc-->>WebApp: Retornar histórico clínico estruturado
 
-    %% Fase 2: Realização da Teleconsulta
-    Note over Paciente, Medico: Fase 2: Realização da Consulta por Videochamada
-    Medico->>Gateway: Ingressar Consulta(ID_Agendamento)
-    Paciente->>Gateway: Ingressar Consulta(ID_Agendamento)
-    Gateway->>Teleconsulta: Estabelecer Sessão E2EE
-    Teleconsulta-->>Medico: Canal Seguro Estabelecido
-    Teleconsulta-->>Paciente: Canal Seguro Estabelecido
-    Note over Paciente, Medico: Realização da Consulta Remota Criptografada
+    Note over Medico, Paciente: Execução da Consulta e Registro Clínico
+    Medico->>WebApp: Registrar evolução clínica (Anamnese, CID)
+    WebApp->>APIGW: Enviar dados da evolução
+    APIGW->>EHRSvc: Persistir evolução clínica em rascunho
+    
+    Medico->>WebApp: Elaborar prescrição de medicamentos
+    WebApp->>APIGW: Validar itens da prescrição
+    APIGW->>PrescSvc: Verificar interações medicamentosas
+    PrescSvc-->>WebApp: Retornar conformidade / alertas de interação
 
-    %% Fase 3: Registro de Prontuário e Emissão de Prescrição
-    Note over Medico, EHR: Fase 3: Registro Clínico e Assinatura Digital
-    Medico->>Gateway: Submeter Evolução Clínica(Anamnese, CID-10, Conduta)
-    Gateway->>EHR: GravarEvolucao(Dados)
-    EHR->>SignService: Solicitar Assinatura ICP-Brasil(DocumentoEHR, CertificadoMedico)
-    SignService-->>EHR: Documento Assinado Digitalmente (Imutável)
-    EHR->>Auditoria: Registrar Acesso e Gravação com Carimbo de Tempo
-    EHR-->>Medico: Prontuário Salvo com Sucesso
-
-    Medico->>Gateway: Emitir Prescrição(Medicamentos, Posologia)
-    Gateway->>Prescricao: ValidarInteracoes(Medicamentos)
-    Prescricao-->>Gateway: Validação Concluída (Sem Interações Críticas)
-    Gateway->>Prescricao: Concluir Prescrição com Assinatura
-    Prescricao->>SignService: Assinar Receituário (ICP-Brasil / CFM)
-    SignService-->>Prescricao: Receita Assinada + QR Code Validação
-    Prescricao->>EHR: Vincular Prescrição ao Prontuário
-    Prescricao->>Auditoria: Registrar Emissão de Receita
-    Prescricao-->>Gateway: Prescrição Emitida
-    Gateway-->>Paciente: Notificação Push: Prescrição Disponível no App
+    Medico->>WebApp: Assinar digitalmente prontuário e prescrição
+    WebApp->>APIGW: Submeter pacote com certificado digital
+    APIGW->>PrescSvc: Solicitar assinatura e validação do artefato
+    PrescSvc->>ICP: Validar certificado digital do médico
+    ICP-->>PrescSvc: Certificado válido
+    PrescSvc->>EHRSvc: Vincular prescrição assinada e tornar registro imutável
+    EHRSvc->>AuditSvc: Registrar evento de assinatura e bloqueio de edição
+    
+    PrescSvc->>NotifySvc: Despachar notificação de prescrição emitida
+    NotifySvc-->>Paciente: Enviar alerta com link de acesso e QR Code
+    VideoSvc->>AuditSvc: Registrar encerramento e duração da chamada
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-1.  **Arquitetura Orientada a Serviços Especializados (Decoupled Microservices Pattern)**
-    *   *Decisão:* Desacoplamento de responsabilidades de agendamento, prontuário eletrônico, conformidade TISS e telechamada em serviços independentes.
-    *   *Justificativa:* Garante escalabilidade horizontal pontual (RNF17), isolamento de falhas críticas de faturamento em relação a atendimentos de urgência e flexibilidade para ciclos de manutenção específicos.
-
-2.  **Imutabilidade de Registros Clínicos e Append-Only Pattern**
-    *   *Decisão:* Todo registro de prontuário, evolução ou laudo clínico, uma vez assinado digitalmente com certificado ICP-Brasil, torna-se estritamente imutável. Alterações ou correções só podem ser introduzidas como novos registros de adendo vinculados (RF25, RNF06, RNF10).
-    *   *Justificativa:* Cumprimento estrito às resoluções CFM nº 1.821/2007 e CFM nº 2.314/2022, assegurando valor probatório jurídico e rastreabilidade contínua.
-
-3.  **Segregação de Dados e Criptografia em Repouso e em Trânsito (Security by Design)**
-    *   *Decisão:* Todo tráfego de rede utiliza TLS 1.2+ (RNF01); prontuários, laudos e documentos clínicos são cifrados em repouso com algoritmo AES-256 (RNF02); as credenciais de acesso utilizam algoritmos robustos de derivação de chave e hash unidirecional (RNF03). Videochamadas trafegam via protocolo WebRTC seguro com criptografia ponta a ponta sem persistência de stream de mídia (RNF04).
-    *   *Justificativa:* Atendimento integral aos requisitos de segurança e aos preceitos da LGPD (Art. 11 sobre dados sensíveis de saúde) e normas do CFM.
-
-4.  **Trilha de Auditoria Independente e Truncamento de Retenção de Longo Prazo**
-    *   *Decisão:* Centralização de logs de auditoria em repositório dedicado estruturado no modelo *Write-Once-Read-Many* (WORM) lógico, registrando identificador de usuário, ação, objeto, carimbo de tempo (UTC) e IP/Sessão, mantendo retenção mandatória de no mínimo 20 anos (RF06, RNF11).
-    *   *Justificativa:* Conformidade com a legislação federal de registros médicos e prevenção contra fraudes e acessos indevidos a dados de saúde.
-
-5.  **Interoperabilidade Aberta Baseada em Padrões Setoriais (TISS, TUSS, HL7/FHIR)**
-    *   *Decisão:* A comunicação externa com fontes de operadoras e laboratórios opera sobre adaptadores que normalizam dados para barramentos compatíveis com ANS/TISS (para convênios) e HL7 FHIR (para troca de laudos e resultados clínicos) (RF31, RF38, RNF09, RNF26).
-    *   *Justificativa:* Redução de lock-in, simplificação do onboarding de novos laboratórios e padronização das rotinas de faturamento e auditoria da saúde suplementar.
+1. **Estilo Arquitetural Modular Orientado a Serviços:**
+   * *Justificativa:* Atendimento aos requisitos de escalabilidade horizontal (RNF17), manutenibilidade (RNF25) e desacoplamento de responsabilidades regulatórias complexas (TISS, HL7 FHIR, Prontuário Eletrônico).
+2. **Segregação de Segurança em Camadas (Defense-in-Depth):**
+   * *Justificativa:* Adoção de autenticação multifator (RF03), criptografia de dados em trânsito com TLS 1.2+ (RNF01) e criptografia em repouso com algoritmo padrão AES-256 (RNF02).
+3. **Controle de Acesso Baseado em Políticas de Consentimento (ABAC/RBAC):**
+   * *Justificativa:* Cumprimento do Artigo 11 da LGPD (RNF07) e normas do CFM (RNF08, RF23), garantindo que apenas médicos explicitamente autorizados pelo paciente acessem o prontuário entre especialidades distintas.
+4. **Imutabilidade de Registros Clínicos (WORM Pattern):**
+   * *Justificativa:* Assegurar conformidade com a Resolução CFM nº 1.821/2007 (RNF10, RF25), bloqueando atualizações e exclusões pós-assinatura e permitindo somente adendos versionados.
+5. **Comunicação de Mídia em Tempo Real Ponto a Ponto Criptografada (E2EE):**
+   * *Justificativa:* Garantir baixa latência (<150ms) e resolução adequada (RNF16) sem armazenar fluxos de áudio/vídeo em servidores da aplicação (RNF04).
+6. **Padronização de Interoperabilidade em Saúde:**
+   * *Justificativa:* Uso rigoroso dos padrões TISS/TUSS da ANS (RF36-RF40, RNF09) para transações de saúde suplementar e HL7 FHIR (RF31, RNF26) para integrações laboratoriais.
 
 ---
 
@@ -218,61 +166,57 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 | :--- | :--- | :--- | :--- |
-| **API Gateway & Reverse Proxy** | Ponto único de entrada, roteamento de requisições, rate limiting, controle de concorrência e terminação TLS. | Portal Web, App Mobile, Todos os Serviços do Núcleo | RNF01, RNF05, RNF17 |
-| **Serviço de Identidade, MFA & RBAC** | Autenticação multifator (OTP/Biometria), gestão de sessões, expiração automática por inatividade e autorização RBAC. | API Gateway, UserService, AuditService | HU01, RF01, RF03, RF04, RF05, RNF03 |
-| **Serviço de Gestão de Usuários & CRM** | Onboarding de usuários, ciclo de vida de contas e validação de regularidade de CRM médico junto ao CFM. | Barramento CFM, AuditService, DB Relacional | HU01, HU07, RF01, RF02 |
-| **Serviço de Gestão de Consentimento** | Coleta, auditoria, validação e revogação do consentimento do paciente para tratamento e compartilhamento de prontuário. | EHRService, UserService, DB Relacional | HU01, HU04, HU11, RF23, RNF07, RNF12 |
-| **Serviço de Agendamento & Grade** | Gestão de disponibilidade médica, agendamento de consultas presenciais/virtuais, cancelamentos e encaixes de urgência. | HealthPlanService, NotificationService, AuditService, DB Relacional | HU02, HU12, RF07, RF08, RF10, RF12, RF13 |
-| **Serviço de Teleconsulta WebRTC** | Sinalização, intermediação de sessões de vídeo/áudio ponto a ponta (E2EE), controle de tempo e compartilhamento de anexos em tempo real. | Portal Web, App Mobile, EHRService, AuditService | HU03, RF14, RF15, RF16, RF17, RF18, RNF04, RNF16, RNF22 |
-| **Serviço de Prontuário Eletrônico (EHR)** | Armazenamento e recuperação de dados clínicos unificados (anamnese, CID, evolução, laudos), aplicando imutabilidade pós-assinatura. | ConsentService, SignEngine, ObjectStorage, EHRStore, AuditService | HU04, HU08, HU11, RF19, RF20, RF21, RF22, RF24, RF25, RNF02, RNF10, RNF15 |
-| **Serviço de Prescrição Digital** | Emissão de receitas médicas, checagem automatizada de interações medicamentosas, validação de receituário especial e geração de QR Code. | EHRService, SignEngine, AuditService, NotificationService | HU05, HU09, RF26, RF27, RF28, RF29, RF30, RNF06 |
-| **Motor de Assinatura Digital ICP-Brasil** | Execução e validação de assinaturas digitais com e-CPF / certificados em nuvem homologados conforme normas do CFM/ITI. | Autoridades Certificadoras ICP-Brasil, EHRService, PrescriptionService | HU08, HU09, RF25, RF27, RNF06, RNF08 |
-| **Serviço de Integração Laboratorial** | Roteamento de pedidos de exames e ingestão assíncrona de resultados de parceiros em formato padronizado, emitindo alertas de parâmetros críticos. | Parceiros Laboratoriais (HL7/FHIR), EHRService, NotificationService, ObjectStorage | HU06, HU10, RF31, RF32, RF33, RF34, RF35, RNF26 |
-| **Serviço TISS / Planos de Saúde** | Validação em tempo real de elegibilidade, verificação de coberturas TUSS, solicitação de autorizações prévias e processamento de faturamento TISS. | Operadoras de Saúde (TISS/ANS), ScheduleService, AuditService, DB Relacional | HU02, HU13, HU14, RF09, RF36, RF37, RF38, RF39, RF40, RF41, RNF09, RNF14, RNF26 |
-| **Serviço de Notificações Multicanal** | Disparo de alertas em tempo real (Push Notifications e E-mails transacionais) para eventos clínicos, agendamentos e prazos. | App Mobile, Portal Web, ScheduleService, LabService, PrescriptionService | HU02, HU03, HU06, HU10, RF11, RF18, RF32 |
-| **Serviço de Gestão Administrativa & Relatórios** | Configuração de clínicas/unidades, alocação de salas/recursos, monitoramento de métricas operacionais, taxa de ocupação e faturamento. | DB Relacional, EHRStore, TISSService | HU12, HU13, RF42, RF43, RF44, RF45, RF46, RNF25 |
-| **Serviço Central de Auditoria** | Coleta unificada de logs de acessos a dados sensíveis, geração de trilha imutável para compliance regulatório de 20 anos. | Todos os componentes do ecossistema, AuditLogStore | RF06, RNF11 |
+| **API Gateway & Rate Limiter** | Ponto único de entrada, terminação TLS, controle de vazão e detecção de anomalias. | Clientes Web/Mobile, Serviço de Identidade, Serviços de Negócio | RNF01, RNF05, RNF13 |
+| **Serviço de Identidade, MFA & RBAC** | Gestão de credenciais seguras, autenticação multifator, autorização RBAC e verificação de CRM no CFM. | Barramento CFM, Repositório Transacional, Audit Log | RF01, RF02, RF03, RF04, RF05, HU01, HU07 |
+| **Serviço de Agendamento & Grade** | Gerenciamento de disponibilidade médica, agendamentos, remarcações, encaixes e bloqueios de agenda. | TISSSvc, NotifySvc, RelationalData | RF07, RF08, RF10, RF12, RF13, HU02, HU12 |
+| **Serviço de Gestão de Videochamada** | Gestão de sessões, sinalização WebRTC, tokens de acesso efêmeros e auditoria de duração de chamadas. | VideoMediaServer, AuditSvc, NotifySvc | RF14, RF15, RF16, RF17, RF18, RNF04, RNF16, HU03 |
+| **Serviço de Prontuário Eletrônico (PEP)** | Gestão de registros clínicos, controle de consentimento, histórico, garantia de imutabilidade e anexos. | ObjectStorage, AuditSvc, PrescriptionSvc, RelationalData | RF19, RF20, RF21, RF22, RF23, RF24, RF25, RNF10, HU04, HU08, HU11 |
+| **Serviço de Prescrição Digital** | Emissão de receitas, validação de interações medicamentosas, integração com certificados ICP-Brasil. | ICP_PKI, EHRSvc, NotifySvc, RelationalData | RF26, RF27, RF28, RF29, RF30, RNF06, HU05, HU09 |
+| **Gateway de Integração Laboratorial** | Recepção de laudos em padrão HL7 FHIR, solicitação de exames e emissão de alertas de valores críticos. | PartnerLabs, EHRSvc, NotifySvc | RF31, RF32, RF33, RF34, RF35, RNF26, HU06, HU10 |
+| **Serviço TISS & Faturamento** | Verificação de elegibilidade em tempo real (<5s), geração de guias TISS, autorização prévia e faturamento. | HealthInsurers, ScheduleSvc, AdminSvc | RF36, RF37, RF38, RF39, RF40, RF41, RNF09, RNF14, HU13, HU14 |
+| **Serviço de Gestão Administrativa** | Gestão de estabelecimentos, unidades, salas, equipamentos e extração de relatórios gerenciais/analíticos. | RelationalData, TISSSvc, ScheduleSvc | RF42, RF43, RF44, RF45, RF46, HU12, HU13 |
+| **Serviço de Notificações Multicanal** | Disparo coordenado de alertas via push notification e e-mail transacional. | Clientes Web/Mobile, ScheduleSvc, LabGatewaySvc, PrescSvc | RF11, RF18, RF32, HU02, HU06, HU10 |
+| **Serviço de Auditoria & Trilha Imutável** | Armazenamento de logs com carimbo de tempo para retenção mínima de 20 anos. | AuditLogStore, Todos os Serviços Core | RF06, RNF11, RNF12, HU08, HU11 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1.  **Mecanismo de Conectividade com Barramento do CFM**
-    *   *Bloqueio:* A especificação de integração oficial com a base do Conselho Federal de Medicina (CFM) para checagem em tempo real de CRM ativo e suspensões requer definição do modelo de credenciamento (API REST com mTLS ou web services SOAP).
-    *   *Ação:* Obter junto ao órgão de classe o convênio técnico de interoperabilidade para homologação da rotina assíncrona/síncrona de consulta cadastral.
-2.  **Protocolos Específicos de Conectividade com Operadoras (Padrão TISS)**
-    *   *Bloqueio:* Embora o padrão ANS TISS determine esquemas XML padronizados, a forma de transporte varia substancialmente entre operadoras de planos de saúde (WebServices proprietários, AS2, barramentos de mensageria).
-    *   *Ação:* Estruturar uma camada adaptadora com suporte a múltiplos drivers de comunicação para isolar a variabilidade de cada operadora de plano de saúde.
-3.  **Provedor de Certificação Digital em Nuvem (HSM ICP-Brasil)**
-    *   *Pendência:* Necessidade de definição do protocolo de integração com os emissores de certificado digital em nuvem (PSC homologados pelo ITI/CFM) utilizados pelos médicos.
+1. **Disponibilidade e SLA da API do CFM:**
+   * *Pendência:* O tempo de resposta e o contrato formal da interface de validação de CRM do CFM precisam ser validados com estratégia de contingência para evitar bloqueios no cadastro caso a API externa fique indisponível.
+2. **Homologação da Infraestrutura de Assinatura ICP-Brasil em Nuvem:**
+   * *Pendência:* Definição dos protocolos de integração (PSC/OAuth2) para certificados digitais remotos corporativos e e-CPF em nuvem homologados pelo CFM.
+3. **Mecanismo de Tolerância a Falhas na Elegibilidade TISS:**
+   * *Pendência:* Estabelecer o comportamento do agendamento e da admissão caso o serviço da operadora de saúde ultrapasse a meta de 5 segundos (RNF14) ou apresente indisponibilidade transitória.
+4. **Política de Alta Concorrência para Encaixes de Urgência:**
+   * *Pendência:* Definição de estratégia de concorrência pessimista/otimista ao alocar horários de encaixe urgente (RF13) simultaneamente à alteração de grade pelo administrador.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-A matriz abaixo estabelece a cobertura dos Requisitos Funcionais e Não Funcionais pelo design arquitetural proposto:
-
-*   **RF01 a RF06 (Acesso e Identidade):** Cobertos pelo *Serviço de Identidade, MFA & RBAC*, *Serviço de Gestão de Usuários & CRM* e *Serviço Central de Auditoria*.
-*   **RF07 a RF13 (Agendamento de Consultas):** Cobertos pelo *Serviço de Agendamento & Grade*, integrado ao *Serviço TISS / Planos de Saúde* e *Serviço de Notificações*.
-*   **RF14 a RF18 (Videochamada e Telemedicina):** Cobertos pelo *Serviço de Teleconsulta WebRTC* e *Serviço de Notificações*.
-*   **RF19 a RF25 (Prontuário Eletrônico Único):** Cobertos pelo *Serviço de Prontuário Eletrônico (EHR)*, *Serviço de Gestão de Consentimento* e *Motor de Assinatura Digital ICP-Brasil*.
-*   **RF26 a RF30 (Prescrição Digital):** Cobertos pelo *Serviço de Prescrição Digital* e *Motor de Assinatura Digital ICP-Brasil*.
-*   **RF31 a RF35 (Integração com Laboratórios):** Cobertos pelo *Serviço de Integração Laboratorial*, com persistência em *Object Storage* e notificações via *Serviço de Notificações*.
-*   **RF36 a RF41 (Planos de Saúde & Faturamento):** Cobertos pelo *Serviço TISS / Planos de Saúde*.
-*   **RF42 a RF46 (Módulo Administrativo):** Cobertos pelo *Serviço de Gestão Administrativa & Relatórios*.
-*   **RNF01 a RNF06 (Segurança):** Cobertos pelo *API Gateway*, criptografia de repositórios (AES-256), hashing seguro de senhas, WebRTC E2EE e *Motor de Assinatura ICP-Brasil*.
-*   **RNF07 a RNF12 (Conformidade Regulatória):** Cobertos pelo *Serviço de Gestão de Consentimento*, *Serviço Central de Auditoria* (retenção de 20 anos), formatos TISS e padrões CFM/SBIS.
-*   **RNF13 a RNF18 (Disponibilidade, Desempenho e Resiliência):** Cobertos pela segregação em microsserviços com escalonamento horizontal, *Object Storage* georredundante e SLAs definidos de latência para consultas/elegibilidade.
-*   **RNF19 a RNF22 (Usabilidade e Compatibilidade):** Cobertos pelas interfaces unificadas multiplataforma (Web responsivo e Mobile iOS/Android) aderentes a WCAG 2.1 AA.
-*   **RNF23 a RNF26 (Infraestrutura, Dados e Interoperabilidade):** Cobertos pelo modelo em múltiplas zonas de disponibilidade (Multi-AZ), políticas de backup contínuo (RPO 1h, RTO 4h) e integração via HL7 FHIR e TISS.
+| Categoria | Requisitos Cobertos | Mecanismo Arquitetural de Atendimento |
+| :--- | :--- | :--- |
+| **Gestão de Acesso e Usuários** | RF01, RF02, RF03, RF04, RF05, RF06 | `Serviço de Identidade`, integração CFM, MFA e `Serviço de Auditoria`. |
+| **Agendamento e Atendimento** | RF07, RF08, RF09, RF10, RF11, RF12, RF13 | `Serviço de Agendamento`, `Serviço TISS` e `Serviço de Notificações`. |
+| **Videochamada Médica** | RF14, RF15, RF16, RF17, RF18 | `Serviço de Videochamada` com WebRTC E2EE sem gravação de mídia. |
+| **Prontuário e Segurança Clínica** | RF19, RF20, RF21, RF22, RF23, RF24, RF25 | `Serviço de PEP`, Repositório WORM e gestão de consentimento LGPD. |
+| **Prescrição Digital** | RF26, RF27, RF28, RF29, RF30 | `Serviço de Prescrição` com motor de interação e assinatura ICP-Brasil. |
+| **Integração Laboratorial** | RF31, RF32, RF33, RF34, RF35 | `Gateway Laboratorial` com padronização HL7 FHIR e regras de valores críticos. |
+| **Planos de Saúde e TISS** | RF36, RF37, RF38, RF39, RF40, RF41 | `Serviço TISS & Faturamento` com tabelas TUSS e guias regulatórias ANS. |
+| **Administração e Governança** | RF42, RF43, RF44, RF45, RF46 | `Serviço de Gestão Administrativa` com geração de relatórios e métricas. |
+| **Segurança e Criptografia** | RNF01, RNF02, RNF03, RNF04, RNF05, RNF06 | TLS 1.2+, AES-256 em repouso, hashing seguro e rate limiting no Gateway. |
+| **Conformidade Regulatória** | RNF07, RNF08, RNF09, RNF10, RNF11, RNF12 | Módulo de consentimento (LGPD), trilha de auditoria de 20 anos e normas CFM/ANS. |
+| **Disponibilidade e Desempenho** | RNF13, RNF14, RNF15, RNF16, RNF17, RNF18 | Arquitetura modular resiliente, redundância geográfica e cacheamento estratégico. |
+| **Usabilidade e Infraestrutura** | RNF19, RNF20, RNF21, RNF22, RNF23, RNF24, RNF25, RNF26 | Multiplataforma, WCAG 2.1 AA, RPO ≤ 1h, RTO ≤ 4h e barramento HL7 FHIR/TISS. |
 
 ---
 
 ## 7. Gap Analysis
 
-| Item / Funcionalidade | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
-| :--- | :--- | :--- | :--- |
-| **Resolução de Conflitos em Agendamento Concorrente** | Os requisitos não detalham o comportamento do sistema quando dois pacientes tentam reservar o mesmo slot de agenda simultaneamente. | Risco de *double-booking* e inconsistência de dados na camada transacional. | Implementar mecanismo de bloqueio otimista/pessimista temporário (reserva transitória de 5 minutos durante o checkout do agendamento). |
-| **Modo de Contingência para Falha de Operadora (TISS Off-line)** | Não há especificação do procedimento caso a operadora de plano de saúde esteja fora do ar durante a validação em tempo real (limite de 5s). | Bloqueio indevido de agendamentos e atendimentos de pacientes elegíveis. | Criar fluxo de contingência arquitetural: autorização condicional com reprocessamento assíncrono e aviso de pendência financeira. |
-| **Armazenamento e Anonimização para Telemetria Clínica** | Falta definição sobre o uso de dados clínicos para painéis de BI e métricas sem ferir as restrições de dados sensíveis da LGPD. | Risco de vazamento de dados identificáveis em dashboards de relatórios administrativos. | Adicionar um módulo de pipeline de dados com mascaramento e anonimização/pseudonimização automática antes de carregar métricas gerenciais. |
-| **Validação de Assinatura Off-line em Farmácias** | O requisito não detalha o ciclo de dispensação do medicamento na farmácia parceira. | Dificuldade em assegurar o uso único de receitas de controle especial em diferentes estabelecimentos. | Implementar endpoint público de verificação com validação de status de dispensação via QR Code, conforme diretrizes do CFM/ITI. |
+| Item Identificado | Impacto Arquitetural | Ação Recomendada |
+| :--- | :--- | :--- |
+| **Protocolo de Acesso Emergencial ("Break-Glass")** | Em situações de emergência médica, a exigência irrestrita de consentimento prévio do paciente (RF23/HU11) pode inviabilizar o socorro imediato. | Especificar fluxo excepcional de "Break-Glass" com justificativa obrigatória registrada e notificação compulsória ao paciente e DPO. |
+| **Adaptação Dinâmica de Conectividade na Videochamada** | O requisito RNF16 exige 720p e latência ≤ 150ms, mas não define fallback em redes móveis degradadas (3G/4G instável). | Implementar mecanismo de adaptação dinâmica de bitrate/resolução com priorização contínua do canal de áudio. |
+| **Ciclo de Vida do Repositório de Auditoria (20 Anos)** | O alto volume de logs de auditoria detalhados (RNF11) pode degradar desempenho e elevar custos operacionais de armazenamento ao longo do tempo. | Definir política de arquivamento em camadas (*data tiering* / *cold storage*) com assinatura digital em lote para garantir integridade e redução de custo. |
+| **Tratamento de Glosas Parciais e Recursos TISS** | A especificação cobre a emissão do faturamento TISS, mas não detalha o fluxo de contestação/recurso de glosas de procedimentos recusados pelas operadoras. | Projetar submódulo de conciliação financeira e reenvio de lotes no `Serviço TISS & Faturamento`. |

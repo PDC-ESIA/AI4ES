@@ -2,150 +2,112 @@
 
 ## 1. Identificação das HUs
 
-### 1.1 Contexto funcional consolidado
-O sistema possui dois perfis principais:
+### 1.1 Contexto e Atores
+- **Ator 1: Estabelecimento (Administrador)**  
+  Responsável por manter o cardápio (itens, categorias, disponibilidade).
+- **Ator 2: Cliente (Visitante público)**  
+  Consulta o cardápio via navegador, sem autenticação.
 
-- **Estabelecimento (Administrador)**: gerencia itens e categorias do cardápio.
-- **Cliente (Visitante)**: consulta o cardápio publicamente, sem autenticação.
+### 1.2 Inventário de Histórias de Usuário e Rastreabilidade Primária
 
-### 1.2 Mapeamento das Histórias de Usuário (HU)
-
-| HU | Perfil | Objetivo de Negócio | RF Relacionados | Critérios de Aceite Relevantes |
-|---|---|---|---|---|
-| HU01 | Estabelecimento | Cadastrar item com nome, descrição e preço | RF01, RF08, RF11 | Validação de nome/preço obrigatórios; exibição imediata no cardápio |
-| HU02 | Estabelecimento | Criar categorias e associar item a categoria | RF04, RF05, RF09 | Categoria livre; item em apenas uma categoria; ordenação de categorias |
-| HU03 | Estabelecimento | Editar item existente | RF02, RF08, RF11 | Alterações refletidas imediatamente; todos os campos editáveis modificáveis |
-| HU04 | Estabelecimento | Marcar/desfazer indisponibilidade | RF06, RF07, RF10 | Item continua visível com indicador claro; reversão a qualquer momento |
-| HU05 | Estabelecimento | Remover item do cardápio | RF03 | Confirmação antes de excluir; item não aparece mais no público |
-| HU06 | Cliente | Visualizar cardápio sem cadastro/login | RF08 | Acesso por URL direta; carregamento correto em mobile |
-| HU07 | Cliente | Navegar por categorias | RF09 | Categorias visíveis; itens listados na categoria correta |
-| HU08 | Cliente | Identificar indisponíveis | RF10 | Indicação visual clara; item permanece na lista |
+| HU | Descrição resumida | RF relacionados | RNF relacionados |
+|---|---|---|---|
+| HU01 | Cadastrar item com nome, descrição e preço | RF01, RF11 | RNF05 |
+| HU02 | Criar categorias, associar item e controlar ordem | RF04, RF05, RF09 | RNF05 |
+| HU03 | Editar item | RF02, RF11 | RNF05 |
+| HU04 | Marcar/desmarcar indisponibilidade | RF06, RF07, RF10 | RNF05 |
+| HU05 | Remover item com confirmação | RF03 | RNF05 |
+| HU06 | Visualizar cardápio sem cadastro/login | RF08 | RNF01, RNF02, RNF06, RNF07 |
+| HU07 | Navegar por categorias | RF09 | RNF01, RNF06 |
+| HU08 | Identificar indisponíveis visualmente | RF10 | RNF01, RNF07 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Componentes (visão lógica)
+### 2.1 Diagrama de Componentes (Visão Lógica)
 
 ```mermaid
 flowchart LR
-    subgraph C[Canal Cliente]
-        UI_PUBLICA[Interface Pública do Cardápio]
-    end
+    A[Interface Web Pública<br/>Cardápio do Cliente]
+    B[Interface Web Administrativa]
+    C[Controlador de Sessão Administrativa<br/>(Autenticação)]
+    D[Serviço de Gestão de Itens]
+    E[Serviço de Gestão de Categorias]
+    F[Serviço de Disponibilidade de Itens]
+    G[Serviço de Publicação/Consulta de Cardápio]
+    H[Camada de Persistência]
+    I[Validação e Regras de Negócio]
+    J[Monitoramento e Métricas]
 
-    subgraph A[Canal Administrativo]
-        UI_ADMIN[Interface Administrativa]
-    end
+    B --> C
+    B --> D
+    B --> E
+    B --> F
+    D --> I
+    E --> I
+    F --> I
+    D --> H
+    E --> H
+    F --> H
 
-    subgraph N[Camada de Aplicação]
-        ORQ[Orquestrador de Casos de Uso]
-        AUTH[Serviço de Autenticação Administrativa]
-        CAT[Serviço de Categorias]
-        ITEM[Serviço de Itens de Cardápio]
-        PUB[Serviço de Publicação do Cardápio]
-        VAL[Serviço de Validação]
-    end
+    A --> G
+    G --> H
+    G --> I
 
-    subgraph D[Camada de Dados]
-        REP_ITEM[Repositório de Itens]
-        REP_CAT[Repositório de Categorias]
-        REP_USR[Repositório de Credenciais Administrativas]
-    end
-
-    UI_ADMIN --> ORQ
-    UI_PUBLICA --> PUB
-
-    ORQ --> AUTH
-    ORQ --> CAT
-    ORQ --> ITEM
-    ORQ --> VAL
-
-    CAT --> REP_CAT
-    ITEM --> REP_ITEM
-    AUTH --> REP_USR
-
-    PUB --> REP_ITEM
-    PUB --> REP_CAT
+    C --> H
+    D --> J
+    E --> J
+    F --> J
+    G --> J
 ```
 
-### 2.2 Diagrama de Sequência — Cadastro de item e atualização imediata da visão pública
+### 2.2 Diagrama de Sequência — Edição de item e atualização imediata do cardápio público
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant ADM as Administrador
+    participant Admin as Estabelecimento (Administrador)
     participant UIA as Interface Administrativa
-    participant ORQ as Orquestrador de Casos de Uso
-    participant AUT as Serviço de Autenticação
-    participant VAL as Serviço de Validação
-    participant SIT as Serviço de Itens
-    participant SCAT as Serviço de Categorias
-    participant RIT as Repositório de Itens
-    participant RPUB as Interface Pública (Consulta)
-    participant CLI as Cliente
+    participant AUTH as Serviço de Autenticação
+    participant ITEM as Serviço de Gestão de Itens
+    participant RULE as Validação/Regras de Negócio
+    participant DB as Camada de Persistência
+    participant PUB as Serviço de Publicação/Consulta
+    participant Cliente as Cliente (Visitante)
+    participant UIP as Interface Pública
 
-    ADM->>UIA: Informa credenciais e dados do novo item
-    UIA->>ORQ: Solicita criar item
-    ORQ->>AUT: Validar sessão administrativa
-    AUT-->>ORQ: Sessão válida
+    Admin->>UIA: Solicita edição de item (nome/descrição/preço)
+    UIA->>AUTH: Valida sessão autenticada
+    AUTH-->>UIA: Sessão válida
+    UIA->>ITEM: Envia dados alterados
+    ITEM->>RULE: Validar campos obrigatórios e formato
+    RULE-->>ITEM: Validação OK
+    ITEM->>DB: Persistir alterações do item
+    DB-->>ITEM: Confirma atualização
+    ITEM-->>UIA: Retorno de sucesso
 
-    ORQ->>VAL: Validar campos obrigatórios (nome, preço)
-    VAL-->>ORQ: Dados válidos
-
-    ORQ->>SCAT: Verificar categoria informada
-    SCAT-->>ORQ: Categoria válida
-
-    ORQ->>SIT: Criar item no cardápio
-    SIT->>RIT: Persistir item ativo/disponível
-    RIT-->>SIT: Item persistido
-    SIT-->>ORQ: Item criado
-    ORQ-->>UIA: Confirmação de sucesso
-
-    CLI->>RPUB: Acessa URL do cardápio
-    RPUB->>RIT: Consultar itens e estado de disponibilidade
-    RIT-->>RPUB: Lista atualizada incluindo novo item
-    RPUB-->>CLI: Exibe item imediatamente
+    Cliente->>UIP: Acessa URL do cardápio
+    UIP->>PUB: Solicita cardápio atualizado
+    PUB->>DB: Consultar categorias e itens
+    DB-->>PUB: Dados atualizados
+    PUB-->>UIP: Resposta com itens por categoria
+    UIP-->>Cliente: Exibe cardápio atualizado (inclui indisponibilidade)
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-1. **Separação entre canal público e administrativo**
-   - **Motivação:** RF08 (acesso público sem login) e RNF03 (área admin protegida).
-   - **Decisão:** duas interfaces conceituais independentes, com políticas de acesso distintas.
-
-2. **Arquitetura modular por capacidades de negócio**
-   - **Motivação:** RNF05 (manutenibilidade).
-   - **Decisão:** módulos centrais: Autenticação, Itens, Categorias, Publicação/Consulta, Validação.
-
-3. **Consistência de leitura “imediata” para cardápio público**
-   - **Motivação:** HU01/HU03 exigem reflexo imediato.
-   - **Decisão:** operações de escrita e leitura do cardápio devem refletir alterações sem ciclo manual de publicação.
-
-4. **Modelo de item com estado de disponibilidade**
-   - **Motivação:** RF06, RF07, RF10 e HU04/HU08.
-   - **Decisão:** indisponibilidade é atributo de estado do item (não exclusão), mantendo visibilidade pública.
-
-5. **Regra de vínculo de item com única categoria**
-   - **Motivação:** critério de HU02 (“um item pode pertencer a apenas uma categoria”).
-   - **Decisão:** restrição de cardinalidade 1:1 (Item → Categoria).
-
-6. **Ordenação explícita de categorias**
-   - **Motivação:** critério HU02 (ordem controlável pelo estabelecimento).
-   - **Decisão:** categoria possui atributo de ordenação definido e alterável no domínio.
-
-7. **Validação de entrada centralizada**
-   - **Motivação:** HU01 e qualidade de dados.
-   - **Decisão:** serviço de validação reutilizável para garantir obrigatoriedade, formato e limites sem duplicação.
-
-8. **Resiliência e disponibilidade mínima**
-   - **Motivação:** RNF04 (99% 24/7).
-   - **Decisão:** componentes de consulta pública devem priorizar continuidade operacional e observabilidade básica (saúde do serviço, falhas e degradação controlada).
-
-9. **Acessibilidade e responsividade como requisitos de interface**
-   - **Motivação:** RNF01 e RNF07.
-   - **Decisão:** especificar critérios de interface para contraste, semântica, foco navegável e adaptação mobile/desktop.
+| ID | Decisão | Motivação | Impacto |
+|---|---|---|---|
+| DA01 | Separar interface pública e administrativa em contextos funcionais distintos | Reduz acoplamento e risco de exposição de funções administrativas | Facilita segurança (RNF03) e evolução independente |
+| DA02 | Centralizar regras de validação de item/categoria/disponibilidade em módulo de regras de negócio | Evitar divergência entre telas e operações | Consistência funcional para RF01, RF02, RF04, RF06 |
+| DA03 | Modelo de item com estado de disponibilidade (ativo/indisponível) sem remoção obrigatória | Atender indisponibilidade temporária com visibilidade pública | Cobertura direta de RF06, RF07, RF10 e HU04/HU08 |
+| DA04 | Consulta pública do cardápio por serviço dedicado de leitura/publicação | Melhorar desempenho e simplificar otimizações de leitura | Apoia RNF02 (tempo de carregamento) e RNF04 (disponibilidade) |
+| DA05 | Controle explícito de ordenação de categorias | Critério de aceite da HU02 exige ordem controlável | Necessita atributo de ordenação e operação de reordenação |
+| DA06 | Autenticação obrigatória apenas para área administrativa | Cliente deve acessar sem login (HU06) | Delimita fronteira de segurança sem criar fricção pública |
+| DA07 | Instrumentar métricas de disponibilidade e latência | Necessário para comprovar RNF02 e RNF04 | Permite governança operacional e melhoria contínua |
 
 ---
 
@@ -153,102 +115,75 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---|---|---|
-| Interface Pública do Cardápio | Exibir cardápio por URL sem autenticação; mostrar categorias, itens, preço e status | Serviço de Publicação do Cardápio | HU06, HU07, HU08 / RF08, RF09, RF10, RF11 |
-| Interface Administrativa | Permitir CRUD de itens/categorias e gestão de indisponibilidade | Orquestrador de Casos de Uso | HU01–HU05 |
-| Serviço de Autenticação Administrativa | Validar credenciais e sessão na área administrativa | Orquestrador, Repositório de Credenciais | RNF03 |
-| Orquestrador de Casos de Uso | Coordenar fluxos de negócio administrativos | Autenticação, Validação, Serviços de Itens/Categorias | HU01–HU05 |
-| Serviço de Validação | Garantir regras de entrada (nome e preço obrigatórios, consistência de campos) | Orquestrador | HU01 (critério de campos obrigatórios), HU03 |
-| Serviço de Itens de Cardápio | Criar, editar, remover e alterar disponibilidade de itens | Orquestrador, Repositório de Itens, Serviço de Categorias | RF01, RF02, RF03, RF06, RF07; HU01, HU03, HU04, HU05 |
-| Serviço de Categorias | Criar/editar/remover categorias e controlar ordenação | Orquestrador, Repositório de Categorias | RF04, RF05, RF09; HU02, HU07 |
-| Serviço de Publicação do Cardápio | Fornecer visão pública consolidada e ordenada por categoria | Interface Pública, Repositórios de Itens/Categorias | HU06, HU07, HU08; RNF02 |
-| Repositório de Itens | Persistência e consulta de itens e estado de disponibilidade | Serviço de Itens, Serviço de Publicação | RF01–RF03, RF06, RF07, RF10, RF11 |
-| Repositório de Categorias | Persistência da estrutura e ordenação de categorias | Serviço de Categorias, Serviço de Publicação | RF04, RF05, RF09; HU02 |
-| Repositório de Credenciais Administrativas | Armazenar dados de autenticação administrativa | Serviço de Autenticação | RNF03 |
+| Interface Web Administrativa | Permitir CRUD de itens/categorias e alteração de disponibilidade | Serviço de Autenticação, Gestão de Itens, Gestão de Categorias, Disponibilidade | HU01, HU02, HU03, HU04, HU05 |
+| Serviço de Autenticação Administrativa | Validar usuário/senha e sessão para acesso administrativo | Interface Administrativa, Camada de Persistência | RNF03 |
+| Serviço de Gestão de Itens | Cadastrar, editar, remover itens e validar campos obrigatórios | Interface Administrativa, Regras de Negócio, Persistência | HU01 (campos obrigatórios), HU03, HU05; RF01, RF02, RF03 |
+| Serviço de Gestão de Categorias | Criar/editar/remover categorias, associar item a categoria, manter ordenação | Interface Administrativa, Regras de Negócio, Persistência | HU02 (criar, nomear, associar, controlar ordem); RF04, RF05, RF09 |
+| Serviço de Disponibilidade de Itens | Marcar/desmarcar indisponibilidade sem exclusão | Interface Administrativa, Regras de Negócio, Persistência | HU04 (indisponível e reversão), HU08; RF06, RF07, RF10 |
+| Serviço de Publicação/Consulta de Cardápio | Fornecer cardápio público por categoria com status de disponibilidade | Interface Pública, Persistência, Regras de Negócio | HU06, HU07, HU08; RF08, RF09, RF10, RF11 |
+| Interface Web Pública | Exibir cardápio sem autenticação, responsivo e acessível | Serviço de Publicação/Consulta | HU06, HU07, HU08; RNF01, RNF06, RNF07 |
+| Camada de Persistência | Armazenar itens, categorias, relações, estado de disponibilidade e ordem | Serviços de domínio e autenticação | Todos os RF de manutenção e consulta |
+| Módulo de Regras de Negócio/Validação | Validar obrigatoriedade de campos, consistência de associação e formato de dados | Serviços de Itens/Categorias/Disponibilidade/Publicação | HU01 (validação), HU02 (uma categoria por item), HU03 |
+| Monitoramento e Métricas | Coletar disponibilidade, tempo de resposta e erros | Todos os serviços de aplicação | RNF02, RNF04 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| ID | Pendência | Impacto Arquitetural | Severidade | Ação Recomendada |
-|---|---|---|---|---|
-| P01 | Política de credenciais (complexidade de senha, expiração, recuperação) não definida | Pode afetar desenho do fluxo de autenticação e segurança operacional | Alta | Definir política mínima de identidade e recuperação de acesso |
-| P02 | Escopo multiestabelecimento não está explícito | Pode alterar modelo de dados e isolamento entre cardápios | Alta | Confirmar se o sistema atende um ou vários estabelecimentos |
-| P03 | Regra de remoção de categoria com itens vinculados não definida | Pode gerar inconsistência ou perda lógica de organização | Média | Definir comportamento: bloquear, mover itens ou exclusão encadeada |
-| P04 | Sem critérios quantitativos de acessibilidade além WCAG A | Risco de interpretação divergente na implementação de UI | Média | Detalhar checklist mínimo de acessibilidade por tela |
-| P05 | Métrica e método de medição do “carregar em até 3s” não definidos | Dificulta validação objetiva de desempenho | Média | Estabelecer ponto de medição (primeira renderização, conteúdo total etc.) |
-| P06 | Estratégia para atingir 99% de disponibilidade não detalhada | Risco de solução insuficiente para RNF04 | Média | Definir plano de operação, monitoramento e contingência |
+| Tipo | Item | Impacto Arquitetural | Ação recomendada |
+|---|---|---|---|
+| Pendência | Não está explícito se o sistema é para um único estabelecimento ou multiestabelecimento | Afeta modelo de domínio, autenticação e isolamento de dados | Definir escopo (single-tenant vs multi-tenant) antes da modelagem física |
+| Pendência | Política de exclusão de item (física vs lógica) não definida | Impacta auditoria, histórico e restauração | Definir estratégia de exclusão e retenção |
+| Pendência | Regras de formatação de preço/moeda não detalhadas | Pode causar inconsistência em exibição e cálculos | Especificar moeda, casas decimais e arredondamento |
+| Pendência | Critério “imediatamente” não quantificado | Ambiguidade na expectativa de atualização pública | Definir SLA interno (ex.: segundos máximos após alteração) |
+| Pendência | Acessibilidade cita WCAG 2.1 A, mas sem checklist de critérios | Risco de interpretação parcial | Criar checklist de critérios mínimos de conformidade |
+| Pendência | Não há requisito explícito de recuperação de senha | Impacta suporte e operação administrativa | Definir política de gestão de credenciais |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-### 6.1 Requisitos Funcionais (RF)
+### 6.1 Cobertura dos Requisitos Funcionais
 
-| RF | Cobertura Arquitetural | Status |
+| Requisito | Cobertura arquitetural | Status |
 |---|---|---|
-| RF01 | Serviço de Itens + Validação + Interface Admin | Coberto |
-| RF02 | Serviço de Itens + Interface Admin | Coberto |
-| RF03 | Serviço de Itens + confirmação na Interface Admin | Coberto |
-| RF04 | Serviço de Categorias + Interface Admin | Coberto |
-| RF05 | Serviço de Itens/Categorias com vínculo item→categoria | Coberto |
-| RF06 | Serviço de Itens (estado indisponível) | Coberto |
-| RF07 | Serviço de Itens (reativação de disponibilidade) | Coberto |
-| RF08 | Interface Pública sem autenticação | Coberto |
-| RF09 | Serviço de Publicação com agrupamento por categoria | Coberto |
-| RF10 | Interface Pública com indicação visual de indisponível | Coberto |
-| RF11 | Interface Pública exibindo nome, descrição e preço | Coberto |
+| RF01 | Serviço de Gestão de Itens + Regras de Negócio + Interface Administrativa | Coberto |
+| RF02 | Serviço de Gestão de Itens + Interface Administrativa | Coberto |
+| RF03 | Serviço de Gestão de Itens + confirmação na Interface Administrativa | Coberto |
+| RF04 | Serviço de Gestão de Categorias + Interface Administrativa | Coberto |
+| RF05 | Associação item-categoria no Serviço de Categorias/Regras | Coberto |
+| RF06 | Serviço de Disponibilidade de Itens | Coberto |
+| RF07 | Serviço de Disponibilidade de Itens (reativação) | Coberto |
+| RF08 | Interface Pública + Serviço de Publicação sem autenticação | Coberto |
+| RF09 | Serviço de Publicação retorna itens agrupados por categoria | Coberto |
+| RF10 | Estado de indisponibilidade + indicação visual na Interface Pública | Coberto |
+| RF11 | Serviço de Publicação expõe nome/descrição/preço | Coberto |
 
-### 6.2 Requisitos Não Funcionais (RNF)
+### 6.2 Cobertura dos Requisitos Não Funcionais
 
-| RNF | Estratégia Arquitetural | Status |
+| Requisito | Estratégia arquitetural | Status |
 |---|---|---|
-| RNF01 (Responsividade) | Diretriz de interface adaptativa para mobile/desktop | Coberto |
-| RNF02 (≤3s) | Serviço de Publicação enxuto + otimização de leitura | Parcial (falta métrica formal) |
-| RNF03 (Autenticação admin) | Serviço de Autenticação + controle de sessão | Coberto |
-| RNF04 (99% disponibilidade) | Priorização de continuidade operacional e observabilidade | Parcial (falta plano operacional detalhado) |
-| RNF05 (Modularidade) | Separação por componentes de domínio | Coberto |
-| RNF06 (Navegadores modernos) | Interface web baseada em padrões | Coberto |
-| RNF07 (WCAG 2.1 A) | Diretrizes de acessibilidade em UI pública | Parcial (falta checklist objetivo) |
+| RNF01 (Responsividade) | Interface Pública com adaptação a múltiplos formatos de tela | Coberto |
+| RNF02 (até 3s) | Serviço de leitura dedicado, otimização de consulta e métricas de latência | Parcial (depende de meta operacional detalhada) |
+| RNF03 (autenticação admin) | Componente de autenticação e sessão para área administrativa | Coberto |
+| RNF04 (99% 24/7) | Monitoramento, desenho modular e operação com alta disponibilidade | Parcial (depende de plano operacional) |
+| RNF05 (modularidade) | Separação por componentes de domínio e interfaces | Coberto |
+| RNF06 (navegadores modernos) | Interface pública com compatibilidade transversal e testes funcionais | Parcial (depende de matriz de testes) |
+| RNF07 (WCAG 2.1 A) | Diretrizes de acessibilidade na interface pública | Parcial (depende de checklist e validação formal) |
 
 ---
 
 ## 7. Gap Analysis
 
-1. **Ausência de definição de escopo de tenant (um ou vários estabelecimentos)**
-   - **Impacto:** altera modelagem de domínio, autorização e isolamento de dados.
-   - **Recomendação:** decidir formalmente o modelo de tenancy antes da implementação.
+| Lacuna | Impacto | Risco | Recomendação |
+|---|---|---|---|
+| Escopo de tenancy não definido | Pode exigir refatoração estrutural de dados e autenticação | Alto | Decisão arquitetural antecipada sobre isolamento por estabelecimento |
+| “Atualização imediata” sem SLA numérico | Dificulta teste de aceite e monitoramento | Médio | Definir tempo máximo de propagação após CRUD |
+| Sem definição de auditoria/histórico | Dificulta rastrear alterações administrativas | Médio | Incluir requisito de trilha de auditoria mínima |
+| Sem política de exclusão e recuperação | Perda irreversível de dados por erro operacional | Médio | Definir exclusão lógica e fluxo de restauração |
+| Acessibilidade sem critérios verificáveis | Entrega pode não atender conformidade real | Médio | Anexar checklist WCAG A e critérios de teste |
+| Disponibilidade 99% sem janela de manutenção | Ambiguidade contratual/operacional | Médio | Definir calendário e regra de cálculo de SLA |
+| Compatibilidade de navegadores sem versões alvo | Testes incompletos ou subjetivos | Baixo | Definir versões mínimas suportadas |
 
-2. **Regras de autenticação pouco detalhadas**
-   - **Impacto:** risco de inconsistência em segurança (RNF03).
-   - **Recomendação:** definir política de senha, sessão, bloqueio por tentativas e recuperação de acesso.
-
-3. **Exclusão de categorias sem regra de integridade**
-   - **Impacto:** risco de itens órfãos ou perda de organização.
-   - **Recomendação:** definir regra transacional (bloquear exclusão, mover itens automaticamente ou exigir reassociação).
-
-4. **Critério “imediatamente” não parametrizado**
-   - **Impacto:** divergência entre negócio e técnica na validação de HU01/HU03.
-   - **Recomendação:** estabelecer SLA de propagação (ex.: atualização perceptível em segundos).
-
-5. **RNF02 sem método de medição**
-   - **Impacto:** impossível homologar desempenho de forma objetiva.
-   - **Recomendação:** formalizar métrica de tempo de carregamento, perfil de rede e tamanho esperado do cardápio.
-
-6. **RNF04 sem estratégia operacional explicitada**
-   - **Impacto:** risco de não atingir 99% em produção.
-   - **Recomendação:** definir práticas de monitoramento, resposta a falhas e manutenção planejada.
-
-7. **Acessibilidade definida em nível alto (WCAG A), sem critérios testáveis**
-   - **Impacto:** risco de conformidade parcial.
-   - **Recomendação:** criar checklist mínimo por tela (navegação por teclado, contraste, alternativas textuais, semântica).
-
-8. **Compatibilidade entre navegadores sem matriz de testes**
-   - **Impacto:** defeitos podem surgir em navegadores específicos.
-   - **Recomendação:** estabelecer suíte de testes funcionais para Chrome, Firefox, Safari e Edge.
-
----
-
-Se quiser, posso gerar uma **versão 2 deste relatório** com:
-- modelo de domínio (entidades e regras),
-- contratos de interface (operações conceituais),
-- e critérios de aceite técnicos prontos para QA/arquitetura.
+### Síntese Final
+A arquitetura proposta cobre integralmente os **RFs** e estabelece base sólida para os **RNFs**, com atenção à separação entre domínio administrativo e consulta pública. As principais lacunas estão em **parâmetros operacionais e de qualidade mensurável** (SLA, acessibilidade verificável, política de dados), que devem ser refinados antes da implementação para reduzir retrabalho e risco de não conformidade.

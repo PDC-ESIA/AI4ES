@@ -1,346 +1,255 @@
 # Relatório Técnico de Arquitetura de Software
 
 ## 1. Identificação das HUs
+Lista das Histórias de Usuário (HU) consideradas no projeto e assinaladas como origem dos requisitos funcionais e de aceitação:
 
-Lista das Histórias de Usuário (IDs referenciadas no relatório):
-- HU01 — Cadastrar paciente
-- HU02 — Pesquisar paciente
-- HU03 — Visualizar agenda do profissional
-- HU04 — Registrar agendamento
-- HU05 — Cancelar agendamento
-- HU06 — Remarcar agendamento
-- HU07 — Consultar histórico do paciente
-- HU08 — Receber confirmação de agendamento por e-mail
-- HU09 — Receber notificação de cancelamento ou remarcação por e-mail
+- HU01 — Cadastrar paciente (RF01, RF02, RNF02)
+- HU02 — Pesquisar paciente (RF03)
+- HU03 — Visualizar agenda do profissional (RF04, RNF03, RNF04)
+- HU04 — Registrar agendamento (RF05, RF06, RF09, HU04 critérios)
+- HU05 — Cancelar agendamento (RF07, RF10, HU05 critérios)
+- HU06 — Remarcar agendamento (RF08, RF10, HU06 critérios)
+- HU07 — Consultar histórico do paciente (RF12)
+- HU08 — Receber confirmação por e-mail (RF09, RNF05, HU08 critérios)
+- HU09 — Receber notificação de cancelamento/remarcação por e-mail (RF10, RNF05, HU09 critérios)
 
-Relação rápida com Requisitos Funcionais (RF) e Não-Funcionais (RNF) relevantes:
-- RF01, RF02, RF03 → HU01, HU02
-- RF04, RF11 → HU03
-- RF05, RF06, RF08 → HU04, HU06
-- RF07 → HU05
-- RF09, RF10 → HU08, HU09
-- RF12 → HU07
-- RNF01, RNF02, RNF08 → aplicam-se transversais a todas as HUs
+Observações iniciais:
+- Há uma menção ao CPF como impedimento de duplicidade no critério de aceite da HU01, porém o RF01 não cita CPF explicitamente. Isso será destacado como gap na Seção 7.
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-2.1 Diagrama de Sequência: Registrar Agendamento (inclui confirmação por e‑mail)
+Diagrama de sequência (fluxo de criação de agendamento com notificação assíncrona):
+
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Recepcionista_UI as Recepcionista (UI)
-    participant Web_API as Web/API
-    participant Auth as AuthService
-    participant Patient as PatientService
-    participant Calendar as CalendarService
-    participant Appointment as AppointmentService
-    participant Repo as PersistenceRepository
-    participant Notification as NotificationService
-    participant EmailQueue as EmailQueue
+    participant UI as Recepcionista UI
+    participant API as API Gateway / Controlador
+    participant Auth as Serviço de Autenticação
+    participant Appointment as Serviço de Agendamento
+    participant Schedule as Motor de Grade
+    participant DB as Repositório Persistente
+    participant Notif as Dispatcher de Notificações
+    participant Email as Gateway de E-mail
+    participant Patient as Paciente (destinatário)
 
-    Recepcionista_UI->>Web_API: Solicita autenticação/ação (token)
-    Web_API->>Auth: Validar token / verificar papel (recepcionista)
-    Auth-->>Web_API: Autorizado / credenciais ok
-
-    Recepcionista_UI->>Web_API: Request criar agendamento (pacienteId, profissionalId, dataHora)
-    Web_API->>Patient: Verificar existência e permissões do paciente
-    Patient-->>Web_API: Paciente válido / dados básicos (nome, e-mail, telefone)
-
-    Web_API->>Calendar: Consultar disponibilidade do profissional (dataHora)
-    Calendar-->>Web_API: Disponível? (sim/não)
-
-    alt Disponível
-        Web_API->>Appointment: Solicitar reserva temporária (lock)
-        Appointment->>Repo: Iniciar transação, checar conflito e persistir agendamento
-        Repo-->>Appointment: Confirmação de persistência
-        Appointment-->>Calendar: Marcar horário como ocupado
-        Appointment-->>Notification: Emite evento "AgendamentoCriado"
-        Notification->>EmailQueue: Enfileirar e-mail de confirmação (assíncrono)
-        EmailQueue-->>Notification: Aceite da mensagem
-        Notification-->>Web_API: Confirmaçao de processamento assíncrono
-        Web_API-->>Recepcionista_UI: Resposta sucesso (ID agendamento)
-    else Indisponível
-        Web_API-->>Recepcionista_UI: Erro — horário não disponível
+    UI->>API: Requisição criar agendamento (pacienteId, horário)
+    API->>Auth: Validar credenciais/autorizar ação
+    Auth-->>API: Autorizado / Role recepcionista
+    API->>Appointment: Solicitar criação de agendamento
+    Appointment->>Schedule: Verificar disponibilidade e regras de grade
+    Schedule-->>Appointment: Disponível / Não disponível
+    alt Horário disponível
+        Appointment->>DB: Iniciar transação / aplicar garantia de unicidade
+        DB-->>Appointment: Confirmação de persistência
+        Appointment->>Notif: Enfileirar notificação (tipo: confirmação)
+        Appointment-->>API: Resultado sucesso (detalhes do agendamento)
+        API-->>UI: Exibir confirmação para recepcionista
+        Notif->>Email: Solicitar envio de e-mail (assíncrono, com retry)
+        Email-->>Patient: Entrega do e-mail (ou bounce)
+        Email-->>Notif: Status de entrega (opcional)
+        Notif->>DB: Registrar log de envio / auditoria
+    else Horário ocupado
+        Appointment-->>API: Erro: horário já ocupado
+        API-->>UI: Exibir erro para recepcionista
     end
 ```
 
-2.2 Diagrama de Componentes: Visão lógica dos módulos e dependências
+Diagrama de componentes (alto nível):
+
 ```mermaid
 graph TD
-    subgraph UI
-        A[Interface Web - Recepção]
+    UI[Interface Recepcionista (Web / Browser)] -->|HTTP/REST| API[API Gateway / Controlador]
+    API --> Auth[Serviço de Autenticação / Autorização (RBAC)]
+    API --> PatientService[Serviço de Pacientes (CRUD, Busca)]
+    API --> Appointment[Serviço de Agendamento]
+    Appointment --> Schedule[Motor de Grade / Validador de Disponibilidade]
+    PatientService --> DB[Repositório Persistente (Dados Pessoais)]
+    Appointment --> DB
+    Notification[Dispatcher de Notificações / Jobs] --> EmailGateway[Gateway de E-mail (SMTP/API)]
+    Appointment --> Notification
+    API --> Audit[Serviço de Logs / Auditoria]
+    Appointment --> Audit
+    PatientService --> Audit
+    subgraph Infraestrutura Conceitual
+        DB
+        EmailGateway
     end
-
-    subgraph API
-        B[Gateway/API]
-        C[AuthService]
-        D[PatientService]
-        E[AppointmentService]
-        F[CalendarService]
-        G[NotificationService]
-        H[Logging/AuditService]
-    end
-
-    subgraph Infra
-        I[Persistence Repository]
-        J[Email Queue / Worker]
-        K[Email Delivery Worker]
-        L[Caching Layer]
-        M[Search Index]
-        N[Backup & Retention]
-    end
-
-    A -->|HTTP/HTTPS| B
-    B --> C
-    B --> D
-    B --> E
-    B --> F
-    B --> G
-    B --> H
-
-    D --> I
-    E --> I
-    F --> I
-    H --> I
-    D --> M
-    E --> L
-    F --> L
-    G --> J
-    J --> K
-    I --> N
 ```
 
+Observação: diagramas mantêm nível conceitual e descrevem interfaces e responsabilidades, sem prescrever tecnologia específica.
+
 ## 3. Decisões de Arquitetura
+1. Estilo arquitetural: arquitetura em camadas com serviços coesos (UI → API → Domínio/Serviços → Persistência) e componentes bem definidos (PatientService, AppointmentService, NotificationDispatcher). Racional: separação de responsabilidades facilita manutenção, testes e implantação incremental.
 
-3.1 Visão geral
-- Arquitetura em camadas lógicas: Interface (UI), Gateway/API, Serviços de domínio (Patient, Appointment, Calendar, Notification), Persistência e Infraestrutura (fila, cache, indexação, logs).
-- Comunicação síncrona para operações de consulta/alteração imediata (ex.: checar disponibilidade, criar/cancelar agendamento). Comunicação assíncrona para notificações por e‑mail (garante responsividade, tolerância a falhas episódicas do serviço de entrega de e‑mail).
-- Separação clara entre regras de negócio de agendamento (AppointmentService + CalendarService) e interface de persistência (Repository).
+2. Consistência e integridade do agendamento: garantir unicidade do slot por meio de verificação de disponibilidade + operação atômica (transação com verificação de unicidade ou mecanismo de lock no nível de recurso). Racional: previne duplo agendamento (RF06, HU04).
 
-3.2 Consistência e Concorrência (RF06)
-- Estratégia de reserva: operações de criação/remoção de agendamento ocorrem dentro de uma unidade transacional que checa conflitos antes da persistência definitiva.
-- Recomenda-se mecanismo de “lock” lógico por slot (p. ex. reserva pessimista de curto prazo) ou verificação de concorrência com fallback de retry (optimistic + conflito detectado) — decisão operacional a definir em implementação.
-- CalendarService expõe uma API para checagem de disponibilidade por intervalo e para marcar/desmarcar slots; AppointmentService gerencia transações de criação e liberação de slots.
+3. Notificações assíncronas: envio de e-mail executado por um componente assíncrono (Dispatcher/Job Processor) com filas internas e política de retry/exponential backoff para garantir envio em até 5 minutos (RNF05). Racional: desacopla fluxo crítico de criação do agendamento e dá tolerância a latências de entrega de e-mail.
 
-3.3 Notificações por e‑mail (RF09, RF10, RNF05)
-- Enfileiramento assíncrono de mensagens de notificação (EmailQueue). Worker consome fila e faz tentativas com backoff até TTL configurado; falha total gera alerta/registro.
-- Requisito RNF05 (envio em até 5 minutos) é atendido via fila com prioridade normal e retries curtos; monitoramento de processamento deve alertar violações de SLA.
+4. Autenticação e autorização (RBAC): acesso restrito a recepcionistas e administradores (RNF01). Todas as APIs críticas exigem tokens/credenciais e verificação de permissões. Racional: atender requisito de segurança.
 
-3.4 Segurança e LGPD (RNF01, RNF02)
-- Autenticação e autorização centralizadas (AuthService). Perfis: recepcionista, administrador. Permissões finas para operações sensíveis (ex.: exclusão/pseudonimização de dados).
-- Dados pessoais: aplicar princípios de minimização e controles de acesso. Dados sensíveis devem ser criptografados em repouso e em trânsito; logs e visualizações mascaram campos sensíveis quando necessário.
-- Funcionalidade para consentimento e revogação deve ser prevista (não detalhada nos requisitos), assim como processos de anonimização/exclusão por solicitação legal.
+5. LGPD e proteção de dados: responsabilidade de garantir confidencialidade, controle de acesso, registros de consentimento, possibilidade de anonimização/exclusão por política de retenção e logs de auditoria para operações críticas (RNF02). Racional: conformidade legal e proteção de dados.
 
-3.5 Auditoria e Logs (RNF08)
-- Logging/AuditService centralizado para registrar operações críticas: criação, cancelamento, remarcação de consultas, alterações cadastrais, login/alteração de perfis.
-- Logs de auditoria devem conter: quem executou, timestamp, entidade afetada, antes/depois, motivo (quando aplicável). Definir política de retenção conforme LGPD.
+6. Logs e auditoria: todas as operações críticas (criação, cancelamento, remarcação) registradas com quem fez a ação, timestamp e payload mínimo necessário, com armazenamento seguro e controles de retenção (RNF08).
 
-3.6 Performance e Usabilidade (RNF03, RNF04)
-- Cache de visão de calendário (visões diária/semanal) com TTL curto para reduzir latência de carregamento (meta: < 2s por RNF04). Atualização imediata de cache por eventos de alteração.
-- Indexação para pesquisa de pacientes (HU02): suportar buscas parciais e paginação.
-- UI deve suportar navegação diária/semanal e distinção visual clara entre ocupados/ disponíveis.
+7. Interface de calendário performática: Calendar UI com visualizações diária/semana (RNF03) e paginação/carregamento incremental para respeitar tempo de resposta ≤ 2s (RNF04). Racional: experiência de uso e performance.
 
-3.7 Disponibilidade (RNF06)
-- Componentização para permitir escalonamento horizontal dos serviços API, workers e serviços de notificação. Monitoramento e health checks para instâncias; failover para workers.
-- Definição de janela de disponibilidade (“horário de funcionamento da clínica”) é necessária para avaliação pormenorizada do 99% uptime.
+8. Compatibilidade: APIs RESTful e interfaces web compatíveis com navegadores modernos (RNF07). Racional: máxima cobertura de compatibilidade.
 
-3.8 Manutenibilidade e Observabilidade
-- Mecanismos de métricas e alertas para latência de resposta do API, fila de e‑mails, taxa de conflitos de agendamento e falhas no envio.
-- Planos de rollback para operações críticas e testes automatizados para fluxos de agendamento.
+9. Disponibilidade: projetar componentes como stateless quando possível e permitir replicação para atender 99% uptime (RNF06). Racional: disponibilidade operacional.
 
-3.9 Interfaces conceituais (neutralidade tecnológica)
-- API HTTP/HTTPS entre UI e Gateway/API.
-- Interface de serviço síncrona para consultas e modificações do domínio.
-- Interface de evento/fila para notificações assíncronas.
-- Interface de persistência genérica (Repository) com operações CRUD e consultas por índices.
+10. Observabilidade e métricas: coletar métricas de latência, taxas de erro, disponibilidade e filas de notificação para operar SLAs de envio de e-mail e carregamento de agenda.
+
+Decisões pendentes (ver Seção 5) incluirão políticas detalhadas de retenção LGPD, estratégia exata de autenticação e limites operacionais (e.g., tempo mínimo para remarcação).
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
-| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite / RF / RNF) |
-|------------|---------------------------|------------------|---------------------------------------------|
-| Interface Web - Recepção | Fornecer UI para recepcionista: cadastro, pesquisa, calendário, agendamento, cancelamento, remarcação, histórico | Gateway/API | HU01, HU02, HU03, HU04, HU05, HU06, HU07; RNF03 |
-| Gateway/API | Validação de requisições, roteamento para serviços de domínio, autenticação/authorization forwarding | AuthService, PatientService, AppointmentService, CalendarService, NotificationService, LoggingService | Cross-cutting para todas as HUs; RNF01, RNF07 |
-| AuthService | Autenticação e autorização de usuários; emissão/validação de tokens | Gateway/API, LoggingService | RNF01; HU fluxo de uso |
-| PatientService | Gestão de cadastro de pacientes: criar, editar, validar duplicidade, busca | Repository, SearchIndex, LoggingService | RF01, RF02, RF03; HU01, HU02 (critérios: validação e não duplicidade) |
-| AppointmentService | Regras de negócio de criação, cancelamento e remarcação de agendamentos; garantia de não duplicidade | CalendarService, Repository, NotificationService, LoggingService | RF05, RF06, RF07, RF08; HU04, HU05, HU06 |
-| CalendarService | Configuração de grade de horários, consulta de disponibilidade (diária/semanal), marcação de slots | Repository, Cache, AppointmentService | RF04, RF11; HU03 |
-| NotificationService | Enfileirar notificações (e‑mail), tratamento de eventos de agendamento para envio | EmailQueue, Gateway/API, LoggingService | RF09, RF10; HU08, HU09; RNF05 |
-| Persistence Repository | Armazenamento de pacientes, agendamentos, configurações de grade e logs | PatientService, AppointmentService, CalendarService, LoggingService | RF01–RF12; RNF02 |
-| EmailQueue / Workers | Fila de entrega e workers que processam envios, retry/backoff, dead-letter handling | NotificationService, External Email Delivery Interface | RNF05; HU08, HU09 |
-| SearchIndex | Índice para pesquisa rápida de pacientes (supports partial matches) | PatientService, Gateway/API | HU02 (busca parcial) |
-| Cache Layer | Cache para visões de calendário (diária/semanal) e dados de consulta frequente | CalendarService, AppointmentService | RNF04, RNF03 |
-| Logging/AuditService | Registro de eventos críticos e operações sensíveis, armazenamento e exportação | Gateway/API, PatientService, AppointmentService, NotificationService, Repository | RNF08; Auditoria para HU01–HU07 |
-| Backup & Retention | Políticas de backup, retenção e restauração de dados | Repository, LoggingService | RNF02 (LGPD), operacionais |
+| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
+|---|---:|---|---|
+| Interface Recepcionista (UI) | Apresentar formulários, visualização de agenda (diária/semana), navegação entre dias/semanas, validação básica de entrada | API Gateway | HU01, HU02, HU03, HU04, HU05, HU06 |
+| API Gateway / Controlador | Expor endpoints, validação de autenticação/autorizações, orquestração de chamadas a serviços | UI, Auth, PatientService, AppointmentService, Audit | Todas as HUs |
+| Serviço de Autenticação / Autorização (Auth) | Autenticar usuários e aplicar RBAC (roles: recepcionista/administrador) | API Gateway, Audit | RNF01 |
+| Serviço de Pacientes (PatientService) | CRUD de pacientes, busca parcial, validação de e-mail, prevenção de duplicidade (por e-mail/CPF) | DB, Audit | RF01, RF02, RF03, HU01, HU02 |
+| Serviço de Agendamento (AppointmentService) | Gerenciar criar/cancelar/remarcar consultas, aplicar regras de não duplicidade e liberação de horários | Schedule, DB, Notification, Audit | RF04, RF05, RF06, RF07, RF08, HU03, HU04, HU05, HU06 |
+| Motor de Grade / Validador de Disponibilidade (Schedule) | Definir e validar horários de atendimento do profissional (grade), calcular slots disponíveis | AppointmentService, DB | RF11, HU03 |
+| Repositório Persistente (DB) | Armazenamento seguro de dados de pacientes, agendamentos e logs de auditoria (com controles LGPD) | PatientService, AppointmentService, Audit | RF01..RF12, RNF02 |
+| Dispatcher de Notificações / Job Processor (Notification) | Enfileirar e processar envios de e-mail (confirmação, cancelamento, remarcação) com retry e SLA | AppointmentService, Email Gateway, DB, Audit | RF09, RF10, RNF05, HU04, HU05, HU06, HU08, HU09 |
+| Gateway de E-mail (integração externa conceitual) | Interface para entrega de e-mails ao destinatário, retorno de status/erros | Notification | RF09, RF10, RNF05 |
+| Serviço de Logs e Auditoria (Audit) | Registrar operações críticas com metadados (quem, quando, o quê), armazenar conforme política de retenção | API Gateway, PatientService, AppointmentService, Notification, DB | RNF08, RNF02 |
+| Search Index / Serviço de Busca (opcional interno) | Otimizar buscas parciais por nome/telefone | PatientService, DB | RF03, HU02 |
+| Cache / Camada de Cache (opcional) | Cache de visualização da agenda para reduzir latência de leitura na UI (respeitando consistência) | Calendar UI, AppointmentService | RNF04, HU03 |
 
 ## 5. Bloqueios e Pendências
+1. Identificador único do paciente:
+   - Pendência: requisito conflituoso — HU01 exige evitar duplicação por CPF ou e-mail, porém RF01 não lista CPF entre campos obrigatórios.
+   - Impacto: definição do identificador primário impacta validação de duplicidade, fluxos de alteração e requisitos LGPD.
+   - Ação recomendada: definir explicitamente se CPF será coletado e obrigatório; especificar formato e tratamento (hashing ou criptografia) conforme LGPD.
 
-Itens que exigem decisão/entrada do Product Owner / Stakeholders antes da implementação:
+2. Políticas de retenção e anonimização (LGPD):
+   - Pendência: períodos de retenção para dados pessoais, critérios para anonimização/exclusão, e procedimentos de atendimento a solicitações do titular.
+   - Impacto: armazenamento, backups, logs, e procedimentos operacionais.
+   - Ação: elaborar política de dados e fluxos para exclusão/anonimização.
 
-1. Identificador único do paciente
-   - Pendência: requisitos mencionam CPF em critérios de aceite de HU01, mas RF01 não inclui CPF explicitamente. Necessário confirmar se CPF será coletado e obrigatório.
-   - Impacto: modelos de dados, verificação de duplicidade, requisitos legais (LGPD).
-2. Definição de "horário de funcionamento da clínica"
-   - Pendência: RNF06 define 99% uptime durante horário de funcionamento — especificar intervalo diário/semanais para cálculo.
-   - Impacto: Sizing, contrato de SLA, janelas de manutenção.
-3. Política de retenção de dados e logs (LGPD)
-   - Pendência: períodos legais/operacionais de retenção e requisitos de anonimização/exclusão.
-   - Impacto: Backup & Retention, Logging/AuditService.
-4. Política de consentimento/uso de dados do paciente
-   - Pendência: como e onde será registrado o consentimento e fluxo de revogação.
-   - Impacto: UI de cadastro, controles de acesso, operações de anonimização.
-5. Regras de negócio não especificadas sobre agendamentos
-   - Pendência: duração padrão de consultas, granularidade de slots, buffer entre consultas, regras de remarcação/cancelamento (prazos, multas).
-   - Impacto: CalendarService, validações de negócio, UI.
-6. SLA e prioridades de e‑mail
-   - Pendência: confirmar expectativa de entrega em até 5 minutos em todos os casos, prioridades de e‑mail (ex.: confirmações vs lembretes).
-   - Impacto: configuração de fila, dimensionamento de workers, alertas.
-7. Requisitos de autenticação detalhados
-   - Pendência: métodos de autenticação (senha, SSO, MFA), ciclo de vida de contas e provisionamento.
-   - Impacto: AuthService, políticas de segurança.
-8. Política de recuperação e objetivos RTO/RPO
-   - Pendência: definir objetivos de recuperação após falha.
-   - Impacto: Backup & Retention, disponibilidade, dimensionamento.
+3. Regras de negócio de cancelamento/remarcação:
+   - Pendência: janelas mínimas para cancelamento/remarcação sem penalidade, limites de remarcações, notificações em massa etc.
+   - Impacto: lógica no AppointmentService e nas notificações.
+   - Ação: obter políticas operacionais da clínica.
+
+4. SLA de entrega de e-mail e estratégia de fallback:
+   - Pendência: definir ações em caso de falha de entrega (retries, alertas ao administrador, SMS alternativo).
+   - Impacto: cumprimento do RNF05 e experiência do paciente.
+   - Ação: acordar política de retry, tempo máximo de tentativa e canais alternativos.
+
+5. Volume esperado e dimensionamento:
+   - Pendência: tráfego esperado (nº pacientes, agendamentos por dia) para calibrar requisitos de performance/infraestrutura.
+   - Impacto: arquitetura de escala, caches e requisitos de disponibilidade.
+   - Ação: coletar estimativas reais para dimensionamento.
+
+6. Estratégia de autenticação específica:
+   - Pendência: escolher entre autenticação local, integração com identidade corporativa ou single sign-on.
+   - Impacto: integração do Auth, procedimentos de provisionamento de usuários.
+   - Ação: decidir modelo de identidade.
+
+7. Timezone e calendário:
+   - Pendência: definição do comportamento com fusos horários (se aplicável) e horário de verão.
+   - Impacto: corretude das datas/horários mostrados nos e-mails e UI.
+   - Ação: definir timezone padrão da clínica e política de conversão.
+
+8. Conteúdo das notificações (templates) e idioma:
+   - Pendência: definição de templates de e-mail (campos obrigatórios, assinatura, marca da clínica).
+   - Impacto: Notif/EmailGateway precisa de templates e variáveis.
+   - Ação: criar templates aprovados por negócio.
 
 ## 6. Cobertura de Requisitos
+Mapa simplificado (RF / HU → Componentes responsáveis) com observações de atendimento:
 
-Mapeamento direto (resumo) entre requisitos e componentes/decisões:
+- RF01 (Cadastro de pacientes): PatientService, API, DB, Auth. Critério de aceite (validação e duplicidade) → Implementado no PatientService; gap: CPF não declarado no RF01 (ver Seção 5).
+- RF02 (Editar paciente): PatientService, API, DB, Audit.
+- RF03 (Pesquisar pacientes): PatientService, Search Index (opcional), API, UI. Suporta buscas parciais (HU02).
+- RF04 (Exibir agenda): AppointmentService, Schedule, API, UI, Cache. Suporta views diária/semana (HU03) e navegação.
+- RF05 (Registrar consulta): AppointmentService, Schedule, DB, Notification, API, Auth. Garante seleção apenas de horários disponíveis.
+- RF06 (Impedir duplo agendamento): AppointmentService + DB (controle de unicidade/lock), Schedule. Risco mitigado por transação atômica.
+- RF07 (Cancelar consulta): AppointmentService, DB, Notification, Audit, API.
+- RF08 (Remarcar consulta): AppointmentService, Schedule, DB, Notification, Audit. Lógica para liberar slot anterior implementada no fluxo.
+- RF09 / HU08 (Enviar e-mail de confirmação em até 5 minutos): Notification, EmailGateway, DB. SLA suportado por dispatcher com retry; precisa definir SLAs de infraestrutura externa.
+- RF10 / HU09 (E-mails de cancelamento/remarcação): Notification, EmailGateway, DB.
+- RF11 (Configurar horários de atendimento): Schedule, API, UI. Permitirá definição de grade de horários por profissional.
+- RF12 / HU07 (Histórico de consultas): AppointmentService, DB, API, UI. Histórico com status, data e horário.
 
-- RF01 (cadastrar pacientes)
-  - Componentes: Interface Web, Gateway/API, PatientService, Repository
-  - Observações: validação de e‑mail no serviço, verificação de duplicidade (CPF/e‑mail) em PatientService; HU01 critérios aplicados.
+Relação com RNFs:
+- RNF01 (Autenticação): Auth + API.
+- RNF02 (LGPD): DB, Audit, PatientService (processos de anonimização/exclusão).
+- RNF03 (Usabilidade - calendário): UI, Calendar Renderer, API.
+- RNF04 (Desempenho 2s): Cache, API, AppointmentService. Requer testes de carga.
+- RNF05 (Envio em até 5 minutos): Notification, EmailGateway com retry e SLA operacional de filas.
+- RNF06 (Disponibilidade 99%): arquitetura redundante, serviços stateless e mecanismos de failover operacionais.
+- RNF07 (Compatibilidade navegadores): UI com práticas web compatíveis.
+- RNF08 (Logs): Audit component e políticas de retenção.
 
-- RF02 (editar paciente)
-  - Componentes: Interface Web, PatientService, Repository, LoggingService
-  - Observações: alteração auditada; controle de permissões via AuthService (RNF01).
-
-- RF03 (pesquisar pacientes)
-  - Componentes: Interface Web, Gateway/API, PatientService, SearchIndex
-  - Observações: pesquisa parcial suportada por SearchIndex; paginação recomendada.
-
-- RF04 (exibir agenda)
-  - Componentes: Interface Web, CalendarService, Cache Layer
-  - Observações: visões diária/semanal, navegação entre dias/semanas; uso de cache para desempenho (RNF04, RNF03).
-
-- RF05 (registrar consulta)
-  - Componentes: AppointmentService, CalendarService, PatientService, Repository, NotificationService, EmailQueue
-  - Observações: transação e checagem de conflito; evento para envio de e‑mail (RNF05).
-
-- RF06 (impedir duplo agendamento)
-  - Componentes: AppointmentService, CalendarService, Repository
-  - Observações: bloqueios/cheques transacionais ou estratégia optimista com retries.
-
-- RF07 (cancelar consulta)
-  - Componentes: AppointmentService, CalendarService, NotificationService, Repository, LoggingService
-  - Observações: confirmação UI; liberação imediata de slot; enfileiramento de e‑mail de cancelamento.
-
-- RF08 (remarcar consulta)
-  - Componentes: AppointmentService, CalendarService, NotificationService, Repository
-  - Observações: seleção de novo horário disponível; liberação do anterior; envio de e‑mail.
-
-- RF09/RF10 (e‑mails de confirmação/cancelamento/remarcação)
-  - Componentes: NotificationService, EmailQueue, Email Delivery Worker
-  - Observações: assíncrono, retries, monitoração de SLA (RNF05).
-
-- RF11 (configurar grade de horários)
-  - Componentes: CalendarService, Interface Web, Repository
-  - Observações: UI de administração (perfil administrador); validação de regras da grade.
-
-- RF12 (histórico de consultas)
-  - Componentes: PatientService, AppointmentService, Repository, Interface Web
-  - Observações: histórico com status; acesso a partir do cadastro do paciente (HU07).
-
-- RNF01 (autenticação)
-  - Componentes: AuthService, Gateway/API
-  - Observações: roles (recepcionista, administrador) aplicadas.
-
-- RNF02 (LGPD)
-  - Componentes: PatientService, Repository, LoggingService, Backup & Retention
-  - Observações: criptografia, anonimização, políticas de retenção.
-
-- RNF03 (compatibilidade UI e visual calendário)
-  - Componentes: Interface Web
-  - Observações: suporte principais navegadores.
-
-- RNF04 (desempenho agenda ≤ 2s)
-  - Componentes: Cache Layer, CalendarService, API
-  - Observações: caching, pré-busca e otimização de queries.
-
-- RNF05 (envio do e‑mail ≤ 5 minutos)
-  - Componentes: NotificationService, EmailQueue, Workers
-  - Observações: monitoração e alertas de SLA.
-
-- RNF06 (99% uptime durante horário da clínica)
-  - Componentes: Infraestrutura geral (redundância), Monitoring/Health checks
-  - Observações: definição do horário de funcionamento pendente.
-
-- RNF07 (compatibilidade navegadores)
-  - Componentes: Interface Web
-  - Observações: testes cross-browser.
-
-- RNF08 (logs operações críticas)
-  - Componentes: Logging/AuditService
-  - Observações: registros de criação, cancelamento, remarcação; definir retenção.
+Observação: Para cumprir RNF04 e RNF05 é necessário estabelecer métricas/alertas e testes de performance.
 
 ## 7. Gap Analysis
 
-Identificação de lacunas na especificação, impacto arquitetural e recomendações.
+1. Gap: Identificador Único do Paciente (CPF)
+   - Descrição: HU01 exige bloqueio de duplicidade por CPF ou e-mail, porém RF01 não menciona CPF como campo obrigatório.
+   - Impacto arquitetural: altera modelagem do paciente, formato/funções de validade, requisitos LGPD (CPF é dado sensível).
+   - Recomendação: decidir se CPF será obrigatório; definir formato e proteção (criptografia em repouso, pseudonimização) e incluir no modelo de dados.
 
-1. Lacuna: Identificador único do paciente (CPF) — inconsistência entre HU01 e RF01
-   - Impacto: definição do esquema de dados, regras de duplicidade, necessidades legais.
-   - Risco: implementação de duplicidade incorreta; conflitos legais/compliance.
-   - Recomendação: confirmar campos obrigatórios (CPF?) e regras de validação; documentar política de non-duplication (prioridade: CPF > e‑mail).
+2. Gap: Duração de consulta e granularidade de slots
+   - Descrição: requisitos não especificam duração da consulta nem se os horários são slots fixos ou intervalos variáveis.
+   - Impacto: motor de grade (Schedule) precisa dessa informação para calcular disponibilidade e impedir sobreposição.
+   - Recomendação: especificar duração padrão, possibilidade de variação por tipo de atendimento e regras de buffer entre consultas.
 
-2. Lacuna: Duração de consulta, granularidade de slots e buffers
-   - Impacto: CalendarService precisa conhecer duração e restrições; UI e lógica de disponibilidade dependem disso.
-   - Risco: agendamentos inválidos, sobreposição não prevista.
-   - Recomendação: especificar duração padrão (minutos), possibilidade de customização por profissional, e regra de buffer entre consultas.
+3. Gap: Multi-profissionais / multi-salas
+   - Descrição: RF fala "agenda do profissional", mas não detalha se haverá múltiplos profissionais simultâneos e alocação de salas.
+   - Impacto: modelo de dados e validação de disponibilidade podem precisar de dimensão adicional (profissional, sala).
+   - Recomendação: indicar se o sistema deve suportar múltiplos profissionais e recursos associados.
 
-3. Lacuna: Regras de remarcação e cancelamento (prazos, políticas)
-   - Impacto: regras de negócio em AppointmentService; notificações e possíveis validações de permissão.
-   - Risco: divergências entre UI e processos operacionais.
-   - Recomendação: definir janelas mínimas para cancelamento/remarcação sem penalidade e regras de autorização.
+4. Gap: Políticas de cancelamento/remarcação (janelas e restrições)
+   - Descrição: Não há regras sobre antecedência mínima, taxas ou limites de remarcação.
+   - Impacto: regras embutidas no AppointmentService e notificações.
+   - Recomendação: definir regras de negócio para permitir implementação consistente.
 
-4. Lacuna: Definição exata do "horário de funcionamento da clínica" para cálculo do uptime
-   - Impacto: planejamento de disponibilidade e manutenção.
-   - Recomendação: acordar horário (p. ex. dias úteis e horários) e converter 99% em janelas de manutenção aceitáveis.
+5. Gap: Estratégia de recuperação/backup e RTO/RPO
+   - Descrição: RNF06 pede disponibilidade 99% mas não detalha RTO/RPO nem operação de recuperação.
+   - Impacto: especificação de infraestrutura e procedimentos operacionais.
+   - Recomendação: definir RTO, RPO e procedimentos de failover.
 
-5. Lacuna: Política de retenção e anonimização de dados (LGPD)
-   - Impacto: Backup & Retention, LoggingService, endpoints de exclusão/anonymize.
-   - Recomendação: definir prazos legais/operacionais para retenção e processo para solicitação de eliminação/anonymização.
+6. Gap: Entregabilidade de e-mail e tratamento de bounces
+   - Descrição: RNF05 requer envio em até 5 minutos, mas não trata bounces, filas de spam ou alternativa de comunicação.
+   - Impacto: Notificações podem falhar e pacientes não informados.
+   - Recomendação: definir política de retry, alertas a recepção em caso de falha e possível canal alternativo (ex.: SMS).
 
-6. Lacuna: Estratégia de autenticação detalhada (MFA/SSO)
-   - Impacto: AuthService design e UX.
-   - Recomendação: decidir métodos de autenticação e requisitos de segurança (força da senha, rotatividade, MFA se necessário).
+7. Gap: Política de logs e retenção sob LGPD
+   - Descrição: RNF02 e RNF08 exigem conformidade, mas períodos de retenção e escopo de logs não definidos.
+   - Impacto: armazenamento e requisitos legais.
+   - Recomendação: definir política de retenção, mecanismo para atender pedidos de exclusão e anonimização.
 
-7. Lacuna: Exigência de logs de auditoria — retenção, formato e exportação
-   - Impacto: arquitetura de Logging/AuditService, custos de armazenamento.
-   - Recomendação: definir período de retenção e requisitos de exportação/consulta para auditoria legal.
+8. Gap: Localização / timezone e formato de datas
+   - Descrição: Não há definição de timezone e formato regional usado em e-mails e UI.
+   - Impacto: possíveis confusões em horários comunicados ao paciente.
+   - Recomendação: definir timezone da clínica e política de conversão/armazenamento de datas (recomenda-se armazenar em formato consistente).
 
-8. Lacuna: Política de SLA para envio de e‑mails além do tempo máximo (5 minutos)
-   - Impacto: dimensionamento de EmailQueue, alerting.
-   - Recomendação: definir percentil aceitável (p. ex. 95% até 5 minutos) e escalonamento em caso de falha.
+9. Gap: Testes de carga e critérios de aceitação de performance
+   - Descrição: RNF04 e RNF05 requerem metas; falta definição de ramp-up, carga simultânea e métricas de sucesso.
+   - Impacto: dimensionamento e tuning.
+   - Recomendação: elaborar plano de testes com cenários representativos de uso.
 
-9. Lacuna: Tratamento de fusos horários / horário de verão
-   - Impacto: CalendarService e exibição para pacientes/profissionais.
-   - Recomendação: definir política de timezone (normalmente horário local da clínica) e testes para mudanças de horário.
+10. Gap: Acesso do paciente ao histórico ou painel do paciente
+    - Descrição: HUs focam recepcionista e notificações por e-mail; não há HU para painel do paciente.
+    - Impacto: caso futuro exija acesso por paciente, design precisa suportar autenticação e consentimentos.
+    - Recomendação: avaliar necessidade futura e se deve ser considerado desde já.
 
-10. Lacuna: Disponibilidade de canais além do e‑mail (ex.: SMS, push)
-    - Impacto: notificações futuras.
-    - Recomendação: preparar NotificationService com camada de abstração para suportar múltiplos canais no futuro.
+Resumo de ações imediatas:
+- Definir CPF como campo obrigatório ou remover da regra de duplicidade.
+- Especificar duração de consultas, regras de buffer e comportamento da grade.
+- Determinar políticas de retenção LGPD e RTO/RPO.
+- Elaborar templates de e-mails e política de retry/bounce.
+- Fornecer estimativas de carga.
 
-11. Lacuna: Regras de concorrência entre múltiplos pontos de atendimento/profissionais
-    - Impacto: CalendarService modelagem — se profissionais compartilham salas/recursos, conflitos adicionais surgem.
-    - Recomendação: confirmar se existem recursos/recintos compartilhados e expandir modelo de slot.
+---
 
-12. Lacuna: Testes automatizados e critérios de aceitação operacionais
-    - Impacto: qualidade e implementação contínua.
-    - Recomendação: definir suíte de testes integrados/end-to-end cobrindo conflito de agendamento, envio de e‑mail, busca e autenticação.
-
-Resumo das ações recomendadas para o time de desenvolvimento / PO:
-- Preencher as pendências 1–7 com PO/Stakeholders antes do início do sprint de implementação.
-- Definir política de dados (retention/consent) com equipe jurídica para atender LGPD.
-- Elaborar contratos de SLA internos para email/serviços e métricas a monitorar.
-- Documentar regras de negócios de agendamentos (duração, buffers, políticas de cancelamento/remarcação).
-- Planejar testes de carga para validar RNF04 e dimensionamento de caches/queues.
-
-— Fim do relatório —
+Fim do relatório. Se desejar, posso:
+- Gerar diagramas adicionais (classe detalhada do domínio) ou especificações de APIs (contratos REST/DTOs) mantendo neutralidade tecnológica;
+- Propor fluxo de testes de carga e critérios de aceitação técnicos;
+- Elaborar proposta de políticas LGPD e modelos de registro de consentimento.

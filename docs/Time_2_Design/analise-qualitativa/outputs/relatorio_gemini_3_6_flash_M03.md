@@ -1,233 +1,346 @@
 # Relatório Técnico de Arquitetura de Software
 
+---
+
 ## 1. Identificação das HUs
 
-Abaixo apresenta-se o mapeamento consolidado das Histórias de Usuário (HUs), relacionando seus respectivos perfis, objetivos, escopo funcional e critérios de aceite chave.
+Este documento estabelece o projeto arquitetural para a **Plataforma de Marketplace para Artesãos**, garantindo o alinhamento entre as necessidades do negócio, os aspectos funcionais e as restrições operacionais/não funcionais.
 
-| HU ID | Perfil | Resumo do Objetivo | Critérios de Aceite Relevantes |
-| :--- | :--- | :--- | :--- |
-| **HU01** | Artesão | Cadastrar produtos com atributos e fotos. | OBRIGATÓRIOS: Nome, preço e quantidade. Múltiplas fotos. Publicação imediata no catálogo após cadastro. |
-| **HU02** | Artesão | Gerenciar estoque dos produtos. | Atualização manual de estoque. Decremento automático na venda. Bloqueio e destaque para estoque zerado. |
-| **HU03** | Artesão | Acompanhar e atualizar status de subpedidos. | Listagem com detalhes. Estados do ciclo: Recebido, Em preparação, Enviado, Entregue. Notificação ao comprador. |
-| **HU04** | Artesão | Consultar painel financeiro. | Exibição por venda (valor bruto, comissão retida, líquido). Totais por período. Destaque para saldo disponível. |
-| **HU05** | Artesão | Solicitar saque do saldo disponível. | Coleta de dados bancários. Registro da solicitação (Data, Valor, Status). Atualização imediata do saldo líquido. |
-| **HU06** | Artesão | Responder avaliações de compradores. | Resposta única por avaliação. Exibição pública abaixo do comentário. Imutabilidade da resposta. |
-| **HU07** | Comprador | Navegar e pesquisar no catálogo. | Navegação por categorias. Busca por termo em tempo real. Ocultação padrão de produtos sem estoque. |
-| **HU08** | Comprador | Gerenciar carrinho e realizar checkout. | Carrinho consolida itens de múltiplos artesãos. Alteração de quantidades. Checkout com pagamento integrado e transacional. |
-| **HU09** | Comprador | Acompanhar status dos pedidos e subpedidos. | Visualização detalhada do progresso de entrega em tempo real, dividida por subpedido de cada artesão. |
-| **HU10** | Comprador | Avaliar produto após entrega. | Avaliação (nota 1-5 + texto) permitida apenas após status "Entregue". Avaliação única por item. |
-| **HU11** | Admin | Gerenciar categorias do catálogo. | Criar, editar e remover categorias. Confirmação obrigatória ao remover categoria com produtos e notificação para reclassificação. |
-| **HU12** | Admin | Configurar percentual de comissão. | Aplicação do novo percentual apenas em vendas futuras. Registro de log de alteração. Transparência ao artesão. |
+### Mapeamento das Histórias de Usuário (HUs) e Perfis
+* **Perfil: Artesão (Vendedor)**
+  * **HU01 — Cadastrar produto com fotos:** Permite o cadastro e publicação de itens artesanais com suporte a fotos. (*Mapeia: RF04, RF06, RNF04*)
+  * **HU02 — Gerenciar estoque dos produtos:** Permite atualização manual e garante o decremento e bloqueio automático pós-venda. (*Mapeia: RF07, RF08, RF09*)
+  * **HU03 — Acompanhar e atualizar status dos pedidos recebidos:** Permite avanço de estados do subpedido (recebido, em preparação, enviado, entregue). (*Mapeia: RF20, RF21*)
+  * **HU04 — Visualizar painel financeiro:** Apresenta demonstrativo detalhado de vendas, taxas de comissão e saldo líquido. (*Mapeia: RF28, RF29, RNF06*)
+  * **HU05 — Solicitar saque do saldo disponível:** Permite resgate de valores acumulados para conta bancária. (*Mapeia: RF30, RNF09*)
+  * **HU06 — Responder avaliações de compradores:** Permite interação direta em réplica única pública. (*Mapeia: RF25*)
+
+* **Perfil: Comprador**
+  * **HU07 — Navegar e pesquisar produtos:** Fornece busca textual e por categorias com filtros de disponibilidade. (*Mapeia: RF10, RF11, RNF05*)
+  * **HU08 — Adicionar itens ao carrinho e finalizar compra:** Suporta múltiplos artesãos em um único carrinho com desacoplamento em subpedidos e pagamento transacional único. (*Mapeia: RF13, RF14, RF15, RF16, RF17, RF22, RNF08*)
+  * **HU09 — Acompanhar status dos pedidos:** Acompanhamento em tempo real dos subpedidos. (*Mapeia: RF21, RF22*)
+  * **HU10 — Avaliar produto após entrega:** Libera avaliação condicional (nota 1 a 5 e comentário) pós-confirmação de entrega. (*Mapeia: RF23, RF24*)
+
+* **Perfil: Administrador**
+  * **HU11 — Gerenciar categorias da plataforma:** Gestão de taxonomia e regras de remoção com segurança de catálogo. (*Mapeia: RF12*)
+  * **HU12 — Configurar percentual de comissão:** Define a taxa global de comissão da plataforma com retenção de histórico imutável. (*Mapeia: RF26, RF27, RNF09, RNF13*)
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Visão Geral da Arquitetura de Componentes
-
-O diagrama abaixo apresenta os subsistemas conceituais da plataforma, suas fronteiras operacionais e as dependências de integração.
+### 2.1 Visão Geral dos Componentes da Arquitetura (Visão Lógica)
 
 ```mermaid
-componentDiagram
-    [Interface do Usuário (Web/Mobile)] as UI
+graph TD
+    %% User Interfaces
+    subgraph UI ["Camada de Apresentação (Interface Responsiva - RNF07)"]
+        WebClient["Aplicação Web / Mobile Browser (RNF10)"]
+    end
 
-    package "Fronteira da Aplicação Marketplace" {
-        [Módulo de Autenticação e Perfis] as ModAuth
-        [Módulo de Catálogo e Categorias] as ModCat
-        [Módulo de Estoque] as ModEstoque
-        [Módulo de Carrinho e Checkout] as ModCheckout
-        [Módulo de Pedidos e Subpedidos] as ModPedidos
-        [Módulo Financeiro e Comissões] as ModFin
-        [Módulo de Avaliações] as ModAval
-        [Módulo de Notificações] as ModNotif
-        [Módulo de Auditoria e Logs] as ModAudit
-    }
+    %% API Gateway & Auth
+    subgraph Edge ["Camada de Fronteira e Segurança"]
+        APIGateway["API Gateway / Roteador de Recomposição"]
+        AuthModule["Módulo de Autenticação e Autorização (RBAC - RNF01, RNF02)"]
+    end
 
-    package "Serviços Externos / Integrações" {
-        [Gateway de Pagamentos Externo] as ExtPayment
-        [Provedor de Object Storage] as ExtStorage
-    }
+    %% Application Core Domain Services
+    subgraph CoreDomain ["Serviços do Domínio Central"]
+        UserService["Serviço de Gestão de Usuários (RF01, RF02, RF03)"]
+        CatalogService["Serviço de Catálogo e Estoque (RF04-RF12)"]
+        OrderService["Serviço de Carrinho e Pedidos (RF13-RF16, RF20-RF22)"]
+        ReviewService["Serviço de Avaliações (RF23-RF25)"]
+        FinanceService["Serviço Financeiro e Comissões (RF26-RF30)"]
+        NotificationService["Serviço de Notificações (RF18, RF19)"]
+        AuditService["Serviço de Auditoria e Logs (RNF09, RNF13)"]
+    end
 
-    UI --> ModAuth
-    UI --> ModCat
-    UI --> ModCheckout
-    UI --> ModPedidos
-    UI --> ModFin
-    UI --> ModAval
+    %% External Interfaces
+    subgraph ExternalServices ["Provedores e Serviços Externos"]
+        PaymentGateway["Gateway de Pagamento Externo (PCI-DSS - RNF03)"]
+        ObjectStorage["Serviço Externo de Armazenamento de Objetos (RNF04)"]
+        EmailGateway["Provedor Externo de E-mail (RF18, RF19)"]
+    end
 
-    ModCat --> ExtStorage : Upload/Retrieval de Fotos
-    ModCheckout --> ExtPayment : Processamento de Pagamento (PCI-DSS)
-    ModCheckout --> ModEstoque : Reserva/Baixa Transacional
-    ModCheckout --> ModPedidos : Criação de Pedido e Subpedidos
-    ModCheckout --> ModFin : Cálculo e Retenção de Comissão
-    ModPedidos --> ModNotif : Disparo de Alertas
-    ModFin --> ModAudit : Registros Imutáveis
-    ModAuth --> ModAudit : Logs de Acesso/Alteração
+    %% Relationships
+    WebClient --> APIGateway
+    APIGateway --> AuthModule
+    APIGateway --> UserService
+    APIGateway --> CatalogService
+    APIGateway --> OrderService
+    APIGateway --> ReviewService
+    APIGateway --> FinanceService
+
+    CatalogService --> ObjectStorage
+    OrderService --> PaymentGateway
+    OrderService --> CatalogService
+    OrderService --> FinanceService
+    OrderService --> NotificationService
+    FinanceService --> AuditService
+    NotificationService --> EmailGateway
 ```
 
-### 2.2. Diagrama de Sequência: Processamento de Checkout e Split de Subpedidos (HU08, HU02, RF09, RF22, RF26, RNF08)
+---
 
-O diagrama a seguir detalha a orquestração transacional do checkout contendo itens de múltiplos artesãos, a geração dos subpedidos correspondentes e a baixa de estoque.
+### 2.2 Diagrama de Sequência: Processamento de Pedido Multi-Artesão e Transação de Pagamento
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Comprador
+    actor Comprador as Comprador
     participant UI as Interface do Usuário
-    participant Checkout as Módulo de Checkout
-    participant Estoque as Módulo de Estoque
-    participant Payment as Gateway de Pagamentos
-    participant Pedidos as Módulo de Pedidos
-    participant Financeiro as Módulo Financeiro
-    participant Notif as Módulo de Notificações
-    actor Artesao as Artesão
+    participant OrderSvc as Serviço de Pedidos
+    participant CatalogSvc as Serviço de Catálogo e Estoque
+    participant PaymentSvc as Abstração de Pagamento
+    participant ExtPay as Gateway de Pagamento (Externo)
+    participant FinSvc as Módulo Financeiro (Ledger)
+    participant NotifSvc as Serviço de Notificação
 
-    Comprador ->> UI: Finalizar Compra (Carrinho Multi-Artesão)
-    UI ->> Checkout: Processar Checkout (Dados Pagamento + Itens)
+    Comprador ->> UI: Submete Checkout (Itens de Artesãos A e B)
+    UI ->> OrderSvc: criarPedido(dadosCheckout, dadosPagamento)
     
-    activate Checkout
-    Checkout ->> Estoque: Validar Disponibilidade de Estoque
+    OrderSvc ->> CatalogSvc: reservarEstoque(itens)
     alt Estoque Insuficiente
-        Estoque-->>Checkout: Erro (Item sem estoque)
-        Checkout-->>UI: Exibir Falha de Estoque
-    else Estoque OK
-        Checkout ->> Payment: Solicitar Transação de Pagamento (Cartão/PIX)
-        activate Payment
-        alt Pagamento Recusado / Falha
-            Payment-->>Checkout: Transação Rejeitada
-            Checkout-->>UI: Notificar Falha de Pagamento (Sem alteração de estoque)
+        CatalogSvc-->>OrderSvc: ERRO: Estoque Indisponível
+        OrderSvc-->>UI: Falha na criação do pedido (Item esgotado)
+    else Estoque Reservado com Sucesso
+        CatalogSvc-->>OrderSvc: Confirmado (Reserva Temporária)
+        OrderSvc ->> PaymentSvc: processarPagamento(valorTotal, tokenPagamento)
+        PaymentSvc ->> ExtPay: autorizarCobranca(token, valorTotal)
+        
+        alt Falha no Pagamento (RNF08)
+            ExtPay-->>PaymentSvc: Negado / Falha
+            PaymentSvc-->>OrderSvc: Falha na Transação
+            OrderSvc ->> CatalogSvc: reverterReservaEstoque(itens)
+            OrderSvc-->>UI: Erro no Pagamento (Nenhum valor cobrado, estoque mantido)
         else Pagamento Aprovado
-            Payment-->>Checkout: Sucesso na Transação
-            deactivate Payment
+            ExtPay-->>PaymentSvc: Sucesso (Transação ID)
+            PaymentSvc-->>OrderSvc: Confirmado
             
-            Checkout ->> Estoque: Decrementar Estoque Automático (RF09)
-            Checkout ->> Pedidos: Criar Pedido Consolidador e Gerar Subpedidos por Artesão (RF22)
-            Checkout ->> Financeiro: Registrar Lançamento Financeiro e Calcular Comissão (RF26)
-            Checkout ->> Notif: Solicitar Notificações de Confirmação (RF18, RF19)
+            OrderSvc ->> OrderSvc: decomporEmSubpedidos(ArtesaoA, ArtesaoB)
+            OrderSvc ->> CatalogSvc: confirmarDecrementoDefinitivo(itens)
+            OrderSvc ->> FinSvc: registrarTransacaoFinanceira(Subpedidos, ComissoesVigentes)
             
-            Notif-->>Comprador: E-mail de Confirmação do Pedido
-            Notif-->>Artesao: E-mail de Notificação de Novo Subpedido
+            par Notificações Assíncronas
+                OrderSvc ->> NotifSvc: notificarCompradorConfirmacao(PedidoID)
+                OrderSvc ->> NotifSvc: notificarArtesaoNovoPedido(ArtesaoA, SubpedidoA)
+                OrderSvc ->> NotifSvc: notificarArtesaoNovoPedido(ArtesaoB, SubpedidoB)
+            end
             
-            Checkout-->>UI: Confirmar Pedido com Sucesso
+            OrderSvc-->>UI: Pedido Confirmado com Sucesso
+            UI-->>Comprador: Exibe Tela de Confirmação e Subpedidos
         end
     end
-    deactivate Checkout
+```
+
+---
+
+### 2.3 Modelo Estrutural do Domínio Financeiro e Pedidos (Diagrama de Classes Aumentado)
+
+```mermaid
+classDiagram
+    class Pedido {
+        +String id
+        +String compradorId
+        +DateTime dataCriacao
+        +Decimal valorTotal
+        +String statusGeral
+    }
+
+    class SubPedido {
+        +String id
+        +String pedidoPaiId
+        +String artesaoId
+        +Decimal valorBruto
+        +Decimal valorComissaoRetida
+        +Decimal valorLiquidoArtesao
+        +EnumStatusPedido status
+        +atualizarStatus(novoStatus)
+    }
+
+    class ItemSubPedido {
+        +String produtoId
+        +Integer quantidade
+        +Decimal precoUnitario
+    }
+
+    class RegistroLedgerFinanceiro {
+        +String id
+        +DateTime timestamp
+        +String tipoOperacao
+        +Decimal valorBruto
+        +Decimal percentualComissao
+        +Decimal valorComissao
+        +Decimal valorLiquido
+        +String artesaoId
+        +String subPedidoId
+    }
+
+    class CarteiraArtesao {
+        +String artesaoId
+        +Decimal saldoDisponivel
+        +Decimal saldoEmProcessamentoSaque
+        +solicitarSaque(valor, dadosBancarios)
+    }
+
+    Pedido "1" *-- "1..*" SubPedido : Decompõe em
+    SubPedido "1" *-- "1..*" ItemSubPedido : Contém
+    SubPedido "1" -- "1" RegistroLedgerFinanceiro : Gera
+    CarteiraArtesao "1" -- "0..*" RegistroLedgerFinanceiro : Acumula Historico
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### ADR 01: Divisão Logica de Pedidos em Subpedidos por Artesão
-* **Contexto:** Um único carrinho de compras pode conter produtos pertencentes a diferentes artesãos (RF22, HU08).
-* **Decisão:** A plataforma adotará o padrão de *Pedido Principal e Subpedidos*. O pedido consolidador atende à visão do comprador (transação financeira única), enquanto cada artesão gerencia individualmente o seu *Subpedido* associado (ciclo de vida de entrega, alteração de status e comissionamento).
-* **Consequências:** Garante o desacoplamento do ciclo de entrega entre vendedores. Facilita o rastreamento independente (HU03, HU09) e reduz complexidade na apuração do painel financeiro por artesão.
+### ADR-01: Decomposição de Pedidos Consolidados em Subpedidos por Artesão
+* **Contexto:** O requisito RF22 exige que o comprador consiga adquirir produtos de múltiplos artesãos em um único pedido/checkout (HU08), enquanto RF20 e HU03 exigem que cada artesão gerencie o ciclo de vida (status) de suas vendas de forma isolada.
+* **Decisão:** Adotar o padrão de *Order-Suborder Split*. O objeto `Pedido` atua como um agregador financeiro para a transação do comprador, enquanto objetos filhos `SubPedido` são instanciados por artesão. Cada `SubPedido` possui seu próprio ciclo de vida independente (Recebido, Em Preparação, Enviado, Entregue).
+* **Consequências:** Simplifica a gestão individual por artesão, desacopla a notificação e rastreio de logística, mas exige que a interface de acompanhamento do comprador (HU09) consolide as visões dos subpedidos.
 
-### ADR 02: Processamento Transacional Crítico (Atomicidade entre Pagamento e Estoque)
-* **Contexto:** Erros de pagamento não podem resultar em baixa de estoque ou cobranças parciais (RNF08, RF08, RF09).
-* **Decisão:** O pipeline de finalização de compra deve atuar sob o princípio da ACID/Saga Transacional Compensatória. O estoque é validado de forma otimista, a cobrança é executada via Gateway externo e, somente mediante a confirmação síncrona/webhook de aprovação, a baixa definitiva do estoque e a persistência dos subpedidos ocorrem de forma atômica.
-* **Consequências:** Impede consistência eventual indesejada no estoque e previne sobrevenda (*overbooking*).
+### ADR-02: Transacionalidade do Processamento de Pagamento e Estoque (Two-Phase Commit Semântico)
+* **Contexto:** Os requisitos RNF08 e RF09 determinam que a compra deve ser estritamente transacional: falhas no pagamento impedem o decremento de estoque e não devem gerar cobranças parciais.
+* **Decisão:** Implementar padrão de reserva temporária de estoque com *Rollback* Automático via SAGA de Orquestração ou Transação ACID local na camada de Pedidos. O decremento definitivo do estoque só é efetivado mediante a confirmação síncrona do gateway de pagamento.
+* **Consequências:** Garante consistência forte e impede *overselling* (vendas sem estoque disponível - RF08). Aumenta ligeiramente a complexidade da camada de integração de pagamentos.
 
-### ADR 03: Desacoplamento do Armazenamento de Arquivos via Object Storage
-* **Contexto:** Produtos possuem fotos que demandam alto desempenho e resiliência sem onerar a aplicação principal (RF04, RNF04).
-* **Decisão:** Todo conteúdo estático/binário (fotos de produtos) será armazenado em um serviço externo especializado de *Object Storage*. A aplicação armazenará exclusivamente as URLs assinadas/públicas correspondentes.
-* **Consequências:** Mantém o servidor de aplicação sem estado (*stateless*), viabiliza escalabilidade horizontal e atende rigorosamente ao RNF04.
+### ADR-03: Livro-Razão Financeiro Imutável (Ledger) para Transações e Saques
+* **Contexto:** Os requisitos RNF09, RF26, RF28, RF29 e RF30 exigem extrema auditabilidade e rastreabilidade sobre as vendas, comissões da plataforma e solicitações de saques. O requisito HU12 determina que alterações de taxa de comissão afetem apenas vendas futuras.
+* **Decisão:** Projetar o módulo financeiro baseado no padrão de *Append-Only Ledger* (Registro de Eventos Imutáveis). Toda venda confirmada gera um registro histórico contendo o valor bruto, o percentual de comissão **snapshot do momento da venda**, o valor retido e o valor líquido repassado.
+* **Consequências:** Elimina inconsistências financeiras por recálculos históricos retroativos. Garante aderência ao RNF09 e simplifica o cálculo do painel financeiro (RNF06).
 
-### ADR 04: Regras de Imutabilidade Financeira e Log de Auditoria
-* **Contexto:** Operações de venda, comissionamento e saques exigem idoneidade e conformidade regulatória/LGPD (RNF09, RNF13, RF26, HU12).
-* **Decisão:** Todas as movimentações financeiras e alterações críticas de configuração (como mudanças de taxa de comissão pelo Admin) serão registradas em um repositório append-only (somente leitura e escrita de novos eventos imutáveis), contendo *timestamp*, ator, valor e snapshot das regras aplicadas no momento da transação.
-* **Consequências:** A alteração futura na taxa de comissão (HU12) não afetará transações passadas. Facilita auditorias e suporta o cumprimento da rastreabilidade exigida.
+### ADR-04: Abstração do Armazenamento de Arquivos de Mídia
+* **Contexto:** O requisito RNF04 exige o uso de serviço externo de armazenamento de objetos desacoplado do servidor da aplicação para as fotos dos produtos (HU01).
+* **Decisão:** Criar uma interface abstrata de repositório de arquivos de mídia (*Media Storage Interface*). A aplicação nunca grava arquivos localmente em seu disco de execução; apenas emite URLs assinadas para upload/download direto no serviço de objetos.
+* **Consequências:** Garante escalabilidade horizontal da aplicação e diminui a carga nos servidores de processamento.
 
-### ADR 05: Modelo de Identidade com Suporte a Multi-Perfil Simultâneo
-* **Contexto:** O mesmo usuário pode atuar como comprador e artesão simultaneamente (RF01, RF03).
-* **Decisão:** O modelo de identidade desassocia a entidade *Conta/Usuário* das papéis de autorização (*Roles/Profiles*). A autorização em nível de API verificará as permissões contextuais ativas da requisição.
-* **Consequências:** Elimina a necessidade de contas duplicadas para a mesma pessoa física, simplificando a jornada do usuário e garantindo a segregação de acessos (RNF01).
+### ADR-05: Identidade Única com Múltiplos Perfis de Acesso (Dual-Role Identity)
+* **Contexto:** Os requisitos RF01 e RF03 especificam que um mesmo usuário pode atuar simultaneamente como comprador e como artesão.
+* **Decisão:** Modelar a entidade de Identidade (Usuário) separada das entidades de Perfil (*Role Profile*). O token de sessão do usuário carrega a lista de permissões ativas (`ROLE_BUYER`, `ROLE_ARTISAN`, `ROLE_ADMIN`), permitindo alternância de contexto no front-end sem necessidade de múltiplos cadastros ou novos logins.
+* **Consequências:** Melhora a experiência do usuário (UX) e atende plenamente ao RF03 e RNF01.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
-| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
+| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite / RF / RNF) |
 | :--- | :--- | :--- | :--- |
-| **Módulo de Autenticação e Perfis** | Gerenciar contas, autenticação de usuários, perfis simultâneos e hash de senhas seguros (bcrypt). | Módulo de Auditoria e Logs, Interface do Usuário | RF01, RF02, RF03, RNF01, RNF02 |
-| **Módulo de Catálogo e Categorias** | Gerenciar produtos, categorias, buscas por termos e vinculação de imagens. | Provedor de Object Storage, Módulo de Avaliações, Interface | RF04, RF05, RF06, RF10, RF11, RF12, HU01, HU07, HU11 |
-| **Módulo de Gestão de Estoque** | Controlar quantidades disponíveis, atualizar estoque manualmente e efetuar baixas automáticas pós-venda. | Módulo de Carrinho e Checkout, Módulo de Catálogo | RF07, RF08, RF09, HU02 |
-| **Módulo de Carrinho e Checkout** | Agrupar itens de compras, consolidar totais, orquestrar transações de pagamento e criar pedidos. | Gateway de Pagamentos, Módulo de Estoque, Módulo de Pedidos, Módulo Financeiro | RF13, RF14, RF15, RF16, RF17, HU08, RNF08 |
-| **Módulo de Pedidos e Subpedidos** | Gerenciar o ciclo de vida dos pedidos, faturar subpedidos por artesão e atualizar status de entrega. | Módulo de Notificações, Módulo Financeiro, Interface | RF18, RF20, RF21, RF22, HU03, HU09 |
-| **Módulo Financeiro e Comissões** | Calcular comissões, gerenciar saldos de artesãos, registrar histórico de movimentações e processar saques. | Módulo de Auditoria, Módulo de Pedidos, Interface | RF26, RF27, RF28, RF29, RF30, HU04, HU05, HU12 |
-| **Módulo de Avaliações** | Processar notas, comentários textuais e respostas públicas do artesão vinculadas aos produtos. | Módulo de Catálogo, Módulo de Pedidos | RF23, RF24, RF25, HU06, HU10 |
-| **Módulo de Notificações** | Enviar alertas transacionais via e-mail e notificações internas na plataforma para compradores e artesãos. | Módulo de Pedidos, Módulo de Checkout | RF18, RF19, HU03 |
-| **Módulo de Auditoria e Logs** | Gravar registros imutáveis de transações financeiras, alterações de taxa de comissão e eventos críticos. | Módulo Financeiro, Módulo de Autenticação | RNF09, RNF13, HU12 |
-| **Provedor de Object Storage (Externo)** | Armazenar e servir arquivos de imagens de produtos de forma escalável e desacoplada. | Módulo de Catálogo | RF04, RNF04, HU01 |
-| **Gateway de Pagamentos (Externo)** | Processar transações financeiras sob regras PCI-DSS via comunicação segura. | Módulo de Carrinho e Checkout | RF16, RF17, RNF03, RNF08 |
+| **Serviço de Identidade e Acesso** | Gerenciar autenticação, cadastro de usuários, hash seguro de senhas e autorização baseada em papéis (RBAC). | Aplicação Web, Banco de Dados Principal | RF01, RF02, RF03, RNF01, RNF02, RNF11 |
+| **Serviço de Catálogo e Estoque** | Gerenciar categorias, cadastro de produtos, regras de estoque, busca/filtros e validação de disponibilidade. | Serviço de Armazenamento de Mídia, API Gateway, Serviço de Pedidos | RF04, RF05, RF06, RF07, RF08, RF09, RF10, RF11, RF12, HU01, HU02, HU07, HU11, RNF05 |
+| **Abstração de Armazenamento de Mídia** | Receber e servir imagens de produtos de forma desacoplada do servidor principal. | Serviço de Catálogo, Serviço Externo de Object Storage | RNF04, HU01 (Critério 2) |
+| **Serviço de Carrinho e Pedidos** | Gerenciar itens do carrinho, orquestrar checkout, decompor pedidos em subpedidos por artesão e gerenciar atualizações de status. | Serviço de Catálogo, Abstração de Pagamento, Serviço Financeiro, Serviço de Notificação | RF13, RF14, RF15, RF16, RF20, RF21, RF22, HU03, HU08, HU09, RNF08 |
+| **Abstração de Gateway de Pagamento** | Encapsular integração com gateway PCI-DSS, processar pagamentos de forma transacional sem armazenar dados sensíveis de cartão. | Gateway de Pagamento Externo, Serviço de Pedidos | RF16, RF17, RNF03, RNF08 |
+| **Serviço Financeiro e Ledger** | Calcular comissões, manter histórico imutável de transações, gerenciar saldo disponível e processar solicitações de saque. | Serviço de Pedidos, Serviço de Auditoria, API Gateway | RF26, RF27, RF28, RF29, RF30, HU04, HU05, HU12, RNF06, RNF09 |
+| **Serviço de Avaliações** | Permitir envio de notas/comentários pós-entrega e republicação de respostas pelos artesãos. | Serviço de Pedidos (validação de entrega), API Gateway | RF23, RF24, RF25, HU06, HU10 |
+| **Serviço de Notificações** | Enviar e-mails transacionais e notificações em plataforma sobre confirmações, vendas e atualizações de status. | Provedor Externo de E-mail, Serviço de Pedidos | RF18, RF19, HU03 (Critério 3), HU08 (Critério 3) |
+| **Serviço de Log e Auditoria** | Registrar eventos críticos e alterações de sistema (ex: mudança de comissão, saques, falhas de pagamento). | Serviço Financeiro, Serviço de Pedidos, Serviço de Identidade | RNF09, RNF13, HU12 (Critério 2) |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Definição do Mecanismo de Liquidação Financeira nos Saques (HU05 / RF30):**
-   * *Pendência:* O requisito especifica a solicitação de saque via dados bancários, mas não define se a liquidação com a instituição financeira será automatizada via Gateway/PIX ou se haverá uma etapa de aprovação e processamento manual por parte do Administrador.
-   * *Impacto:* Risco de atraso na integração bancária e necessidade de tela administrativa adicional para controle de saques pendentes.
+### Bloqueios Arquiteturais Identificados (Gaps de Requisito Operacional)
 
-2. **Regra de Exclusão de Categorias com Produtos Ativos (HU11 / RF12):**
-   * *Bloqueio Técnico:* HU11 especifica que produtos associados devem ser notificados ao artesão para reclassificação, mas não detalha para qual categoria o produto é temporariamente movido (ex: categoria padrão "Sem Categoria" ou "Rascunho/Despublicado").
-   * *Impacto:* Pode gerar inconsistência na navegação do catálogo (HU07) caso a reclassificação pelo artesão não ocorra imediatamente.
+1. **BLQ-01: Fluxo de Aprovação de Saque Bancário (HU05 / RF30)**
+   * *Pendência:* O requisito HU05 define que o artesão pode solicitar o saque do saldo disponível e que o valor entra "em processamento". No entanto, **não há especificação** se o processamento é automático (via integração de transferência bancária) ou se exige um fluxo de aprovação/liberação manual por parte do Administrador.
+   * *Impacto:* Risco no desenho do módulo de conciliação financeira e na interface do Administrador.
+   * *Ação Necessária:* Alinhamento com o PO para definir a regra de negócio do ciclo de vida do saque (ex: Pendente -> Aprovado -> Pago / Rejeitado).
 
-3. **Estratégia de Reserva Temporária de Estoque no Carrinho:**
-   * *Pendência:* Não está especificado se a inclusão do produto no carrinho (RF13) realiza a reserva temporária (com tempo de expiração) ou se a trava ocorre puramente no momento do pagamento (RF08, RF09).
-   * *Impacto:* Risco de concorrência onde dois compradores tentam pagar simultaneamente o mesmo item com apenas 1 unidade disponível.
+2. **BLQ-02: Regra de Expurgamento/Reclassificação em Exclusão de Categorias (HU11 / RF12)**
+   * *Pendência:* O critério de aceite da HU11 menciona que ao remover uma categoria, os artesãos devem ser notificados para reclassificação. Contudo, não especifica o que ocorre imediatamente com a visibilidade dos produtos afetados (ficam em uma categoria "Sem Categoria"? Ficam despublicados automaticamente?).
+   * *Impacto:* Risco de inconsistência na navegação do catálogo (RF10) ou quebra de filtros na busca de produtos.
+   * *Ação Necessária:* Definir se existirá uma categoria *fallback* padrão ("Outros") ou despublicação temporária automática.
+
+3. **BLQ-03: Política de Cancelamentos e Reembolsos Parciais por Subpedido**
+   * *Pendência:* A especificação contempla a divisão em subpedidos por artesão (RF22), mas omite o cenário de cancelamento individual por parte do comprador ou cancelamento por falta de item por um único artesão.
+   * *Impacto:* Necessidade de estorno parcial do pagamento no Gateway de Pagamento e estorno proporcional da comissão retida.
+   * *Ação Necessária:* Especificar os requisitos de estorno/cancelamento de subpedidos.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-A matriz abaixo comprova a total cobertura dos Requisitos Funcionais (RF) e Não Funcionais (RNF) pelos componentes e decisões arquiteturais propostas.
+### Matriz de Rastreabilidade Total (RFs e RNFs)
 
-| Requisito | Tipo | Componente / Decisão Responsável | Status de Cobertura |
-| :--- | :--- | :--- | :--- |
-| **RF01, RF02, RF03** | Funcional | Módulo de Autenticação e Perfis / ADR 05 | Coberto |
-| **RF04, RF05, RF06** | Funcional | Módulo de Catálogo e Categorias / ExtStorage / ADR 03 | Coberto |
-| **RF07, RF08, RF09** | Funcional | Módulo de Gestão de Estoque / ADR 02 | Coberto |
-| **RF10, RF11, RF12** | Funcional | Módulo de Catálogo e Categorias | Coberto |
-| **RF13, RF14, RF15, RF16, RF17** | Funcional | Módulo de Carrinho e Checkout / Gateway de Pagamentos | Coberto |
-| **RF18, RF19** | Funcional | Módulo de Notificações | Coberto |
-| **RF20, RF21, RF22** | Funcional | Módulo de Pedidos e Subpedidos / ADR 01 | Coberto |
-| **RF23, RF24, RF25** | Funcional | Módulo de Avaliações | Coberto |
-| **RF26, RF27, RF28, RF29, RF30** | Funcional | Módulo Financeiro e Comissões / ADR 04 | Coberto |
-| **RNF01, RNF02** | Não Funcional | Módulo de Autenticação (bcrypt / Perfil de Acesso) | Coberto |
-| **RNF03** | Não Funcional | Gateway de Pagamentos / Comunicação HTTPS e PCI-DSS | Coberto |
-| **RNF04** | Não Funcional | Provedor de Object Storage / ADR 03 | Coberto |
-| **RNF05, RNF06** | Não Funcional | Estratégia de Indexação e Consultas do Módulo de Catálogo e Financeiro | Coberto |
-| **RNF07, RNF10** | Não Funcional | Interface do Usuário (Responsiva e Multi-Browser) | Coberto |
-| **RNF08** | Não Funcional | Módulo de Carrinho e Checkout / ADR 02 | Coberto |
-| **RNF09, RNF13** | Não Funcional | Módulo de Auditoria e Logs / ADR 04 | Coberto |
-| **RNF11** | Não Funcional | Diretrizes de Privacidade e Criptografia em Todos os Módulos | Coberto |
-| **RNF12** | Não Funcional | Arquitetura Stateless Suportando Alta Disponibilidade | Coberto |
+| Requisito | Tipo | Coberto no Projeto? | Componente / Decisão Responsável |
+| :--- | :--- | :---: | :--- |
+| **RF01** | Funcional | **SIM** | Serviço de Identidade e Acesso / ADR-05 |
+| **RF02** | Funcional | **SIM** | Serviço de Identidade e Acesso |
+| **RF03** | Funcional | **SIM** | Serviço de Identidade e Acesso / ADR-05 |
+| **RF04** | Funcional | **SIM** | Serviço de Catálogo / HU01 |
+| **RF05** | Funcional | **SIM** | Serviço de Catálogo |
+| **RF06** | Funcional | **SIM** | Serviço de Catálogo |
+| **RF07** | Funcional | **SIM** | Serviço de Catálogo / HU02 |
+| **RF08** | Funcional | **SIM** | Serviço de Catálogo / ADR-02 |
+| **RF09** | Funcional | **SIM** | Serviço de Catálogo e Serviço de Pedidos / ADR-02 |
+| **RF10** | Funcional | **SIM** | Serviço de Catálogo / HU07 |
+| **RF11** | Funcional | **SIM** | Serviço de Catálogo / HU07 |
+| **RF12** | Funcional | **SIM** | Serviço de Catálogo / HU11 |
+| **RF13** | Funcional | **SIM** | Serviço de Carrinho e Pedidos |
+| **RF14** | Funcional | **SIM** | Serviço de Carrinho e Pedidos |
+| **RF15** | Funcional | **SIM** | Serviço de Carrinho e Pedidos |
+| **RF16** | Funcional | **SIM** | Serviço de Carrinho e Pedidos / Abstração de Pagamento |
+| **RF17** | Funcional | **SIM** | Abstração de Gateway de Pagamento |
+| **RF18** | Funcional | **SIM** | Serviço de Notificações / Serviço de Pedidos |
+| **RF19** | Funcional | **SIM** | Serviço de Notificações |
+| **RF20** | Funcional | **SIM** | Serviço de Carrinho e Pedidos (Subpedidos) / HU03 |
+| **RF21** | Funcional | **SIM** | Serviço de Carrinho e Pedidos / HU09 |
+| **RF22** | Funcional | **SIM** | Serviço de Carrinho e Pedidos / ADR-01 |
+| **RF23** | Funcional | **SIM** | Serviço de Avaliações / HU10 |
+| **RF24** | Funcional | **SIM** | Serviço de Avaliações / Serviço de Catálogo |
+| **RF25** | Funcional | **SIM** | Serviço de Avaliações / HU06 |
+| **RF26** | Funcional | **SIM** | Serviço Financeiro / ADR-03 |
+| **RF27** | Funcional | **SIM** | Serviço Financeiro / HU12 |
+| **RF28** | Funcional | **SIM** | Serviço Financeiro / HU04 |
+| **RF29** | Funcional | **SIM** | Serviço Financeiro / HU04 |
+| **RF30** | Funcional | **SIM** | Serviço Financeiro / HU05 |
+| **RNF01** | Não Funcional | **SIM** | Serviço de Identidade (RBAC) |
+| **RNF02** | Não Funcional | **SIM** | Serviço de Identidade (Hash seguro de senhas) |
+| **RNF03** | Não Funcional | **SIM** | Abstração de Pagamento (HTTPS + Tokenização PCI-DSS) |
+| **RNF04** | Não Funcional | **SIM** | Abstração de Armazenamento de Mídia / ADR-04 |
+| **RNF05** | Não Funcional | **SIM** | Serviço de Catálogo (Indexação de busca + Caching de leitura) |
+| **RNF06** | Não Funcional | **SIM** | Serviço Financeiro (Visões pré-computadas no Ledger) |
+| **RNF07** | Não Funcional | **SIM** | Camada de Apresentação (UI Responsiva) |
+| **RNF08** | Não Funcional | **SIM** | Serviço de Pedidos + Pagamentos / ADR-02 |
+| **RNF09** | Não Funcional | **SIM** | Serviço Financeiro + Serviço de Log e Auditoria / ADR-03 |
+| **RNF10** | Não Funcional | **SIM** | Camada de Apresentação (Cross-browser compliance) |
+| **RNF11** | Não Funcional | **SIM** | Serviço de Identidade e Acesso (Compliance LGPD) |
+| **RNF12** | Não Funcional | **SIM** | Infraestrutura e Arquitetura Desacoplada |
+| **RNF13** | Não Funcional | **SIM** | Serviço de Log e Auditoria |
 
 ---
 
 ## 7. Gap Analysis
 
-A análise a seguir identifica lacunas de especificação e omissões operacionais nos requisitos de entrada, avaliando seus impactos na arquitetura e recomendando ações corretivas imediatas.
+Esta seção detalha as lacunas identificadas nos requisitos de entrada, avalia os impactos no desenvolvimento e propõe as ações mitigatórias a serem adotadas pela engenharia de software.
 
-### 7.1. Ausência de Especificação do Fluxo de Cancelamento, Reembolso e Devolução
-* **Gap Detectado:** Os requisitos cobrem detalhadamente o fluxo feliz da compra (RF16 ao RF21), contudo omitiram por completo as regras de negócio para cancelamento de pedido pelo comprador, devolução de itens por defeito/desistência ou recusa de entrega.
-* **Impacto Arquitetural:** 
-  1. O Módulo Financeiro não prevê estorno de comissão retida nem reposição de saldo líquido deduzido.
-  2. O Módulo de Estoque não possui fluxo para reintrodução (*restock*) automática de itens de pedidos cancelados.
-* **Ação Recomendada:** Definir formalmente os requisitos funcionais para "Solicitar Cancelamento" e "Efetuar Estorno", prevendo eventos compensatórios no modelo financeiro e de estoque.
+```
++---------------------------------------------------------------------------------------------------------+
+|                                             GAP ANALYSIS                                                |
++------------------------------------+----------------------------------+---------------------------------+
+| Lacuna Encontrada (Spec Gap)       | Impacto Arquitetural             | Ação Recomendada para o Time    |
++------------------------------------+----------------------------------+---------------------------------+
+| 1. Ausência de cálculo de frete    | Sem especificação de cálculo de  | Implementar interface genérica  |
+|    ou custo de envio por subpedido | frete por região/artesão, o      | de cálculo de frete para plug-in |
+|    (RF15, RF22).                   | valor total cobrado pode ser     | futuro de tabelas ou serviços de|
+|                                    | divergente da realidade logísticas| entregas.                       |
++------------------------------------+----------------------------------+---------------------------------+
+| 2. Mecanismo impreciso de          | A remoção de categoria pode      | Estabelecer a criação de uma    |
+|    reclassificação de produtos após | deixar produtos órfãos, quebrando| categoria padrão "Geral/Outros" |
+|    exclusão de categoria (HU11).   | a listagem do catálogo.          | para reclassificação temporária |
+|                                    |                                  | automática.                     |
++------------------------------------+----------------------------------+---------------------------------+
+| 3. Indefinição do workflow de      | Risco de vulnerabilidade em      | Adicionar estado "Aguardando    |
+|    aprovação do saque (HU05).      | transferências financeiras sem   | Liberação" no fluxo de saque e  |
+|                                    | conciliação ou checagem humana.  | providenciar tela de gestão de  |
+|                                    |                                  | saques para o Perfil Admin.     |
++------------------------------------+----------------------------------+---------------------------------+
+| 4. Tratamento de concorrência no   | Duas compras simultâneas do      | Aplicar Bloqueio Pessimista ou  |
+|    último item em estoque (RF08).   | mesmo item podem gerar estoque   | Atômico (`UPDATE stock WHERE    |
+|                                    | negativo se não controlado.      | stock >= qty`) na reserva.      |
++------------------------------------+----------------------------------+---------------------------------+
+```
 
-### 7.2. Mecanismo de Reclassificação Temporária na Exclusão de Categorias
-* **Gap Detectado:** A HU11 exige que ao remover uma categoria os produtos ativos fiquem pendentes de reclassificação pelo artesão. Não foi definida a regra de exibição pública do produto enquanto ele não for reclassificado.
-* **Impacto Arquitetural:** Exibir produtos com categoria nula pode quebrar filtros de busca (RF10, RF11, RNF05).
-* **Ação Recomendada:** Especificar que produtos vinculados a categorias removidas passem automaticamente para o status `Despublicado` ou assumam uma categoria padrão de sistema denominada `Unassigned` (não visível nos menus de navegação primários).
+---
 
-### 7.3. Política de Expiração de Carrinho e Gestão de Concorrência de Estoque
-* **Gap Detectado:** Não há definição sobre o tempo de vida de um item no carrinho de compras antes do checkout.
-* **Impacto Arquitetural:** Se dois compradores colocarem o último item disponível no carrinho ao mesmo tempo, a falha só será percebida na tentativa de pagamento, gerando má experiência de usuário (UX).
-* **Ação Recomendada:** Implementar uma estratégia de bloqueio temporário (*Soft Lock*) de estoque durante o processo ativo de checkout (ex: reserva garantida por 15 minutos), liberando o item caso o pagamento não seja finalizado dentro do prazo.
-
-### 7.4. Ausência de Critérios para Direito de Esquecimento e Exclusão de Dados (LGPD - RNF11)
-* **Gap Detectado:** O RNF11 menciona conformidade com a LGPD, mas os requisitos de negócio não definem o tratamento de dados pessoais de compradores e artesãos no caso de encerramento de conta, nem como tratar os registros financeiros imutáveis (RNF09).
-* **Impacto Arquitetural:** Conflito entre a obrigação legal de retenção de registros fiscais/financeiros (RNF09) e a solicitação de anonimização de dados pessoais pelo titular.
-* **Ação Recomendada:** Adotar técnica de *Anonimização de Dados de Usuário* mantendo os registros transacionais (valores, datas e IDs anonimizados) intactos no Módulo Financeiro/Auditoria, desassociando qualquer dado pessoal identificável (PII).
+### Parecer Arquitetural Final
+A arquitetura proposta garante desacoplamento funcional, atende rigorosamente às diretrizes de **neutralidade tecnológica** e provê capacidade de sustentação para a expansão do marketplace de artesanato. O sistema encontra-se estruturalmente blindado contra inconsistências transacionais e financeiras através dos padrões *Ledger Imutável* e *Saga/Two-Phase Commit Semântico*.

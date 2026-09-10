@@ -2,228 +2,292 @@
 
 ## 1. Identificação das HUs
 
-| Identificador | Título | Perfil | Resumo do Escopo |
-| :--- | :--- | :--- | :--- |
-| **HU01** | Cadastrar item no cardápio | Estabelecimento (Admin) | Validação de campos obrigatórios (nome, preço), persistência e disponibilização imediata do item. |
-| **HU02** | Organizar itens por categoria | Estabelecimento (Admin) | Criação de categorias, controle de ordenação e associação unívoca de itens a categorias. |
-| **HU03** | Editar item do cardápio | Estabelecimento (Admin) | Atualização cadastral dos atributos de itens com propagação imediata para a visualização pública. |
-| **HU04** | Marcar item como indisponível | Estabelecimento (Admin) | Alternância de estado operacional do item sem remoção da listagem pública. |
-| **HU05** | Remover item do cardápio | Estabelecimento (Admin) | Exclusão de itens do catálogo público com fluxo de confirmação prévia. |
-| **HU06** | Visualizar cardápio sem cadastro | Cliente | Acesso direto e público via navegador, otimizado para dispositivos móveis e desktops. |
-| **HU07** | Navegar pelo cardápio por categorias | Cliente | Renderização estruturada e agrupada de itens conforme a taxonomia e ordenação definida. |
-| **HU08** | Identificar itens indisponíveis | Cliente | Sinalização visual explícita de itens marcados como indisponíveis mantendo a integridade da lista. |
+A tabela a seguir consolida as Histórias de Usuário (HUs) mapeadas a partir dos requisitos de negócio e técnicos, identificando os atores, escopo e requisitos correlacionados.
+
+| HU ID | Título | Ator | Escopo Funcional | Requisitos Correlacionados |
+|---|---|---|---|---|
+| **HU01** | Cadastrar item no cardápio | Estabelecimento (Admin) | Validação e criação de itens com nome, descrição e preço. | RF01, RF11, RNF03, RNF05 |
+| **HU02** | Organizar itens por categoria | Estabelecimento (Admin) | Criação, gestão de ordenação e vinculação exclusiva de itens a categorias. | RF04, RF05, RNF03, RNF05 |
+| **HU03** | Editar item do cardápio | Estabelecimento (Admin) | Atualização de dados cadastrais (nome, descrição, preço, categoria). | RF02, RF11, RNF03, RNF05 |
+| **HU04** | Marcar item como indisponível | Estabelecimento (Admin) | Alternância de estado de disponibilidade do item sem exclusão. | RF06, RF07, RNF03, RNF05 |
+| **HU05** | Remover item do cardápio | Estabelecimento (Admin) | Exclusão lógica/física de item com solicitação de confirmação prévia. | RF03, RNF03, RNF05 |
+| **HU06** | Visualizar cardápio sem cadastro | Cliente (Público) | Acesso direto via web sem necessidade de credenciais ou login. | RF08, RNF01, RNF02, RNF04, RNF06, RNF07 |
+| **HU07** | Navegar por categorias | Cliente (Público) | Visualização estruturada e agrupada dos itens por categorias ordenadas. | RF09, RF11, RNF01, RNF02, RNF06, RNF07 |
+| **HU08** | Identificar itens indisponíveis | Cliente (Público) | Sinalização visual explícita de itens marcados como indisponíveis. | RF10, RF11, RNF01, RNF06, RNF07 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Diagrama de Componentes (Visão Estrutural)
+### 2.1. Visão Geral de Componentes da Arquitetura
+
+O diagrama abaixo ilustra a segregação de responsabilidades em camadas lógicas conceituais, dividindo a fronteira pública da fronteira administrativa autenticada.
 
 ```mermaid
 graph TD
-    subgraph Camada_Apresentacao ["Camada de Apresentação"]
-        UI_Publica["Interface Pública do Cliente (Web/Mobile)"]
-        UI_Admin["Interface Administrativa do Estabelecimento"]
+    subgraph Fronteira_Cliente [Fronteira do Cliente - Não Autenticada]
+        UI_Pub[Interface Pública Web - Responsiva e Acessível]
     end
 
-    subgraph Camada_Controle_Acesso ["Camada de Segurança e Roteamento"]
-        Gateway_Controlador["Controlador de Acesso e Despacho"]
-        Servico_Autenticacao["Serviço de Autenticação e Sessão"]
+    subgraph Fronteira_Administrativa [Fronteira Administrativa - Autenticada]
+        UI_Admin[Painel Administrativo do Estabelecimento]
     end
 
-    subgraph Camada_Negocio ["Camada de Domínio e Aplicação"]
-        Servico_Catalogo["Serviço de Consulta do Cardápio"]
-        Servico_Gestao_Cardapio["Serviço de Gestão de Itens"]
-        Servico_Categorias["Serviço de Gestão de Categorias"]
+    subgraph Camada_Controle_Acesso [Segurança e Acesso]
+        Auth_GW[Controlador de Autenticação e Autorização]
     end
 
-    subgraph Camada_Persistencia ["Camada de Dados"]
-        Repositorio_Cardapio["Repositório de Dados do Cardápio"]
-        Repositorio_Admin["Repositório de Credenciais Administrativas"]
-        Mecanismo_Armazenamento[("Mecanismo de Persistência")]
+    subgraph Camada_Aplicacao [Camada de Aplicação e Serviços]
+        Servico_Publico[Serviço de Consulta de Cardápio]
+        Servico_Gestao_Catalogo[Serviço de Gestão de Catálogo e Itens]
+        Servico_Gestao_Categoria[Serviço de Gestão de Categorias]
     end
 
-    UI_Publica -->|Consulta Pública sem Auth| Gateway_Controlador
-    UI_Admin -->|Requisição Autenticada| Gateway_Controlador
+    subgraph Camada_Dominio [Camada de Domínio]
+        Modelo_Item[Entidade Item]
+        Modelo_Categoria[Entidade Categoria]
+        Validador_Regras[Motor de Validações de Domínio]
+    end
 
-    Gateway_Controlador -->|Verifica Credenciais| Servico_Autenticacao
-    Gateway_Controlador -->|Encaminha Leitura Pública| Servico_Catalogo
-    Gateway_Controlador -->|Encaminha Comandos Admin| Servico_Gestao_Cardapio
-    Gateway_Controlador -->|Encaminha Comandos Admin| Servico_Categorias
+    subgraph Camada_Persistencia [Camada de Persistência Abstrata]
+        Repositorio_Cardapio[Repositório de Cardápio e Categorias]
+        Repositorio_Usuarios[Repositório de Credenciais Administrativas]
+        Armazenamento[(Mecanismo de Persistência de Dados)]
+    end
 
-    Servico_Autenticacao --> Repositorio_Admin
-    Servico_Catalogo --> Repositorio_Cardapio
-    Servico_Gestao_Cardapio --> Repositorio_Cardapio
-    Servico_Categorias --> Repositorio_Cardapio
+    UI_Pub -->|Consulta Pública / Sem Auth| Servico_Publico
+    UI_Admin -->|Credenciais de Acesso| Auth_GW
+    Auth_GW -->|Token/Sessão Válida| Servico_Gestao_Catalogo
+    Auth_GW -->|Token/Sessão Válida| Servico_Gestao_Categoria
+    Auth_GW -.-> Repositorio_Usuarios
 
-    Repositorio_Cardapio --> Mecanismo_Armazenamento
-    Repositorio_Admin --> Mecanismo_Armazenamento
+    Servico_Publico --> Repositorio_Cardapio
+    Servico_Gestao_Catalogo --> Validador_Regras
+    Servico_Gestao_Categoria --> Validador_Regras
+    Validador_Regras --> Modelo_Item
+    Validador_Regras --> Modelo_Categoria
+
+    Servico_Gestao_Catalogo --> Repositorio_Cardapio
+    Servico_Gestao_Categoria --> Repositorio_Cardapio
+    Repositorio_Cardapio --> Armazenamento
+    Repositorio_Usuarios --> Armazenamento
 ```
 
-### 2.2. Diagrama de Sequência: Consulta Pública e Atualização de Disponibilidade
+---
+
+### 2.2. Diagrama de Sequência: Consulta Pública do Cardápio (HU06, HU07, HU08)
+
+Fluxo demonstrando o acesso sem autenticação com agrupamento por categorias e identificação visual de itens indisponíveis.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Cliente as Cliente (Navegador)
-    actor Admin as Estabelecimento (Admin)
-    participant UI_Pub as Interface Pública
-    participant UI_Adm as Interface Administrativa
-    participant Gateway as Controlador de Acesso
-    participant Srv_Gestao as Serviço de Gestão de Itens
-    participant Srv_Cat as Serviço de Consulta do Cardápio
-    participant Repo as Repositório do Cardápio
+    actor Cliente as Cliente (Navegador Web)
+    participant UIPublica as Interface Pública Web
+    participant ServicoPublico as Serviço de Consulta de Cardápio
+    participant Repositorio as Repositório de Cardápio
+    participant Persistencia as Mecanismo de Persistência
 
-    %% Fluxo de Acesso do Cliente
-    Cliente ->> UI_Pub: Acessa URL do Cardápio
-    UI_Pub ->> Gateway: GET /catalogo/publico
-    Gateway ->> Srv_Cat: ObterCardapioAgrupado()
-    Srv_Cat ->> Repo: BuscarCategoriasEItensAtivos()
-    Repo -->> Srv_Cat: Dados (Categorias, Itens, Estados)
-    Srv_Cat -->> Gateway: Estrutura montada (Hierárquica)
-    Gateway -->> UI_Pub: Resposta HTTP 200 (JSON/HTML)
-    UI_Pub -->> Cliente: Renderiza Categorias, Itens e Badges de Indisponibilidade
+    Cliente->>UIPublica: Acessa URL direta do cardápio
+    activate UIPublica
+    UIPublica->>ServicoPublico: Requisitar cardápio completo ativo
+    activate ServicoPublico
+    ServicoPublico->>Repositorio: Obter categorias ordenadas com itens
+    activate Repositorio
+    Repositorio->>Persistencia: Consultar registros estruturados
+    activate Persistencia
+    Persistencia-->>Repositorio: Dados brutos (Categorias, Itens, Disponibilidade)
+    deactivate Persistencia
+    Repositorio-->>ServicoPublico: Coleção de categorias e itens agregados
+    deactivate Repositorio
+    
+    ServicoPublico->>ServicoPublico: Estruturar hierarquia (Categoria -> Itens)
+    ServicoPublico-->>UIPublica: DTO de visualização (Categorias + Itens + Flags)
+    deactivate ServicoPublico
 
-    %% Fluxo de Alteração de Estado pelo Admin
-    Admin ->> UI_Adm: Seleciona item e marca como "Indisponível"
-    UI_Adm ->> Gateway: PATCH /admin/itens/{id}/status (Token Sessão, {disponivel: false})
-    Gateway ->> Srv_Gestao: AlterarDisponibilidadeItem(itemId, false)
-    Srv_Gestao ->> Repo: AtualizarStatusItem(itemId, false)
-    Repo -->> Srv_Gestao: Confirmação de Persistência
-    Srv_Gestao -->> Gateway: ItemAtualizadoSucesso
-    Gateway -->> UI_Adm: Confirmação (HTTP 200)
-    UI_Adm -->> Admin: Notifica sucesso na interface
-
-    %% Nova consulta do cliente refletindo imediatamente
-    Cliente ->> UI_Pub: Atualiza/Navega no Cardápio
-    UI_Pub ->> Gateway: GET /catalogo/publico
-    Gateway ->> Srv_Cat: ObterCardapioAgrupado()
-    Srv_Cat ->> Repo: BuscarCategoriasEItensAtivos()
-    Repo -->> Srv_Cat: Dados Atualizados
-    Srv_Cat -->> Gateway: Estrutura com item indisponível
-    Gateway -->> UI_Pub: Resposta HTTP 200
-    UI_Pub -->> Cliente: Exibe item com indicação visual de indisponível
+    UIPublica->>UIPublica: Renderizar layout responsivo (WCAG 2.1 A)
+    UIPublica->>UIPublica: Aplicar indicador visual nos itens indisponíveis
+    UIPublica-->>Cliente: Exibe cardápio formatado em < 3 segundos
+    deactivate UIPublica
 ```
 
-### 2.3. Diagrama de Modelo de Domínio
+---
+
+### 2.3. Diagrama de Sequência: Gestão e Disponibilidade de Item (HU01, HU04)
+
+Fluxo administrativo protegido demonstrando validação, criação e alteração de status de disponibilidade de um item.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Estabelecimento (Admin)
+    participant UIAdmin as Painel Administrativo
+    participant AuthGW as Controlador de Autenticação
+    participant ServicoCatalogo as Serviço de Gestão de Catálogo
+    participant Validador as Motor de Validações
+    participant Repositorio as Repositório de Cardápio
+
+    Admin->>UIAdmin: Submeter cadastro de item (Nome, Preço, Descrição, Categoria)
+    activate UIAdmin
+    UIAdmin->>AuthGW: Enviar operação com credencial de sessão
+    activate AuthGW
+    AuthGW->>AuthGW: Validar integridade da sessão
+    AuthGW->>ServicoCatalogo: Encaminhar comando de criação de item
+    activate ServicoCatalogo
+    deactivate AuthGW
+
+    ServicoCatalogo->>Validador: Validar campos obrigatórios e integridade da categoria
+    activate Validador
+    Validador-->>ServicoCatalogo: Dados válidos
+    deactivate Validador
+
+    ServicoCatalogo->>Repositorio: Persistir novo item associado à categoria
+    activate Repositorio
+    Repositorio-->>ServicoCatalogo: Confirmação de persistência (Item ID)
+    deactivate Repositorio
+    ServicoCatalogo-->>UIAdmin: Confirmação de item criado
+    deactivate ServicoCatalogo
+    UIAdmin-->>Admin: Notifica sucesso e atualiza listagem
+
+    Admin->>UIAdmin: Alternar estado para "Indisponível" (HU04)
+    UIAdmin->>AuthGW: Enviar comando de alteração de disponibilidade
+    activate AuthGW
+    AuthGW->>ServicoCatalogo: Encaminhar comando (Item ID, Disponível = Falso)
+    activate ServicoCatalogo
+    deactivate AuthGW
+    ServicoCatalogo->>Repositorio: Atualizar flag de disponibilidade do item
+    activate Repositorio
+    Repositorio-->>ServicoCatalogo: Confirmação de atualização
+    deactivate Repositorio
+    ServicoCatalogo-->>UIAdmin: Status atualizado com sucesso
+    deactivate ServicoCatalogo
+    UIAdmin-->>Admin: Exibe status "Indisponível" no painel
+    deactivate UIAdmin
+```
+
+---
+
+### 2.4. Diagrama de Classes Conceitual do Domínio
 
 ```mermaid
 classDiagram
     class Categoria {
-        -Identificador id
-        -Texto nome
-        -Inteiro ordemExibicao
-        +validar()
-        +alterarOrdem(novaOrdem)
+        -UUID id
+        -String nome
+        -Integer ordemExibicao
+        +validarDados() Boolean
+        +atualizarOrdem(Integer novaOrdem) void
     }
 
     class ItemCardapio {
-        -Identificador id
-        -Texto nome
-        -Texto descricao
+        -UUID id
+        -String nome
+        -String descricao
         -Monetario preco
-        -Booleano disponivel
-        -Identificador categoriaId
-        +validarObrigatoriedade()
-        +marcarIndisponivel()
-        +marcarDisponivel()
-        +atualizarDados(nome, descricao, preco)
+        -Boolean disponivel
+        -UUID categoriaId
+        +validarCamposObrigatorios() Boolean
+        +marcarIndisponivel() void
+        +reativarDisponibilidade() void
+        +atualizarDados(String nome, String desc, Monetario preco) void
+        +associarCategoria(UUID categoriaId) void
     }
 
     class UsuarioAdministrador {
-        -Identificador id
-        -Texto login
-        -Texto credencialHash
-        +autenticar(credencial)
+        -UUID id
+        -String login
+        -String credencialHash
+        +validarCredenciais(String segredo) Boolean
     }
 
-    Categoria "1" o-- "0..*" ItemCardapio : agrega
-    UsuarioAdministrador ..> ItemCardapio : gerencia
-    UsuarioAdministrador ..> Categoria : gerencia
+    Categoria "1" o-- "0..*" ItemCardapio : organiza
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-* **DA01 — Segregação de Contextos de Acesso (Público vs. Administrativo):**
-  * *Contexto:* O sistema possui dois perfis operacionais com requisitos de segurança opostos: clientes com acesso livre e anônimo (RF08, HU06) e administradores com acesso restrito (RNF03, HU01-HU05).
-  * *Decisão:* Separação arquitetural entre a borda de consumo público (sem exigência de identificação de sessão) e a borda administrativa protegida por barreiras de autenticação centralizada no controlador de entrada.
+1. **Separação Rígida de Contextos (Público vs. Administrativo)**:
+   - **Contexto Público (Leitura Livre)**: Otimizado para alta vazão, latência reduzida e tolerância a falhas. Não realiza mutação de estado e dispensa autenticação, assegurando o cumprimento de RF08, RNF02 e RNF04.
+   - **Contexto Administrativo (Escrita e Manutenção)**: Protegido obrigatoriamente por camada de controle de acesso (RNF03), com regras transacionais e validações de integridade estrutural.
 
-* **DA02 — Estruturação Hierárquica em Tempo de Consulta (Taxonomia Categorizada):**
-  * *Contexto:* Os requisitos RF09, HU02 e HU07 exigem que os itens sejam exibidos agrupados por categoria e respeitem uma ordem customizável.
-  * *Decisão:* O *Serviço de Consulta do Cardápio* encapsula a composição hierárquica `Categoria -> Lista[Item]`, garantindo que o cliente receba uma árvore de dados estruturada, minimizando o processamento no cliente e atendendo ao limite de tempo de resposta (RNF02).
+2. **Abordagem de Leitura Otimizada para o Cardápio Público**:
+   - A visualização do cliente exige consultas agregadas (Categorias + Itens). A camada de persistência deve disponibilizar contratos de recuperação em lote para evitar o problema de múltiplas requisições sequenciais (*N+1 queries*), garantindo a meta de tempo de carregamento inferior a 3 segundos (RNF02).
 
-* **DA03 — Preservação de Visibilidade para Itens Indisponíveis (State Flag Pattern):**
-  * *Contexto:* Os requisitos RF06, RF10, HU04 e HU08 exigem que itens indisponíveis continuem no cardápio, porém destacados visualmente.
-  * *Decisão:* A indisponibilidade é modelada como um atributo booleano de estado (`disponivel`), e não como remoção lógica ou física do catálogo. Itens indisponíveis são retornados no fluxo de leitura pública com essa sinalização expressa.
+3. **Ciclo de Vida e Estado dos Itens (Exclusão Lógica vs. Indisponibilidade)**:
+   - **Indisponibilidade (RF06, RF07, HU04)**: O item permanece persistido e referenciado à categoria, preservando a ordenação e metadados, mas recebe sinalização visual específica na apresentação.
+   - **Exclusão (RF03, HU05)**: Exige fluxo de confirmação explícita para evitar exclusões acidentais de catálogo.
 
-* **DA04 — Modularidade e Isolamento de Responsabilidades:**
-  * *Contexto:* Atendimento direto ao requisito de manutenibilidade (RNF05).
-  * *Decisão:* Isolamento do sistema em módulos desacoplados (Apresentação, Domínio/Negócio, Persistência), permitindo evolução independente dos mecanismos de persistência e interfaces sem afetar as regras de validação.
+4. **Princípio da Neutralidade de Apresentação e Acessibilidade**:
+   - A interface do cliente deve ser desacoplada da camada de dados por meio de contratos claros (DTOs), permitindo renderização semântica (HTML estruturado) compatível com normas de acessibilidade WCAG 2.1 nível A (RNF07) e responsividade para dispositivos móveis e desktops (RNF01, RNF06).
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-| :--- | :--- | :--- | :--- |
-| **Interface Pública do Cliente** | Renderização responsiva, acessível (WCAG) e anônima do cardápio agrupado por categoria e indicação visual de indisponibilidade. | Controlador de Acesso e Despacho | HU06 (CA1, CA2), HU07 (CA1, CA2), HU08 (CA1, CA2), RNF01, RNF06, RNF07 |
-| **Interface Administrativa** | Interface protegida para operações de CRUD de itens/categorias, ordenação e alternância de disponibilidade com confirmações de exclusão. | Controlador de Acesso e Despacho | HU01 (CA1), HU02 (CA1, CA3), HU03 (CA2), HU04 (CA2), HU05 (CA1), RNF03 |
-| **Controlador de Acesso e Despacho** | Roteamento de requisições, aplicação de políticas de autenticação para rotas restritas e exposição livre de rotas de leitura. | Serviço de Autenticação, Serviço de Consulta, Serviços de Gestão | RF08, RNF03, HU06 (CA1) |
-| **Serviço de Autenticação e Sessão** | Validação de credenciais de administradores e gestão do ciclo de vida da sessão. | Repositório de Credenciais Administrativas | RNF03 |
-| **Serviço de Consulta do Cardápio** | Agregação e formatação eficiente da taxonomia de categorias ordenadas e itens para visualização rápida. | Repositório de Cardápio | RF08, RF09, RF10, RF11, RNF02, HU06, HU07, HU08 |
-| **Serviço de Gestão de Itens** | Validação de regras de negócio (campos obrigatórios, unicidade de categoria), criação, edição, remoção e alternância de estado de disponibilidade. | Repositório de Cardápio | RF01, RF02, RF03, RF05, RF06, RF07, HU01 (CA1, CA2), HU03 (CA1), HU04 (CA1), HU05 (CA2) |
-| **Serviço de Gestão de Categorias** | Gestão do ciclo de vida de categorias e manipulação da ordenação de exibição. | Repositório de Cardápio | RF04, HU02 (CA1, CA3) |
-| **Repositório de Cardápio** | Abstração de persistência e recuperação das entidades Categoria e Item do Cardápio. | Mecanismo de Persistência | RF01 a RF07, RNF04, RNF05 |
+|---|---|---|---|
+| **Interface Pública Web** | Apresentação responsiva, sem autenticação, com renderização de itens por categoria e sinalização de indisponibilidade acessível. | Serviço de Consulta de Cardápio | HU06, HU07, HU08, RF08, RF09, RF10, RF11, RNF01, RNF06, RNF07 |
+| **Painel Administrativo** | Interface de gestão protegida para CRUD de categorias, itens e alteração de disponibilidade. | Controlador de Autenticação e Autorização | HU01, HU02, HU03, HU04, HU05, RF01-RF07, RNF03 |
+| **Controlador de Autenticação** | Validação de credenciais de acesso, gerenciamento de sessões administrativas e bloqueio de acessos não autorizados. | Painel Administrativo, Repositório de Credenciais, Serviços de Gestão | RNF03 |
+| **Serviço de Consulta de Cardápio** | Agregação e orquestração de dados públicos (categorias ordenadas e itens) com estratégia para baixa latência. | Repositório de Cardápio e Categorias | HU06, HU07, HU08, RF08, RF09, RF10, RF11, RNF02, RNF04 |
+| **Serviço de Gestão de Catálogo** | Execução de regras de negócio para cadastro, edição, exclusão e alteração de disponibilidade de itens. | Motor de Validações, Repositório de Cardápio e Categorias | HU01, HU03, HU04, HU05, RF01, RF02, RF03, RF06, RF07, RNF05 |
+| **Serviço de Gestão de Categorias** | Gerenciamento de criação, edição, remoção e ordenação de categorias de itens. | Motor de Validações, Repositório de Cardápio e Categorias | HU02, RF04, RF05, RNF05 |
+| **Motor de Validações de Domínio** | Garantia das invariantes: obrigatoriedade de campos (nome, preço), unicidade e integridade relacional. | Entidade Item, Entidade Categoria | HU01 (Critério 1), HU02 (Critério 2), HU03, RNF05 |
+| **Repositório de Cardápio e Categorias** | Abstração de acesso aos dados persistidos de itens e categorias. | Mecanismo de Persistência de Dados | RF01-RF11, RNF02, RNF05 |
+| **Repositório de Credenciais** | Abstração de consulta e persistência de dados de autenticação de administradores. | Mecanismo de Persistência de Dados | RNF03 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Mecanismo de Reordenação de Categorias (HU02 / RF04):** A especificação estabelece que a ordem deve ser "controlável pelo estabelecimento", mas não define se a ordenação é feita via índice numérico manual, interface de arrastar-e-soltar ou chave de precedência. Recomenda-se adotar internamente um campo `ordemExibicao` indexado sequencialmente.
-2. **Tratamento de Itens Órfãos na Exclusão de Categorias (RF04):** Não está explicitado o comportamento esperado ao remover uma categoria que possui itens vinculados (bloqueio de exclusão, exclusão em cascata ou desassociação de itens).
-3. **Suporte a Imagens e Mídia dos Itens (Omissão de Especificação):** Os requisitos RF01 e RF11 delimitam campos obrigatórios como nome, descrição e preço, omitindo o suporte a fotos/imagens dos pratos.
-4. **Política de Remoção de Itens (HU05 / RF03):** O requisito demanda remoção do cardápio, porém deve-se esclarecer se a persistência subjacente deve aplicar *soft delete* (desativação lógica) para histórico e auditoria ou *hard delete* definitivo.
+1. **Regra de Exclusão de Categoria com Itens Vinculados (Bloqueio Conceitual)**:
+   - *Descrição*: O requisito RF04 permite a remoção de categorias, porém não explicita o comportamento esperado para os itens associados (se devem ser excluídos em cascata, movidos para uma categoria padrão "Geral/Sem Categoria" ou se a exclusão da categoria deve ser bloqueada).
+   - *Impacto*: Risco de inconsistência relacional ou perda acidental de dados de itens cadastrados.
+
+2. **Controle de Concorrência Administrativa (Pendência)**:
+   - *Descrição*: Não há especificação sobre múltiplos operadores administrativos alterando o cardápio ou status de disponibilidade concorrentemente.
+   - *Impacto*: Possibilidade de sobreposição acidental de alterações de preços ou status.
+
+3. **Mecanismo de Suporte a Imagens e Mídia (Pendência de Escopo)**:
+   - *Descrição*: Os requisitos RF01 e RF11 delimitam itens a "nome, descrição e preço", sem menção a fotografias. É necessário validar se fotos de produtos farão parte de versões futuras para antecipar abstração de armazenamento de objetos binários.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-```
-MATRIZ DE RASTREABILIDADE
----------------------------------------------------------------------------------------------------------
-Requisito | Histórias Associadas | Componente(s) Responsável(is)           | Mecanismo Arquitetural
----------------------------------------------------------------------------------------------------------
-RF01      | HU01                 | Serv. Gestão Itens, Repositório         | Validação de dados e persistência
-RF02      | HU03                 | Serv. Gestão Itens, Repositório         | Mutação transacional de estado
-RF03      | HU05                 | Serv. Gestão Itens, Repositório         | Exclusão com confirmação
-RF04      | HU02                 | Serv. Gestão Categorias, Repositório    | CRUD de taxonomia com ordenação
-RF05      | HU02                 | Serv. Gestão Itens, Repositório         | Vínculo de integridade referencial
-RF06      | HU04                 | Serv. Gestão Itens, Repositório         | Transição de estado booleano
-RF07      | HU04                 | Serv. Gestão Itens, Repositório         | Transição de estado booleano
-RF08      | HU06                 | UI Pública, Controlador, Serv. Consulta | Rota aberta sem barreira de auth
-RF09      | HU07                 | Serv. Consulta, UI Pública              | Agrupamento hierárquico
-RF10      | HU08                 | UI Pública, Serv. Consulta              | Sinalizador visual condicional
-RF11      | HU06, HU07           | UI Pública, Serv. Consulta              | Projeção de dados de apresentação
----------------------------------------------------------------------------------------------------------
-RNF01     | HU06                 | UI Pública                              | Design responsivo (Mobile-First)
-RNF02     | HU06                 | Serv. Consulta, Repositório             | Otimização de payload e índices
-RNF03     | HU01-HU05            | Controlador, Serv. Autenticação         | Controle de acesso baseado em sessão
-RNF04     | Geral                | Mecanismo de Persistência, Gateway      | Topologia tolerante a falhas (24/7)
-RNF05     | Geral                | Todos os Componentes                    | Arquitetura em camadas desacopladas
-RNF06     | HU06                 | UI Pública                              | Conformidade com padrões web abertos
-RNF07     | HU06, HU07, HU08     | UI Pública                              | Semântica acessível (WCAG 2.1 A)
----------------------------------------------------------------------------------------------------------
-```
+A matriz abaixo comprova a total cobertura dos Requisitos Funcionais (RF) e Não Funcionais (RNF) pelos componentes da arquitetura.
+
+| Requisito | Tipo | Componente(s) Responsável(is) | Mecanismo de Atendimento |
+|---|---|---|---|
+| **RF01** | Funcional | Serviço de Gestão de Catálogo, Motor de Validações | Validação de obrigatoriedade (nome, preço) e persistência do item. |
+| **RF02** | Funcional | Serviço de Gestão de Catálogo, Repositório | Atualização transacional dos atributos do item. |
+| **RF03** | Funcional | Painel Admin, Serviço de Gestão de Catálogo | Diálogo de confirmação de exclusão e remoção lógica/física. |
+| **RF04** | Funcional | Serviço de Gestão de Categorias, Repositório | Manutenção de ciclo de vida e ordenação de categorias. |
+| **RF05** | Funcional | Serviço de Gestão de Catálogo, Motor de Validações | Vínculo unidirecional estrito do item a uma única categoria. |
+| **RF06** | Funcional | Serviço de Gestão de Catálogo | Alteração do atributo `disponivel` para `falso` sem exclusão. |
+| **RF07** | Funcional | Serviço de Gestão de Catálogo | Alteração do atributo `disponivel` para `verdadeiro`. |
+| **RF08** | Funcional | Interface Pública Web, Serviço de Consulta | Rota pública sem passagem por interceptadores de autenticação. |
+| **RF09** | Funcional | Interface Pública Web, Serviço de Consulta | Resposta com agregação estruturada de itens sob categorias. |
+| **RF10** | Funcional | Interface Pública Web | Aplicação de estilos/labels visuais indicando indisponibilidade. |
+| **RF11** | Funcional | Interface Pública Web, Serviço de Consulta | Exposição completa dos atributos públicos (nome, desc, preço). |
+| **RNF01** | Não Funcional | Interface Pública Web | Design responsivo adaptável a múltiplos viewports (mobile/desktop). |
+| **RNF02** | Não Funcional | Serviço de Consulta, Repositório | Consultas otimizadas/agregadas para resposta em < 3 segundos. |
+| **RNF03** | Não Funcional | Controlador de Autenticação | Proteção de rotas administrativas com verificação de credenciais. |
+| **RNF04** | Não Funcional | Arquitetura Geral Desacoplada | Isolamento da camada pública para manter leitura operacional contínua. |
+| **RNF05** | Não Funcional | Toda a Arquitetura | Separação em camadas lógicas e desacoplamento via repositórios. |
+| **RNF06** | Não Funcional | Interface Pública Web | Utilização de padrões web compatíveis com navegadores modernos. |
+| **RNF07** | Não Funcional | Interface Pública Web | Semântica visual, contraste e padrões WCAG 2.1 nível A. |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
-| :--- | :--- | :--- |
-| **Comportamento de integridade na remoção de categorias com itens associados** | Risco de inconsistência de dados ou erro em tempo de execução ao tentar renderizar itens com categoria nula. | Adicionar regra de validação que impede a exclusão de categorias não vazias ou mover automaticamente os itens para uma categoria padrão antes da remoção. |
-| **Requisito de atualização "imediata" vs. Desempenho (<3s)** | Estratégias agressivas de cache de leitura pública podem atrasar a visualização de edições cadastrais (HU01, HU03, HU04). | Implementar mecanismo explícito de invalidação de dados de leitura no momento em que qualquer comando de escrita (gestão) for concluído com sucesso. |
-| **Proteção contra abusos na API Pública** | A ausência de autenticação no endpoint público (RF08) expõe o serviço a ataques de negação de serviço ou raspagem abusiva. | Aplicar controle de vazão (*rate limiting*) no Controlador de Acesso para o endpoint público sem degradar a experiência de usuários legítimos. |
-| **Critérios de unicidade e limites de tamanho de campos** | Risco de duplicação acidental de nomes de itens e categorias ou quebra de layout na UI móvel. | Definir restrições de tamanho máximo de caracteres para nome/descrição e regra de unicidade de nome de categoria por estabelecimento. |
+A análise a seguir identifica as lacunas entre os requisitos fornecidos e os requisitos arquiteturais operacionais recomendados para implementação sustentável.
+
+| Item | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
+|---|---|---|---|
+| **GAP-01** | **Comportamento de Categoria Órfã**: Inexistência de regra para exclusão de categorias contendo itens vinculados. | Risco de integridade referencial ou ocultação acidental de itens no cardápio público. | Adotar a regra de **bloqueio de exclusão** caso a categoria possua itens associados, exigindo desvinculação prévia pelo usuário administrador. |
+| **GAP-02** | **Granularidade de Ordenação**: HU02 exige controle de ordem das categorias, mas não especifica ordenação manual de itens dentro de cada categoria. | Possibilidade de listagem não determinística dos itens na visualização do cliente. | Incluir atributo conceitual `ordemExibicao` também na entidade `ItemCardapio` para assegurar controle determinístico da exibição. |
+| **GAP-03** | **Estratégia de Cache e Invalidacão**: RNF02 (<3s) e RNF04 (99% 24/7) demandam alta eficiência em leitura, mas HU01/HU03 exigem atualização imediata. | Se implementado cache sem estratégia de purga, atualizações administrativas não aparecerão imediatamente aos clientes. | Estabelecer gatilho de invalidação automática de cache na camada de serviço de catálogo sempre que ocorrer alteração em itens ou categorias. |
+| **GAP-04** | **Políticas de Acessibilidade (WCAG 2.1 A)**: RNF07 exige nível A, o que demanda requisitos claros sobre contraste para itens indisponíveis. | Redução de opacidade simples em itens indisponíveis (citada na HU08) pode violar os critérios de taxa de contraste mínimo exigidos pela WCAG. | Adotar explicitamente rótulos textuais e ícones acessíveis (ex.: badge textual "Indisponível") em conjunto com variações visuais, sem depender unicamente de contraste reduzido. |

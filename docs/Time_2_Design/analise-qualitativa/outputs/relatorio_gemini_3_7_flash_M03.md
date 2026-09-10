@@ -2,169 +2,160 @@
 
 ## 1. Identificação das HUs
 
-A tabela a seguir consolida as Histórias de Usuário (HUs) levantadas para o Marketplace de Produtos Artesanais, mapeando seus respectivos atores, objetivos de negócio e valor agregado gerado.
+Abaixo estão consolidadas as Histórias de Usuário (HUs) com o mapeamento direto para seus respectivos Requisitos Funcionais (RF), Requisitos Não Funcionais (RNF) e critérios de aceite estruturais:
 
-| ID | Título | Ator | Objetivo (O que deseja) | Valor de Negócio (Para que) |
-|---|---|---|---|---|
-| **HU01** | Cadastrar produto com fotos | Artesão | Cadastrar produtos com atributos completos (nome, descrição, preço, estoque, categoria) e fotos | Apresentar catálogo atrativo aos compradores e habilitar a comercialização imediata |
-| **HU02** | Gerenciar estoque dos produtos | Artesão | Atualizar manualmente a quantidade em estoque e acompanhar decrementos automáticos | Evitar rupturas, inconsistências de estoque e cancelamento de compras |
-| **HU03** | Acompanhar e atualizar status dos pedidos recebidos | Artesão | Visualizar pedidos recebidos e transicionar seus status (recebido, preparação, enviado, entregue) | Manter transparência logística com o comprador e organizar o fluxo operacional |
-| **HU04** | Visualizar painel financeiro | Artesão | Consultar extrato consolidado com valores brutos, comissões retidas e saldo líquido | Garantir previsibilidade financeira e controle sobre repasses da plataforma |
-| **HU05** | Solicitar saque do saldo disponível | Artesão | Requisitar transferência bancária dos valores líquidos disponíveis | Efetivar o recebimento financeiro de suas vendas realizadas na plataforma |
-| **HU06** | Responder avaliações de compradores | Artesão | Publicar respostas oficiais e imutáveis aos feedbacks de clientes em seus produtos | Estabelecer relacionamento de confiança e zelar pela reputação da sua marca |
-| **HU07** | Navegar e pesquisar produtos | Comprador | Explorar produtos por árvore de categorias e pesquisa textual indexada por nome/artesão | Facilitar a descoberta de itens relevantes e impulsionar a conversão de vendas |
-| **HU08** | Adicionar itens ao carrinho e finalizar compra | Comprador | Comprar itens de múltiplos artesãos em um único carrinho com checkout transacional integrado | Proporcionar experiência de compra unificada, segura e sem fricção de múltiplos pagamentos |
-| **HU09** | Acompanhar status dos pedidos | Comprador | Monitorar o ciclo de vida consolidado do pedido e o progresso individual de cada subpedido | Obter rastreabilidade de entrega clara por artesão |
-| **HU10** | Avaliar produto após entrega | Comprador | Atribuir nota (1 a 5) e comentário a produtos de pedidos formalmente entregues | Alimentar a reputação comunitária da plataforma e auxiliar outros compradores |
-| **HU11** | Gerenciar categorias da plataforma | Administrador | Criar, atualizar e excluir a taxonomia de categorias do marketplace | Manter o catálogo estruturado, consistente e com navegação simplificada |
-| **HU12** | Configurar percentual de comissão | Administrador | Parametrizar a alíquota de comissão da plataforma com controle de vigência e auditoria | Ajustar a rentabilidade do modelo de negócio sem retroatividade indevida |
+| HU | Título | Ator | Descrição Resumida | RFs Associados | RNFs Associados |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **HU01** | Cadastrar produto com fotos | Artesão | Cadastro de produtos com nome, descrição, preço, estoque, categoria e upload desacoplado de múltiplas fotos. | RF04, RF06 | RNF01, RNF04, RNF07 |
+| **HU02** | Gerenciar estoque dos produtos | Artesão | Manutenção manual de estoque, bloqueio de itens zerados e decremento transacional após vendas. | RF05, RF07, RF08, RF09 | RNF01, RNF08 |
+| **HU03** | Acompanhar e atualizar status dos pedidos recebidos | Artesão | Gestão do ciclo de vida de subpedidos atribuídos ao artesão (recebido, em preparação, enviado, entregue) com disparos de notificação. | RF19, RF20, RF22 | RNF01, RNF07, RNF13 |
+| **HU04** | Visualizar painel financeiro | Artesão | Consulta analítica de histórico de vendas, comissões retidas, valores líquidos e saldo para saque. | RF26, RF28, RF29 | RNF01, RNF06, RNF09 |
+| **HU05** | Solicitar saque do saldo disponível | Artesão | Solicitação de saque informando dados bancários, retenção/bloqueio imediato do saldo e registro em log auditável. | RF30 | RNF01, RNF09, RNF11, RNF13 |
+| **HU06** | Responder avaliações de compradores | Artesão | Inserção de resposta pública única e imutável a avaliações de compradores em produtos de sua autoria. | RF25 | RNF01, RNF07 |
+| **HU07** | Navegar e pesquisar produtos | Comprador | Navegação por categorias, listagem paginada/otimizada e busca textual por nome, categoria ou artesão. | RF10, RF11 | RNF05, RNF07, RNF10 |
+| **HU08** | Adicionar itens ao carrinho e finalizar compra | Comprador | Gestão de carrinho unificado multiartesão, cálculo de totais, checkout transacional com pagamento integrado e divisão em subpedidos. | RF13, RF14, RF15, RF16, RF17, RF18, RF22 | RNF03, RNF07, RNF08, RNF13 |
+| **HU09** | Acompanhar status dos pedidos | Comprador | Visualização consolidada de pedidos com rastreio individual por subpedido de cada artesão. | RF21, RF22 | RNF07, RNF10 |
+| **HU10** | Avaliar produto após entrega | Comprador | Submissão de nota (1 a 5) e comentário textual condicionado à entrega confirmada do item, com restrição de unicidade. | RF23, RF24 | RNF07, RNF11 |
+| **HU11** | Gerenciar categorias da plataforma | Administrador | Criação, alteração e desativação de categorias taxonômicas com regras de proteção para itens vinculados. | RF12 | RNF01, RNF13 |
+| **HU12** | Configurar percentual de comissão | Administrador | Definição da taxa de comissão da plataforma com versionamento e log imutável, aplicada a vendas futuras. | RF27 | RNF01, RNF09, RNF13 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Diagrama Estrutural de Componentes e Fronteiras de Contexto
-
-A arquitetura adota um desacoplamento em camadas de serviços de domínio, delimitando os contextos de Catálogo, Checkout/Pedidos, Financeiro e Identidade, garantindo a neutralidade técnica e aderência aos requisitos funcionais e não-funcionais.
+### 2.1. Visão Lógica de Componentes do Sistema
 
 ```mermaid
-flowchart TD
-    subgraph ClientLayer [Camada de Apresentação e Clientes]
-        WebClient[Cliente Web Responsivo / SPA]
-        MobileClient[Cliente Mobile Responsivo]
+flowchart TB
+    subgraph Frontend["Camada de Apresentação (Interface Web Responsiva)"]
+        UI_Buyer["Módulo Comprador\n(Catálogo, Carrinho, Pedidos, Avaliações)"]
+        UI_Seller["Módulo Artesão\n(Gestão de Produtos, Estoque, Pedidos, Finanças)"]
+        UI_Admin["Módulo Administrador\n(Categorias, Comissões, Auditoria)"]
     end
 
-    subgraph APIGatewayLayer [Camada de Borda e Roteamento]
-        Gateway[API Gateway / Controlador de Borda & RBAC]
+    subgraph API_Gateway["Camada de Entrada & Roteamento"]
+        Gateway["Ponto de Entrada API & Controle de Sessão / RBAC"]
     end
 
-    subgraph CoreServices [Núcleo de Serviços de Negócio]
-        AuthService[Serviço de Identidade e Acesso]
-        CatalogService[Serviço de Catálogo e Categorias]
-        CartOrderService[Serviço de Carrinho e Pedidos]
-        StockService[Serviço de Gestão de Estoque]
-        ReviewService[Serviço de Avaliações e Reputação]
-        FinancialService[Serviço de Contabilidade e Repasses]
-        NotificationService[Serviço de Notificações Assíncronas]
-        AuditService[Serviço de Auditoria e Logs Críticos]
+    subgraph Core_Services["Camada de Serviços de Domínio (Lógica de Negócio)"]
+        Auth_Service["Serviço de Identidade e Perfis\n(Usuários, Papéis Múltiplos, Hash Seguro)"]
+        Catalog_Service["Serviço de Catálogo e Categorias\n(Produtos, Taxonomia, Visibilidade)"]
+        Media_Adapter["Adaptador de Mídia\n(Upload & Metadados de Fotos)"]
+        Inventory_Service["Serviço de Gestão de Estoque\n(Bloqueios, Baixa Transacional)"]
+        Order_Service["Serviço de Pedidos e Carrinho\n(Orquestrador de Pedidos & Subpedidos)"]
+        Payment_Service["Adaptador de Pagamentos Integrados\n(Tokenização, Processamento PCI-DSS)"]
+        Review_Service["Serviço de Avaliações e Respostas\n(Moderação, Médias, Respostas)"]
+        Financial_Service["Serviço Financeiro e Ledger\n(Comissões, Saldos, Solicitação de Saque)"]
+        Notification_Service["Serviço de Notificações\n(Disparos Transacionais por E-mail)"]
+        Audit_Service["Serviço de Auditoria e Logs\n(Rastreabilidade Imutável)"]
     end
 
-    subgraph IntegrationLayer [Adaptadores de Integração Externa]
-        PaymentAdapter[Adaptador de Gateway de Pagamento]
-        StorageAdapter[Adaptador de Armazenamento de Objetos]
-        EmailAdapter[Adaptador de Entrega de E-mail]
+    subgraph Persistence_Storage["Camada de Armazenamento e Infraestrutura Externa"]
+        Data_Store[(Armazenamento Transacional de Dados\nEntidades, Saldos e Estados)]
+        Audit_Store[(Armazenamento Imutável de Auditoria / Logs)]
+        External_Storage[("Serviço Externo de Armazenamento de Objetos\n(Object Storage)")]
+        Payment_Gateway["Gateway de Pagamento Externo\n(Cartão de Crédito / PIX)"]
+        Email_Provider["Provedor Externo de E-mail"]
     end
 
-    subgraph DataLayer [Camada de Persistência Abstrata]
-        AppDB[(Repositório Transacional Principal)]
-        LedgerDB[(Repositório Imutável Financeiro)]
-        ObjectStore[(Repositório de Mídias e Fotos)]
-    end
+    UI_Buyer --> Gateway
+    UI_Seller --> Gateway
+    UI_Admin --> Gateway
 
-    ClientLayer -->|HTTPS / REST / GraphQL| Gateway
-    Gateway --> AuthService
-    Gateway --> CatalogService
-    Gateway --> CartOrderService
-    Gateway --> ReviewService
-    Gateway --> FinancialService
+    Gateway --> Auth_Service
+    Gateway --> Catalog_Service
+    Gateway --> Order_Service
+    Gateway --> Review_Service
+    Gateway --> Financial_Service
 
-    AuthService --> AppDB
-    AuthService --> AuditService
+    Catalog_Service --> Media_Adapter
+    Media_Adapter --> External_Storage
+    Catalog_Service --> Data_Store
 
-    CatalogService --> AppDB
-    CatalogService --> StorageAdapter
-    StorageAdapter --> ObjectStore
+    Order_Service --> Inventory_Service
+    Order_Service --> Payment_Service
+    Order_Service --> Financial_Service
+    Order_Service --> Notification_Service
+    Order_Service --> Audit_Service
+    Order_Service --> Data_Store
 
-    CartOrderService --> StockService
-    CartOrderService --> FinancialService
-    CartOrderService --> PaymentAdapter
-    CartOrderService --> NotificationService
-    CartOrderService --> AppDB
-    CartOrderService --> AuditService
+    Payment_Service --> Payment_Gateway
+    Payment_Service --> Audit_Service
 
-    StockService --> AppDB
-    
-    FinancialService --> LedgerDB
-    FinancialService --> AuditService
+    Financial_Service --> Audit_Service
+    Financial_Service --> Data_Store
 
-    ReviewService --> AppDB
+    Review_Service --> Order_Service
+    Review_Service --> Data_Store
 
-    NotificationService --> EmailAdapter
-    AuditService --> LedgerDB
+    Notification_Service --> Email_Provider
+    Audit_Service --> Audit_Store
+    Auth_Service --> Data_Store
 ```
 
----
+### 2.2. Diagrama de Sequência: Processamento Transacional de Pedido Multiartesão
 
-### 2.2. Diagrama de Sequência: Processamento Transacional de Checkout Multi-Artesão
-
-O fluxo a seguir detalha o processamento de fechamento de pedido com múltiplos itens de diferentes artesãos, contemplando a orquestração transacional de estoque, comunicação com gateway de pagamento, particionamento em subpedidos, retenção de comissão e garantias de reversão (rollback) em caso de falha.
+O diagrama a seguir detalha a finalização do pedido contendo produtos de múltiplos artesãos, a garantia de reserva e decremento transacional de estoque, a integração com o gateway de pagamento e a criação segregada dos subpedidos.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Comprador as Comprador
-    participant Gateway as API Gateway / Edge
+    participant Gateway as API Gateway / Sessão
     participant OrderSvc as Serviço de Pedidos
-    participant StockSvc as Serviço de Estoque
-    participant PayAdapter as Adaptador de Pagamento
-    participant ExtGateway as Gateway de Pagamento Externo
+    participant InvSvc as Serviço de Estoque
+    participant PaySvc as Adaptador de Pagamento
+    participant ExtPay as Gateway Externo de Pagamento
     participant FinSvc as Serviço Financeiro
-    participant NotifSvc as Serviço de Notificações
+    participant NotifSvc as Serviço de Notificação
     participant AuditSvc as Serviço de Auditoria
 
-    Comprador->>Gateway: Finalizar Pedido (Itens, Dados Pagamento)
-    Gateway->>OrderSvc: Processar Checkout (Payload)
+    Comprador ->> Gateway: Finalizar Pedido (Itens [Artesão A, Artesão B], Dados Pagamento)
+    Gateway ->> OrderSvc: Processar Checkout(payload)
     
-    OrderSvc->>StockSvc: Validar Disponibilidade & Bloquear Estoque (Itens)
-    alt Estoque Insuficiente / Zerado
-        StockSvc-->>OrderSvc: Erro: Estoque Indisponível
-        OrderSvc-->>Gateway: 400 Bad Request (Item Indisponível)
-        Gateway-->>Comprador: Exibir Alerta de Estoque Esgotado
+    OrderSvc ->> InvSvc: Validar Disponibilidade & Bloquear Estoque Provisório(Itens)
+    alt Estoque Insuficiente
+        InvSvc -->> OrderSvc: Falha: Quantidade Indisponível / Zerada
+        OrderSvc -->> Gateway: Erro: Conflito de Estoque
+        Gateway -->> Comprador: Erro ao finalizar: Produto esgotado
     else Estoque Disponível
-        StockSvc-->>OrderSvc: Reserva Temporária Concluída
+        InvSvc -->> OrderSvc: Estoque Bloqueado Temporariamente
         
-        OrderSvc->>PayAdapter: Executar Cobrança Transacional (Valor Total)
-        PayAdapter->>ExtGateway: Processar Transação (HTTPS / PCI-DSS)
+        OrderSvc ->> PaySvc: Executar Cobrança(ValorTotal, TokenPagamento)
+        PaySvc ->> ExtPay: Processar Transação (HTTPS / PCI-DSS)
         
-        alt Falha / Recusa de Pagamento
-            ExtGateway-->>PayAdapter: Pagamento Recusado / Falha de Comunicação
-            PayAdapter-->>OrderSvc: Erro de Pagamento
-            OrderSvc->>StockSvc: Desfazer Reserva de Estoque (Rollback)
-            StockSvc-->>OrderSvc: Estoque Restaurado
-            OrderSvc->>AuditSvc: Registrar Falha de Pagamento (Log Crítico)
-            OrderSvc-->>Gateway: 422 Unprocessable Entity (Falha no Pagamento)
-            Gateway-->>Comprador: Exibir Falha na Cobrança
+        alt Pagamento Recusado / Falha
+            ExtPay -->> PaySvc: Resposta: Transação Recusada
+            PaySvc -->> OrderSvc: Falha no Pagamento
+            OrderSvc ->> InvSvc: Liberar Estoque Bloqueado
+            OrderSvc ->> AuditSvc: Registrar Log de Falha de Pagamento
+            OrderSvc -->> Gateway: Erro: Pagamento não autorizado
+            Gateway -->> Comprador: Notificação de falha no pagamento
         else Pagamento Aprovado
-            ExtGateway-->>PayAdapter: Transação Aprovada (ID Transação, Timestamp)
-            PayAdapter-->>OrderSvc: Sucesso na Cobrança
+            ExtPay -->> PaySvc: Resposta: Sucesso (TransID, DataHora)
+            PaySvc -->> OrderSvc: Pagamento Confirmado
             
-            OrderSvc->>StockSvc: Confirmar Decremento Definitivo de Estoque
-            StockSvc-->>OrderSvc: Estoque Atualizado com Sucesso
+            OrderSvc ->> InvSvc: Confirmar Decremento Definitivo de Estoque
             
-            OrderSvc->>OrderSvc: Criar Pedido Consolidado & Subpedidos por Artesão
-            
-            OrderSvc->>FinSvc: Registrar Venda e Calcular Comissões (Subpedidos, Alíquota Vigente)
-            FinSvc->>FinSvc: Reter Comissão Plataforma & Creditar Saldo Líquido do Artesão
-            FinSvc->>AuditSvc: Gravar Lançamento no Livro Razão Imutável
-            
-            OrderSvc->>AuditSvc: Registrar Pedido Confirmado
-            
-            OrderSvc->>NotifSvc: Disparar Eventos de Pedido Criado
-            par Notificar Comprador
-                NotifSvc->>Comprador: Enviar Confirmação por E-mail & Push
-            and Notificar Artesãos
-                NotifSvc->>OrderSvc: Disparar Notificação por E-mail para cada Artesão Envolvido
+            critical Persistência Transacional do Pedido
+                OrderSvc ->> OrderSvc: Criar Pedido Raiz (Status: Confirmado)
+                OrderSvc ->> OrderSvc: Criar Subpedido Artesão A (Status: Recebido)
+                OrderSvc ->> OrderSvc: Criar Subpedido Artesão B (Status: Recebido)
+                OrderSvc ->> FinSvc: Registrar Transações Financeiras (Valor Bruto, Comissão Retida, Saldo Líquido)
+                OrderSvc ->> AuditSvc: Registrar Log Imutável de Venda e Transação Financeira
             end
             
-            OrderSvc-->>Gateway: 201 Created (Resumo do Pedido & Subpedidos)
-            Gateway-->>Comprador: Exibir Sucesso e Número do Pedido
+            OrderSvc ->> NotifSvc: Enviar E-mail de Confirmação (Comprador)
+            OrderSvc ->> NotifSvc: Enviar E-mail de Novo Pedido (Artesão A)
+            OrderSvc ->> NotifSvc: Enviar E-mail de Novo Pedido (Artesão B)
+            
+            OrderSvc -->> Gateway: Pedido Confirmado (Resumo do Pedido + Subpedidos)
+            Gateway -->> Comprador: Exibir Confirmação de Compra
         end
     end
 ```
 
----
-
-### 2.3. Diagrama do Modelo de Dados Conceitual do Domínio
+### 2.3. Diagrama de Classes do Domínio
 
 ```mermaid
 classDiagram
@@ -172,10 +163,10 @@ classDiagram
         +UUID id
         +String nome
         +String email
-        +String hashSenha
-        +Set~Perfil~ perfis
+        +String senhaHash
+        +Boolean statusAtivo
         +DateTime dataCriacao
-        +Boolean ativo
+        +autenticar()
     }
 
     class Perfil {
@@ -183,6 +174,12 @@ classDiagram
         ADMINISTRADOR
         ARTESAO
         COMPRADOR
+    }
+
+    class UsuarioPerfil {
+        +UUID usuarioId
+        +Perfil perfil
+        +DateTime dataAtribuicao
     }
 
     class Categoria {
@@ -198,41 +195,53 @@ classDiagram
         +UUID categoriaId
         +String nome
         +String descricao
-        +Decimal preco
+        +Decimal precoUnitario
         +Integer quantidadeEstoque
         +Boolean publicado
-        +List~String~ fotosUrls
+        +Decimal mediaAvaliacoes
+        +atualizarEstoque(quantidade)
+        +publicar()
+        +despublicar()
+    }
+
+    class FotoProduto {
+        +UUID id
+        +UUID produtoId
+        +String urlArmazenamento
+        +Integer ordemExibicao
     }
 
     class Pedido {
         +UUID id
         +UUID compradorId
         +Decimal valorTotal
-        +String statusGeral
+        +String statusPagamento
         +DateTime dataCriacao
     }
 
-    class Subpedido {
+    class SubPedido {
         +UUID id
         +UUID pedidoId
         +UUID artesaoId
-        +Decimal valorBruto
+        +Decimal valorSubtotal
         +Decimal valorComissaoRetida
         +Decimal valorLiquidoArtesao
-        +StatusSubpedido status
+        +StatusSubPedido status
+        +DateTime dataAtualizacao
+        +avancarStatus(novoStatus)
     }
 
-    class StatusSubpedido {
+    class StatusSubPedido {
         <<enumeration>>
         RECEBIDO
         EM_PREPARACAO
         ENVIADO
         ENTREGUE
-        CANCELADO
     }
 
-    class ItemSubpedido {
+    class ItemSubPedido {
         +UUID id
+        +UUID subPedidoId
         +UUID produtoId
         +Integer quantidade
         +Decimal precoUnitarioMomento
@@ -240,7 +249,7 @@ classDiagram
 
     class Avaliacao {
         +UUID id
-        +UUID subpedidoId
+        +UUID subPedidoId
         +UUID produtoId
         +UUID compradorId
         +Integer nota
@@ -253,171 +262,185 @@ classDiagram
         +UUID avaliacaoId
         +UUID artesaoId
         +String textoResposta
-        +DateTime dataResposta
+        +DateTime dataCriacao
     }
 
-    class ParametroComissao {
+    class RegistroTransacaoFinanceira {
         +UUID id
-        +Decimal percentual
-        +DateTime vigenciaInicio
-        +UUID atualizadoPor
-    }
-
-    class TransacaoFinanceira {
-        +UUID id
+        +UUID subPedidoId
         +UUID artesaoId
-        +UUID subpedidoIdReferencia
-        +TipoTransacao tipo
         +Decimal valorBruto
+        +Decimal taxaComissaoAplicada
         +Decimal valorComissao
         +Decimal valorLiquido
-        +DateTime timestamp
+        +DateTime dataRegistro
     }
 
     class SolicitacaoSaque {
         +UUID id
         +UUID artesaoId
         +Decimal valorSolicitado
-        +String dadosBancariosSnapshot
+        +String dadosBancariosHash
         +StatusSaque status
         +DateTime dataSolicitacao
+        +DateTime dataProcessamento
     }
 
-    Usuario "1" -- "*" Produto : cadastra (se Artesão)
-    Usuario "1" -- "*" Pedido : realiza (se Comprador)
-    Categoria "1" -- "*" Produto : classifica
-    Pedido "1" -- "1..*" Subpedido : particionado em
-    Subpedido "1" -- "1..*" ItemSubpedido : contém
-    Produto "1" -- "*" ItemSubpedido : referencia
-    ItemSubpedido "1" -- "0..1" Avaliacao : recebe
-    Avaliacao "1" -- "0..1" RespostaAvaliacao : possui
-    Subpedido "*" -- "1" Usuario : pertence ao Artesão
-    Usuario "1" -- "*" TransacaoFinanceira : registra
-    Usuario "1" -- "*" SolicitacaoSaque : solicita
+    class StatusSaque {
+        <<enumeration>>
+        PENDENTE
+        PROCESSADO
+        REJEITADO
+    }
+
+    class ParametroComissao {
+        +UUID id
+        +Decimal percentualVigente
+        +DateTime dataInicioVigencia
+        +UUID atualizadoPorAdminId
+    }
+
+    Usuario "1" -- "1..*" UsuarioPerfil : possui
+    Usuario "1" -- "0..1" Produto : gerencia (como artesao)
+    Usuario "1" -- "0..*" Pedido : realiza (como comprador)
+    Categoria "1" -- "0..*" Produto : classifica
+    Produto "1" -- "1..*" FotoProduto : contem
+    Pedido "1" -- "1..*" SubPedido : divide-se em
+    SubPedido "1" -- "1..*" ItemSubPedido : contem
+    Produto "1" -- "0..*" ItemSubPedido : referenciado em
+    ItemSubPedido "1" -- "0..1" Avaliacao : recebe
+    Avaliacao "1" -- "0..1" RespostaAvaliacao : responde
+    SubPedido "1" -- "1" RegistroTransacaoFinanceira : gera
+    Usuario "1" -- "0..*" SolicitacaoSaque : solicita (artesao)
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### 3.1. Modelo de Particionamento de Pedidos (Subpedidos por Artesão)
-* **Contexto:** Compradores podem consolidar itens de diferentes artesãos em um único carrinho e pagar em uma única transação (RF13, RF16, RF22, HU08). Cada artesão é responsável pela preparação e despacho exclusivo dos seus produtos (RF20, HU03, HU09).
-* **Decisão:** Adotar o padrão de *Aggregate Root* com Pedido Consolidado (nível Comprador) particionado em Subpedidos independentes (nível Artesão). O ciclo de vida logístico e de repasse financeiro é operado estritamente na granularidade de Subpedido.
-* **Justificativa:** Permite que falhas operacionais ou atrasos de um artesão não bloqueiem a transição de estado, as notificações e o repasse financeiro dos demais artesãos do mesmo pedido.
-* **Consequências:** Exige lógica de cálculo financeiro e frete segregada por Subpedido, além de gerenciamento de status mestre que consolida o status dos nós-filhos para a visão do comprador.
+### Decisão 1: Modelo Estrutural de Subpedidos Independentes por Artesão
+* **Contexto:** Compradores podem adicionar produtos de diferentes artesãos em um único carrinho de compras (RF22, HU08).
+* **Decisão:** Adotar a cisão do Pedido Mestre (`Pedido`) em múltiplos `SubPedidos`, agrupados por artesão no momento da liquidação financeira. Cada `SubPedido` possui seu próprio ciclo de vida de status (`Recebido`, `Em preparação`, `Enviado`, `Entregue`), sua própria chave contábil de comissão e seu próprio canal de notificação.
+* **Impacto:** Permite aos artesãos gerenciar entregas e pedidos de forma autônoma (RF20, HU03), simplifica a rastreabilidade por parte do comprador (HU09) e viabiliza o cálculo independente de comissões e repasses (RF26, RF28).
 
-### 3.2. Garantia de Transacionalidade e Isolamento de Estoque
-* **Contexto:** RNF08 estipula que falhas de pagamento não devem impactar estoque nem gerar cobranças parciais. RF08 impede compra de produtos com estoque zerado.
-* **Decisão:** Implementar padrão de Reserva Transacional com *Two-Phase Allocation*: durante o checkout, o estoque é bloqueado temporariamente com expiração curta. Apenas mediante resposta síncrona positiva do Gateway de Pagamento o decremento definitivo é efetivado; em caso de recusa/timeout, o bloqueio é imediatamente revertido via mecanismo de compensação.
-* **Justificativa:** Previne condições de corrida (*race conditions*) em acessos concorrentes ao último item de um artesão e garante consistência estrita sem travar longamente o banco de dados.
-* **Consequências:** Requer serviço de limpeza automática de reservas expiradas em caso de abandono de checkout no meio do fluxo.
+### Decisão 2: Garantia de Atomicidade e Transacionalidade (Checkout, Estoque e Pagamento)
+* **Contexto:** Requisito RNF08 estipula que, em caso de falha de pagamento, nenhuma cobrança deve ser efetivada e nenhum estoque decrementado. RF08 impede compras com estoque zerado.
+* **Decisão:** Implementar um padrão de transação compensatória em dois estágios no Serviço de Pedidos:
+  1. Bloqueio lógico temporário de estoque durante o envio da requisição ao Gateway de Pagamento.
+  2. Em caso de aprovação: confirmação definitiva da baixa do estoque e persistência do pedido em bloco transacional único.
+  3. Em caso de recusa/timeout: liberação imediata do estoque bloqueado e registro de falha em log de auditoria, sem criação de obrigações financeiras.
+* **Impacto:** Elimina o risco de inconsistência de estoque (*overselling*) e garante integridade transacional financeira.
 
-### 3.3. Livro Razão Financeiro (*Ledger*) Imutável com Retenção de Comissão em Snapshot
-* **Contexto:** RF26, RF27, RF28, RF29, RF30, RNF09 e HU12 exigem rastreabilidade de vendas, saldo para saque, histórico de comissões e alteração de comissão sem impacto retroativo.
-* **Decisão:** Utilizar o padrão de *Event-Appended Ledger* (Escrita Apenas / *Append-Only*) para todas as movimentações monetárias (venda, retenção de taxa, solicitação de saque, estorno). O percentual de comissão é fixado no registro do Subpedido via *snapshot* no instante da liquidação da compra.
-* **Justificativa:** Assegura conformidade fiscal, integridade para auditoria contábil e elimina o risco de recálculo incorreto de vendas passadas ao atualizar a taxa da plataforma.
-* **Consequências:** Saldos disponíveis para saque devem ser calculados a partir da consolidação do histórico ou mantidos em tabela de saldo derivado transacional com proteção de concorrência.
+### Decisão 3: Desacoplamento de Armazenamento de Arquivos Estáticos (Fotos de Produtos)
+* **Contexto:** RNF04 exige o desacoplamento de fotos de produtos do servidor da aplicação via serviço externo de armazenamento de objetos (*Object Storage*).
+* **Decisão:** O upload de fotos será orquestrado via geração de URLs assinadas/delegadas de escrita no serviço de armazenamento de objetos ou através de um adaptador de ingestão com processamento assíncrono de metadados, armazenando no banco de dados exclusivamente os identificadores de URI seguros.
+* **Impacto:** Reduz a carga de I/O no núcleo da aplicação, otimiza o desempenho de entrega de catálogo (RNF05) e possibilita escalabilidade elástica da camada de mídia.
 
-### 3.4. Desacoplamento do Armazenamento de Arquivos Binários (Object Storage Externo)
-* **Contexto:** RNF04 e HU01 exigem que múltiplas fotos de produtos sejam armazenadas em serviço externo de *Object Storage*, desacoplado do servidor de aplicação.
-* **Decisão:** O upload de mídias operará via geração de URLs assinadas pré-autorizadas (*Pre-signed Upload URLs*) emitidas pelo serviço de aplicação, permitindo que o cliente web/mobile envie a mídia diretamente para o *Object Storage*.
-* **Justificativa:** Elimina a saturação de memória e banda do backend durante o tráfego de imagens pesadas e viabiliza a entrega via redes de distribuição com baixa latência (RNF05).
-* **Consequências:** O cadastro do produto torna-se um processo de duas etapas: obtenção do link de upload e envio do formulário contendo as URIs definitivas das imagens processadas.
+### Decisão 4: Ledger Contábil e Imutabilidade Financeira
+* **Contexto:** RNF09, RNF13, RF26, RF27 e HU12 exigem registro imutável de vendas, alterações de comissão e saques, além de histórico auditável para o painel do artesão.
+* **Decisão:** Adotar o conceito de Livro-Razão Contábil (*Financial Ledger*) baseado em transações do tipo *append-only* (somente inserção). Alterações em taxas de comissão geram novos registros versionados com *timestamp* e identificação do administrador responsável, aplicando-se estritamente aos subpedidos criados após sua vigência.
+* **Impacto:** Impossibilita adulteração retroativa de comissões cobradas, fornece base de dados consistente para o painel do vendedor (RNF06) e garante rastreabilidade total para conformidade regulatória.
 
-### 3.5. Modelo de Identidade com Papéis Cumulativos (*Multi-Role RBAC*)
-* **Contexto:** RF01, RF03 e RNF01 determinam que um mesmo usuário autenticado possa operar simultaneamente com os perfis de comprador e de artesão.
-* **Decisão:** Implementar RBAC (*Role-Based Access Control*) baseado em conjunto de papéis atribuídos a um identificador único de usuário (*Subject*). Tokens de sessão carregarão as permissões consolidadas (`roles: ["BUYER", "ARTISAN"]`).
-* **Justificativa:** Evita a criação de contas duplicadas com o mesmo e-mail e permite alternar contextos de compra e gestão de loja sem necessidade de logout.
-* **Consequências:** Endpoints e componentes de interface devem validar autorizações com base no papel específico exigido pelo recurso (`@RequireRole("ARTISAN")`), e não apenas no status de autenticação genérico.
+### Decisão 5: Controle de Acesso Baseado em Perfis e Recursos (RBAC Híbrido)
+* **Contexto:** RF01, RF03, RNF01 exigem suporte a perfis distintos (Administrador, Artesão, Comprador), permitindo que um usuário opere simultaneamente como comprador e artesão.
+* **Decisão:** A identidade do usuário é única, possuindo uma coleção de concessões de perfis (`UsuarioPerfil`). O controle de acesso no Gateway valida:
+  - Papel do usuário (RBAC) para acesso às rotas funcionais.
+  - Vínculo de propriedade do recurso (*Resource-Based Access Control*) para operações de edição de produtos (RF05), atualização de pedidos (RF20) e respostas a avaliações (RF25), garantindo que um artesão acesse exclusivamente seus próprios registros.
+* **Impacto:** Garante segregação estrita de dados e conformidade estrita com os critérios de segurança (RNF01).
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|---|---|---|---|
-| **Gestor de Identidade e Acesso (IAM)** | Autenticar usuários, gerar tokens seguros, efetuar hash de senhas (ex.: bcrypt) e validar múltiplos perfis simultâneos (Comprador/Artesão/Admin). | Base de Dados Transacional, Gateway de Borda | RF01, RF02, RF03, RNF01, RNF02, RNF11 |
-| **Controlador de Catálogo e Mídia** | Gerenciar o ciclo de vida dos produtos (criação, edição, publicação, remoção lógica), integração com Object Storage e gestão de categorias pelo Admin. | Adaptador de Object Storage, Base de Dados, Serviço de Auditoria | RF04, RF05, RF06, RF10, RF11, RF12, RNF04, HU01, HU07, HU11 |
-| **Controlador de Estoque** | Executar a reserva transacional de itens durante o checkout, confirmação de baixa pós-venda, ajuste manual pelo artesão e bloqueio de itens zerados. | Base de Dados Transacional, Orquestrador de Pedidos | RF07, RF08, RF09, RNF08, HU02, HU08 |
-| **Orquestrador de Carrinho e Checkout** | Montar carrinhos de múltiplos artesãos, apresentar resumos financeiros consolidados e gerenciar a máquina de estados do checkout transacional. | Controlador de Estoque, Adaptador de Gateway de Pagamento, Gestor de Subpedidos | RF13, RF14, RF15, RF16, RF17, RNF08, HU08 |
-| **Gestor de Subpedidos e Logística** | Particionar pedidos por artesão, controlar as transições de status operacional (recebido -> preparação -> enviado -> entregue) e expor rastreamento. | Base de Dados, Despachante de Notificações, Serviço de Auditoria | RF18, RF20, RF21, RF22, HU03, HU09 |
-| **Adaptador de Gateway de Pagamento** | Abstrair a comunicação segura (HTTPS/PCI-DSS) com operadoras de cartão/PIX, garantindo não retenção de dados sensíveis de pagamento. | Gateway de Pagamento Externo, Orquestrador de Checkout | RF16, RF17, RNF03, RNF08, HU08 |
-| **Motor Financeiro e Repasses (Ledger)** | Reter comissões da plataforma com base em alíquota histórica, registrar lançamentos contábeis imutáveis, gerenciar saldo líquido e processar solicitações de saque. | Repositório Imutável (Ledger), Serviço de Auditoria | RF26, RF27, RF28, RF29, RF30, RNF06, RNF09, HU04, HU05, HU12 |
-| **Gestor de Avaliações e Reputação** | Habilitar avaliação (1 a 5 e texto) para produtos entregues, calcular média ponderada de notas e receber resposta única/imutável do artesão. | Base de Dados, Gestor de Subpedidos | RF23, RF24, RF25, HU06, HU10 |
-| **Despachante de Notificações** | Processar eventos do sistema e enviar e-mails transacionais e alertas na plataforma para compradores e artesãos de forma desacoplada. | Adaptador de Envio de E-mail, Orquestrador de Pedidos | RF18, RF19, HU03, HU08 |
-| **Serviço de Auditoria e Logs Críticos** | Registrar de forma estruturada e append-only eventos críticos: confirmação de pedidos, falhas de pagamento, saques e alterações de parâmetros de comissão. | Repositório de Auditoria | RNF09, RNF13, HU05, HU12 |
+| :--- | :--- | :--- | :--- |
+| **Ponto de Entrada API & Controle de Sessão** | Autenticação, emissão/validação de credenciais com hash seguro, roteamento e controle de permissões por perfil. | Serviço de Identidade e Perfis, Demais Serviços de Domínio | RF01, RF02, RF03, RNF01, RNF02, RNF10 |
+| **Serviço de Identidade e Perfis** | Gerenciamento do ciclo de vida dos usuários, validação de unicidade, gestão de papéis múltiplos (Artesão/Comprador) e hash de credenciais. | Ponto de Entrada API, Armazenamento Transacional | RF01, RF02, RF03, RNF02, RNF11 |
+| **Serviço de Catálogo e Categorias** | Gestão de produtos, controle de publicação/visibilidade, categorização taxonômica e buscas públicas por nome/categoria/artesão. | Adaptador de Mídia, Armazenamento Transacional, Serviço de Estoque | RF04, RF05, RF06, RF10, RF11, RF12, HU01, HU07, HU11, RNF05 |
+| **Adaptador de Mídia** | Integração com serviço de armazenamento de objetos externo para upload, validação de formato e entrega de links de fotos de produtos. | Serviço Externo de Armazenamento de Objetos, Serviço de Catálogo | RF04, HU01, RNF04 |
+| **Serviço de Gestão de Estoque** | Manutenção de saldos de estoque por produto, validação de disponibilidade e execução de bloqueios/baixas atômicas. | Serviço de Catálogo, Serviço de Pedidos, Armazenamento Transacional | RF07, RF08, RF09, HU02, RNF08 |
+| **Serviço de Pedidos e Carrinho** | Gestão de sessão de carrinho, consolidação de totais, orquestração do checkout, particionamento de pedidos em subpedidos por artesão e rastreio de status. | Serviço de Estoque, Adaptador de Pagamentos, Serviço Financeiro, Serviço de Notificações, Serviço de Auditoria | RF13, RF14, RF15, RF16, RF18, RF20, RF21, RF22, HU03, HU08, HU09 |
+| **Adaptador de Pagamentos Integrados** | Intermediação com provedor externo de pagamentos sob protocolo seguro (HTTPS/PCI-DSS), geração de transação e tratamento de confirmações/falhas. | Gateway Externo de Pagamento, Serviço de Pedidos, Serviço de Auditoria | RF16, RF17, RNF03, RNF08, RNF13, HU08 |
+| **Serviço de Avaliações e Respostas** | Validação de elegibilidade (pedido entregue), registro de nota/comentário único por produto, moderação e publicação de resposta única do artesão. | Serviço de Pedidos, Armazenamento Transacional | RF23, RF24, RF25, HU06, HU10 |
+| **Serviço Financeiro e Ledger** | Cálculo e retenção de comissões da plataforma, parametrização de taxas vigentes, consolidação do painel financeiro e processamento de solicitações de saque. | Serviço de Pedidos, Serviço de Auditoria, Armazenamento Transacional | RF26, RF27, RF28, RF29, RF30, HU04, HU05, HU12, RNF06, RNF09 |
+| **Serviço de Notificações** | Geração e envio de comunicações assíncronas por e-mail para compradores (confirmação de compra) e artesãos (novos pedidos e eventos). | Provedor Externo de E-mail, Serviço de Pedidos | RF18, RF19, HU03, HU08 |
+| **Serviço de Auditoria e Logs** | Registro append-only de eventos críticos, alterações em tabelas financeiras, auditoria de segurança e trilhas de execução. | Armazenamento Imutável de Auditoria, Todos os Serviços | RNF09, RNF13, HU05, HU12 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Protocolo de Liquidação e Cancelamento de Subpedidos Isolados:** A especificação prevê pedidos com múltiplos artesãos (RF22), mas não define a política de estorno parcial quando apenas um dos artesãos falha no envio ou cancela seu subpedido. É necessário definir se o reembolso de um subpedido cancelado é automático e como ficam as taxas de processamento do gateway.
-2. **Tempo Limite de Bloqueio de Estoque no Checkout:** É necessária a definição do tempo de expiração (*TTL/Timeout*) da reserva temporária de estoque durante a geração de ordens (ex.: PIX que aguarda pagamento por até 30 minutos).
-3. **Fluxo Operacional de Aprovação de Saques:** RF30 e HU05 especificam que o artesão pode solicitar saque informando dados bancários, mas não delimitam se o processamento é automatizado via API bancária de transferências ou se existe etapa manual de aprovação/validação documental pelo Administrador.
-4. **Política de Reclassificação de Produtos Órfãos:** Em HU11, é estipulado que artesãos sejam notificados ao remover uma categoria. Deve-se formalizar o estado transitório do produto (ex.: categoria "Outros / Sem Categoria" padrão ou suspensão temporária da visibilidade do item).
+1. **Protocolo de Saques e Liquidação Bancária (RF30 / HU05):**
+   * *Pendência:* A especificação define que o artesão informa os dados bancários e o saldo entra em processamento. Não foi detalhada a estratégia de integração com arranjo de transferências automáticas via gateway (ex: split de pagamento direto ou rotina de lote/PIX manual pelo administrador).
+   * *Ação de Desbloqueio:* Definir se haverá módulo de liquidação financeira automatizado via API do provedor de pagamento ou se o status "processado" será alterado via painel administrativo após compensação bancária externa.
+
+2. **Políticas de Reclassificação de Produtos em Exclusão de Categorias (RF12 / HU11):**
+   * *Pendência:* O critério de aceite da HU11 menciona que ao remover uma categoria com itens associados, os artesãos devem ser notificados para reclassificação, mas não especifica o estado do produto enquanto não reclassificado (ex: fallback para categoria genérica "Outros" ou suspensão de visibilidade).
+   * *Ação de Desbloqueio:* Estabelecer a regra de negócio padrão: vincular itens desclassificados temporariamente a uma categoria de sistema ("Não categorizado") e despublicá-los até atualização pelo artesão.
+
+3. **Cálculo de Frete e Prazos de Entrega Segregados por Artesão (RF22):**
+   * *Pendência:* Como os produtos de múltiplos artesãos partem de origens geográficas distintas, os requisitos não abordam a regra de cálculo, agregação ou rateio de custos de frete no carrinho consolidado.
+   * *Ação de Desbloqueio:* Alinhar com o Product Owner se o MVP contemplará frete fixo/grátis embutido no preço do produto ou se será introduzida uma etapa de cálculo logístico individual por subpedido no checkout.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-A matriz abaixo comprova o atendimento integral de todos os Requisitos Funcionais (RF01 a RF30) e Não Funcionais (RNF01 a RNF13) pelos módulos da arquitetura proposta.
+A matriz abaixo comprova a rastreabilidade total de todos os Requisitos Funcionais e Não Funcionais estabelecidos:
 
-| ID Requisito | Atendido por (Módulo / Mecanismo de Arquitetura) | Status |
-|---|---|---|
-| **RF01** | Gestor de Identidade e Acesso (IAM) - Esquema de usuários com papéis mapeados | Coberto |
-| **RF02** | Gestor de Identidade e Acesso (IAM) - Ciclo de vida de tokens de autenticação | Coberto |
-| **RF03** | IAM - Suporte a múltiplos papéis por entidade de usuário (*Multi-role Subject*) | Coberto |
-| **RF04** | Controlador de Catálogo + Adaptador de Object Storage | Coberto |
-| **RF05** | Controlador de Catálogo - Validação de propriedade (*Ownership Check*) para edição/remoção | Coberto |
-| **RF06** | Controlador de Catálogo - Flag booleana de publicação/visibilidade | Coberto |
-| **RF07** | Controlador de Estoque - Operações de ajuste de saldo de estoque | Coberto |
-| **RF08** | Controlador de Estoque - Bloqueio de checkout quando saldo = 0 | Coberto |
-| **RF09** | Controlador de Estoque + Orquestrador de Pedidos - Decremento atômico pós-aprovação | Coberto |
-| **RF10** | Controlador de Catálogo - Filtros indexados por categoria | Coberto |
-| **RF11** | Controlador de Catálogo - Mecanismo de busca textual por produto, categoria ou artesão | Coberto |
-| **RF12** | Controlador de Catálogo - Módulo de gestão taxonômica exclusivo para Admin | Coberto |
-| **RF13** | Orquestrador de Carrinho e Checkout - Gestão de sessão e itens do carrinho | Coberto |
-| **RF14** | Orquestrador de Carrinho e Checkout - Operações de incremento/decremento de itens | Coberto |
-| **RF15** | Orquestrador de Carrinho e Checkout - Endpoint de cálculo consolidado pré-checkout | Coberto |
-| **RF16** | Orquestrador de Checkout + Adaptador de Gateway de Pagamento | Coberto |
-| **RF17** | Adaptador de Gateway de Pagamento - Interface com suporte a PIX e Cartão | Coberto |
-| **RF18** | Despachante de Notificações - Disparo de e-mail e evento em tela pós-aprovação | Coberto |
-| **RF19** | Despachante de Notificações - Disparo assíncrono de alerta de nova venda ao artesão | Coberto |
-| **RF20** | Gestor de Subpedidos - Máquina de estados (Recebido -> Preparação -> Enviado -> Entregue) | Coberto |
-| **RF21** | Gestor de Subpedidos - Endpoint de consulta de pedidos e subpedidos do comprador | Coberto |
-| **RF22** | Orquestrador de Pedidos / Gestor de Subpedidos - Divisão por artesão | Coberto |
-| **RF23** | Gestor de Avaliações - Regra de validação de entrega confirmada antes da avaliação | Coberto |
-| **RF24** | Gestor de Avaliações - Visão pública com agregações e listagem de reviews | Coberto |
-| **RF25** | Gestor de Avaliações - Resposta pública unívoca do vendedor | Coberto |
-| **RF26** | Motor Financeiro - Retenção de taxa e cálculo de repasse líquido | Coberto |
-| **RF27** | Motor Financeiro - Parametrização de comissão por Administrador com vigência temporal | Coberto |
-| **RF28** | Motor Financeiro - Painel financeiro com agregação contábil | Coberto |
-| **RF29** | Motor Financeiro - Consolidação de saldo disponível via Ledger | Coberto |
-| **RF30** | Motor Financeiro - Módulo de saque com snapshot de dados bancários | Coberto |
-| **RNF01** | Gateway de Borda / IAM - Autorização via RBAC | Coberto |
-| **RNF02** | IAM - Função criptográfica de hashing seguro (ex.: bcrypt) | Coberto |
-| **RNF03** | Adaptador de Gateway de Pagamento - HTTPS/TLS obrigatório e conformidade PCI-DSS | Coberto |
-| **RNF04** | Adaptador de Armazenamento de Objetos - Isolamento e upload desacoplado de mídias | Coberto |
-| **RNF05** | Estratégia de Indexação e Caching em Camada de Leitura no Catálogo (< 2s) | Coberto |
-| **RNF06** | Modelagem de Agregação / Índices Otimizados no Motor Financeiro (< 3s) | Coberto |
-| **RNF07** | Camada de Apresentação Responsiva (Web/Mobile) | Coberto |
-| **RNF08** | Padrão de Compensação Transacional / Reserva em Duas Fases no Checkout | Coberto |
-| **RNF09** | Repositório Financeiro Imutável (*Append-Only Ledger*) | Coberto |
-| **RNF10** | Aderência aos padrões Web W3C nos clientes de interface | Coberto |
-| **RNF11** | Governança de Dados / Criptografia de dados bancários em repouso (LGPD) | Coberto |
-| **RNF12** | Redundância de infraestrutura e desacoplamento de serviços (99,5% SLA) | Coberto |
-| **RNF13** | Serviço de Auditoria e Logs Críticos estruturados | Coberto |
+| ID Requisito | Tipo | Componente(s) Responsável(is) | História de Usuário (HU) | Status de Cobertura |
+| :--- | :--- | :--- | :--- | :--- |
+| **RF01** | Funcional | Ponto de Entrada API, Serv. Identidade | - | Totalmente Coberto |
+| **RF02** | Funcional | Ponto de Entrada API, Serv. Identidade | - | Totalmente Coberto |
+| **RF03** | Funcional | Serv. Identidade e Perfis | - | Totalmente Coberto |
+| **RF04** | Funcional | Serv. Catálogo, Adaptador Mídia | HU01 | Totalmente Coberto |
+| **RF05** | Funcional | Serv. Catálogo, Serv. Estoque | HU02 | Totalmente Coberto |
+| **RF06** | Funcional | Serv. Catálogo | HU01 | Totalmente Coberto |
+| **RF07** | Funcional | Serv. Catálogo, Serv. Estoque | HU02 | Totalmente Coberto |
+| **RF08** | Funcional | Serv. Estoque, Serv. Pedidos | HU02, HU08 | Totalmente Coberto |
+| **RF09** | Funcional | Serv. Estoque, Serv. Pedidos | HU02, HU08 | Totalmente Coberto |
+| **RF10** | Funcional | Serv. Catálogo e Categorias | HU07 | Totalmente Coberto |
+| **RF11** | Funcional | Serv. Catálogo e Categorias | HU07 | Totalmente Coberto |
+| **RF12** | Funcional | Serv. Catálogo e Categorias | HU11 | Totalmente Coberto |
+| **RF13** | Funcional | Serv. Pedidos e Carrinho | HU08 | Totalmente Coberto |
+| **RF14** | Funcional | Serv. Pedidos e Carrinho | HU08 | Totalmente Coberto |
+| **RF15** | Funcional | Serv. Pedidos e Carrinho | HU08 | Totalmente Coberto |
+| **RF16** | Funcional | Serv. Pedidos, Adaptador Pagamentos | HU08 | Totalmente Coberto |
+| **RF17** | Funcional | Adaptador de Pagamentos Integrados | HU08 | Totalmente Coberto |
+| **RF18** | Funcional | Serv. Pedidos, Serv. Notificações | HU08 | Totalmente Coberto |
+| **RF19** | Funcional | Serv. Pedidos, Serv. Notificações | HU03 | Totalmente Coberto |
+| **RF20** | Funcional | Serv. Pedidos e Carrinho | HU03 | Totalmente Coberto |
+| **RF21** | Funcional | Serv. Pedidos e Carrinho | HU09 | Totalmente Coberto |
+| **RF22** | Funcional | Serv. Pedidos e Carrinho | HU08, HU09 | Totalmente Coberto |
+| **RF23** | Funcional | Serv. Avaliações e Respostas | HU10 | Totalmente Coberto |
+| **RF24** | Funcional | Serv. Avaliações, Serv. Catálogo | HU07, HU10 | Totalmente Coberto |
+| **RF25** | Funcional | Serv. Avaliações e Respostas | HU06 | Totalmente Coberto |
+| **RF26** | Funcional | Serv. Financeiro e Ledger | HU04, HU08 | Totalmente Coberto |
+| **RF27** | Funcional | Serv. Financeiro e Ledger | HU12 | Totalmente Coberto |
+| **RF28** | Funcional | Serv. Financeiro e Ledger | HU04 | Totalmente Coberto |
+| **RF29** | Funcional | Serv. Financeiro e Ledger | HU04, HU05 | Totalmente Coberto |
+| **RF30** | Funcional | Serv. Financeiro e Ledger | HU05 | Totalmente Coberto |
+| **RNF01** | Não Funcional | Ponto de Entrada API, Serv. Identidade | HU01 a HU06, HU11, HU12 | Totalmente Coberto |
+| **RNF02** | Não Funcional | Serv. Identidade e Perfis | - | Totalmente Coberto |
+| **RNF03** | Não Funcional | Adaptador de Pagamentos Integrados | HU08 | Totalmente Coberto |
+| **RNF04** | Não Funcional | Adaptador de Mídia, Armazenamento Externo | HU01 | Totalmente Coberto |
+| **RNF05** | Não Funcional | Serv. Catálogo e Categorias | HU07 | Totalmente Coberto |
+| **RNF06** | Não Funcional | Serv. Financeiro e Ledger | HU04 | Totalmente Coberto |
+| **RNF07** | Não Funcional | Camada de Apresentação (UI) | HU01 a HU10 | Totalmente Coberto |
+| **RNF08** | Não Funcional | Serv. Pedidos, Serv. Estoque, Pagamento | HU02, HU08 | Totalmente Coberto |
+| **RNF09** | Não Funcional | Serv. Financeiro, Serv. Auditoria | HU04, HU05, HU12 | Totalmente Coberto |
+| **RNF10** | Não Funcional | Camada de Apresentação (UI) | HU07, HU09 | Totalmente Coberto |
+| **RNF11** | Não Funcional | Todos os Serviços / Governança | HU05, HU10 | Totalmente Coberto |
+| **RNF12** | Não Funcional | Infraestrutura / Redundância | Transversal | Totalmente Coberto |
+| **RNF13** | Não Funcional | Serv. Auditoria e Logs | HU03, HU05, HU08, HU12 | Totalmente Coberto |
 
 ---
 
 ## 7. Gap Analysis
 
-A análise de lacunas operacionais e técnicas identifica pontos de refinamento essenciais para mitigar riscos de implementação:
-
-| Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
-|---|---|---|
-| **Cálculo de Frete e Prazos por Artesão** | A especificação não cita cálculo de frete individualizado para múltiplos artesãos situados em diferentes regiões geográficas. | Adicionar interface de cálculo logístico segregado por Subpedido, permitindo que cada vendedor informe dimensões, CEP de origem ou regras de frete fixo. |
-| **Gestão de Disputas e Devoluções** | Inexistência de fluxo sistêmico para devolução ou contestação de itens entregues com defeito. | Projetar máquina de estados estendida no Subpedido para comportar os estados `EM_CONTESTACAO` e `ESTORNADO`, vinculando estornos ao Ledger. |
-| **Validação de Chaves Bancárias / PIX para Saque** | Risco de saques rejeitados por inconsistência nos dados informados pelo artesão (HU05). | Criar camada de validação sintática prévia de chaves PIX/contas bancárias e registrar histórico imutável das contas de destino utilizadas. |
-| **Resiliência a Notificações de Pagamento Assíncrono (Webhooks)** | Falhas de rede podem impedir o recebimento de confirmação de pagamento emitido pelo Gateway externo. | Implementar endpoint idempotente para recepção de webhooks do Gateway com fila de retentativas e processo de reconciliação periódica de status. |
-| **Mecanismo de Moderação de Conteúdo nas Avaliações** | Avaliações e respostas são públicas (RF24, RF25), podendo conter linguagem ofensiva ou dados sensíveis sem mediação. | Planejar mecanismo de denúncia de conteúdo ou moderação administrativa para ocultação de avaliações que violem termos de uso. |
+| Lacuna de Especificação | Impacto Arquitetural | Ação Recomendada para o Time de Engenharia |
+| :--- | :--- | :--- |
+| **1. Ausência de Mecanismo de Cancelamento / Devolução / Reembolso** | Falta de modelo de transação compensatória reversa para subpedidos cancelados pelo artesão ou solicitados pelo comprador antes do envio. | Projetar o ciclo de vida estendido de `SubPedido` com estados `CANCELADO` e `REEMBOLSADO`, modelando o estorno financeiro de saldo líquido e recomposição automática de estoque. |
+| **2. Concorrência e Reserva Temporária no Carrinho** | Risco de colisão no checkout caso múltiplos usuários tentem comprar a última unidade em estoque simultaneamente. | Especificar um mecanismo de *TTL (Time-To-Live)* para retenção temporária do item durante a etapa final de pagamento no `Serviço de Estoque`, liberando-o automaticamente caso a transação não seja confirmada em *N* minutos. |
+| **3. Criptografia e Armazenamento de Dados Bancários para Saque** | Risco de vazamento de dados sensíveis bancários informados pelo artesão (RNF11 - LGPD). | Implementar cifragem simétrica a nível de aplicação para campos de agência, conta e documento bancário no `Serviço Financeiro`, com restrição de visibilidade e mascaramento na interface. |
+| **4. Estratégia de Indexação para Busca Parcial em Tempo Real (HU07)** | Degradação de desempenho no catálogo (RNF05) ao pesquisar simultaneamente por nome, categoria e artesão à medida que a base cresce. | Definir abstração de índices de busca otimizados para texto e agregação dentro do `Serviço de Catálogo`, desacoplando consultas de leitura intensiva das tabelas transacionais de escrita. |

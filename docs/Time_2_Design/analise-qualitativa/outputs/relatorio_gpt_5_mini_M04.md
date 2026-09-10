@@ -1,307 +1,396 @@
 # Relatório Técnico de Arquitetura de Software
 
 ## 1. Identificação das HUs
-Lista consolidada das Histórias de Usuário e principais critérios de aceite que guiam a arquitetura:
+
+Mapeamento principal entre Histórias de Usuário (HU) e requisitos funcionais (RF) / critérios de aceite:
 
 - HU01 — Cadastrar unidades e moradores  
-  - Critérios: bloco e número obrigatórios; nome, CPF (único), e-mail obrigatórios; múltiplos moradores por unidade (proprietário/inquilino).  
-- HU02 — Emitir boletos em lote  
-  - Critérios: mês de referência e vencimento; gerar boleto individual por unidade ativa; envio por e‑mail; indicar falhas individuais.  
-- HU03 — Acompanhar inadimplências  
-  - Critérios: listar unidades com boletos vencidos; filtros (bloco, período, faixa de atraso); exportar CSV.  
-- HU04 — Publicar comunicados  
-  - Critérios: título, corpo e data; notificação por e‑mail a todos; fixar comunicado.  
-- HU05 — Gerenciar ocorrências  
-  - Critérios: listagem com data/unidade/categoria/descrição/status; filtros; notificação por e‑mail em mudanças de status.  
-- HU06 — Criar e registrar assembleias  
-  - Critérios: notificar condôminos na criação; ata associada à assembleia; anexos (ex.: PDF).  
-- HU07 — Gerenciar áreas comuns e reservas  
-  - Critérios: configurar regras (horários/antecedência); calendário; cancelar reservas com notificação.  
-- HU08 — Visualizar e pagar boleto pelo portal  
-  - Critérios: listar boletos por status; visualizar/baixar boleto; atualização automática de status após confirmação.  
-- HU09 — Reservar área comum  
-  - Critérios: disponibilidade em tempo real; confirmação imediata se disponível; confirmação por e‑mail.  
-- HU10 — Registrar e acompanhar ocorrência  
-  - Critérios: categoria/descrição/anexo; histórico e notificações por e‑mail.  
-- HU11 — Pré‑autorizar entrada de visitante  
-  - Critérios: nome e data; visibilidade para portaria; cancelamento permitido.  
-- HU12 — Acompanhar assembleias e consultar atas  
-  - Critérios: exibir assembleias futuras; baixar atas em PDF.  
-- HU13 — Registrar entrada e saída de visitantes  
-  - Critérios: nome, documento, unidade e horário; destacar pré‑autorizações; registrar saída.  
-- HU14 — Consultar pré‑autorizações de acesso  
-  - Critérios: listar pré‑autorizações do dia; filtros; vincular registro de entrada à pré‑autorization.
+  - RF04, RF05, RF06, RF07, critérios: blocos/número obrigatórios, CPF único, múltiplos moradores por unidade.
 
-(Requisitos funcionais RF01–RF33 e RNF01–RNF13 foram considerados no mapeamento das HUs acima.)
+- HU02 — Emitir boletos em lote  
+  - RF09, RF10, RF11, RF12, RF13, RF14, RF15, critérios: mês/vencimento, boleto por unidade ativa, e-mail, indicar falhas.
+
+- HU03 — Acompanhar inadimplências  
+  - RF15, RF09, RF10, RNF08, critérios: listar atrasos, filtros, export CSV.
+
+- HU04 — Publicar comunicados  
+  - RF16, RF17, critérios: título/texto/data, notificação por e‑mail, fixar no topo.
+
+- HU05 — Gerenciar ocorrências  
+  - RF21, RF22, RF23, RF24, critérios: listagem com campos, filtros, notificação por status.
+
+- HU06 — Criar e registrar assembleias  
+  - RF18, RF19, RF20, critérios: notificar criação, associar ata, anexos.
+
+- HU07 — Gerenciar áreas comuns e reservas  
+  - RF25, RF26, RF27, RF28, RF29, critérios: regras de reserva, calendário, cancelamento.
+
+- HU08 — Visualizar e pagar boleto pelo portal  
+  - RF10, RF11, RF12, critérios: listagem, baixar boleto, atualização automática de status.
+
+- HU09 — Reservar área comum  
+  - RF25, RF26, RF27, RF28, critérios: disponibilidade em tempo real, confirmação imediata, e‑mail de confirmação.
+
+- HU10 — Registrar e acompanhar ocorrência  
+  - RF21, RF23, RF24, critérios: categoria, anexos/fotos, histórico, notificações.
+
+- HU11 — Pré-autorizar entrada de visitante  
+  - RF31, RF32, RF33, critérios: registrar visita antecipada, visibilidade na portaria, cancelamento.
+
+- HU12 — Acompanhar assembleias e consultar atas  
+  - RF18, RF19, RF20, critérios: exibir assembleias futuras e atas em PDF.
+
+- HU13 — Registrar entrada e saída de visitantes  
+  - RF30, RF32, RF33, critérios: nome/documento/unidade/horários, destacar pré‑autorização, saída com horário.
+
+- HU14 — Consultar pré-autorizações de acesso  
+  - RF31, RF32, RF33, critérios: listagem filtrável, vincular registro à pré‑autorização.
+
+Requisitos não funcionais (selecionados e rastreados): RNF01–RNF13 conforme cobertura das HUs na Seção 6.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-2.1 Diagrama de sequência: Emissão de boletos em lote (HU02)
+(Atenção: diagramas conceituais mantendo neutralidade tecnológica — responsabilidades e interfaces.)
+
+2.1. Diagrama de Sequência — Emissão de boletos em lote (HU02)
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Sindico as Síndico (UI)
-    participant Frontend as Portal Web
-    participant APIGW as API Gateway
-    participant Batch as Batch Processor
-    participant Billing as Serviço de Cobrança
-    participant DB as Repositório de Dados
-    participant PaymentAdapter as Adapter do Gateway de Pagamento
+    participant Portal as Portal Web (Síndico)
+    participant API as Backend API
+    participant Auth as Serviço de Autenticação
+    participant Billing as Serviço de Faturamento
+    participant Gateway as Gateway de Pagamento (externo)
     participant Email as Serviço de Notificação (Email)
-    participant Audit as Serviço de Auditoria/Log Imutável
-
-    Sindico->>Frontend: Solicita emissão em lote (mês, vencimento)
-    Frontend->>APIGW: POST /boletos/lote {mês, vencimento}
-    APIGW->>Batch: Enfileira job de emissão
-    Batch->>Billing: Inicia processo de geração por unidade
-    Billing->>DB: Consulta unidades ativas e dados de cobrança
-    DB-->>Billing: Retorna unidades e responsáveis
-    Billing->>Billing: Gera boleto físico/identificador para cada unidade
-    Billing->>PaymentAdapter: (opcional) registra cobrança no gateway
-    PaymentAdapter-->>Billing: Confirma registro / erros por unidade
-    Billing->>DB: Persiste boletos emitidos e status inicial
-    Billing->>Email: Envia e‑mail com boleto para cada condômino
-    Email-->>Billing: Entrega / falha
-    Billing->>Audit: Registra emissão (usuário, timestamp, unidades afetadas)
-    Audit-->>Billing: Confirma gravação imutável
-    Billing->>Batch: Reporta conclusão parcial/erros por unidade
-    Batch->>APIGW: Atualiza status do job (sucesso/parcial/erro)
-    APIGW->>Frontend: Retorna relatório de emissões e unidades com falha
-    Frontend->>Sindico: Exibe resultado da emissão em lote
+    participant Audit as Serviço de Auditoria (Registro Imutável)
+    participant Storage as Repositório de Documentos
+    Portal->>Auth: Requisição autenticada (token)
+    Portal->>API: Solicitar emissão em lote (mês, vencimento)
+    API->>Auth: Validar token e perfil (síndico)
+    Auth-->>API: Perfil validado
+    API->>Billing: Gerar boletos por unidade ativa (mês)
+    Billing->>API: Resultado parcial (sucesso/falhas por unidade)
+    alt unidade com boleto gerado
+        Billing->>Storage: Armazenar PDF do boleto (identificador)
+        Storage-->>Billing: Confirmado (URL/ID)
+        Billing->>Email: Enviar boleto por e-mail (anexo/URL)
+        Email-->>Billing: Entrega/aceitação
+    else falha na geração
+        Billing->>Audit: Registrar falha por unidade (motivo)
+    end
+    Billing->>Gateway: (se aplicável) solicitar cobrança/redirecionamento
+    Gateway-->>Billing: Confirmar pagamento (webhook assíncrono)
+    Gateway->>API: Webhook de confirmação (unit id, transação)
+    API->>Billing: Atualizar status do boleto como pago
+    API->>Audit: Registrar operação financeira imutável (usuário, data, hora, resultado)
+    API-->>Portal: Retornar relatório de emissão (lista unidades, falhas)
 ```
 
-2.2 Diagrama de componentes (visão lógica)
+2.2. Diagrama de Componentes — Visão modular de alto nível
 ```mermaid
-graph TD
-  subgraph UI
-    Portal[Portal Web/Mobile]
-    Portaria[Terminal da Portaria]
+graph LR
+  subgraph UIs
+    Portal[Portal Web / Mobile (Usuários)]
+    Portaria[Interface Portaria (Funcionário)]
   end
 
-  subgraph Gateway
-    APIGW[API Gateway / Facade]
+  subgraph Backend
+    API[API Gateway / Orquestrador]
+    Auth[Serviço de Autenticação & Autorização]
+    Users[Serviço de Usuários & Papéis]
+    Units[Serviço de Unidades e Moradores]
+    Billing[Serviço de Faturamento / Boletos]
+    Payments[Adapter: Integração com Gateway de Pagamento]
+    Notices[Serviço de Comunicados e Assembleias]
+    Occurrences[Serviço de Ocorrências]
+    Reservations[Serviço de Áreas Comuns e Reservas]
+    Visitors[Serviço de Visitantes / Pré‑autorizações]
+    Storage[Serviço de Armazenamento de Documentos e Anexos]
+    Audit[Serviço de Auditoria (logs imutáveis)]
+    Notifications[Serviço de Notificações (Email / Push)]
+    Reporting[Serviço de Relatórios (inadimplência/exports)]
+    Scheduler[Serviço de Agendamentos / Jobs]
   end
 
-  subgraph Serviços
-    Auth[AuthN/AuthZ]
-    User[Gerenciamento de Usuários]
-    Unit[Unidades & Moradores]
-    Billing[Gestão Financeira e Boletos]
-    Payment[Adapter de Pagamento (Gateway)]
-    Notifications[Notificações (Email/SMS/Push)]
-    Occurrences[Ocorrências]
-    Reservations[Reservas & Calendário]
-    Visitors[Controle de Acesso / Visitantes]
-    Assemblies[Assembleias & Comunicados]
-    Scheduler[Scheduler / Batch Processor]
-    Reports[Relatórios & Painéis]
-    Audit[Audit & Registro Imutável]
-    Storage[Armazenamento de Documentos]
-    Backup[Serviço de Backup & Retenção]
-  end
-
-  subgraph Dados
-    DB[Repositório de Dados (modelos)]
-    Blob[Armazenamento de Arquivos (atas, anexos)]
-  end
-
-  UI -->|HTTPS| APIGW
-  Portaria -->|HTTPS / Local API| APIGW
-  APIGW --> Auth
-  APIGW --> User
-  APIGW --> Unit
-  APIGW --> Billing
-  APIGW --> Occurrences
-  APIGW --> Reservations
-  APIGW --> Visitors
-  APIGW --> Assemblies
-  APIGW --> Reports
-
-  Billing --> Payment
-  Billing --> DB
-  User --> DB
-  Unit --> DB
-  Occurrences --> DB
-  Reservations --> DB
-  Visitors --> DB
-  Assemblies --> DB
-  Reports --> DB
-
-  Notifications -->|envia| Email[(SMTP/Provider)]
-  Billing --> Notifications
-  Assemblies --> Notifications
-  Occurrences --> Notifications
-  Reservations --> Notifications
-
-  Audit --> DB
-  Billing --> Audit
-  Visitors --> Audit
-  Occurrences --> Audit
-
-  Storage --> Blob
-  Assemblies --> Storage
+  Portal -->|REST/GraphQL| API
+  Portaria -->|REST| API
+  API --> Auth
+  API --> Users
+  API --> Units
+  API --> Billing
+  API --> Notices
+  API --> Occurrences
+  API --> Reservations
+  API --> Visitors
+  Billing --> Payments
+  Billing --> Storage
+  Notices --> Storage
   Occurrences --> Storage
-
-  Backup --> DB
-  Backup --> Blob
+  Visitors --> Storage
+  Any --> Audit
+  Any --> Notifications
+  Reporting --> Storage
+  Scheduler --> Billing
+  Scheduler --> Notifications
 ```
 
-Observações sobre os diagramas:
-- Diagramas expressam componentes lógicos e fluxos principais (emissão de boletos, notificações, persistência e auditoria).  
-- Interfaces entre componentes são expostas via APIs internas e adaptadores (ex.: Adapter de Pagamento) para permitir desacoplamento e testes.
+2.3. Diagrama de Sequência — Reserva de área comum (HU09)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cond as Portal (Condômino)
+    participant API as Backend API
+    participant Auth as Serviço de Autenticação
+    participant Reservations as Serviço de Reservas
+    participant Calendar as Serviço de Calendário
+    participant Audit as Serviço de Auditoria
+    participant Email as Serviço de Notificação (Email)
+    Cond->>Auth: Requisição autenticada
+    Cond->>API: Solicitar reserva (área, data/hora)
+    API->>Auth: Validar perfil (condômino)
+    Auth-->>API: OK
+    API->>Reservations: Solicitar disponibilidade (area, slot)
+    Reservations->>Calendar: Verificar conflito
+    Calendar-->>Reservations: Disponível / Conflito
+    alt disponível
+      Reservations->>Calendar: Confirmar reserva (persistir)
+      Reservations->>Audit: Registrar reserva (imutável)
+      Reservations->>Email: Enviar confirmação ao condômino
+      Email-->>Reservations: Entrega
+      Reservations-->>API: Confirmação
+      API-->>Cond: Reserva confirmada
+    else conflito
+      Reservations-->>API: Falha por conflito
+      API-->>Cond: Reserva negada (horário ocupado)
+    end
+```
 
 ---
 
 ## 3. Decisões de Arquitetura
-As decisões listadas a seguir são conceituais, neutras quanto a produtos, e fundamentam o projeto.
 
-1. Estilo arquitetural: arquitetura modular com serviços lógicos desacoplados (camadas de apresentação, orquestração, domínio e persistência). Favorecer serviços coesos por domínio funcional (billing, reservations, visitors, etc.) para facilitar manutenibilidade e evolução (seção 4 mapeia componentes).
+1. Arquitetura modular orientada a domínios (serviços lógicos)
+   - Racional: separar responsabilidades (identidade, faturamento, reservas, ocorrências, notificações, auditoria) facilita escalabilidade, testes e manutenção.
+   - Impacto: interfaces bem definidas (APIs internas) e contratos entre serviços; facilita futura distribuição em serviços independentes.
 
-2. API Gateway / Facade: todas as solicitações de UI e portaria passam por um gateway que implementa roteamento, autenticação, autorização, throttling e agregação básica de dados.
+2. Contratos e API Gateway/Orquestrador
+   - Racional: expor uma fachada unificada ao Portal e Portaria; centralizar autenticação, autorização e rate limiting.
+   - Impacto: simplifica clientes; exige versionamento de APIs.
 
-3. Contrato e versão de API: expor APIs bem definidas com versionamento; contratos devem incluir comportamento de resposta para operações em lote (reportar sucessos/falhas por item).
+3. Segurança e Autenticação
+   - Requisito: sessões inativas encerradas em 30 minutos (RNF01); senhas armazenadas com hash seguro conforme RNF02 (ex.: bcrypt indicado pelo requisito).
+   - Decisão: autenticação centralizada com gerenciamento de sessão/expiração, suporte a tokens revogáveis e mecanismos de refresh com políticas de expiração configuráveis.
+   - Observação: estratégia para MFA e SSO deve ser decidida como extensão (pendência).
 
-4. Integração com gateway de pagamento: encapsular comunicação em um Adapter/Provider (Payment Adapter) que implementa retry, idempotência e tratamento de retorno assíncrono (webhooks). Respeitar RNF03 (PCI-DSS): o sistema não deve armazenar dados sensíveis de cartão; somente tokens/identificadores retornados pelo gateway. Logs com dados sensíveis truncados.
+4. Pagamentos e conformidade PCI-DSS
+   - Decisão: manter apenas o mínimo de informações necessárias; delegar captura e armazenamento de dados sensíveis ao gateway de pagamento conforme RNF03. Integração via APIs e webhooks para confirmação de pagamento.
+   - Impacto: exigir controle rígido de logs e fluxos assincronos (webhooks), além de auditoria imutável para operações financeiras (RNF05).
 
-5. Emissão em lote transacional: implementar orquestração com controle de consistência por item e registro imutável de operações (RNF11, RNF05). Em caso de falha parcial, persistir o estado de cada item e gerar relatório detalhado para o síndico.
+5. Auditoria e Imutabilidade
+   - Decisão: todas as operações financeiras e eventos críticos devem gerar registros de auditoria imutáveis (append-only), incluindo usuário, timestamp e payload mínimo.
+   - Impacto: componente de auditoria central com interface de consulta, retenção e exportação; necessidade de políticas de retenção e proteção contra adulteração.
 
-6. Autenticação e autorização: sessões autenticadas com timeout de 30 minutos de inatividade (RNF01). Senhas armazenadas com hash seguro conforme RNF02 (ex.: algoritmo de derivação resistente a GPU conforme orientação de segurança). Políticas de autorização baseadas em papéis (sindico, condômino, funcionário, administrador) e atributos (por exemplo: acesso a dados apenas da sua unidade).
+6. Consistência e transações em lote (emissão de boletos)
+   - Decisão: emissão em lote será tratada como operação transacional lógica: criar registros por unidade, persistir estado, e em caso de falha registrar quais unidades falharam sem invalidar as demais (RNF11).
+   - Impacto: cada item no lote tem estado independente; operações idempotentes e logs de falha detalhados.
 
-7. Notificações (e‑mail): filas/processamento assíncrono para envio de e‑mails; confirmar entrega ou falha e reprocessar conforme política. Notificações para publicações, alterações de ocorrência, novidades de assembleia e envio de boletos (HU02, HU04, HU05, HU06).
+7. Disponibilidade e Performance
+   - Decisão: projetar componentes com escalabilidade horizontal para suportar uptime 99,5% (RNF07) e latência de painéis críticos < 3s (RNF08) sob cargas esperadas.
+   - Impacto: definir SLIs/SLOs, estratégias de cache para dashboards e calendário, e jobs assíncronos para envio de e-mails e geração de boletos.
 
-8. Calendário e reservas: verificar conflitos em tempo real com verificação atômica (lock otimista/controle de concorrência). Regras por área (horário permitido, antecedência mínima/máxima) configuráveis por síndico.
+8. Armazenamento de documentos e anexos
+   - Decisão: separar armazenamento de objetos (boletos, atas, PDFs, fotos de ocorrências) do armazenamento de metadados; expor URLs assinadas temporárias para download.
+   - Impacto: políticas de retenção e controle de acesso finos, processamento de arquivos (tamanho, tipo, varredura antivírus) como requisitos de detalhamento.
 
-9. Portaria / Terminais offline: permitir operação em modo degradado no terminal da portaria (caching de pré‑autorizações do dia) e sincronização eventual com o sistema central; registrar operações com marcação de origem (portaria) e reconciliar divergências.
+9. Notificações e Entregabilidade de Email
+   - Decisão: serviço de notificações centralizado que cancele/reagende envios e ofereça templates e filas assíncronas para não bloquear operações críticas (e.g., emissão em lote).
+   - Impacto: necessidade de monitoramento de entrega e retries; política de notificações por preferência de usuário.
 
-10. Auditoria e rastreabilidade: todas as operações financeiras e acessos de visitante geram registro imutável com usuário, data e hora (RNF05, RNF06). Logs críticos exportáveis para compliance e investigação.
-
-11. Backup e retenção: cópias automáticas diárias com retenção mínima de 90 dias (RNF12). Planos de restauração e testes periódicos de backup.
-
-12. Observabilidade e logs: instrumentar eventos críticos (emissão/pagamento de boletos, publicações, atualizações de ocorrências, registros de acesso) com níveis e correlação (IDs de transação). Monitoramento de SLAs e uso para alertas operacionais (RNF07, RNF08).
-
-13. Performance e escalabilidade: camadas sem estado escaláveis horizontalmente (APIs, processamento batch, notificações) para garantir disponibilidade 24/7 e cumprir SLAs de resposta nos painéis (RNF07, RNF08).
-
-14. Proteção de dados e LGPD: implementar controles de minimização e consentimento, acesso baseado em papéis, capacidade de anonimização/exclusão quando exigido, e registro de bases legais para tratamento (RNF04).
-
-15. Exportação de dados e relatórios: endpoints que geram CSV/PDF para exportação; geração assíncrona para relatórios pesados.
+10. Conformidade com LGPD
+    - Decisão: criar workflows para consentimento, acesso, retificação e eliminação de dados pessoais; auditoria de acesso a dados pessoais.
+    - Impacto: requer processos operacionais e suporte a requisições de titulares.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|---|---|---:|---|
-| API Gateway / Facade | Autenticação inicial, roteamento, rate limit, agregação de serviços | Frontend, Portaria, Auth, todos os serviços | RF02, RNF01; HU02, HU08 |
-| AuthN/AuthZ | Gerenciar autenticação, sessões, rotação de tokens, políticas de acesso por papel | API Gateway, User | RF01, RF03, RNF01, RNF02 |
-| User Management | CRUD de usuários, perfis, papéis, senhas (hash) | Auth, DB | RF01, HU01 |
-| Unidades & Moradores | Cadastro de unidades, moradores, vínculo, status (ativo/desativado) | User, DB, Visitors | RF04, RF05, RF06, RF07; HU01 |
-| Billing & Invoicing | Configurar taxa, gerar boletos individuais e em lote, status do boleto | DB, Payment Adapter, Notifications, Audit, Reports | RF09–RF15; HU02, HU03, HU08 |
-| Payment Adapter | Interface com gateway de pagamento (registro/consulta/webhooks) | Billing, External Gateway | RF11, RF12, RNF03; HU02, HU08 |
-| Notifications | Envio de e‑mail/SMS/push, filas, templates e retries | Billing, Assemblies, Occurrences, Reservations | RF17, RF16, RF24; HU02, HU04, HU05, HU09 |
-| Reservations & Calendar | Cadastro de áreas, regras, reservas, verificação de conflito, calendário | DB, Notifications, Reports | RF25–RF29; HU07, HU09 |
-| Occurrences | Registro, categorização, status, histórico, anexos | DB, Notifications, Storage, Audit | RF21–RF24; HU05, HU10 |
-| Visitors / Access Control | Pré‑autorizações, registro de entrada/saída, histórico de visitantes | DB, Portaria, Notifications, Audit | RF30–RF33; HU11, HU13, HU14 |
-| Assemblies & Communications | Criar assembleias, publicar comunicados, registrar atas e anexos | DB, Notifications, Storage | RF16–RF20; HU04, HU06, HU12 |
-| Reports & Dashboards | Painel de inadimplência, exportações CSV, métricas | DB, Billing, Reservations, Reports UI | RF15; HU03 |
-| Scheduler / Batch Processor | Jobs periódicos e execução de emissões em lote | Billing, DB, Notifications, Audit | RF13; HU02 |
-| Audit & Immutability | Registro imutável de operações críticas e trilhas de auditoria | Todos os serviços, DB | RNF05, RNF06, RNF13 |
-| Storage (Blob) | Armazenamento de anexos (atas, comprovantes, fotos) | Assemblies, Occurrences, DB | HU06, HU10 |
-| Backup & Retenção | Execução de backups automáticos e retenção | DB, Storage | RNF12 |
-| Reporting Exporter | Gerar CSV/PDF para exportação e downloads | Reports, Storage | HU03, HU12 |
-| Frontend Portal | Interface web/mobile para moradores e síndico | API Gateway | RNF09, RNF10; diversas HUs |
-| Portaria Terminal | Interface para funcionários registrar visitantes e consultar pré‑autorizações | API Gateway | RF30–RF33; HU13, HU14 |
+|---|---:|---|---|
+| API (Orquestrador / Gateway) | Expor endpoints ao portal/portaria; roteamento; agregação de respostas | Auth, Users, Units, Billing, Reservations, Occurrences, Notices, Visitors, Notifications, Audit | HU02, HU09, HU13 (muitos critérios de aceite) |
+| Serviço de Autenticação & Autorização (Auth) | Autenticar usuários; gerenciar sessões; aplicar controle de acesso por perfil | API, Users, Audit | RF01, RF02, RF03, RNF01, HU01 |
+| Serviço de Usuários & Papéis (Users) | CRUD de perfis (síndico, condômino, funcionário, admin); roles/permissions | API, Auth, Audit | RF01, RF02, HU01 |
+| Serviço de Unidades e Moradores (Units) | Gerenciar unidades, moradores, vínculos proprietário/inquilino, veículos; desativação lógica | API, Users, Audit, Storage | RF04–RF08, HU01 |
+| Serviço de Faturamento / Boletos (Billing) | Configurar taxas; gerar boletos individuais e em lote; estados de cobrança | API, Payments, Storage, Notifications, Audit | RF09–RF15, HU02, HU03, HU08 |
+| Adapter de Integração com Gateway de Pagamento (Payments) | Comunicação com gateway externo; webhooks de confirmação | Billing, API, Audit | RF11, RF12, HU02, HU08, RNF03 |
+| Serviço de Comunicados e Assembleias (Notices) | Criar/publicar comunicados; criar assembleias, publicar atas, anexos | API, Storage, Notifications, Audit | RF16–RF20, HU04, HU06, HU12 |
+| Serviço de Ocorrências (Occurrences) | Registrar, categorizar e atualizar ocorrências; anexos; histórico de status | API, Storage, Notifications, Audit | RF21–RF24, HU05, HU10 |
+| Serviço de Áreas Comuns e Reservas (Reservations) | Cadastro de áreas; regras de reserva; evitar sobreposições; calendário | API, Calendar, Storage, Notifications, Audit | RF25–RF29, HU07, HU09 |
+| Serviço de Visitantes / Pré‑autorizações (Visitors) | Registrar entradas/saídas; pré‑autorizações; histórico de acessos | API, Portaria UI, Notifications, Audit | RF30–RF33, HU11–HU14 |
+| Serviço de Armazenamento de Documentos (Storage) | Armazenar PDFs, anexos, fotos; metadados e URLs seguras | API, Notices, Occurrences, Billing | HU02, HU06, HU10 |
+| Serviço de Notificações (Email / Push) | Envio assíncrono de e‑mails e notificações; templates e filas | API, Billing, Notices, Occurrences, Reservations, Visitors | RF17, HUs com critérios de NOTIF |
+| Serviço de Auditoria / Registro Imutável (Audit) | Registrar operações críticas imutáveis com usuário e timestamp | Todos os serviços | RNF05, RNF06, RNF13, operações financeiras (HU02) |
+| Serviço de Relatórios (Reporting) | Painel de inadimplência, export CSV, relatórios gerenciais | Billing, Units, Storage, API | RF15, HU03 |
+| Scheduler / Jobs | Execução de tarefas agendadas: emissão periódica, backups, retries | Billing, Notifications, Storage, Audit | RNF12, HU02 |
 
-(Notas: "DB" refere‑se ao repositório de dados conceitual. Componentes expõem APIs conceituais e contratos entre si.)
+Observações de rastreabilidade: cada componente tem associação direta com HUs e critérios de aceite; o Audit é transversal para RNF05/RNF06/RNF13 e todas as operações financeiras.
 
 ---
 
 ## 5. Bloqueios e Pendências
-- Definição do contrato técnico e fluxo exato com o Gateway de Pagamento (webhooks, códigos de retorno, tokenização) — impacto direto em Billing e Payment Adapter. (pendência: especificação do protocolo/assinatura de webhooks)
-- Políticas detalhadas de retenção e anonimização para conformidade LGPD (ex.: quando e como anonimizar históricos de moradores/visitantes). (pendência: decisão legal/compliance)
-- Requisitos de disponibilidade do terminal da portaria (modo offline, janela de sincronização) não estão quantitativamente especificados. (pendência: definir janela offline e SLA de reconciliação)
-- Requisitos de SLA de entrega de notificações (e‑mail) e estratégia de fallback (SMS/Push) não especificados. (pendência: política de retry e canais alternativos)
-- Formato dos boletos (dados obrigatórios, layout, instruções de pagamento) e necessidade de integrações bancárias regionais não estão detalhados. (pendência: especificação do layout e regras fiscais/tributárias locais)
-- Política de retenção de logs de auditoria/registro imutável (por quanto tempo armazenar e sob quais condições disponibilizar). (pendência: definição de retenção e acesso para auditoria)
+
+1. Seleção e contrato do Gateway de Pagamento
+   - Pendência: escolher o(s) provedor(es) e definir o modelo de integração (checkout hospedado vs tokenização).
+   - Impacto: determina o fluxo de pagamento, controle de tokens, requisitos de compliance detalhados (RNF03) e webhooks.
+
+2. Política de retenção de logs e auditoria além do mínimo exigido
+   - Pendência: confirmar retenção de logs de auditoria, formatos de exportação e criptografia em repouso.
+   - Impacto: afetará custo de armazenamento e processos de compliance LGPD.
+
+3. Detalhes de SLA e capacidade (RPS, usuários simultâneos)
+   - Pendência: estimativas de carga e objetivos de SLO/SLI para dimensionamento e caching.
+   - Impacto: parâmetros para arquitetar escalabilidade e dimensionamento do serviço de relatórios (RNF07 / RNF08).
+
+4. Fluxos de conformidade LGPD (processos operacionais)
+   - Pendência: definir processos para atendimento a direitos do titular (acesso, correção, exclusão) e papel do suporte.
+   - Impacto: design do componente Users/Units e do processo de anonimização/exclusão.
+
+5. Política de backups e recuperação
+   - Pendência: confirmar RTO/RPO, local de backup e criptografia, além do requisito mínimo (RNF12).
+   - Impacto: design da rotina de backup e testes de restore.
+
+6. Requisitos de segurança avançada
+   - Pendência: definir necessidade de MFA, SSO corporativo, e detalhamento de políticas de senhas além do hash.
+   - Impacto: afeta Auth e a UX de login.
+
+7. Regras detalhadas de reservas
+   - Pendência: convenções de bloqueios por tempo, política de cancelamento e notificações (ex.: multas, janelas de cancelamento).
+   - Impacto: regras de negócio no Reservations e validações no Calendar.
+
+8. Especificação de arquivos aceitos
+   - Pendência: tipos, tamanhos máximos, e necessidade de varredura antivírus para anexos (atas, fotos).
+   - Impacto: Storage e políticas de segurança.
+
+9. Mecanismo de imutabilidade / prova de integridade
+   - Pendência: decidir a técnica (append-only log, assinatura, etc.) para o Audit.
+   - Impacto: implementação de garantias contra adulteração.
+
+10. Estratégia de notificações em massa (limites, retries)
+    - Pendência: limites por dia, políticas de throttling e fallback.
+    - Impacto: experiência do usuário e entregabilidade de e‑mails em emissões em lote.
 
 ---
 
 ## 6. Cobertura de Requisitos
-Mapeamento dos principais requisitos (RF/RNF) para componentes e decisões arquiteturais:
 
-- RF01, RF03 (Cadastro e Auth): Coberto por User Management e AuthN/AuthZ; API Gateway centraliza autenticação e sessão (RNF01).
-- RF02 (Controle de acesso): Coberto via AuthZ, políticas de papel/atributo; APIGW aplica controle e validação.
-- RF04–RF08 (Unidades, Moradores, Veículos): Coberto por Unidades & Moradores; Storage para anexos; permitir desativação mantendo histórico (HU01).
-- RF09–RF15 (Financeiro/Boletos): Coberto por Billing & Invoicing, Scheduler, Payment Adapter, Notifications e Audit. RNF05 (registro imutável) e RNF11 (transacionalidade de lotes) atendidos por Audit e orquestração com granularidade por item.
-- RF16–RF20 (Comunicados e Assembleias): Coberto por Assemblies & Communications e Notifications; Storage para atas e anexos.
-- RF21–RF24 (Ocorrências): Coberto por Occurrences, Notifications e Storage; Audit registra mudanças (RNF13).
-- RF25–RF29 (Reservas): Coberto por Reservations & Calendar com lógica de conflito e regras configuráveis; Reports para calendário do síndico.
-- RF30–RF33 (Visitantes): Coberto por Visitors/Access Control e Portaria Terminal; histórico armazenado e disponível ao síndico (RNF06).
-- RNF01–RNF03 (Segurança): Sessões 30 min implementadas em Auth; senhas armazenadas com hash seguro (RNF02); pagamento atende a diretrizes de não armazenar dados de cartão (RNF03) via Payment Adapter.
-- RNF04 (LGPD): Cobertura conceitual via controle de acesso, minimização e políticas de anonimização (pendência para detalhamento jurídico).
-- RNF05–RNF06–RNF13 (Rastreabilidade / Logs): Cobertos por Audit & Immutability e logs de eventos críticos.
-- RNF07–RNF08 (Disponibilidade/Desempenho): Coberto por arquitetura escalável, componentes sem estado, e otimizações nos painéis; medidas operacionais necessárias para cumprir 99,5% e 3s no painel (tuning e capacity planning).
-- RNF09–RNF10 (Usabilidade/Compatibilidade): Coberto por Frontend responsivo; testes multi‑browser necessários.
-- RNF11 (Emissão de lote transacional): Coberto por orquestração itemizada e registro de falhas por unidade.
-- RNF12 (Backup): Coberto por componente Backup & Retenção.
+Resumo de mapeamento (alto nível) entre RF / RNF e componentes:
 
-Cobertura das HUs: todas as HUs (HU01–HU14) possuem componente(s) atribuídos conforme a tabela da seção 4; rastreabilidade direta das funcionalidades essenciais.
+- RF01, RF02, RF03 (Gestão de usuários e acesso)  
+  - Cobertura: Auth, Users, API. RNF01 (sessões 30 min) implementado em Auth.
+
+- RF04–RF08 (Unidades e moradores)  
+  - Cobertura: Units, Users, Storage (para anexos de documentos), Audit (registro de alterações). HU01.
+
+- RF09–RF15 (Financeiro — Boletos)  
+  - Cobertura: Billing, Payments, Storage (PDFs), Notifications (envio por e‑mail), Audit (registro imutável), Reporting (inadimplência). RNF03 (PCI‑DSS) e RNF05/RNF11 aplicados. HU02, HU03, HU08.
+
+- RF16–RF20 (Comunicados e Assembleias)  
+  - Cobertura: Notices, Storage (atas/PDFs), Notifications (e‑mail), Audit. HU04, HU06, HU12.
+
+- RF21–RF24 (Ocorrências)  
+  - Cobertura: Occurrences, Storage (fotos/anexos), Notifications, Audit. HU05, HU10.
+
+- RF25–RF29 (Reserva de áreas comuns)  
+  - Cobertura: Reservations, Calendar, Notifications, Audit. RNF08 para performance no calendário. HU07, HU09.
+
+- RF30–RF33 (Controle de acesso e visitantes)  
+  - Cobertura: Visitors, Portaria UI, Notifications, Audit, Units (vinculação à unidade). HU11–HU14, RNF06 (registro de visitante).
+
+- RNF01–RNF13 (Non‑functional)
+  - RNF01 (sessão): Auth.  
+  - RNF02 (senha hash): Auth, Users.  
+  - RNF03 (PCI-DSS): Payments, Billing (integração limitada).  
+  - RNF04 (LGPD): Users, Units, Audit, Storage (políticas de acesso/removal).  
+  - RNF05/RNF06 (rastreabilidade): Audit transversal.  
+  - RNF07 (Disponibilidade 99,5%): Arquitetura de escala e redundância aplicada a API, Billing, Auth, Storage.  
+  - RNF08 (Desempenho painel/calendário): Reporting, Reservations, Calendar, cache.  
+  - RNF09/RNF10 (Usabilidade/Compatibilidade): UIs responsivas e testes cross‑browser.  
+  - RNF11 (Emissão em lote transacional): Billing, Audit, API.  
+  - RNF12 (Backup 90 dias): Scheduler, Storage, Backup process.  
+  - RNF13 (Logs de eventos críticos): Audit, centralização de logs.
+
+Cobertura Técnica dos Critérios de Aceite: cada HU listada tem componentes responsáveis (ver Tabela da Seção 4). Export CSV (HU03) suportado pelo Reporting; envio de e‑mail em publicação (HU04) via Notifications; prevenção de reservas sobrepostas (HU09) via Calendar/Reservations.
 
 ---
 
 ## 7. Gap Analysis
 
-Identificação de lacunas na especificação, impacto arquitetural e recomendações:
+A. Lacunas de especificação e impacto arquitetural
 
-1. Gap: Especificação incompleta do protocolo de integração com o gateway de pagamento (formatos, webhooks, idempotência, tratamento de erros).
-   - Impacto: Implementação do Payment Adapter fica ambígua; risco de tradução incorreta de estados de pagamento (pago, pendente, estornado).
-   - Recomendação: Obter documento técnico do(s) gateway(s) alvo(s) com exemplos de payloads, códigos de erro, requisitos de segurança (assinatura HMAC), e definir cenários de teste (webhook replay, casos de falha parcial).
+1. Pagamentos — Fluxo e requisitos do gateway
+   - Lacuna: nenhum gateway específico selecionado; falta especificação se o fluxo é “checkout hospedado”, tokenização, ou captura direta.
+   - Impacto: integração, responsabilidades de armazenamento de dados sensíveis, e requisitos de certificação PCI-DSS. Afeta design de Payments, Billing e políticas de segurança.
+   - Recomendação: decidir modelo de integração e formalizar contrato; definir webhooks, códigos de erro e formato de confirmação.
 
-2. Gap: Política de conformidade LGPD incompleta (base legal, prazos para exclusão/anonymização, consentimento para comunicações).
-   - Impacto: Requisitos de retenção e processos de exclusão/anonymização podem afetar a modelagem de dados e a auditoria imutável.
-   - Recomendação: Conduzir sessão com jurídico/compliance para definir fluxos de dados pessoais, registros que não podem ser deletados e processos de anonimização. Definir API para "requisição de exclusão" e fluxos de reenquadramento de dados.
+2. Detalhamento de SLAs e volumes
+   - Lacuna: não há métricas de carga (usuários simultâneos, volume de boletos mensais).
+   - Impacto: dimensionamento para atender RNF07/RNF08, definição de caches e limites de escalonamento.
+   - Recomendação: coletar estimativas de usuários/unidades e cargas esperadas para dimensionamento e testes de performance.
 
-3. Gap: Critérios de disponibilidade e recuperação para terminais da portaria (offline behavior, tolerância de sincronização).
-   - Impacto: Necessidade de cache local e reconcile aumenta complexidade do componente Visitors e portaria; riscos de inconsistência temporária.
-   - Recomendação: Definir requisitos de funcionalidade offline (quais operações permitidas), janela máxima de sincronização e política de resolução de conflitos.
+3. Requisitos de backup e recuperação detalhados
+   - Lacuna: RNF12 indica backup diário e retenção mínima, mas falta RTO/RPO e locais.
+   - Impacto: design de política de backup, testes de restauração e compliance.
+   - Recomendação: definir RTO/RPO, locais (offsite), e plano de testes de restauração.
 
-4. Gap: Especificação de formato e normas para boletos (detalhes fiscais e de apresentação).
-   - Impacto: Layout da ordem de pagamento e dados obrigatórios podem variar; obriga maior flexibilidade no módulo de geração de boletos.
-   - Recomendação: Definir modelo de boleto e regras locais; desacoplar gerador de documento em módulo parametrizável por parâmetros regionais.
+4. Processos LGPD (direitos do titular)
+   - Lacuna: procedimentos de atendimento a solicitações de acesso/remoção não definidos.
+   - Impacto: necessidade de workflows operacionais e APIs para exportação/anulação de dados; auditoria adicional.
+   - Recomendação: definir fluxos para atendimento de titulares e exigir campos de consentimento quando aplicável.
 
-5. Gap: Falta de metas de SLA para entrega de notificações e comportamento de retry.
-   - Impacto: Dificulta definição de estratégia para Notifications (prioridade de canais, fallback, timeout).
-   - Recomendação: Estabelecer objetivos de entrega por canal (ex.: 95% entrega de e‑mail em 15 minutos) e políticas de fallback (SMS, notificação no portal).
+5. Mecanismo de imutabilidade para auditoria
+   - Lacuna: RNF05 exige registro imutável, mas não especifica técnica (append-only, assinaturas, cadeia).
+   - Impacto: implementação e garantia de prova de integridade.
+   - Recomendação: definir mecanismo (ex.: logs append-only com retenção e assinaturas por serviço) e rotinas de verificação.
 
-6. Gap: Requisitos não detalham requisitos de testes de carga e escalabilidade (nº de usuários simultâneos esperados).
-   - Impacto: Planejamento de capacidade para cumprir RNF07 e RNF08 fica incerto.
-   - Recomendação: Recolher estimativas de tráfego (usuários ativos/consulta de painel) e definir cenários de teste (picos mensais: emissão de boletos, acesso em horários de assembleia).
+6. Regras de negócio de reservas
+   - Lacuna: sem definição clara de antecedência mínima/máxima, janelas de cancelamento, penalidades.
+   - Impacto: lógica em Reservations e UX.
+   - Recomendação: especificar regras por área (HU07) e validar contra casos de uso.
 
-7. Gap: Política detalhada de retenção e acesso a logs de auditoria imutável.
-   - Impacto: Pode conflitar com LGPD e requisitos legais; tamanho de armazenamento e custo operacional indefinidos.
-   - Recomendação: Definir período mínimo de retenção de logs, critérios para acesso (apenas administradores com justificativa), e exportabilidade para auditoria externa.
+7. Política de anexos e segurança de arquivos
+   - Lacuna: tipos de arquivos permitidos, tamanho máximo e necessidade de varredura antivírus.
+   - Impacto: storage, processamento e segurança.
+   - Recomendação: definir whitelist/blacklist, limites e scanners.
 
-8. Gap: Requisitos de segurança operacional (varredura de vulnerabilidades, gestão de segredos, rotação de chaves) não especificados.
-   - Impacto: Risco de exposição de credenciais (por exemplo, credenciais do gateway de pagamento) e falhas de segurança.
-   - Recomendação: Definir políticas de gestão de segredos, rotação e pentests periódicos como parte do pipeline de entrega.
+8. Detalhes de notificação (entregabilidade, volume, retries)
+   - Lacuna: falta política de throttling e tratamento de erros (bounces).
+   - Impacto: emissões em lote (boletos, comunicados) podem não escalar ou atingir limites.
+   - Recomendação: definir política de envio, fallback e monitoramento de entregas.
 
-9. Gap: Não há definição de contratos de dados entre Frontend e Backend (campos, validações, códigos de erro).
-   - Impacto: Pode gerar retrabalho entre equipes de frontend e backend.
-   - Recomendação: Produzir especificações de API (ex.: OpenAPI/Swagger conceitual) com modelos de resposta/erro e exemplos.
+9. Autorização e granularidade de permissões
+   - Lacuna: perfis definidos, mas regras finas de permissão (ex.: quem pode editar veículos, cancelar reservas) não detalhadas.
+   - Impacto: risco de exposição de funcionalidades indevidas.
+   - Recomendação: mapear matrizes de permissão por ação/objeto.
 
-10. Gap: Processos de reconciliação de pagamentos manuais (RF14) não detalhados (comprovantes, validação, conciliação contábil).
-    - Impacto: Risco de inconsistência nos saldos e no painel de inadimplência.
-    - Recomendação: Definir fluxo de registro manual de pagamento com upload de comprovante, processo de validação e auditoria, e integração com relatório financeiro.
+10. Métricas, observabilidade e monitoramento
+    - Lacuna: sem definição de métricas, logs centralizados e alertas.
+    - Impacto: dificultará cumprir 99,5% uptime e responder a incidentes.
+    - Recomendação: definir SLIs/SLOs, métricas críticas e plano de monitoramento/alertas.
 
-Ações de curto prazo recomendadas ao time:
-- Priorizar obtenção de documentação do gateway de pagamento e definição de políticas de notificação e backups.  
-- Realizar workshop com jurídico para LGPD e retenção de dados.  
-- Produzir contratos de API e modelos de dados para as áreas críticas (boletos, reservas, visitantes).  
-- Definir testes de carga e um plano de capacity planning para cumprir RNFs.
+B. Ações recomendadas imediatas para o time de desenvolvimento
+
+1. Workshop para decisão do modelo de pagamento e seleção de gateway (definir contratos de webhook).
+2. Estimativa de carga e definição de SLAs operacionais (SLO/SLI) para dimensionamento.
+3. Definição de políticas LGPD e workflows para atendimento de titulares.
+4. Especificar políticas de backup (RTO/RPO), retenção de logs e testes de restore.
+5. Decidir técnica de auditoria imutável e integrar nos designs dos serviços financeiros.
+6. Detalhar regras de reserva e cancelamento por área e formalizar no backlog.
+7. Definir política de anexos (tipos/tamanho/varredura) e incorporar ao Storage.
+8. Formalizar matriz de permissões por perfil com exemplos de cenários.
+9. Projetar pipelines de observabilidade (logs, métricas, traces) e rotina de testes de carga.
+10. Preparar cenários de testes de aceitação para HUs críticas: emissão em lote, atualização por webhook de pagamento, conflito de reservas e registro/encerramento de visitante.
 
 ---
 
-Observações finais concisas:
-- O desenho proposto mantém neutralidade tecnológica e prioriza modularidade, segurança e rastreabilidade conforme RNFs.  
-- Resolver as pendências listadas (pagamento, LGPD, terminais de portaria e políticas de notificação/backup) é crítico para reduzir riscos de implementação e para garantir conformidade e disponibilidade.
+Fim do Relatório.

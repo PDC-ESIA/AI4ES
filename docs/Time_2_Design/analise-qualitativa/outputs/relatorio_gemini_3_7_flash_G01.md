@@ -1,152 +1,141 @@
 # Relatório Técnico de Arquitetura de Software
 
----
-
 ## 1. Identificação das HUs
 
-A tabela abaixo resume as Histórias de Usuário (HUs) mapeadas a partir dos requisitos de negócio, categorizadas por perfil de atuação.
+A tabela a seguir consolida as Histórias de Usuário mapeadas para a plataforma financeira digital, identificando o perfil de ator, escopo de negócio e os requisitos funcionais diretamente relacionados.
 
-| ID | Perfil | Título | Objetivo Principal |
-| :--- | :--- | :--- | :--- |
-| **HU01** | Pessoa Física (PF) | Abrir conta com validação de identidade | Realizar onboarding 100% digital com validação documental e biométrica. |
-| **HU02** | Todos os Perfis | Autenticar com múltiplos fatores | Garantir acesso seguro via MFA obrigatório (OTP e Biometria). |
-| **HU03** | PF / PJ | Realizar transferência via Pix | Executar pagamentos instantâneos com validação de limites e verificação antifraude. |
-| **HU04** | PF / PJ | Pagar boleto com agendamento | Liquidar e agendar títulos de cobrança e convênios com confirmação de dados. |
-| **HU05** | PF / PJ | Gerenciar cartão de crédito | Consultar faturas, ajustar limites aprovados e bloquear/desbloquear cartões. |
-| **HU06** | PF / PJ | Contestar transação não reconhecida | Iniciar fluxo de chargeback/contestação diretamente pelos canais digitais. |
-| **HU07** | PF / PJ | Investir em renda fixa | Efetuar aportes, resgates e acompanhamento de posição consolidada. |
-| **HU08** | PF / PJ | Gerenciar consentimentos do Open Finance | Autorizar, consultar e revogar compartilhamento de dados e iniciação de pagamentos. |
-| **HU09** | PF / PJ | Responder a alertas de suspeita de fraude | Receber notificações em tempo real e deliberar sobre transações suspeitas bloqueadas. |
-| **HU10** | Pessoa Jurídica (PJ) | Abrir conta PJ com documentação societária | Onboarding PJ com validação de poderes societários, CNPJ e KYC dos sócios. |
-| **HU11** | Pessoa Jurídica (PJ) | Realizar TED para fornecedores | Efetuar transferências interbancárias em lote ou avulsas dentro da grade horária. |
-| **HU12** | Gerente de Relacionamento | Acompanhar carteira de clientes | Visualizar posição consolidada de clientes sob sua gestão mediante consentimento. |
-| **HU13** | Gerente de Relacionamento | Abrir solicitação de serviço em nome do cliente | Registrar demandas e pleitos operacionais com trilha de auditoria vinculada. |
+| ID HU | Título | Perfil do Ator | Descrição Resumida | RFs Vinculados |
+| :--- | :--- | :--- | :--- | :--- |
+| **HU01** | Onboarding PF com Validação de Identidade | Pessoa Física (PF) | Abertura digital de conta corrente/poupança com envio e validação documental. | RF01, RF02, RF08 |
+| **HU02** | Autenticação Multifator (MFA) | Todos (PF/PJ/Gerente) | Acesso seguro ao sistema exigindo múltiplos fatores (OTP e biometria). | RF03, RF04, RF05, RF06 |
+| **HU03** | Transferência Instantânea via Pix | PF / PJ | Envio de valores via chaves Pix com validação de limites diurnos/noturnos e emissão de comprovante. | RF12, RF13, RF22, RF23, RF24, RF27 |
+| **HU04** | Pagamento e Agendamento de Boletos | PF / PJ | Liquidação e agendamento de títulos com leitura de código de barras e lembretes proativos. | RF13, RF28, RF29, RF30, RF31 |
+| **HU05** | Gestão de Cartões de Crédito e Débito | PF / PJ | Visualização de fatura, ajuste de limites, bloqueio/desbloqueio e notificações de uso. | RF14, RF15, RF16, RF17, RF18, RF19, RF20 |
+| **HU06** | Contestação de Transações Não Reconhecidas | PF / PJ | Abertura de disputa direta pelo aplicativo para compras e movimentações suspeitas. | RF21, RF39 |
+| **HU07** | Aplicação e Resgate em Renda Fixa | PF / PJ | Consulta de catálogo de ativos, aportes, resgates e consolidação de posição de investimentos. | RF32, RF33, RF34, RF35 |
+| **HU08** | Gestão de Consentimentos Open Finance | PF / PJ | Autorização, consulta, gestão e revogação de compartilhamento de dados e iniciação de pagamentos. | RF41, RF42, RF43, RF44 |
+| **HU09** | Notificação e Resposta a Alertas de Fraude | PF / PJ | Alertas em tempo real para operações anômalas com confirmação ou bloqueio preventivo pelo usuário. | RF36, RF37, RF38, RF39, RF40 |
+| **HU10** | Onboarding PJ com Validação Societária | Pessoa Jurídica (PJ) | Abertura de conta jurídica com validação de CNPJ, quadro societário e documentação legal. | RF01, RF02, RF08 |
+| **HU11** | Transferência Interbancária via TED | Pessoa Jurídica (PJ) | Transferência interbancária com validação de dados bancários, janelas de horário e limites. | RF13, RF25, RF26, RF27 |
+| **HU12** | Gestão de Carteira de Clientes | Gerente de Relacionamento | Visão consolidada de produtos e saldos mediante consentimento do titular e registro de interações. | RF07, RF45, RF46 |
+| **HU13** | Abertura de Solicitações de Serviço por Delegação | Gerente de Relacionamento | Formalização de pedidos de serviço em nome do cliente com trilha de auditoria e segregação de funções. | RF47 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Diagrama de Componentes do Sistema
-
-O diagrama conceitual a seguir ilustra a segregação de responsabilidades em subsistemas orientados a domínio (*Bounded Contexts*), canais de entrada, camada de integração e conectores regulatórios externos.
+### 2.1. Visão Geral de Componentes da Arquitetura
 
 ```mermaid
-graph TB
-    subgraph Canais_de_Acesso ["Canais de Acesso"]
-        AppMobile["Aplicativo Mobile (iOS / Android)"]
-        PortalWeb["Portal Web Responsivo"]
-        PortalGerente["Portal do Gerente de Relacionamento"]
+flowchart TB
+    subgraph Canais["Camada de Apresentação e Canais"]
+        Mobile["Aplicativo Mobile (iOS / Android)"]
+        Web["Portal Web Responsivo"]
+        PartnerAPI["Sistemas Parceiros (Open Finance)"]
     end
 
-    subgraph Borda_Seguranca ["Camada de Borda e Segurança"]
-        APIGateway["API Gateway & Rate Limiting"]
-        AuthService["Serviço de Autenticação & MFA"]
+    subgraph Gateway["Borda e Roteamento"]
+        APIGateway["API Gateway & Reverse Proxy\n(TLS Termination, Rate Limiting, WAF)"]
     end
 
-    subgraph Core_Financeiro ["Núcleo Transacional & Negócios"]
-        AccountService["Serviço de Contas & Saldos"]
-        PaymentService["Motor de Pagamentos & Transferências"]
+    subgraph CoreServices["Serviços de Domínio Financeiro"]
+        AuthService["Serviço de Identidade, MFA & Sessão"]
+        OnboardingService["Serviço de Onboarding & Validação KYC/PJ"]
+        AccountService["Serviço de Contas & Extratos"]
+        PaymentService["Serviço de Pagamentos & Liquidação (Pix/TED/Boleto)"]
         CardService["Serviço de Cartões & Faturas"]
-        InvestmentService["Serviço de Renda Fixa & Investimentos"]
-        FraudEngine["Motor de Detecção de Fraudes em Tempo Real"]
-        OpenFinanceGateway["Gateway Open Finance Brasil"]
-        CustomerService["Serviço de Clientes & CRM Gerencial"]
-        NotificationEngine["Motor de Notificações Push/E-mail"]
-        AuditLedger["Módulo de Auditoria Imutável & Compliance"]
+        InvestmentService["Serviço de Renda Fixa & Posição"]
+        FraudEngine["Motor de Detecção & Prevenção de Fraudes"]
+        ConsentService["Serviço de Gestão de Open Finance"]
+        RelationshipService["Serviço de Atendimento & Gestão de Carteira"]
+        NotificationService["Serviço de Notificações Unificadas (Push/Email)"]
+        AuditService["Serviço de Trilha de Auditoria Imutável"]
     end
 
-    subgraph Integracoes_Externas ["Provedores & Entidades Regulatórias"]
-        BacenSPI["Bacen / SPI & CIP"]
-        PCIProcessor["Processador de Cartões (PCI-DSS)"]
-        KYCBureau["Bureau de Validação Cadastral & Documental"]
-        OpenFinanceEcosystem["Ecosystem Open Finance"]
+    subgraph IntegracoesExternas["Sistemas Externos & Regulatórios"]
+        SPI_Bacen["SPI / STR / CIP (Banco Central)"]
+        CardProcessor["Processador de Cartões (PCI-DSS)"]
+        CreditBureau["Bureaus de Crédito & Validação Cadastral"]
+        OpenFinanceNet["Ecossistema Open Finance Brasil"]
     end
 
-    AppMobile --> APIGateway
-    PortalWeb --> APIGateway
-    PortalGerente --> APIGateway
+    Mobile --> APIGateway
+    Web --> APIGateway
+    PartnerAPI --> APIGateway
 
     APIGateway --> AuthService
+    APIGateway --> OnboardingService
     APIGateway --> AccountService
     APIGateway --> PaymentService
     APIGateway --> CardService
     APIGateway --> InvestmentService
-    APIGateway --> CustomerService
-    APIGateway --> OpenFinanceGateway
+    APIGateway --> ConsentService
+    APIGateway --> RelationshipService
 
+    OnboardingService --> CreditBureau
+    OnboardingService --> FraudEngine
+    PaymentService --> SPI_Bacen
     PaymentService --> FraudEngine
-    PaymentService --> BacenSPI
     PaymentService --> AccountService
-    PaymentService --> NotificationEngine
+    CardService --> CardProcessor
+    CardService --> FraudEngine
+    ConsentService --> OpenFinanceNet
 
-    CardService --> PCIProcessor
-    CardService --> NotificationEngine
+    PaymentService -.-> NotificationService
+    FraudEngine -.-> NotificationService
+    CardService -.-> NotificationService
 
-    CustomerService --> KYCBureau
-    CustomerService --> AuditLedger
-
-    OpenFinanceGateway --> OpenFinanceEcosystem
-    OpenFinanceGateway --> PaymentService
-
-    FraudEngine --> NotificationEngine
-    FraudEngine --> AuditLedger
-    PaymentService --> AuditLedger
-    AccountService --> AuditLedger
+    AuthService -.-> AuditService
+    PaymentService -.-> AuditService
+    RelationshipService -.-> AuditService
+    OnboardingService -.-> AuditService
 ```
 
 ---
 
-### 2.2. Diagrama de Sequência: Processamento de Transferência Pix com Análise de Fraude
-
-O fluxo abaixo descreve o ciclo de vida da execução de uma transferência Pix (HU03, HU09), detalhando a checagem síncrona antifraude, reserva de saldo, liquidação no SPI do Banco Central e emissão de comprovante.
+### 2.2. Diagrama de Sequência: Processamento de Transação Pix com Avaliação Antifraude (HU03, HU09)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Cliente as Usuário (App Mobile)
+    actor Cliente as Usuário (Mobile/Web)
     participant Gateway as API Gateway
-    participant Auth as Serviço de Autenticação & MFA
-    participant PixEngine as Motor de Transferências (Pix)
-    participant Fraud as Motor Antifraude
-    participant Account as Serviço de Contas & Saldos
-    participant SPI as Conector SPI (Bacen)
-    participant Notification as Motor de Notificações
-    participant Audit as Módulo de Auditoria
+    participant Auth as Serviço de Identidade/MFA
+    participant Pagamentos as Serviço de Pagamentos
+    participant Antifraude as Motor de Detecção de Fraude
+    participant Contas as Serviço de Contas
+    participant Notificador as Serviço de Notificações
+    participant SPI as Provedor SPI / Bacen
+    participant Auditoria as Serviço de Auditoria
 
-    Cliente->>Gateway: Solicitar Transferência Pix (Chave, Valor, Detalhes)
-    Gateway->>Auth: Validar Token de Sessão e MFA Step-Up
-    Auth-->>Gateway: Sessão Válida & MFA Confirmado
+    Cliente ->> Gateway: Requisitar transferência Pix (Chave, Valor, Conta)
+    Gateway ->> Auth: Validar Token e Permissões da Sessão
+    Auth -->> Gateway: Sessão Válida (Contexto do Usuário)
     
-    Gateway->>PixEngine: Iniciar Transferência Pix
+    Gateway ->> Pagamentos: Iniciar Transferência Pix
+    Pagamentos ->> Contas: Validar Saldo e Limite Operacional Diurno/Noturno
+    Contas -->> Pagamentos: Saldo e Limites Confirmados
     
-    PixEngine->>Fraud: Avaliar Risco Transacional (Contexto, Horário, Limite, Perfil)
-    alt Transação Suspeita / Alto Risco
-        Fraud-->>PixEngine: Risco Elevado (Rejeitar / Solicitar Deliberação)
-        PixEngine->>Notification: Enviar Alerta Push/E-mail de Transação Bloqueada
-        PixEngine->>Audit: Registrar Evento de Risco e Bloqueio Preventivo
-        PixEngine-->>Gateway: Retornar Erro (Transação Bloqueada por Segurança)
-        Gateway-->>Cliente: Exibir Alerta de Segurança e Opção de Contestação
-    else Transação Aprovada pelo Antifraude
-        Fraud-->>PixEngine: Transação Liberada (Baixo Risco)
-        
-        PixEngine->>Account: Reservar Saldo em Conta
-        Account-->>PixEngine: Saldo Reservado com Sucesso
-        
-        PixEngine->>SPI: Enviar Ordem de Liquidação Instantânea
-        alt Falha na Liquidação SPI
-            SPI-->>PixEngine: Rejeição / Timeout
-            PixEngine->>Account: Cancelar Reserva de Saldo (Rollback)
-            PixEngine->>Audit: Registrar Falha de Liquidação
-            PixEngine-->>Gateway: Erro na Liquidação Externa
-            Gateway-->>Cliente: Notificar Falha na Transação
-        else Sucesso na Liquidação SPI
-            SPI-->>PixEngine: Confirmação de Liquidação (ID Fim-a-Fim)
-            PixEngine->>Account: Efetivar Débito Definitivo
-            PixEngine->>Audit: Gravar Registro Imutável da Operação Financeira
-            PixEngine->>Notification: Emitir Notificação Push de Efetivação
-            PixEngine-->>Gateway: Retornar Sucesso e Comprovante em PDF
-            Gateway-->>Cliente: Exibir Comprovante de Sucesso
-        end
+    Pagamentos ->> Antifraude: Submeter Transação para Análise de Risco em Tempo Real
+    
+    alt Transação de Baixo Risco (Aprovada)
+        Antifraude -->> Pagamentos: Score Aceitável (Risco Baixo)
+        Pagamentos ->> SPI: Enviar Ordem de Liquidação Instantânea
+        SPI -->> Pagamentos: Confirmação de Liquidação no SPI
+        Pagamentos ->> Contas: Efetivar Débito em Conta Corrente
+        Contas -->> Pagamentos: Débito Realizado
+        Pagamentos ->> Auditoria: Registrar Log Imutável da Operação
+        Pagamentos ->> Notificador: Despachar Notificação de Sucesso
+        Notificador -->> Cliente: Push/Email: Comprovante Pix Disponível
+        Pagamentos -->> Gateway: Resposta com Comprovante (PDF/Dados)
+        Gateway -->> Cliente: Exibir Comprovante de Transferência
+    else Transação de Alto Risco / Suspeita Detectada
+        Antifraude -->> Pagamentos: Alerta de Risco Elevado (Transação Bloqueada Preventivamente)
+        Pagamentos ->> Auditoria: Registrar Alerta de Fraude e Bloqueio
+        Pagamentos ->> Notificador: Emitir Alerta de Fraude Imediato (Push/Email)
+        Notificador -->> Cliente: Notificação de Alerta: "Transação Suspeita Identificada"
+        Pagamentos -->> Gateway: Rejeição Preventiva / Exigência de Reautenticação
+        Gateway -->> Cliente: Exibir Bloqueio e Opção de Confirmação/Contestação
     end
 ```
 
@@ -154,25 +143,30 @@ sequenceDiagram
 
 ## 3. Decisões de Arquitetura
 
-### DA-01: Arquitetura Orientada a Serviços e Isolamento por Domínios (*Bounded Contexts*)
-* **Contexto**: A plataforma atende a domínios com ciclos de vida e requisitos regulatórios distintos (ex.: Pix, Cartões, Open Finance, Onboarding).
-* **Decisão**: Adotar isolamento lógico e funcional de serviços, desacoplando o núcleo de liquidação transacional das rotinas de suporte gerencial e onboarding.
-* **Justificativa**: Garante escalabilidade horizontal independente (RNF16) e isola falhas em componentes específicos (RNF17), assegurando alta disponibilidade global (RNF13).
+* **ADR-01: Arquitetura Orientada a Serviços de Domínio Desacoplados**
+  * *Contexto:* O sistema gerencia operações críticas diversas (Pix, TED, cartões, crédito, auditoria regulatória e Open Finance) que possuem volumetrias e SLAs distintos.
+  * *Decisão:* Adotar uma decomposição modular baseada em contextos delimitados, com comunicação síncrona via interfaces de aplicação estritas para consultas de baixa latência e comunicação assíncrona orientada a eventos para notificações, auditoria e conciliação.
+  * *Consequência:* Permite escalabilidade elástica e independente dos módulos de maior carga (ex.: processamento Pix) sem comprometer áreas administrativas ou de onboarding.
 
-### DA-02: Segregação de Dados de Cartão (Conformidade PCI-DSS)
-* **Contexto**: Operações com cartões de débito e crédito exigem conformidade estrita de segurança (RNF06).
-* **Decisão**: O sistema não persistirá nem trafegará diretamente Dados Críticos de Autenticação (SAD) ou PAN (*Primary Account Number*). O gerenciamento de cartões utilizará *tokenização* delegada a um gateway/processador certificado PCI-DSS.
-* **Justificativa**: Reduz a superfície de ataque e mitiga riscos de não conformidade legal e regulatória.
+* **ADR-02: Isolamento Estrito de Dados de Cartão (PCI-DSS Compliance)**
+  * *Contexto:* O RNF06 veda o armazenamento de dados sensíveis de pagamento (PAN, CVV) no núcleo transacional próprio.
+  * *Decisão:* Adotar padrão de integração por tokenização delegada com processadora certificada PCI-DSS. O sistema interno manipula exclusivamente identificadores opacos (tokens) e metadados não sensíveis (últimos 4 dígitos e bandeira).
+  * *Consequência:* Minimização drástica do escopo de conformidade PCI-DSS e proteção contra vazamentos de dados transacionais de cartões.
 
-### DA-03: Padrão *Saga* Orquestrada para Transações Distribuídas
-* **Contexto**: Operações financeiras (como Pix e TED) demandam reserva de saldo, checagem de limites, antifraude e envio a redes externas (SPI/CIP).
-* **Decisão**: Empregar um padrão de orquestração transacional com mecanismos de compensação explícita (estorno de reservas em caso de *timeout* ou falha externa).
-* **Justificativa**: Evita inconsistências de saldo (duplo débito) e atende aos limites de tempo estipulados pelo regulador (RNF15).
+* **ADR-03: Trilha de Auditoria Imutável Append-Only**
+  * *Contexto:* RNF12 e normas regulatórias exigem rastreabilidade integral de todas as transações, eventos de fraude, acessos de gerentes e movimentações financeiras pelo prazo mínimo de 5 anos.
+  * *Decisão:* Implementar um componente de auditoria dedicado com armazenamento em formato estritamente incremental (*append-only*), protegido por políticas de retenção imutável (*WORM - Write Once, Read Many*) e assinatura criptográfica dos registros.
+  * *Consequência:* Garantia de conformidade com o BACEN e sustentação jurídica contra adulteração interna ou externa.
 
-### DA-04: Trilha de Auditoria com Armazenamento Imutável (*Write Once, Read Many*)
-* **Contexto**: Normas do Banco Central e LGPD exigem retenção de registros de operações financeiras e consentimentos por período mínimo de 5 anos (RNF12).
-* **Decisão**: Todos os eventos de negócios, autenticações e logs de transações serão gravados em repositório seguro de auditoria com garantia de imutabilidade e criptografia em repouso.
-* **Justificativa**: Assegura não-repúdio, rastreabilidade forense e conformidade regulatória plena (RNF07, RNF08, RNF12).
+* **ADR-04: Motor de Detecção de Fraude Inline Síncrono-Assíncrono Híbrido**
+  * *Contexto:* RF36 e RF37 exigem análise em tempo real com bloqueio preventivo antes da liquidação, enquanto RF40 exige persistência histórica e aprendizado analítico.
+  * *Decisão:* O pipeline transacional aciona a validação de regras de risco de forma síncrona com timeout estrito durante a autorização. Eventos pós-processamento são despachados de forma assíncrona para consolidação estatística e auditoria.
+  * *Consequência:* Respeita o SLA de 10 segundos do Pix (RF24/RNF15) e mantém a salvaguarda de segurança financeira.
+
+* **ADR-05: Modelo de Consentimento Granular para Acessos e Open Finance**
+  * *Contexto:* RF07, RF41, RF42, HU08, HU12 e RNF10 (LGPD) demandam controle explícito sobre compartilhamento de dados com terceiros e gerentes.
+  * *Decisão:* Centralizar a autorização em um Serviço de Gestão de Consentimentos, no qual qualquer requisição a dados de clientes (seja por APIs do Open Finance ou por gerentes de relacionamento) exige verificação prévia de vigência de consentimento explícito.
+  * *Consequência:* Segurança jurídica plena, rastreabilidade auditável e cumprimento rigoroso das diretrizes da LGPD e do Open Finance Brasil.
 
 ---
 
@@ -180,51 +174,71 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 | :--- | :--- | :--- | :--- |
-| **API Gateway & Rate Limiting** | Ponto único de entrada, roteamento, terminação TLS 1.2+, validação de cabeçalhos e controle de taxa de requisições. | Clientes (Web/Mobile), Serviço de Autenticação, Microserviços de Negócio | RNF01, RNF04, RNF19, RNF21 |
-| **Serviço de Autenticação & MFA** | Gestão de sessões, autenticação multifator (OTP/Biometria), controle de timeout de inatividade e bloqueio remoto. | API Gateway, Módulo de Auditoria, Motor de Notificações | RF03, RF04, RF05, RF06, HU02 |
-| **Serviço de Onboarding & KYC** | Coleta, análise e orquestração de validações documentais para PF e PJ, compliance PLD/FT e abertura de contas. | Bureau de Validação Externa, Serviço de Contas, Módulo de Auditoria | RF01, RF02, RF08, RNF08, HU01, HU10 |
-| **Serviço de Contas & Saldos** | Manutenção de saldos em tempo real, cálculo de rendimentos de poupança, controle de limites e emissão de extratos. | Motor de Pagamentos, Serviço de Investimentos, Módulo de Auditoria | RF08, RF09, RF10, RF11, RF12, RF13, RNF14 |
-| **Motor de Pagamentos & Transferências** | Orquestração de Pix, TED e Boletos, gestão de chaves Pix, agendamentos e interface com SPI/Bacen. | Conector SPI/CIP, Serviço de Contas, Motor Antifraude, Motor de Notificações | RF22, RF23, RF24, RF25, RF26, RF27, RF28, RF29, RF30, RF31, HU03, HU04, HU11 |
-| **Serviço de Cartões & Faturas** | Emissão, alteração de limites, bloqueio/desbloqueio, gestão de faturas e fluxo de contestação de compras. | Processador PCI-DSS Externo, Motor de Notificações, Serviço de Contas | RF14, RF15, RF16, RF17, RF18, RF19, RF20, RF21, RNF06, HU05, HU06 |
-| **Serviço de Investimentos** | Exibição de catálogo de renda fixa, aplicação, resgate, consolidação de posições e emissão de informe de rendimentos. | Serviço de Contas & Saldos, Módulo de Auditoria | RF32, RF33, RF34, RF35, HU07 |
-| **Motor de Detecção de Fraudes** | Monitoramento síncrono e assíncrono de operações, bloqueio preventivo e suporte à confirmação/contestação pelo usuário. | Motor de Pagamentos, Motor de Notificações, Módulo de Auditoria | RF36, RF37, RF38, RF39, RF40, HU09 |
-| **Gateway Open Finance Brasil** | Exposição e consumo de APIs padronizadas do Open Finance, gestão do ciclo de vida de consentimentos e iniciação de pagamentos. | Ecossistema Open Finance Externo, Motor de Pagamentos, Serviço de Contas | RF41, RF42, RF43, RF44, RNF11, HU08 |
-| **Portal & Serviço de CRM Gerencial** | Painel do gerente de relacionamento para visão consolidada de clientes (sob consentimento), anotações e pedidos de serviço. | Serviço de Contas, Serviço de Investimentos, Módulo de Auditoria | RF07, RF45, RF46, RF47, HU12, HU13 |
-| **Motor de Notificações** | Envio multicanal (Push Notification, E-mail, SMS) para confirmações, alertas transacionais e avisos de suspeita de fraude. | Motor de Pagamentos, Serviço de Cartões, Motor Antifraude, Clientes | RF20, RF31, RF38, HU05, HU09 |
-| **Módulo de Auditoria & Compliance** | Armazenamento de trilhas de auditoria imutáveis, geração de relatórios BACEN (3040/SCR) e governança LGPD. | Todos os componentes internos, Bacen | RNF07, RNF09, RNF10, RNF12 |
+| **API Gateway & Edge Router** | Ponto único de entrada, terminação TLS 1.2+, autenticação de borda, rate limiting e roteamento. | Canais Clientes, Todos os Serviços de Domínio | RNF01, RNF04, RNF16, RNF19 |
+| **Serviço de Identidade, MFA & Sessão** | Gestão de credenciais com hash seguro, orquestração de MFA (OTP/Biometria), controle de sessões e histórico de acessos. | API Gateway, Notificador, Auditoria | HU02 (RF03, RF04, RF05, RF06, RNF03) |
+| **Serviço de Onboarding & KYC** | Fluxo de cadastro digital PF/PJ, validação biométrica/documental, verificação de dados societários e checagens PLD/FT. | API Gateway, Bureaus Externos, Antifraude, Notificador, Auditoria | HU01, HU10 (RF01, RF02, RF08, RNF08) |
+| **Serviço de Contas & Extratos** | Manutenção de contas correntes e poupança, cálculo de rendimentos regulamentados, consultas de saldo em tempo real e extratos. | API Gateway, Pagamentos, Relacionamento | HU01, HU12 (RF08, RF09, RF10, RF11, RNF14) |
+| **Serviço de Pagamentos & Liquidação** | Processamento e agendamento de Pix, TED e Boletos; validação de limites diurnos/noturnos e emissão de comprovantes PDF. | API Gateway, Contas, Antifraude, SPI/Bacen, CIP, Auditoria | HU03, HU04, HU11 (RF12, RF13, RF22-RF31, RNF15) |
+| **Serviço de Cartões & Faturas** | Emissão, gestão de limites, bloqueio/desbloqueio independente, consulta e liquidação de faturas, e gestão de contestações. | API Gateway, Processador PCI-DSS, Contas, Antifraude, Notificador | HU05, HU06 (RF14-RF21, RNF02, RNF06) |
+| **Serviço de Renda Fixa** | Catálogo de produtos de investimento, liquidação de aportes/resgates, consolidação de posições e informe de rendimentos. | API Gateway, Contas, Auditoria | HU07 (RF32, RF33, RF34, RF35) |
+| **Motor de Antifraude & Riscos** | Análise comportamental em tempo real, bloqueio preventivo de transações suspeitas e gestão de alertas. | Pagamentos, Cartões, Notificador, Auditoria | HU09, HU06 (RF36, RF37, RF38, RF39, RF40) |
+| **Serviço de Open Finance** | Gestão do ciclo de vida de consentimentos, exposição de APIs padronizadas e iniciação de pagamentos por parceiros. | API Gateway, Contas, Pagamentos, Ecossistema Open Finance | HU08 (RF41, RF42, RF43, RF44, RNF11) |
+| **Serviço de Gestão de Carteira & CRM** | Visão agregada de clientes para gerentes condicionada a consentimento, anotações de relacionamento e abertura delegada de serviços. | API Gateway, Contas, Consentimentos, Notificador, Auditoria | HU12, HU13 (RF07, RF45, RF46, RF47) |
+| **Serviço de Notificações Unificadas** | Envio de mensagens transacionais e de segurança multicanal (Push Mobile e E-mail). | Pagamentos, Cartões, Antifraude, Onboarding, Canais | HU01, HU04, HU05, HU08, HU09, HU13 (RF20, RF31, RF38) |
+| **Serviço de Auditoria & Conformidade** | Gravação imutável de logs de auditoria, eventos de segurança, acessos de gerentes e geração de relatórios BACEN (3040/SCR). | Todos os Serviços do Domínio, BACEN | HU12, HU13 (RF40, RNF07, RNF09, RNF10, RNF12) |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Protocolos e Prazos de Análise Manual no Onboarding**:
-   * *Pendência*: Definição do fluxo de contingência e SLA quando bureaus externos de KYC estiverem indisponíveis ou retornarem inconclusivos (tanto para PF quanto PJ).
-2. **Matriz de Alçadas para Iniciação por Gerente de Relacionamento**:
-   * *Pendência*: Detalhamento do mecanismo de consentimento digital outorgado pelo cliente para abertura de serviços solicitados pelo gerente (RF47, HU13).
-3. **Mecanismo de Resolução de Disputas Open Finance**:
-   * *Pendência*: Especificação dos prazos de conciliação e liquidação em caso de falha em pagamentos iniciados por iniciador parceiro (PISP).
+1. **Definição de Provedor e Protocolo de Tokenização PCI-DSS (RNF06, HU05):**
+   * *Bloqueio:* É necessária a formalização da interface da processadora de cartões parceira para definir os contratos de troca de chaves e webhooks de autorização/contestação de compras.
+2. **Homologação das Chaves de Acesso ao SPI/PSTI do Banco Central (RF24, RNF15):**
+   * *Bloqueio:* A integração direta com o Sistema de Pagamentos Instantâneos (SPI) requer homologação de certificados digitais no padrão ICP-Brasil e conectividade com a Rede do Sistema Financeiro Nacional (RSFN).
+3. **Mecanismo de Validação Documental Automatizada no Onboarding (RF02, HU01, HU10):**
+   * *Pendência:* Definir os critérios de contingência operacional e validação manual para casos em que o motor automatizado de OCR/biometria facial retornar score inconclusivo no limite do SLA de 24h/48h.
+4. **Política de Assinatura para Autorização de Delegação por Gerente (RF47, HU13):**
+   * *Pendência:* O requisito veda transações financeiras pelo gerente sem autorização prévia; faz-se necessário homologar o mecanismo de captura de autorização do cliente em dois passos (*step-up authentication* no canal do cliente).
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-A arquitetura cobre integralmente a totalidade dos requisitos funcionais e não funcionais estabelecidos:
+A matriz abaixo comprova o atendimento integral dos Requisitos Funcionais (RF01 a RF47) e Não Funcionais (RNF01 a RNF24) pelos componentes de arquitetura projetados.
 
-* **Gestão de Usuários e Segurança**: RF01 a RF07 e RNF01 a RNF06 atendidos pelo *Serviço de Autenticação & MFA*, *Serviço de Onboarding & KYC* e *API Gateway*.
-* **Contas, Transações e Pagamentos**: RF08 a RF13, RF22 a RF31 e RNF14, RNF15 atendidos pelo *Serviço de Contas & Saldos* e *Motor de Pagamentos & Transferências*.
-* **Cartões e PCI-DSS**: RF14 a RF21 e RNF06 atendidos pelo *Serviço de Cartões & Faturas* com delegação a processador externo credenciado.
-* **Investimentos e Open Finance**: RF32 a RF35 e RF41 a RF44 cobertos pelo *Serviço de Investimentos* e *Gateway Open Finance Brasil*.
-* **Antifraude e Auditoria**: RF36 a RF40 e RNF07 a RNF12 suportados pelo *Motor Antifraude* e *Módulo de Auditoria & Compliance*.
-* **Operações Gerenciais**: RF45 a RF47 cobertos pelo *Portal & Serviço de CRM Gerencial*.
-* **Infraestrutura e Resiliência**: RNF13, RNF16, RNF17, RNF22, RNF23 e RNF24 contemplados pelas diretrizes de redundância geográfica, zoneamento multizona, backups contínuos e monitoramento telemétrico.
+| Código Requisito | Atendido por Componente(s) / Mecanismo Arquitetural |
+| :--- | :--- |
+| **RF01, RF02** | *Serviço de Onboarding & KYC* (fluxo com validação documental e bureaus de dados). |
+| **RF03, RF04, RF05, RF06** | *Serviço de Identidade, MFA & Sessão* (MFA OTP/Biometria, expiração de sessão e controle de bloqueio). |
+| **RF07, RF45, RF46, RF47** | *Serviço de Gestão de Carteira & CRM* e *Serviço de Open Finance/Consentimentos* (validação de acesso e segregação de funções). |
+| **RF08, RF09, RF10, RF11** | *Serviço de Contas & Extratos* (ledger de saldo, motor de cálculo de poupança BACEN e filtros de extrato). |
+| **RF12, RF13** | *Serviço de Pagamentos & Liquidação* (mecanismo de transferência entre contas e gerador de PDF imutável). |
+| **RF14 a RF21** | *Serviço de Cartões & Faturas* integrado a *Processador PCI-DSS* e *Serviço de Notificações*. |
+| **RF22 a RF27** | *Serviço de Pagamentos & Liquidação* (conectores SPI/DICT, agendamento e controle de limites operacionais). |
+| **RF28 a RF31** | *Serviço de Pagamentos & Liquidação* (motor de liquidação de boletos, agendamento e notificações de vencimento). |
+| **RF32 a RF35** | *Serviço de Renda Fixa* (gestão de produtos, posições consolidadas e geração de informe fiscal). |
+| **RF36 a RF40** | *Motor de Antifraude & Riscos* e *Serviço de Auditoria* (análise de risco síncrona, bloqueio preventivo e trilha). |
+| **RF41 a RF44** | *Serviço de Open Finance* (APIs padronizadas, gestão de ciclo de consentimento e iniciação de pagamentos). |
+| **RNF01, RNF04** | *API Gateway & Reverse Proxy* (TLS 1.2+, Rate Limiting e proteção perimetral). |
+| **RNF02, RNF03** | Camada de Persistência com criptografia AES-256 e algoritmo seguro de hash (bcrypt/Argon2) no *Serviço de Identidade*. |
+| **RNF05, RNF12** | *Serviço de Auditoria & Conformidade* (registros append-only imutáveis com retenção de 5 anos e esteira de testes). |
+| **RNF06** | Isolamento de dados via tokenização externa sem retenção de PAN/CVV no core bancário. |
+| **RNF07, RNF08, RNF09, RNF10, RNF11** | Compliance by Design com regras Bacen, KYC/PLD, relatórios regulatórios (3040/SCR), LGPD e Open Finance Brasil. |
+| **RNF13, RNF16, RNF17, RNF23** | Implantação em múltiplas zonas de disponibilidade, balanceamento elástico e estratégias de fallback de componentes. |
+| **RNF14, RNF15** | SLAs de consulta (<1s) e Pix (<10s) viabilizados por particionamento de leitura/escrita e processamento em memória. |
+| **RNF18, RNF19, RNF20, RNF21** | Canais Mobile (iOS/Android) e Web responsivo aderentes a WCAG 2.1 AA com fluxos de dupla confirmação. |
+| **RNF22, RNF24** | Rotinas contínuas de snapshot/backup (RPO ≤ 1h, RTO ≤ 4h) e monitoramento de telemetria em tempo real. |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
-| :--- | :--- | :--- |
-| **Estratégia de Liquidação de Boletos em Finais de Semana e Feriados** | O agendamento de boletos (RF30) não especifica a regra de débito quando a data de vencimento coincide com feriados bancários. | Modelar mecanismo de agendamento que execute a liquidação no primeiro dia útil subsequente, com aviso prévio ao usuário no ato do agendamento. |
-| **Política de Concorrência de Débito Simultâneo** | Risco de inconsistência de saldo caso o cliente execute Pix, compra no débito e liquidação de boleto no mesmo milissegundo. | Implementar controle transacional com *locks* otimistas/pessimistas ou modelo de mensageria sequenciada por conta corrente para garantir atomicidade. |
-| **Revogação de Acesso do Gerente de Relacionamento** | Ausência de regra de expiração temporal para o consentimento concedido pelo cliente ao gerente (RF07, HU12). | Introduzir ciclo de vida formal para o consentimento de gestão, com renovação periódica obrigatória e expiração automática em caso de inatividade. |
-| **Degradação Graciosa em Quedas de Conectividade Externa (SPI/Bacen)** | Quedas momentâneas da rede do Banco Central podem gerar acúmulo de requisições pendentes. | Projetar filas de reprocessamento com *Circuit Breaker* para rejeição rápida e status informativos ao usuário, impedindo bloqueio de threads de aplicação. |
+A análise a seguir detalha as lacunas identificadas nos requisitos recebidos, os potenciais impactos técnicos e as recomendações práticas para a engenharia de software:
+
+| # | Lacuna de Requisito Identificada | Impacto Técnico / Arquitetural | Ação Recomendada para o Time de Engenharia |
+| :-: | :--- | :--- | :--- |
+| **1** | **Estratégia de Resolução em Caso de Indisponibilidade do SPI (RNF15 vs RNF17)** | Falha no provedor central pode causar transações pendentes sem retorno síncrono definitivo em até 10s. | Especificar padrão de *Circuit Breaker* e fila de conciliação assíncrona que notifique o cliente sobre status pendente sem duplicar débitos. |
+| **2** | **Definição dos Critérios de Rendimento da Poupança (RF11)** | Regras de aniversário de depósito e índices variáveis (ex.: Selic vs TR) requerem cálculo retroativo e ajuste por cota diária/mensal. | Construir módulo isolado de cálculo financeiro baseado nas diretrizes oficiais da Resolução BACEN da Poupança com testes de regressão determinísticos. |
+| **3** | **Limite de Tolerância no Rate Limiting para Ações Críticas (RNF04)** | Bloqueios excessivamente restritivos podem causar negação de serviço a usuários legítimos durante oscilações de conexão mobile. | Implementar rate limiting adaptativo baseado em faixas de IP, token de dispositivo (*Device Fingerprint*) e contexto autenticado. |
+| **4** | **Tratamento de Transações Offline / Conectividade Intermitente no Mobile (RNF18)** | Risco de reenvio inadvertido de transferências e pagamentos de boletos quando houver instabilidade no dispositivo. | Exigir chave de idempotência (*Idempotency-Key*) gerada no cliente para todas as operações financeiras de débito e liquidação. |
+| **5** | **Isolamento de Consentimentos Revogados no Open Finance (RF42, RNF10)** | Vazamento de dados em rotinas batch pré-agendadas após revogação imediata de consentimento pelo usuário. | Adicionar verificação atômica de validade do consentimento no momento exato do despacho de cada payload da API de Open Finance. |

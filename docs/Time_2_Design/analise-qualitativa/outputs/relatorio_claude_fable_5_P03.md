@@ -6,17 +6,18 @@
 ## 1. Identificação das HUs
 
 | HU | Título | Perfil | RFs Relacionados | RNFs Relacionados |
-|----|--------|--------|------------------|-------------------|
-| HU01 | Cadastrar produto | Operador | RF01, RF02, RF03, RF12 | RNF04, RNF06 |
-| HU02 | Registrar entrada de mercadoria | Operador | RF04, RF07 | RNF03, RNF04, RNF08 |
+|------|--------|--------|------------------|-------------------|
+| HU01 | Cadastrar produto | Operador | RF01, RF02, RF03, RF10 | RNF01, RNF02 |
+| HU02 | Registrar entrada de mercadoria | Operador | RF04, RF07, RF12 | RNF03, RNF04, RNF08 |
 | HU03 | Registrar saída de produto | Operador | RF05, RF06, RF07 | RNF03, RNF04, RNF08 |
 | HU04 | Ser alertado sobre estoque baixo | Operador | RF09 | RNF04 |
 | HU05 | Configurar limite mínimo por produto | Operador | RF08 | — |
 | HU06 | Consultar saldo atual do estoque | Operador | RF10, RF12 | RNF05 |
 | HU07 | Consultar histórico de movimentações | Operador | RF11 | RNF05, RNF08 |
-| HU08 | Exportar dados em CSV | Operador | — (derivado de RNF07) | RNF07 |
+| HU08 | Exportar dados (CSV) | Operador | — (derivado de RNF07) | RNF07 |
+| — | Autenticação de acesso (implícita) | Operador | — | RNF06, RNF08 |
 
-**Observação:** RF02 e RF03 (edição/remoção) não possuem HU dedicada — tratados como extensão de HU01. RNF06 (autenticação) não possui HU associada — registrado na Seção 5.
+> **Observação:** RNF06/RNF08 implicam uma HU não escrita ("Autenticar-me no sistema"), tratada na Seção 5 e 7.
 
 ---
 
@@ -25,126 +26,124 @@
 ### 2.1 Diagrama de Componentes (Arquitetura em Camadas — Aplicação Desktop Local)
 
 ```mermaid
-flowchart TB
-    subgraph UI["Camada de Apresentação"]
-        TELA_LOGIN["Tela de Autenticação"]
-        TELA_PRINCIPAL["Tela Principal / Consulta de Estoque"]
-        TELA_MOV["Tela de Lançamento (Entrada/Saída)"]
-        TELA_HIST["Tela de Histórico"]
-        TELA_PROD["Tela de Cadastro de Produto"]
-        PAINEL_ALERTA["Painel de Alertas de Estoque Baixo"]
+graph TB
+    subgraph Apresentacao["Camada de Apresentação (UI Desktop)"]
+        UI_LOGIN[Tela de Login]
+        UI_MAIN[Tela Principal / Consulta de Estoque]
+        UI_PROD[Tela de Cadastro de Produtos]
+        UI_MOV[Tela de Lançamento Entrada/Saída]
+        UI_HIST[Tela de Histórico]
+        UI_ALERT[Painel de Alertas]
     end
 
-    subgraph APP["Camada de Aplicação / Domínio"]
-        AUTH["Serviço de Autenticação"]
-        GP["Gestor de Produtos"]
-        GM["Gestor de Movimentações"]
-        MA["Motor de Alertas"]
-        CH["Consultor de Histórico e Saldos"]
-        EX["Exportador CSV"]
-        AUD["Serviço de Auditoria/Rastreabilidade"]
+    subgraph Aplicacao["Camada de Aplicação (Serviços)"]
+        SVC_AUTH[Serviço de Autenticação]
+        SVC_PROD[Serviço de Produtos]
+        SVC_MOV[Serviço de Movimentações]
+        SVC_ALERT[Serviço de Alertas de Estoque]
+        SVC_CONS[Serviço de Consultas]
+        SVC_EXP[Serviço de Exportação CSV]
+        SVC_AUD[Serviço de Auditoria/Rastreabilidade]
     end
 
-    subgraph INFRA["Camada de Persistência"]
-        REPO["Repositório de Dados (transacional)"]
-        BD[("Banco de Dados Embarcado Local")]
-        FS["Sistema de Arquivos (CSV)"]
+    subgraph Dominio["Camada de Domínio"]
+        DOM_PROD[Entidade Produto]
+        DOM_MOV[Entidade Movimentação]
+        DOM_REGRA[Regras de Negócio: saldo, limite mínimo, bloqueio de saída]
     end
 
-    TELA_LOGIN --> AUTH
-    TELA_PROD --> GP
-    TELA_MOV --> GM
-    TELA_PRINCIPAL --> CH
-    TELA_HIST --> CH
-    PAINEL_ALERTA --> MA
-    TELA_PRINCIPAL --> EX
+    subgraph Persistencia["Camada de Persistência"]
+        REPO[Repositórios com Transações Atômicas]
+        DB[(Banco de Dados Embarcado Local)]
+    end
 
-    GM --> GP
-    GM --> MA
-    GM --> AUD
-    GP --> REPO
-    GM --> REPO
-    CH --> REPO
-    MA --> REPO
-    AUTH --> REPO
-    AUD --> REPO
-    EX --> REPO
-    EX --> FS
-    REPO --> BD
+    FS[(Sistema de Arquivos Local)]
+
+    UI_LOGIN --> SVC_AUTH
+    UI_MAIN --> SVC_CONS
+    UI_MAIN --> UI_ALERT
+    UI_PROD --> SVC_PROD
+    UI_MOV --> SVC_MOV
+    UI_HIST --> SVC_CONS
+    UI_MAIN --> SVC_EXP
+    UI_ALERT --> SVC_ALERT
+
+    SVC_PROD --> DOM_PROD
+    SVC_MOV --> DOM_REGRA
+    SVC_MOV --> DOM_MOV
+    SVC_MOV --> SVC_ALERT
+    SVC_MOV --> SVC_AUD
+    SVC_ALERT --> DOM_PROD
+    SVC_CONS --> REPO
+    SVC_PROD --> REPO
+    SVC_MOV --> REPO
+    SVC_AUTH --> REPO
+    SVC_AUD --> REPO
+    SVC_EXP --> REPO
+    SVC_EXP --> FS
+    REPO --> DB
 ```
 
-### 2.2 Diagrama de Sequência — Registro de Saída com Validação e Alerta (HU03 + HU04)
+### 2.2 Diagrama de Sequência — HU03: Registrar Saída de Produto (com validação e alerta)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant OP as Operador
     participant UI as Tela de Lançamento
-    participant GM as Gestor de Movimentações
-    participant GP as Gestor de Produtos
-    participant MA as Motor de Alertas
+    participant MOV as Serviço de Movimentações
+    participant REG as Regras de Negócio
+    participant ALT as Serviço de Alertas
     participant AUD as Serviço de Auditoria
-    participant REPO as Repositório de Dados
+    participant REP as Repositório
+    participant DB as Banco Embarcado
 
     OP->>UI: Seleciona produto, informa quantidade e data
-    UI->>GM: registrarSaida(produtoId, qtd, data, usuario)
-    GM->>GP: obterSaldo(produtoId)
-    GP->>REPO: consultarProduto(produtoId)
-    REPO-->>GP: dados do produto (saldo atual)
-    GP-->>GM: saldo disponível
+    UI->>MOV: registrarSaida(produtoId, qtd, data, usuario)
+    MOV->>REP: obterSaldoAtual(produtoId)
+    REP->>DB: consulta saldo
+    DB-->>REP: saldo atual
+    REP-->>MOV: saldo atual
+    MOV->>REG: validarSaida(saldo, qtd)
     alt Quantidade maior que saldo (RF06)
-        GM-->>UI: erro "estoque insuficiente"
-        UI-->>OP: Mensagem de erro clara
-    else Saldo suficiente
-        GM->>REPO: iniciarTransacao()
-        GM->>REPO: gravarMovimentacao(saida, qtd, data, hora, usuario)
-        GM->>REPO: atualizarSaldo(produtoId, -qtd)
-        GM->>AUD: registrarTrilha(operacao, usuario, dataHora)
-        AUD->>REPO: gravarLogAuditoria()
-        GM->>REPO: confirmarTransacao()
-        REPO-->>GM: sucesso (persistência durável - RNF03)
-        GM->>MA: avaliarLimite(produtoId, novoSaldo)
-        alt Saldo <= limite mínimo (RF09)
-            MA-->>UI: emitirAlerta(produto, saldoAtual)
-        end
-        GM-->>UI: confirmação do lançamento
-        UI-->>OP: Saldo atualizado + alerta destacado (se aplicável)
+        REG-->>MOV: violação de regra
+        MOV-->>UI: erro de validação
+        UI-->>OP: Mensagem clara: saldo insuficiente
+    else Quantidade válida
+        REG-->>MOV: aprovado
+        MOV->>REP: iniciar transação atômica (RNF03)
+        REP->>DB: grava movimentação (data, hora, usuário - RNF08)
+        REP->>DB: decrementa saldo (RF07)
+        REP->>DB: commit
+        DB-->>REP: confirmação
+        REP-->>MOV: sucesso
+        MOV->>ALT: avaliarLimiteMinimo(produtoId)
+        ALT-->>MOV: status do alerta (RF09)
+        MOV->>AUD: registrarTrilha(lancamento)
+        MOV-->>UI: sucesso + estado de alerta
+        UI-->>OP: Saldo atualizado (e alerta destacado, se aplicável)
     end
 ```
 
-### 2.3 Modelo de Domínio Conceitual
+### 2.3 Diagrama de Sequência — HU08: Exportação CSV
 
 ```mermaid
-classDiagram
-    class Produto {
-        +id
-        +nome
-        +precoCusto
-        +saldoAtual
-        +limiteMinimo
-        +estaAbaixoDoLimite() bool
-    }
-    class Movimentacao {
-        +id
-        +tipo (ENTRADA | SAIDA)
-        +quantidade
-        +data
-        +hora
-        +usuarioResponsavel
-    }
-    class Usuario {
-        +id
-        +login
-        +credencialHash
-    }
-    class Alerta {
-        +produtoRef
-        +saldoNoMomento
-        +ativo
-    }
-    Produto "1" --> "0..*" Movimentacao : possui
-    Usuario "1" --> "0..*" Movimentacao : registra
-    Produto "1" --> "0..1" Alerta : gera
+sequenceDiagram
+    autonumber
+    participant OP as Operador
+    participant UI as Tela Principal
+    participant EXP as Serviço de Exportação
+    participant REP as Repositório
+    participant FS as Sistema de Arquivos
+
+    OP->>UI: Solicita exportação e escolhe diretório
+    UI->>EXP: exportar(escopo, diretorio)
+    EXP->>REP: obter estoque e movimentações
+    REP-->>EXP: conjunto de dados
+    EXP->>FS: gravar arquivo CSV
+    FS-->>EXP: confirmação de gravação
+    EXP-->>UI: resultado da exportação
+    UI-->>OP: Mensagem de sucesso (RNF07)
 ```
 
 ---
@@ -153,16 +152,16 @@ classDiagram
 
 | ID | Decisão | Justificativa | Requisitos Atendidos |
 |----|---------|---------------|----------------------|
-| AD01 | **Arquitetura monolítica em camadas (Apresentação / Domínio / Persistência)** para aplicação desktop local | Sistema mono-usuário local, sem servidor externo; camadas garantem manutenibilidade e testabilidade | RNF01, RNF02, RNF07 |
-| AD02 | **Persistência transacional com escrita durável (write-ahead / commit atômico)**: lançamento e atualização de saldo ocorrem na mesma transação, confirmada em disco antes de retornar sucesso à UI | Garante que nenhum lançamento seja perdido em fechamento inesperado | RNF03, RF07 |
-| AD03 | **Validação de saldo no domínio (não apenas na UI)**: a regra "saída ≤ saldo" é aplicada pelo Gestor de Movimentações dentro da transação | Evita condições de inconsistência e centraliza a regra de negócio | RF06, HU03 |
-| AD04 | **Motor de Alertas orientado a eventos internos**: recalcula estado de alerta a cada lançamento e a cada alteração de limite mínimo; alerta persiste até saldo superar o limite | Atende ao critério de persistência do alerta de HU04 e reflexo imediato de HU05 | RF08, RF09 |
-| AD05 | **Consultas com índices por nome de produto, produto+data e paginação/ordenação no repositório** | Garante carga ≤ 2s com grande volume de registros | RNF05, RF11, RF12 |
-| AD06 | **Trilha de auditoria imutável (append-only)**: toda movimentação registra data, hora e usuário autenticado; registros de movimentação não são editáveis | Rastreabilidade e integridade do histórico | RNF08, HU07 |
-| AD07 | **Autenticação local com armazenamento de credenciais via hash com salt**; sessão do usuário propaga identidade para os lançamentos | Segurança sem servidor externo | RNF06, RNF08 |
-| AD08 | **Exportador CSV desacoplado**, lendo do repositório e gravando em diretório escolhido pelo usuário, com confirmação de sucesso | Backup e análise externa sem acoplar UI à persistência | RNF07, HU08 |
-| AD09 | **Exclusão lógica de produto (soft delete)** quando houver movimentações associadas | Preserva histórico e rastreabilidade (RNF08) mesmo após remoção (RF03) | RF03, RF11, RNF08 |
-| AD10 | **Fluxos de entrada/saída acessíveis da tela principal em ≤ 3 interações** (selecionar produto → informar quantidade → confirmar) | Restrição de usabilidade guia o design de navegação | RNF04 |
+| DA01 | **Arquitetura monolítica em camadas (desktop standalone)** | Aplicação local, mono-usuário por estação, sem servidor externo; camadas isolam UI, regras e persistência para manutenibilidade. | RNF01, RNF02 |
+| DA02 | **Banco de dados embarcado com transações ACID** | Cada lançamento (movimentação + atualização de saldo) executa em transação atômica com commit imediato; nenhum dado é mantido apenas em memória. | RNF02, RNF03, RF07 |
+| DA03 | **Saldo derivado mantido como campo materializado, validado por trilha de movimentações** | Consulta de saldo em O(1) garante desempenho; o histórico permite reconciliação/recontagem em caso de inconsistência. | RF07, RF10, RNF05 |
+| DA04 | **Validação de saída centralizada na camada de domínio** | A regra "saída ≤ saldo" (RF06) é aplicada dentro da mesma transação de gravação, evitando condição de corrida e duplicação de regra na UI. | RF06, RNF03 |
+| DA05 | **Alertas avaliados de forma reativa e persistente** | O estado "abaixo do limite" é uma condição derivada (saldo ≤ limite), recalculada a cada lançamento e a cada carga da tela; o alerta persiste naturalmente até reposição (HU04). | RF08, RF09 |
+| DA06 | **Autenticação local com credenciais protegidas por hash + sessão em memória** | Sem servidor externo, credenciais residem no banco embarcado com armazenamento irreversível de senha; usuário logado alimenta a trilha de auditoria. | RNF06, RNF08 |
+| DA07 | **Índices/paginação nas consultas de histórico** | Filtros por produto e período com paginação garantem resposta ≤ 2s com grande volume. | RF11, RNF05 |
+| DA08 | **Exportação CSV desacoplada via serviço dedicado** | Exportação lê via repositório (mesma fonte de verdade), sem acoplar formato de arquivo às regras de negócio. | RNF07 |
+| DA09 | **UI orientada a fluxo curto (atalhos na tela principal)** | Lançamento de entrada/saída acessível diretamente da tela principal: (1) selecionar produto, (2) informar quantidade/data, (3) confirmar. | RNF04 |
+| DA10 | **Exclusão de produto com verificação de dependências** | Produto com movimentações não pode ser fisicamente removido sem perda de rastreabilidade → adoção de inativação lógica (ver Gap G02). | RF03, RNF08 |
 
 ---
 
@@ -170,20 +169,22 @@ classDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |------------|---------------------------|-----------------|----------------------------------|
-| Tela de Autenticação | Coletar credenciais e iniciar sessão do operador | Serviço de Autenticação | RNF06 |
-| Tela Principal / Consulta de Estoque | Listar produtos com saldo, limite e destaque visual; ordenação por nome/quantidade | Consultor de Histórico e Saldos, Exportador CSV, Painel de Alertas | HU06 (todos os critérios), RF10 |
-| Tela de Cadastro de Produto | Cadastro, edição e remoção de produtos; validação de campos obrigatórios | Gestor de Produtos | HU01 (nome/qtd obrigatórios; sem duplicidade), RF01–RF03 |
-| Tela de Lançamento | Registrar entradas/saídas em ≤ 3 interações; busca de produto por nome | Gestor de Movimentações | HU02, HU03, RNF04, RF12 |
-| Tela de Histórico | Filtrar movimentações por produto e período; ordem cronológica decrescente | Consultor de Histórico e Saldos | HU07 (todos os critérios), RF11 |
-| Painel de Alertas | Exibir alertas destacados e persistentes com produto e saldo atual | Motor de Alertas | HU04 (destaque, identificação, persistência) |
-| Serviço de Autenticação | Validar credenciais (hash+salt), gerir sessão e identidade do usuário | Repositório de Dados, todas as telas | RNF06, RNF08 |
-| Gestor de Produtos | CRUD de produtos, unicidade de nome, gestão de limite mínimo, exclusão lógica | Repositório de Dados | HU01, HU05, RF01–RF03, RF08 |
-| Gestor de Movimentações | Orquestrar lançamentos transacionais; validar saldo; atualizar estoque atomicamente | Gestor de Produtos, Motor de Alertas, Serviço de Auditoria, Repositório | HU02, HU03, RF04–RF07, RNF03 |
-| Motor de Alertas | Avaliar saldo × limite após cada lançamento/configuração; manter estado do alerta ativo | Repositório, Painel de Alertas | HU04, HU05, RF09 |
-| Consultor de Histórico e Saldos | Consultas otimizadas (índices, paginação) de saldo, busca por nome e histórico filtrado | Repositório de Dados | HU06, HU07, RF10–RF12, RNF05 |
-| Serviço de Auditoria | Registrar data, hora e usuário em toda operação (trilha append-only) | Repositório de Dados | RNF08, HU07 (usuário responsável) |
-| Exportador CSV | Gerar CSV de estoque e movimentações no diretório escolhido; confirmar sucesso | Repositório de Dados, Sistema de Arquivos | HU08 (todos os critérios), RNF07 |
-| Repositório de Dados | Abstrair persistência transacional durável sobre banco embarcado local | Banco de Dados Embarcado | RNF02, RNF03, RNF05 |
+| Tela de Login | Coletar credenciais e iniciar sessão | Serviço de Autenticação | RNF06 (implícito) |
+| Tela Principal / Consulta de Estoque | Listar produtos com saldo, limite e destaque visual; ordenação por nome/quantidade; busca por nome | Serviço de Consultas, Painel de Alertas, Serviço de Exportação | HU06 (todos os CAs), RF10, RF12 |
+| Tela de Cadastro de Produtos | CRUD de produto e configuração de limite mínimo | Serviço de Produtos | HU01 (CAs 1–3), HU05 (CAs 1–3), RF01–RF03, RF08 |
+| Tela de Lançamento Entrada/Saída | Capturar produto, quantidade e data em ≤ 3 interações; exibir erros de validação | Serviço de Movimentações | HU02 (CAs 1–4), HU03 (CAs 1–3), RNF04 |
+| Tela de Histórico | Filtrar por produto/período; exibir tipo, quantidade, data, hora, usuário em ordem decrescente | Serviço de Consultas | HU07 (CAs 1–3), RF11 |
+| Painel de Alertas | Exibir destaque visual persistente de produtos abaixo do limite, com saldo atual | Serviço de Alertas | HU04 (CAs 1–3), RF09 |
+| Serviço de Autenticação | Validar credenciais (hash), gerenciar sessão do usuário corrente | Repositório | RNF06, RNF08 |
+| Serviço de Produtos | Regras de cadastro (obrigatoriedade, unicidade de nome), edição, remoção/inativação, limite mínimo | Entidade Produto, Repositório | HU01 (CA2: não duplicar nome), HU05 (CA2: inteiro ≥ 0) |
+| Serviço de Movimentações | Orquestrar entrada/saída em transação atômica; acionar alertas e auditoria | Regras de Negócio, Repositório, Serviço de Alertas, Serviço de Auditoria | HU02 (CA3), HU03 (CA1–2), RF04–RF07, RNF03 |
+| Regras de Negócio (Domínio) | Validar saída ≤ saldo; quantidades inteiras positivas; recomputar saldo | Serviço de Movimentações | HU02 (CA2), HU03 (CA1), RF06 |
+| Serviço de Alertas de Estoque | Avaliar condição saldo ≤ limite; manter estado do alerta até reposição | Entidade Produto, Repositório | HU04 (CA3), HU05 (CA3), RF09 |
+| Serviço de Consultas | Consultas de saldo, busca por nome, histórico paginado com filtros | Repositório | HU06, HU07, RNF05 |
+| Serviço de Auditoria | Registrar data, hora e usuário de cada lançamento | Repositório | HU07 (CA2), RNF08 |
+| Serviço de Exportação CSV | Gerar arquivo CSV completo em diretório escolhido; confirmar sucesso | Repositório, Sistema de Arquivos | HU08 (CAs 1–3), RNF07 |
+| Repositórios | Acesso transacional ao banco embarcado; índices para desempenho | Banco de Dados Embarcado | RNF02, RNF03, RNF05 |
+| Banco de Dados Embarcado | Persistência local durável (ACID) | Repositórios | RNF02, RNF03 |
 
 ---
 
@@ -191,55 +192,56 @@ classDiagram
 
 | ID | Tipo | Descrição | Impacto | Ação Requerida |
 |----|------|-----------|---------|----------------|
-| P01 | Pendência | Não há HU nem critérios para autenticação (RNF06): gestão de usuários, cadastro, recuperação de senha, perfis | Componente de autenticação sem escopo funcional definido | Product Owner especificar HU de gestão de usuários/acessos |
-| P02 | Pendência | RF03 (remoção de produto) conflita potencialmente com RNF08 (rastreabilidade) — comportamento com movimentações existentes não especificado | Decisão AD09 (soft delete) adotada provisoriamente | Validar exclusão lógica com stakeholders |
-| P03 | Pendência | Não definido se saída pode ser retroativa (data no passado) nem se há estorno/correção de lançamentos errados | Modelo de movimentações imutável pode exigir movimentação de ajuste | Definir política de correção/estorno |
-| P04 | Pendência | "Grande volume de registros" (RNF05) não quantificado | Dimensionamento de índices e paginação sem meta objetiva | Definir volumetria alvo (ex.: nº de produtos e movimentações/ano) |
-| P05 | Bloqueio parcial | Existência de múltiplos operadores simultâneos não especificada (aplicação local sugere mono-usuário, mas RNF08 cita "usuário responsável") | Afeta estratégia de concorrência e locking | Confirmar cenário mono-estação vs. múltiplas estações |
-| P06 | Pendência | Edição de produto (RF02): não definido se preço de custo e nome podem ser alterados após haver movimentações | Impacto em histórico e relatórios | Especificar campos editáveis e regras |
+| B01 | Bloqueio | **Gestão de usuários não especificada** (RNF06 exige login, mas não há RF/HU para criar/gerir usuários e senhas). | Sem cadastro de usuários, autenticação e rastreabilidade (RNF08) ficam inviáveis. | Product Owner definir HU de administração de usuários (ou usuário único pré-provisionado). |
+| B02 | Bloqueio | **Semântica de remoção de produto (RF03)** com movimentações existentes conflita com RNF08 (rastreabilidade). | Remoção física quebraria histórico. | Confirmar adoção de inativação lógica (DA10). |
+| P01 | Pendência | Comportamento para lançamentos com **data retroativa/futura** (RF04/RF05 permitem informar data). | Pode gerar históricos inconsistentes. | Definir regras de validação de data. |
+| P02 | Pendência | **Edição/estorno de lançamentos** não prevista — apenas criação. | Erros operacionais sem correção auditável. | Definir mecanismo de estorno (nova movimentação compensatória). |
+| P03 | Pendência | Escopo exato do CSV (separador, codificação, um arquivo ou dois — estoque × movimentações). | Retrabalho na exportação. | Especificar layout do CSV. |
+| P04 | Pendência | Política de backup/recuperação do banco embarcado além do CSV. | Risco de perda total em falha de disco. | Definir estratégia de backup local. |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-| Requisito | Coberto por (Componente/Decisão) | Status |
-|-----------|----------------------------------|--------|
-| RF01 | Tela Cadastro + Gestor de Produtos | ✅ Coberto |
-| RF02 | Gestor de Produtos | ⚠️ Coberto com pendência (P06) |
-| RF03 | Gestor de Produtos (AD09) | ⚠️ Coberto com pendência (P02) |
-| RF04 | Gestor de Movimentações | ✅ Coberto |
-| RF05 | Gestor de Movimentações | ✅ Coberto |
-| RF06 | Gestor de Movimentações (AD03) | ✅ Coberto |
-| RF07 | Transação atômica (AD02) | ✅ Coberto |
-| RF08 | Gestor de Produtos + Motor de Alertas | ✅ Coberto |
-| RF09 | Motor de Alertas + Painel de Alertas (AD04) | ✅ Coberto |
-| RF10 | Consultor de Histórico e Saldos + Tela Principal | ✅ Coberto |
-| RF11 | Consultor de Histórico e Saldos + Tela de Histórico | ✅ Coberto |
-| RF12 | Consultor (busca indexada por nome) | ✅ Coberto |
-| RNF01 | AD01 (aplicação desktop local para Windows) | ✅ Coberto |
-| RNF02 | Repositório + banco embarcado (AD01) | ✅ Coberto |
-| RNF03 | AD02 (transação durável) | ✅ Coberto |
-| RNF04 | AD10 (fluxo ≤ 3 interações) | ✅ Coberto (validar em teste de usabilidade) |
-| RNF05 | AD05 (índices/paginação) | ⚠️ Coberto com pendência (P04 — volumetria) |
-| RNF06 | Serviço de Autenticação (AD07) | ⚠️ Coberto com pendência (P01 — gestão de usuários) |
-| RNF07 | Exportador CSV (AD08) | ✅ Coberto |
-| RNF08 | Serviço de Auditoria (AD06) | ✅ Coberto |
+| Requisito | Coberto por | Status |
+|-----------|-------------|--------|
+| RF01 | Serviço de Produtos, Tela de Cadastro | ✅ Coberto |
+| RF02 | Serviço de Produtos, Tela de Cadastro | ✅ Coberto |
+| RF03 | Serviço de Produtos (inativação lógica — DA10) | ⚠️ Coberto com ressalva (B02) |
+| RF04 | Serviço de Movimentações, Tela de Lançamento | ✅ Coberto |
+| RF05 | Serviço de Movimentações, Tela de Lançamento | ✅ Coberto |
+| RF06 | Regras de Negócio (validação transacional — DA04) | ✅ Coberto |
+| RF07 | Transação atômica movimentação + saldo (DA02/DA03) | ✅ Coberto |
+| RF08 | Serviço de Produtos, Tela de Cadastro | ✅ Coberto |
+| RF09 | Serviço de Alertas, Painel de Alertas (DA05) | ✅ Coberto |
+| RF10 | Serviço de Consultas, Tela Principal | ✅ Coberto |
+| RF11 | Serviço de Consultas, Tela de Histórico (DA07) | ✅ Coberto |
+| RF12 | Serviço de Consultas (busca por nome) | ✅ Coberto |
+| RNF01 | Arquitetura desktop standalone (DA01) | ✅ Coberto |
+| RNF02 | Banco embarcado local (DA02) | ✅ Coberto |
+| RNF03 | Transações atômicas com commit imediato (DA02) | ✅ Coberto |
+| RNF04 | Fluxo de UI ≤ 3 interações (DA09) | ✅ Coberto |
+| RNF05 | Saldo materializado + índices/paginação (DA03, DA07) | ✅ Coberto |
+| RNF06 | Serviço de Autenticação (DA06) | ⚠️ Coberto com ressalva (B01) |
+| RNF07 | Serviço de Exportação CSV (DA08) | ✅ Coberto |
+| RNF08 | Serviço de Auditoria + sessão de usuário | ⚠️ Coberto com ressalva (B01) |
 
-**Resumo:** 20/20 requisitos endereçados arquiteturalmente; 5 com pendências de especificação (não bloqueiam o design, mas bloqueiam detalhamento de implementação).
+**Resumo:** 20 requisitos — 17 totalmente cobertos, 3 cobertos com ressalvas dependentes de decisões de negócio.
 
 ---
 
 ## 7. Gap Analysis
 
-| # | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
-|---|---------------------|----------------------|------------------|
-| G01 | **Gestão de usuários inexistente**: RNF06/RNF08 pressupõem usuários, mas não há requisito de cadastro, perfis ou troca de senha | Serviço de Autenticação incompleto; risco de credencial fixa/insegura | Especificar HU de administração de usuários antes da Sprint que implementa autenticação |
-| G02 | **Ausência de estorno/correção de lançamentos**: histórico imutável (AD06) sem mecanismo de ajuste levará a saldos incorretos permanentes em caso de erro do operador | Necessário conceito de "movimentação de ajuste" com motivo e rastreabilidade | Incluir RF de ajuste de estoque com justificativa obrigatória |
-| G03 | **Backup automático não especificado**: RNF07 cobre exportação manual, mas RNF03 (confiabilidade) sugere necessidade de proteção contra corrupção/perda do arquivo local | Estratégia de backup/restauração do banco embarcado ausente | Definir política de backup automático local e procedimento de restauração |
-| G04 | **Concorrência não definida** (P05): se houver mais de uma estação, o banco embarcado local não suporta o cenário | Pode invalidar AD01/RNF02 (arquitetura local) | Confirmar mono-estação; se multi-estação, revisar decisão de persistência |
-| G05 | **Volumetria e retenção de histórico não quantificadas** | Índices/paginação (AD05) sem meta mensurável; sem política de arquivamento | Definir volumetria alvo e política de retenção/arquivamento de movimentações antigas |
-| G06 | **Unidades de medida e preço de venda ausentes**: produtos possuem apenas quantidade inteira e preço de custo | Modelo de domínio pode exigir extensão (unidades fracionadas, margem) — risco de retrabalho | Confirmar com o negócio se quantidade inteira e ausência de preço de venda são definitivos |
-| G07 | **Codificação e layout do CSV não especificados** (separador, encoding, cabeçalhos) | Risco de incompatibilidade com planilhas do usuário | Padronizar formato do CSV nos critérios de aceite de HU08 |
-| G08 | **Comportamento de RF06 em lançamentos retroativos** (P03): saída com data passada pode gerar saldo negativo histórico | Regra de validação temporal indefinida | Decidir se validação de saldo considera apenas saldo corrente ou saldo na data do lançamento |
+| ID | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
+|----|---------------------|----------------------|------------------|
+| G01 | Ausência de HU/RF para **gestão de usuários e recuperação de senha**, apesar de RNF06/RNF08 exigirem identificação. | Serviço de Autenticação e Auditoria não têm origem de dados; auditoria fica sem ator identificável. | Criar HU de administração de usuários; definir perfis (haverá apenas "Operador" ou também "Administrador"?). |
+| G02 | **Remoção de produto (RF03)** conflita com preservação de histórico (RNF08, HU07). | Modelo de dados deve prever flag de inatividade e filtragem em consultas/busca. | Formalizar decisão de exclusão lógica; ocultar inativos das telas operacionais. |
+| G03 | **Sem mecanismo de correção/estorno de lançamentos.** | Ausência de fluxo compensatório pode induzir manipulação direta do banco (viola RNF03/RNF08). | Especificar movimentação de ajuste/estorno auditada. |
+| G04 | **Preço de custo cadastrado (RF01) sem uso posterior** — nenhuma consulta ou relatório o utiliza; não há preço por lote na entrada. | Modelo pode precisar de histórico de custo por entrada (custo médio, FIFO). | Confirmar se custo é atributo estático do produto ou por lote de entrada. |
+| G05 | **Critérios de desempenho vagos** — "grande volume" não quantificado (RNF05). | Dimensionamento de índices, paginação e política de arquivamento sem baseline. | Definir volumetria alvo (nº de produtos, movimentações/dia, horizonte de retenção). |
+| G06 | **Alerta de estoque baixo sem definição de "reconhecimento"** — apenas persistência até reposição. | UI pode ficar poluída com muitos alertas simultâneos. | Validar com PO se há necessidade de agrupamento/priorização de alertas. |
+| G07 | **Concorrência multi-estação não abordada** — requisitos sugerem estação única, mas lojas podem ter mais de um caixa. | Se houver múltiplas estações, o banco embarcado local (RNF02) torna-se restrição estrutural crítica. | Confirmar explicitamente cenário mono-estação antes de fechar a arquitetura. |
+| G08 | **Recuperação pós-falha (RNF03)** cobre durabilidade, mas não define comportamento na reabertura (ex.: retomar lançamento parcial em tela). | Escolha entre descartar rascunhos ou implementar rascunho persistente. | Definir política: recomenda-se descartar entradas de tela não confirmadas, garantindo apenas lançamentos confirmados. |
+| G09 | **CSV sem especificação de formato** (codificação, separador, escopo de campos, nomes de arquivos). | Baixo impacto estrutural, mas afeta interoperabilidade com planilhas. | Documentar layout do arquivo na especificação funcional. |
 
-**Conclusão:** a arquitetura proposta cobre integralmente os requisitos declarados com decisões conservadoras (transações duráveis, auditoria append-only, exclusão lógica). As lacunas G01, G02 e G04 são as de maior risco e devem ser resolvidas antes do início do desenvolvimento dos módulos de autenticação e movimentações.
+**Conclusão:** A arquitetura proposta cobre integralmente o escopo funcional descrito, com desenho monolítico em camadas adequado ao contexto desktop local. Os gaps críticos (G01, G02, G07) devem ser resolvidos com o Product Owner **antes do início da implementação**, pois afetam modelo de dados e premissas estruturais; os demais podem ser tratados durante o refinamento do backlog.

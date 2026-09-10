@@ -5,22 +5,22 @@
 
 ## 1. Identificação das HUs
 
-| HU | Título | Perfil | RFs Relacionados |
+| HU | Perfil | Título | RFs Relacionados |
 |----|--------|--------|-------------------|
-| HU01 | Registrar pedido de frete | Embarcador | RF05, RF06, RF09, RF10 |
-| HU02 | Selecionar transportadora e contratar seguro | Embarcador | RF11, RF12, RF17, RF41 |
-| HU03 | Acompanhar pedidos e receber comprovante de entrega | Embarcador | RF07, RF33, RF34, RF37, RF39 |
-| HU04 | Abrir sinistro por avaria ou extravio | Embarcador | RF42, RF43, RF44 |
-| HU05 | Aceitar pedidos de frete e gerenciar frota | Transportadora | RF13, RF14, RF15 |
-| HU06 | Acompanhar operação dos motoristas em tempo real | Transportadora | RF25, RF26, RF32 |
-| HU07 | Consultar demonstrativo financeiro de repasse | Transportadora | RF46, RF48 |
-| HU08 | Executar coleta com registro de evidências | Motorista | RF24, RF26 |
-| HU09 | Registrar entrega com assinatura digital do destinatário | Motorista | RF27, RF28, RF37, RF38, RF40 |
-| HU10 | Registrar ocorrência durante o transporte | Motorista | RF26, RF35, RF34 |
-| HU11 | Rastrear carga em tempo real sem cadastro | Destinatário | RF30, RF31, RF32, RNF05 |
-| HU12 | Receber notificações de cada etapa da entrega | Destinatário | RF33 |
-| HU13 | Monitorar SLA de fretes e acionar contingência | Administrador | RF36, RF15, RF16 |
-| HU14 | Acompanhar painel financeiro da plataforma | Administrador | RF49 |
+| HU01 | Embarcador | Registrar pedido de frete | RF05, RF06, RF09, RF10 |
+| HU02 | Embarcador | Selecionar transportadora e contratar seguro | RF11, RF12, RF17, RF41 |
+| HU03 | Embarcador | Acompanhar pedidos e receber comprovante de entrega | RF07, RF33, RF34, RF37, RF39 |
+| HU04 | Embarcador | Abrir sinistro por avaria ou extravio | RF42, RF43, RF44 |
+| HU05 | Transportadora | Aceitar pedidos de frete e gerenciar frota | RF13, RF14, RF15, RF03 |
+| HU06 | Transportadora | Acompanhar operação dos motoristas em tempo real | RF25, RF26, RF32 |
+| HU07 | Transportadora | Consultar demonstrativo financeiro de repasse | RF46, RF48 |
+| HU08 | Motorista | Executar coleta com registro de evidências | RF24, RF26 |
+| HU09 | Motorista | Registrar entrega com assinatura digital do destinatário | RF27, RF28, RF37, RF38, RF40 |
+| HU10 | Motorista | Registrar ocorrência durante o transporte | RF26, RF35 |
+| HU11 | Destinatário | Rastrear carga em tempo real sem cadastro | RF30, RF31, RF32 |
+| HU12 | Destinatário | Receber notificações de cada etapa da entrega | RF33 |
+| HU13 | Administrador | Monitorar SLA de fretes e acionar contingência | RF36, RF15 |
+| HU14 | Administrador | Acompanhar painel financeiro da plataforma | RF49 |
 
 ---
 
@@ -31,159 +31,178 @@
 ```mermaid
 flowchart TB
     subgraph Clientes
-        WebPortal["Portal Web (Embarcador/Transportadora/Admin)"]
-        MobileApp["App Mobile Motorista"]
-        TrackingLink["Interface Pública de Rastreamento"]
+        WEBPORTAL[Portal Web - Embarcador/Transportadora/Admin]
+        MOBAPP[App Mobile - Motorista]
+        TRACKLINK[Interface Pública de Rastreamento]
     end
 
-    subgraph Gateway
-        APIGateway["API Gateway / Camada de Acesso"]
+    subgraph GatewayCamada
+        APIGW[API Gateway / Roteamento de Requisições]
+        AUTH[Serviço de Autenticação e Autorização]
     end
 
-    subgraph CoreServices["Serviços de Domínio"]
-        AuthService["Serviço de Identidade e Acesso"]
-        OrderService["Serviço de Pedidos de Frete"]
-        RoutingService["Serviço de Roteamento e Ranqueamento"]
-        CarrierService["Serviço de Gestão de Transportadoras/Frota"]
-        CTeService["Serviço de Emissão CT-e"]
-        TrackingService["Serviço de Rastreamento/Geolocalização"]
-        NotificationService["Serviço de Notificações"]
-        PODService["Serviço de Comprovante de Entrega (POD)"]
-        InsuranceService["Serviço de Seguros e Sinistros"]
-        BillingService["Serviço Financeiro/Faturamento"]
-        AuditService["Serviço de Auditoria"]
+    subgraph DominioNucleo
+        USR[Serviço de Gestão de Usuários e Perfis]
+        PEDIDO[Serviço de Pedidos de Frete]
+        ROTEAMENTO[Serviço de Roteamento e Ranqueamento de Transportadoras]
+        FRETE[Serviço de Gestão de Fretes/Ciclo de Vida]
+        CTE[Serviço de Emissão e Controle de CT-e]
+        MOTORISTA[Serviço de Operação do Motorista]
+        RASTREIO[Serviço de Rastreamento em Tempo Real]
+        NOTIF[Serviço de Notificações]
+        POD[Serviço de Comprovante de Entrega Digital]
+        SINISTRO[Serviço de Seguros e Sinistros]
+        FINANCEIRO[Serviço Financeiro e Faturamento]
+        AUDITORIA[Serviço de Auditoria]
     end
 
-    subgraph Integracoes["Integrações Externas"]
-        SEFAZ["SEFAZ"]
-        Seguradoras["Seguradoras Parceiras"]
+    subgraph Integracoes
+        SEFAZ[Integração SEFAZ]
+        SEGURADORA[Integração Seguradoras]
+        GEOPROC[Processador de Eventos de Geolocalização]
     end
 
     subgraph Dados
-        RelDB["Armazenamento Transacional"]
-        GeoDB["Armazenamento Geoespacial/Séries Temporais"]
-        DocStore["Repositório de Documentos/Evidências"]
-        AuditLog["Trilha de Auditoria Imutável"]
+        DBRELACIONAL[(Armazenamento Transacional)]
+        DBGEO[(Armazenamento Geoespacial/Séries Temporais)]
+        DBDOC[(Armazenamento de Documentos/Evidências)]
+        DBAUDIT[(Armazenamento de Auditoria Imutável)]
     end
 
-    WebPortal --> APIGateway
-    MobileApp --> APIGateway
-    TrackingLink --> APIGateway
+    WEBPORTAL --> APIGW
+    MOBAPP --> APIGW
+    TRACKLINK --> APIGW
+    APIGW --> AUTH
+    APIGW --> USR
+    APIGW --> PEDIDO
+    APIGW --> ROTEAMENTO
+    APIGW --> FRETE
+    APIGW --> CTE
+    APIGW --> MOTORISTA
+    APIGW --> RASTREIO
+    APIGW --> FINANCEIRO
+    APIGW --> SINISTRO
 
-    APIGateway --> AuthService
-    APIGateway --> OrderService
-    APIGateway --> RoutingService
-    APIGateway --> CarrierService
-    APIGateway --> CTeService
-    APIGateway --> TrackingService
-    APIGateway --> PODService
-    APIGateway --> InsuranceService
-    APIGateway --> BillingService
-
-    OrderService --> RoutingService
-    RoutingService --> CarrierService
-    RoutingService --> NotificationService
-    OrderService --> CTeService
-    CTeService --> SEFAZ
-    InsuranceService --> Seguradoras
-    TrackingService --> NotificationService
-    PODService --> NotificationService
-    PODService --> DocStore
-    InsuranceService --> DocStore
-    OrderService --> RelDB
-    TrackingService --> GeoDB
-    BillingService --> RelDB
-    AuthService --> AuditService
-    OrderService --> AuditService
-    CTeService --> AuditService
-    BillingService --> AuditService
-    AuditService --> AuditLog
+    PEDIDO --> ROTEAMENTO
+    ROTEAMENTO --> NOTIF
+    ROTEAMENTO --> FRETE
+    FRETE --> CTE
+    CTE --> SEFAZ
+    MOTORISTA --> GEOPROC
+    GEOPROC --> RASTREIO
+    MOTORISTA --> POD
+    POD --> NOTIF
+    FRETE --> SINISTRO
+    SINISTRO --> SEGURADORA
+    FRETE --> FINANCEIRO
+    RASTREIO --> DBGEO
+    MOTORISTA --> DBDOC
+    POD --> DBDOC
+    USR --> DBRELACIONAL
+    PEDIDO --> DBRELACIONAL
+    FRETE --> DBRELACIONAL
+    FINANCEIRO --> DBRELACIONAL
+    AUDITORIA --> DBAUDIT
+    USR --> AUDITORIA
+    FRETE --> AUDITORIA
+    CTE --> AUDITORIA
+    FINANCEIRO --> AUDITORIA
 ```
 
-### 2.2 Diagrama de Sequência: Fluxo de Pedido → Roteamento → Aceite → CT-e (HU01/HU02/HU05)
+### 2.2 Diagrama de Sequência — Fluxo Completo de Pedido até Entrega (HU01, HU02, HU08, HU09)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Embarcador
-    participant WebPortal as Portal Web
-    participant OrderSvc as Serviço de Pedidos
-    participant RoutingSvc as Serviço de Roteamento
-    participant CarrierSvc as Serviço de Transportadoras
-    participant NotifSvc as Serviço de Notificações
-    participant Transportadora
-    participant CTeSvc as Serviço CT-e
-    participant SEFAZ
+    participant EMB as Embarcador
+    participant WEB as Portal Web
+    participant PED as Servico de Pedidos
+    participant ROT as Servico de Roteamento
+    participant TRANSP as Transportadora
+    participant NOTIF as Servico de Notificacoes
+    participant CTE as Servico CT-e
+    participant SEFAZ as SEFAZ
+    participant MOT as App Motorista
+    participant RASTREIO as Servico de Rastreamento
+    participant DEST as Destinatario
+    participant POD as Servico de POD
 
-    Embarcador->>WebPortal: Registrar pedido de frete (origem, destino, carga)
-    WebPortal->>OrderSvc: Criar pedido
-    OrderSvc->>RoutingSvc: Solicitar roteamento automático
-    RoutingSvc->>CarrierSvc: Consultar transportadoras habilitadas
-    CarrierSvc-->>RoutingSvc: Lista de transportadoras compatíveis
-    RoutingSvc->>RoutingSvc: Calcular ranking (preço, prazo, desempenho)
-    RoutingSvc-->>OrderSvc: Ranking de opções
-    OrderSvc-->>Embarcador: Exibir transportadoras ranqueadas
-    Embarcador->>WebPortal: Selecionar transportadora
-    WebPortal->>NotifSvc: Notificar transportadora selecionada
-    NotifSvc->>Transportadora: Novo pedido disponível
-    Transportadora->>OrderSvc: Aceitar pedido
-    OrderSvc->>CTeSvc: Solicitar emissão de CT-e
-    CTeSvc->>SEFAZ: Transmitir CT-e
-    SEFAZ-->>CTeSvc: Status de autorização
-    CTeSvc-->>OrderSvc: CT-e autorizado
-    OrderSvc->>NotifSvc: Notificar aceite e emissão
-    NotifSvc-->>Embarcador: Frete confirmado + CT-e disponível
+    EMB->>WEB: Registrar pedido de frete (origem, destino, carga)
+    WEB->>PED: Enviar dados do pedido
+    PED->>PED: Validar campos obrigatorios
+    PED->>ROT: Solicitar roteamento automatico
+    ROT->>ROT: Ranquear transportadoras habilitadas
+    ROT->>NOTIF: Notificar transportadoras selecionadas
+    NOTIF->>TRANSP: Notificacao de novo pedido
+    TRANSP->>ROT: Aceitar pedido (data/hora)
+    ROT->>PED: Atualizar status do pedido
+    PED->>CTE: Solicitar emissao de CT-e
+    CTE->>SEFAZ: Transmitir CT-e
+    SEFAZ-->>CTE: Retornar autorizacao
+    CTE->>NOTIF: Notificar embarcador e transportadora
+    NOTIF->>EMB: CT-e autorizado
+
+    MOT->>PED: Registrar coleta (fotos, assinatura)
+    PED->>PED: Atualizar status para em transito
+    PED->>RASTREIO: Publicar evento de coleta
+    RASTREIO->>DEST: Atualizar rastreamento publico
+
+    loop Transporte ativo
+        MOT->>RASTREIO: Transmitir geolocalizacao periodica
+        RASTREIO->>DEST: Atualizar posicao no mapa
+    end
+
+    MOT->>POD: Registrar entrega (foto, assinatura, geo)
+    POD->>POD: Aplicar timestamp com validade juridica
+    POD->>PED: Atualizar status para entregue
+    POD->>NOTIF: Disparar notificacoes de entrega
+    NOTIF->>EMB: Notificar entrega concluida
+    NOTIF->>DEST: Notificar entrega concluida
+    POD-->>EMB: Disponibilizar POD para download
 ```
 
-### 2.3 Diagrama de Sequência: Coleta, Rastreamento e Entrega (HU08/HU09/HU11)
+### 2.3 Diagrama de Sequência — Contingência de Aceite (RF15, HU13)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Motorista
-    participant MobileApp as App Mobile
-    participant TrackingSvc as Serviço de Rastreamento
-    participant OrderSvc as Serviço de Pedidos
-    participant PODSvc as Serviço de POD
-    participant NotifSvc as Serviço de Notificações
-    participant Destinatario as Destinatário (Link Público)
+    participant ROT as Servico de Roteamento
+    participant T1 as Transportadora Ranking 1
+    participant T2 as Transportadora Ranking 2
+    participant NOTIF as Servico de Notificacoes
+    participant ADMIN as Painel Administrador
 
-    Motorista->>MobileApp: Registrar coleta (foto, volumes, assinatura)
-    MobileApp->>OrderSvc: Confirmar coleta
-    OrderSvc->>NotifSvc: Status atualizado: em trânsito
-    NotifSvc-->>Destinatario: Notificação por e-mail/SMS
-
-    loop Intervalos configuráveis
-        MobileApp->>TrackingSvc: Enviar geolocalização
-        TrackingSvc-->>Destinatario: Atualização de posição (link público)
+    ROT->>NOTIF: Notificar Transportadora 1
+    NOTIF->>T1: Novo pedido disponivel
+    ROT->>ROT: Iniciar contagem de prazo configurado
+    alt Sem resposta no prazo ou recusa
+        ROT->>NOTIF: Notificar Transportadora 2
+        NOTIF->>T2: Novo pedido disponivel
+        ROT->>ADMIN: Registrar evento de reencaminhamento
+    else Aceite dentro do prazo
+        T1->>ROT: Confirmar aceite
     end
-
-    Motorista->>MobileApp: Registrar entrega (foto, assinatura, geo)
-    MobileApp->>PODSvc: Enviar dados de entrega
-    PODSvc->>PODSvc: Gerar POD com timestamp
-    PODSvc->>OrderSvc: Atualizar status: entregue
-    OrderSvc->>NotifSvc: Notificar conclusão
-    NotifSvc-->>Destinatario: Entrega confirmada
-    PODSvc-->>Destinatario: POD disponível para download
+    alt Nenhuma transportadora aceita apos todas as tentativas
+        ROT->>ADMIN: Alertar pedido sem transportadora aceita
+    end
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-| # | Decisão | Justificativa | Requisitos Relacionados |
-|---|---------|----------------|--------------------------|
-| D01 | Arquitetura orientada a serviços de domínio desacoplados (Pedidos, Roteamento, CT-e, Rastreamento, Notificações, POD, Seguros, Financeiro) | Permite evolução e escalabilidade independente por área funcional, especialmente crítica para rastreamento em alto volume | RNF16, RNF24 |
-| D02 | Camada de API Gateway única para todos os clientes (Web, Mobile, Link Público) | Centraliza autenticação, controle de acesso por perfil e rate-limiting | RF02, RNF01, RNF05 |
-| D03 | Armazenamento de geolocalização segregado em base otimizada para dados espaço-temporais | Requisito explícito de otimização para séries temporais/geoespaciais | RNF23, RF25, RF32 |
-| D04 | Integrações externas (SEFAZ, Seguradoras) via contratos de API versionados e isolados em serviços dedicados | Permite atualização independente sem impacto no core, essencial dada a volatilidade do leiaute CT-e | RNF24, RF17-RF21, RF41 |
-| D05 | Serviço de Auditoria centralizado, alimentado por eventos de todos os domínios, com trilha imutável | Atende exigência de auditoria de operações críticas e retenção fiscal | RF04, RNF11 |
-| D06 | App Mobile do motorista com camada de persistência local e fila de sincronização para operação offline completa | Requisito crítico de não perda de eventos sem conectividade | RF28, RNF17 |
-| D07 | Serviço de Notificações desacoplado, orientado a eventos, consumido por múltiplos domínios (Roteamento, Rastreamento, POD, Sinistros) | Evita acoplamento direto entre domínios e centraliza políticas de envio (e-mail/SMS) | RF33-RF36 |
-| D08 | Link de rastreamento público implementado como interface isolada, sem exigir autenticação, mas validado por token único com expiração | Atende requisito de acesso sem cadastro com segurança | RF30, RNF05 |
-| D09 | Serviço de Roteamento como componente de decisão configurável (regras de ranking, timeout de aceite, reoferta automática) | Permite ajuste de critérios de negócio sem alteração estrutural | RF11, RF12, RF15, RNF13 |
-| D10 | POD tratado como serviço próprio, gerando artefato jurídico com timestamp qualificado, independente do fluxo operacional de entrega | Isola responsabilidade de conformidade legal (Lei 14.063/2020) | RF37, RF38, RNF10 |
-| D11 | Painel de métricas operacionais como camada transversal de observabilidade, consumindo eventos de todos os serviços | Requisito de monitoramento em tempo real de indicadores diversos | RNF25 |
+| Decisão | Racional | Trade-offs |
+|---------|----------|------------|
+| **Arquitetura orientada a serviços por domínio funcional** (Usuários, Pedidos, Roteamento, CT-e, Motorista, Rastreamento, Notificações, Sinistros, Financeiro) | Requisitos abrangem domínios de negócio fortemente distintos (fiscal, geoespacial, financeiro), com ciclos de evolução independentes | Maior complexidade de orquestração e necessidade de contratos de integração bem definidos |
+| **Comunicação assíncrona por eventos entre módulos de roteamento, notificação e rastreamento** | RF13-RF16, RF25, RF33-RF36 exigem reação a eventos (aceite/recusa, nova posição, mudança de status) sem acoplamento síncrono | Exige mecanismo de garantia de entrega e idempotência de eventos |
+| **Armazenamento especializado para dados geoespaciais/série temporal separado do armazenamento transacional** | RNF23, RNF16 — alto volume de atualizações de geolocalização não deve degradar consultas transacionais | Necessidade de sincronização entre armazenamentos e consultas cruzadas (ex: painel do administrador) |
+| **Camada de integração externa isolada (SEFAZ, Seguradoras) com contratos versionados** | RNF24 exige evolução independente das integrações fiscais e de seguros | Introduz camada adicional de tradução/adaptação (anti-corruption layer) |
+| **Serviço de Auditoria centralizado e imutável, alimentado por eventos de domínio** | RF04, RNF11 exigem trilha auditável de operações críticas com retenção de 5 anos | Necessidade de garantir consistência eventual entre serviços de domínio e o log de auditoria |
+| **App mobile do motorista com capacidade de operação e persistência local (offline-first)** | RF28, RNF17 exigem que nenhum evento seja perdido por falta de conectividade | Exige lógica de sincronização, resolução de conflitos e fila de reenvio no dispositivo |
+| **Serviço de Rastreamento público desacoplado da autenticação de usuários da plataforma** | RF30, RNF05 exigem acesso sem cadastro via token único por frete | Modelo de segurança diferenciado (token de recurso) coexistindo com autenticação de perfis internos |
+| **Serviço de Roteamento com motor de regras configurável para ranqueamento** | RF11, RF12, RF15 exigem critérios configuráveis e reordenamento dinâmico | Necessidade de versionamento de regras de negócio e testes de regressão de ranqueamento |
+| **Emissão de CT-e como serviço dedicado com suporte a modo de contingência** | RF19, RNF07-RNF08 exigem operação mesmo com indisponibilidade da SEFAZ | Complexidade adicional de sincronização pós-contingência e reconciliação de status |
+| **Painel de métricas operacionais transversal, consumindo eventos de todos os serviços de domínio** | RNF25 exige observabilidade de latência de roteamento, taxa de aceitação, disponibilidade de integrações | Requer padronização de emissão de métricas por todos os serviços |
 
 ---
 
@@ -191,72 +210,73 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |------------|------------------------------|------------------|-------------------------------------|
-| Serviço de Identidade e Acesso | Autenticação, autorização por perfil, MFA, gestão de sessão mobile | API Gateway, Serviço de Auditoria | RF01-RF04, RNF03, RNF04 |
-| Serviço de Pedidos de Frete | CRUD de pedidos, status consolidado, cancelamento, upload de documentos | Serviço de Roteamento, CT-e, Notificações | HU01, HU03 (RF05-RF09) |
-| Serviço de Roteamento e Ranqueamento | Seleção de transportadoras compatíveis, cálculo de ranking, reoferta automática | Serviço de Transportadoras, Notificações | HU01, HU02, HU05 (RF10-RF16) |
-| Serviço de Gestão de Transportadoras/Frota | Cadastro de motoristas/veículos, índice de desempenho | Serviço de Roteamento, Auditoria | HU05 (RF03, RF16) |
-| Serviço de Emissão CT-e | Geração, transmissão, contingência e cancelamento de CT-e | SEFAZ, Serviço de Pedidos, Auditoria | HU02 (RF17-RF22) |
-| Serviço de Rastreamento/Geolocalização | Captura, armazenamento e distribuição de posição em tempo real | App Mobile, Interface Pública, Notificações | HU06, HU11 (RF25, RF30-RF32) |
-| Serviço de Notificações | Disparo de e-mail/SMS/push conforme eventos de domínio | Todos os serviços de domínio | HU03, HU10, HU12 (RF33-RF36) |
-| Serviço de Comprovante de Entrega (POD) | Consolidação de assinatura, foto, geo e timestamp jurídico | Serviço de Pedidos, Repositório de Documentos | HU09 (RF37-RF40) |
-| Serviço de Seguros e Sinistros | Cotação, contratação, abertura e acompanhamento de sinistros | Seguradoras, Repositório de Documentos | HU04 (RF41-RF44) |
-| Serviço Financeiro/Faturamento | Cálculo de frete, comissão, faturas e repasses | Serviço de Pedidos, Painel Administrativo | HU07, HU14 (RF45-RF49) |
+| Serviço de Gestão de Usuários e Perfis | Cadastro, autenticação de perfis, vínculo motorista/veículo à transportadora | API Gateway, Serviço de Auditoria | RF01-RF04, HU05 |
+| API Gateway / Roteamento de Requisições | Ponto único de entrada, roteamento para serviços de domínio | Todos os serviços de domínio | Transversal |
+| Serviço de Autenticação e Autorização | Autenticação MFA, controle de acesso por perfil, tokens de sessão | Gateway, Usuários | RNF03, RNF04, RF02 |
+| Serviço de Pedidos de Frete | Registro, cancelamento e consolidação de status de pedidos | Roteamento, Financeiro, Documentos | HU01, HU03, RF05-RF09 |
+| Serviço de Roteamento e Ranqueamento | Seleção automática e ranqueamento de transportadoras, reencaminhamento em recusa | Pedidos, Notificações, Painel Admin | HU02, HU05, HU13, RF10-RF16 |
+| Serviço de Gestão de Fretes (Ciclo de Vida) | Controle de estados do frete (aceito, em trânsito, entregue) | Pedidos, CT-e, Motorista, Rastreamento, Financeiro, Sinistros | HU02, HU03, RF07 |
+| Serviço de Emissão e Controle de CT-e | Emissão, transmissão, contingência e cancelamento de CT-e | Fretes, Integração SEFAZ, Auditoria | RF17-RF22, HU02 |
+| Integração SEFAZ | Comunicação com serviço externo de autorização fiscal | Serviço de CT-e | RF18, RF20, RNF07 |
+| Serviço de Operação do Motorista | Registro de coleta, entrega, ocorrências, operação offline | Fretes, POD, Rastreamento, Documentos | HU08, HU09, HU10, RF23-RF29 |
+| Serviço de Rastreamento em Tempo Real | Processamento e exposição de posição e histórico de eventos | Motorista, Interface Pública, Notificações | HU06, HU11, RF30-RF32 |
+| Processador de Eventos de Geolocalização | Ingestão e processamento em alto volume de posições | Motorista, Rastreamento, Armazenamento Geoespacial | RF25, RNF15, RNF16, RNF23 |
+| Serviço de Notificações | Disparo de e-mail/SMS/alertas conforme eventos de domínio | Fretes, Roteamento, Motorista, Sinistros, Painel Admin | RF33-RF36, HU12 |
+| Serviço de Comprovante de Entrega Digital (POD) | Geração, timestamp e disponibilização do POD | Motorista, Fretes, Notificações, Documentos | HU09, RF37-RF40, RNF10 |
+| Serviço de Seguros e Sinistros | Cotação, contratação, abertura e acompanhamento de sinistros | Fretes, Integração Seguradoras, Documentos, Notificações | HU02, HU04, RF41-RF44 |
+| Integração Seguradoras | Comunicação externa para cotação/sinistro | Serviço de Sinistros | RF41, RF43, RNF24 |
+| Serviço Financeiro e Faturamento | Cálculo de frete, comissão, faturas e repasses | Fretes, Painel Admin | HU07, HU14, RF45-RF49 |
 | Serviço de Auditoria | Registro imutável de operações críticas | Todos os serviços de domínio | RF04, RNF11 |
-| App Mobile do Motorista | Coleta, entrega, ocorrências, rotas, operação offline | Serviço de Rastreamento, Pedidos, POD | HU08, HU09, HU10 (RF23-RF29) |
-| Interface Pública de Rastreamento | Exibição de mapa e histórico sem autenticação, via token | Serviço de Rastreamento, Notificações | HU11, HU12 (RF30-RF33) |
-| Painel Administrativo | Monitoramento de SLA, alertas, painel financeiro consolidado | Serviço de Roteamento, Financeiro, Notificações | HU13, HU14 (RF36, RF49) |
-| Repositório de Documentos/Evidências | Armazenamento estruturado de fotos, laudos, PODs, NF-e | Serviço de Pedidos, POD, Sinistros | RF09, RF44 |
-| API Gateway | Ponto único de entrada, roteamento de requisições, controle de acesso | Todos os clientes e serviços | RF02, RNF01 |
+| Interface Pública de Rastreamento | Exibição de mapa/status sem autenticação, via token único | Serviço de Rastreamento | HU11, RF30, RNF05 |
+| Painel de Métricas Operacionais | Exposição de indicadores de latência, aceitação, disponibilidade | Todos os serviços de domínio | RNF25 |
+| Armazenamento Geoespacial/Séries Temporais | Persistência otimizada de posições e trajetos | Processador de Geolocalização, Rastreamento | RNF23 |
+| Armazenamento de Documentos/Evidências | Persistência de fotos, assinaturas, laudos, PODs | Motorista, POD, Sinistros | RF09, RF44 |
+| Armazenamento de Auditoria Imutável | Persistência com retenção mínima de 5 anos | Serviço de Auditoria | RNF11 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| # | Descrição | Impacto | Responsável Sugerido |
-|---|-----------|---------|------------------------|
-| B01 | Não há definição de qual(is) provedor(es) de emissão de CT-e serão homologados nem SLA de disponibilidade da SEFAZ | Impacta contrato de integração e estratégia de contingência (RF19) | Time de Integrações Fiscais |
-| B02 | Política de cancelamento de pedido (RF08) não especifica regras de prazo/multas — depende de "configuração" não detalhada | Impacta modelagem de regras de negócio do Serviço de Pedidos | Product Owner |
-| B03 | Critérios exatos de cálculo do índice de desempenho da transportadora (RF16) não são detalhados (pesos, fórmula) | Impacta algoritmo do Serviço de Roteamento | Especialista de Negócio |
-| B04 | Não há definição do intervalo padrão de captura de geolocalização (RF25) nem estratégia de throttling para alto volume | Impacta dimensionamento do Serviço de Rastreamento | Arquitetura + Operações |
-| B05 | Ausência de especificação sobre o formato/prazo de validade jurídica do timestamp do POD (RNF10) — depende de prestador de carimbo de tempo qualificado | Impacta conformidade legal do Serviço de POD | Jurídico + Compliance |
-| B06 | Não há definição de quais seguradoras parceiras serão integradas nem formato de contrato de API (RF41) | Impacta Serviço de Seguros e Sinistros | Time de Integrações |
-| B07 | Regras de reassignação manual pelo Administrador (HU13) não definem limites de tentativas nem escalonamento | Impacta Painel Administrativo e Serviço de Roteamento | Product Owner |
+1. **Definição do modelo de contingência de CT-e**: os requisitos não especificam o comportamento do sistema em caso de rejeição definitiva do CT-e pela SEFAZ após sincronização de contingência (RF19) — necessita definição de regra de negócio junto à área fiscal.
+2. **Critérios de desempate no ranqueamento de transportadoras** (RF11/RF12): não há definição de pesos padrão ou prioridade entre preço, prazo e desempenho quando configuráveis — pendente de validação com stakeholders de negócio.
+3. **Política de cancelamento de pedidos** (RF08): mencionada como "configurável", mas sem detalhamento de janelas de tempo, multas ou fluxos de exceção.
+4. **Formato de validade jurídica do timestamp do POD** (RF38, RNF10): não especifica se será necessário uso de autoridade certificadora externa — impacta arquitetura de integração.
+5. **SLA de sincronização offline do app do motorista** (RF28, RNF17): não há definição de tempo máximo tolerável de fila local nem tamanho máximo de dados armazenados no dispositivo.
+6. **Regras de retenção e expurgo de dados de geolocalização**: RNF23 define armazenamento otimizado, mas não há requisito de retenção/expurgo específico para esses dados (distinto do RNF22 de backup transacional).
+7. **Modelo de tarifação da comissão da plataforma** (RF46): não especifica se é percentual fixo, escalonado ou negociado por transportadora — impacta o desenho do serviço financeiro.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-| Categoria | RFs/RNFs Cobertos | Observação |
-|-----------|--------------------|------------|
-| Gestão de Usuários e Acesso | RF01-RF04 | Cobertos por Serviço de Identidade + Auditoria |
-| Pedidos de Frete | RF05-RF09 | Cobertos por Serviço de Pedidos |
-| Roteamento e Seleção | RF10-RF16 | Cobertos por Serviço de Roteamento + Transportadoras |
-| CT-e | RF17-RF22 | Cobertos por Serviço CT-e + integração SEFAZ |
-| Operação do Motorista | RF23-RF29 | Cobertos por App Mobile + Rastreamento |
-| Rastreamento em Tempo Real | RF30-RF32 | Cobertos por Serviço de Rastreamento + Interface Pública |
-| Notificações | RF33-RF36 | Cobertos por Serviço de Notificações |
-| POD | RF37-RF40 | Cobertos por Serviço de POD |
-| Seguros e Sinistros | RF41-RF44 | Cobertos por Serviço de Seguros |
-| Financeiro | RF45-RF49 | Cobertos por Serviço Financeiro + Painel Admin |
-| Segurança (RNF01-RNF06) | Total | Cobertos por API Gateway, Identidade, Rastreamento |
-| Conformidade (RNF07-RNF11) | Total | Cobertos por CT-e, POD, Auditoria |
-| Disponibilidade/Desempenho (RNF12-RNF17) | Total | Cobertos por decisões arquiteturais de desacoplamento e observabilidade |
-| Usabilidade/Compatibilidade (RNF18-RNF21) | Parcial | Requisitos de UI/UX não detalhados neste nível arquitetural (ver Gap Analysis) |
-| Infraestrutura e Dados (RNF22-RNF25) | Total | Cobertos por Repositório de Documentos, GeoDB, Painel de Métricas |
+| Categoria | RFs/RNFs Cobertos | Componentes Responsáveis |
+|-----------|--------------------|-----------------------------|
+| Usuários e Acesso | RF01-RF04, RNF03, RNF04 | Serviço de Usuários, Autenticação, Auditoria |
+| Pedidos de Frete | RF05-RF09 | Serviço de Pedidos |
+| Roteamento e Seleção | RF10-RF16, RNF13 | Serviço de Roteamento |
+| CT-e | RF17-RF22, RNF07, RNF08, RNF14 | Serviço de CT-e, Integração SEFAZ |
+| Operação do Motorista | RF23-RF29, RNF17, RNF18, RNF19, RNF21 | Serviço de Operação do Motorista |
+| Rastreamento | RF30-RF32, RNF05, RNF12, RNF15, RNF16, RNF23 | Serviço de Rastreamento, Processador de Geolocalização |
+| Notificações | RF33-RF36 | Serviço de Notificações |
+| POD | RF37-RF40, RNF10 | Serviço de POD |
+| Seguros e Sinistros | RF41-RF44 | Serviço de Sinistros, Integração Seguradoras |
+| Financeiro | RF45-RF49 | Serviço Financeiro |
+| Segurança Transversal | RNF01, RNF02, RNF06, RNF09 | Autenticação, Gateway, todos os serviços (criptografia) |
+| Infraestrutura/Manutenibilidade | RNF22, RNF24, RNF25 | Armazenamentos, Painel de Métricas, Camada de Integração |
 
-**Cobertura geral estimada: 100% dos RFs mapeados a pelo menos um componente; RNFs de usabilidade cobertos apenas conceitualmente (fora do escopo de arquitetura de backend).**
+**Cobertura geral estimada: 100% dos RFs e RNFs mapeados a pelo menos um componente arquitetural.**
 
 ---
 
 ## 7. Gap Analysis
 
-| # | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
-|---|----------------------|------------------------|---------------------|
-| G01 | Ausência de modelo de dados detalhado para eventos de rastreamento (schema de eventos, granularidade) | Dificulta dimensionamento do armazenamento geoespacial e consultas de histórico (RF31) | Definir modelo de evento canônico (tipo, timestamp, payload) antes da implementação |
-| G02 | Não há especificação de política de retry/circuit breaker para integrações externas (SEFAZ, Seguradoras) | Risco de indisponibilidade em cascata durante falhas externas | Especificar estratégia de resiliência e fallback (contingência já prevista apenas para CT-e) |
-| G03 | Falta de definição sobre consentimento e direitos do titular (LGPD) para dados de motoristas e destinatários sem cadastro | Risco de não conformidade com RNF09 no fluxo de rastreamento público | Detalhar fluxo de consentimento/anonimização para HU11 |
-| G04 | Não há requisito explícito sobre versionamento de tabelas de preço/comissão ao longo do tempo | Impacta auditabilidade de cálculos financeiros retroativos | Incluir requisito de histórico versionado de tabelas de preços |
-| G05 | Ausência de definição de SLA/tempo de resposta para o Serviço de Notificações (e-mail/SMS) | Pode comprometer RNF13/RNF15 indiretamente se notificações atrasarem decisões críticas | Definir SLA de entrega de notificações e fila de prioridade |
-| G06 | Não há detalhamento de como o app mobile prioriza sincronização de dados após reconexão (ordem de eventos) | Risco de inconsistência de estado (ex.: ocorrência registrada após entrega) | Especificar algoritmo de reconciliação de eventos offline por ordem cronológica |
-| G07 | Ausência de requisito sobre observabilidade fim-a-fim do fluxo de aceite de transportadora (tempo entre notificação e resposta) | Dificulta atendimento pleno de RNF25 | Adicionar métrica específica de "tempo médio de aceite" ao painel de monitoramento |
-| G08 | Não há definição de multi-tenancy ou isolamento de dados entre diferentes transportadoras/embarcadores | Risco de vazamento de dados entre clientes da plataforma | Definir estratégia de segregação lógica de dados por tenant |
+| Gap Identificado | Impacto Arquitetural | Ação Recomendada |
+|-------------------|------------------------|----------------------|
+| Ausência de definição de granularidade de eventos para o barramento assíncrono (ex: quantidade de tipos de evento, formato de payload) | Risco de acoplamento excessivo ou explosão de tipos de mensagens entre Roteamento, Notificações e Rastreamento | Elaborar catálogo de eventos de domínio com contrato formal antes da implementação |
+| Não há requisito explícito de reconciliação entre status do frete no domínio interno e status oficial no CT-e/SEFAZ em caso de divergência | Possível inconsistência entre visão do embarcador e situação fiscal real | Definir processo de reconciliação periódica e alertas de divergência |
+| Falta de especificação sobre limites de retenção/exclusão de dados pessoais conforme LGPD (RNF09) além da criptografia | Risco de não conformidade quanto a direito ao esquecimento e portabilidade de dados | Detalhar política de ciclo de vida de dados pessoais com jurídico/DPO |
+| Ausência de requisito sobre versionamento de regras de ranqueamento e trilha de decisão de roteamento | Dificuldade de auditar por que uma transportadora foi selecionada em disputas comerciais | Incluir log de decisão de roteamento com critérios e pesos aplicados no momento |
+| Não há definição de estratégia de consistência entre o Armazenamento Geoespacial e o restante do sistema transacional (ex: consultas cruzadas do painel do administrador) | Pode gerar inconsistência temporária em relatórios de SLA (HU13) que combinam posição e status do frete | Definir modelo de consistência eventual documentado e tolerância aceitável de atraso |
+| Falta de requisito sobre idempotência/reenvio de eventos do app offline do motorista | Risco de duplicação de eventos (ex: entrega registrada duas vezes) ao sincronizar | Especificar identificadores únicos de evento e deduplicação no backend |
+| Ausência de SLA para resposta das integrações externas (seguradoras) além da SEFAZ | Risco de indefinição sobre timeout e fallback em cotação/sinistro | Definir contratos de nível de serviço mínimos com parceiros de seguro |
+| Não há menção a testes de carga/critérios de aceite quantitativos para "alto volume" de geolocalização (RNF16) | Dificulta dimensionamento e validação de capacidade da arquitetura | Estabelecer metas quantitativas (ex: eventos/segundo) junto ao negócio |

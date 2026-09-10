@@ -1,242 +1,227 @@
 # Relatório Técnico de Arquitetura de Software
 
+---
+
 ## 1. Identificação das HUs
 
-A tabela abaixo compila as Histórias de Usuário (HUs) fornecidas, estabelecendo o mapeamento direto entre personas, proposta de valor, critérios de aceite e os respectivos Requisitos Funcionais (RF) e Não Funcionais (RNF) correlacionados.
+A tabela a seguir consolida a rastreabilidade entre as Histórias de Usuário (HUs), seus respectivos papéis, Requisitos Funcionais (RF), Requisitos Não Funcionais (RNF) e critérios essenciais de aceite.
 
-| ID | Persona | Proposta de Valor | Critérios de Aceite | Requisitos Correlacionados |
-| :--- | :--- | :--- | :--- | :--- |
-| **HU01** | Instrutor | Criar e estruturar curso com módulos, aulas e uploads de vídeo. | - Título e descrição obrigatórios.<br>- Permite reordenar, adicionar e remover módulos/aulas antes de publicar.<br>- Upload de vídeo por aula. | RF01, RF02, RF03, RF04, RNF04 |
-| **HU02** | Instrutor | Controlar visibilidade do curso (publicar/despublicar). | - Cursos despublicados não aparecem no catálogo público.<br>- Alunos matriculados mantêm acesso a cursos despublicados.<br>- Status (rascunho/publicado) visível no painel. | RF05, RNF01 |
-| **HU03** | Instrutor | Acompanhar total de matrículas por curso. | - Exibição do total de alunos por curso.<br>- Dados atualizados em tempo real ou defasagem máxima de 1 hora. | RF13, RNF06 |
-| **HU04** | Instrutor | Acompanhar métricas de engajamento (visualizações e conclusão por aula). | - Exibição de visualizações e % de conclusão por aula.<br>- Acesso às métricas via painel do curso. | RF14, RNF06 |
-| **HU05** | Estudante | Cadastrar-se na plataforma. | - E-mail único e válido; e-mail e senha obrigatórios.<br>- Senha com no mínimo 8 caracteres.<br>- Redirecionamento para a página inicial após cadastro. | RF06, RF16, RNF02 |
-| **HU06** | Estudante | Adquirir um curso disponível. | - Liberação imediata do acesso após aquisição.<br>- Curso adicionado à área do estudante.<br>- Bloqueio de compra duplicada. | RF07, RF08, RNF01, RNF09 |
-| **HU07** | Estudante | Assistir às aulas e registrar progresso. | - Reprodução via streaming sem download integral.<br>- Marcação manual de aula concluída.<br>- Atualização imediata do % de progresso do curso. | RF08, RF09, RF10, RF12, RNF01, RNF03, RNF07, RNF10 |
-| **HU08** | Estudante | Receber e baixar certificado de conclusão. | - Emissão automática ao concluir 100% das aulas.<br>- Certificado com nome do aluno, curso, instrutor e data.<br>- Download em PDF disponível a qualquer tempo após emissão. | RF11, RF15, RNF09 |
-| **HU09** | Estudante | Visualizar painel centralizado de cursos adquiridos. | - Listagem dos cursos com título, capa e progresso.<br>- Acesso direto às aulas a partir da listagem.<br>- Destaque visual distinto para cursos concluídos. | RF12, RNF05, RNF08 |
+| HU ID | Perfil | Resumo do Objetivo | RFs Cobertos | RNFs Relacionados | Critérios de Aceite Chave |
+|---|---|---|---|---|---|
+| **HU01** | Instrutor | Criar e estruturar cursos (módulos, aulas e upload de vídeos) | RF01, RF02, RF03, RF04 | RNF04, RNF09 | Título/descrição obrigatórios; reordenação livre; upload de vídeo por aula. |
+| **HU02** | Instrutor | Publicar e despublicar cursos (controle de visibilidade) | RF05 | RNF01 | Cursos despublicados somem da vitrine; estudantes já matriculados mantêm acesso. |
+| **HU03** | Instrutor | Acompanhar total de matrículas por curso | RF13 | RNF06 | Exibição no painel do instrutor; atualização com defasagem máxima de 1 hora. |
+| **HU04** | Instrutor | Acompanhar engajamento por aula (views e taxa de conclusão) | RF14 | RNF06 | Métricas por aula visíveis no painel; tempo de resposta do painel <= 3s. |
+| **HU05** | Estudante | Cadastrar-se na plataforma | RF06 | RNF02 | E-mail único e válido; senha >= 8 caracteres armazenada com hash seguro. |
+| **HU06** | Estudante | Adquirir um curso disponível | RF07, RF08 | RNF01, RNF09 | Liberação imediata após compra; impede compra duplicada do mesmo curso. |
+| **HU07** | Estudante | Assistir aulas e marcar progresso | RF08, RF09, RF10, RF12 | RNF01, RNF03, RNF05, RNF07, RNF08, RNF10 | Streaming de vídeo (sem download integral); progresso atualizado e salvo automaticamente. |
+| **HU08** | Estudante | Receber e baixar certificado de conclusão | RF11, RF15 | RNF09 | Emissão automática ao concluir 100% das aulas; download em PDF contendo dados obrigatórios. |
+| **HU09** | Estudante | Acessar área de cursos adquiridos | RF12, RF16 | RNF05, RNF08 | Painel centralizado com status/progresso; acesso direto às aulas; destaque para concluídos. |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Visão Geral de Componentes (C2 Level - Abstrato)
+### 2.1. Diagrama de Componentes (Visão Estrutural e Conceitual)
 
 ```mermaid
 graph TD
-    subgraph Client_Layer [Camada de Apresentação & Cliente]
-        WebClient[Cliente Web / Mobile - SPA/PWA]
+    classDef client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef boundary fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+    classDef service fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
+    classDef storage fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+
+    ClientWeb["Interface Web / Mobile (Estudante & Instrutor)"]:::client
+    APIGateway["Módulo de Gateway & Autenticação"]:::boundary
+
+    subgraph CoreServices["Serviços de Domínio"]
+        AuthService["Serviço de Gestão de Usuários e Acesso"]:::service
+        CourseService["Serviço de Gestão de Cursos e Conteúdo"]:::service
+        EnrollmentService["Serviço de Matrículas e Vendas"]:::service
+        ProgressService["Serviço de Progresso e Certificação"]:::service
+        AnalyticsService["Serviço de Métricas e Engajamento"]:::service
+        MediaService["Serviço de Processamento de Mídia"]:::service
     end
 
-    subgraph Gateway_Layer [Camada de Entrada & Segurança]
-        APIGateway[API Gateway / Roteador de Serviços]
-        AuthService[Serviço de Autenticação e Gestão de Identidade]
+    subgraph DataStorage["Camada de Persistência e Armazenamento"]
+        UserDB[("Repositório de Usuários")]:::storage
+        CourseDB[("Repositório de Cursos e Aulas")]:::storage
+        EnrollmentDB[("Repositório de Matrículas")]:::storage
+        ProgressDB[("Repositório de Progresso")]:::storage
+        AnalyticsDB[("Repositório Analítico")]:::storage
+        ObjectStore[("Serviço Externo de Object Storage (Vídeos/PDFs)")]:::storage
     end
 
-    subgraph Core_Services [Serviços Negociais Core]
-        CourseService[Serviço de Cursos e Catálogo]
-        MediaService[Serviço de Gestão de Mídia e Ingestão]
-        EnrollmentService[Serviço de Vendas e Matrículas]
-        LearningService[Serviço de Aprendizagem e Progresso]
-        CertificateService[Serviço de Certificação]
-        AnalyticsService[Serviço de Métricas e Telemetria]
-        AuditService[Serviço de Auditoria e Logs]
-    end
-
-    subgraph Storage_Layer [Camada de Persistência e Mídia]
-        Database[(Base de Dados Relacional / Documental)]
-        ObjectStorage[(Serviço de Armazenamento de Objetos)]
-        StreamingCDN[Serviço de Distribuição / Streaming de Mídia]
-    end
-
-    %% Conexões
-    WebClient -->|HTTPS / REST / Stream| APIGateway
+    ClientWeb -->|HTTPS / REST / Streaming| APIGateway
     APIGateway --> AuthService
     APIGateway --> CourseService
-    APIGateway --> MediaService
     APIGateway --> EnrollmentService
-    APIGateway --> LearningService
-    APIGateway --> CertificateService
+    APIGateway --> ProgressService
     APIGateway --> AnalyticsService
 
-    CourseService --> Database
-    EnrollmentService --> Database
-    LearningService --> Database
-    CertificateService --> Database
-    AnalyticsService --> Database
-    AuthService --> Database
-    AuditService --> Database
+    CourseService --> MediaService
+    MediaService --> ObjectStore
 
-    MediaService -->|Upload Direto / Presigned URL| ObjectStorage
-    StreamingCDN -->|Origem| ObjectStorage
-    WebClient -.->|Consumo de Streaming HLS/DASH| StreamingCDN
+    AuthService --> UserDB
+    CourseService --> CourseDB
+    EnrollmentService --> EnrollmentDB
+    ProgressService --> ProgressDB
+    AnalyticsService --> AnalyticsDB
 
-    EnrollmentService -.->|Evento: Curso Adquirido| AuditService
-    CertificateService -.->|Evento: Certificado Emitido| AuditService
-    MediaService -.->|Evento: Falha no Upload| AuditService
-    LearningService -.->|Evento: Aula Concluída| AnalyticsService
+    EnrollmentService -.->|Evento: Curso Adquirido| ProgressService
+    ProgressService -.->|Evento: Aula Concluída| AnalyticsService
 ```
 
-### 2.2. Diagrama de Sequência: Ciclo Completo de Aprendizagem e Certificação
+---
 
-O diagrama abaixo ilustra o fluxo transacional completo desde o acesso ao conteúdo protegido, consumo de vídeo via streaming, registro de progresso, até a emissão do certificado.
+### 2.2. Diagrama de Sequência (Fluxo Completo: Consumo de Aula, Conclusão e Emissão de Certificado)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Estudante
-    participant WebClient as Cliente Web (Navegador)
-    participant Gateway as API Gateway
-    participant Auth as Serviço Auth
-    participant Learning as Serviço de Aprendizagem
-    participant Media as Serviço Mídia / CDN
-    participant Cert as Serviço de Certificados
-    participant Audit as Serviço de Auditoria
+    actor E as Estudante (Navegador/Client)
+    participant G as Gateway de Aplicação
+    participant S_AUTH as Serviço de Autenticação
+    participant S_MAT as Serviço de Matrículas
+    participant S_CURSO as Serviço de Cursos
+    participant S_PROG as Serviço de Progresso
+    participant S_CERT as Serviço de Certificados
+    participant OBS as Object Storage (Mídia/PDF)
 
-    %% Fluxo de Validação de Acesso e Streaming
-    Estudante ->> WebClient: Clica para assistir à Aula
-    WebClient ->> Gateway: GET /api/v1/courses/{id}/lessons/{lessonId}/stream
-    Gateway ->> Auth: Validar Token JWT + Permissão de Matrícula
-    Auth -->> Gateway: Autorizado (Estudante Matriculado)
-    Gateway ->> Media: Solicitar URL Manifest de Streaming
-    Media -->> WebClient: Retorna Manifest do Player (HLS/DASH)
-    WebClient ->> Media: Consome segmentos de vídeo (Streaming Acelerado)
+    %% Autenticação e Verificação de Acesso
+    E->>G: Requisitar URL de Streaming da Aula (ID_Aula)
+    G->>S_AUTH: Validar Token de Sessão
+    S_AUTH-->>G: Sessão Válida (ID_Estudante)
+    G->>S_MAT: Validar Matrícula Ativa (ID_Estudante, ID_Curso)
+    S_MAT-->>G: Acesso Autorizado
+    
+    %% Streaming de Vídeo
+    G->>S_CURSO: Obter Metadados da Aula e Link Seguro
+    S_CURSO->>OBS: Gerar URL Assinada de Streaming
+    OBS-->>S_CURSO: URL Temporária de Streaming
+    S_CURSO-->>G: Retornar URL da Mídia
+    G-->>E: Iniciar Streaming de Vídeo (Chunked)
 
-    %% Registro de Conclusão e Evento Assíncrono
-    Estudante ->> WebClient: Clica em "Marcar como Concluída"
-    WebClient ->> Gateway: POST /api/v1/progress (courseId, lessonId)
-    Gateway ->> Learning: Registrar Conclusão da Aula
-    Learning ->> Learning: Salva progresso na base persistente
-    Learning -->> WebClient: 200 OK (Progresso Atualizado: X%)
+    %% Conclusão de Aula e Atualização de Progresso
+    E->>G: Marcar Aula como Concluída (ID_Aula)
+    G->>S_PROG: Registrar Conclusão de Aula (ID_Estudante, ID_Aula)
+    S_PROG->>S_PROG: Persistir Progresso & Recalcular Percentual Total
+    S_PROG-->>G: Confirmar Progresso Atualizado (ex: 100%)
+    G-->>E: Exibir Progresso Atualizado (100%)
 
-    %% Verificação de Término do Curso e Certificação
-    Learning ->> Learning: Checa se todas as aulas foram concluídas (100%)
-    alt Curso 100% Concluído
-        Learning ->> Cert: Disparar Geração de Certificado (estudanteId, cursoId)
-        Cert ->> Cert: Gerar documento PDF e registrar código de validação
-        Cert ->> Audit: Registrar log auditável de emissão de certificado
-        Cert -->> Learning: Certificado Gerado com Sucesso
-        Learning -->> WebClient: Notifica disponibilidade do Certificado em PDF
+    %% Emissão e Download de Certificado
+    opt Progresso = 100% (Todas as aulas concluídas)
+        S_PROG->>S_CERT: Disparar Evento de Emissão de Certificado
+        S_CERT->>S_CERT: Gerar Documento PDF do Certificado
+        S_CERT->>OBS: Armazenar PDF do Certificado
+        OBS-->>S_CERT: URL Permanente do PDF
+        S_CERT-->>S_PROG: Certificado Emitido com Sucesso
     end
+
+    E->>G: Solicitar Download do Certificado (ID_Curso)
+    G->>S_CERT: Obter URL de Download do Certificado
+    S_CERT-->>G: URL de Download (PDF)
+    G-->>E: Entregar Arquivo PDF para Download
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### ADR-01: Deslocamento do Processamento e Armazenamento de Vídeo para Provedor de Objetos e CDN
-* **Contexto**: O RNF03 e o RNF04 exigem que os vídeos sejam entregues por streaming e armazenados em *Object Storage* externo desacoplado da aplicação.
-* **Decisão**: A aplicação não receberá o tráfego binário do vídeo através de seus servidores principais de aplicação. O upload utilizará URLs pré-assinadas (*Presigned URLs*) geradas pelo `Serviço de Mídia`, permitindo o envio direto do cliente para o `Serviço de Armazenamento de Objetos`. A distribuição para reprodução ocorrerá via `Serviço de Distribuição de Mídia / CDN` utilizando protocolos de streaming adaptativo (como HLS ou DASH).
-* **Consequência**: Minimiza a carga nos servidores de aplicação, previne gargalos de I/O e garante escalabilidade ilimitada no consumo de mídia.
+### ADR-01: Desacoplamento do Armazenamento de Vídeo e Entrega via Streaming (RNF03, RNF04)
+* **Contexto:** A aplicação necessita fornecer vídeos para milhares de alunos concorrentes sem comprometer a largura de banda do servidor de aplicação e garantindo reprodução contínua sem necessidade de download prévio integral.
+* **Decisão:** O upload de arquivos de vídeo pelos instrutores e a entrega dos vídeos aos estudantes serão delegados integralmente a um componente de *Object Storage* externo abstrato. A aplicação fornecerá URLs temporárias assinadas (pre-signed URLs) para streaming direto entre o cliente e o serviço de armazenamento.
+* **Consequências:** 
+  * *Positivas:* Alta escalabilidade, redução severa de carga e custos de E/S no backend, conformidade técnica com RNF03 e RNF04.
+  * *Mitigações:* Necessidade de pipeline assíncrono para validação de uploads e geração de assinaturas de acesso baseadas em tempo.
 
-### ADR-02: Mecanismo de Proteção de Senhas e Controle de Acesso Baseado em Modéis de Identidade (RBAC)
-* **Contexto**: O RNF02 exige que as senhas sejam armazenadas de forma segura com hash unidirecional (ex: bcrypt), e o RNF01 exige controle estrito de acesso aos conteúdos pagos.
-* **Decisão**: Adotar-se-á um algoritmo de hash de senha criptográfico forte, desacoplado na camada do `Serviço de Autenticação`. A validação de direitos de acesso a cursos (seja publicado ou despublicado para alunos com histórico de compra) será realizada via autorização granular por escopo (*Role-Based Access Control* - RBAC) avaliada na camada do API Gateway e validada pelos serviços internos.
-* **Consequência**: Conformidade estrita com padrões de segurança; garantia de que o aluno mantiver acesso ao conteúdo previamente adquirido, mesmo que o instrutor altere o estado do curso para despublicado (atendendo à HU02 e ao RNF01).
+### ADR-02: Modelo de Segurança e Controle de Acesso Baseado em Hash e Tokens (RNF01, RNF02)
+* **Contexto:** Garantir que conteúdos pagos sejam acessíveis estritamente por estudantes com matrícula ativa e assegurar a proteção de credenciais armazenadas.
+* **Decisão:** Senhas de usuários serão obrigatoriamente transformadas via algoritmos de hash adaptativo seguro de uma via (ex.: bcrypt) antes da persistência. O acesso a recursos protegidos usará autorização via tokens validados no Gateway da Aplicação, checando rigorosamente a tabela de matrículas ativas antes da liberação de streams ou emissão de certificados.
+* **Consequências:** Alta proteção contra vazamento de credenciais e garantia de cumprimento integral do RNF01 e RNF02.
 
-### ADR-03: Estratégia de Persistência do Progresso e Atualização de Métricas
-* **Contexto**: O RNF07 exige salvamento automático de progresso sem perda de dados, o RNF06 estabelece limite de 3 segundos para carregamento do painel de métricas e as HUs 03 e 04 exigem consistência nas métricas do instrutor.
-* **Decisão**: A gravação da conclusão da aula será síncrona no banco de dados principal para garantir atomicidade e imunidade à perda de dados. O recálculo de agregação de métricas para o painel do instrutor poderá utilizar visões pré-computadas ou uma camada de cache temporário (máximo de 1 hora de defasagem permitida), garantindo resposta rápida (< 3s) ao instrutor.
-* **Consequência**: Garante confiabilidade no progresso do aluno e atende integralmente ao tempo de resposta exigido para requisições analíticas.
-
-### ADR-04: Padronização do Serviço de Log e Auditoria Centralizada
-* **Contexto**: O RNF09 especifica a necessidade explícita de log de eventos críticos (aquisição de cursos, emissão de certificados e falhas de upload de vídeo).
-* **Decisão**: Criação de uma interface unificada de Auditoria. Os serviços de Vendas, Certificação e Mídia enviarão eventos estruturados de auditoria contendo *timestamp*, ID do usuário, tipo de evento e contexto estruturado para o `Serviço de Auditoria e Logs`.
-* **Consequência**: Facilidade de rastreabilidade, depuração e conformidade regulatória.
+### ADR-03: Atualização Event-Driven para Progresso e Métricas de Engajamento (RNF06, RNF07)
+* **Contexto:** A gravação de progresso do aluno deve ser instantânea e confiável, enquanto a consolidação de métricas do painel do instrutor necessita ser carregada em até 3 segundos sem sobrecarregar as tabelas transacionais de consumo diário.
+* **Decisão:** A gravação do progresso individual utilizará persistência síncrona com transações atômicas para evitar perdas (RNF07). Contudo, o cômputo de métricas analíticas agregadas (visualizações, taxa de conclusão do painel do instrutor) funcionará de forma assíncrona orientada a eventos, alimentando um repositório otimizado para leitura.
+* **Consequências:** Garante o RNF06 (carregamento do painel em até 3s) e atende ao requisito de defasagem aceitável de até 1 hora citado nos critérios de aceite da HU03.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-| :--- | :--- | :--- | :--- |
-| **API Gateway / Auth Service** | Roteamento de requisições, autenticação de usuários, validação de tokens e hashing seguro de senhas. | Todos os Clientes, Base de Dados, Serviços Core | HU05, HU06, RF06, RF16, RNF01, RNF02 |
-| **Serviço de Cursos e Catálogo** | Gestão do ciclo de vida dos cursos (criar, editar, remover, publicar, despublicar, reordenar módulos/aulas). | Base de Dados, Servicio de Mídia, API Gateway | HU01, HU02, RF01, RF02, RF04, RF05 |
-| **Serviço de Mídia e Ingestão** | Geração de links pré-assinados para upload de vídeos e emissão das URLs de streaming via CDN. | Armazenamento de Objetos, CDN, Serviço de Auditoria | HU01, HU07, RF03, RNF03, RNF04, RNF09, RNF10 |
-| **Serviço de Vendas e Matrículas** | Processamento de compras de cursos, garantia de não duplicidade de matrículas e liberação de acesso. | Base de Dados, Serviço de Cursos, Serviço de Auditoria | HU06, RF07, RF08, RNF01, RNF09 |
-| **Serviço de Aprendizagem e Progresso** | Controle de avanço do aluno, registro síncrono de aulas concluídas e cálculo percentual de progresso. | Base de Dados, Serviço de Certificados, Serviço de Métricas | HU07, HU09, RF09, RF10, RF12, RNF07 |
-| **Serviço de Certificação** | Geração automática de certificados em formato PDF, persistência do registro e disponibilização para download. | Base de Dados, Serviço de Aprendizagem, Serviço de Auditoria | HU08, RF11, RF15, RNF09 |
-| **Serviço de Métricas e Analytics** | Consolidação de dados de matrículas, visualizações por aula e taxas de conclusão para exibições em painéis. | Base de Dados, Serviço de Aprendizagem, API Gateway | HU03, HU04, RF13, RF14, RNF06 |
-| **Serviço de Logs e Auditoria** | Centralização e tratamento de eventos auditáveis críticos do sistema. | Serviço de Vendas, Serviço de Certificação, Serviço de Mídia | RNF09 |
+|---|---|---|---|
+| **Módulo de Gateway & Autenticação** | Ponto de entrada único, autenticação de sessão, autorização de acesso e roteamento de requisições. | Serviço de Gestão de Usuários, Todos os Serviços de Domínio | HU05, HU09, RF16, RNF01 |
+| **Serviço de Gestão de Usuários e Acesso** | Cadastro de estudantes/instrutores, criptografia/hash de senhas e autenticação. | Repositório de Usuários | HU05, RF06, RF16, RNF02 |
+| **Serviço de Gestão de Cursos e Conteúdo** | Gestão de ciclo de vida de cursos, módulos, aulas e status de publicação/rascunho. | Serviço de Mídia, Repositório de Cursos | HU01, HU02, RF01, RF02, RF04, RF05 |
+| **Serviço de Processamento de Mídia** | Intermediar upload e gerar links de streaming de vídeos junto ao Object Storage. | Serviço externo de Object Storage, Serviço de Cursos | HU01, RF03, RNF03, RNF04 |
+| **Serviço de Matrículas e Vendas** | Gestão de aquisição de cursos, validação de acesso prévio e liberação imediata. | Repositório de Matrículas, Serviço de Progresso | HU06, RF07, RF08, RNF01, RNF09 |
+| **Serviço de Progresso e Certificação** | Registro atômico de conclusão de aulas, cálculo do percentual e geração automática/download de certificados em PDF. | Serviço de Cursos, Repositório de Progresso, Object Storage | HU07, HU08, HU09, RF09, RF10, RF11, RF12, RF15, RNF07, RNF09 |
+| **Serviço de Métricas e Engajamento** | Consolidação de estatísticas de visualização, taxa de conclusão e matrículas por curso para o painel do instrutor. | Repositório Analítico | HU03, HU04, RF13, RF14, RNF06 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Ausência de Integração com Gateway de Pagamento Formal**:
-   * *Descrição*: Os requisitos (RF07, HU06) estabelecem a funcionalidade de "adquirir curso", mas não detalham o fluxo transacional com um provedor de pagamento (ex: webhook de confirmação, estados da transação como pendente, recusado, estornado).
-   * *Impacto*: Dificulta a definição exata das interfaces do `Serviço de Vendas e Matrículas`.
+1. **Integração com Gateway de Pagamentos (Lacuna da HU06 / RF07):**
+   * *Pendência:* O requisito cita que o estudante "adquire" um curso, mas não detalha o fluxo de pagamento (cartão, boleto, transação síncrona ou assíncrona/webhook).
+   * *Impacto Arquitetural:* A liberação "imediata" do acesso depende do processamento do meio de pagamento. Necessário especificar a interface de integração de pagamentos.
 
-2. **Políticas de Retenção e Transcodificação de Mídia**:
-   * *Descrição*: Não há especificação sobre os formatos aceitos no upload de vídeo (MP4, MOV, MKV) nem sobre a esteira de conversão (transcodificação) para gerar os perfis de taxa de bits adaptativa para o streaming (RNF03).
-   * *Impacto*: Pode gerar falhas de upload não tratadas no cliente se arquivos incompatíveis forem enviados.
+2. **Pipeline de Transcodificação e Adaptação de Vídeos (Lacuna da HU01 / RNF03):**
+   * *Pendência:* Não há especificação sobre os formatos de vídeo aceitos no upload ou se haverá transcodificação para formatos de taxa de bits adaptável (ex.: HLS / DASH).
+   * *Impacto Arquitetural:* Fazer streaming de arquivos brutos enviados pelos instrutores pode quebrar a experiência em conexões lentas ou dispositivos móveis (violando RNF05).
 
-3. **Mecanismos de Validação Pública do Certificado**:
-   * *Descrição*: A HU08 e o RF15 exigem a emissão e download em PDF, mas não especificam se deve haver um código hash público para verificação da autenticidade por terceiros.
-   * *Impacto*: O layout e a infraestrutura de dados do certificado exigirão ajustes futuros caso a validação externa seja necessária.
+3. **Política de Alteração/Exclusão de Conteúdo em Cursos com Alunos Matriculados (Lacuna da HU02 / HU01 / RF04):**
+   * *Pendência:* O RF04 permite editar e remover aulas/módulos, mas o critério de aceite da HU02 garante acesso a quem comprou. Não está definido o comportamento caso o instrutor exclua uma aula que faça parte do cálculo de progresso de um estudante em andamento.
+   * *Impacto Arquitetural:* Risco de corrupção do percentual de progresso ou quebra na emissão de certificados.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-A matriz abaixo comprova o atendimento integral de todos os Requisitos Funcionais e Não Funcionais pela arquitetura desenhada.
+### Requisitos Funcionais (RF)
 
-| ID Requisito | Atendido pelo Componente / Mecanismo de Arquitetura | Status |
-| :--- | :--- | :--- |
-| **RF01** | Serviço de Cursos e Catálogo (Criação de metadata do curso) | OK |
-| **RF02** | Serviço de Cursos e Catálogo (Estrutura hierárquica Módulo/Aula) | OK |
-| **RF03** | Serviço de Mídia / Upload desacoplado com Armazenamento de Objetos | OK |
-| **RF04** | Serviço de Cursos e Catálogo (Edição/Remoção lógica ou física) | OK |
-| **RF05** | Serviço de Cursos e Catálogo (Controle de Visibilidade/Status) | OK |
-| **RF06** | API Gateway / Auth Service (Cadastro de Usuário com validação) | OK |
-| **RF07** | Serviço de Vendas e Matrículas (Geração de Matrícula) | OK |
-| **RF08** | API Gateway + Auth Service (Políticas de Autorização/RBAC) | OK |
-| **RF09** | Serviço de Aprendizagem e Progresso (Registro síncrono de conclusão) | OK |
-| **RF10** | Serviço de Aprendizagem e Progresso (Cálculo de progresso acumulado) | OK |
-| **RF11** | Serviço de Certificação (Disparo automático de regras no término do curso) | OK |
-| **RF12** | Serviço de Aprendizagem + Cliente Web (Exibição de progresso visual) | OK |
-| **RF13** | Serviço de Métricas e Analytics (Consolidação do total de alunos) | OK |
-| **RF14** | Serviço de Métricas e Analytics (Métricas de engajamento e visualizações) | OK |
-| **RF15** | Serviço de Certificação (Download de arquivo PDF renderizado) | OK |
-| **RF16** | API Gateway / Auth Service (Sessões e Gestão de Tokens JWT) | OK |
-| **RNF01** | Auth Service / Middleware de Autorização do Gateway | OK |
-| **RNF02** | Auth Service (Algoritmo seguro de hash de senha) | OK |
-| **RNF03** | Serviço de Mídia + CDN (Entrega por Streaming HLS/DASH) | OK |
-| **RNF04** | Serviço de Armazenamento de Objetos (Desacoplado dos servidores WEB) | OK |
-| **RNF05** | Cliente Web / Mobile (Layout Responsivo SPA/PWA) | OK |
-| **RNF06** | Servicio de Métricas e Analytics (Estratégia de Pré-agregação / Cache) | OK |
-| **RNF07** | Serviço de Aprendizagem (Persistência síncrona relacional) | OK |
-| **RNF08** | Cliente Web (Compatibilidade através de Padrões Web W3C) | OK |
-| **RNF09** | Serviço de Logs e Auditoria (Registros centralizados de eventos) | OK |
-| **RNF10** | Cliente Web / Player de Mídia (Padrões de Acessibilidade WCAG/HTML5) | OK |
+| ID RF | Coberto? | Componente / Elemento Arquitetural Responsável |
+|---|---|---|
+| **RF01** | Sim | Serviço de Gestão de Cursos e Conteúdo |
+| **RF02** | Sim | Serviço de Gestão de Cursos e Conteúdo |
+| **RF03** | Sim | Serviço de Processamento de Mídia & Object Storage |
+| **RF04** | Sim | Serviço de Gestão de Cursos e Conteúdo |
+| **RF05** | Sim | Serviço de Gestão de Cursos e Conteúdo |
+| **RF06** | Sim | Serviço de Gestão de Usuários e Acesso |
+| **RF07** | Sim | Serviço de Matrículas e Vendas |
+| **RF08** | Sim | Módulo de Gateway (Autorização) + Serviço de Matrículas |
+| **RF09** | Sim | Serviço de Progresso e Certificação |
+| **RF10** | Sim | Serviço de Progresso e Certificação |
+| **RF11** | Sim | Serviço de Progresso e Certificação |
+| **RF12** | Sim | Serviço de Progresso e Certificação |
+| **RF13** | Sim | Serviço de Métricas e Engajamento |
+| **RF14** | Sim | Serviço de Métricas e Engajamento |
+| **RF15** | Sim | Serviço de Progresso e Certificação & Object Storage |
+| **RF16** | Sim | Serviço de Gestão de Usuários e Acesso |
+
+### Requisitos Não Funcionais (RNF)
+
+| ID RNF | Coberto? | Estratégia Arquitetural de Atendimento |
+|---|---|---|
+| **RNF01** | Sim | Verificação de permissão centralizada no Gateway consultando a tabela de matrículas ativas. |
+| **RNF02** | Sim | Criptografia hashing de mão única (ex: bcrypt) aplicada no Serviço de Usuários antes de salvar credenciais. |
+| **RNF03** | Sim | Entrega de vídeos via URLs assinadas para streaming direto do Object Storage. |
+| **RNF04** | Sim | Desacoplamento da camada de mídia utilizando interface abstrata para Object Storage. |
+| **RNF05** | Sim | Interface Web/Mobile responsiva consumindo APIs REST puras. |
+| **RNF06** | Sim | Separação entre base transacional e base analítica agregada para o painel do instrutor. |
+| **RNF07** | Sim | Transação síncrona e atômica para registro de progresso individual a cada marcação de aula. |
+| **RNF08** | Sim | Padrões abertos de API (REST/JSON) e formatos nativos de vídeo (HLS/MP4) suportados por navegadores modernos. |
+| **RNF09** | Sim | Módulo centralizado de logging para eventos críticos (compra, certificado, erro de upload). |
+| **RNF10** | Sim | Inclusão de requisitos de player acessível na camada de frontend/cliente. |
 
 ---
 
 ## 7. Gap Analysis
 
-Esta seção aponta as lacunas de especificação encontradas nos requisitos originais, avalia o impacto arquitetural envolvido e recomenda as correções/ações necessárias para o time de implementação.
-
-```
-+---------------------------------------------------------------------------------------------------------+
-|                                              GAP ANALYSIS                                               |
-+--------------------------+-------------------------------------+----------------------------------------+
-| Lacuna Identificada      | Impacto Arquitetural                | Ação Recomendada                      |
-+--------------------------+-------------------------------------+----------------------------------------+
-| 1. Fluxo de Pagamento    | O Serviço de Vendas fica vulnerável | Implementar padronização de Webhooks   |
-|    não especificado      | a inconsitências na liberação de    | assíncronos e tabela de estados de     |
-|    (RF07 / HU06)         | acesso caso o pagamento falhe.      | pedidos (PENDENTE, PAGO, CANCELADO).   |
-+--------------------------+-------------------------------------+----------------------------------------+
-| 2. Pipeline de Conversão | Ingestão de vídeos pesados sem      | Adicionar um fluxo assíncrono de       |
-|    e Transcodificação    | padronização pode degradar a        | Transcodificação na nuvem pós-upload  |
-|    de Vídeo (RNF03/04)   | experiência de streaming móvel.     | para gerar perfis multi-bitrate.       |
-+--------------------------+-------------------------------------+----------------------------------------+
-| 3. Concorrência na       | Múltiplas requisições simultâneas   | Desenvolver mecanismo idempotente no   |
-|    Marcação de Progresso | de conclusão podem gerar inconsist- | registro de conclusão de aulas         |
-|    (RF09 / RNF07)        | ência no percentual do curso.       | (Chave composta: Estudante + Aula).    |
-+--------------------------+-------------------------------------+----------------------------------------+
-| 4. Despublicação de      | Risco de revogação indevida de      | Garantir na camada de autorização      |
-|    Curso e Direitos      | acesso para quem já comprou o       | que a consulta de acesso verifique a   |
-|    Adquiridos (HU02)     | curso despublicado pelo instrutor.  | matrícula do aluno, não o status do    |
-|                          |                                     | curso.                                 |
-+--------------------------+-------------------------------------+----------------------------------------+
-```
+| Lacuna Identificada | Requisito Origem | Impacto Arquitetural / Operacional | Ação Recomendada para o Time de DEV |
+|---|---|---|---|
+| **Ausência de Gateway de Pagamento e Tratamento de Falhas** | HU06 / RF07 | Impossibilidade de integrar fluxo real de vendas. Incerteza sobre comportamento em pagamentos assíncronos (ex.: boleto ou PIX). | Modelar um módulo de integração de pagamentos assíncrono baseado em Webhooks, garantindo desacoplamento do motor de matrícula. |
+| **Ausência de Transcodificação Adaptativa de Mídia** | HU01 / RNF03 / RNF05 | Vídeos em alta resolução enviados por instrutores podem travar a reprodução em conexões móveis ou ocupar espaço excessivo. | Adicionar um pipeline de pré-processamento/transcodificação assíncrona após o upload para gerar resoluções múltiplas (HLS). |
+| **Regra de Versionamento de Curso e Aulas Excluídas** | RF04 / HU02 | Excluir uma aula pode invalidar o cálculo do percentual de progresso de alunos em andamento ou históricos de certificados. | Implementar padrão de *Soft Delete* para aulas/módulos e congelar a estrutura do curso (snapshot) no momento da matrícula do estudante. |
+| **Mecanismo de Auditoria e Logs de Eventos Críticos** | RNF09 | Ausência de definição de infraestrutura para armazenamento e análise de logs estruturados de auditoria. | Padronizar um serviço de logging centralizado para capturar payloads de eventos críticos (aquisições, emissões de certificados e erros de upload). |

@@ -4,280 +4,261 @@
 
 ## 1. Identificação das HUs
 
-| Identificador | Título | Ator Primário | Resumo do Escopo | RF / RNF Vinculados |
-| :--- | :--- | :--- | :--- | :--- |
-| **HU01** | Cadastrar paciente | Recepcionista | Registro de novos pacientes com validação de formato e checagem de duplicidade (e-mail/identificador único). | RF01, RF02, RNF01, RNF02 |
-| **HU02** | Pesquisar paciente | Recepcionista | Busca textual e indexada por nome ou telefone com suporte a correspondência parcial. | RF03, RNF01 |
-| **HU03** | Visualizar agenda do profissional | Recepcionista | Apresentação em formato de calendário (visões diária/semanal) com distinção de horários livres/ocupados. | RF04, RF11, RNF01, RNF03, RNF04 |
-| **HU04** | Registrar agendamento | Recepcionista | Alocação transacional de paciente em horário vago, validação de concorrência e disparo de notificação. | RF05, RF06, RF09, RNF01, RNF05, RNF08 |
-| **HU05** | Cancelar agendamento | Recepcionista | Revogação de consulta existente, liberação imediata do slot de horário e notificação ao paciente. | RF07, RF10, RF12, RNF01, RNF05, RNF08 |
-| **HU06** | Remarcar agendamento | Recepcionista | Operação atômica de liberação de slot anterior e ocupação de novo slot disponível com notificação. | RF06, RF08, RF10, RF12, RNF01, RNF05, RNF08 |
-| **HU07** | Consultar histórico do paciente | Recepcionista | Recuperação cronológica de consultas realizadas, canceladas e reagendadas vinculadas ao paciente. | RF12, RNF01, RNF02 |
-| **HU08** | Receber confirmação de agendamento | Paciente | Recebimento assíncrono de mensagem eletrônica contendo dados da consulta e do local. | RF09, RNF05 |
-| **HU09** | Receber notificação de cancelamento/remarcação | Paciente | Recebimento assíncrono de mensagem eletrônica informando alterações de status ou novo horário. | RF10, RNF05 |
+A tabela a seguir consolida o catálogo de Histórias de Usuário identificadas, seus respectivos atores primários, escopo funcional e relevância operacional para o sistema da clínica.
+
+| ID | Título | Ator Primário | Descrição Resumida | Prioridade |
+|---|---|---|---|---|
+| **HU01** | Cadastrar paciente | Recepcionista | Registro cadastral de novos pacientes com validação de dados obrigatórios e restrição de duplicidade (CPF/e-mail). | Alta |
+| **HU02** | Pesquisar paciente | Recepcionista | Consulta de registros de pacientes por termos parciais de nome ou telefone. | Alta |
+| **HU03** | Visualizar agenda do profissional | Recepcionista | Exibição de horários disponíveis e ocupados em visualizações de calendário diário e semanal. | Alta |
+| **HU04** | Registrar agendamento | Recepcionista | Alocação de paciente em horário livre com emissão de confirmação e disparo assíncrono de e-mail. | Crítica |
+| **HU05** | Cancelar agendamento | Recepcionista | Liberação de horário reservado, confirmação de operação e notificação ao paciente. | Média |
+| **HU06** | Remarcar agendamento | Recepcionista | Desalocação atômica do horário prévio e ocupação de novo horário vago, com notificação de atualização. | Alta |
+| **HU07** | Consultar histórico do paciente | Recepcionista | Recuperação de linha do tempo de consultas passadas, realizadas e canceladas vinculadas ao paciente. | Média |
+| **HU08** | Receber confirmação por e-mail | Paciente | Recepção de notificação contendo dados da consulta, profissional e localidade após agendamento. | Alta |
+| **HU09** | Receber notificação de alteração | Paciente | Recepção de e-mail de aviso em eventos de cancelamento ou remarcação de consulta. | Alta |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Diagrama Estrutural de Componentes
+### 2.1. Visão Estrutural: Diagrama de Componentes Lógicos
+
+Representação dos módulos conceituais do sistema, isolando camadas de interface, lógica de negócios, auditoria, segurança e serviços de mensageria.
 
 ```mermaid
-flowchart TB
-    subgraph Client_Layer ["Camada de Apresentação (Navegador Web)"]
-        UI_Recepcionista["Módulo de Interface da Recepção"]
-        UI_Admin["Módulo de Interface Administrativa"]
+graph TD
+    subgraph Camada_Apresentacao [Camada de Apresentação]
+        UI_Web[Interface Web do Usuário]
     end
 
-    subgraph Security_Boundary ["Fronteira de Segurança e Autenticação"]
-        Auth_Gateway["Controlador de Acesso e Autenticação (RBAC)"]
+    subgraph Camada_Seguranca [Camada de Controle de Acesso e Segurança]
+        Auth_Filter[Controlador de Autenticação e Autorização]
     end
 
-    subgraph Application_Core ["Núcleo da Aplicação"]
-        Patient_Manager["Gerenciador de Pacientes"]
-        Schedule_Manager["Gerenciador de Agenda e Horários"]
-        Appointment_Engine["Motor Transacional de Agendamentos"]
-        History_Auditor["Serviço de Histórico e Auditoria"]
-        Notification_Dispatcher["Despachante de Notificações"]
+    subgraph Camada_Aplicacao [Camada de Domínio e Aplicação]
+        Gestor_Pacientes[Componente de Gestão de Pacientes]
+        Gestor_Agenda[Componente de Gestão de Agenda e Agendamento]
+        Gestor_Auditoria[Componente de Registro de Auditoria e Logs]
+        Motor_Notificacoes[Componente de Notificações Assíncronas]
     end
 
-    subgraph Messaging_Layer ["Camada de Integração Assíncrona"]
-        Notification_Queue["Fila de Notificações"]
-        Notification_Worker["Processador de Mensageria"]
+    subgraph Camada_Persistencia [Camada de Armazenamento e Infraestrutura]
+        Repositorio_Dados[(Mecanismo de Persistência Relacional)]
+        Fila_Notificacoes[(Fila de Mensageria Interna)]
+        Provedor_Email[Serviço Externo de Disparo de E-mail]
     end
 
-    subgraph External_Services ["Serviços Externos"]
-        Mail_Provider["Serviço Externo de Envio de E-mail"]
-    end
-
-    subgraph Data_Storage ["Camada de Persistência"]
-        App_Database[("Repositório de Dados Operacionais e Logs")]
-    end
-
-    UI_Recepcionista --> Auth_Gateway
-    UI_Admin --> Auth_Gateway
-
-    Auth_Gateway --> Patient_Manager
-    Auth_Gateway --> Schedule_Manager
-    Auth_Gateway --> Appointment_Engine
-    Auth_Gateway --> History_Auditor
-
-    Patient_Manager --> App_Database
-    Schedule_Manager --> App_Database
-    Appointment_Engine --> Schedule_Manager
-    Appointment_Engine --> History_Auditor
-    Appointment_Engine --> Notification_Dispatcher
-    Appointment_Engine --> App_Database
-    History_Auditor --> App_Database
-
-    Notification_Dispatcher --> Notification_Queue
-    Notification_Queue --> Notification_Worker
-    Notification_Worker --> Mail_Provider
+    UI_Web --> Auth_Filter
+    Auth_Filter --> Gestor_Pacientes
+    Auth_Filter --> Gestor_Agenda
+    
+    Gestor_Pacientes --> Repositorio_Dados
+    Gestor_Pacientes --> Gestor_Auditoria
+    
+    Gestor_Agenda --> Repositorio_Dados
+    Gestor_Agenda --> Gestor_Auditoria
+    Gestor_Agenda --> Fila_Notificacoes
+    
+    Gestor_Auditoria --> Repositorio_Dados
+    Fila_Notificacoes --> Motor_Notificacoes
+    Motor_Notificacoes --> Provedor_Email
 ```
 
----
+### 2.2. Visão Dinâmica: Diagrama de Sequência de Agendamento e Notificação
 
-### 2.2. Diagrama de Sequência: Registro e Confirmação de Agendamento (HU04 / HU08)
+Detalhamento da execução de um agendamento com validação de concorrência, persistência transacional, rastreabilidade e notificação desacoplada.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant R as Recepcionista (UI)
-    participant AG as Controlador de Acesso
-    participant AE as Motor de Agendamentos
-    participant SM as Gerenciador de Agenda
-    participant DB as Repositório de Dados
-    participant ND as Despachante de Notificações
-    participant NQ as Fila de Notificações
-    participant NW as Processador de Mensageria
-    participant MP as Provedor de E-mail
+    participant R as Recepcionista
+    participant UI as Interface Web
+    participant Sec as Controlador de Acesso
+    participant App as Gestor de Agenda
+    participant BD as Mecanismo de Persistência
+    participant Audit as Gestor de Auditoria
+    participant Queue as Fila de Notificações
+    participant Worker as Motor de Notificações
+    participant Email as Provedor de E-mail
     participant P as Paciente
 
-    R->>AG: Solicitar agendamento (ID_Paciente, ID_Profissional, Horario)
-    AG->>AG: Validar credenciais e permissão
-    AG->>AE: Executar agendamento
-    AE->>SM: Verificar disponibilidade do slot
-    SM->>DB: Consultar status do horário (com lock transacional)
-    DB-->>SM: Horário Livre
-    AE->>DB: Criar Agendamento (Status: Confirmado)
-    AE->>DB: Atualizar Slot (Status: Ocupado)
-    AE->>DB: Gravar Log de Auditoria (Operação: Criação)
-    DB-->>AE: Transação Efetivada
-    AE->>ND: Publicar evento "AgendamentoCriado"
-    ND->>NQ: Enfileirar payload de notificação
-    AE-->>AG: Agendamento confirmado com sucesso
-    AG-->>R: Exibir confirmação na interface
-
-    par Processamento Assíncrono da Notificação
-        NQ->>NW: Consumir evento "AgendamentoCriado"
-        NW->>MP: Enviar e-mail de confirmação (Template de Agendamento)
-        MP-->>P: Entregar e-mail (< 5 min)
+    R->>UI: Solicita agendamento (PacienteID, ProfissionalID, HorarioSlot)
+    UI->>Sec: Envia requisição com credenciais de sessão
+    Sec->>Sec: Valida permissão de acesso (RNF01)
+    Sec->>App: Repassa comando de criação de consulta
+    
+    App->>BD: Inicia transação de escrita
+    App->>BD: Verifica disponibilidade do HorarioSlot (Lock Otimista/Pessimista)
+    
+    alt Horário já ocupado
+        BD-->>App: Slot indisponível
+        App-->>UI: Retorna erro "Horário já reservado" (RF06)
+        UI-->>R: Exibe mensagem de indisponibilidade
+    else Horário vago
+        BD-->>App: Slot disponível
+        App->>BD: Grava Agendamento (Status: Confirmado) e atualiza Slot para Ocupado
+        App->>Audit: Registra log de operação crítica (RNF08)
+        Audit->>BD: Persiste registro de auditoria
+        App->>Queue: Publica evento "ConsultaAgendadaEvent"
+        App->>BD: Comita transação
+        App-->>UI: Retorna confirmação de sucesso
+        UI-->>R: Apresenta confirmação na tela
+        
+        Note over Queue,Worker: Processamento Assíncrono (RNF05)
+        Queue->>Worker: Consome evento "ConsultaAgendadaEvent"
+        Worker->>Email: Solicita envio do e-mail com dados da clínica/consulta
+        Email-->>P: Entrega e-mail de confirmação (HU08 / RF09)
     end
 ```
 
----
+### 2.3. Diagrama de Modelo de Domínio
 
-### 2.3. Diagrama do Modelo Conceitual de Dados
+Modelo conceitual de classes refletindo as entidades fundamentais, restrições e relacionamentos do negócio.
 
 ```mermaid
 classDiagram
+    class Usuario {
+        +UUID id
+        +String login
+        +String senhaHash
+        +PerfilUsuario perfil
+        +Boolean ativo
+    }
+
     class Paciente {
         +UUID id
         +String nome
         +Date dataNascimento
+        +String cpf
         +String telefone
         +String email
-        +String documentoIdentificacao
-        +DateTime dataCadastro
+        +Date dataCadastro
+        +validarDadosObrigatorios()
     }
 
-    class ProfissionalSaude {
+    class Profissional {
         +UUID id
         +String nome
+        +String registroConselho
         +String especialidade
-        +String identificadorRegistro
     }
 
-    class GradeHorario {
+    class GradeAtendimento {
         +UUID id
-        +UUID profissionalId
-        +Integer diaSemana
+        +DiaSemana diaSemana
         +Time horarioInicio
         +Time horarioFim
         +Integer duracaoSlotMinutos
-        +Boolean ativo
     }
 
-    class SlotAgenda {
+    class Consulta {
         +UUID id
-        +UUID profissionalId
         +DateTime dataHoraInicio
         +DateTime dataHoraFim
-        +EnumStatusSlot status
-    }
-
-    class ConsultaAgendamento {
-        +UUID id
-        +UUID pacienteId
-        +UUID slotAgendaId
-        +EnumStatusConsulta status
-        +DateTime dataHoraCriacao
-        +DateTime dataHoraAtualizacao
+        +StatusConsulta status
+        +DateTime criadoEm
+        +cancelar()
+        +remarcar(novoHorario)
     }
 
     class LogAuditoria {
         +UUID id
-        +DateTime dataHora
+        +DateTime timestamp
         +UUID usuarioId
         +String operacao
         +String detalhes
     }
 
-    Paciente "1" -- "0..*" ConsultaAgendamento : possui
-    ProfissionalSaude "1" -- "1..*" GradeHorario : define
-    ProfissionalSaude "1" -- "0..*" SlotAgenda : possui
-    SlotAgenda "1" -- "0..1" ConsultaAgendamento : aloca
-    ConsultaAgendamento "1" -- "0..*" LogAuditoria : rastreado_por
+    Usuario "1" --> "0..*" LogAuditoria : realiza
+    Profissional "1" --> "1..*" GradeAtendimento : configura
+    Profissional "1" --> "0..*" Consulta : atende
+    Paciente "1" --> "0..*" Consulta : solicita
+    Consulta "1" --> "0..*" LogAuditoria : gera
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### DA01: Separação em Camadas com Fronteira de Controle de Acesso (RBAC)
-* **Contexto:** RNF01 exige que o sistema seja acessado exclusivamente por usuários autenticados (recepcionistas e administradores).
-* **Decisão:** Centralizar todas as requisições através de um componente de autenticação e autorização prévio à camada de negócios, validando identidade e papéis (roles) para cada caso de uso.
-* **Consequência:** Garante enforcement estrito de segurança, simplifica auditoria e evita duplicação de validações nos serviços de domínio.
+### Decisão 01: Adoção de Arquitetura em Camadas com Isolamento de Domínio
+* **Contexto:** Necessidade de separar regras de negócios (agendamento, integridade cadastral), autenticação/autorização e mecanismos de interface/persistência.
+* **Decisão:** Estruturar a aplicação em camadas conceituais bem delimitadas: Apresentação, Controle de Acesso/Segurança, Aplicação/Domínio e Persistência/Infraestrutura.
+* **Consequência:** Promove manutenibilidade, testabilidade unitária e independência de fornecedores de persistência ou interface.
 
-### DA02: Isolamento Transacional e Bloqueio Concorrente para Horários
-* **Contexto:** RF06 e HU04 impõem a restrição estrita de impedir múltiplos agendamentos simultâneos no mesmo horário.
-* **Decisão:** Implementar controle transacional com mecanismo de bloqueio pessimista ou controle otimista com versionamento de entidade na alocação do `SlotAgenda`.
-* **Consequência:** Garante atomicidade e consistência imediata (propriedades ACID), impedindo a condição de corrida (*double booking*), mesmo sob acessos concorrentes simultâneos.
+### Decisão 02: Desacoplamento Assíncrono para o Subsistema de Notificações
+* **Contexto:** O requisito RNF05 estipula que a notificação deve ocorrer em até 5 minutos, enquanto o RNF04 exige tempo de resposta da agenda em até 2 segundos. Acoplamentos síncronos com servidores de e-mail podem degradar a performance da interface.
+* **Decisão:** Implementar padrão de mensageria interno orientado a eventos. As transações de agendamento, cancelamento e remarcação persistem os dados locais e postam um evento em fila para consumo por um motor de notificações assíncrono.
+* **Consequência:** A interface responde imediatamente à recepcionista; oscilações ou lentidões no envio de e-mails não bloqueiam as operações do sistema.
 
-### DA03: Desacoplamento Assíncrono para o Subsistema de Notificações
-* **Contexto:** RF09, RF10, HU08 e HU09 demandam envio de e-mails em até 5 minutos (RNF05), sem degradar o tempo de resposta da interface (< 2s, RNF04).
-* **Decisão:** Utilizar o padrão de mensageria assíncrona (Produtor-Fila-Consumidor) para o disparo de notificações. O motor transacional apenas publica o evento na fila interna e conclui a operação síncrona.
-* **Consequência:** A latência e eventuais indisponibilidades transitórias do provedor externo de e-mail não impactam a experiência da recepcionista na interface de agendamento.
+### Decisão 03: Controle Estrito de Transacionalidade e Concorrência de Horários
+* **Contexto:** O requisito RF06 proíbe o agendamento concorrente de duas consultas no mesmo slot de tempo de um profissional.
+* **Decisão:** Assegurar que a verificação de disponibilidade e a reserva do horário ocorram sob um contexto transacional atômico e isolado (com bloqueio lógico ou controle de concorrência no repositório de dados).
+* **Consequência:** Eliminação de condições de corrida (*race conditions*) em acessos simultâneos por múltiplos operadores.
 
-### DA04: Registro Estruturado e Imodificável de Logs de Auditoria
-* **Contexto:** RNF08 determina a rastreabilidade mandatória de operações críticas (criação, cancelamento e remarcação de agendamentos).
-* **Decisão:** Acoplar interceptores de persistência que geram registros de auditoria em modo *append-only*, contendo carimbo de data/hora, identificador do operador, ação e estado anterior/novo.
-* **Consequência:** Conformidade com normas de governança e facilidade no suporte operacional para resolução de disputas sobre históricos de consultas.
-
-### DA05: Proteção de Dados e Conformidade LGPD
-* **Contexto:** RNF02 estabelece que o armazenamento de dados pessoais dos pacientes deve aderir à LGPD.
-* **Decisão:** Aplicar mascaramento de dados nas interfaces de exibição geral, cifragem de dados sensíveis em repouso na camada de persistência e segregação de permissões de visualização.
-* **Consequência:** Redução do risco de vazamento de dados e garantia de conformidade legal para o tratamento de informações cadastrais e clínicas.
+### Decisão 04: Mecanismo Integrado de Auditoria para Operações Críticas
+* **Contexto:** RNF08 exige rastreabilidade completa para criação, cancelamento e remarcação de consultas; RNF02 exige conformidade com diretrizes de proteção de dados pessoais (LGPD).
+* **Decisão:** Centralizar a captura de eventos de mutação em um componente de auditoria dedicado que registra o identificador do operador autenticado, data/hora, tipo de operação e estado anterior/posterior do registro.
+* **Consequência:** Conformidade regulatória, suporte a investigações de desvios e preservação do histórico para fins legais.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-| :--- | :--- | :--- | :--- |
-| **Controlador de Acesso e Autenticação** | Validar credenciais, emitir tokens e aplicar políticas de controle de acesso baseado em papéis (RBAC). | Módulos de Interface, Serviços de Negócio | RNF01, HU01-HU07 |
-| **Gerenciador de Pacientes** | Executar operações de criação, validação cadastral, deduplicação (CPF/e-mail) e consultas parciais. | Repositório de Dados, Motor de Agendamentos | HU01 (CA 1, 2, 3), HU02 (CA 1, 2), RF01, RF02, RF03 |
-| **Gerenciador de Agenda e Horários** | Manter a grade de atendimento dos profissionais, gerar slots de horários e gerenciar status (Livre/Ocupado). | Repositório de Dados, Motor de Agendamentos | HU03 (CA 1, 2, 3), RF04, RF11, RNF03, RNF04 |
-| **Motor Transacional de Agendamentos** | Coordenar criação, cancelamento e remarcação de consultas garantindo unicidade de horário e atomicidade. | Gerenciador de Agenda, Histórico/Auditoria, Despachante de Notificações, Repositório de Dados | HU04 (CA 1, 2), HU05 (CA 1, 2), HU06 (CA 1, 2), RF05, RF06, RF07, RF08 |
-| **Serviço de Histórico e Auditoria** | Consolidar linha do tempo de atendimentos do paciente e gravar registros imutáveis de ações críticas. | Repositório de Dados, Motor de Agendamentos | HU07 (CA 1, 2), RF12, RNF08 |
-| **Despachante de Notificações** | Publicar eventos de domínio referentes a agendamentos, cancelamentos e remarcações para processamento em segundo plano. | Fila de Notificações, Motor de Agendamentos | HU04 (CA 3), HU05 (CA 3), HU06 (CA 3), RF09, RF10 |
-| **Processador de Mensageria** | Consumir eventos da fila assíncrona, montar modelos de comunicação e despachar para provedor de e-mail. | Fila de Notificações, Provedor Externo de E-mail | HU08 (CA 1, 2), HU09 (CA 1, 2), RNF05 |
-| **Repositório de Dados Operacionais** | Prover persistência com garantias ACID para entidades de domínio, integridade relacional e logs. | Gerenciadores de Negócio, Serviço de Auditoria | RF01-RF12, RNF02, RNF06 |
+|---|---|---|---|
+| **Controlador de Autenticação e Autorização** | Validar identidade do usuário (Recepcionista/Admin) e autorizar a execução das rotinas do sistema. | Interface Web, Componentes de Domínio | RNF01 |
+| **Gestor de Pacientes** | Efetuar cadastro, validação de formato de campos (e-mail/CPF), unicidade e recuperação de dados de pacientes. | Repositório de Dados, Gestor de Auditoria | HU01, HU02, RF01, RF02, RF03 |
+| **Gestor de Agenda e Agendamento** | Gerenciar a grade de atendimento, validar disponibilidade de slots, controlar bloqueios atômicos e orquestrar agendamento, cancelamento e remarcação. | Repositório de Dados, Fila de Notificações, Gestor de Auditoria | HU03, HU04, HU05, HU06, HU07, RF04, RF05, RF06, RF07, RF08, RF11, RF12, RNF04 |
+| **Gestor de Auditoria e Logs** | Interceptar operações críticas e persistir trilhas de auditoria contendo autor, data, hora e natureza da transação. | Repositório de Dados | RNF02, RNF08 |
+| **Fila de Notificações** | Armazenar temporariamente eventos de domínio gerados pelas ações da agenda para processamento em segundo plano. | Gestor de Agenda, Motor de Notificações | RNF05 |
+| **Motor de Notificações** | Processar eventos da fila e acionar o provedor de e-mail com os modelos padronizados de confirmação, alteração e cancelamento. | Fila de Notificações, Provedor de E-mail | HU08, HU09, RF09, RF10, RNF05 |
+| **Provedor de E-mail** | Entregar formalmente as mensagens de correio eletrônico aos destinatários finais (pacientes). | Motor de Notificações | RF09, RF10, HU08, HU09 |
+| **Repositório de Dados** | Prover persistência confiável, controle transacional e integridade relacional dos dados cadastrais e operacionais. | Gestor de Pacientes, Gestor de Agenda, Gestor de Auditoria | RF01 a RF12, RNF02, RNF08 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Definição de Fluxo de Gestão da Grade de Horários (RF11):**
-   * *Pendência:* O RF11 define que a grade do profissional deve ser configurável, mas não há História de Usuário (HU) associada nem especificação de telas ou perfis com permissão para essa edição (ex.: Administrador vs. Recepcionista).
-   * *Ação:* Solicitar detalhamento dos critérios de aceite para a parametrização de turnos, pausas e bloqueios de agenda.
-
-2. **Divergência de Atributos Mandatórios de Paciente (RF01 vs. HU01):**
-   * *Pendência:* O RF01 lista `nome, data de nascimento, telefone e e-mail`, enquanto o critério de aceite da HU01 cita validação de unicidade por `CPF ou e-mail`. O campo CPF não consta explicitamente na tabela de RFs.
-   * *Ação:* Alinhar o modelo de dados para confirmar a obrigatoriedade e validação de formato do campo CPF.
-
-3. **Política de Retentativa e Dead-Letter para Envio de E-mails:**
-   * *Pendência:* Não foi especificado o comportamento do sistema caso o serviço externo de e-mail esteja indisponível após esgotado o SLA de 5 minutos (RNF05).
-   * *Ação:* Definir política de contingência (número de tentativas, circuit breaker e alertas operacionais).
+1. **Definição de Gestão de Profissionais:** Os requisitos citam a visualização da agenda do profissional (RF04) e configuração de grade (RF11), mas não detalham o fluxo ou permissão para cadastro/edição dos dados do profissional de saúde.
+2. **Critério de Chave Única de Paciente (Divergência RF vs HU):** O critério de aceite da HU01 cita restrição de unicidade por "CPF ou e-mail", todavia o requisito RF01 não lista expressamente o CPF como atributo obrigatório de entrada.
+3. **Política de Expiração e Retenção de Dados (LGPD):** O RNF02 estipula conformidade com a LGPD, mas não define a política de descarte, anonimização ou exportação de dados a pedido do titular.
+4. **Tratamento de Falhas de Notificação Externa:** Ausência de definição quanto à política de re-tentativa (*retry policy*) e alerta em caso de falha persistente do provedor de e-mail.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-```
-[RF01: Cadastrar paciente] ------------------------> [HU01] --> [Gerenciador de Pacientes]
-[RF02: Editar paciente] ---------------------------> [HU01] --> [Gerenciador de Pacientes]
-[RF03: Pesquisar paciente] ------------------------> [HU02] --> [Gerenciador de Pacientes]
-[RF04: Exibir agenda do profissional] -------------> [HU03] --> [Gerenciador de Agenda e Horários]
-[RF05: Registrar consulta] ------------------------> [HU04] --> [Motor de Agendamentos]
-[RF06: Impedir duplicidade de horário] ------------> [HU04, HU06] --> [Motor de Agendamentos]
-[RF07: Cancelar consulta] -------------------------> [HU05] --> [Motor de Agendamentos]
-[RF08: Remarcar consulta] -------------------------> [HU06] --> [Motor de Agendamentos]
-[RF09: E-mail de confirmação] ---------------------> [HU08] --> [Despachante & Processador de Mensageria]
-[RF10: E-mail de cancelamento/remarcação] ---------> [HU09] --> [Despachante & Processador de Mensageria]
-[RF11: Configurar grade de horários] --------------> [Sem HU direta] --> [Gerenciador de Agenda e Horários]
-[RF12: Histórico de consultas do paciente] --------> [HU07] --> [Serviço de Histórico e Auditoria]
-
-[RNF01: Segurança - Autenticação e Perfis] --------> [Controlador de Acesso (RBAC)]
-[RNF02: Conformidade com LGPD] -------------------> [Módulo de Persistência / Cifragem / Mascaramento]
-[RNF03: Interface Calendário Diário/Semanal] ------> [Módulo de Interface da Recepção]
-[RNF04: Desempenho da Agenda (< 2s)] -------------> [Gerenciador de Agenda / Estratégia de Indexação]
-[RNF05: Confiabilidade de Notificação (< 5m)] ----> [Camada de Integração Assíncrona]
-[RNF06: Disponibilidade (99% no horário)] ---------> [Infraestrutura / Redundância Operacional]
-[RNF07: Compatibilidade Cross-Browser] ------------> [Camada de Apresentação Web]
-[RNF08: Auditoria de Operações Críticas] ----------> [Serviço de Histórico e Auditoria]
-```
-
-*Cobertura Funcional:* **100% dos RFs mapeados** para componentes conceituais (11 de 12 cobertos por HUs diretas; RF11 absorvido no design estrutural).  
-*Cobertura Não Funcional:* **100% dos RNFs atendidos** pelas decisões e padrões de arquitetura estabelecidos.
+| Requisito Funcional / Não Funcional | Histórias de Usuário Vinculadas | Componente(s) Arquitetural(is) Responsável(is) | Status de Cobertura |
+|---|---|---|---|
+| **RF01** (Cadastro de Paciente) | HU01 | Gestor de Pacientes, Repositório de Dados | Totalmente Coberto |
+| **RF02** (Edição de Paciente) | HU01 | Gestor de Pacientes, Repositório de Dados | Totalmente Coberto |
+| **RF03** (Pesquisa de Paciente) | HU02 | Gestor de Pacientes, Repositório de Dados | Totalmente Coberto |
+| **RF04** (Visualização de Agenda) | HU03 | Gestor de Agenda, Interface Web | Totalmente Coberto |
+| **RF05** (Registro de Consulta) | HU04 | Gestor de Agenda, Repositório de Dados | Totalmente Coberto |
+| **RF06** (Prevenção de Duplicidade no Horário) | HU04 | Gestor de Agenda, Repositório de Dados | Totalmente Coberto |
+| **RF07** (Cancelamento de Consulta) | HU05 | Gestor de Agenda, Repositório de Dados | Totalmente Coberto |
+| **RF08** (Remarcação de Consulta) | HU06 | Gestor de Agenda, Repositório de Dados | Totalmente Coberto |
+| **RF09** (E-mail de Confirmação) | HU04, HU08 | Gestor de Agenda, Fila de Notificações, Motor de Notificações | Totalmente Coberto |
+| **RF10** (E-mail de Cancelamento/Remarcação) | HU05, HU06, HU09 | Gestor de Agenda, Fila de Notificações, Motor de Notificações | Totalmente Coberto |
+| **RF11** (Configuração de Grade de Horários) | HU03 | Gestor de Agenda, Repositório de Dados | Totalmente Coberto |
+| **RF12** (Histórico de Consultas do Paciente) | HU07 | Gestor de Agenda, Gestor de Pacientes, Repositório de Dados | Totalmente Coberto |
+| **RNF01** (Segurança / Autenticação) | HU01 a HU07 | Controlador de Autenticação e Autorização | Totalmente Coberto |
+| **RNF02** (Conformidade LGPD) | HU01, HU07 | Gestor de Auditoria, Repositório de Dados | Totalmente Coberto |
+| **RNF03** (Usabilidade do Calendário) | HU03 | Interface Web | Totalmente Coberto |
+| **RNF04** (Desempenho <= 2s) | HU03 | Gestor de Agenda, Repositório de Dados | Totalmente Coberto |
+| **RNF05** (Confiabilidade de E-mail <= 5min) | HU08, HU09 | Fila de Notificações, Motor de Notificações | Totalmente Coberto |
+| **RNF06** (Disponibilidade >= 99%) | Todas as HUs | Camada de Persistência, Toda a Arquitetura | Totalmente Coberto |
+| **RNF07** (Compatibilidade de Navegadores) | Todas as HUs | Interface Web | Totalmente Coberto |
+| **RNF08** (Logs e Manutenibilidade) | HU04, HU05, HU06 | Gestor de Auditoria, Repositório de Dados | Totalmente Coberto |
 
 ---
 
 ## 7. Gap Analysis
 
-| Item Analisado | Lacuna Identificada | Impacto Arquitetural | Recomendação / Ação Mitigadora |
-| :--- | :--- | :--- | :--- |
-| **Gestão de Grade (RF11)** | Ausência de História de Usuário e perfil definido para manutenção da grade de horários. | Risco de não implementação da interface de configuração da jornada dos profissionais. | Criar HU específica (ex.: *HU10 — Configurar Grade do Profissional*) atribuída ao perfil Administrador. |
-| **Consistência de Dados Cadastrais** | Divergência quanto à presença e validação do documento CPF entre RF01 e HU01. | Inconsistência no esquema relacional e nas regras de validação cadastral. | Padronizar o campo CPF como identificador civil único do paciente em todos os artefatos de requisitos. |
-| **Controle de Ausências e Bloqueios** | Falta de especificação sobre feriados, férias e ausências médicas não planejadas. | Agendamentos indevidos em datas em que o profissional não estará presente. | Implementar entidade de *Bloqueio de Agenda (Exceção)* associada ao `Gerenciador de Agenda`. |
-| **Mecanismo de Falha em E-mails** | Inexistência de política para tratamento de falhas permanentes no envio de e-mails. | Notificações perdidas sem rastreamento ou alerta para reenvio manual pela recepcionista. | Estabelecer fila de exceções (*Dead-Letter*) com indicação de falha de envio visível no histórico do agendamento. |
+| Item / Lacuna Identificada | Impacto Arquitetural | Ação Recomendada para o Time de Engenharia |
+|---|---|---|
+| **Inconsistência no Campo CPF** | Se o CPF não for obrigatório no modelo relacional, a validação de unicidade da HU01 falhará ou exigirá regras condicionais nulas. | Padronizar a especificação do RF01 e do modelo de dados para inclusão mandatória do campo CPF com validação de formato e índice único. |
+| **Mecanismo de Recuperação de Falhas de E-mail** | Falhas transitórias no provedor de comunicação podem violar o envio das notificações (HU08/HU09). | Estabelecer fila de processamento com padrão de repetição (*Dead-Letter Queue* / *Backoff Estratégico*) no Motor de Notificações. |
+| **Gerenciamento do Ciclo de Vida do Profissional** | Sem entidade e telas de gestão do corpo clínico, a vinculação de agendas dependerá de cargas manuais no banco de dados. | Solicitar a criação de Histórias de Usuário específicas para cadastro e manutenção de profissionais de saúde e suas especialidades. |
+| **Transição de Status de Consultas Passadas** | O sistema não detalha como consultas agendadas tornam-se "Realizadas" no histórico (RF12). | Definir processo periódico automatizado ou ação manual da recepcionista para confirmar o comparecimento do paciente e atualizar o status da consulta. |

@@ -1,222 +1,286 @@
 # Relatório Técnico de Arquitetura de Software
 
+---
+
 ## 1. Identificação das HUs
 
-A tabela abaixo estabelece o mapeamento entre as Histórias de Usuário (HUs), os perfis de acesso correlatos, as descrições funcionais e o rastreamento dos Requisitos Funcionais (RF) e Não Funcionais (RNF) correspondentes.
+A tabela abaixo correlaciona as Histórias de Usuário (HUs) com os Requisitos Funcionais (RF) e Não Funcionais (RNF) do Sistema de Administração de Condomínio Residencial.
 
-| ID HU | Perfil | Título | Descrição Resumida | RFs Associados | RNFs Associados |
+| HU ID | Perfil | Nome da HU | Resumo da Necessidade | RFs Associados | RNFs Associados |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **HU01** | Síndico | Cadastrar unidades e moradores | Permite cadastrar unidades, vincular moradores (proprietários/inquilinos) e controlar veículos e desativação sem exclusão de histórico. | RF04, RF05, RF06, RF07, RF08 | RNF02, RNF04 |
-| **HU02** | Síndico | Emitir boletos em lote | Permite gerar cobranças mensais massivas com mês de referência e vencimento, despachando boletos por e-mail e tratando falhas parciais. | RF09, RF10, RF13 | RNF05, RNF11, RNF13 |
-| **HU03** | Síndico | Acompanhar inadimplências | Disponibiliza painel consolidado com filtros e exportação CSV das unidades com boletos vencidos em aberto. | RF15 | RNF08, RNF09 |
-| **HU04** | Síndico | Publicar comunicados | Permite emitir avisos com opção de fixação no topo e envio imediato de notificações aos condôminos por e-mail. | RF16, RF17 | RNF13 |
-| **HU05** | Síndico | Gerenciar ocorrências | Permite visualizar, categorizar e alterar status de solicitações/reclamações, disparando avisos aos solicitantes. | RF23, RF24 | RNF13 |
-| **HU06** | Síndico | Criar e registrar assembleias | Permite agendar assembleias, notificar condôminos, registrar atas e vincular documentos em anexo (ex.: PDF de presença). | RF18, RF19 | RNF09, RNF10 |
-| **HU07** | Síndico | Gerenciar áreas comuns e reservas | Permite cadastrar espaços, definir regras/horários, visualizar calendário consolidado e cancelar reservas com notificação. | RF25, RF29 | RNF08 |
-| **HU08** | Condômino | Visualizar e pagar boleto pelo portal | Permite consultar boletos (em aberto/pagos/vencidos), efetuar download e processar pagamento via gateway. | RF10, RF11, RF12 | RNF01, RNF03, RNF05 |
-| **HU09** | Condômino | Reservar área comum | Permite consultar disponibilidade em tempo real, agendar horários e receber confirmação por e-mail sem sobreposição. | RF26, RF27, RF28 | RNF07, RNF08 |
-| **HU10** | Condômino | Registrar e acompanhar ocorrência | Permite abrir chamados com anexos/fotos e monitorar a evolução e o histórico de atualizações pelo portal. | RF21, RF24 | RNF09, RNF13 |
-| **HU11** | Condômino | Pré-autorizar entrada de visitante | Permite cadastrar visitantes esperados por data, agilizando a liberação pela portaria e podendo cancelar a qualquer tempo. | RF31 | RNF04, RNF09 |
-| **HU12** | Condômino | Acompanhar assembleias e consultar atas | Permite visualizar a pauta de assembleias futuras e efetuar download de atas anteriores no portal. | RF20 | RNF07, RNF10 |
-| **HU13** | Funcionário | Registrar entrada e saída de visitantes | Permite controle rigoroso de acesso com documento, vinculação de pré-autorizações e encerramento de estadias. | RF30, RF32 | RNF04, RNF06 |
-| **HU14** | Funcionário | Consultar pré-autorizações de acesso | Permite listar e filtrar as entradas liberadas pelos condôminos para o dia corrente. | RF32 | RNF06, RNF09 |
+| **HU01** | Síndico | Cadastrar unidades e moradores | Permitir o cadastro de unidades e moradores vinculados, validando obrigatoriedades e unicidade de CPF. | RF04, RF05, RF06, RF07, RF08 | RNF04 |
+| **HU02** | Síndico | Emitir boletos em lote | Processar emissão em lote de boletos para o mês de referência com notificação aos condôminos e relatório de falhas. | RF09, RF10, RF13 | RNF05, RNF11, RNF13 |
+| **HU03** | Síndico | Acompanhar inadimplências | Exibir painel com unidades com boletos em atraso, suporte a filtros e exportação em CSV. | RF15 | RNF05, RNF08 |
+| **HU04** | Síndico | Publicar comunicados | Publicar comunicados no portal, permitir fixação no topo e disparar avisos por e-mail. | RF16, RF17 | RNF13 |
+| **HU05** | Síndico | Gerenciar ocorrências | Visualizar, filtrar, categorizar e alterar status de ocorrências, notificando o autor. | RF23, RF24 | RNF13 |
+| **HU06** | Síndico | Criar e registrar assembleias | Agendar assembleias, notificar condôminos, registrar atas e anexar documentos. | RF18, RF19 | RNF09, RNF10 |
+| **HU07** | Síndico | Gerenciar áreas comuns e reservas | Cadastrar áreas comuns, definir regras de uso, visualizar calendário geral e cancelar reservas. | RF25, RF27, RF29 | RNF08 |
+| **HU08** | Condômino | Visualizar e pagar boleto pelo portal | Consultar boletos pendentes/pagos, baixar documento de cobrança e visualizar confirmação automática de pagamento. | RF11, RF12, RF14 | RNF01, RNF03, RNF05 |
+| **HU09** | Condômino | Reservar área comum | Solicitar reserva de espaço comum com checagem de sobreposição em tempo real e confirmação por e-mail. | RF26, RF27 | RNF07, RNF08 |
+| **HU10** | Condômino | Registrar e acompanhar ocorrência | Cadastrar reclamação/sugestão com fotos, acompanhar histórico e receber notificações. | RF21, RF24 | RNF09, RNF13 |
+| **HU11** | Condômino | Pré-autorizar entrada de visitante | Registrar dados de visitante e data prevista para agilizar a liberação na portaria, com opção de cancelamento. | RF31 | RNF04, RNF09 |
+| **HU12** | Condômino | Acompanhar assembleias e consultar atas | Visualizar agendamentos de assembleias e baixar atas/documentos em PDF via portal. | RF20 | RNF09, RNF10 |
+| **HU13** | Funcionário | Registrar entrada e saída de visitantes | Registrar acesso presencial (dados do visitante, horário, unidade), relacionar a pré-autorização e fechar visita. | RF30, RF32 | RNF04, RNF06 |
+| **HU14** | Funcionário | Consultar pré-autorizações de acesso | Consultar pré-autorizações do dia por unidade/nome e converter em entrada efetiva. | RF31, RF32 | RNF06, RNF09 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Visão Geral de Componentes da Solução (C4 Level 2 - Container / Componentes)
-
-O diagrama abaixo apresenta os módulos lógicos do sistema, as interfaces de usuário e as integrações externas (Gateway de Pagamentos e Serviço de E-mail).
+### 2.1. Visão Geral de Componentes da Arquitetura (Architecture Blueprint)
 
 ```mermaid
-graph TB
-    subgraph "Camada de Apresentação (Clientes)"
-        WEB["Portal Web (Condômino / Síndico)"]
-        MOBILE["Interface Móvel Responsiva"]
-        PORTARIA["Terminal de Portaria (Funcionário)"]
-    end
+componentDiagram
+    [Interface Web / Mobile] as ClientApp
+    
+    package "Camada de Fronteira e Controle de Acesso" {
+        [API Gateway / Ingress Controller] as Gateway
+        [Módulo de Autenticação e Acesso] as AuthModule
+    }
 
-    subgraph "Camada de Fronteira / Segurança"
-        GATEWAY["API Gateway / Módulo de Autenticação & RBAC"]
-    end
+    package "Domínio Principal de Negócio" {
+        [Módulo de Gestão de Unidades e Moradores] as ModUnits
+        [Subsistema Financeiro e Cobrança] as ModFinance
+        [Módulo de Comunicados e Assembleias] as ModNotices
+        [Módulo de Gestão de Ocorrências] as ModOccurrences
+        [Engine de Reserva de Áreas Comuns] as ModReservations
+        [Módulo de Controle de Visitantes] as ModVisitors
+    }
 
-    subgraph "Camada de Serviços de Negócio (Core System)"
-        IDENTITY_SVC["Serviço de Identidades e Usuários"]
-        PROPERTY_SVC["Serviço de Unidades e Moradores"]
-        FINANCE_SVC["Serviço Financeiro e de Cobrança"]
-        COMM_SVC["Serviço de Comunicação e Assembleias"]
-        TICKET_SVC["Serviço de Ocorrências"]
-        BOOKING_SVC["Serviço de Áreas Comuns e Reservas"]
-        ACCESS_SVC["Serviço de Portaria e Controle de Acesso"]
-    end
+    package "Serviços Transversais e Suporte" {
+        [Servidor de Notificações] as NotificationService
+        [Serviço de Logs e Auditoria Imutável] as AuditService
+        [Adaptador de Integração de Pagamento] as PaymentAdapter
+    }
 
-    subgraph "Camada de Suporte & Infraestrutura Cross-Cutting"
-        NOTIF_SVC["Serviço Assíncrono de Notificação"]
-        AUDIT_SVC["Serviço de Rastreabilidade e Logs de Auditoria"]
-        STORAGE["Repositório de Documentos / Anexos"]
-    end
+    database "Armazenamento Relacional Persistente" as Database
+    database "Trilha de Auditoria Imutável" as AuditStore
+    cloud "Gateway de Pagamento Externo" as ExternalPaymentGateway
 
-    subgraph "Sistemas Externos"
-        PAYMENT_GW["Gateway de Pagamento Externo (PCI-DSS)"]
-        EMAIL_GW["Provedor Externo de E-mail (SMTP)"]
-    end
+    ClientApp --> Gateway
+    Gateway --> AuthModule
+    Gateway --> ModUnits
+    Gateway --> ModFinance
+    Gateway --> ModNotices
+    Gateway --> ModOccurrences
+    Gateway --> ModReservations
+    Gateway --> ModVisitors
 
-    %% Relações de Entrada
-    WEB --> GATEWAY
-    MOBILE --> GATEWAY
-    PORTARIA --> GATEWAY
+    ModFinance --> PaymentAdapter
+    PaymentAdapter --> ExternalPaymentGateway
+    ExternalPaymentGateway ..> PaymentAdapter : Webhook / Notification
 
-    %% Relações do Gateway
-    GATEWAY --> IDENTITY_SVC
-    GATEWAY --> PROPERTY_SVC
-    GATEWAY --> FINANCE_SVC
-    GATEWAY --> COMM_SVC
-    GATEWAY --> TICKET_SVC
-    GATEWAY --> BOOKING_SVC
-    GATEWAY --> ACCESS_SVC
+    ModFinance --> NotificationService
+    ModNotices --> NotificationService
+    ModOccurrences --> NotificationService
+    ModReservations --> NotificationService
 
-    %% Interações Internas e Eventos
-    FINANCE_SVC --> PAYMENT_GW
-    FINANCE_SVC --> AUDIT_SVC
-    FINANCE_SVC --> NOTIF_SVC
+    ModUnits --> Database
+    ModFinance --> Database
+    ModNotices --> Database
+    ModOccurrences --> Database
+    ModReservations --> Database
+    ModVisitors --> Database
 
-    COMM_SVC --> STORAGE
-    COMM_SVC --> NOTIF_SVC
-
-    TICKET_SVC --> STORAGE
-    TICKET_SVC --> NOTIF_SVC
-
-    BOOKING_SVC --> NOTIF_SVC
-    ACCESS_SVC --> AUDIT_SVC
-    IDENTITY_SVC --> AUDIT_SVC
-
-    NOTIF_SVC --> EMAIL_GW
+    ModFinance --> AuditService
+    ModVisitors --> AuditService
+    AuditService --> AuditStore
 ```
 
 ---
 
-### 2.2 Diagrama de Sequência: Emissão e Processamento de Boletos em Lote (HU02, HU08, RF10-RF14)
-
-O diagrama de sequência a seguir ilustra o ciclo transacional de emissão em lote de boletos pelo síndico, a notificação assíncrona, a confirmação via webhook/gateway e o registro de auditoria imutável.
+### 2.2. Diagrama de Sequência: Processamento de Boletos em Lote e Baixa Automática (HU02, HU08, RF10, RF11, RF12, RNF05, RNF11)
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Sindico as Síndico
-    participant Portal as Portal Web / Interface
-    participant FinanceSvc as Serviço Financeiro
-    participant AuditSvc as Serviço de Auditoria
-    participant NotifSvc as Serviço de Notificação
-    participant PaymentGW as Gateway Financeiro
+    participant Portal as Portal Web
+    participant FinMod as Subsistema Financeiro
+    participant Audit as Serviço de Auditoria
+    participant Notif as Servidor de Notificações
+    participant PayAdapter as Adaptador de Pagamento
+    actor GatewayExt as Gateway de Pagamento
     actor Condomino as Condômino
 
-    Sindico->>Portal: Solicita emissão de boletos em lote (Mês/Ano, Vencimento)
-    Portal->>FinanceSvc: GerarBoletosLote(mesReferencia, dataVencimento)
+    Sindico ->> Portal: Solicita emissão de boletos em lote (Mês/Ano, Vencimento)
+    Portal ->> FinMod: GerarBoletosEmLote(MêsReferencia, DataVencimento)
     
-    activate FinanceSvc
-    FinanceSvc->>FinanceSvc: Buscar unidades ativas e taxas configuradas
-    
+    activate FinMod
+    FinMod ->> FinMod: Carrega unidades ativas
     loop Para cada Unidade Ativa
-        FinanceSvc->>PaymentGW: Registrar Boleto Individual
-        alt Sucesso na Comunicação com Gateway
-            PaymentGW-->>FinanceSvc: Retorna Código de Barras / ID Registro
-            FinanceSvc->>FinanceSvc: Salvar Boleto (Status: Em Aberto)
-            FinanceSvc->>NotifSvc: Enfileirar Notificação de Boleto (Unidade, BoletoID)
-        else Falha na Unidade Específica
-            FinanceSvc->>FinanceSvc: Registrar Falha Parcial na Unidade (Manter Lote Vivo)
+        FinMod ->> FinMod: Calcula taxa e gera boleto individual
+        alt Sucesso na geração
+            FinMod ->> Audit: RegistrarOperacaoFinanceira(BoletoID, "Emissão", UsuárioID)
+            FinMod ->> Notif: EnviarBoletoPorEmail(MoradorID, BoletoPDF)
+        else Falha na unidade
+            FinMod ->> FinMod: Registra erro na lista de falhas parciais
         end
     end
+    FinMod -->> Portal: Retorna resumo do lote (Sucessos, Falhas)
+    deactivate FinMod
+    
+    Portal -->> Sindico: Exibe resultado da emissão em lote
+    Notif -->> Condomino: Entrega e-mail com boleto mensal
 
-    FinanceSvc->>AuditSvc: RegistrarOperacaoFinanceira("EMISSAO_LOTE", UsuarioID, Timestamp)
-    FinanceSvc-->>Portal: Retorna Relatório da Emissão (Sucessos e Erros Parciais)
-    deactivate FinanceSvc
-    Portal-->>Sindico: Exibe Resumo da Emissão em Lote
-
-    par Notificação Assíncrona
-        NotifSvc->>Condomino: Envia E-mail com Boleto Anexo/Link
-    end
-
-    note over Condomino, PaymentGW: Fluxo Posterior de Liquidacao de Pagamento
-    Condomino->>PaymentGW: Realiza Pagamento do Boleto
-    PaymentGW->>FinanceSvc: Webhook Confirmação Pagamento (BoletoID, Data, Valor)
-    activate FinanceSvc
-    FinanceSvc->>FinanceSvc: Atualizar Status do Boleto para "Pago"
-    FinanceSvc->>AuditSvc: RegistrarOperacaoFinanceira("PAGAMENTO_CONFIRMADO", BoletoID, Timestamp)
-    deactivate FinanceSvc
+    note over Condomino, GatewayExt: Processo de Pagamento pelo Condômino
+    Condomino ->> GatewayExt: Realiza pagamento do boleto
+    GatewayExt ->> PayAdapter: Notificação de Pagamento (Webhook)
+    activate PayAdapter
+    PayAdapter ->> FinMod: ConfirmarPagamento(BoletoID, Status, Valor, DataHora)
+    activate FinMod
+    FinMod ->> FinMod: Atualiza status do boleto para "PAGO"
+    FinMod ->> Audit: RegistrarOperacaoFinanceira(BoletoID, "Pagamento Confirmado", System)
+    FinMod -->> PayAdapter: Ack (Sucesso)
+    deactivate FinMod
+    deactivate PayAdapter
 ```
 
 ---
 
-### 2.3 Diagrama de Sequência: Reserva de Área Comum com Validação de Sobreposição (HU09, RF26, RF27)
-
-Este diagrama detalha o tratamento de concorrência e validação no agendamento de espaços compartilhados.
+### 2.3. Diagrama de Classes de Domínio (Modelo Conceitual)
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Condomino as Condômino
-    participant Portal as Portal Web
-    participant BookingSvc as Serviço de Reservas
-    participant NotifSvc as Serviço de Notificação
+classDiagram
+    class Usuario {
+        +UUID id
+        +String nome
+        +String email
+        +String hashSenha
+        +PerfilPerfil perfil
+        +Boolean ativo
+        +autenticar()
+    }
 
-    Condomino->>Portal: Seleciona Área Comum, Data e Horário desejado
-    Portal->>BookingSvc: CriarReserva(AreaID, Data, HoraInicio, HoraFim)
-    activate BookingSvc
-    
-    BookingSvc->>BookingSvc: Verificar Horários Permitidos e Bloqueios
-    BookingSvc->>BookingSvc: Checar Concorrência (Lock de Disponibilidade)
-    
-    alt Horário Ocupado ou Sobreposto
-        BookingSvc-->>Portal: Retorna Erro ("Conflito de Horário")
-        Portal-->>Condomino: Exibe mensagem de indisponibilidade
-    else Horário Livre
-        BookingSvc->>BookingSvc: Confirmar Reserva e Gravar Registro
-        BookingSvc->>NotifSvc: Enfileirar Confirmação de Reserva
-        BookingSvc-->>Portal: Sucesso (Reserva Confirmada)
-        Portal-->>Condomino: Exibe confirmação na tela
-        NotifSvc->>Condomino: Envia E-mail de Confirmação com detalhes
-    end
-    deactivate BookingSvc
+    class Unidade {
+        +UUID id
+        +String bloco
+        +String numero
+        +TipoUnidade tipo
+        +Decimal taxaCondominialCustomizada
+    }
+
+    class Morador {
+        +UUID id
+        +String cpf
+        +String telefone
+        +TipoMorador tipo
+        +Boolean ativo
+    }
+
+    class Veiculo {
+        +UUID id
+        +String placa
+        +String modelo
+        +String cor
+    }
+
+    class Boleto {
+        +UUID id
+        +String mesReferencia
+        +Date dataVencimento
+        +Decimal valor
+        +StatusBoleto status
+        +String codigoBarras
+        +String identificadorGateway
+    }
+
+    class AreaComum {
+        +UUID id
+        +String nome
+        +Integer capacidade
+        +String regrasUso
+        +Time horarioInicio
+        +Time horarioFim
+        +Integer antecedenciaMinimaHoras
+    }
+
+    class Reserva {
+        +UUID id
+        +Date dataReserva
+        +Time horaInicio
+        +Time horaFim
+        +StatusReserva status
+    }
+
+    class Ocorrencia {
+        +UUID id
+        +CategoriaOcorrencia categoria
+        +String descricao
+        +StatusOcorrencia status
+        +DateTime dataCriacao
+    }
+
+    class Visitante {
+        +UUID id
+        +String nome
+        +String documento
+    }
+
+    class PreAutorizacao {
+        +UUID id
+        +Date dataPrevista
+        +StatusPreAutorizacao status
+    }
+
+    class RegistroAcesso {
+        +UUID id
+        +DateTime dataHoraEntrada
+        +DateTime dataHoraSaida
+        +UUID funcionarioResponsavelId
+    }
+
+    Usuario <|-- Morador
+    Unidade "1" -- "0..*" Morador : abriga >
+    Unidade "1" -- "0..*" Veiculo : possui >
+    Unidade "1" -- "0..*" Boleto : faturada em >
+    Morador "1" -- "0..*" Reserva : solicita >
+    AreaComum "1" -- "0..*" Reserva : aloca >
+    Morador "1" -- "0..*" Ocorrencia : registra >
+    Morador "1" -- "0..*" PreAutorizacao : autoriza >
+    PreAutorizacao "0..1" -- "0..1" RegistroAcesso : origina >
+    Visitante "1" -- "0..*" RegistroAcesso : realiza >
+    Unidade "1" -- "0..*" RegistroAcesso : destino >
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### ADR-01: Autenticação, Autorização (RBAC) e Gerenciamento de Sessão
-* **Contexto**: RF01, RF02, RF03, RNF01, RNF02. O sistema possui 4 perfis bem definidos (Síndico, Condômino, Funcionário, Administrador) com níveis de acesso distintos.
-* **Decisão**: 
-  1. A autenticação será centralizada no **Módulo de Autenticação e Gestão de Identidades**.
-  2. Implementação do modelo **RBAC (Role-Based Access Control)** para controle granular de permissões por perfil em todas as chamadas de API.
-  3. Armazenamento de credenciais utilizando algoritmo de hashing criptográfico unidirecional seguro com sal (conforme especificado em RNF02 - `bcrypt`).
-  4. Encerramento automático de sessões inativas após 30 minutos contínuos sem requisições (RNF01), controlado por via de tokens de acesso com expiração curta e renovação vinculada à atividade do usuário.
+### ADR 01: Modularização Interna Orientada a Domínios com Comunicação Assíncrona para Eventos
+* **Contexto:** O sistema necessita lidar com regras distintas (financeiro, reservas, portaria, ocorrências) sem gerar forte acoplamento que impeça a evolução independente.
+* **Decisão:** Adotar uma arquitetura orientada a componentes/módulos bem delimitados (Domain-Driven Boundary). A comunicação direta para dados de consulta é feita por interfaces conceituais internas, enquanto ações disparadas por eventos (ex.: boleto pago, comunicado publicado, alteração de status) utilizam um Barramento Interno de Eventos para integração assíncrona.
+* **Consequências:** 
+  * *Positivas:* Alta manutenibilidade, isolamento de falhas, facilidade para futura extração de microserviços caso haja pico de carga na portaria ou reservas.
+  * *Negativas:* Ligeiro aumento na complexidade de orquestração de eventos internos.
 
-### ADR-02: Padrão Transacional de Processamento e Auditoria Financeira
-* **Contexto**: RF09-RF15, RNF03, RNF05, RNF11. Operações financeiras envolvem lotes massivos, integrações externas de pagamento e exigentem auditoria irrestrita.
-* **Decisão**:
-  1. **Isolamento de Dados Sensíveis**: Conformidade estrita com PCI-DSS (RNF03). Nenhum dado de cartão de crédito será trafegado ou armazenado na base local; todo o checkout e tokenização são delegados ao *Gateway de Pagamento Externo*.
-  2. **Transacionalidade Parcial em Lote**: A geração de boletos em lote (RNF11) adotará o padrão de isolamento por unidade (*Unit-level Transactional Isolation*). A falha no processamento individual de uma unidade não anula o lote inteiro, registrando-se o status com sucesso parcial e gerando log de erro explícito por unidade afetada.
-  3. **Imutabilidade de Trilha de Auditoria**: Qualquer gravação, liquidação ou alteração manual de cobrança (RF14) dispara obrigatoriamente um evento gravado pelo **Serviço de Rastreabilidade** em tabela com controle de escrita append-only (sem permissão de `UPDATE` ou `DELETE`), identificando o operador, carimbo de tempo e payload alterado (RNF05).
+### ADR 02: Padrão de Integração com Gateway de Pagamento via Tokenização e Webhooks (Conformidade PCI-DSS)
+* **Contexto:** RF11, RF12, RNF03 e RNF11 exigem processamento financeiro e notificação automática sem retenção de dados sensíveis de pagamento.
+* **Decisão:** Implementar um *Adaptador de Integração de Pagamentos* que delega todo o manuseio de dados de pagamento (cartão/boleto) diretamente ao Gateway parceiro. O sistema local armazenará apenas o `identificadorGateway`, o status da transação e o código de barras gerado. O recebimento de status de pagamento será via Webhook assíncrono idempotente.
+* **Consequências:**
+  * *Positivas:* Cumprimento estrito do RNF03 (PCI-DSS), reduzindo drasticamente o escopo de auditoria de segurança.
+  * *Negativas:* Dependência da disponibilidade de rede para webhook do Gateway externos.
 
-### ADR-03: Processamento Assíncrono de Notificações
-* **Contexto**: RF17, RF24, HU02, HU04, HU09, HU10. Múltiplos eventos do sistema exigem o disparo automático de e-mails (novos comunicados, alterações de status de ocorrência, emissão de boletos, confirmação de reservas).
-* **Decisão**:
-  1. Adotar desacoplamento via **Filas de Mensagens / Notificações Assíncronas**. O serviço acionador (ex: Serviço de Comunicados) publica um evento de notificação e responde imediatamente à interface do usuário, evitando bloqueios na camada HTTP.
-  2. O **Serviço Assíncrono de Notificação** consome os eventos e gerencia as retentativas (*retry pattern*) junto ao provedor de e-mail externo, isolando a disponibilidade do sistema de eventuais instabilidades na entrega de mensagens.
+### ADR 03: Padrão de Trilha de Auditoria Imutável para Operações Financeiras e Acessos
+* **Contexto:** RNF05 e RNF06 exigem registro imutável com usuário, data e hora de todas as operações financeiras e registros de visitantes.
+* **Decisão:** Implementar um *Serviço de Logs e Auditoria Imutável* separado do banco operacional principal. Todo registro gravado nesse componente utiliza uma estrutura de dados de "append-only" (apenas inserção, sem suporte a alteração ou exclusão por usuários/sistema).
+* **Consequências:**
+  * *Positivas:* Garantia de não repúdio, total conformidade com rastreabilidade e facilidade de auditoria legal.
+  * *Negativas:* Necessidade de governança rigorosa de capacidade de armazenamento à medida que os acessos crescem.
 
-### ADR-04: Governança de Dados, Privacidade e Retenção (LGPD & Backup)
-* **Contexto**: RF07, RNF04, RNF06, RNF12, RNF13. A solução manipula dados pessoais (nome, CPF, veículo, fotos, históricos de acesso).
-* **Decisão**:
-  1. **Preservação do Histórico de Moradores**: Para atender ao RF07 e à LGPD (RNF04), morador desativado terá seu acesso revogado e seus dados pessoais mantidos sob marcação de inatividade (`IsActive = false`), garantindo a integridade dos históricos financeiros e de acesso associados, com restrição de visibilidade apenas a auditorias legais e ao síndico.
-  2. **Política de Log e Rastreabilidade de Visitantes**: Todo acesso registrado na portaria (RNF06) é auditável e imutável.
-  3. **Estratégia de Backup e Retenção**: A infraestrutura deve realizar snapshots e backups lógicos automatizados diariamente (RNF12), armazenados com criptografia em repouso e política de retenção mínima de 90 dias.
+### ADR 04: Tratamento Transacional Resiliente para Processamento em Lote de Boletos
+* **Contexto:** RF13 e RNF11 requerem emissão em lote de boletos com resiliência a falhas parciais, sem corromper as emissões bem-sucedidas.
+* **Decisão:** O processamento em lote utilizará uma estratégia de execução isolada por unidade (*Unit of Work per Account*). Cada boleto é processado em sua própria transação atômica local. As unidades com falha de processamento ou integração serão capturadas e compiladas em um relatório resumido de execução sem estornar a geração dos boletos concluídos com êxito.
+* **Consequências:**
+  * *Positivas:* Cumprimento total do RNF11, evitando o travamento do faturamento do condomínio inteiro por erro em uma única unidade.
+  * *Negativas:* Exige do Síndico a verificação e reprocessamento manual do lote das unidades pendentes/falhas.
 
-### ADR-05: Controle de Concorrência e Reservas de Áreas Comuns
-* **Contexto**: RF26, RF27, HU09. Impedir que dois condôminos reservem o mesmo espaço no mesmo intervalo de tempo simultaneamente.
-* **Decisão**:
-  1. Aplicação de **Locking Pessimista/Otimista no Mecanismo de Persistência** no momento da validação de choque de horários (`HoraInicio` e `HoraFim`).
-  2. A verificação de disponibilidade e a criação do registro de reserva ocorrem dentro do mesmo bloco de isolamento de transação, garantindo consistência estrita (*serializable*) contra sobreposições (RF27).
+### ADR 05: Estratégia de Bloqueio Concorrente para Reserva de Áreas Comuns
+* **Contexto:** RF27 estabelece que o sistema deve impedir rigorosamente reservas sobrepostas para uma mesma área comum no mesmo intervalo de tempo.
+* **Decisão:** Utilizar bloqueio pessimista (*Pessimistic Locking*) ou transações com isolamento *Serializable* na Engine de Reservas durante o processo de checagem e confirmação da reserva.
+* **Consequências:**
+  * *Positivas:* Elimina condição de corrida (Race Conditions) ao tentar reservar o mesmo salão de festas no mesmo segundo.
+  * *Negativas:* Breve retenção de bloqueio no registro da área comum durante a requisição de reserva.
 
 ---
 
@@ -224,104 +288,151 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 | :--- | :--- | :--- | :--- |
-| **Portal Web / Interface Móvel** | Apresentação responsiva das funcionalidades para Síndico, Condômino e Funcionário. | API Gateway | HU01 a HU14; RNF09, RNF10 |
-| **Módulo de Autenticação e Gestão de Identidades (IAM/RBAC)** | Autenticar usuários, aplicar hash `bcrypt`, gerenciar expiração de sessão (30 min) e impor controle de acesso baseado em papéis. | Todos os Serviços Core, Serviço de Auditoria | RF01, RF02, RF03; RNF01, RNF02 |
-| **Gestor de Cadastros Base** | Administrar o ciclo de vida de unidades, moradores (proprietário/inquilino), desativação lógica e veículos. | API Gateway, Serviço de Auditoria | HU01; RF04, RF05, RF06, RF07, RF08 |
-| **Módulo Financeiro e de Cobranças** | Gerenciar taxas, emissão de boletos em lote, atualização de status de boletos, registros manuais e painel de inadimplência. | Gateway Financeiro Externo, Serviço Assíncrono de Notificação, Serviço de Auditoria | HU02, HU03, HU08; RF09, RF10, RF12, RF13, RF14, RF15; RNF05, RNF08, RNF11 |
-| **Adaptador de Integrador Financeiro** | Isolar a integração com Gateway de Pagamento externo, emitir códigos de barra e processar webhooks de confirmação (PCI-DSS). | Módulo Financeiro, Gateway de Pagamento Externo | HU08; RF11, RF12; RNF03 |
-| **Módulo de Comunicação e Assembleias** | Gerenciar publicação/fixação de comunicados, agendamento de assembleias, registro de atas e upload de anexos em PDF. | Repositório de Documentos, Serviço Assíncrono de Notificação | HU04, HU06, HU12; RF16, RF18, RF19, RF20; RNF13 |
-| **Módulo de Ocorrências** | Permitir abertura de chamados (com fotos), triagem pelo síndico, atualização de status e acompanhamento pelo condômino. | Repositório de Documentos, Serviço Assíncrono de Notificação | HU05, HU10; RF21, RF22, RF23, RF24; RNF13 |
-| **Módulo de Reserva de Espaços Comuns** | Cadastrar áreas comuns, gerenciar regras/horários, prevenir reservas sobrepostas e exibir calendário de uso. | Serviço Assíncrono de Notificação | HU07, HU09; RF25, RF26, RF27, RF28, RF29; RNF08 |
-| **Módulo de Portaria e Controle de Acesso** | Registrar entradas e saídas de visitantes, pré-autorizações por condôminos e consulta de histórico na portaria. | Serviço de Auditoria | HU11, HU13, HU14; RF30, RF31, RF32, RF33; RNF06 |
-| **Serviço Assíncrono de Notificação** | Processar filas de e-mail para envio de boletos, avisos de comunicados, confirmações de reservas e mudanças de ocorrências. | Provedor Externo de E-mail | HU02, HU04, HU05, HU06, HU07, HU09, HU10; RF17, RF24 |
-| **Serviço de Rastreabilidade e Logs de Auditoria** | Registrar de forma imutável todas as transações financeiras, alterações críticas, acessos de visitantes e logs do sistema. | Todos os Serviços Core | RNF05, RNF06, RNF13 |
-| **Repositório de Documentos e Anexos** | Armazenar e servir arquivos anexos como atas de assembleias (PDF) e fotos de ocorrências de forma segura. | Módulo de Comunicação, Módulo de Ocorrências | HU06, HU10, HU12; RF19, RF21 |
+| **Módulo de Autenticação e Gestão de Acessos** | Controlar a autenticação, encerramento de sessão, verificação de perfis de acesso e políticas de segurança de senha e inatividade. | Todos os módulos do sistema (como autorizador de chamadas) | HU01, RNF01, RNF02 |
+| **Módulo de Gestão de Unidades e Moradores** | Manter cadastros de blocos, unidades, moradores (proprietários/inquilinos), desativações sem perda de histórico e veículos vinculados. | Módulo de Autenticação, Subsistema Financeiro, Módulo de Visitantes | HU01, RF04, RF05, RF06, RF07, RF08, RNF04 |
+| **Subsistema Financeiro e de Cobrança** | Configurar taxas, gerar boletos individuais e em lote, controlar status financeiro, gerar painel de inadimplência e baixa manual. | Adaptador de Pagamentos, Servidor de Notificações, Serviço de Auditoria, Módulo de Unidades | HU02, HU03, HU08, RF09, RF10, RF12, RF13, RF14, RF15, RNF05, RNF08, RNF11 |
+| **Adaptador de Integração de Pagamento** | Mediar comunicação segura com o Gateway externo para emissão de cobranças e recepção de Webhooks de baixa de boletos. | Gateway de Pagamento Externo, Subsistema Financeiro | HU08, RF11, RNF03 |
+| **Módulo de Comunicados e Assembleias** | Gerenciar comunicados (com fixação topo), agendamento de assembleias, publicação de atas e anexos. | Servidor de Notificações, Módulo de Unidades e Moradores | HU04, HU06, HU12, RF16, RF17, RF18, RF19, RF20 |
+| **Módulo de Gestão de Ocorrências** | Permitir criação, atualização de ciclo de vida (status), categorização e acompanhamento de reclamações e solicitações. | Servidor de Notificações, Módulo de Unidades e Moradores | HU05, HU10, RF21, RF22, RF23, RF24 |
+| **Engine de Reserva de Áreas Comuns** | Gerenciar espaços, horários, capacidade, regras e realizar o controle concorrente de agendamentos e cancelamentos. | Servidor de Notificações, Módulo de Unidades e Moradores | HU07, HU09, RF25, RF26, RF27, RF28, RF29, RNF08 |
+| **Módulo de Controle de Acesso de Visitantes** | Registrar entradas e saídas na portaria, consultar e vincular pré-autorizações e disponibilizar histórico de acessos. | Serviço de Auditoria, Módulo de Unidades e Moradores | HU11, HU13, HU14, RF30, RF31, RF32, RF33, RNF04, RNF06 |
+| **Servidor de Notificações** | Formatar e disparar e-mails para boletos, comunicados, avisos de assembleias e alterações de ocorrências/reservas. | Módulo Financeiro, Módulo de Comunicados, Módulo de Ocorrências, Engine de Reservas | HU02, HU04, HU05, HU06, HU09, HU10, RF17, RF24 |
+| **Serviço de Logs e Auditoria Imutável** | Registrar eventos de segurança, operações financeiras, acessos de visitantes e ações críticas do sistema sem permissão de alteração. | Subsistema Financeiro, Módulo de Visitantes, Módulo de Autenticação | RNF05, RNF06, RNF13 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-### Bloqueios Identificados
-1. **Regras de Cancelamento Financeiro e Reversão de Boletos Emitidos em Lote**:
-   * *Descrição*: Os requisitos (RF10, RF13) cobrem a geração de boletos, mas não detalham o fluxo transacional quando uma taxa condominial é configurada incorretamente ou quando um boleto emitido em lote precisa ser cancelado/substituído antes do vencimento.
-   * *Impacto*: Riscos de inconsistência de cobrança no Gateway Financeiro Externo e divergência nos dados do painel de inadimplência (RF15).
-
-2. **Politica de Expiração e Validade Jurídica para Pré-Autorizações de Visitantes**:
-   * *Descrição*: A HU11 e o RF31 permitem que condôminos pré-autorizem visitantes por data, porém não especificam o comportamento caso o visitante compareça em horário/data diferente da agendada ou a política de retenção desses registros em conformidade com a LGPD.
-   * *Impacto*: Gargalo de segurança no controle de acesso pela portaria (HU13) e riscos de responsabilidade sobre privacidade de dados de terceiros.
-
-### Pendências de Especificação
-1. **Formato e Limite do Upload de Arquivos**:
-   * *Descrição*: HU06 e HU10 mencionam anexar arquivos PDF (atas) e fotos (ocorrências), mas não estabelecem limites de tamanho por arquivo, cota por condomínio ou extensoes permitidas.
-   * *Ação Necessária*: Definir especificação técnica de payload máximo e tipos de arquivos aceitos.
-2. **Critérios de Tolerância e Reagendamento na Emissão Parcial de Boletos (RNF11)**:
-   * *Descrição*: O RNF11 estabelece que a emissão em lote deve registrar quais unidades falharam. Falta definir se haverá mecanismo automatizado de *retry* (re-tentativa) ou se o fluxo dependerá exclusivamente de intervenção manual do síndico.
+1. **Definição de Política de Tolerância a Falhas/Offline para Portaria (HU13 / HU14):**
+   * *Pendência:* Os requisitos assumem operabilidade 24/7 online (RNF07), mas não especificam o comportamento esperado do controle de visitantes na portaria caso haja interrupção temporária na conexão de internet local do condomínio.
+2. **Protocolo de Expiração de Pré-Autorizações de Visitantes (HU11 / HU14):**
+   * *Pendência:* O RF31 especifica apenas a informação da "data prevista". Não foi definido se pré-autorizações não utilizadas no dia expiram automaticamente à meia-noite ou se permanecem válidas por período configurável.
+3. **Mecanismo de Retentativa e Conciliação em Falhas de Notificação (HU02 / HU04):**
+   * *Pendência:* Caso o servidor de SMTP/notificação falhe durante o disparo de boletos em lote ou comunicados, não está especificada a política de nova tentativa ou painel de envio pendente/rejeitado.
+4. **Política de Retenção e Anonimização de Dados Pessoais (LGPD / RNF04):**
+   * *Pendência:* Embora o RF07 oriente a desativação de moradores preservando histórico e o RNF04 cite a LGPD, falta especificar o ciclo de vida e a janela de expurgo/anonimização dos dados de visitantes e ex-moradores após encerramento do vínculo contratual.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-A matriz a seguir garante o mapeamento de 100% dos Requisitos Funcionais e Não Funcionais na arquitetura proposta.
+A matriz abaixo confirma a rastreabilidade total de todos os Requisitos Funcionais (RF01-RF33) e Requisitos Não Funcionais (RNF01-RNF13) no modelo arquitetural proposto.
 
-| ID Requisito | Tipo | Coberto pelo Componente / Mecanismo Arquitetural | Status |
-| :--- | :--- | :--- | :--- |
-| **RF01** | Funcional | Módulo de Autenticação e Gestão de Identidades (RBAC) | Coberto |
-| **RF02** | Funcional | Módulo de Autenticação e Gestão de Identidades (RBAC) | Coberto |
-| **RF03** | Funcional | Módulo de Autenticação e Gestão de Identidades | Coberto |
-| **RF04** | Funcional | Gestor de Cadastros Base | Coberto |
-| **RF05** | Funcional | Gestor de Cadastros Base | Coberto |
-| **RF06** | Funcional | Gestor de Cadastros Base | Coberto |
-| **RF07** | Funcional | Gestor de Cadastros Base (Flag de Desativação Lógica) | Coberto |
-| **RF08** | Funcional | Gestor de Cadastros Base | Coberto |
-| **RF09** | Funcional | Módulo Financeiro e de Cobranças | Coberto |
-| **RF10** | Funcional | Módulo Financeiro e de Cobranças | Coberto |
-| **RF11** | Funcional | Adaptador de Integrador Financeiro | Coberto |
-| **RF12** | Funcional | Adaptador de Integrador Financeiro / Webhooks | Coberto |
-| **RF13** | Funcional | Módulo Financeiro e de Cobranças (Emissão em Lote) | Coberto |
-| **RF14** | Funcional | Módulo Financeiro e de Cobranças / Serviço de Auditoria | Coberto |
-| **RF15** | Funcional | Módulo Financeiro e de Cobranças (Painel de Inadimplência) | Coberto |
-| **RF16** | Funcional | Módulo de Comunicação e Assembleias | Coberto |
-| **RF17** | Funcional | Serviço Assíncrono de Notificação | Coberto |
-| **RF18** | Funcional | Módulo de Comunicação e Assembleias | Coberto |
-| **RF19** | Funcional | Módulo de Comunicação e Assembleias / Repositório de Docs | Coberto |
-| **RF20** | Funcional | Módulo de Comunicação e Assembleias | Coberto |
-| **RF21** | Funcional | Módulo de Ocorrências / Repositório de Docs | Coberto |
-| **RF22** | Funcional | Módulo de Ocorrências | Coberto |
-| **RF23** | Funcional | Módulo de Ocorrências | Coberto |
-| **RF24** | Funcional | Serviço Assíncrono de Notificação | Coberto |
-| **RF25** | Funcional | Módulo de Reserva de Espaços Comuns | Coberto |
-| **RF26** | Funcional | Módulo de Reserva de Espaços Comuns | Coberto |
-| **RF27** | Funcional | Módulo de Reserva de Espaços Comuns (Locking de Concorrência) | Coberto |
-| **RF28** | Funcional | Módulo de Reserva de Espaços Comuns | Coberto |
-| **RF29** | Funcional | Módulo de Reserva de Espaços Comuns (Calendário Consolidado) | Coberto |
-| **RF30** | Funcional | Módulo de Portaria e Controle de Acesso | Coberto |
-| **RF31** | Funcional | Módulo de Portaria e Controle de Acesso | Coberto |
-| **RF32** | Funcional | Módulo de Portaria e Controle de Acesso | Coberto |
-| **RF33** | Funcional | Módulo de Portaria e Controle de Acesso / Serviço de Auditoria | Coberto |
-| **RNF01** | Não Funcional | Módulo de Autenticação (Sessão 30 min) | Coberto |
-| **RNF02** | Não Funcional | Módulo de Autenticação (Hash bcrypt) | Coberto |
-| **RNF03** | Não Funcional | Adaptador de Integrador Financeiro (Isolamento PCI-DSS) | Coberto |
-| **RNF04** | Não Funcional | Diretriz LGPD em Gestor de Cadastros e Portaria | Coberto |
-| **RNF05** | Não Funcional | Serviço de Rastreabilidade e Logs de Auditoria (Trilha Imutável) | Coberto |
-| **RNF06** | Não Funcional | Serviço de Rastreabilidade (Logs de Visitantes) | Coberto |
-| **RNF07** | Não Funcional | Infraestrutura e Arquitetura de Serviços (Disponibilidade 99,5%) | Coberto |
-| **RNF08** | Não Funcional | Módulo Financeiro e Reserva (Desempenho <= 3s via Índices) | Coberto |
-| **RNF09** | Não Funcional | Camada de Apresentação (Interface Responsiva Web/Mobile) | Coberto |
-| **RNF10** | Não Funcional | Camada de Apresentação (Suporte Multi-browser) | Coberto |
-| **RNF11** | Não Funcional | Módulo Financeiro (Emissão Transacional isolada em Lote) | Coberto |
-| **RNF12** | Não Funcional | Infraestrutura de Backup Automatizado (Diário / Retenção 90 dias) | Coberto |
-| **RNF13** | Não Funcional | Serviço de Rastreabilidade e Logs de Auditoria | Coberto |
+| Requisito | Atendido por (Módulo / ADR) | Rastreabilidade na HU |
+| :--- | :--- | :--- |
+| **RF01** | Módulo de Autenticação e Gestão de Acessos | HU01 |
+| **RF02** | Módulo de Autenticação e Gestão de Acessos | Visão Geral |
+| **RF03** | Módulo de Autenticação e Gestão de Acessos | Visão Geral |
+| **RF04** | Módulo de Gestão de Unidades e Moradores | HU01 |
+| **RF05** | Módulo de Gestão de Unidades e Moradores | HU01 |
+| **RF06** | Módulo de Gestão de Unidades e Moradores | HU01 |
+| **RF07** | Módulo de Gestão de Unidades e Moradores | HU01 |
+| **RF08** | Módulo de Gestão de Unidades e Moradores | HU01 |
+| **RF09** | Subsistema Financeiro e de Cobrança | HU02 |
+| **RF10** | Subsistema Financeiro e de Cobrança | HU02, HU08 |
+| **RF11** | Adaptador de Integração de Pagamento | HU08 / ADR 02 |
+| **RF12** | Subsistema Financeiro + Adaptador de Pagamento | HU08 / ADR 02 |
+| **RF13** | Subsistema Financeiro e de Cobrança | HU02 / ADR 04 |
+| **RF14** | Subsistema Financeiro e de Cobrança | HU08 |
+| **RF15** | Subsistema Financeiro e de Cobrança | HU03 |
+| **RF16** | Módulo de Comunicados e Assembleias | HU04 |
+| **RF17** | Servidor de Notificações | HU04 |
+| **RF18** | Módulo de Comunicados e Assembleias | HU06 |
+| **RF19** | Módulo de Comunicados e Assembleias | HU06 |
+| **RF20** | Módulo de Comunicados e Assembleias | HU12 |
+| **RF21** | Módulo de Gestão de Ocorrências | HU10 |
+| **RF22** | Módulo de Gestão de Ocorrências | HU05 |
+| **RF23** | Módulo de Gestão de Ocorrências | HU05 |
+| **RF24** | Servidor de Notificações | HU05, HU10 |
+| **RF25** | Engine de Reserva de Áreas Comuns | HU07 |
+| **RF26** | Engine de Reserva de Áreas Comuns | HU09 |
+| **RF27** | Engine de Reserva de Áreas Comuns | HU07, HU09 / ADR 05 |
+| **RF28** | Engine de Reserva de Áreas Comuns | HU07, HU09 |
+| **RF29** | Engine de Reserva de Áreas Comuns | HU07 |
+| **RF30** | Módulo de Controle de Acesso de Visitantes | HU13 |
+| **RF31** | Módulo de Controle de Acesso de Visitantes | HU11, HU14 |
+| **RF32** | Módulo de Controle de Acesso de Visitantes | HU13, HU14 |
+| **RF33** | Módulo de Controle de Acesso de Visitantes | HU13 |
+| **RNF01** | Módulo de Autenticação e Gestão de Acessos | Todas |
+| **RNF02** | Módulo de Autenticação e Gestão de Acessos | Todas |
+| **RNF03** | Adaptador de Integração de Pagamento | HU08 / ADR 02 |
+| **RNF04** | Todos os Módulos (Governança de Dados) | HU01, HU11, HU13 |
+| **RNF05** | Serviço de Logs e Auditoria Imutável | HU02, HU03, HU08 / ADR 03 |
+| **RNF06** | Serviço de Logs e Auditoria Imutável | HU13, HU14 / ADR 03 |
+| **RNF07** | Infraestrutura e Gateway de Borda | Todas |
+| **RNF08** | Subseções de Consulta de Performance (Cache / Índices) | HU03, HU07, HU09 |
+| **RNF09** | Frontend / Camada de Apresentação Responsiva | HU06, HU10, HU11, HU12, HU14 |
+| **RNF10** | Compatibilidade de Interface Web | HU06, HU12 |
+| **RNF11** | Subsistema Financeiro e de Cobrança | HU02 / ADR 04 |
+| **RNF12** | Infraestrutura e Serviços Transversais | Governança |
+| **RNF13** | Serviço de Logs e Auditoria Imutável | HU02, HU04, HU05, HU10, HU13 |
 
 ---
 
 ## 7. Gap Analysis
 
-Esta seção consolida as lacunas encontradas nos requisitos de entrada, os riscos arquiteturais derivados e as ações necessárias recomendadas para a fase de construção.
+A análise a seguir detalha as omissões ou ambiguidades identificadas na especificação de requisitos, apontando seus impactos no design da arquitetura e as ações recomendadas.
 
-| # | Gap / Lacuna Identificada | Impacto Arquitetural / Téchnico | Ação Recomendada |
-| :--- | :--- | :--- | :--- |
-| **1** | **Comunicação Assíncrona e Webhook Fallback para Boletos (RF11, RF12)** | Risco de perda de confirmações de pagamento caso o webhook do Gateway de Pagamento falhe ou fique indisponível temporariamente. | Implementar uma tarefa programada (*Cron/Worker*) de reconciliação bancária periódica para consultar o status de boletos pendentes diretamente na API do Gateway. |
-| **2** | **Tratamento de Sobrecarga no Envio Massivo de E-mails (HU02, HU04)** | O disparo de comunicados ou boletos para centenas de condôminos simultaneamente pode causar gargalos e bloqueios no servidor SMTP ou marcar o domínio como SPAM. | Adotar arquitetura de enfileiramento com *rate limiting* e integrar com serviço terceirizado especializado em e-mails transacionais. |
-| **3** | **Exportação do Painel de Inadimplência (HU03, RNF08)** | Requisições concorrentes de exportação de grandes volumes em CSV podem elevar o consumo de memória e comprometer a meta de tempo de resposta (<3s). | Gerar os arquivos CSV via processamento assíncrono ou com consulta otimizada paginada em memória via *streaming*. |
-| **4** | **Gestão de Exceções no Registro de Visitas sem Pré-Autorização (RF30, RF31)** | Falta definir no fluxo de portaria o procedimento quando o visitante chega sem pré-autorização e o condômino não atende a interfonia/contato. | Incluir na interface da portaria um status temporário de "Aguardando Liberação" com registro de tentativa para fins de auditoria. |
-| **5** | **Política de Retenção e Anonimização de Pessoas Físicas (RNF04 - LGPD)** | Manter dados de condôminos/moradores antigos indefinidamente viola o princípio da minimização da LGPD se não houver base legal especificada. | Definir regra de negócio para anonimização automatizada dos dados pessoais de ex-moradores após o prazo legal caduco de guarda financeira/jurídica. |
+```
++---------------------------------------------------------------------------------------------------------+
+| GAP 01: Tratamento de Estornos, Cancelamento de Boletos e Pagamentos Duplicados                          |
++---------------------------------------------------------------------------------------------------------+
+| Detalhamento: O sistema contempla emissão e baixa de boletos, mas não especifica regras de negócio      |
+| para o cancelamento de títulos emitidos incorretamente ou o tratamento de Webhooks informando estornos |
+| ou pagamentos duplicados pelo mesmo condômino.                                                          |
+|                                                                                                         |
+| Impacto Arquitetural: O Subsistema Financeiro pode ficar com inconsistência no painel de inadimplência |
+| ou na trilha de auditoria caso ocorra uma alteração de estado não prevista pelo fluxo do sistema.       |
+|                                                                                                         |
+| Ação Recomendada: Incluir os estados 'CANCELADO' e 'ESTORNADO' na máquina de estados da entidade        |
+| Boleto e estender a API do Adaptador de Pagamento para tratar os eventos de estorno e cancelamento.    |
++---------------------------------------------------------------------------------------------------------+
+```
+
+```
++---------------------------------------------------------------------------------------------------------+
+| GAP 02: Limite de Capacidade de Anexos e Armazenamento em Ocorrências e Atas de Assembleia              |
++---------------------------------------------------------------------------------------------------------+
+| Detalhamento: Os critérios de aceite das HUs HU06 e HU10 permitem anexar fotos em ocorrências e documentos |
+| em PDF nas atas de assembleias, contudo não estabelecem limites de tamanho ou quantidade por upload.    |
+|                                                                                                         |
+| Impacto Arquitetural: Risco de degradação da disponibilidade (RNF07), estouro de cota de armazenamento e |
+| falha no tempo de resposta HTTP durante uploads desproporcionais de arquivos não compactados.           |
+|                                                                                                         |
+| Ação Recomendada: Estabelecer um componente dedicado de validação de mídias com cota máxima de upload  |
+| (ex.: 5MB por arquivo em PDF/imagem) com pré-processamento/compactação antes da gravação persistente.  |
++---------------------------------------------------------------------------------------------------------+
+```
+
+```
++---------------------------------------------------------------------------------------------------------+
+| GAP 03: Tratamento para Concorrência de Entrada Presencial e Pré-Autorização de Visitantes              |
++---------------------------------------------------------------------------------------------------------+
+| Detalhamento: A HU11 permite ao condômino pré-autorizar ou cancelar uma visita. Porém, se o condômino |
+| cancelar a autorização exatamente no momento em que o visitante estiver se identificando na portaria,   |
+| o sistema não tem regra explicitada para tratar a transição de estado na portaria.                      |
+|                                                                                                         |
+| Impacto Arquitetural: Potencial inconsistência na UI da Portaria (HU13/HU14), exibindo pré-autorização  |
+| obsoleta que já foi revogada no portal pelo morador.                                                    |
+|                                                                                                         |
+| Ação Recomendada: Implementar sincronização por canal de eventos instantâneo para a tela da portaria e |
+| validação no instante da confirmação do registro de entrada do visitante pelo funcionário.              |
++---------------------------------------------------------------------------------------------------------+
+```
+
+```
++---------------------------------------------------------------------------------------------------------+
+| GAP 04: Tratamento da LGPD na Gestão do Histórico de Acessos de Visitantes                              |
++---------------------------------------------------------------------------------------------------------+
+| Detalhamento: O RF33 exige a manutenção do histórico de acessos de visitantes, e o RNF06 exige registro |
+| imutável, enquanto o RNF04 cita a conformidade com a LGPD. Contudo, não é especificado por quanto tempo |
+| os dados identificáveis (nome, documento) de visitantes casuais devem ser mantidos armazenados.         |
+|                                                                                                         |
+| Impacto Arquitetural: Armazenar dados pessoais por tempo indeterminado pode violar o princípio da       |
+| minimização e limitação da conservação previsto na LGPD.                                                |
+|                                                                                                         |
+| Ação Recomendada: Definir um processo automatizado no Serviço de Auditoria para anonimização dos        |
+| dados pessoais dos registros de visitantes após a expiração do prazo legal de guarda recomendado pelo   |
+| departamento de governança jurídica do projeto.                                                         |
++---------------------------------------------------------------------------------------------------------+
+```

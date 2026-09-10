@@ -1,275 +1,319 @@
 # Relatório Técnico de Arquitetura de Software
 
 ## 1. Identificação das HUs
-Lista das Histórias de Usuário (HU) com breve resumo e referência aos critérios de aceite:
+
+Resumo das Histórias de Usuário com responsabilidades funcionais-alvo (mapeamento breve):
 
 - HU01 — Cadastrar produto  
-  - Campos: nome (obrigatório), quantidade inicial (obrigatório), preço de custo.  
-  - Critérios: impedir duplicidade por nome; produto aparece imediatamente na tela de consulta.
+  Responsabilidade: permitir criação de produto com nome, quantidade inicial e preço de custo; validações de campos obrigatórios e unicidade por nome; tornar disponível imediatamente na consulta.  
+  Critérios-chave: campos obrigatórios, sem duplicidade, atualização imediata da visão de estoque.
 
 - HU02 — Registrar entrada de mercadoria  
-  - Seleção do produto via lista/busca; quantidade inteira positiva; atualização imediata do saldo; registro no histórico com data/hora.
+  Responsabilidade: lançar entradas (produto + quantidade + data); atualizar saldo; registrar histórico com data/hora/usuário.  
+  Critérios-chave: seleção por lista/busca, quantidade positiva, atualização imediata, histórico com timestamp.
 
 - HU03 — Registrar saída de produto  
-  - Bloquear saída quando quantidade > saldo; atualização imediata; registrar no histórico com data/hora e usuário.
+  Responsabilidade: lançar saídas, validar saldo disponível (bloquear se insuficiente), atualizar saldo e histórico.  
+  Critérios-chave: validação de estoque, decremento imediato, registro cronológico.
 
 - HU04 — Ser alertado sobre estoque baixo  
-  - Alerta visual destacado quando saldo <= limite mínimo; alerta identifica produto e saldo; persiste até reposição.
+  Responsabilidade: exibir alerta persistente e destacado quando saldo <= limite mínimo configurado; identificar produto e saldo atual.  
+  Critérios-chave: destaque visual, persistência até reposição, identificação clara.
 
 - HU05 — Configurar limite mínimo de estoque por produto  
-  - Limite inteiro não negativo; alteração refletida imediatamente nos alertas.
+  Responsabilidade: editar limite mínimo (inteiro não negativo) por produto; refletir imediatamente nos alertas.  
+  Critérios-chave: validação de valor, efeito imediato.
 
 - HU06 — Consultar saldo atual do estoque  
-  - Tela com lista de produtos (nome, saldo, limite); destaque visual para abaixo do limite; ordenar por nome ou quantidade.
+  Responsabilidade: listar todos os produtos com nome, saldo e limite; destacar itens abaixo do limite; ordenação por nome/quantidade.  
+  Critérios-chave: listagem completa, destaque visual, ordenação.
 
 - HU07 — Consultar histórico de movimentações  
-  - Filtro por produto e intervalo de datas; registro com tipo, quantidade, data, hora e usuário; ordem cronológica decrescente por padrão.
+  Responsabilidade: filtros por produto e período; exibir tipo (entrada/saída), quantidade, data, hora e usuário; ordenação cronológica decrescente padrão.  
+  Critérios-chave: filtros e campos completos, ordenação padrão.
 
 - HU08 — Exportar dados de estoque e movimentações  
-  - Exportação CSV com todos os campos relevantes; escolha do diretório destino; confirmação de sucesso.
+  Responsabilidade: exportar CSV com todos campos relevantes; escolher diretório destino; confirmação de sucesso.  
+  Critérios-chave: CSV completo, seleção de diretório, confirmação.
 
-Relacionamento direto com os RFs: as HUs cobrem os RF01–RF12 (cadastro, edição, remoção, entradas/saídas, controle de limites, alertas, consulta, pesquisa, histórico e exportação).
+Relação direta com RFs e RNFs já está contemplada nas HUs acima (ver Seção 6 — Cobertura de Requisitos para rastreabilidade completa).
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-2.1 Diagrama de sequência: "Registrar saída de produto" (fluxo principal com verificação de estoque e persistência, incluindo auditoria e alerta)
+Diagrama de sequência representando o fluxo "Registrar saída de produto" (inclui autenticação, validação de saldo, persistência e emissão de alerta se necessário).
+
 ```mermaid
 sequenceDiagram
     autonumber
     participant Operador as Operador (UI)
-    participant App as Aplicação (Application Layer)
+    participant AppUI as Aplicação - Interface
     participant Auth as Serviço de Autenticação
-    participant Validador as ValidadorDeEstoque (Domain Service)
-    participant Repo as RepositórioProduto (Gateway)
-    participant Mov as ServiçoMovimentação (Domain/Application)
-    participant DB as PersistênciaLocal (Banco embarcado)
-    participant Alerta as GeradorDeAlerta (Notificador/UI)
-    participant Log as Auditoria (Registro de operações)
+    participant MovSvc as Serviço de Movimentação
+    participant ProdutoSvc as Serviço de Produto / Estoque
+    participant Repo as Repositório Persistente (DB embarcado)
+    participant Alerta as Gerenciador de Alertas
+    participant Audit as Registro de Auditoria
 
-    Operador->>App: Solicita registrar saída (produto, quantidade)
-    App->>Auth: Validar credenciais do usuário (token/session)
-    Auth-->>App: Usuário validado (id usuário)
-    App->>Repo: Ler saldo atual do produto
-    Repo->>DB: Consulta produto (id)
-    DB-->>Repo: Retorna produto com saldo
-    Repo-->>App: Saldo atual
-    App->>Validador: Verificar disponibilidade (saldo >= quantidade)
-    Validador-->>App: OK / Insuficiente
-    alt saldo insuficiente
-        App->>Operador: Retornar erro claro (quantidade > saldo)
-        Note over Operador,App: operação abortada, nenhum registro persistido
-    else saldo suficiente
-        App->>Mov: Criar registro de saída (tipo=SAÍDA, qtd, data/hora, usuário)
-        Mov->>Repo: Atualizar saldo do produto (decremento)
-        Repo->>DB: Transação: inserir movimentação; atualizar saldo
-        DB-->>Repo: Confirmação de escrita
-        Repo-->>Mov: Confirmação
-        Mov->>Log: Registrar auditoria (data/hora, usuário, operação)
-        Log-->>Mov: OK
-        Mov->>Alerta: Verificar se novo saldo <= limite mínimo
-        Alerta-->>App: Indica alerta a ser mostrado (produto, saldo)
-        App->>Operador: Confirmação de sucesso + exibir alerta (se houver)
+    Operador->>AppUI: Inicia operação de saída (seleciona produto, qtd)
+    AppUI->>Auth: Verifica sessão / credenciais
+    Auth-->>AppUI: Usuário autenticado (idUser)
+    AppUI->>MovSvc: Solicita registro de saída(prodId, qtd, data, idUser)
+    MovSvc->>ProdutoSvc: Solicita saldo atual para validação(prodId)
+    ProdutoSvc->>Repo: Consulta saldo atual(prodId)
+    Repo-->>ProdutoSvc: Retorna saldo atual
+    ProdutoSvc-->>MovSvc: Saldo atual (valor)
+    alt qtd <= saldo
+        MovSvc->>Repo: Inicia transação; grava movimento (tipo=saída, qty, timestamp, user)
+        Repo-->>MovSvc: Confirma gravação de movimento
+        MovSvc->>Repo: Atualiza saldo no registro de produto
+        Repo-->>MovSvc: Confirma atualização de saldo
+        MovSvc->>Audit: Registra entry com data/hora/usuário
+        Audit-->>MovSvc: Audit confirmado
+        MovSvc-->>AppUI: Sucesso (novo saldo)
+        AppUI->>Operador: Exibe confirmação e novo saldo
+        alt novoSaldo <= limiteMinimo
+            MovSvc->>Alerta: Notificar estoque baixo(prodId, novoSaldo, limite)
+            Alerta-->>AppUI: Push/Marca visual de alerta
+        end
+    else qtd > saldo
+        MovSvc-->>AppUI: Erro: quantidade excede saldo
+        AppUI->>Operador: Exibe mensagem de erro clara
     end
 ```
 
-2.2 Diagrama de componentes (visão lógica)
+Diagrama de componentes (visão lógica dos módulos principais e interfaces):
+
 ```mermaid
 graph LR
-  UI[Interface Desktop (UI)] 
-  Auth[Serviço de Autenticação]
-  AppSvc[Serviços de Aplicação]
-  Domain[Modelo de Domínio]
-  Repo[Repositórios / Gateways]
-  Persist[Persistência Local (BD embarcado)]
-  CSV[Exportador CSV]
-  Alert[Serviço de Alertas / Notificações UI]
-  Audit[Serviço de Auditoria / Logs]
-  Sync[Gerenciador de Transações / Persistência Confiável]
+    UI[Interface Desktop (UI)]
+    AUTH[Serviço de Autenticação]
+    PROD[Serviço de Produto / Estoque]
+    MOV[Serviço de Movimentação]
+    ALERT[Gerenciador de Alertas / Notificações]
+    EXPORT[Serviço de Exportação CSV]
+    QUERY[Serviço de Consulta / Relatórios]
+    REPO[Repositório Persistente (DB embarcado + WAL)]
+    AUDIT[Registro de Auditoria (anexado ao Repo)]
+    FS[Subsistema de Arquivos (diretório de exportação/backup)]
 
-  UI -->|chama| AppSvc
-  UI -->|mostra| Alert
-  AppSvc -->|valida| Auth
-  AppSvc -->|usa| Domain
-  AppSvc -->|persiste| Repo
-  Domain -->|opera| Repo
-  Repo -->|escreve/ler| Persist
-  Repo -->|usa| Sync
-  AppSvc -->|exporta| CSV
-  AppSvc -->|registra| Audit
-  Domain -->|dispara| Alert
+    UI-->|requisições UI|AUTH
+    UI-->|UI: CRUD Produtos / Config limites|PROD
+    UI-->|UI: Lançar Entrada/Saída|MOV
+    UI-->|Visualizar Alertas|ALERT
+    UI-->|Exportar CSV|EXPORT
+    AUTH-->|valida/retorna idUser|REPO
+    PROD-->|consulta/atualiza|REPO
+    MOV-->|grava movimentos / atualiza saldo|REPO
+    MOV-->|registra auditoria|AUDIT
+    AUDIT-->|persist|REPO
+    MOV-->|gera eventos|ALERT
+    QUERY-->|consulta índices/relatórios|REPO
+    EXPORT-->|lê dados|REPO
+    EXPORT-->|escreve CSV|FS
+    ALERT-->|notificações|UI
 ```
 
-Legenda: componentes lógicos e suas responsabilidades — todos descrevidos em Seção 4.
+Observações sobre diagramas:
+- "Repositório Persistente" é conceitual: representa o armazenamento local embarcado exigido (RNF02) com garantia de durabilidade/recuperação (RNF03).
+- Comunicação entre componentes é interna ao processo da aplicação desktop (modelo modular), usando interfaces locais.
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-1. Separação em Camadas Lógicas (UI / Application / Domain / Infrastructure)  
-   - Racional: clareza de responsabilidades, facilita teste e manutenção; apoia RNF07 (manutenibilidade).  
-   - Consequência: overhead de coordenação entre camadas; definição clara de interfaces necessária.
+1. Arquitetura monolítica modular para aplicação desktop
+   - Racional: requisito RNF01 indica aplicação desktop; solução modular facilita manutenção e implantação em ambientes sem servidor.
+   - Trade-off: simplicidade de implantação vs. escalabilidade multi-cliente. Recomendado se operação for em uma única estação; se houver necessidade multi-estações, adaptar para sincronização/replicação futura.
 
-2. Repositório + Gateway para Persistência Local (Banco embarcado)  
-   - Racional: abstrair acesso ao armazenamento para cumprir RNF02 (persistência local) e permitir troca de mecanismo sem impactar domínio.  
-   - Consequência: implementar contratos/contratos de transação para RNF03 (confiabilidade).
+2. Persistência local embarcada com garantia de durabilidade (conceito: base de dados embarcada + log/journal)
+   - Racional: RNF02 e RNF03 exigem armazenamento local e proteção contra perda em fechamento inesperado.
+   - Implementação conceitual: esquema transacional com gravação atômica de movimentações + atualização de saldo; manter um write-ahead log/journal para recuperação em caso de crash.
+   - Trade-off: requer mecanismos de flush/sincronização de I/O para garantir RNF03; evita depender de servidores externos.
 
-3. Garantia de Atomicidade nas Operações de Movimentação (Transação local)  
-   - Racional: evitar perda ou inconsistência de lançamentos (RNF03, RNF08). Todas as alterações (inserir movimentação, atualizar saldo, registrar auditoria) devem ser persistidas atomically.  
-   - Consequência: implementar mecanismo de transação ou operação idempotente com logs de commit em camada de persistência.
+3. Modelo de dados transacional com tabela separada de Movimentações (append) e tabela de Produtos com saldo calculado/atualizado
+   - Racional: facilita auditoria (RNF08), rendimento de consultas (RNF05) e exportação (HU08).
+   - Observação: gravações de movimentações devem ser atômicas com atualização de saldo para manter consistência.
 
-4. Autenticação via Serviço de Autenticação local com sessão/credenciais (sem especificar tecnologia)  
-   - Racional: requisito RNF06. Deve ser integrada a logs de auditoria (RNF08).  
-   - Consequência: definir políticas de senha, armazenamento seguro e política de sessões (pendência: força mínima de senha não especificada).
+4. Garantia de consistência e validação de estoque
+   - Racional: RF06/HU03 impedem saídas que excedam saldo.
+   - Estratégia: validação de saldo antes de gravar; dentro de transação atômica revalidar e aplicar atualização para evitar condições de corrida (mesmo em contexto desktop considerar proteção se houver threads/paralelismo).
 
-5. Notificação/Alerta Reativa em Camada de Aplicação e Persistência de Estado do Alerta  
-   - Racional: HU04 pede alerta persistente até reposição. Alerta associado ao estado do produto (saldo <= limite).  
-   - Consequência: alerta precisa ser recalculado após cada movimentação e persistido (campo de estado ou verificação dinâmica).
+5. Autenticação local com armazenamento seguro das credenciais
+   - Racional: RNF06 exige proteção por usuário e senha.
+   - Observação: política de senhas e gerenciamento de usuários não está especificada (ver Gap Analysis).
 
-6. Exportação CSV como Operação de Application Layer que lê repositórios e escreve arquivo localmente  
-   - Racional: RNF07. Deve permitir escolha de diretório.  
-   - Consequência: considerar tratamento de erros I/O e confirmação ao usuário.
+6. UI focada em fluxo de 3 interações (RNF04)
+   - Racional: Usabilidade — telas principais devem permitir operações de entrada/saída com no máximo três ações (ex.: selecionar produto → informar quantidade → confirmar).
+   - Trade-off: sacrificar excesso de confirmação para velocidade; incluir undo simples ou confirmação configurável.
 
-7. Performance e Indexação Lógica para Consulta Rápida  
-   - Racional: RNF05 exige respostas < 2s mesmo com volume grande. Indexar por nome, por data de movimentação e por produto (conceito, não tecnologia).  
-   - Consequência: definir estruturas de dados locais e estratégias de paginação/consulta.
+7. Estratégia de performance para consultas (RNF05)
+   - Racional: consultas devem carregar em até 2s mesmo com grande volume.
+   - Estratégias conceituais: índices em campos de filtro (nome, data), projeções limitadas para listagens, paginação incremental e cache em memória de consulta recentes/visões agregadas.
 
-8. Rastreabilidade e Auditoria de Operações  
-   - Racional: RNF08 exige data, hora e usuário em todo lançamento. Conservar metadados em cada registro de movimentação e logs de auditoria.  
-   - Consequência: impacto no modelo de dados e nos requisitos de sincronização temporal (fuso horário, formato de tempo — pendência).
+8. Exportação CSV e escolha de diretório
+   - Racional: RNF07 e HU08.
+   - Observação: o mecanismo de export deve streams dados do repositório para arquivo no subsistema de arquivos, com confirmação ao usuário.
 
-Alternativas consideradas (breve):
-- Arquitetura monolítica vs modular: optar por modular monolito (única aplicação desktop com módulos separados) para simplicidade de implantação local.
-- Sincronização / réplica remota: não especificada nos requisitos; opcional futuro.
+9. Registro de auditoria por lançamento (RNF08)
+   - Racional: toda movimentação grava: data, hora, usuário.
+   - Observação: auditoria deve ser imutável (append-only) e vinculada à movimentação.
+
+10. Alertas persistentes
+    - Racional: RF09/HU04.
+    - Implementação conceitual: componente de alerta que marca produtos com flag "em alerta" até que novo saldo ultrapasse limite; UI deve exibir destaque persistente.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|------------|---------------------------|------------------|----------------------------------|
-| Interface Desktop (UI) | Fornecer telas de cadastro, consulta, movimentação, alertas e exportação; UX em <= 3 interações para lançamentos | Serviços de Aplicação; Serviço de Alertas; Serviço de Autenticação | HU01, HU02, HU03, HU04, HU06, RNF04 |
-| Serviço de Autenticação | Autenticar usuários (usuário/senha), manter sessão local | UI; Serviços de Aplicação; Auditoria | RNF06, RNF08 |
-| Serviços de Aplicação (Application Layer) | Coordenar fluxos (cadastro, entrada/saída, busca, exportação), validações de nível de aplicação | UI; Domain; Repositórios; Auth; CSV; Alert | HU01–HU08, RF01–RF12 |
-| Modelo de Domínio (Produto, Movimentação, Limite) | Regras de negócio: validação de quantidade, cálculo de saldo, regras de alerta, unicidade por nome | Serviços de Aplicação; Repositórios; ValidadorDeEstoque | HU01–HU07, RF06, RF07, RF08 |
-| ValidadorDeEstoque (Domain Service) | Verificar disponibilidade, regras de limites, regras de bloqueio de saída | Serviços de Aplicação; Repositórios | RF06, HU02, HU03 |
-| RepositórioProduto / RepositórioMovimentação | CRUD de produtos e movimentações; consultas por nome/período; exposições para export | Persistência Local; Services | RF01–RF05, RF07, RF10, RF11, HU01–HU08 |
-| Persistência Local (Banco embarcado) | Armazenamento local durável; garantir escrita segura e recuperação após falha | Repositórios; Gerenciador de Transações | RNF02, RNF03, RNF05, RNF08 |
-| Gerenciador de Transações / Persistência Confiável | Garantir atomicidade e durabilidade de operações compostas; mecanismo de flush/commit | Repositórios; Persistência Local | RNF03, RNF08 |
-| ServiçoMovimentação (Application/Domain) | Criar/validar registros de entrada/saída e acionar atualizações de saldo e auditoria | RepositórioMovimentação; Audit; Alert | HU02, HU03, RF04, RF05, RNF08 |
-| Serviço de Alertas / Notificador | Determinar e apresentar alertas persistentes quando saldo <= limite; persistir estado de alerta | UI; Repositórios; ServiçoMovimentação | HU04, HU05, RF08, RF09 |
-| Exportador CSV | Gerar arquivos CSV para estoque e movimentações; permitir escolha de diretório | Serviços de Aplicação; Repositórios; UI | HU08, RNF07 |
-| Serviço de Auditoria/Log | Registrar data/hora/usuário de cada lançamento e eventos importantes | Serviços de Aplicação; Persistência Local | RNF08, HU02, HU03 |
-| Índices / Cache de Consulta (opcional) | Suportar consultas rápidas para UI (ordenar, pesquisar) | Repositórios; Persistência Local | RNF05, HU06, HU12 (pesquisa) |
-
-Observação: "Origem" referencia HU ou Critério de Aceite específicos que motivam o componente.
+|------------|----------------------------|------------------|----------------------------------|
+| Interface Desktop (UI) | Fluxos de cadastro/edição, lançamentos, consulta, exibição de alertas, exportação | AUTH, PROD, MOV, ALERT, EXPORT, QUERY | HU01, HU02, HU03, HU04, HU06, HU08; RNF04 |
+| Serviço de Autenticação (AUTH) | Gerir login/sessão, validar credenciais, prover idUser para operações | UI, REPO | RNF06; RNF08 |
+| Serviço de Produto / Estoque (PROD) | CRUD de produtos, configuração de limite mínimo, fornecer saldo atual | UI, REPO, MOV, ALERT | HU01, HU05, HU06; RF01, RF02, RF03, RF08 |
+| Serviço de Movimentação (MOV) | Registrar entradas/saídas, validar saldo, orquestrar transação de persistência | UI, PROD, REPO, AUDIT, ALERT | HU02, HU03; RF04, RF05, RF06, RF07, RNF03, RNF08 |
+| Repositório Persistente (REPO) | Persistência local embarcada; transações atômicas; indexação; recuperação pós-crash | AUTH, PROD, MOV, AUDIT, QUERY, EXPORT | RNF02, RNF03, RNF05, RNF08 |
+| Registro de Auditoria (AUDIT) | Armazenar registros imutáveis de operação (data, hora, usuário, detalhe) | MOV, REPO | RNF08; HU02, HU03, HU07 |
+| Gerenciador de Alertas (ALERT) | Detectar produtos abaixo do limite, manter flags de alerta, expor notificações UI | PROD, MOV, UI | RF08, RF09; HU04 |
+| Serviço de Consulta / Relatórios (QUERY) | Executar consultas de saldo e histórico com filtros/ordenadores, otimizado para performance | REPO, UI | RF10, RF11; HU06, HU07, RNF05 |
+| Serviço de Exportação CSV (EXPORT) | Gerar arquivos CSV com esquema completo; permitir seleção de diretório; reportar sucesso/falha | REPO, FS, UI | HU08; RNF07 |
+| Subsistema de Arquivos (FS) | APIs de escrita/leitura de arquivos locais para exportação/backup | EXPORT | HU08; RNF07 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. Política de autenticação não especificada (força de senha, bloqueio por tentativas, recuperação). Impacto: implementação do Serviço de Autenticação e requisitos de segurança. Ação recomendada: definir política mínima de credenciais e requisitos de armazenamento seguro.
+1. Política de usuários e permissões
+   - Pendência: requisitos não detalham gerenciamento de usuários (criação, papéis, recuperação de senha, política de força de senha).
+   - Impacto: decisão de autenticação e interface administrativa necessária.
+   - Recomendação: definir roles mínimas (Operador, Administrador), regras de senha e fluxos de recuperação.
 
-2. Especificação de volume e "grande volume" indefinida (RNF05). Impacto: dimensionamento de estruturas de dados, índices e estratégias de paginação. Ação: obter estimativas (nº de produtos, movimentações/ano) para otimização e testes de desempenho.
+2. Concurrency / Multi-instância
+   - Pendência: não especificado se o sistema será usado por múltiplos operadores simultaneamente (em rede) ou apenas por single-user local.
+   - Impacto: afeta estratégia de armazenamento (single-file local vs. sincronização), resolução de conflitos e locking.
+   - Recomendação: confirmar modelo de instalação (single estação vs. multi-estação). Se multi, definir mecanismo de sincronização/replicação.
 
-3. Requisitos de sincronia/backup remoto ausentes. RNF02 exige armazenamento local, mas RNF07 pede export CSV. Impacto: estratégia de recuperação de desastre não totalmente definida (apenas export). Ação: definir política de backup automático/local e/ou opção de exportação agendada.
+3. Volume esperado de dados e limites de performance
+   - Pendência: "grande volume" não quantificado.
+   - Impacto: dimensionamento de índices, estratégia de paginação e garantias de RNF05.
+   - Recomendação: solicitar estimativas (registros/ano, número de SKUs).
 
-4. Comportamento de unicidade por nome: caso-sensível? espaços/normalização? Impacto: regras de negócio e UI (prevent duplicates). Ação: definir norma de comparação (ex.: normalizar caixa e espaços).
+4. Formato CSV e campos obrigatórios
+   - Pendência: layout/encoding/colunas do CSV não definido (se incluir IDs, timestamps ISO, separador).
+   - Impacto: interoperabilidade com ferramentas externas e requisitos de compatibilidade regional (encodings, separador decimal).
+   - Recomendação: padronizar schema CSV (colunas e ordenação) e encoding (ex.: UTF-8) antes da implementação.
 
-5. Definição de fuso horário e formato de data/hora (RNF08). Impacto: consistência nos registros de auditoria e exibição no histórico. Ação: definir política (usar timezone local do sistema) e padrão de formatação.
+5. Políticas de backup/restore
+   - Pendência: frequência e estratégia de backup não especificadas.
+   - Impacto: risco de perda de dados; obriga documentar instruções manuais para o usuário.
+   - Recomendação: definir procedimentos de exportação automática opcional e instruções de restauração.
 
-6. Comportamento de remoção de produto (RF03): remover fisicamente ou marca como inativo? Impacto: histórico e integridade referencial de movimentações. Ação: preferir marcação como inativo para manter histórico; confirmar decisão.
+6. Localização/idioma e formatos de data/número
+   - Pendência: não especificado; importante para apresentação e CSV.
+   - Recomendação: confirmar configuração regional padrão e permitir seleção local.
 
-7. Critérios visuais e acessibilidade para alertas (HU04 / RNF04) precisam de design UX. Impacto: definição de UI/UX. Ação: criar especificações de design interativas.
-
-8. Garantia de que "nenhum lançamento seja perdido em caso de fechamento inesperado" (RNF03) requer detalhes do mecanismo de flush/commit e teste de falha. Ação: definir política de flushing síncrono ou log de transação e testar com cenários de crash.
-
-9. Perfis de usuário: apenas "Operador" foi descrito; falta distinção de papéis (admin, gerente). Impacto: autorização e gestão de usuários. Ação: clarificar papéis e permissões.
+7. Tratamento de fuso horário/timestamps
+   - Pendência: RNF08 exige data e hora, mas não define fuso horário.
+   - Impacto: histórico e auditoria podem ficar inconsistentes se fuso não padronizado.
+   - Recomendação: registrar timestamps com timezone local e incluir offset no CSV/auditoria.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-6.1 Mapeamento principal RF / RNF → Componentes / HUs
+Resumo de rastreabilidade (mapeamento requisito → componente / decisão principal):
 
-| Requisito | Coberto por (Componentes / HU) | Observações |
-|-----------|-------------------------------|-------------|
-| RF01 (Cadastrar produto) | UI; Serviços de Aplicação; RepositórioProduto; Modelo de Domínio (HU01) | Valida obrigatoriedade, unicidade por nome |
-| RF02 (Editar produto) | UI; Serviços de Aplicação; RepositórioProduto; Modelo de Domínio | Mesmas validações de unicidade e atualização imediata |
-| RF03 (Remover produto) | UI; Serviços de Aplicação; RepositórioProduto | Recomenda marcar inativo (pendência) |
-| RF04 (Registrar entrada) | UI; ServiçoMovimentação; Repositório; Persistência; Auditoria (HU02) | Atualização imediata do saldo e registro no histórico |
-| RF05 (Registrar saída) | UI; ServiçoMovimentação; ValidadorDeEstoque; Repositório; Persistência; Auditoria (HU03) | Bloqueio quando qtd > saldo |
-| RF06 (Impedir saída > saldo) | ValidadorDeEstoque; Serviços de Aplicação; UI | Mensagem de erro clara |
-| RF07 (Atualizar saldo automaticamente) | RepositórioProduto; ServiçoMovimentação; Persistência | Operação atômica com transação |
-| RF08 (Configurar limite mínimo) | UI; RepositórioProduto; Modelo de Domínio (HU05) | Campo inteiro não negativo |
-| RF09 (Emitir alerta quando saldo <= limite) | Serviço de Alertas; UI; ServiçoMovimentação (HU04) | Alerta persistente até reposição |
-| RF10 (Exibir saldo atual de todos os produtos) | UI; RepositórioProduto; Índices/Cache (HU06) | Ordenação por nome/quantidade |
-| RF11 (Consultar histórico por produto/periodo) | UI; RepositórioMovimentação; ServiçoMovimentação (HU07) | Filtros e ordenação decrescente |
-| RF12 (Pesquisar por nome) | UI; RepositórioProduto; Índices/Cache (HU01, HU06) | Busca por nome com normalização |
+Funcionais (RF):
+- RF01 (cadastro produtos) → UI (formulário), PROD (validação unicidade, persistência)  
+- RF02 (editar produto) → UI, PROD, REPO  
+- RF03 (remover produto) → UI, PROD, REPO (verificar integridade histórica antes de remover)  
+- RF04 (registrar entrada) → UI, MOV (entrada), PROD, REPO, AUDIT  
+- RF05 (registrar saída) → UI, MOV (saída), PROD, REPO, AUDIT  
+- RF06 (impedir saída > estoque) → MOV + PROD (validação pré e na transação)  
+- RF07 (atualizar saldo automaticamente) → MOV + PROD + REPO (transação atômica)  
+- RF08 (configurar limite mínimo) → UI, PROD, REPO  
+- RF09 (emitir alerta visível) → ALERT + UI, acionado por MOV/PROD após atualização  
+- RF10 (exibir saldo atual) → UI + QUERY + PROD + REPO  
+- RF11 (consultar histórico por produto/periodo) → QUERY + REPO + UI  
+- RF12 (pesquisar por nome) → UI + QUERY + REPO (índice/filtragem)
 
-| RNF01 (Portabilidade Windows) | UI (desktop) | UI deve ser implementada como aplicação desktop compatível com Windows |
-| RNF02 (Persistência local) | Persistência Local; Repositórios | Banco embarcado local (abstraído) |
-| RNF03 (Confiabilidade — não perder lançamentos) | Gerenciador de Transações; Persistência; Auditoria | Implementar flush/commit e logs de transação |
-| RNF04 (Usabilidade — 3 interações) | UI; Serviços de Aplicação | Fluxos otimizados para entrada/saída |
-| RNF05 (Desempenho <2s) | Repositórios; Índices/Cache; Persistência | Requer dimensionamento e testes |
-| RNF06 (Segurança — autenticação) | Serviço de Autenticação; Auditoria | Login por usuário/senha |
-| RNF07 (Exportar CSV) | Exportador CSV; UI; Repositórios (HU08) | Escolha de diretório e confirmação |
-| RNF08 (Rastreabilidade) | Auditoria; Movimentação; Serviços de Aplicação | Data/hora/usuário em cada registro |
+Não Funcionais (RNF):
+- RNF01 (desktop Windows) → Implantação: build desktop; UI deve cumprir paradigmas desktop. (Decisão: monolítico modular desktop)  
+- RNF02 (persistência local embarcada) → REPO conceitual (DB embarcado + WAL)  
+- RNF03 (garantir não perda em fechamento inesperado) → REPO (transações atômicas + journaling), gravação síncrona/flush onde necessário  
+- RNF04 (usabilidade: ≤3 interações) → UI design (scripts de fluxo, operações rápidas)  
+- RNF05 (desempenho: carregar em ≤2s) → QUERY + REPO (índices, projeções, paginação)  
+- RNF06 (autenticação) → AUTH + REPO (armazenamento seguro)  
+- RNF07 (exportar CSV) → EXPORT + FS + UI  
+- RNF08 (registro data/hora/usuário) → AUDIT + MOV + REPO
 
-6.2 Observações de cobertura
-- Todas as HUs/RFs listados possuem componentes designados.  
-- RNF03 e RNF05 exigem validações adicionais (testes de falha e de carga) para garantir requisitos — listados como pendências.
+Observações adicionais:
+- HU acceptance criteria são cobertos pelos componentes acima; pontos operacionais (ex.: campos obrigatórios, validações) implementados nas camadas UI e serviços (PROD/MOV).
 
 ---
 
 ## 7. Gap Analysis
 
-7.1 Gaps identificados (especificação ausente ou ambígua)
-- G1: Detalhes de Autorização/Roles (apenas "Operador" descrito).  
-  - Impacto: definição de quem pode cadastrar/editar/remover/exportar e como auditar.  
-  - Recomendação: definir perfis mínimos (Operador, Administrador) e permissões.
+1. Gestão de usuários e autorização
+   - Lacuna: especificação não descreve criação/remoção de usuários, papéis, recuperação de senha, política de complexidade.
+   - Impacto arquitetural: AUTH precisa de componente administrativo; sem isso, suporte e segurança ficam limitados.
+   - Ação recomendada: definir requisitos de administração de usuários (mínimo: criar usuário administrador e operadores; política de senha; bloqueio por tentativas).
 
-- G2: Política de unicidade de nome (normalização, sensibilidade a maiúsculas, espaços, caracteres especiais não definida).  
-  - Impacto: risco de duplicidade ou rejeição inconsistente.  
-  - Recomendação: especificar regras de normalização e validação (ex.: trimming, lowercasing, caracteres permitidos).
+2. Concurrency e uso multi-estação
+   - Lacuna: não está claro se múltiplas instâncias/estações acessarão o mesmo armazenamento.
+   - Impacto: se houver multi-estações, REPO embarcado único não basta; será preciso sincronização/replicação ou arquitetura cliente/servidor.
+   - Ação recomendada: confirmar modelo de implantação. Se multi, especificar mecanismo de sincronização, resolução de conflitos e locking.
 
-- G3: Comportamento de remoção de produto (delete físico vs inativar).  
-  - Impacto: perda de histórico e integridade referencial.  
-  - Recomendação: optar por inativação com flag "ativo/inativo" e permitir reativação, mantendo movimentações.
+3. Volume e SLAs de desempenho não quantificados
+   - Lacuna: "grande volume" indefinido.
+   - Impacto: dimensionamento de índices, escolha de estratégia de paginação e limites de memória.
+   - Ação recomendada: obter estimativas (nº produtos, movimentações por dia/ano) para calibrar índices e necessidades de I/O.
 
-- G4: Definição de fuso horário e formato de data/hora nos registros (RNF08).  
-  - Impacto: inconsistências em auditoria e filtros por período.  
-  - Recomendação: padronizar em timezone local do sistema e armazenamento em timestamp unificado; especificar formato de exibição.
+4. Esquema/encoding e metadados do CSV
+   - Lacuna: formato de CSV (colunas, separador, encoding) não definido.
+   - Impacto: interoperabilidade para backup e análise externa.
+   - Ação recomendada: especificar schema CSV (colunas obrigatórias, formato ISO8601 para timestamps, UTF-8, separador configurable).
 
-- G5: Critério de "grande volume" para RNF05 não quantificado.  
-  - Impacto: difícil dimensionar índices, cache e limites de memória.  
-  - Recomendação: obter estimativas (nº produtos, movimentações/ano) e realizar testes de carga.
+5. Backup/restore e políticas operacionais
+   - Lacuna: falta definição de mecanismos e frequência de backup, e procedimentos de restauração.
+   - Impacto: risco operacional e suporte em caso de corrupção de dados.
+   - Ação recomendada: definir rotina de exportação automática opcional, instruções de restauração e verificação de integridade.
 
-- G6: Mecanismo exato para garantir que "nenhum lançamento seja perdido" em crash (RNF03).  
-  - Impacto: escolhas técnicas/arquiteturais (flush síncrono, log de transação).  
-  - Recomendação: definir estratégia (ex.: transação ACID local, write-ahead log) e incluir testes de falha.
+6. Política de retenção e arquivamento de movimentações
+   - Lacuna: retenção histórica indefinida (quanto manter no primário vs arquivar).
+   - Impacto: crescimento de tamanho do banco e performance.
+   - Ação recomendada: definir retenção e política de arquivamento (ex.: compactação/exportação por período).
 
-- G7: Requisitos de backup/recuperação além do CSV export (automático, agendado, manual).  
-  - Impacto: recuperação e continuidade do serviço.  
-  - Recomendação: especificar política de backup local e procedimentos de restauração.
+7. Tratamento de horas/fuso horário e sincronização de relógio
+   - Lacuna: especificação apenas pede data/hora; não define fuso/offset.
+   - Impacto: registros de auditoria podem ficar ambíguos se estação tiver clock errado.
+   - Ação recomendada: padronizar gravação em ISO8601 com offset local; log de alterações de relógio e instruções para sincronização NTP quando aplicável.
 
-- G8: Requisitos de usabilidade/UX detalhados (ex.: ícone de alerta, cor, persistência visual).  
-  - Impacto: implementação inconsistente da HU04.  
-  - Recomendação: criar telas e protótipos de interação e validar com usuários.
+8. Regras de negócio ausentes para remoção de produto com histórico
+   - Lacuna: RF03 permite remoção, mas não define comportamento quando existem movimentações históricas.
+   - Impacto: perda de integridade referencial/auditoria se produto físico for apagado.
+   - Ação recomendada: definir política: soft-delete (marcar inativo) e manter histórico imutável; permitir exclusão física apenas se sem histórico.
 
-7.2 Impactos arquiteturais e priorização
-- Prioridade alta: G1 (perfis/autorizações), G6 (garantia contra perda), G2 (unicidade). Sem essas decisões, segurança e integridade ficam incompletas.  
-- Prioridade média: G3 (remoção/inativação), G4 (timezone), G7 (backup).  
-- Prioridade baixa: G5 (estimativas de volume) – necessário para otimização, porém funcionalidade básica pode ser implementada antes com testes.
+9. Mensagens de erro e internacionalização
+   - Lacuna: detalhes de mensagens de erro, linguagem padrão e necessidades de tradução.
+   - Impacto: usabilidade e suporte.
+   - Ação recomendada: definir catálogo de mensagens, permitir configuração de idioma e padrões de texto de erro.
 
-7.3 Ações recomendadas para desenvolvimento
-1. Sessão de esclarecimento com stakeholders para definir perfis de usuário, política de unicidade, política de remoção e formato de data/hora. (Curto prazo)  
-2. Definir e implementar mecanismo de persistência confiável: transação local ou log de alterações; criar testes de crash e recovery. (Curto → Médio prazo)  
-3. Coletar métricas de volume esperado e criar planos de testes de carga; otimizar índices/consultas conforme resultado. (Médio prazo)  
-4. Produzir protótipos de UI focados em fluxo de entrada/saída (garantir RNF04) e em visualização de alertas (HU04). (Curto prazo)  
-5. Definir política de backup (manual e/ou agendado) e integrar com Exportador CSV como opção de emergência. (Médio prazo)
+10. Testes de integridade e critérios de aceitação automatizados
+    - Lacuna: critérios de aceitação funcionais existem, mas não há definição de testes automatizados e métricas de aceitação para RNFs.
+    - Impacto: dificulta verificação automatizada de requisitos críticos (durability, performance).
+    - Ação recomendada: definir suíte de testes (UI, integração, stress), cenários de crash/recovery e SLAs de performance para validação.
 
 ---
 
-Fim do Relatório.
+Resumo final
+- A arquitetura proposta é um monólito modular desktop com componentes bem definidos para UI, autenticação, domínio (produto/movimentação), persistência local com journaling, alerta e exportação.  
+- Os requisitos funcionais e não-funcionais descritos são mapeados para componentes e decisões claras.  
+- Existem gaps operacionais e de políticas (usuários, multi-instância, CSV/schema, backup, retenção) que devem ser resolvidos antes da implementação detalhada para reduzir riscos arquiteturais.
+
+Se desejar, posso:
+- Gerar modelos de dados conceituais (DDL conceptual) sem vincular a tecnologia específica;  
+- Produzir telas de fluxo (wireframes textuais) para garantir RNF04 (≤3 interações);  
+- Fornecer checklist de testes de recuperação/crash para validar RNF03.

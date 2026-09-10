@@ -7,22 +7,22 @@
 
 | HU | Título | Perfil | RFs Relacionados | RNFs Relacionados |
 |----|--------|--------|-------------------|--------------------|
-| HU01 | Cadastrar unidades e moradores | Síndico | RF04, RF05, RF06 | RNF04 |
-| HU02 | Emitir boletos em lote | Síndico | RF09, RF10, RF13 | RNF05, RNF11 |
+| HU01 | Cadastrar unidades e moradores | Síndico | RF04, RF05, RF06, RF07, RF08 | RNF04 |
+| HU02 | Emitir boletos em lote | Síndico | RF09, RF10, RF13, RF17 | RNF05, RNF11, RNF13 |
 | HU03 | Acompanhar inadimplências | Síndico | RF15 | RNF08 |
 | HU04 | Publicar comunicados | Síndico | RF16, RF17 | RNF13 |
 | HU05 | Gerenciar ocorrências | Síndico | RF23, RF24 | RNF13 |
 | HU06 | Criar e registrar assembleias | Síndico | RF18, RF19 | RNF13 |
 | HU07 | Gerenciar áreas comuns e reservas | Síndico | RF25, RF27, RF29 | RNF08 |
-| HU08 | Visualizar e pagar boleto | Condômino | RF10, RF11, RF12 | RNF03, RNF05 |
+| HU08 | Visualizar e pagar boleto pelo portal | Condômino | RF10, RF11, RF12 | RNF03, RNF05 |
 | HU09 | Reservar área comum | Condômino | RF26, RF27 | RNF08 |
-| HU10 | Registrar e acompanhar ocorrência | Condômino | RF21, RF24 | RNF04, RNF13 |
+| HU10 | Registrar e acompanhar ocorrência | Condômino | RF21, RF24 | RNF13 |
 | HU11 | Pré-autorizar entrada de visitante | Condômino | RF31 | RNF04, RNF06 |
-| HU12 | Acompanhar assembleias e atas | Condômino | RF20 | — |
-| HU13 | Registrar entrada e saída de visitantes | Funcionário | RF30, RF32 | RNF06 |
-| HU14 | Consultar pré-autorizações | Funcionário | RF32, RF33 | RNF06 |
+| HU12 | Acompanhar assembleias e consultar atas | Condômino | RF20 | — |
+| HU13 | Registrar entrada e saída de visitantes | Funcionário | RF30, RF32 | RNF06, RNF13 |
+| HU14 | Consultar pré-autorizações de acesso | Funcionário | RF31, RF32 | RNF06 |
 
-Requisitos transversais não vinculados diretamente a uma HU específica: RF01, RF02, RF03, RF07, RF08, RF14, RF28, RNF01, RNF02, RNF07, RNF09, RNF10, RNF12.
+**RFs não vinculados diretamente a HUs explícitas** (cobertos transversalmente): RF01, RF02, RF03, RF14, RF22, RF28, RF33.
 
 ---
 
@@ -37,215 +37,208 @@ flowchart TB
     end
 
     subgraph Gateway["Camada de Borda"]
-        APIGateway["API Gateway / Roteador de Requisições"]
-        AuthService["Serviço de Autenticação e Sessão"]
+        APIGW["Gateway de API / Roteamento e Autenticação"]
     end
 
-    subgraph Dominio["Camada de Domínio (Serviços de Negócio)"]
-        UsuarioSvc["Serviço de Usuários e Perfis"]
-        UnidadeSvc["Serviço de Unidades e Moradores"]
-        FinanceiroSvc["Serviço Financeiro (Boletos e Cobranças)"]
-        ComunicadoSvc["Serviço de Comunicados"]
-        AssembleiaSvc["Serviço de Assembleias e Atas"]
-        OcorrenciaSvc["Serviço de Ocorrências"]
-        ReservaSvc["Serviço de Reservas de Áreas Comuns"]
-        AcessoSvc["Serviço de Controle de Acesso e Visitantes"]
+    subgraph Servicos["Camada de Serviços de Domínio"]
+        SvcUsuarios["Serviço de Usuários e Acesso"]
+        SvcUnidades["Serviço de Unidades e Moradores"]
+        SvcFinanceiro["Serviço Financeiro (Boletos)"]
+        SvcComunicacao["Serviço de Comunicados e Assembleias"]
+        SvcOcorrencias["Serviço de Ocorrências"]
+        SvcReservas["Serviço de Reservas de Áreas Comuns"]
+        SvcAcesso["Serviço de Controle de Acesso e Visitantes"]
+        SvcNotificacao["Serviço de Notificações"]
+        SvcAuditoria["Serviço de Auditoria e Logs"]
     end
 
-    subgraph Suporte["Serviços de Suporte Transversais"]
-        NotificacaoSvc["Serviço de Notificações (E-mail)"]
-        AuditoriaSvc["Serviço de Auditoria e Logs Imutáveis"]
-        RelatorioSvc["Serviço de Relatórios e Exportação"]
-    end
-
-    subgraph Externo["Integrações Externas"]
-        GatewayPagamento["Gateway de Pagamento (Externo)"]
+    subgraph Integracoes["Integrações Externas"]
+        GatewayPagamento["Gateway de Pagamento Externo"]
+        ServidorEmail["Provedor de E-mail"]
     end
 
     subgraph Persistencia["Camada de Persistência"]
-        RepositorioDados["Repositório de Dados Persistentes"]
-        RepositorioLogs["Repositório de Logs/Auditoria Imutável"]
+        RepoUsuarios[("Repositório de Usuários")]
+        RepoUnidades[("Repositório de Unidades/Moradores")]
+        RepoFinanceiro[("Repositório Financeiro")]
+        RepoComunicacao[("Repositório de Comunicados/Atas")]
+        RepoOcorrencias[("Repositório de Ocorrências")]
+        RepoReservas[("Repositório de Reservas")]
+        RepoAcesso[("Repositório de Acessos")]
+        RepoAuditoria[("Repositório de Logs Imutáveis")]
     end
 
-    PortalWeb --> APIGateway
-    APIGateway --> AuthService
-    APIGateway --> UsuarioSvc
-    APIGateway --> UnidadeSvc
-    APIGateway --> FinanceiroSvc
-    APIGateway --> ComunicadoSvc
-    APIGateway --> AssembleiaSvc
-    APIGateway --> OcorrenciaSvc
-    APIGateway --> ReservaSvc
-    APIGateway --> AcessoSvc
+    PortalWeb --> APIGW
+    APIGW --> SvcUsuarios
+    APIGW --> SvcUnidades
+    APIGW --> SvcFinanceiro
+    APIGW --> SvcComunicacao
+    APIGW --> SvcOcorrencias
+    APIGW --> SvcReservas
+    APIGW --> SvcAcesso
 
-    FinanceiroSvc --> GatewayPagamento
-    FinanceiroSvc --> NotificacaoSvc
-    FinanceiroSvc --> AuditoriaSvc
-    ComunicadoSvc --> NotificacaoSvc
-    AssembleiaSvc --> NotificacaoSvc
-    OcorrenciaSvc --> NotificacaoSvc
-    ReservaSvc --> NotificacaoSvc
-    AcessoSvc --> AuditoriaSvc
-    FinanceiroSvc --> RelatorioSvc
+    SvcFinanceiro --> GatewayPagamento
+    SvcComunicacao --> SvcNotificacao
+    SvcOcorrencias --> SvcNotificacao
+    SvcReservas --> SvcNotificacao
+    SvcAcesso --> SvcNotificacao
+    SvcFinanceiro --> SvcNotificacao
+    SvcNotificacao --> ServidorEmail
 
-    UsuarioSvc --> RepositorioDados
-    UnidadeSvc --> RepositorioDados
-    FinanceiroSvc --> RepositorioDados
-    ComunicadoSvc --> RepositorioDados
-    AssembleiaSvc --> RepositorioDados
-    OcorrenciaSvc --> RepositorioDados
-    ReservaSvc --> RepositorioDados
-    AcessoSvc --> RepositorioDados
-    AuditoriaSvc --> RepositorioLogs
+    SvcFinanceiro --> SvcAuditoria
+    SvcAcesso --> SvcAuditoria
+    SvcComunicacao --> SvcAuditoria
+    SvcOcorrencias --> SvcAuditoria
+
+    SvcUsuarios --> RepoUsuarios
+    SvcUnidades --> RepoUnidades
+    SvcFinanceiro --> RepoFinanceiro
+    SvcComunicacao --> RepoComunicacao
+    SvcOcorrencias --> RepoOcorrencias
+    SvcReservas --> RepoReservas
+    SvcAcesso --> RepoAcesso
+    SvcAuditoria --> RepoAuditoria
+
+    SvcFinanceiro -.-> SvcUnidades
+    SvcReservas -.-> SvcUnidades
+    SvcAcesso -.-> SvcUnidades
+    SvcOcorrencias -.-> SvcUnidades
 ```
 
-### 2.2 Diagrama de Sequência — Emissão de Boletos em Lote (HU02 / RF13 / RNF11)
+### 2.2 Diagrama de Sequência — Emissão de Boletos em Lote (HU02)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Sindico as Síndico (Usuário)
-    participant Portal as Portal Web
-    participant Gateway as API Gateway
-    participant Financeiro as Serviço Financeiro
-    participant Unidade as Serviço de Unidades
-    participant Auditoria as Serviço de Auditoria
-    participant Notificacao as Serviço de Notificações
-    participant Repositorio as Repositório de Dados
+    participant Sindico as Síndico (Portal)
+    participant GW as Gateway de API
+    participant SvcFin as Serviço Financeiro
+    participant SvcUni as Serviço de Unidades
+    participant Aud as Serviço de Auditoria
+    participant Notif as Serviço de Notificações
+    participant Email as Provedor de E-mail
 
-    Sindico->>Portal: Informa mês de referência e vencimento
-    Portal->>Gateway: POST /boletos/emissao-lote
-    Gateway->>Financeiro: solicitarEmissaoLote(mesReferencia, vencimento)
-    Financeiro->>Unidade: obterUnidadesAtivas()
-    Unidade-->>Financeiro: listaUnidadesAtivas
+    Sindico->>GW: Solicita emissão em lote (mês ref., vencimento)
+    GW->>SvcFin: encaminharSolicitacaoEmissaoLote()
+    SvcFin->>SvcUni: consultarUnidadesAtivas()
+    SvcUni-->>SvcFin: lista de unidades ativas
 
     loop Para cada unidade ativa
-        Financeiro->>Financeiro: calcularValorTaxa(unidade)
-        Financeiro->>Repositorio: persistirBoleto(unidade, valor, vencimento)
-        alt Persistência bem-sucedida
-            Repositorio-->>Financeiro: confirmacaoBoleto
-            Financeiro->>Auditoria: registrarEvento(emissaoBoleto, unidade, sucesso)
-            Financeiro->>Notificacao: enviarBoletoPorEmail(unidade)
-        else Falha na persistência
-            Repositorio-->>Financeiro: erroPersistencia
-            Financeiro->>Auditoria: registrarEvento(emissaoBoleto, unidade, falha)
-            Financeiro->>Financeiro: adicionarUnidadeFalha(unidade)
+        SvcFin->>SvcFin: calcularValorTaxa(unidade)
+        alt Emissão bem-sucedida
+            SvcFin->>SvcFin: gerarBoletoIndividual(unidade)
+            SvcFin->>Aud: registrarEventoImutavel(emissao, unidade)
+            SvcFin->>Notif: solicitarNotificacaoBoleto(unidade)
+            Notif->>Email: enviarEmailBoleto(morador)
+        else Falha na geração
+            SvcFin->>SvcFin: registrarFalhaUnidade(unidade, motivo)
         end
     end
 
-    Financeiro-->>Gateway: resultadoLote(sucessos, falhas)
-    Gateway-->>Portal: relatorioEmissao(sucessos, falhas)
-    Portal-->>Sindico: Exibe unidades emitidas e unidades com falha
+    SvcFin-->>GW: relatório de emissão (sucesso/falhas)
+    GW-->>Sindico: exibe resultado da emissão em lote
 ```
 
-### 2.3 Diagrama de Sequência — Reserva de Área Comum (HU09 / RF26 / RF27)
+### 2.3 Diagrama de Sequência — Reserva de Área Comum (HU09)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Condomino as Condômino
-    participant Portal as Portal Web
-    participant Gateway as API Gateway
-    participant Reserva as Serviço de Reservas
-    participant Repositorio as Repositório de Dados
-    participant Notificacao as Serviço de Notificações
+    participant Condomino as Condômino (Portal)
+    participant GW as Gateway de API
+    participant SvcRes as Serviço de Reservas
+    participant Notif as Serviço de Notificações
+    participant Email as Provedor de E-mail
 
-    Condomino->>Portal: Seleciona área, data e horário
-    Portal->>Gateway: POST /reservas
-    Gateway->>Reserva: solicitarReserva(area, data, horario, condomino)
-    Reserva->>Repositorio: verificarSobreposicao(area, data, horario)
-    Repositorio-->>Reserva: resultadoDisponibilidade
-
+    Condomino->>GW: Solicita reserva (área, data, horário)
+    GW->>SvcRes: verificarDisponibilidade(área, data, horário)
+    SvcRes->>SvcRes: consultarConflitosDeHorario()
     alt Horário disponível
-        Reserva->>Repositorio: persistirReserva(area, data, horario, condomino)
-        Repositorio-->>Reserva: reservaConfirmada
-        Reserva->>Notificacao: enviarConfirmacaoReserva(condomino)
-        Reserva-->>Gateway: statusConfirmado
-    else Horário indisponível
-        Reserva-->>Gateway: statusConflito
+        SvcRes->>SvcRes: confirmarReserva()
+        SvcRes->>Notif: solicitarConfirmacaoReserva(condômino)
+        Notif->>Email: enviarEmailConfirmacao()
+        SvcRes-->>GW: reserva confirmada
+        GW-->>Condomino: exibe confirmação
+    else Conflito de horário
+        SvcRes-->>GW: erro - horário indisponível
+        GW-->>Condomino: exibe mensagem de indisponibilidade
     end
-
-    Gateway-->>Portal: resultadoReserva
-    Portal-->>Condomino: Exibe confirmação ou conflito de horário
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-| # | Decisão | Justificativa | Requisitos Relacionados |
-|---|---------|----------------|---------------------------|
-| D01 | Adoção de arquitetura orientada a serviços de domínio (por capacidade de negócio: Financeiro, Ocorrências, Reservas, Acesso etc.), acessados via um ponto único de entrada (API Gateway). | Isola responsabilidades por domínio funcional, facilita evolução independente e atende à diversidade de perfis de acesso (RF01, RF02). | RF01-RF33 |
-| D02 | Centralização da autenticação e controle de sessão em serviço dedicado, com política de expiração de sessão. | Atende RNF01 (expiração de sessão) e RF02/RF03 de forma transversal a todos os módulos. | RF02, RF03, RNF01 |
-| D03 | Serviço de Auditoria desacoplado, com repositório de logs apartado do repositório operacional, garantindo imutabilidade dos registros. | Atende RNF05 (registro imutável financeiro) e RNF06 (registro de acesso) e RNF13 (logs de eventos críticos). | RNF05, RNF06, RNF13 |
-| D04 | Serviço de Notificações assíncrono e desacoplado dos serviços de domínio, comunicando-se por meio de eventos/solicitações assíncronas. | Evita acoplamento forte entre publicação de comunicado/ocorrência/reserva e envio de e-mail; permite reprocessamento em falhas de envio. | RF17, RF24, RF27 (confirmação), HU02, HU04, HU05, HU09, HU06 |
-| D05 | Integração com Gateway de Pagamento tratada por um adaptador dedicado dentro do Serviço Financeiro, sem armazenamento de dados sensíveis de cartão. | Atende RNF03 (PCI-DSS) isolando a complexidade de integração externa e reduzindo superfície de risco. | RF11, RF12, RNF03 |
-| D06 | Emissão de boletos em lote tratada como processo transacional por unidade, com registro individual de sucesso/falha (padrão "melhor esforço com rastreamento de falhas parciais"). | Atende RNF11 diretamente — falha parcial não pode corromper unidades bem-sucedidas. | RF13, RNF11 |
-| D07 | Serviço de Reservas garante exclusão mútua lógica na verificação de sobreposição antes da confirmação (verificação + persistência tratadas como operação atômica conceitual). | Atende RF27 (impedir sobreposição) sem prescrever mecanismo de banco específico. | RF27, RNF08 |
-| D08 | Modelo de dados de Unidade e Morador desacoplado de Usuário (conta de acesso), permitindo que um morador exista antes de possuir credencial de acesso. | Atende RF05-RF07, onde desativação de morador não deve remover histórico. | RF05, RF06, RF07 |
-| D09 | Serviço de Relatórios consome dados do Serviço Financeiro por meio de consulta somente leitura, sem duplicar lógica de negócio. | Suporta RF15 (painel de inadimplência) e exportação CSV sem acoplar responsabilidades de emissão à responsabilidade de relatório. | RF15, RNF08 |
-| D10 | Interface de apresentação única (Portal Web) responsiva, consumida por todos os perfis, com diferenciação de funcionalidades via controle de acesso (RF02), não por aplicações separadas. | Atende RNF09 e RNF10 de forma simplificada, mantendo consistência de experiência entre perfis. | RF02, RNF09, RNF10 |
+| # | Decisão | Justificativa | Consequência |
+|---|---------|----------------|---------------|
+| D01 | Arquitetura organizada em serviços de domínio desacoplados (Usuários, Unidades, Financeiro, Comunicação, Ocorrências, Reservas, Acesso) | Os requisitos apresentam domínios funcionais claramente distintos, com ciclos de mudança e atores diferentes | Facilita manutenção e evolução independente de cada domínio; exige contrato de integração bem definido entre serviços |
+| D02 | Serviço de Notificações centralizado e desacoplado dos serviços de domínio | RF17, RF24, RF31 e HUs de comunicados/ocorrências exigem notificação por e-mail em múltiplos contextos | Evita duplicação de lógica de envio; permite trocar o canal de notificação sem alterar serviços de domínio |
+| D03 | Serviço de Auditoria dedicado e append-only para eventos críticos | RNF05, RNF06 e RNF13 exigem registro imutável e rastreável | Introduz necessidade de mecanismo de persistência que garanta imutabilidade (a definir na fase técnica) |
+| D04 | Gateway de API como ponto único de autenticação e controle de perfil de acesso | RF02, RF03 e RNF01 exigem controle de sessão e restrição por perfil centralizados | Simplifica aplicação de políticas de segurança; ponto único de falha a ser mitigado com redundância |
+| D05 | Integração com gateway de pagamento tratada como serviço externo, sem armazenamento de dados sensíveis de cartão | RNF03 exige conformidade PCI-DSS | Serviço Financeiro deve tratar apenas referências/tokens de transação, nunca dados de cartão |
+| D06 | Emissão de boletos em lote implementada como processo transacional por unidade, com isolamento de falhas | RNF11 exige que falha parcial não corrompa unidades não afetadas | Necessário mecanismo de processamento item-a-item com registro de exceções, não uma transação monolítica |
+| D07 | Consistência de disponibilidade de reservas garantida por verificação síncrona no momento da solicitação | RF27 exige impedir sobreposição de reservas | Serviço de Reservas deve implementar controle de concorrência para evitar condições de corrida em reservas simultâneas |
+| D08 | Modelo de "soft delete" para moradores (desativação lógica) | RF07 exige preservar histórico ao desativar morador | Repositórios devem suportar estado "inativo" sem exclusão física dos registros |
+| D09 | Perfis de acesso modelados como atributo do usuário, validados centralmente no Gateway e reforçados em cada serviço | RF01, RF02 | Reduz risco de bypass de autorização; exige verificação redundante (defesa em profundidade) |
+| D10 | Comunicação entre serviços de domínio realizada via interfaces de consulta (ex.: Financeiro consulta Unidades), evitando duplicação de dados mestres | Unidades/moradores são referenciados por múltiplos domínios (Financeiro, Reservas, Acesso, Ocorrências) | Serviço de Unidades atua como fonte única da verdade para dados cadastrais de unidades e moradores |
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|------------|------------------------------|--------------------|-------------------------------------|
-| Portal Web | Interface responsiva de acesso para todos os perfis de usuário | API Gateway | RNF09, RNF10, HU08-HU14 |
-| API Gateway | Roteamento de requisições, ponto único de entrada, aplicação de política de acesso por perfil | Todos os serviços de domínio, Serviço de Autenticação | RF02, RF03 |
-| Serviço de Autenticação e Sessão | Autenticar usuários, gerenciar sessões, aplicar expiração automática, hash de senha | Serviço de Usuários, API Gateway | RF03, RNF01, RNF02 |
-| Serviço de Usuários e Perfis | Cadastro de perfis (síndico, condômino, funcionário, administrador) e controle de permissões | Serviço de Autenticação, Repositório de Dados | RF01, RF02 |
-| Serviço de Unidades e Moradores | Cadastro de unidades, vínculo de moradores, registro de veículos, desativação com preservação de histórico | Serviço Financeiro, Serviço de Acesso, Repositório de Dados | HU01 / RF04-RF08 |
-| Serviço Financeiro | Configuração de taxas, emissão de boletos (individual/lote), registro de pagamentos manuais, integração com pagamento externo | Gateway de Pagamento, Serviço de Notificações, Serviço de Auditoria, Serviço de Relatórios | HU02, HU03, HU08 / RF09-RF15 |
-| Adaptador de Gateway de Pagamento | Encapsular comunicação com provedor de pagamento externo, sem persistir dados sensíveis | Gateway de Pagamento (externo), Serviço Financeiro | RF11, RF12, RNF03 |
-| Serviço de Comunicados | Publicação e fixação de comunicados no portal | Serviço de Notificações, Repositório de Dados | HU04 / RF16, RF17 |
-| Serviço de Assembleias e Atas | Criação de assembleias, registro de atas, anexos de documentos | Serviço de Notificações, Repositório de Dados | HU06, HU12 / RF18-RF20 |
-| Serviço de Ocorrências | Registro, categorização e atualização de status de ocorrências | Serviço de Notificações, Repositório de Dados | HU05, HU10 / RF21-RF24 |
-| Serviço de Reservas de Áreas Comuns | Cadastro de áreas, verificação de disponibilidade, confirmação/cancelamento de reservas, calendário | Serviço de Notificações, Repositório de Dados | HU07, HU09 / RF25-RF29 |
-| Serviço de Controle de Acesso e Visitantes | Registro de entrada/saída, pré-autorizações, histórico de acesso por unidade | Serviço de Auditoria, Serviço de Unidades, Repositório de Dados | HU11, HU13, HU14 / RF30-RF33 |
-| Serviço de Notificações | Envio assíncrono de e-mails de eventos (comunicados, boletos, ocorrências, reservas, assembleias) | Serviços de domínio consumidores | RF17, RF24, HU02, HU04, HU06, HU09, HU10 |
-| Serviço de Auditoria e Logs | Registro imutável de eventos críticos e financeiros, com metadados de usuário/data/hora | Repositório de Logs, todos os serviços de domínio | RNF05, RNF06, RNF13 |
-| Serviço de Relatórios e Exportação | Geração de painéis (inadimplência, calendário) e exportação CSV | Serviço Financeiro, Serviço de Reservas | HU03 / RF15, RNF08 |
-| Repositório de Dados | Persistência operacional de entidades de domínio | Serviços de domínio | Todos os RFs |
-| Repositório de Logs/Auditoria | Persistência apartada e imutável de registros de auditoria | Serviço de Auditoria | RNF05, RNF06 |
+|------------|----------------------------|-------------------|-------------------------------------|
+| Portal Web Responsivo | Interface única para síndico, condômino e funcionário, adaptável a dispositivos | Gateway de API | RNF09, RNF10, todas as HUs |
+| Gateway de API | Autenticação, roteamento e aplicação de políticas de acesso por perfil | Todos os serviços de domínio | RF01, RF02, RF03, RNF01 |
+| Serviço de Usuários e Acesso | Cadastro de usuários, autenticação, controle de sessão | Repositório de Usuários, Gateway de API | RF01-RF03, RNF01, RNF02 |
+| Serviço de Unidades e Moradores | Cadastro/edição/remoção de unidades, moradores e veículos; desativação lógica | Repositório de Unidades, Serviço Financeiro, Serviço de Reservas, Serviço de Acesso | RF04-RF08, HU01 |
+| Serviço Financeiro | Configuração de taxas, emissão de boletos (individual/lote), registro de pagamentos manuais, painel de inadimplência | Gateway de Pagamento, Serviço de Unidades, Serviço de Auditoria, Serviço de Notificações | RF09-RF15, HU02, HU03, HU08 |
+| Gateway de Pagamento (Externo) | Processamento e confirmação de pagamentos | Serviço Financeiro | RF11, RF12, RNF03 |
+| Serviço de Comunicados e Assembleias | Publicação de comunicados, criação de assembleias, registro de atas | Serviço de Notificações, Serviço de Auditoria | RF16-RF20, HU04, HU06, HU12 |
+| Serviço de Ocorrências | Registro, categorização e atualização de status de ocorrências | Serviço de Notificações, Serviço de Auditoria | RF21-RF24, HU05, HU10 |
+| Serviço de Reservas de Áreas Comuns | Cadastro de áreas, verificação de disponibilidade, confirmação/cancelamento de reservas | Serviço de Unidades, Serviço de Notificações | RF25-RF29, HU07, HU09 |
+| Serviço de Controle de Acesso e Visitantes | Registro de entrada/saída, pré-autorizações, histórico de acessos | Serviço de Unidades, Serviço de Auditoria | RF30-RF33, HU11, HU13, HU14 |
+| Serviço de Notificações | Orquestração e envio de notificações por e-mail | Provedor de E-mail | RF17, RF24, HU02, HU04, HU05, HU09 |
+| Provedor de E-mail (Externo) | Entrega efetiva de mensagens eletrônicas | Serviço de Notificações | RF17, RF24, RF31 |
+| Serviço de Auditoria e Logs | Registro imutável de eventos críticos (financeiro, acesso, comunicados, ocorrências) | Repositório de Auditoria | RNF05, RNF06, RNF13 |
+| Repositório de Usuários | Persistência de credenciais e perfis | Serviço de Usuários | RF01, RNF02 |
+| Repositório de Unidades/Moradores | Persistência de unidades, moradores, veículos | Serviço de Unidades | RF04-RF08 |
+| Repositório Financeiro | Persistência de boletos, pagamentos, configurações de taxa | Serviço Financeiro | RF09-RF15 |
+| Repositório de Comunicados/Atas | Persistência de comunicados, assembleias, atas e anexos | Serviço de Comunicados | RF16-RF20 |
+| Repositório de Ocorrências | Persistência de ocorrências e histórico de status | Serviço de Ocorrências | RF21-RF24 |
+| Repositório de Reservas | Persistência de áreas comuns e reservas | Serviço de Reservas | RF25-RF29 |
+| Repositório de Acessos | Persistência de registros de entrada/saída e pré-autorizações | Serviço de Acesso | RF30-RF33 |
+| Repositório de Logs Imutáveis | Armazenamento append-only de eventos auditáveis | Serviço de Auditoria | RNF05, RNF06 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| # | Descrição | Impacto | Responsável Sugerido |
-|---|-----------|---------|------------------------|
-| B01 | Não há definição de qual entidade/perfil pode alterar/configurar a taxa condominial por tipo de unidade em conflito com valor por unidade específica (precedência não especificada em RF09). | Ambiguidade na regra de cálculo do valor do boleto. | Analista de Negócio / Síndico |
-| B02 | Não há definição do prazo padrão ou configurável de cancelamento de reserva (RF28 menciona "prazo configurado" mas não define limites mínimos/máximos). | Impacta regra de negócio do Serviço de Reservas. | Product Owner |
-| B03 | Ausência de especificação sobre o que ocorre com boletos, reservas e ocorrências vinculados a um morador desativado (RF07). | Pode gerar inconsistência de dados órfãos ou impedir consulta de histórico. | Arquiteto de Dados |
-| B04 | Não há definição do perfil "Administrador" em nenhuma HU — apenas citado em RF01/RF02, sem casos de uso detalhados. | Responsabilidades e permissões desse perfil ficam indefinidas. | Product Owner |
-| B05 | Não há requisito explícito sobre reprocessamento/retentativa em caso de falha no envio de e-mail de notificação. | Risco de perda silenciosa de notificações críticas (boletos, mudanças de status). | Arquiteto de Software |
-| B06 | RNF07 exige 99,5% de uptime, mas não há requisito de estratégia de redundância ou plano de contingência definido. | Decisão de infraestrutura de alta disponibilidade fica em aberto. | Arquiteto de Infraestrutura |
+| # | Descrição do Bloqueio/Pendência | Impacto | Responsável Sugerido |
+|---|----------------------------------|---------|------------------------|
+| B01 | Não há definição de qual gateway de pagamento será utilizado, nem os métodos suportados (boleto físico, PIX, cartão) | Impacta o desenho do contrato de integração do Serviço Financeiro | Síndico/Product Owner + Arquitetura |
+| B02 | Não há especificação de prazo/regra padrão para cancelamento de reservas (RF28 menciona "prazo configurado", mas não define valores default) | Impacto no comportamento do Serviço de Reservas | Time de Negócio |
+| B03 | Ausência de definição sobre política de retenção e expurgo de dados pessoais além do backup (RNF04 - LGPD) | Impacto jurídico e no design do Serviço de Auditoria/Repositórios | Jurídico/Compliance |
+| B04 | Não há requisito claro sobre recuperação de senha / múltiplos fatores de autenticação | Impacto em RNF01/RNF02 e no Serviço de Usuários | Segurança da Informação |
+| B05 | Falta definição de papéis de "administrador" além de síndico/condômino/funcionário nas HUs (RF01 cita, mas nenhuma HU o detalha) | Impacto na matriz de permissões do Gateway de API | Product Owner |
+| B06 | Não há critério de aceite sobre concorrência entre múltiplos síndicos/administradores editando o mesmo cadastro | Pode gerar inconsistência em cenários multi-usuário | Arquitetura |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-| Categoria | RFs/RNFs Cobertos | Observação |
-|-----------|--------------------|------------|
-| Gestão de Usuários e Acesso | RF01, RF02, RF03 | Totalmente coberto por Serviço de Usuários + Autenticação |
-| Gestão de Unidades e Moradores | RF04-RF08 | Totalmente coberto por Serviço de Unidades |
-| Financeiro — Boletos | RF09-RF15 | Totalmente coberto por Serviço Financeiro + Adaptador de Pagamento |
-| Comunicados e Assembleias | RF16-RF20 | Totalmente coberto |
-| Ocorrências | RF21-RF24 | Totalmente coberto |
-| Reserva de Áreas Comuns | RF25-RF29 | Totalmente coberto |
-| Controle de Acesso e Visitantes | RF30-RF33 | Totalmente coberto |
-| Segurança | RNF01-RNF03 | Coberto conceitualmente (Autenticação + Adaptador de Pagamento) |
-| Conformidade | RNF04 | Coberto transversalmente — pendente detalhamento operacional (ver Gap Analysis) |
-| Rastreabilidade | RNF05, RNF06 | Coberto pelo Serviço de Auditoria |
-| Disponibilidade/Desempenho | RNF07, RNF08 | Coberto como atributo de qualidade — decisão de infraestrutura em aberto |
-| Usabilidade/Compatibilidade | RNF09, RNF10 | Coberto pela decisão de Portal único responsivo |
-| Confiabilidade | RNF11 | Coberto pelo desenho transacional por unidade (D06) |
-| Backup | RNF12 | Não endereçado por componente específico — ver Gap Analysis |
-| Manutenibilidade | RNF13 | Coberto pelo Serviço de Auditoria e Logs |
+| Categoria | RFs Cobertos | RNFs Cobertos | Observações |
+|-----------|----------------|------------------|--------------|
+| Usuários e Acesso | RF01, RF02, RF03 | RNF01, RNF02 | Cobertos transversalmente pelo Gateway de API e Serviço de Usuários |
+| Unidades e Moradores | RF04-RF08 | RNF04 | Totalmente cobertos por HU01 e Serviço de Unidades |
+| Financeiro | RF09-RF15 | RNF03, RNF05, RNF08, RNF11 | Cobertos por HU02, HU03, HU08 |
+| Comunicados e Assembleias | RF16-RF20 | RNF13 | Cobertos por HU04, HU06, HU12 |
+| Ocorrências | RF21-RF24 | RNF13 | Cobertos por HU05, HU10 (RF22 - funcionário - sem HU dedicada) |
+| Reservas | RF25-RF29 | RNF08 | Cobertos por HU07, HU09 |
+| Controle de Acesso | RF30-RF33 | RNF04, RNF06 | Cobertos por HU11, HU13, HU14 |
+| Transversais | — | RNF07, RNF09, RNF10, RNF12, RNF13 | Requisitos de infraestrutura/qualidade aplicados a todos os componentes |
 
-**Cobertura geral estimada: 33/33 RFs mapeados a componentes; 12/13 RNFs mapeados diretamente, 1 RNF (backup) sem componente arquitetural dedicado explícito.**
+**Cobertura geral**: 33/33 RFs endereçados (100%); 13/13 RNFs endereçados (100%), sendo alguns tratados como requisitos transversais de arquitetura em vez de vinculados a HUs específicas.
 
 ---
 
@@ -253,10 +246,11 @@ sequenceDiagram
 
 | # | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
 |---|------------------------|--------------------------|------------------------|
-| G01 | RNF12 (backup diário, retenção 90 dias) não possui componente ou responsabilidade arquitetural explicitamente definida no desenho de domínio. | Risco de a responsabilidade ficar implícita apenas na camada de infraestrutura, sem processo de verificação/restauração formalizado. | Definir um componente/processo de "Rotina de Backup e Retenção" com política de verificação periódica, independente da escolha tecnológica. |
-| G02 | RNF04 (LGPD) é citado como requisito transversal, mas não há especificação de mecanismos como consentimento, anonimização ou direito de exclusão para dados de visitantes/moradores. | Serviços de Unidades e Acesso manipulam dados pessoais sensíveis sem workflow de conformidade definido. | Especificar HUs adicionais para gestão de consentimento e requisições de titulares de dados (ex.: exclusão/anonimização mediante regras de retenção). |
-| G03 | Não há definição de idempotência para confirmação de pagamento vindo do Gateway de Pagamento (RF12) — risco de duplicidade de notificação de "pago" em reenvios do provedor externo. | Pode gerar inconsistência no status financeiro e notificações duplicadas. | Incluir critério de aceite explícito sobre tratamento de eventos duplicados/idempotência no Adaptador de Pagamento. |
-| G04 | Ausência de regra sobre concorrência simultânea na verificação de disponibilidade de reserva (RF27) quando duas requisições chegam no mesmo instante. | Diagrama de sequência assume verificação e persistência como etapa lógica única, mas a especificação não define exclusividade formal (lock/transação). | Detalhar requisito não funcional de consistência para operações concorrentes no Serviço de Reservas. |
-| G05 | Não há especificação de retenção/expurgo de dados de visitantes (RF33 menciona histórico consultável, mas não por quanto tempo). | Pode conflitar com RNF04 (LGPD) quanto à minimização de dados. | Definir política de retenção de histórico de acesso de visitantes em conjunto com requisito de conformidade. |
-| G06 | Perfil "Administrador" citado em RF01/RF02 sem nenhuma HU ou responsabilidade descrita. | Componente de Usuários precisa de casos de uso adicionais para não deixar esse perfil arquiteturalmente órfão. | Elicitar requisitos específicos do perfil Administrador junto ao Product Owner antes da implementação. |
-| G07 | Não há requisito sobre trilha de auditoria para alterações cadastrais de unidades/moradores (apenas financeiro e acesso possuem RNF de rastreabilidade explícita). | Inconsistência de cobertura de auditoria entre módulos de mesma criticidade. | Avaliar extensão do Serviço de Auditoria para cobrir também operações de cadastro (RF04-RF08). |
+| G01 | RF14 (registro de pagamento fora da plataforma) e RF22 (ocorrências internas por funcionário) não possuem HU dedicada com critérios de aceite | Risco de interpretação divergente na implementação do Serviço Financeiro e de Ocorrências | Elicitar critérios de aceite específicos junto ao Product Owner antes do detalhamento técnico |
+| G02 | RF28 (cancelamento de reserva dentro do prazo) não define o que ocorre com reservas fora do prazo — bloqueio total ou aprovação do síndico? | Ambiguidade na regra de negócio do Serviço de Reservas | Definir fluxo de exceção (aprovação manual vs. bloqueio automático) |
+| G03 | RF33 (histórico de acessos consultável pelo síndico) não define volume esperado nem período de retenção específico, apenas backup geral (RNF12) | Impacto no dimensionamento do Repositório de Acessos e políticas de expurgo | Especificar retenção mínima/máxima de histórico de acessos, alinhado à LGPD |
+| G04 | Não há requisito de auditoria/log para ações administrativas de cadastro (RF04-RF08), apenas para financeiro, comunicados, ocorrências e acesso (RNF13) | Risco de rastreabilidade incompleta em alterações cadastrais sensíveis (ex.: exclusão de unidade) | Avaliar extensão do RNF13 para cobrir também operações de cadastro de unidades/moradores |
+| G05 | Ausência de requisito sobre idempotência/reprocessamento em caso de falha de comunicação com o gateway de pagamento (RF11, RF12) | Risco de duplicidade ou inconsistência no status de boletos | Definir mecanismo de confirmação idempotente e reconciliação periódica com o gateway |
+| G06 | Não há especificação de SLA para o envio de notificações por e-mail (RF17, RF24, RF31) | Pode gerar expectativa não atendida quanto à "imediatidade" mencionada nos critérios de aceite | Definir SLA objetivo (ex.: tempo máximo de envio) e estratégia de reenvio em caso de falha |
+| G07 | Não há requisito explícito de internacionalização/multi-idioma, nem de acessibilidade (WCAG) | Pode ser relevante dependendo do público-alvo do condomínio | Confirmar com stakeholders se é necessário considerar acessibilidade como RNF adicional |
+| G08 | RF09 permite configurar taxa "por unidade ou por tipo de unidade", mas não há regra de precedência quando ambas configurações coexistem | Ambiguidade na lógica de cálculo do Serviço Financeiro | Definir regra de precedência (ex.: configuração por unidade sobrepõe configuração por tipo) |

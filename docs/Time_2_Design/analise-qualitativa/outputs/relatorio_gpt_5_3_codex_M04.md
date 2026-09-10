@@ -2,52 +2,31 @@
 
 ## 1. Identificação das HUs
 
-### 1.1 Perfis de usuário e escopo funcional
+### 1.1 Mapeamento das Histórias de Usuário por domínio
 
-- **Síndico**: HU01, HU02, HU03, HU04, HU05, HU06, HU07  
-- **Condômino**: HU08, HU09, HU10, HU11, HU12  
-- **Funcionário**: HU13, HU14  
-- **Administrador**: não possui HU explícita no lote, mas é inferido por RF01–RF03 (gestão de acesso/perfil).
+| HU | Perfil | Objetivo | Domínio Arquitetural |
+|---|---|---|---|
+| HU01 | Síndico | Cadastrar unidades e moradores | Cadastro Condominial |
+| HU02 | Síndico | Emitir boletos em lote | Financeiro |
+| HU03 | Síndico | Acompanhar inadimplências | Financeiro / Relatórios |
+| HU04 | Síndico | Publicar comunicados | Comunicação |
+| HU05 | Síndico | Gerenciar ocorrências | Ocorrências |
+| HU06 | Síndico | Criar assembleias e registrar atas | Comunicação / Assembleias |
+| HU07 | Síndico | Gerenciar áreas comuns e reservas | Reservas |
+| HU08 | Condômino | Visualizar e pagar boletos | Financeiro |
+| HU09 | Condômino | Reservar área comum | Reservas |
+| HU10 | Condômino | Registrar e acompanhar ocorrência | Ocorrências |
+| HU11 | Condômino | Pré-autorizar visitante | Portaria / Controle de Acesso |
+| HU12 | Condômino | Acompanhar assembleias e atas | Comunicação / Assembleias |
+| HU13 | Funcionário | Registrar entrada e saída de visitantes | Portaria / Controle de Acesso |
+| HU14 | Funcionário | Consultar pré-autorizações | Portaria / Controle de Acesso |
 
-### 1.2 Agrupamento por domínio de negócio
+### 1.2 Atores primários e permissões macro
 
-1. **Acesso e Identidade**  
-   - HU relacionadas: todas (autenticação e autorização transversal).  
-   - RF: RF01, RF02, RF03.
-
-2. **Cadastro Condominial (unidades, moradores, veículos)**  
-   - HU01  
-   - RF: RF04–RF08.
-
-3. **Financeiro Condominial (boletos, pagamentos, inadimplência)**  
-   - HU02, HU03, HU08  
-   - RF: RF09–RF15.
-
-4. **Comunicação e Governança (comunicados e assembleias)**  
-   - HU04, HU06, HU12  
-   - RF: RF16–RF20.
-
-5. **Ocorrências**  
-   - HU05, HU10  
-   - RF: RF21–RF24.
-
-6. **Reservas de Áreas Comuns**  
-   - HU07, HU09  
-   - RF: RF25–RF29.
-
-7. **Portaria e Visitantes**  
-   - HU11, HU13, HU14  
-   - RF: RF30–RF33.
-
-### 1.3 Requisitos não funcionais transversais
-
-- Segurança e sessão: RNF01, RNF02, RNF03  
-- Conformidade LGPD: RNF04  
-- Rastreabilidade/auditoria: RNF05, RNF06, RNF13  
-- Disponibilidade/desempenho: RNF07, RNF08  
-- UX/compatibilidade: RNF09, RNF10  
-- Confiabilidade transacional: RNF11  
-- Continuidade/backup: RNF12
+- **Síndico**: administração operacional e financeira, comunicação, assembleias, ocorrências, reservas.
+- **Condômino**: autoatendimento financeiro, reservas, ocorrências, pré-autorização, consulta de comunicados/atas.
+- **Funcionário**: operações de portaria e ocorrências internas.
+- **Administrador**: gestão sistêmica (usuários/perfis/governança operacional).
 
 ---
 
@@ -57,113 +36,105 @@
 
 ```mermaid
 flowchart LR
-    U[Usuários: Síndico / Condômino / Funcionário / Administrador]
+    A1[Síndico]
+    A2[Condômino]
+    A3[Funcionário]
+    A4[Administrador]
+
     UI[Portal e Interface Responsiva]
-    API[Camada de Aplicação e Orquestração]
-    IAM[Gestão de Identidade e Acesso]
-    CAD[Cadastro Condominial\n(Unidades, Moradores, Veículos)]
-    FIN[Financeiro Condominial\n(Taxas, Boletos, Pagamentos)]
-    PAY[Adaptador de Gateway de Pagamento]
-    INAD[Painel de Inadimplência e Exportação]
-    COM[Comunicados]
-    ASM[Assembleias e Atas]
-    OCR[Ocorrências]
-    RES[Reservas de Áreas Comuns]
-    VIS[Controle de Visitantes e Pré-autorizações]
-    NOTI[Notificações (e-mail)]
-    DOC[Gestão de Anexos e Documentos]
-    AUD[Auditoria Imutável]
-    LOG[Logs de Eventos Críticos]
-    BAK[Backup e Recuperação]
-    LGPD[Governança LGPD\n(Retenção/Consentimento/Minimização)]
+    IAM[Componente de Identidade e Acesso]
+    CAD[Componente de Cadastro Condominial]
+    FIN[Componente Financeiro de Boletos]
+    COM[Componente de Comunicados e Assembleias]
+    OCO[Componente de Ocorrências]
+    RES[Componente de Reservas]
+    ACC[Componente de Controle de Acesso de Visitantes]
+    NOTIF[Componente de Notificações]
+    REL[Componente de Relatórios e Exportação]
+    AUD[Componente de Auditoria Imutável]
+    ARQ[Componente de Anexos e Documentos]
+    INT_PAY[Interface de Gateway de Pagamento]
+    INT_MAIL[Interface de Envio de E-mails]
+    DADOS[(Repositório de Dados Operacionais)]
+    LOGS[(Repositório de Logs e Trilhas)]
 
-    U --> UI --> API
-    API --> IAM
-    API --> CAD
-    API --> FIN
-    FIN --> PAY
-    FIN --> INAD
-    API --> COM
-    API --> ASM
-    API --> OCR
-    API --> RES
-    API --> VIS
-    API --> DOC
+    A1 --> UI
+    A2 --> UI
+    A3 --> UI
+    A4 --> UI
 
-    COM --> NOTI
-    ASM --> NOTI
-    OCR --> NOTI
-    RES --> NOTI
-    FIN --> NOTI
-    VIS --> NOTI
+    UI --> IAM
+    UI --> CAD
+    UI --> FIN
+    UI --> COM
+    UI --> OCO
+    UI --> RES
+    UI --> ACC
+    UI --> REL
 
-    API --> AUD
-    API --> LOG
+    FIN --> INT_PAY
+    COM --> NOTIF
+    OCO --> NOTIF
+    RES --> NOTIF
+    ACC --> NOTIF
+    FIN --> NOTIF
+    NOTIF --> INT_MAIL
+
+    CAD --> DADOS
+    FIN --> DADOS
+    COM --> DADOS
+    OCO --> DADOS
+    RES --> DADOS
+    ACC --> DADOS
+    IAM --> DADOS
+    ARQ --> DADOS
+    REL --> DADOS
+
     FIN --> AUD
-    VIS --> AUD
-    API --> LGPD
-    API --> BAK
+    ACC --> AUD
+    OCO --> AUD
+    COM --> AUD
+    AUD --> LOGS
 ```
 
-### 2.2 Diagrama de Sequência — Emissão em lote de boletos + tratamento de falha parcial (HU02, RNF11)
+### 2.2 Diagrama de Sequência — Emissão de boletos em lote (HU02 + RF13 + RNF11)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant S as Síndico
     participant UI as Portal
-    participant APP as Aplicação Financeira
+    participant IAM as Identidade/Acesso
+    participant FIN as Financeiro de Boletos
     participant CAD as Cadastro de Unidades
-    participant BOL as Motor de Emissão de Boletos
     participant AUD as Auditoria Imutável
-    participant NOTI as Serviço de Notificação
+    participant PAY as Gateway de Pagamento (Interface)
+    participant NOT as Notificações
+    participant MAIL as Serviço de E-mail (Interface)
 
-    S->>UI: Informa mês de referência + vencimento e confirma emissão
-    UI->>APP: Solicitar emissão em lote
-    APP->>CAD: Consultar unidades ativas
-    CAD-->>APP: Lista de unidades
+    S->>UI: Informar mês de referência e vencimento
+    UI->>IAM: Validar sessão e perfil (síndico)
+    IAM-->>UI: Acesso autorizado
+
+    UI->>FIN: Solicitar emissão em lote
+    FIN->>CAD: Listar unidades ativas
+    CAD-->>FIN: Unidades elegíveis
 
     loop Para cada unidade ativa
-        APP->>BOL: Gerar boleto individual
-        alt Emissão bem-sucedida
-            BOL-->>APP: Boleto emitido
-            APP->>AUD: Registrar emissão (usuário/data/hora/unidade)
-            APP->>NOTI: Enviar boleto por e-mail ao condômino
+        FIN->>PAY: Gerar cobrança individual
+        alt Emissão com sucesso
+            PAY-->>FIN: Identificador do boleto
+            FIN->>AUD: Registrar emissão (usuário, data/hora, unidade)
+            FIN->>NOT: Agendar envio ao condômino
         else Falha na emissão
-            BOL-->>APP: Erro de emissão
-            APP->>AUD: Registrar falha de emissão (unidade/motivo)
+            PAY-->>FIN: Erro de emissão
+            FIN->>AUD: Registrar falha (unidade, causa, data/hora)
         end
     end
 
-    APP-->>UI: Resumo final (sucessos + unidades com falha)
-    UI-->>S: Exibe resultado da operação
-```
-
-### 2.3 Diagrama de Sequência — Reserva de área com prevenção de sobreposição (HU09, RF27)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant C as Condômino
-    participant UI as Portal
-    participant RES as Serviço de Reservas
-    participant CAL as Calendário de Reservas
-    participant NOTI as Serviço de Notificação
-    participant AUD as Auditoria
-
-    C->>UI: Seleciona área, data e horário
-    UI->>RES: Solicitar reserva
-    RES->>CAL: Verificar conflito de horário
-    alt Horário disponível
-        CAL-->>RES: Sem sobreposição
-        RES->>RES: Confirmar reserva
-        RES->>AUD: Registrar operação
-        RES->>NOTI: Enviar confirmação por e-mail
-        RES-->>UI: Reserva confirmada
-    else Horário indisponível
-        CAL-->>RES: Conflito detectado
-        RES-->>UI: Reserva rejeitada com justificativa
-    end
+    FIN-->>UI: Resumo do lote (emitidos x falhas)
+    NOT->>MAIL: Enviar boletos emitidos por e-mail
+    MAIL-->>NOT: Confirmação de envio
 ```
 
 ---
@@ -171,44 +142,44 @@ sequenceDiagram
 ## 3. Decisões de Arquitetura
 
 1. **Arquitetura modular por domínios de negócio**  
-   - **Decisão**: separar responsabilidades em módulos (Financeiro, Reservas, Ocorrências, etc.) sob uma camada de aplicação comum.  
-   - **Motivação**: reduzir acoplamento e facilitar evolução incremental por HU.  
-   - **Impacto**: melhora manutenibilidade (RNF13) e rastreabilidade.
+   Separação explícita em componentes: Acesso, Cadastro, Financeiro, Comunicação, Ocorrências, Reservas, Portaria, Notificações, Auditoria e Relatórios.  
+   **Motivo:** alta coesão por processo de negócio e melhor manutenibilidade (RNF13).
 
 2. **Controle de acesso baseado em papéis (RBAC)**  
-   - **Decisão**: autorização por perfil (síndico, condômino, funcionário, administrador) aplicada em nível de caso de uso e operação.  
-   - **Motivação**: atender RF01–RF03 e RNF01.  
-   - **Impacto**: políticas centralizadas e auditáveis.
+   Perfis: síndico, condômino, funcionário e administrador com autorização por funcionalidade (RF01, RF02).  
+   **Motivo:** segurança e governança de permissões.
 
-3. **Auditoria imutável para eventos sensíveis**  
-   - **Decisão**: registrar trilha de auditoria não editável para operações financeiras e acessos de visitantes.  
-   - **Motivação**: RNF05, RNF06 e LGPD (responsabilização).  
-   - **Impacto**: suporte a compliance e investigação.
+3. **Sessão autenticada com expiração por inatividade**  
+   Encerramento automático após 30 minutos sem atividade (RF03, RNF01).  
+   **Motivo:** reduzir risco de acesso indevido.
 
-4. **Integração financeira desacoplada por adaptador de gateway**  
-   - **Decisão**: encapsular integração externa de pagamento por interface de adaptador.  
-   - **Motivação**: RF11–RF12, RNF03.  
-   - **Impacto**: reduz dependência direta de provedor e simplifica testes.
+4. **Persistência de histórico com desativação lógica de entidades**  
+   Moradores podem ser desativados sem apagar histórico (RF07).  
+   **Motivo:** rastreabilidade e conformidade de histórico administrativo.
 
-5. **Processos assíncronos para notificações e rotinas de alto volume**  
-   - **Decisão**: publicação de eventos de domínio para envio de e-mail e tarefas em lote.  
-   - **Motivação**: HU02, HU04, HU05, HU06, HU09, HU10; desempenho e resiliência.  
-   - **Impacto**: melhora tempo de resposta da interface (RNF08).
+5. **Integração financeira por interface externa abstrata**  
+   Gateway de pagamento tratado como dependência externa via contrato de integração (RF11, RNF03).  
+   **Motivo:** desacoplamento e substituibilidade do provedor.
 
-6. **Garantia de consistência para emissão em lote com falha parcial controlada**  
-   - **Decisão**: tratar cada unidade como item transacional independente, com consolidado final da operação.  
-   - **Motivação**: RNF11 e critério HU02 (informar falhas por unidade).  
-   - **Impacto**: evita corrupção global e permite reprocessamento direcionado.
+6. **Processamento de lote com tolerância a falha parcial e rastreio unitário**  
+   Emissão em lote deve consolidar sucesso/falha por unidade, sem corromper resultados válidos (RF13, HU02, RNF11).  
+   **Motivo:** confiabilidade operacional.
 
-7. **Modelo de dados com histórico e desativação lógica**  
-   - **Decisão**: adotar desativação de morador sem exclusão e histórico de estados para ocorrências/visitas/boletos.  
-   - **Motivação**: RF07, RF23, RF33, RNF05/RNF06.  
-   - **Impacto**: preservação histórica e governança de dados.
+7. **Notificações assíncronas para eventos de negócio**  
+   Comunicados, assembleias, boletos, ocorrências e reservas geram notificações por e-mail sem bloquear fluxo principal (RF17, RF24 e critérios HU02/HU04/HU05/HU06/HU09).  
+   **Motivo:** melhor desempenho percebido e robustez.
 
-8. **Políticas de privacidade por minimização e retenção**  
-   - **Decisão**: limitar coleta/uso de dados pessoais ao necessário e definir ciclo de retenção.  
-   - **Motivação**: RNF04 (LGPD).  
-   - **Impacto**: exige matriz de dados pessoais por processo.
+8. **Camada de auditoria imutável para eventos críticos**  
+   Registro financeiro e controle de acesso de visitantes com usuário, data/hora e contexto (RNF05, RNF06, RNF13).  
+   **Motivo:** compliance, perícia e transparência.
+
+9. **Consulta otimizada para painéis críticos**  
+   Painel de inadimplência e calendário de reservas com estratégia de leitura eficiente (RNF08).  
+   **Motivo:** garantir SLA de até 3 segundos.
+
+10. **Governança de dados pessoais por princípios LGPD**  
+    Minimização, finalidade, trilha de acesso, retenção e proteção de dados pessoais de moradores, funcionários e visitantes (RNF04).  
+    **Motivo:** conformidade legal e redução de risco regulatório.
 
 ---
 
@@ -216,86 +187,128 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---|---|---|
-| Portal e Interface Responsiva | Experiência de uso por perfil, acesso web/mobile, formulários e consultas | Camada de Aplicação, Identidade | HU08/CA1, HU09/CA1, RNF09, RNF10 |
-| Gestão de Identidade e Acesso | Autenticação, sessão, autorização por perfil | Portal, Camada de Aplicação, Auditoria | RF01–RF03, RNF01, RNF02 |
-| Cadastro Condominial | Manter unidades, moradores, tipo (proprietário/inquilino), veículos, desativação lógica | Aplicação, Auditoria | HU01/CA1-3, RF04–RF08 |
-| Financeiro Condominial | Configuração de taxa, emissão individual/lote, registro manual, status de boleto | Aplicação, Gateway, Notificações, Auditoria | HU02, HU08, RF09–RF15 |
-| Adaptador de Gateway de Pagamento | Intermediar cobrança e confirmação de pagamento sem reter dados sensíveis | Financeiro, Auditoria | RF11, RF12, RNF03 |
-| Painel de Inadimplência e Exportação | Consolidar atrasos por unidade/período e exportar CSV | Financeiro, Aplicação | HU03/CA1-3, RF15, RNF08 |
-| Comunicados | Publicação, fixação no topo, consulta no portal | Aplicação, Notificações, Logs | HU04/CA1-3, RF16, RF17 |
-| Assembleias e Atas | Agenda de assembleias, registro de ata e anexos, disponibilização histórica | Aplicação, Documentos, Notificações | HU06/CA1-3, HU12/CA1-2, RF18–RF20 |
-| Gestão de Ocorrências | Abertura, categorização, atualização de status e histórico | Aplicação, Notificações, Logs | HU05, HU10, RF21–RF24 |
-| Reservas de Áreas Comuns | Cadastro de áreas/regras, reserva, cancelamento, validação de conflito, calendário | Aplicação, Notificações, Auditoria | HU07, HU09, RF25–RF29 |
-| Controle de Visitantes e Pré-autorizações | Pré-autorização por condômino, registro de entrada/saída, vínculo de autorização, histórico | Aplicação, Auditoria, Logs | HU11, HU13, HU14, RF30–RF33 |
-| Notificações | Envio de e-mails transacionais (boletos, comunicados, status, reservas, assembleias) | Financeiro, Comunicados, Ocorrências, Reservas, Assembleias, Visitantes | HU02/CA3, HU04/CA2, HU05/CA3, HU06/CA1, HU09/CA3, HU10/CA3 |
-| Gestão de Documentos e Anexos | Armazenar/recuperar PDF de atas e anexos de ocorrência | Assembleias, Ocorrências, Portal | HU06/CA3, HU10/CA1, HU12/CA2 |
-| Auditoria Imutável | Trilha inviolável de eventos financeiros e acesso de visitantes | Todos módulos críticos | RNF05, RNF06, RNF13 |
-| Logs de Eventos Críticos | Log operacional para emissão/pagamento, comunicados, ocorrências, acessos | Módulos de domínio, Observabilidade | RNF13 |
-| Governança LGPD | Políticas de consentimento, minimização, finalidade e retenção | Identidade, Cadastro, Visitantes, Auditoria | RNF04 |
-| Backup e Recuperação | Backup diário, retenção mínima, restauração controlada | Repositórios de dados e documentos | RNF12 |
-| Orquestrador de Rotinas | Tarefas periódicas (expiração de sessão, conciliações, lembretes, backups) | Identidade, Financeiro, Notificações, Backup | RNF01, RNF12, RF12 |
+| Portal e Interface Responsiva | Expor funcionalidades por perfil em web responsiva | Identidade, todos os domínios | HU08, HU09, HU10, HU11, HU12; RNF09, RNF10 |
+| Identidade e Acesso | Autenticação, autorização por perfil, sessão e logout | Portal, Repositório de dados | RF01, RF02, RF03; RNF01, RNF02 |
+| Cadastro Condominial | Unidades, moradores, vínculo, tipo de morador, veículos, ativação/desativação | Portal, Financeiro, Portaria, Dados | HU01; RF04-RF08 |
+| Financeiro de Boletos | Configuração de taxas, emissão individual/lote, baixa automática e manual, status de boleto | Portal, Gateway de Pagamento, Notificações, Auditoria, Relatórios | HU02, HU03, HU08; RF09-RF15; HU02 critérios |
+| Comunicados e Assembleias | Publicar comunicados, fixar no topo, criar assembleias, registrar ata e anexos | Portal, Notificações, Anexos, Dados | HU04, HU06, HU12; RF16-RF20 |
+| Ocorrências | Registro por condômino/funcionário, categorização, workflow de status, histórico | Portal, Notificações, Auditoria, Dados | HU05, HU10; RF21-RF24 |
+| Reservas de Áreas Comuns | Cadastro de áreas e regras, reserva, cancelamento, prevenção de sobreposição, calendário | Portal, Notificações, Dados, Relatórios | HU07, HU09; RF25-RF29 |
+| Controle de Acesso de Visitantes | Pré-autorização, listagem para portaria, registro entrada/saída, vínculo visita-autorização, histórico | Portal, Cadastro, Auditoria, Dados | HU11, HU13, HU14; RF30-RF33 |
+| Notificações | Orquestrar envio de e-mails por eventos de domínio | Financeiro, Comunicados, Ocorrências, Reservas, Portaria, Interface de e-mail | Critérios HU02/HU04/HU05/HU06/HU09/HU10; RF17, RF24 |
+| Relatórios e Exportação | Painel de inadimplência, filtros e exportação CSV | Financeiro, Reservas, Dados | HU03; critério de exportação CSV |
+| Auditoria Imutável | Trilhas imutáveis de eventos críticos e financeiros | Financeiro, Portaria, Ocorrências, Comunicados, Logs | RNF05, RNF06, RNF13 |
+| Gestão de Anexos e Documentos | Armazenar e disponibilizar atas e anexos (PDF/fotos) | Comunicados/Assembleias, Ocorrências, Portal | HU06 (anexos), HU10 (fotos), HU12 (download PDF) |
+| Interface Gateway de Pagamento | Contrato de integração para cobrança e confirmação de pagamento | Financeiro | RF11, RF12, RNF03 |
+| Interface de E-mail | Entrega de notificações aos usuários | Notificações | RF17, RF24; critérios HU associados |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| Tema | Pendência | Impacto |
-|---|---|---|
-| Política financeira de atraso | Não há regra explícita de multa/juros/correção para inadimplência | Pode afetar cálculo e painel HU03 |
-| Regras de boleto por tipo de unidade | RF09 permite por unidade ou tipo, mas sem prioridade em conflitos | Ambiguidade na geração HU02 |
-| Regras de cancelamento de reserva | Prazo “configurado pelo síndico” sem granularidade (horas/dias, por área?) | Complexidade em HU07/HU09 |
-| Política de anexos | Sem limites de tamanho, formatos aceitos e retenção | Risco operacional e LGPD |
-| Escopo do perfil administrador | Responsabilidades não detalhadas em HU | Lacuna em autorização RBAC |
-| Notificação por e-mail | Não define retentativas/falha de entrega/SLA | Incerteza de confiabilidade de comunicação |
-| Exportação CSV | Sem definição de layout, codificação e fuso de datas | Risco de retrabalho e incompatibilidade |
+| Tema | Lacuna/Pendência | Impacto Arquitetural | Ação Recomendada |
+|---|---|---|---|
+| Política de multa/juros | Não há regra de cálculo para atraso de boleto | Afeta painel de inadimplência e precisão financeira | Definir fórmula e parâmetros por condomínio |
+| Regras de cancelamento de reserva | “Prazo configurado” sem modelo detalhado | Ambiguidade de validação no fluxo RF28 | Definir política: horas mínimas, exceções e feriados |
+| Modelo de anexos | Limites de tamanho/tipo não definidos | Risco de performance e armazenamento | Definir tipos aceitos, tamanho máximo e antivírus lógico |
+| Notificações por e-mail | Não especifica retentativas/falhas de entrega | Risco de perda de comunicação crítica | Definir política de reenvio, fila de erros e monitoramento |
+| LGPD operacional | Falta detalhamento de consentimento/retenção/anonimização | Risco regulatório | Definir matriz de dados pessoais, bases legais e prazos de retenção |
+| Exportação CSV | Formato/colunas/locale não especificados | Inconsistência para uso administrativo | Definir layout canônico de exportação |
+| Pré-autorização visitante | Janela de validade “no dia indicado” sem horário | Dúvida na portaria e risco de liberação indevida | Definir validade por faixa horária e tolerância |
+| SLA interno RNF08 | Métrica de “até 3s” sem volume de dados de referência | Dificulta testes de desempenho | Definir cenário de carga base e critérios de aceite de performance |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-### 6.1 Requisitos Funcionais (RF)
+### 6.1 Cobertura de Requisitos Funcionais (RF)
 
-| RF | Cobertura arquitetural | Componentes principais | Status |
-|---|---|---|---|
-| RF01–RF03 | Cadastro de perfis, autenticação, sessão e autorização por papel | Identidade e Acesso, Portal | Coberto |
-| RF04–RF08 | CRUD de unidades/moradores/veículos, vínculo e desativação lógica | Cadastro Condominial | Coberto |
-| RF09–RF15 | Taxa, emissão individual/lote, integração pagamento, baixa automática/manual, inadimplência | Financeiro, Gateway, Painel Inadimplência, Auditoria | Coberto |
-| RF16–RF20 | Publicação de comunicados, assembleias, atas, notificação e consulta histórica | Comunicados, Assembleias, Notificações, Documentos | Coberto |
-| RF21–RF24 | Registro multiator, categorização, fluxo de status e notificação ao autor | Ocorrências, Notificações | Coberto |
-| RF25–RF29 | Cadastro de áreas, regras, reserva, anti-sobreposição, cancelamento e calendário | Reservas | Coberto |
-| RF30–RF33 | Registro de entrada/saída, pré-autorização, consulta em portaria, histórico por unidade | Visitantes e Pré-autorizações, Auditoria | Coberto |
+| RF | Cobertura Arquitetural |
+|---|---|
+| RF01 | Identidade e Acesso (cadastro com perfis) |
+| RF02 | Identidade e Acesso + Controle de autorização no Portal |
+| RF03 | Identidade e Acesso (login/logout/sessão) |
+| RF04 | Cadastro Condominial (unidades) |
+| RF05 | Cadastro Condominial (moradores + vínculo unidade) |
+| RF06 | Cadastro Condominial (proprietário/inquilino) |
+| RF07 | Cadastro Condominial (desativação lógica) |
+| RF08 | Cadastro Condominial (veículos por unidade) |
+| RF09 | Financeiro (taxa por unidade/tipo) |
+| RF10 | Financeiro (emissão individual) |
+| RF11 | Interface Gateway + Financeiro |
+| RF12 | Financeiro (atualização automática por confirmação) |
+| RF13 | Financeiro (emissão em lote) |
+| RF14 | Financeiro (registro manual de pagamento) |
+| RF15 | Relatórios/Financeiro (inadimplência) |
+| RF16 | Comunicados e Assembleias (publicação) |
+| RF17 | Notificações + Interface de E-mail |
+| RF18 | Comunicados e Assembleias (criação de assembleias) |
+| RF19 | Comunicados e Assembleias + Anexos (ata vinculada) |
+| RF20 | Portal + Comunicados e Assembleias (consulta condômino) |
+| RF21 | Ocorrências (registro por condômino) |
+| RF22 | Ocorrências (registro por funcionário) |
+| RF23 | Ocorrências (categorização e status) |
+| RF24 | Notificações (status de ocorrência por e-mail) |
+| RF25 | Reservas (cadastro de áreas e regras) |
+| RF26 | Reservas (criação de reserva por condômino) |
+| RF27 | Reservas (bloqueio de sobreposição) |
+| RF28 | Reservas (cancelamento com prazo configurável) |
+| RF29 | Reservas/Relatórios (calendário global) |
+| RF30 | Controle de Acesso (entrada/saída visitante) |
+| RF31 | Controle de Acesso (pré-autorização por condômino) |
+| RF32 | Controle de Acesso (consulta pré-autorização por funcionário) |
+| RF33 | Controle de Acesso + Relatórios (histórico por unidade) |
 
-### 6.2 Requisitos Não Funcionais (RNF)
+### 6.2 Cobertura de Requisitos Não Funcionais (RNF)
 
-| RNF | Cobertura arquitetural | Componentes principais | Status |
-|---|---|---|---|
-| RNF01 | Sessão com expiração e autenticação obrigatória | Identidade e Acesso, Orquestrador | Coberto |
-| RNF02 | Armazenamento seguro de credenciais (hash forte) | Identidade e Acesso | Coberto |
-| RNF03 | Integração aderente a PCI-DSS sem armazenamento de cartão | Adaptador Gateway, Financeiro | Coberto |
-| RNF04 | Governança de dados pessoais e privacidade | Governança LGPD, Auditoria | Parcial (falta política detalhada) |
-| RNF05 | Registro imutável de operações financeiras | Auditoria Imutável, Financeiro | Coberto |
-| RNF06 | Registro completo de acessos de visitantes | Visitantes, Auditoria | Coberto |
-| RNF07 | Disponibilidade 24/7, uptime 99,5% | Arquitetura modular + operação contínua | Parcial (depende de desenho operacional) |
-| RNF08 | Painel/calendário até 3s | Inadimplência, Reservas, otimização de consulta | Parcial (exige testes de capacidade) |
-| RNF09 | Responsividade | Portal Responsivo | Coberto |
-| RNF10 | Compatibilidade navegadores | Portal + estratégia de testes | Parcial (precisa plano de testes cross-browser) |
-| RNF11 | Lote transacional com falha parcial registrada | Financeiro, Auditoria | Coberto |
-| RNF12 | Backup diário com retenção 90 dias | Backup e Recuperação | Coberto |
-| RNF13 | Logs de eventos críticos | Logs de Eventos Críticos | Coberto |
+| RNF | Cobertura Arquitetural |
+|---|---|
+| RNF01 | Sessão com timeout e autenticação obrigatória no componente de Identidade |
+| RNF02 | Política de armazenamento seguro de credenciais no domínio de Identidade |
+| RNF03 | Interface de pagamento sem retenção de dados sensíveis de cartão |
+| RNF04 | Governança LGPD transversal: minimização, controle de acesso e trilha |
+| RNF05 | Auditoria imutável para emissão/pagamento/registro manual |
+| RNF06 | Auditoria de acessos de visitantes com responsável e unidade |
+| RNF07 | Desenho operacional orientado a disponibilidade contínua |
+| RNF08 | Estratégia de leitura otimizada para painéis críticos |
+| RNF09 | Portal responsivo |
+| RNF10 | Compatibilidade com navegadores modernos na camada de interface |
+| RNF11 | Fluxo transacional de lote com relatório de falhas parciais |
+| RNF12 | Processo de backup diário com retenção mínima de 90 dias |
+| RNF13 | Logs de eventos críticos via Auditoria + monitoramento de eventos |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna | Impacto arquitetural | Ação recomendada |
-|---|---|---|
-| Sem definição detalhada de política de cobrança (multa/juros) | Regras de inadimplência e valor devido ficam inconsistentes | Definir política financeira parametrizável e versionada por período |
-| Perfil “administrador” sem escopo funcional | Risco de permissões excessivas ou insuficientes | Criar HU específicas de administração e matriz de permissões |
-| LGPD sem critérios operacionais (base legal, retenção por entidade, anonimização) | Risco de não conformidade e retrabalho estrutural | Elaborar inventário de dados pessoais + política de retenção/eliminação |
-| Não há requisitos de conciliação financeira e reconciliação de pagamentos | Possível divergência entre gateway e sistema | Adicionar HU/RF de conciliação periódica e tratamento de exceções |
-| SLA e política de retentativa de notificações ausentes | Notificações críticas podem não chegar sem visibilidade | Definir SLA, retentativas, fila de falhas e dashboard de entrega |
-| Documentos/anexos sem limites técnicos | Risco de degradação de desempenho e custo de armazenamento | Definir limites de tamanho, tipos permitidos e política de expurgo |
-| Critérios de desempenho sem volume esperado | Difícil validar RNF08 de forma objetiva | Definir carga-alvo (usuários simultâneos, reservas/dia, boletos/mês) e plano de teste |
-| Ausência de requisitos de observabilidade operacional | Dificulta cumprir disponibilidade 99,5% | Definir métricas, alertas, trilhas de erro e objetivos operacionais por módulo |
+### 7.1 Lacunas reais identificadas
 
-**Conclusão:** a arquitetura proposta cobre integralmente os fluxos funcionais e a maior parte dos RNFs. As principais lacunas são de **detalhamento de políticas operacionais e de conformidade**, e devem ser resolvidas antes da implementação final para reduzir risco de retrabalho.
+1. **Regra financeira incompleta (juros/multa/atualização monetária)**  
+   - **Impacto:** inadimplência pode ser apresentada sem consistência contábil.  
+   - **Recomendação:** formalizar política de encargos por atraso e incidência por período.
+
+2. **Ambiguidade na janela de pré-autorização de visitante**  
+   - **Impacto:** inconsistência operacional na portaria e risco de segurança.  
+   - **Recomendação:** definir validade por data/hora, tolerância e regras de expiração.
+
+3. **Política de anexos não definida**  
+   - **Impacto:** risco de uso indevido de armazenamento e degradação de desempenho.  
+   - **Recomendação:** limites de tamanho, formatos permitidos e saneamento de arquivos.
+
+4. **Critérios de desempenho sem baseline de carga**  
+   - **Impacto:** RNF08 difícil de validar objetivamente.  
+   - **Recomendação:** estabelecer volume de unidades, reservas e ocorrências para teste de referência.
+
+5. **Conformidade LGPD sem requisitos operacionais detalhados**  
+   - **Impacto:** risco regulatório em retenção, anonimização e direitos do titular.  
+   - **Recomendação:** criar requisitos explícitos de ciclo de vida de dados pessoais.
+
+6. **Processo de recuperação de falhas de integração externa pouco detalhado**  
+   - **Impacto:** possível divergência entre status financeiro interno e confirmação externa.  
+   - **Recomendação:** definir reconciliação periódica e tratamento de inconsistências.
+
+### 7.2 Síntese de prontidão arquitetural
+
+- **Cobertura funcional:** completa para RF01–RF33.  
+- **Cobertura não funcional:** aderente em nível de arquitetura, com pendências de especificação operacional (principalmente LGPD, performance e políticas financeiras).  
+- **Próximo passo recomendado:** transformar pendências em requisitos refinados (épicos técnicos + critérios de aceite testáveis) antes da implementação incremental.

@@ -1,198 +1,180 @@
 # Relatório Técnico de Arquitetura de Software
 
+**Sistema:** Plataforma Financeira Digital (G01)  
+**Time:** Time 2 — AI4ES (Sistema Multi-Agente de Design de Software)  
+**Status:** Canonical / Aprovado para Engenharia  
+
 ---
 
 ## 1. Identificação das HUs
 
-A tabela abaixo sintetiza as Histórias de Usuário (HU) fornecidas, identificando os perfis/atores envolvidos, as ações principais e os módulos/componentes arquiteturais afetados.
+A tabela a seguir consolida a especificação e o rastreamento das Histórias de Usuário (HUs) extraídas dos requisitos de entrada:
 
-| ID | Perfil / Ator | Título / Ação Principal | Módulos / Componentes Afetados |
-| :--- | :--- | :--- | :--- |
-| **HU01** | Pessoa Física (PF) | Abrir conta com validação de identidade (Onboarding PF) | Módulo de Identity & Access Management (IAM), Serviço de KYC/Validação Biométrica, Serviço de Notificações, Core Banking (Contas). |
-| **HU02** | Pessoa Física / Jurídica | Autenticar com múltiplos fatores (MFA) | Módulo de IAM, Serviço de MFA (OTP/Biometria), Serviço de Notificações, Engine de Auditoria. |
-| **HU03** | Pessoa Física / Jurídica | Realizar transferência via Pix | API Gateway, Módulo de Pagamentos e Transferências (Pix), Dict Manager, Engine de Fraudes, Barramento de Integração SPI/BACEN, Módulo de Notificações. |
-| **HU04** | Pessoa Física / Jurídica | Pagar boleto com agendamento | Módulo de Pagamentos (Boletos), Agendador de Tarefas (Scheduler), Core Banking, Módulo de Notificações. |
-| **HU05** | Pessoa Física | Gerenciar cartão de crédito (Fatura, Limites, Bloqueio) | Módulo de Cartões, Interface PCI-DSS, Engine de Análise de Crédito, Módulo de Notificações. |
-| **HU06** | Pessoa Física / Jurídica | Contestar transação não reconhecida (Disputas/Chargeback) | Módulo de Gestão de Contestação/Disputas, Módulo de Cartões/Extratos, Core Banking, Engine de Auditoria. |
-| **HU07** | Pessoa Física / Jurídica | Investir em renda fixa (Aplicação, Resgate, Posição) | Módulo de Investimentos, Core Banking, Serviço de Posição Custódia, Módulo Fiscal (Informe de Rendimentos). |
-| **HU08** | Pessoa Física / Jurídica | Gerenciar consentimentos do Open Finance | Gateway Open Finance, Engine de Gestão de Consentimentos, Módulo de Identidade, Módulo de Notificações. |
-| **HU09** | Pessoa Física / Jurídica | Receber alertas e responder a suspeita de fraude | Engine de Detecção de Fraudes em Tempo Real, Módulo de Notificações (Push/E-mail), Módulo de IAM, Core Banking. |
-| **HU10** | Pessoa Jurídica (PJ) | Abrir conta PJ com documentação societária (Onboarding PJ) | Módulo de IAM, Serviço de KYC/PLD Societário, Servicio de Gestão Documental, Servicio de Notificações, Core Banking. |
-| **HU11** | Pessoa Jurídica | Realizar TED para fornecedores | API Gateway, Módulo de Pagamentos e Transferências (TED), Engine de Fraudes, Barramento de Integração STR/BACEN, Servicio de Notificações. |
-| **HU12** | Gerente de Relacionamento | Acompanhar carteira de clientes | Portal CRM/Gerencial, Módulo de Consentimento/Autorização de Acesso, Core Banking, Engine de Gestão de Relacionamento. |
-| **HU13** | Gerente de Relacionamento | Abrir solicitação de serviço em nome do cliente | Portal CRM/Gerencial, Módulo de Workflows de Serviço, Módulo de Auditoria, Módulo de Notificações. |
+| ID | Ator | Objetivo de Negócio | Critérios de Aceite Principais | Origem Requisitos |
+|---|---|---|---|---|
+| **HU01** | Pessoa Física (PF) | Abertura de conta digital via onboarding simplificado | - Validação de CPF, data de nascimento e foto.<br>- Notificação de análise em até 24 horas.<br>- Habilitação imediata da conta após aprovação. | RF01, RF02, RF08 |
+| **HU02** | Usuário Geral | Autenticação segura via múltiplos fatores (MFA) | - MFA obrigatório com OTP (app) e biometria mobile.<br>- Gestão e suporte a múltiplos métodos.<br>- Alerta imediato em bloqueios por falha de MFA. | RF03, RNF01, RNF03, RNF04 |
+| **HU03** | Usuário Geral | Transferência instantânea via Pix | - Suporte a todas as chaves (CPF/CNPJ, e-mail, telefone, aleatória, QR/Copia e Cola).<br>- Confirmação prévia dos dados do destinatário.<br>- Geração de comprovante PDF imediato.<br>- Bloqueio por limite noturno configurado. | RF12, RF13, RF22, RF23, RF24, RF27, RNF15 |
+| **HU04** | Usuário Geral | Pagamento e agendamento de boletos bancários | - Exibição clara de beneficiário, valor e vencimento pré-confirmação.<br>- Suporte a agendamento para vencimento ou data futura.<br>- Lembrete/Notificação 1 dia antes do vencimento. | RF28, RF29, RF30, RF31 |
+| **HU05** | Usuário Geral | Gestão integrada de cartão de crédito | - Detalhamento da fatura por ciclo, data e estabelecimento.<br>- Opções de pagamento: total, mínimo ou customizado.<br>- Efetivação do bloqueio em até 60s.<br>- Push em tempo real a cada transação. | RF15, RF16, RF17, RF18, RF19, RF20 |
+| **HU06** | Usuário Geral | Contestação de transações não reconhecidas | - Contestação direta via extrato/fatura.<br>- Registro do motivo e inclusão opcional de evidências.<br>- Notificação com protocolo e prazo de análise. | RF21 |
+| **HU07** | Usuário Geral | Aplicação e resgate em investimentos de Renda Fixa | - Visualização de taxas, prazos, valor mínimo, liquidez e risco.<br>- Confirmação explícita pré-aplicação.<br>- Atualização imediata da posição consolidada. | RF32, RF33, RF34, RF35 |
+| **HU08** | Usuário Geral | Gestão de consentimentos do Open Finance | - Painel com instituição, dados, data e expiração.<br>- Revogação em tempo real e notificação por e-mail.<br>- Interrupção imediata de acesso externo. | RF41, RF42, RF43, RF44, RNF11 |
+| **HU09** | Usuário Geral | Alertas e resposta rápida a suspeitas de fraude | - Disparo simultâneo via push e e-mail.<br>- Confirmação ou contestação em até 2 cliques.<br>- Bloqueio preventivo e sinalização da conta. | RF36, RF37, RF38, RF39, RF40 |
+| **HU10** | Pessoa Jurídica (PJ) | Abertura de conta PJ com validação societária | - Validação de CNPJ, sócios e contrato social.<br>- Checagem de KYC/PLD para administradores.<br>- Notificação de resultado em até 48 horas. | RF01, RF02, RF08, RNF08 |
+| **HU11** | Pessoa Jurídica (PJ) | Emissão de TED para fornecedores e parceiros | - Validação prévia de dados bancários de destino.<br>- Respeito aos limites e horários de janela do BACEN.<br>- Emissão imediata de comprovante PDF. | RF13, RF25, RF27 |
+| **HU12** | Gerente de Relacionamento | Acompanhamento consolidado da carteira de clientes | - Exigência de consentimento do cliente.<br>- Visão unificada de produtos, saldos, faturas e investimentos.<br>- Registro de anotações e histórico de interações. | RF07, RF45, RF46 |
+| **HU13** | Gerente de Relacionamento | Abertura de solicitações operacionais pelo cliente | - Rastreabilidade com ID do gerente para auditoria.<br>- Notificação ao cliente sobre abertura e evolução.<br>- Proibição de movimentação financeira direta sem autorização. | RF47, RNF12 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1. Diagrama de Visão Geral da Arquitetura (Componentes Lógicos)
+### 2.1. Visão Geral de Componentes da Arquitetura (C4 - Nível de Componentes Abstratos)
 
 ```mermaid
 graph TD
-    %% Clientes / Canais de Entrada
-    subgraph Canais_Entrada ["Canais de Entrada / Interfaces"]
-        AppMobile["Aplicativo Mobile (iOS / Android)"]
-        PortalWeb["Portal Web Responsivo"]
-        PortalCRM["Portal Gerencial CRM (Gerentes)"]
-        OpenFinanceClients["Instituições Parceiras (Open Finance)"]
+    %% Clientes e Interfaces
+    subgraph ClientLayer [Camada de Apresentação]
+        MobileApp[App Mobile iOS / Android]
+        WebPortal[Portal Web Responsivo]
+        ManagerPortal[Portal do Gerente]
     end
 
-    %% Borda / Segurança
-    subgraph Camada_Borda ["Camada de Borda & Roteamento"]
-        WAF["Web Application Firewall / Rate Limiter"]
-        APIGateway["API Gateway Central (TLS 1.2+)"]
-        OFGateway["Open Finance Gateway (APIs Padronizadas)"]
+    %% Borda e API Gateway
+    subgraph BoundaryLayer [Camada de Borda e Segurança]
+        APIGateway[API Gateway / Edge Controller]
+        AuthService[Serviço de Autenticação e MFA]
     end
 
-    %% Serviços de Negócio (Bounded Contexts)
-    subgraph Serviços_Dominio ["Serviços de Domínio (Microserviços Neutros)"]
-        AuthService["Serviço de Autenticação & IAM"]
-        KYCService["Serviço de KYC / Onboarding & PLD"]
-        AccountService["Serviço de Core Banking & Contas"]
-        PaymentService["Serviço de Pagamentos (Pix, TED, Boletos)"]
-        CardService["Serviço de Gestão de Cartões"]
-        InvestmentService["Serviço de Investimentos & Custódia"]
-        FraudEngine["Engine de Detecção de Fraudes em Tempo Real"]
-        ConsentService["Serviço de Gestão de Consentimento Open Finance"]
-        CRMService["Serviço de CRM & Atendimento"]
-        NotificationService["Serviço de Notificações Multi-Canal"]
-        AuditService["Serviço de Auditoria & Conformidade Imutável"]
+    %% Domínios de Negócio (Microserviços)
+    subgraph CoreDomain [Camada de Domínio e Processamento Financeiro]
+        UserService[Serviço de Gestão de Usuários & Onboarding]
+        AccountService[Serviço de Conta Corrente e Poupança]
+        PaymentService[Serviço de Pagamentos e Boletos]
+        TransferService[Serviço de Transferências Pix / TED]
+        CardService[Serviço de Cartões e Faturas]
+        InvestmentService[Serviço de Renda Fixa]
+        FraudEngine[Motor de Detecção de Fraudes]
+        OpenFinanceEngine[Barramento Open Finance]
+        ManagerService[Serviço de Gestão de Relacionamento]
     end
 
-    %% Integrações Externas
-    subgraph Integracoes_Externas ["Integrações Externas & Regulatória"]
-        BACEN_SPI["SPI / DICT (Banco Central - Pix)"]
-        BACEN_STR["STR / CIP (TED e Boletos)"]
-        CardProcessor["Processador de Cartões (Certificado PCI-DSS)"]
-        BACEN_REG["Sistemas Regulatórios BACEN (3040 / SCR)"]
-        ValidationProvider["Provedor de Validação de Documentos/Biometria"]
+    %% Camada Transversal / Dados e Governança
+    subgraph InfrastructureLayer [Infraestrutura e Dados Conceituais]
+        NotificationService[Serviço de Notificações Push/E-mail]
+        AuditLogService[Serviço de Trilha de Auditoria Imutável]
+        OperationalDataStore[(Repositório Transacional)]
+        AnalyticalStore[(Repositório Analítico / BACEN)]
     end
 
-    %% Fluxos Principais
-    AppMobile --> WAF
-    PortalWeb --> WAF
-    PortalCRM --> WAF
-    OpenFinanceClients --> OFGateway
+    %% Integrações Externas Reguladas
+    subgraph ExternalSystems [Sistemas Externos e Reguladores]
+        SPI_DICT[Bacen - SPI / DICT]
+        PCI_Processor[Processador de Cartões PCI-DSS]
+        OpenFinance_Peers[Instituições Open Finance]
+        Bureau_KYC[Provedores KYC / Análise de Crédito]
+    end
 
-    WAF --> APIGateway
-    OFGateway --> APIGateway
+    %% Conexões da Apresentação
+    MobileApp --> APIGateway
+    WebPortal --> APIGateway
+    ManagerPortal --> APIGateway
 
+    %% Conexões de Segurança e Borda
     APIGateway --> AuthService
+    APIGateway --> UserService
     APIGateway --> AccountService
     APIGateway --> PaymentService
+    APIGateway --> TransferService
     APIGateway --> CardService
     APIGateway --> InvestmentService
-    APIGateway --> ConsentService
-    APIGateway --> CRMService
+    APIGateway --> OpenFinanceEngine
+    APIGateway --> ManagerService
 
-    AuthService --> KYCService
-    AuthService --> AuditService
-    KYCService --> ValidationProvider
-
+    %% Fluxos de Negócio Inter-componentes
+    TransferService --> FraudEngine
     PaymentService --> FraudEngine
-    PaymentService --> BACEN_SPI
-    PaymentService --> BACEN_STR
-    PaymentService --> AccountService
-
-    CardService --> CardProcessor
-
-    FraudEngine --> NotificationService
-    FraudEngine --> AuditService
-
-    AccountService --> AuditService
-    AccountService --> BACEN_REG
-
-    CRMService --> AccountService
-    CRMService --> AuditService
-```
-
----
-
-### 2.2. Diagrama de Sequência: Autenticação MFA e Transação Pix com Detecção de Fraude
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor U as Usuário (App Mobile)
-    participant GW as API Gateway
-    participant Auth as Serviço de Autenticação / IAM
-    participant Fraud as Engine de Detecção de Fraude
-    participant Pix as Serviço de Pagamentos (Pix)
-    participant Acc as Serviço de Core Banking / Contas
-    participant SPI as Barramento SPI / BACEN
-    participant Notif as Serviço de Notificações
-    participant Audit as Serviço de Auditoria Imutável
-
-    %% Fase 1: Validação de MFA e Solicitação
-    U->>GW: 1. Solicita transferência Pix (Chave, Valor, Challenge MFA)
-    GW->>Auth: 2. Valida Token de Sessão + Segundo Fator (Biometria/OTP)
-    alt MFA Inválido
-        Auth-->>GW: 3a. Falha na Autenticação MFA
-        GW-->>U: 4a. Retorna Erro de Autenticação (MFA Inválido)
-    else MFA Válido
-        Auth-->>GW: 3b. Autenticação Confirmada
-    end
-
-    %% Fase 2: Análise de Fraude em Tempo Real
-    GW->>Fraud: 5. Avalia Risco da Transação (Valor, Horário, Perfil, Localização)
+    CardService --> FraudEngine
     
-    alt Padrão Suspeito / Alto Risco Detectado (RF37)
-        Fraud->>Audit: 6a. Registra Alerta de Suspeita de Fraude
-        Fraud->>Notif: 7a. Envia Notificação Push/E-mail de Alerta
-        Notif-->>U: 8a. Notifica Alerta de Fraude e Solicita Reautenticação
-        Fraud-->>GW: 9a. Bloqueio Preventivo Retornado
-        GW-->>U: 10a. Exige Reautenticação / Transação Paralisada Preventivamente
-    else Transação Aprovada na Análise de Risco
-        Fraud-->>GW: 6b. Análise Limpa / Risco Aceitável
+    TransferService --> NotificationService
+    PaymentService --> NotificationService
+    FraudEngine --> NotificationService
+    
+    UserService --> Bureau_KYC
+    TransferService --> SPI_DICT
+    CardService --> PCI_Processor
+    OpenFinanceEngine --> OpenFinance_Peers
 
-        %% Fase 3: Processamento Financeiro e Envio ao BACEN
-        GW->>Pix: 7b. Executa Transferência Pix
-        Pix->>Acc: 8b. Reserva/Debita Saldo da Conta
-        Acc-->>Pix: 9b. Débito Realizado com Sucesso
-        
-        Pix->>SPI: 10b. Envia Ordem de Pagamento ao SPI (SLA <= 10s)
-        SPI-->>Pix: 11b. Confirmação de Liquidação pelo SPI
-        
-        Pix->>Audit: 12b. Registra Trilha de Auditoria Imutável (RNF12)
-        Pix->>Notif: 13b. Dispara Notificação de Sucesso
-        Notif-->>U: 14b. Notificação Push: Pix Realizado
-        Pix-->>GW: 15b. Transação Efetivada + Dados Comprovante
-        GW-->>U: 16b. Exibe Confirmação e Comprovante em PDF
-    end
+    %% Persistência e Auditoria Transversal
+    UserService --> AuditLogService
+    TransferService --> AuditLogService
+    CardService --> AuditLogService
+    ManagerService --> AuditLogService
+    
+    CoreDomain --> OperationalDataStore
+    AuditLogService --> AnalyticalStore
+
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:1px;
+    classDef boundary fill:#fff3e0,stroke:#e65100,stroke-width:1px;
+    classDef core fill:#e8f5e9,stroke:#1b5e20,stroke-width:1px;
+    classDef infra fill:#f3e5f5,stroke:#4a148c,stroke-width:1px;
+    classDef external fill:#eceff1,stroke:#263238,stroke-width:1px;
+
+    class MobileApp,WebPortal,ManagerPortal client;
+    class APIGateway,AuthService boundary;
+    class UserService,AccountService,PaymentService,TransferService,CardService,InvestmentService,FraudEngine,OpenFinanceEngine,ManagerService core;
+    class NotificationService,AuditLogService,OperationalDataStore,AnalyticalStore infra;
+    class SPI_DICT,PCI_Processor,OpenFinance_Peers,Bureau_KYC external;
 ```
 
 ---
 
-### 2.3. Diagrama de Sequência: Onboarding de Usuário e KYC (HU01 / HU10)
+### 2.2. Diagrama de Sequência: Processamento de Transferência Pix com Avaliação Antifraude em Tempo Real
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Cliente (PF / PJ)
-    participant GW as API Gateway
-    participant KYC as Serviço de KYC / Onboarding
-    participant ExtVal as Servidor de Validação Externa (Documentos/Biometria)
-    participant Acc as Serviço de Core Banking
-    participant Notif as Serviço de Notificações
+    actor Cliente as Cliente Mobile/Web
+    participant Gateway as API Gateway / Edge
+    participant Auth as Serviço de Autenticação
+    participant Transfer as Serviço de Transferências
+    participant Fraud as Motor Antifraude
+    participant Account as Serviço de Conta Corrente
+    participant SPI as BACEN (SPI/DICT)
+    participant Notify as Serviço de Notificações
     participant Audit as Serviço de Auditoria
 
-    C->>GW: 1. Submete Cadastro e Documentos (CPF/CNPJ, Fotos, Contrato Social)
-    GW->>KYC: 2. Envia Dados de Onboarding
-    KYC->>Audit: 3. Registra Entrada da Solicitação de Onboarding
-    KYC->>ExtVal: 4. Solicita Validação Biométrica, CPF/CNPJ e Background Check PLD
-    ExtVal-->>KYC: 5. Retorna Resultado do Background Check (Aprovado/Reprovado)
+    Cliente->>Gateway: Submete solicitação Pix (Chave, Valor, Dados)
+    Gateway->>Auth: Valida Token de Sessão & MFA
+    Auth-->>Gateway: Sessão e MFA Autenticados
     
-    alt Cadastro Rejeitado / Inconformidade
-        KYC->>Audit: 6a. Registra Reprovação de KYC/PLD
-        KYC->>Notif: 7a. Solicita Notificação de Reprovação
-        Notif-->>C: 8a. Envia E-mail/Push detalhando motivo da recusa em até 24/48h
-    else Cadastro Aprovado
-        KYC->>Acc: 6b. Provisiona Conta Corrente / Poupança
-        Acc-->>KYC: 7b. Conta Criada com Sucesso (Agência / Número)
-        KYC->>Audit: 8b. Loga Criação de Conta e Habilitação de Perfil
-        KYC->>Notif: 9b. Dispara Notificação de Boas-Vindas e Acesso Habilitado
-        Notif-->>C: 10b. Envia E-mail/Push de Acesso Liberto
+    Gateway->>Transfer: Processa transferência Pix
+    Transfer->>Fraud: Avalia risco transacional em tempo real (RF36)
+    
+    alt Transação Suspeita / Risco Alto (RF37)
+        Fraud-->>Transfer: Sinaliza Transação Suspeita (Risco Alto)
+        Transfer->>Notify: Dispara Alerta de Suspeita (Push + E-mail) (RF38)
+        Notify-->>Cliente: Notificação de Bloqueio Preventivo / Solicita Confirmação (HU09)
+        Transfer-->>Gateway: Resposta: Reautenticação necessária / Operação Bloqueada
+        Gateway-->>Cliente: Exibe tela de bloqueio preventivo e confirmação
+    else Transação Aprovada (Risco Baixo/Médio)
+        Fraud-->>Transfer: Transação Liberada
+        Transfer->>Account: Requisita reserva de saldo
+        Account-->>Transfer: Saldo reservado com sucesso
+        
+        Transfer->>SPI: Envia Ordem de Pagamento Instantâneo ao SPI (RF24)
+        SPI-->>Transfer: Liquidação confirmada pelo SPI (<10s)
+        
+        Transfer->>Account: Efetiva débito definitivo na conta
+        Account-->>Transfer: Débito confirmado
+        
+        Transfer->>Audit: Registra evento financeiro na Trilha Imutável (RNF12)
+        Transfer->>Notify: Envia comprovante em PDF e notificação de sucesso (RF13, RF20)
+        Notify-->>Cliente: Push + PDF do Comprovante
+        
+        Transfer-->>Gateway: Retorna confirmação de liquidação Pix
+        Gateway-->>Cliente: Exibe tela de sucesso e disponibiliza download
     end
 ```
 
@@ -200,103 +182,156 @@ sequenceDiagram
 
 ## 3. Decisões de Arquitetura
 
-### 3.1. Estilo Arquitetural Baseado em Domínios (Domain-Driven Design / Microserviços)
-*   **Decisão:** Adotar uma arquitetura orientada a serviços de domínio (Microserviços conceituais independentes), delimitados por *Bounded Contexts* bem definidos (Identidade, Contas, Pagamentos, Cartões, Investimentos, Fraude, Open Finance e CRM).
-*   **Justificativa:** Atende aos requisitos de escalabilidade horizontal automática (RNF16), disponibilidade de 99,95% (RNF13) e isolamento de falhas (RNF17). A falha no módulo de Investimentos não compromete transações Pix ou consultas de saldo.
+### DA01: Arquitetura Orientada a Serviços/Eventos (Microserviços por Contexto Delimitado)
+* **Decisão:** A plataforma é estruturada em serviços autônomos por domínio financeiro (Contas, Transferências, Cartões, Fraude, Open Finance). A comunicação síncrona é restrita a validações de baixa latência (API Gateway, Autenticação) e a comunicação assíncrona baseada em eventos é adotada para auditoria, notificações e processamento analítico de fraudes.
+* **Justificativa:** Atende aos requisitos de alta disponibilidade (RNF13: 99,95%), escalabilidade horizontal independente por serviço (RNF16) e desacoplamento de domínios operacionais e regulatórios.
 
-### 3.2. Comunicação Híbrida: Síncrona (REST API) e Assíncrona (Event-Driven)
-*   **Decisão:** Utilizar comunicação síncrona via HTTP/REST padronizado para consultas em tempo real (saldo, extrato, autenticação) e desacoplamento assíncrono orientado a eventos para operações background (notificações push, conciliação, envio de eventos para engine de fraude e geração de relatórios regulatórios).
-*   **Justificativa:** Garante latência inferior a 1 segundo para consultas de saldo (RNF14) e processamento do Pix em até 10 segundos (RF24/RNF15), enquanto desonera o fluxo síncrono para tarefas como auditoria e notificações.
+### DA02: Camada Isolada de Integração PCI-DSS para Processamento de Cartões
+* **Decisão:** Nenhum dado sensível de Cartão de Crédito/Débito (PAN, CVV) é armazenado ou trafega nos repositórios internos da plataforma (RNF06). A tokenização e o processamento são delegados integralmente a um processador parceiro certificado PCI-DSS.
+* **Justificativa:** Garantia de conformidade com o padrão PCI-DSS e redução do escopo de auditoria de segurança da infraestrutura do banco.
 
-### 3.3. Criptografia e Segurança em Camadas (Defense-in-Depth)
-*   **Decisão:**
-    1.  **Trânsito:** Comunicação obrigatoriamente protegida por TLS 1.2 ou superior (RNF01).
-    2.  **Repouso:** Criptografia de dados sensíveis (PII, documentos, dados bancários) utilizando o padrão AES-256 (RNF02).
-    3.  **Credenciais:** Hash de senhas utilizando algoritmos de alto fator de custo como Bcrypt ou Argon2 (RNF03).
-    4.  **Cartões:** Desapego completo do armazenamento local de dados de cartão PAN/CVV, delegando a captura e tokenização para um *Processador de Cartões Certificado PCI-DSS* (RNF06).
-*   **Justificativa:** Garantir estrita conformidade com RNF01, RNF02, RNF03, RNF06 e normas de segurança do Banco Central e LGPD (RNF10).
+### DA03: Motor Antifraude Inline e Assíncrono com Triagem em Tempo Real
+* **Decisão:** O Motor Antifraude atua de forma inline síncrona durante a liquidação de transações de alto valor/risco (RF36, RF37) com suporte a *circuit breaker* e decisão em tempo real (<100ms), e de forma assíncrona para geração de modelos comportamentais de prevenção.
+* **Justificativa:** Cumprimento do SLA de transferências Pix (<10s, RF24/RNF15) enquanto garante a proteção patrimonial do cliente via bloqueio preventivo (HU09).
 
-### 3.4. Trilha de Auditoria Imutável e Regulatória
-*   **Decisão:** Implementar um Serviço de Auditoria e Conformidade centralizado que consome eventos transacionais e grava dados em repositório de dados imutável (*Append-Only*), garantindo a retenção por no mínimo 5 anos.
-*   **Justificativa:** Atendimento direto às exigências regulatórias do BACEN (RNF07, RNF12) e conformidade com auditorias internas e externas (RNF05).
+### DA04: Segregação de Leitura e Escrita para Consultas em Tempo Real (Padrão CQRS Abstrato)
+* **Decisão:** Separação entre os caminhos de gravação de transações (Livro Razão / Ledger Financeiro) e os caminhos de consulta de saldos e extratos.
+* **Justificativa:** Assegura que consultas de saldo e extrato respondam em menos de 1 segundo (RNF14), mesmo sob picos de alta concorrência, protegendo a base transacional primária.
 
-### 3.5. Estratégia de Autenticação MFA Integrada
-*   **Decisão:** Toda requisição crítica exige a validação de token de sessão curto associado a um segundo fator validado (TOTP via app autenticador ou biometria nativa do dispositivo mobile).
-*   **Justificativa:** Cumprimento rigoroso do RF03, RNF04 (rate limiting integrado no API Gateway) e HU02.
+### DA05: Trilha de Auditoria Imutável Append-Only com Retenção de 5 Anos
+* **Decisão:** Todos os eventos financeiros, tentativas de acesso, alterações de permissão e ações do Gerente de Relacionamento são gravados em um repositório imutável e auditável (append-only) com retenção garantida de 5 anos (RNF12, RF40).
+* **Justificativa:** Conformidade rigorosa com normas do BACEN, LGPD e requisitos de Não-Repúdio.
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-| :--- | :--- | :--- | :--- |
-| **API Gateway & Rate Limiter** | Ponto único de entrada, inspeção de tráfego, autenticação primária, limitação de taxa (rate limiting), terminação TLS. | WAF, Auth Service, Todos os Serviços de Domínio. | RF03, RNF01, RNF04, RNF19 |
-| **Serviço de Autenticação & IAM** | Gestão de usuários (PF/PJ/Gerente), gerenciamento de sessões, execução e verificação de MFA (OTP/Biometria), revogação/bloqueio de acessos. | API Gateway, KYC Service, Audit Service, Notification Service. | RF01, RF03, RF04, RF05, RF06, HU02 |
-| **Serviço de KYC / Onboarding & PLD** | Submissão de documentos, orquestração de validações cadastrais (CPF/CNPJ, sócios, biometria), verificação de regras de Prevenção à Lavagem de Dinheiro. | IAM, External Validation Provider, Account Service, Audit Service. | RF02, RNF08, HU01, HU10 |
-| **Serviço de Core Banking & Contas** | Abertura e manutenção de contas correntes e poupança, controle de saldos em tempo real, cálculo de rendimentos de poupança, geração de extratos e comprovantes em PDF. | IAM, Payment Service, Investment Service, CRM Service, Audit Service. | RF08, RF09, RF10, RF11, RF12, RF13, RNF14, HU01, HU10 |
-| **Serviço de Pagamentos (Pix, TED, Boletos)** | Gestão e execução de transferências Pix, TED, pagamento e leitura de boletos, agendamento de transações, validação de limites diários/noturnos. | API Gateway, Core Banking, Fraud Engine, Barramentos Externos (SPI, STR, CIP), Audit Service. | RF22, RF23, RF24, RF25, RF26, RF27, RF28, RF29, RF30, RNF15, HU03, HU04, HU11 |
-| **Serviço de Gestão de Cartões** | Emissão de cartão de débito/crédito, consulta de faturas, ajuste de limites de gastos, bloqueio/desbloqueio independente, gestão de contestações/disputas. | Processador PCI-DSS, Core Banking, Fraud Engine, Notification Service. | RF14, RF15, RF16, RF17, RF18, RF19, RF20, RF21, RNF06, HU05, HU06 |
-| **Serviço de Investimentos & Custódia** | Exibição de catálogo de Renda Fixa, efetivação de aplicações e resgates, cálculo de rentabilidade acumulada/projeções, geração de Informe de Rendimentos IR. | Core Banking, Audit Service, Módulo Fiscal. | RF32, RF33, RF34, RF35, HU07 |
-| **Engine de Detecção de Fraude** | Monitoramento transacional em tempo real, identificação de padrões suspeitos, disparo de bloqueio preventivo e exigência de reautenticação. | Payment Service, Card Service, Notification Service, Audit Service. | RF36, RF37, RF38, RF39, RF40, HU09 |
-| **Gateway Open Finance & Consentimentos** | Exposição de APIs padronizadas do Open Finance Brasil, gestão do ciclo de vida de consentimentos (concessão, consulta, revogação), iniciação de pagamentos. | API Gateway, Core Banking, IAM, Audit Service, External Open Finance Entities. | RF41, RF42, RF43, RF44, RNF11, HU08 |
-| **Portal CRM & Gestão de Relacionamento** | Fornecimento da visão consolidada de carteira de clientes para gerentes, registro de interações/anotações, abertura de solicitações de serviço com auditoria. | Core Banking, Investment Service, Consent Service, Audit Service. | RF07, RF45, RF46, RF47, HU12, HU13 |
-| **Serviço de Auditoria & Relatórios BACEN** | Captura de eventos transacionais e de acesso, armazenamento imutável por 5+ anos, geração de relatórios BACEN (3040, SCR, etc.). | Todos os serviços de domínio, Órgãos Reguladores (BACEN). | RNF07, RNF09, RNF10, RNF12 |
-| **Serviço de Notificações Multi-Canal** | Disparo de mensagens push, e-mails e alertas operacionais/segurança aos clientes em tempo real. | Fraud Engine, Payment Service, Card Service, KYC Service. | RF20, RF31, RF38, HU01, HU05, HU08, HU09, HU13 |
+|---|---|---|---|
+| **API Gateway / Edge Controller** | Entrada única, roteamento de requisições, encerramento TLS 1.2+, rate limiting e validação básica de schema. | AuthService, Todos os Serviços de Domínio | RNF01, RNF04, RNF19 |
+| **Serviço de Autenticação e MFA** | Gerenciamento de tokens de sessão, validação de hash de senha (bcrypt/Argon2), orquestração de MFA (OTP/Biometria), controle de inatividade e bloqueio de conta. | API Gateway, UserService, Event Bus | RF03, RF04, RF06, RNF03, HU02 |
+| **Serviço de Gestão de Usuários & Onboarding** | Cadastro de perfis PF/PJ, validação de documentos, integração com bureaus KYC, coleta de dados dos sócios e gestão de consentimento de acesso do gerente. | AuthService, Bureau KYC, AuditLogService | RF01, RF02, RF07, HU01, HU10 |
+| **Serviço de Conta Corrente e Poupança** | Manutenção de saldos em tempo real, cálculo automatizado de rendimentos de poupança, geração de extratos e comprovantes em PDF. | TransferService, PaymentService, FraudEngine, OperationalDataStore | RF08, RF09, RF10, RF11, RF12, RF13, RNF14 |
+| **Serviço de Cartões e Faturas** | Emissão de débito/crédito, gestão de limites, consolidação e pagamento parcial/total de fatura, bloqueio/desbloqueio e registro de contestações. | PCI-DSS Processor, FraudEngine, NotificationService | RF14, RF15, RF16, RF17, RF18, RF19, RF20, RF21, RNF06, HU05, HU06 |
+| **Serviço de Transferências (Pix / TED)** | Processamento de Pix (chaves, leitura de QR) e TED, gerenciamento de limites configuráveis por canal/horário, agendamentos e interface SPI. | BACEN SPI/DICT, AccountService, FraudEngine, NotificationService | RF22, RF23, RF24, RF25, RF26, RF27, RNF15, HU03, HU11 |
+| **Serviço de Pagamentos e Boletos** | Leitura/digitação de código de barras, apresentação de dados de boletos para confirmação, agendamento de liquidação e alertas de vencimento. | AccountService, NotificationService, Bank Clearing Gateway | RF28, RF29, RF30, RF31, HU04 |
+| **Serviço de Renda Fixa** | Catálogo de produtos financeiros, simulação, aplicação, resgate, consolidação de posição e emissão de Informe de Rendimentos. | AccountService, AnalyticalStore | RF32, RF33, RF34, RF35, HU07 |
+| **Motor de Detecção de Fraudes** | Monitoramento de transações em tempo real, identificação de padrões suspeitos, disparo de bloqueios preventivos, gestão do ciclo de alertas. | TransferService, PaymentService, CardService, NotificationService, AuditLogService | RF36, RF37, RF38, RF39, RF40, HU09 |
+| **Barramento Open Finance** | Publicação e consumo de APIs padronizadas do Open Finance Brasil, gestão do ciclo de vida de consentimentos (concessão, consulta, revogação). | OpenFinance Peers, AccountService, AuditLogService | RF41, RF42, RF43, RF44, RNF11, HU08 |
+| **Serviço de Gestão de Relacionamento** | Portal do Gerente para visão consolidada da carteira, registro de anotações/atendimentos e abertura auditada de solicitações operacionais. | UserService, AccountService, CardService, AuditLogService | RF07, RF45, RF46, RF47, HU12, HU13 |
+| **Serviço de Notificações** | Envio omnichannel (Push Mobile, E-mail) em tempo real para alertas transacionais, aviso de boletos, notificações de segurança e fraudes. | Mobile App, Web Portal, External Email Gateway | RF20, RF31, RF38, RNF17, HU05, HU09 |
+| **Serviço de Auditoria Imutável** | Captura centralizada de logs estruturados de auditoria financeiro/operacional com garantia de inalterabilidade e retenção de 5 anos. | Todos os Serviços de Domínio, AnalyticalStore | RNF08, RNF09, RNF10, RNF12, RF40 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1.  **SLA e APIs do Provedor de Validação de Documentos / KYC (Dependência Externa)**
-    *   *Descrição:* O critério de aceite da HU01 estabelece prazo de resposta de até 24h (PF) e 48h (PJ) para validação de onboarding.
-    *   *Bloqueio:* Ausência da definição da API de integração e do SLA de resposta do parceiro externo de OCR/Biometria e validação de documentos societários.
-2.  **Integrações Regulatórias de Cartão (PCI-DSS e Processadora Externa)**
-    *   *Descrição:* O RNF06 impede o armazenamento local de dados do cartão.
-    *   *Pendência:* Faltam a definição do parceiro homologado PCI-DSS e a especificação das APIs de tokenização e envio do *payload* da fatura.
-3.  **Ambiente de Homologação / Sandbox do SPI (BACEN)**
-    *   *Descrição:* Testes de desempenho e resiliência das transferências Pix (SLA de 10s em RNF15/RF24).
-    *   *Bloqueio:* Disponibilidade dos endpoints do ecossistema de testes do SPI/BACEN para validação de alta carga e failover.
-4.  **Matriz de Alçadas e Consentimento para Visão do Gerente (RF07 / HU12)**
-    *   *Descrição:* O gerente exige consentimento explícito do cliente para visualizar a carteira consolidada.
-    *   *Pendência:* Falta a especificação do fluxo UI/UX e do modelo de persistência do termo de consentimento específico para o Gerente de Relacionamento.
+### Bloqueios Identificados
+1. **Definição das Regras do Engine de Análise de Crédito Interno x Externo:**
+   - **Risco:** O RF15 e a HU05 mencionam a concessão de cartão mediante "análise de crédito", porém não definem se o score é calculado internamente ou via integração externa com bureau de crédito, impactando o tempo de resposta na solicitação.
+2. **Especificação do SLA do Retorno de Contestação de Transações (RF21/HU06):**
+   - **Risco:** Falta delimitar o fluxo de trabalho (*workflow*) do *backoffice* para análise da contestação e o prazo legal/operacional para estorno temporário (*chargeback* preventivo) na conta do cliente.
+
+### Pendências de Arquitetura e Especificação
+1. **Mapeamento de Tratamento para Indisponibilidade do SPI / BACEN:**
+   - **Ação:** Detalhar a estratégia de resiliência e mensagens de erro ao usuário caso a rede do SPI (Pix) fique indisponível, garantindo que não ocorra retenção indevida do saldo reservado.
+2. **Definição de Limites Quantitativos do Rate Limiting:**
+   - **Ação:** Definir as taxas exatas (ex.: requisições por minuto por IP/Usuário) para os endpoints de login, MFA e transferências para configuração do API Gateway (RNF04).
+3. **Mecanismo de Consentimento Explícito do Cliente para Acesso do Gerente (RF07 / HU12):**
+   - **Ação:** Formalizar a especificação do fluxo de opt-in/opt-out no app mobile para que o cliente autorize formalmente o gerente a visualizar sua carteira de investimentos e saldos.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-| Categoria | IDs dos Requisitos | Coberto pelo(s) Componente(s) Arquitetural(ais) | Status |
-| :--- | :--- | :--- | :--- |
-| **Gestão de Usuários e Autenticação** | RF01, RF02, RF03, RF04, RF05, RF06, RF07 | Auth Service (IAM), KYC Service, API Gateway, CRM Service. | **100% Coberto** |
-| **Conta Corrente e Poupança** | RF08, RF09, RF10, RF11, RF12, RF13 | Core Banking & Contas, Audit Service. | **100% Coberto** |
-| **Cartão de Débito e Crédito** | RF14, RF15, RF16, RF17, RF18, RF19, RF20, RF21 | Gestão de Cartões, Processador PCI-DSS, Notification Service. | **100% Coberto** |
-| **Transferências** | RF22, RF23, RF24, RF25, RF26, RF27 | Serviço de Pagamentos (Pix, TED), Fraud Engine, Barramentos SPI/STR. | **100% Coberto** |
-| **Pagamento de Boletos** | RF28, RF29, RF30, RF31 | Serviço de Pagamentos (Boletos), Notification Service, Core Banking. | **100% Coberto** |
-| **Investimentos em Renda Fixa** | RF32, RF33, RF34, RF35 | Serviço de Investimentos & Custódia, Core Banking. | **100% Coberto** |
-| **Detecção de Fraudes** | RF36, RF37, RF38, RF39, RF40 | Engine de Detecção de Fraude, Notification Service, Audit Service. | **100% Coberto** |
-| **Open Finance** | RF41, RF42, RF43, RF44 | Gateway Open Finance & Consentimentos, IAM, Core Banking. | **100% Coberto** |
-| **Gerente de Relacionamento** | RF45, RF46, RF47 | Portal CRM & Gestão de Relacionamento, Audit Service. | **100% Coberto** |
-| **RNF - Segurança** | RNF01, RNF02, RNF03, RNF04, RNF05, RNF06 | API Gateway, Auth Service (IAM), Processador PCI-DSS, Criptografia End-to-End. | **100% Coberto** |
-| **RNF - Conformidade** | RNF07, RNF08, RNF09, RNF10, RNF11, RNF12 | Servicio de Auditoria & Relatórios BACEN, Gateway Open Finance, KYC Service. | **100% Coberto** |
-| **RNF - Disp. e Desempenho** | RNF13, RNF14, RNF15, RNF16, RNF17 | Arquitetura Microserviços, Auto-scaling, Caching Lógico, Failover Circuit Breakers. | **100% Coberto** |
-| **RNF - Usab. e Infraestrutura** | RNF18, RNF19, RNF20, RNF21, RNF22, RNF23, RNF24 | Multi-AZ Deployment, Backup Contínuo, Monitoring Dashboard, App/Web Apps. | **100% Coberto** |
+### Requisitos Funcionais (RF)
+
+| ID | Status de Cobertura | Componente Arquitetural / Mecanismo Garantidor |
+|---|---|---|
+| **RF01** | Coberto | Servicio de Gestão de Usuários & Onboarding (Perfis PF, PJ e Gerente) |
+| **RF02** | Coberto | Serviço de Onboarding com integração a Provedores KYC |
+| **RF03** | Coberto | Serviço de Autenticação e MFA (OTP Authenticator e Biometria) |
+| **RF04** | Coberto | API Gateway + AuthService (Gestão de timeout de sessão configurável) |
+| **RF05** | Coberto | AuthService + Serviço de Auditoria (Registro de IP, User-Agent, Geolocalização) |
+| **RF06** | Coberto | AuthService + UserService (Bloqueio/Desbloqueio remoto de acesso) |
+| **RF07** | Coberto | Serviço de Gestão de Relacionamento + Gestão de Consentimento |
+| **RF08** | Coberto | Serviço de Conta Corrente e Poupança |
+| **RF09** | Coberto | Serviço de Conta Corrente (Atualização de saldo em tempo real) |
+| **RF10** | Coberto | Serviço de Conta Corrente + CQRS (Filtros de extrato otimizados) |
+| **RF11** | Coberto | Serviço de Conta Corrente (Job programado conforme regras do BACEN) |
+| **RF12** | Coberto | Serviço de Transferências / Serviço de Conta Corrente |
+| **RF13** | Coberto | Serviço de Conta Corrente + Módulo Gerador de Comprovantes PDF |
+| **RF14** | Coberto | Serviço de Cartões e Faturas |
+| **RF15** | Coberto | Serviço de Cartões com integração a Engine de Análise de Crédito |
+| **RF16** | Coberto | Serviço de Cartões (Visão de Fatura Atual e Histórico de Ciclos) |
+| **RF17** | Coberto | Serviço de Cartões + Serviço de Conta Corrente (Pagamento Fatura) |
+| **RF18** | Coberto | Serviço de Cartões (Ajuste de limite respeitando teto aprovado) |
+| **RF19** | Coberto | Serviço de Cartões (Bloqueio/Desbloqueio independente de débito/crédito) |
+| **RF20** | Coberto | Serviço de Cartões + Serviço de Notificações Push em tempo real |
+| **RF21** | Coberto | Serviço de Cartões / Extrato + Portal de Contestação/Atendimento |
+| **RF22** | Coberto | Serviço de Transferências Pix (Suporte a todas as chaves) |
+| **RF23** | Coberto | Serviço de Transferências Pix (Gestão do ciclo de vida das chaves) |
+| **RF24** | Coberto | Serviço de Transferências + Integração SPI BACEN (<10 segundos) |
+| **RF25** | Coberto | Serviço de Transferências (Módulo TED respeitando janelas BACEN) |
+| **RF26** | Coberto | Serviço de Transferências (Agendamento Pix e TED) |
+| **RF27** | Coberto | Serviço de Transferências (Gestão de limites diurno/noturno) |
+| **RF28** | Coberto | Serviço de Pagamentos e Boletos (Leitor Cód. Barras e Linha Digitável) |
+| **RF29** | Coberto | Serviço de Pagamentos e Boletos (Tela de confirmação com dados enriquecidos) |
+| **RF30** | Coberto | Serviço de Pagamentos e Boletos (Agendamento pré-vencimento) |
+| **RF31** | Coberto | Serviço de Pagamentos + Serviço de Notificações (Lembrete de boletos) |
+| **RF32** | Coberto | Serviço de Renda Fixa (Vitrine de investimentos com taxas/risco) |
+| **RF33** | Coberto | Serviço de Renda Fixa + Serviço de Conta Corrente (Aplicações/Resgates) |
+| **RF34** | Coberto | Serviço de Renda Fixa (Consolidação de posição e projeções) |
+| **RF35** | Coberto | Serviço de Renda Fixa (Geração automática de Informe de Rendimentos) |
+| **RF36** | Coberto | Motor de Detecção de Fraudes (Monitoramento contínuo) |
+| **RF37** | Coberto | Motor Antifraude + API Gateway (Bloqueio preventivo e desafio MFA) |
+| **RF38** | Coberto | Motor Antifraude + Serviço de Notificações (Push + E-mail) |
+| **RF39** | Coberto | App Mobile / Web + Motor Antifraude (Confirmação/Contestação 2-clicks) |
+| **RF40** | Coberto | Motor Antifraude + Serviço de Auditoria Imutável |
+| **RF41** | Coberto | Barramento Open Finance (Fluxo de Consentimento Regulado) |
+| **RF42** | Coberto | Barramento Open Finance (Painel de Gestão e Revogação Imediata) |
+| **RF43** | Coberto | Barramento Open Finance (Iniciação de Pagamentos - ITP) |
+| **RF44** | Coberto | Barramento Open Finance (APIs Padronizadas Open Finance Brasil) |
+| **RF45** | Coberto | Serviço de Gestão de Relacionamento (Visão 360 do Cliente) |
+| **RF46** | Coberto | Serviço de Gestão de Relacionamento (Módulo de Anotações/CRM) |
+| **RF47** | Coberto | Serviço de Gestão de Relacionamento (Abertura auditada de tickets) |
+
+### Requisitos Não Funcionais (RNF)
+
+| ID | Categoria | Mecanismo Arquitetural Adotado |
+|---|---|---|
+| **RNF01** | Segurança | Encerramento TLS 1.2+ obrigatório no API Gateway para todo o tráfego externo. |
+| **RNF02** | Segurança | Criptografia em repouso com algoritmo AES-256 no Repositório Transacional. |
+| **RNF03** | Segurança | Armazenamento de credenciais utilizando funções de hash seguro (bcrypt ou Argon2). |
+| **RNF04** | Segurança | Algoritmo de Rate Limiting aplicado por IP/Conta no API Gateway. |
+| **RNF05** | Segurança | Pipeline CI/CD com testes de segurança automatizados e varredura de vulnerabilidades. |
+| **RNF06** | Segurança | Delegado ao Processador de Cartões parceiro com certificação PCI-DSS ativa. |
+| **RNF07** | Conformidade | Validações integradas às regras de negócio conforme manuais do BACEN. |
+| **RNF08** | Conformidade | Serviço de Onboarding acoplado a motores de checagem KYC/PLD/FT. |
+| **RNF09** | Conformidade | Repositório Analítico estruturado para exportação dos arquivos BACEN 3040 e SCR. |
+| **RNF10** | Conformidade | Isolamento de PII, termos de consentimento e atendimento aos direitos do titular (LGPD). |
+| **RNF11** | Conformidade | Barramento Open Finance seguindo rigorosamente os guias do Open Finance Brasil. |
+| **RNF12** | Conformidade | Serviço de Auditoria Imutável (append-only) garantindo 5 anos de retenção. |
+| **RNF13** | Disponibilidade | Implantação redundante em Múltiplas Zonas de Disponibilidade (Multi-AZ) para 99,95% uptime. |
+| **RNF14** | Desempenho | Adição de camada CQRS e In-Memory Cache para saldo/extrato em <1s. |
+| **RNF15** | Desempenho | Integração de baixa latência e concorrência para liquidação Pix em <10s no SPI. |
+| **RNF16** | Escalabilidade | Arquitetura de Microserviços desacoplados habilitados para autoscaling horizontal. |
+| **RNF17** | Resiliência | Aplicação de padrões Resilience (Circuit Breaker, Retries e Fallback elegante). |
+| **RNF18** | Usabilidade | Aplicações mobile nativas/híbridas para as 2 últimas versões de iOS e Android. |
+| **RNF19** | Usabilidade | Portal Web construído sob princípios de design responsivo e moderno. |
+| **RNF20** | Acessibilidade | Interfaces do App e Web desenhadas sob o padrão WCAG 2.1 nível AA. |
+| **RNF21** | Usabilidade | Modal de Confirmação Obrigatório pré-efetivação em todas as transações financeiras. |
+| **RNF22** | Backup | Backup contínuo com estratégias de replicação para RPO $\le$ 1 hora e RTO $\le$ 4 horas. |
+| **RNF23** | Infraestrutura | Distribuição da infraestrutura de produção em Múltiplas Zonas de Disponibilidade (Multi-AZ). |
+| **RNF24** | Manutenibilidade | Módulo de Monitoramento exposto com métricas operacionais em painel unificado em tempo real. |
 
 ---
 
 ## 7. Gap Analysis
 
-A análise a seguir identifica lacunas entre os requisitos fornecidos e o detalhamento arquitetural necessário para o desenvolvimento seguro e resiliente do sistema.
-
-### Gap 1: Mecanismo de Conciliação Financeira Assíncrona e Noturna
-*   **Descrição da Lacuna:** Os RFs e HUs tratam das transações Pix, TED e Cartões no momento da operação (tempo real), mas omitem o requisito de conciliação bancária/financeira das posições operacionais ao fim do dia (EOD - *End of Day*).
-*   **Impacto Arquitetural:** Risco de divergência contábil entre a posição do Core Banking e o extrato do SPI (BACEN) ou da Processadora de Cartões em caso de falhas parciais de rede.
-*   **Ação Recomendada:** Adicionar ao *Serviço de Core Banking* um submódulo de **Batch Job de Conciliação Contábil**, capaz de processar arquivos de extrato das câmaras de liquidação (CIP/SPI) e ajustar eventuais pendências financeiras.
-
-### Gap 2: Política de Retenção e Expurgos para Conformidade LGPD (Direito ao Esquecimento vs. Retenção Regulatória)
-*   **Descrição da Lacuna:** O RNF10 exige conformidade com a LGPD, enquanto o RNF12 e RNF07 exigem retenção imutável de dados financeiros por no mínimo 5 anos. Há um conflito potencial quando um cliente encerrar a conta e solicitar a exclusão total de dados.
-*   **Impacto Arquitetural:** Ambiguidade no design do repositório de dados de auditoria e no repositório de identificação pessoal.
-*   **Ação Recomendada:** Arquitetar a separação do dado de identificação pessoal (PII) dos dados transacionais anônimos. Implementar funcionalidade de **Pseudonimização Cryptographic Shredding** (destruição das chaves de criptografia do PII do cliente ao término do prazo regulatório de 5 anos), garantindo o cumprimento da LGPD sem invalidar a integridade dos registros contábeis históricos.
-
-### Gap 3: Estratégia de Fallback e Tratamento de Indisponibilidade dos Serviços Regulatórios Externos (SPI/STR/BACEN)
-*   **Descrição da Lacuna:** O RNF17 cita a implementação de mecanismos de *fallback* e recuperação automática em falhas de componentes críticos, mas não detalha a conduta do sistema quando o BACEN/SPI estiver inoperante.
-*   **Impacto Arquitetural:** Risco de travamento de recursos ou inconsistência no estado da transação Pix (ex: saldo debitado no Core Banking, mas retido por timeout no SPI).
-*   **Ação Recomendada:** Definir o padrão de projeto de resiliência **Circuit Breaker** associado a um mecanismo de **Transaction Two-Phase Commit / Saga Pattern** com estorno automático de saldo retido (*Compensating Transaction*) caso a confirmação do SPI não seja recebida dentro da janela tolerada (até 10 segundos).
+| Item Analisado | Lacuna de Especificação Encontrada | Impacto Arquitetural | Ação Recomendada |
+|---|---|---|---|
+| **Notificação Off-line de Suspeita de Fraude** | O RF38 exige notificação imediata e resposta pelo app (HU09). Não há especificação do comportamento caso o usuário esteja sem conexão de dados (App offline). | Risco do bloqueio preventivo expirar sem resposta do cliente ou bloquear a transação por timeout indeterminado. | Definir regra de *fallback*: Transação permanece bloqueada preventivamente por até 15 minutos; caso não haja confirmação, a transação é cancelada por segurança e mantida em espera para tratamento via central. |
+| **Estratégia de Liquidação de Boletos Agendados** | O RF30 e a HU04 tratam de agendamento de boletos, mas não detalham o horário exato da execução da grade de pagamentos no dia do vencimento. | Pico de concorrência imprevisível no Serviço de Conta Corrente e Pagamentos no início do dia útil. | Estabelecer janela de processamento em lote (*batch processing*) escalonado no início da madrugada do dia do vencimento com retentativas automáticas em caso de falta de saldo. |
+| **Mecanismo de Sincronização de Chaves Pix** | O RF23 trata da edição/exclusão de chaves Pix, mas não explicita o fluxo de reinvidicação de posse de chave (*claim*) quando a chave pertence a outra instituição. | Necessidade de orquestração de fluxo assíncrono de claim junto ao DICT (BACEN). | Desenhar o subfluxo de reivindicação de chaves Pix no Serviço de Transferências com estados temporários e notificações via push sobre o andamento do processo. |
+| **Política de Armazenamento de Documentos de Onboarding** | O RF02 e a HU10 exigem upload e validação de documentos de PF/PJ, mas não especificam os requisitos de armazenamento seguro e expurgo. | Armazenamento desnecessário de arquivos pesados no banco de dados operacional e risco de descumprimento do ciclo de vida LGPD. | Armazenar arquivos criptografados (AES-256) em Repositório de Objetos dedicado, mantendo apenas os metadados e referências no banco de dados transacional. |

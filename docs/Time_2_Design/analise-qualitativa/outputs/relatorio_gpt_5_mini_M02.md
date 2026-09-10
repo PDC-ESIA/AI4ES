@@ -2,212 +2,231 @@
 
 ## 1. Identificação das HUs
 
-Lista das Histórias de Usuário (HU) do lote e a responsabilidade funcional principal associada:
+Resumo das Histórias de Usuário (HU) recebidas e relação direta com requisitos funcionais (RF) e critérios de aceite mais relevantes.
 
 - HU01 — Visualizar agenda unificada dos dentistas  
-  - Visão unificada diária/semanal, filtros por dentista, distinção visual de disponibilidade. (RF03, RF04, RNF06)
+  - RF relevantes: RF03, RF04, RF06, RF07, RNF06, RNF09  
+  - Critérios de aceite: visão diária/semana; distinção visual por dentista; filtros.
 
 - HU02 — Agendar, cancelar e remarcar consulta  
-  - Processo de criação/alteração/exclusão de atendimento com checagem de conflitos e notificações por e-mail. (RF03, RF05, RF06, RF07, RF08)
+  - RF relevantes: RF03, RF04, RF05, RF06, RF07, RF08  
+  - Critérios de aceite: apenas horários válidos; bloqueio de sobreposições; envio de e-mail.
 
 - HU03 — Registrar pagamento de cobrança  
-  - Registrar pagamento total/parcial, atualização imediata do status da cobrança. (RF20, RF21, HU03 critérios)
+  - RF relevantes: RF20, RF21, RF22  
+  - Critérios de aceite: pagamento total/parcelado; identificação de cobranças em aberto; atualização imediata.
 
 - HU04 — Registrar procedimento no prontuário  
-  - Inserção rastreável de entradas no prontuário com data/hora/dentista. (RF09, RF10, RF13, RNF05)
+  - RF relevantes: RF09, RF10, RF13, RNF05, RNF02  
+  - Critérios de aceite: data/descrição/observações; rastreabilidade; histórico ordenado.
 
 - HU05 — Anexar radiografias e documentos clínicos ao prontuário  
-  - Upload e vínculo de arquivos acessíveis mediante controle de acesso. (RF11, RF12, RNF03, RNF07)
+  - RF relevantes: RF11, RF12, RNF03, RNF07  
+  - Critérios de aceite: formatos (JPEG/PNG/PDF); metadados; controle de acesso.
 
 - HU06 — Consultar prontuário completo do paciente  
-  - Visualização organizada do histórico clínico e documentos. (RF09, RF12, HU06 critérios)
+  - RF relevantes: RF09, RF10, RF11, RF12, RNF02, RNF03  
+  - Critérios de aceite: abas organizadas; busca por nome/CPF; restrição de acesso.
 
 - HU07 — Gerar cobrança após atendimento  
-  - Emissão de cobrança discriminando procedimentos e aplicando tabelas de convênios. (RF18, RF19, RF20, HU07 critérios)
+  - RF relevantes: RF18, RF19, RF20  
+  - Critérios de aceite: seleção de procedimentos; aplicação de tabela de convênio; disponibilidade para recepção.
 
 - HU08 — Gerenciar dentistas e suas grades de horário  
-  - CRUD de dentistas e configuração de grades que afetam somente agendamentos futuros. (RF03, RF07; HU08 critérios)
+  - RF relevantes: RF03, RF07, RF05  
+  - Critérios de aceite: definir dias/horários; alterações afetam apenas futuros agendamentos.
 
 - HU09 — Gerenciar materiais e receber alertas de estoque baixo  
-  - Cadastro de materiais, movimentações e alertas quando abaixo do mínimo. (RF14, RF15, RF16, RF17)
+  - RF relevantes: RF14, RF15, RF16, RF17  
+  - Critérios de aceite: alerta destacado; reposição a partir do alerta.
 
 - HU10 — Consultar relatório de faturamento  
-  - Relatórios filtráveis e exportáveis sobre faturamento. (RF22; HU10 critérios)
+  - RF relevantes: RF22, RF18, RF19  
+  - Critérios de aceite: filtros; totais agrupados; export CSV/PDF.
 
 - HU11 — Acessar agendamentos pelo portal  
-  - Portal autenticado para visualizar agendamentos futuros e histórico. (RF23, RF24; HU11 critérios)
+  - RF relevantes: RF23, RF24  
+  - Critérios de aceite: autenticação; exibir data/hora/dentista; histórico.
 
 - HU12 — Acessar e baixar documentos clínicos pelo portal  
-  - Download de documentos explicitamente liberados pelo dentista; restrição de anotações internas. (RF25, RNF03; HU12 critérios)
+  - RF relevantes: RF23, RF25, RF11, RNF03  
+  - Critérios de aceite: visibilidade controlada; downloads por documento; restrição às anotações internas.
 
-Observação: todos os HUs estão relacionados com os Requisitos Funcionais e os Requisitos Não Funcionais listados no escopo.
+Observação: cada HU acima está vinculada explicitamente aos RFs citados e aos critérios de aceite do enunciado.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-A seguir dois diagramas conceituais: (A) sequência do fluxo de agendamento (HU02) cobrindo autenticação, verificação de conflito e notificação; (B) diagrama de componentes mostrando principais módulos, responsabilidades e interfaces.
+Abaixo há dois diagramas em Mermaid: um diagrama de componentes (visão estática dos módulos e interfaces) e um diagrama de sequência detalhando o fluxo de agendamento (HU02) com autonumber.
 
-A) Diagrama de sequência — Agendamento criado/confirmado (HU02)
+```mermaid
+graph LR
+  subgraph Frontend
+    RP[Recepção UI]
+    DU[Dentista UI]
+    PU[Portal Paciente]
+    AU[Admin UI]
+  end
+
+  subgraph API
+    AGW[API Gateway / Facade]
+    AUTH[Auth Service (RBAC & Sessões)]
+    SCHED[Scheduling Service]
+    CAL[Calendar Store]
+    PAT[Patient Service]
+    PRONTO[Prontuário Service]
+    DOC[Document Storage (external)]
+    INV[Inventory Service]
+    BILL[Billing Service]
+    NOTIF[Notification Service]
+    REPORT[Reporting Service]
+    AUDIT[Audit / Imutável]
+    BACKUP[Backup & Retenção]
+  end
+
+  RP --> AGW
+  DU --> AGW
+  PU --> AGW
+  AU --> AGW
+
+  AGW --> AUTH
+  AGW --> SCHED
+  AGW --> PAT
+  AGW --> PRONTO
+  AGW --> INV
+  AGW --> BILL
+  AGW --> REPORT
+
+  SCHED --> CAL
+  SCHED --> PAT
+  SCHED --> AUTH
+  SCHED --> NOTIF
+  SCHED --> AUDIT
+
+  PRONTO --> DOC
+  PRONTO --> AUDIT
+  PRONTO --> AUTH
+  PRONTO --> PAT
+
+  BILL --> PAT
+  BILL --> SCHED
+  BILL --> AUDIT
+  BILL --> REPORT
+  BILL --> NOTIF
+
+  INV --> AUDIT
+  INV --> NOTIF
+
+  NOTIF --> PAT
+  NOTIF --> AUDIT
+
+  BACKUP -.-> CAL
+  BACKUP -.-> PAT
+  BACKUP -.-> PRONTO
+  BACKUP -.-> BILL
+  BACKUP -.-> INV
+  BACKUP -.-> DOC
+
+  DOC -. external object storage .-> BACKUP
+```
+
+Sequence diagram (fluxo de agendamento: HU02 — recepcionista agenda uma consulta; inclui verificação de conflito, reserva e notificação por e-mail):
+
 ```mermaid
 sequenceDiagram
-    autonumber
-    participant RecepcionistaUI as Recepcionista UI
-    participant Auth as Serviço de Autenticação
-    participant AgendaAPI as Serviço de Agenda (API)
-    participant Scheduler as Motor de Agendamento
-    participant CalendarDB as Repositório de Calendários (Dentistas)
-    participant Billing as Serviço de Faturamento
-    participant Notification as Serviço de Notificação
-    participant PatientEmail as E-mail do Paciente
+  autonumber
+  participant Receptionist UI as RU
+  participant API Gateway as AGW
+  participant Auth Service as AUTH
+  participant Scheduling Service as SCHED
+  participant Calendar Store as CAL
+  participant Patient Service as PAT
+  participant Audit Service as AUDIT
+  participant Notification Service as NOTIF
 
-    RecepcionistaUI->>Auth: Requisição com credenciais / token
-    Auth-->>RecepcionistaUI: Token (sessão válida)
-    RecepcionistaUI->>AgendaAPI: Solicita agenda unificada (filtro opcional)
-    AgendaAPI->>CalendarDB: Consulta slots dos dentistas
-    CalendarDB-->>AgendaAPI: Dados de agenda (por dentista)
-    AgendaAPI-->>RecepcionistaUI: Agenda agregada (visão diária/semana)
-
-    Note over RecepcionistaUI,AgendaAPI: Recepcionista escolhe slot e submete agendamento
-    RecepcionistaUI->>AgendaAPI: Criar Agendamento (paciente, dentista, horário, procedimentos)
-    AgendaAPI->>Scheduler: Verificar disponibilidade e regras da grade do dentista
-    Scheduler->>CalendarDB: Bloquear/verificar conflitos (checagem atômica)
-    CalendarDB-->>Scheduler: OK ou Conflito
-    alt Sem conflito
-        Scheduler-->>AgendaAPI: Confirma disponibilidade
-        AgendaAPI->>CalendarDB: Persistir agendamento (transação)
-        CalendarDB-->>AgendaAPI: Confirmação persistida
-        AgendaAPI->>Billing: Gerar cobrança inicial vinculada ao atendimento
-        Billing-->>AgendaAPI: Cobrança criada (id)
-        AgendaAPI->>Notification: Solicitar envio de e-mail (tipo: confirmação)
-        Notification->>PatientEmail: Enviar e-mail de confirmação
-        PatientEmail-->>Notification: Entrega confirmada
-        AgendaAPI-->>RecepcionistaUI: Agendamento confirmado (detalhes, cobrança)
-    else Conflito detectado
-        Scheduler-->>AgendaAPI: Retorna conflito
-        AgendaAPI-->>RecepcionistaUI: Erro: horário indisponível (sugestões)
-    end
+  RU->>AGW: Solicita criação de agendamento (dentista, paciente, data/hora)
+  AGW->>AUTH: Valida sessão e permissões (perfil recepcionista)
+  AUTH-->>AGW: Token / Permissão ok
+  AGW->>PAT: Confere existência do paciente (cria se necessário)
+  PAT-->>AGW: Retorna pacienteID
+  AGW->>SCHED: Solicita reserva de slot (dentistaID, pacienteID, start, end)
+  SCHED->>CAL: Checa disponibilidade e bloqueios na grade do dentista
+  CAL-->>SCHED: Disponível / Indisponível (inclui sobreposição detectada)
+  alt slot disponível
+    SCHED->>CAL: Insere reserva (transação/lock curto)
+    CAL-->>SCHED: Confirma inserção
+    SCHED->>AUDIT: Registra evento imutável (who, when, what)
+    AUDIT-->>SCHED: Confirma registro
+    SCHED-->>AGW: Retorna confirmação de agendamento
+    AGW-->>RU: Confirma agendamento criado
+    SCHED->>NOTIF: Solicita envio de e-mail de confirmação ao paciente
+    NOTIF->>PAT: Envia e-mail (assíncrono) e registra tentativa
+    NOTIF-->>SCHED: Confirmacao de disparo (ou fila)
+  else slot indisponível
+    SCHED-->>AGW: Retorna erro de conflito
+    AGW-->>RU: Exibe erro/alternativas
+  end
 ```
 
-B) Diagrama de componentes (visão lógica)
-```mermaid
-graph TD
-  subgraph UI
-    PatientPortal["Portal do Paciente (UI)"]
-    StaffUI["Painel Clínica (Recepção / Administrador / Dentista)"]
-  end
-
-  subgraph Services
-    AuthService["Serviço de Autenticação & Sessões"]
-    UserService["Serviço de Gestão de Usuários & RBAC"]
-    AgendaService["Serviço de Agenda / Agendamentos"]
-    Scheduler["Motor de Regras de Agendamento"]
-    ProntuarioService["Serviço de Prontuário Clínico"]
-    DocumentService["Gateway de Armazenamento de Documentos (obj. storage)"]
-    BillingService["Serviço de Faturamento e Cobranças"]
-    InventoryService["Serviço de Controle de Materiais"]
-    NotificationService["Serviço de Notificações (e-mail)"]
-    AuditService["Serviço de Audit/Log Imutável"]
-    ReportingService["Serviço de Relatórios e Exportação"]
-    BackupService["Serviço de Backup / Retenção"]
-  end
-
-  subgraph DataStores
-    UserDB["Repositório Usuarios / Perfis"]
-    CalendarDB["Repositório de Agendas / Eventos"]
-    ProntuarioDB["Repositório Metadata Prontuário"]
-    BillingDB["Repositório de Cobranças"]
-    InventoryDB["Repositório Estoque"]
-    ObjectStorage["Armazenamento de Arquivos Clínicos (externo)"]
-    AuditStore["Armazenamento de Logs Imutáveis"]
-  end
-
-  StaffUI -->|autentica/usa| AuthService
-  PatientPortal -->|autentica| AuthService
-
-  AuthService --> UserDB
-  StaffUI -->|chama API| AgendaService
-  PatientPortal -->|consulta| AgendaService
-  AgendaService --> CalendarDB
-  AgendaService --> Scheduler
-  Scheduler --> CalendarDB
-
-  StaffUI --> ProntuarioService
-  ProntuarioService --> ProntuarioDB
-  ProntuarioService --> DocumentService
-  DocumentService --> ObjectStorage
-
-  ProntuarioService --> AuditService
-  AgendaService --> AuditService
-  BillingService --> AuditService
-  InventoryService --> AuditService
-
-  BillingService --> BillingDB
-  BillingService -->|gera| ReportingService
-  ReportingService --> BillingDB
-  InventoryService --> InventoryDB
-
-  NotificationService -->|envia| PatientPortal
-  NotificationService -->|envia| staffUI
-
-  BackupService --> UserDB
-  BackupService --> CalendarDB
-  BackupService --> ProntuarioDB
-  BackupService --> BillingDB
-  BackupService --> InventoryDB
-  BackupService --> AuditStore
-```
+Notas sobre diagramas:
+- Componentes representam responsabilidades lógicas (serviços e repositórios).
+- Document Storage está explicitamente modelado como serviço de armazenamento externo desacoplado do servidor de aplicação (RNF07).
+- Audit Service é projetado como log imutável (RNF05).
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-1. Arquitetura em camadas e serviços coerentes com responsabilidades:
-   - Separação entre apresentação (UIs), serviços de domínio (Agenda, Prontuário, Faturamento, Inventário), infra de documentos e serviços transversais (Autenticação, Notificação, Auditoria, Backup, Relatórios).
-   - Benefício: isolamento de domínio, deploy e escalabilidade independentes, responsabilidades claras para testes.
+Lista de decisões arquiteturais principais, com motivação e impactos.
 
-2. Autenticação e autorização centralizadas:
-   - Serviço de Autenticação e RBAC (gestão de perfis: administrador, recepcionista, dentista, paciente). Políticas de autorização aplicadas a nível de API e UI.
-   - Sessões com timeout de 30 minutos de inatividade (RNF01).
+1. Separação por domínios funcionais (serviços lógicos):
+   - Responsabilidade: organizar Scheduling, Prontuário, Billing, Inventory, Notification, Reporting, Auth, Audit.
+   - Motivação: clareza de responsabilidades, isolamento de regras clínicas, requisitos de segurança e compliance.
+   - Impacto: facilita escalabilidade e implantação independente; exige definição clara de interfaces e contratos.
 
-3. Agenda e Scheduler desacoplados:
-   - AgendaService expõe APIs transacionais; Motor de Regras (Scheduler) encapsula validações de grade, regras de conflito e políticas de bloqueio atômico para evitar sobreposição (RF06, HU02).
-   - Persistência com operações atômicas/optimistic locking ou transações para evitar race conditions.
+2. Contrato API unificado (API Gateway / Facade):
+   - Responsabilidade: consolidar autenticação, autorização, roteamento e validação básica.
+   - Motivação: reduzir acoplamento UI <-> serviços e centralizar políticas de segurança e rate-limiting.
+   - Impacto: ponto único de entrada; requer alta disponibilidade.
 
-4. Prontuário clínico com armazenamento de metadados e objeto storage para arquivos:
-   - Metadados e histórico armazenados em repositório transacional; arquivos pesados (radiografias, PDFs) armazenados em object storage desacoplado (RNF07). DocumentService atua como gateway que aplica controles de acesso (RNF03).
-   - Controle de acesso aplicado tanto ao nível de metadado quanto ao URL/objeto.
+3. Armazenamento de documentos em object storage externo (desacoplado):
+   - Responsabilidade: armazenar radiografias e documentos clínicos fora do datastore primário.
+   - Motivação: RNF07 exige external storage; melhora escalabilidade e separação de backups.
+   - Impacto: necessidade de controle de acesso granular e links expirados; dependência de serviço externo abstraído via interface.
 
-5. Auditoria imutável:
-   - Todas as alterações significativas em prontuário, agendamentos e faturamento geram entradas de auditoria com usuário, data/hora e contexto (RNF05). Armazenamento WORM ou equivalente para garantir imutabilidade lógica.
+4. Controle de acesso RBAC e sessão com timeout de 30 minutos:
+   - Responsabilidade: autenticação e autorização por perfis (admin, recepcionista, dentista, paciente).
+   - Motivação: RNF01, RNF04, RNF03 (LGPD).
+   - Impacto: implementação de políticas de sessão, gerenciamento de revogação e logs de auditoria.
 
-6. Notificação assíncrona:
-   - Envio de e-mails (confirmação/cancelamento/remarcação) feito de forma assíncrona via NotificationService, com garantias de retry/filas e idempotência para evitar duplicidade (RF08, HU02).
+5. Imutabilidade de logs de alteração de prontuário:
+   - Responsabilidade: Audit Service grava eventos append-only com usuário/data/hora/ação.
+   - Motivação: RNF05 garantia de rastreabilidade.
+   - Impacto: políticas de retenção e acesso a esses logs; definir como exibir correções (versões do registro).
 
-7. Faturamento e integração de convênios:
-   - BillingService mantém tabelas de procedimentos e aplica regras de convênio na geração de cobranças (RF18–RF21, HU07). Permite registro de pagamentos parciais e controle de cobranças em aberto.
+6. Consistência e concorrência para agendamentos:
+   - Responsabilidade: Scheduling Service garante atomicidade na reserva de slot.
+   - Motivação: evitar sobreposição (RF06/HU02).
+   - Abordagem: lock curto ou transação de reserva; rejeitar concorrência com mensagem clara.  
+   - Impacto: necessidade de estratégia para alta concorrência e fallback (ex.: retry, filas).
 
-8. Gestão de estoque e vínculo ao atendimento:
-   - InventoryService registra entradas/saídas e permite vínculo de consumo por atendimento (RF14–RF17, HU09). Gera alertas e notificações para o painel de administrador.
+7. Política de dados sensíveis e conformidade:
+   - Responsabilidade: criptografia em trânsito e em repouso, controle de acesso a documentos clínicos, consentimento do paciente.
+   - Motivação: RNF02, RNF03 (LGPD e normas do Conselho).
+   - Impacto: definir processos legais e técnicos para anonimização, exportação e exclusão.
 
-9. Relatórios e exportação:
-   - ReportingService gera relatórios filtros (por período, dentista, modalidade) e exportações CSV/PDF (HU10). Deve consultar fontes transacionais e/ou um repositório analítico para desempenho.
+8. Disponibilidade e performance:
+   - Responsabilidade: projetar redundância para componentes críticos (API Gateway, Scheduling, Calendar Store) para atender RNF06 (3s) e RNF08 (99,5% uptime).
+   - Motivação: garantir experiência de recepção (agenda unificada) e operação clínica.
+   - Impacto: dimensionamento, caching de visões unificadas com controle de validade.
 
-10. Backups e retenção:
-    - BackupService realiza backups diários com retenção mínima de 30 dias e estratégia testada de restore (RNF11).
+9. Backup e retenção:
+   - Responsabilidade: backups automáticos diários com retenção mínima de 30 dias.
+   - Motivação: RNF11.
+   - Impacto: definir políticas de restauração, testes de DR (recuperação).
 
-11. Segurança, privacidade e conformidade:
-    - Dados clínicos tratados conforme LGPD e normas do órgão regulador (RNF02). Controle de acesso restrito para documentos clínicos (RNF03).
-    - Senhas armazenadas com hash seguro conforme requisito (RNF04 — ex.: hash forte recomendado).
-    - Criptografia em trânsito e em repouso para dados sensíveis (especificação técnica a detalhar).
-
-12. Performance e experiência:
-    - Cache de visualização para agenda unificada (com invalidação adequada) para atender RNF06 (<= 3s). UI responsiva e compatibilidade com navegadores modernos e dispositivos móveis (RNF09, RNF10).
-
-13. Contratos de API e versionamento:
-    - APIs explícitas e versionadas (contratos) para permitir evolução sem quebra de clientes (UIs, integrações com terceiros).
-
-Observação: todas as decisões mantêm neutralidade tecnológica — descrevem responsabilidades e interfaces, sem prescrever produtos ou frameworks, exceto referência ao exemplo de hash já citado nos requisitos.
+Observação: todas as decisões se referem a responsabilidades e estratégias; não foram prescrito produtos ou fabricantes.
 
 ---
 
@@ -215,185 +234,146 @@ Observação: todas as decisões mantêm neutralidade tecnológica — descrevem
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---:|---|---|
-| Serviço de Autenticação & Sessões | Autenticar usuários, gerir sessões, aplicar timeout de 30 min | UserService, StaffUI, PatientPortal, APIs | RNF01, HU11 (autenticação), HU01 (acesso da recepção) |
-| Serviço de Gestão de Usuários & RBAC | CRUD de usuários, perfis (admin, recep., dentista, paciente), regras de autorização | AuthService, UI, AuditService | RF01, RF02, HU08 |
-| Serviço de Agenda / Agendamentos | Manter agendas por dentista, APIs para criar/alterar/cancelar agendamento | Scheduler, CalendarDB, NotificationService, BillingService | RF03–RF07, RF08, HU01, HU02 |
-| Motor de Regras de Agendamento (Scheduler) | Validar grade do dentista, checar conflitos, sugerir alternativas | AgendaService, CalendarDB | RF06, RF07, HU02, HU08 |
-| Repositório de Calendários (CalendarDB) | Persistir eventos/slots por dentista | AgendaService, Scheduler | RF03, RF04, HU01 |
-| Serviço de Prontuário Clínico | CRUD de prontuários, histórico clínico, rastreabilidade | ProntuarioDB, DocumentService, AuditService | RF09–RF13, HU04, HU06 |
-| Gateway de Documentos / Object Storage | Upload, controle de acesso, geração de links de download | ProntuarioService, ObjectStorage, PatientPortal | RF11, RF25, RNF03, RNF07, HU05, HU12 |
-| Serviço de Notificação (e-mail) | Enviar e-mails de confirmação/cancelamento/remarcação e notificações de alerta | AgendaService, NotificationQueue, PatientEmail | RF08, HU02, HU01 |
-| Serviço de Faturamento (Billing) | Cadastro de procedimentos, tabelas de convênio, gerar cobranças, registrar pagamentos | BillingDB, AgendaService, ReportingService | RF18–RF22, HU03, HU07, HU10 |
-| Serviço de Inventário / Materiais | Cadastro de materiais, registrar entradas/saídas, alertas de estoque baixo | InventoryDB, UI Admin, AuditService | RF14–RF17, HU09 |
-| Serviço de Auditoria / Log Imutável | Registrar logs imutáveis com usuário/data/hora em alterações críticas | Todos os serviços | RNF05, RF13 |
-| Serviço de Relatórios & Exportação | Geração de relatórios, filtros, export CSV/PDF | BillingDB, CalendarDB, ProntuarioDB | RF22, HU10 |
-| Serviço de Backup / Retenção | Agendamento de backups diários e retenção mínima de 30 dias | Todos os repositórios | RNF11 |
-| Painel Clínica (UI) | Interface para recepção, dentistas e administração | AuthService, AgendaService, ProntuarioService, BillingService, InventoryService | HU01–HU10 |
-| Portal do Paciente (UI) | Interface pública autenticada para pacientes ver agendamentos e documentos | AuthService, AgendaService, ProntuarioService, DocumentService | RF23–RF25, HU11, HU12 |
+| Recepção UI | Interface para recepcionistas: agendamento, cancelamento, remarcação, registro de pagamentos | API Gateway | HU01, HU02, HU03 (critérios de aceite: filtros, bloqueio de sobreposição, atualização imediata) |
+| Dentista UI | Interface clínica: acessar/editar prontuário, upload de documentos, gerar cobranças | API Gateway | HU04, HU05, HU06, HU07 (critérios: registro com data/hora/dentista; upload formatos) |
+| Portal Paciente (UI) | Portal web para pacientes: visualizar agendamentos, histórico, download de documentos | API Gateway | HU11, HU12 (autenticação, acesso controlado a documentos) |
+| Admin UI | Painel do administrador: cadastrar dentistas, grades, painel de estoque, relatórios | API Gateway | HU08, HU09, HU10 (grade de horários, alertas de estoque, relatórios) |
+| API Gateway / Facade | Centraliza APIs, roteia requisições, aplica autenticação/autorização | Auth, Scheduling, Prontuário, Billing, Inventory, Reporting | Todas as HUs (ponto de entrada) |
+| Auth Service (RBAC & Sessões) | Gerencia autenticação, perfis, sessões e validação de permissões; 30min timeout | API Gateway, todos serviços que requerem autorização | RNF01, RNF04; HU11 (autenticação paciente) |
+| Scheduling Service | Regras de agendamento, verificação de grade, bloqueio de sobreposição e reserva atômica | Calendar Store, Patient Service, Auth, Notification, Audit | HU01, HU02, HU08 (bloqueio de sobreposição, grade) |
+| Calendar Store | Persistência de agendas individuais de dentista com índices por período | Scheduling Service, Reporting | RF03, RNF06 (tempo de resposta) |
+| Patient Service | Cadastro/consulta de pacientes e metadados (nome, CPF, vínculo dentista) | Prontuário, Scheduling, Billing, Auth | RF01, RF24, HU06 |
+| Prontuário Service | CRUD de entradas clínicas, histórico de procedimentos, associação arquivo-meta | Document Storage, Audit, Auth | RF09, RF10, RF12, RNF05 |
+| Document Storage (object storage externo) | Armazenamento de arquivos clínicos (imagens, PDFs) com controle de acessos/links | Prontuário Service, Portal Paciente, Backup | RF11, RNF07, HU05, HU12 |
+| Audit Service (imutável) | Registro append-only de alterações importantes com usuário/data/hora | Todos serviços que alteram dados clínicos/financeiros | RNF05, RF13, HU04 |
+| Inventory Service | Cadastro e controle de materiais, entradas/saídas, alertas de estoque baixo | Audit, Notification, Admin UI | RF14, RF15, RF16, RF17, HU09 |
+| Billing Service | Cadastro de procedimentos, convênios, geração de cobranças e controle de pagamentos | Patient Service, Scheduling, Reporting, Notification | RF18, RF19, RF20, RF21, HF07, HU03 |
+| Notification Service | Envio de e-mails/alertas (confirmação/cancelamento/remarcação) e registro de disparos | Scheduling, Billing, Inventory, Patient Service | RF08, HU02, HU03, HU05 |
+| Reporting Service | Geração de relatórios (faturamento por período/dentista/modalidade) e export (CSV/PDF) | Billing, Calendar Store, Patient Service | RF22, HU10 |
+| Backup & Retention Service | Orquestra backups diários, retenção mínima e políticas de restauração | All persistent stores, Document Storage | RNF11 |
+| Monitoring & Health | Coleta de métricas, alertas de disponibilidade/uptime | API Gateway, all services | RNF08, RNF06 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. Política de Consentimento e Privacidade (LGPD)
-   - Bloqueio: necessidade de definição formal das bases legais para tratamento de dados clínicos e do fluxo de consentimento para compartilhamento de documentos com o paciente.
-   - Impacto: controla acesso ao DocumentService e retenção de dados; atraso impacta entregas de prontuário/portal.
-   - Ação recomendada: esclarecimento jurídico e definição de formulário de consentimento que será registrado no sistema.
+Itens que precisam de decisão ou informação adicional antes da implementação detalhada:
 
-2. Requisitos de Criptografia e Backup de Documentos Clínicos
-   - Bloqueio: especificação técnica ausente sobre algoritmos/gerenciamento de chaves para criptografia em repouso e em trânsito.
-   - Impacto: afeta design de armazenamento de documentos e conformidade.
-   - Ação: definir política de criptografia, gestão de chaves e requisitos de auditoria para armazenamento de blobs.
+1. Definição dos limites não-funcionais detalhados:
+   - Carga esperada (número de usuários concorrentes, picos diários) para dimensionar Calendar Store e caches.
+   - Tempo máximo aceitável para operações assíncronas (e.g., envio de e-mail).
+2. Especificação da política de retenção de documentos clínicos e logs:
+   - Períodos legais exigidos, requisitos de descarte seguro, versionamento.
+3. Requisitos legais e de compliance mais detalhados:
+   - Requisitos específicos do Conselho Federal de Odontologia (procedimentos mínimos de rastreabilidade, formatos exigidos).
+4. Definição de formatos e integração com tabelas de convênios:
+   - Estrutura e atualizações das tabelas de convênio (import/export), regras de precificação.
+5. Regras exatas para "dentistas vinculados ao paciente":
+   - Critérios para vínculo (ex.: dentista que atendeu o paciente em X período, ou vínculo explícito).
+6. Política de tamanhos máximos e limites de tipos de arquivos para upload (radiografias, DICOM?, tamanho máximo por arquivo).
+7. SLA para notificações (retries, dead-letter) e provedor/abstração de envio de e-mail/SMS.
+8. Estratégia de alta disponibilidade e DR (failover automático, RTO/RPO desejados além do 99,5%).
+9. Processo de migração de dados legado (se houver): mapeamento de campos, limpeza e anonimização.
+10. Definição de formato dos logs de auditoria (schema) e mecanismo de armazenamento imutável (detalhes de verificação de integridade).
 
-3. Integração com provedores de e-mail e SLA de entrega
-   - Bloqueio: não especificado níveis de entrega, fallback para falha de envio e requisitos de retenção de eventos de notificação.
-   - Impacto: estratégia de retry, filas e garantia de entrega.
-   - Ação: definir requisitos de SLA de envio e política de retry/alerta.
-
-4. Dados de Convênio e Tabelas de Procedimento
-   - Bloqueio: formato/atualização das tabelas de convênio (import/integração) não especificados.
-   - Impacto: afeta cálculo automático de valores (HU07).
-   - Ação: obter formato dos convênios; definir interface de importação/atualização manual e automática.
-
-5. Regras detalhadas de conciliação e meios de pagamento
-   - Bloqueio: não há especificação de integrações com gateways de pagamento, estornos ou conciliação bancária.
-   - Impacto: implementações de registro de pagamento parcial e relatórios financeiros.
-   - Ação: definir integrações/formatos ou workflow manual para registro de pagamentos.
-
-6. Políticas de retenção e exclusão de documentos clínicos
-   - Bloqueio: limites de tempo de guarda, políticas de anonimização/anulação não detalhadas.
-   - Impacto: backlog legal e requisitos de backup.
-   - Ação: definição de política de retenção (em conformidade com CFO / LGPD).
-
-7. Tamanho máximo de arquivos e formatos adicionais
-   - Bloqueio: não especificadas regras de tamanho máximo, limites de resolução de radiografias nem formatos além dos citados.
-   - Impacto: dimensionamento de object storage e UX de upload.
-   - Ação: definir limites por tipo de arquivo e compressão/transformação server-side.
-
-8. Conflitos concorrenciais detalhados (estratégia de bloqueio)
-   - Bloqueio: escolha entre bloqueio pessimista vs. optimistic locking para agendamentos não decidida.
-   - Impacto: possibilidade de race conditions em horários concorrentes.
-   - Ação: definir estratégia (por exemplo, reserva temporária + confirmação) e timeout de reserva.
-
-9. SLA operacional e acordos de disponibilidade
-   - Bloqueio: RNF08 define 99,5% uptime, mas falta definição de monitoramento, SLOs e runbook.
-   - Impacto: arquitetura de alta disponibilidade, requisitos de redundância.
-   - Ação: estabelecer SLO/SLA operacionais e plano de incident response.
-
-10. Ambiguidade quanto ao acesso de dentistas a prontuários
-    - Bloqueio: "dentistas vinculados ao paciente" precisa de definição clara de vínculo (ex.: pacientes atendidos pela clínica vs. pacientes atribuídos a um dentista).
-    - Impacto: regras de autorização no ProntuarioService.
-    - Ação: definir e modelar vínculo paciente-dentista e exceções (substituições, equipe).
+Cada pendência pode impactar escolhas de projeto (ex.: dimensionamento, mecanismo de lock para agendamentos, níveis de criptografia e key management).
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-Mapeamento resumido de cobertura (Coberto / Parcial / Não Coberto) e componente responsável:
+Visão de alto nível de quais componentes cobrem cada requisito funcional e não funcional, e métricas de verificação sugeridas.
 
-- RF01 (Cadastro de usuários perfis) — Coberto — UserService
-- RF02 (Restrição por perfil) — Coberto — AuthService + UserService + políticas RBAC
-- RF03 (Agenda individual por dentista) — Coberto — AgendaService + CalendarDB
-- RF04 (Agenda unificada, recepção) — Coberto — AgendaService + StaffUI
-- RF05 (Recepcionista agendar/cancelar/remarcar) — Coberto — AgendaService + Scheduler + NotificationService
-- RF06 (Impedir sobreposição no mesmo dentista) — Coberto (parcial: estratégia concorrência a definir) — Scheduler + CalendarDB
-- RF07 (Configurar grade de horários por dentista) — Coberto — AgendaService + Scheduler (HU08)
-- RF08 (Notificação por e-mail ao paciente) — Coberto (dependente de integração e SLA de e-mail) — NotificationService
-- RF09 (Prontuário por paciente com histórico) — Coberto — ProntuarioService + ProntuarioDB
-- RF10 (Dentista registrar procedimento) — Coberto — ProntuarioService (HU04)
-- RF11 (Upload e armazenamento de radiografias) — Coberto — DocumentService + ObjectStorage
-- RF12 (Consultar/editar registros pelos dentistas dos seus pacientes) — Coberto (depende de definição de vínculo) — ProntuarioService
-- RF13 (Registro com data/hora/dentista) — Coberto — ProntuarioService + AuditService
-- RF14 (Cadastro de materiais/equipamentos) — Coberto — InventoryService
-- RF15 (Registrar entradas/saídas estoque) — Coberto — InventoryService
-- RF16 (Alerta quando estoque abaixo do mínimo) — Coberto — InventoryService + NotificationService
-- RF17 (Vincular consumo de materiais a atendimento) — Coberto — InventoryService + AgendaService
-- RF18 (Cadastro de procedimentos com código/valor) — Coberto — BillingService
-- RF19 (Registro de convênios e tabelas) — Coberto (parcial: formato de importação não definido) — BillingService
-- RF20 (Gerar cobrança por atendimento) — Coberto — BillingService
-- RF21 (Registrar pagamento e controlar em aberto) — Coberto (parcial: integrações de pagamento) — BillingService
-- RF22 (Relatórios de faturamento) — Coberto — ReportingService
-- RF23 (Portal web para pacientes) — Coberto — PatientPortal
-- RF24 (Portal visualizar agendamentos e histórico) — Coberto — PatientPortal + AgendaService + ProntuarioService
-- RF25 (Portal download de documentos clínicos) — Coberto — DocumentService + ObjectStorage + ProntuarioService
+- RF01 / RF02 (Gestão de usuários e acesso): Auth Service, API Gateway, Patient Service  
+  - Verificação: testes de permissão por perfil; sessão expirations após 30 min (RNF01).
 
-Requisitos Não Funcionais (selecionados):
-- RNF01 (Autenticação e timeout 30 min) — Coberto — AuthService
-- RNF02 (LGPD & normas CFO) — Parcial (conceito implementado; dependente de políticas formais) — Política organizacional + ProntuarioService
-- RNF03 (Controle de acesso a documentos) — Coberto — DocumentService + AuthService (pendência: definição de vínculo)
-- RNF04 (Hash seguro de senhas) — Coberto — AuthService (implementar hash forte; RNF cita exemplo)
-- RNF05 (Log imutável das alterações no prontuário) — Coberto — AuditService
-- RNF06 (Agenda unificada carregue <= 3s) — Parcial (depende de dimensionamento, caching e SLAs infra) — AgendaService + Cache
-- RNF07 (Object storage para documentos) — Coberto — DocumentService + ObjectStorage
-- RNF08 (Disponibilidade 99,5%) — Parcial (necessita SLO, infra) — Operações / Arquitetura infra
-- RNF09 (Responsividade UI) — Coberto — UI design / Front-end (diretrizes)
-- RNF10 (Compatibilidade navegadores) — Coberto — UI (diretrizes)
-- RNF11 (Backup diário retenção 30 dias) — Coberto — BackupService
+- RF03 / RF04 / RF05 / RF06 / RF07 (Agenda): Scheduling Service, Calendar Store, Admin UI, Recepção UI  
+  - Verificação: teste de concorrência para sobreposição; performance da visão unificada < 3s (RNF06); filtros por dentista (HU01).
 
-Resumo: a maior parte dos requisitos funcionais possui cobertura arquitetural direta; pendências principais giram em torno de detalhamentos operacionais, políticas legais e integrações externas.
+- RF08 (Notificações por e-mail): Notification Service conectado a Patient Service e Scheduling Service  
+  - Verificação: envio automático em confirmação/cancelamento/remarcação; logs de entrega.
+
+- RF09 / RF10 / RF11 / RF12 / RF13 (Prontuário): Prontuário Service, Document Storage, Audit Service, Dentista UI  
+  - Verificação: entradas com data/hora/dentista; upload aceitando JPEG/PNG/PDF; logs imutáveis (RNF05); acesso restrito (RNF03).
+
+- RF14 / RF15 / RF16 / RF17 (Materiais): Inventory Service, Admin UI, Notification Service, Audit Service  
+  - Verificação: cadastro e movimentação de estoque; alertas quando <= quantidade mínima.
+
+- RF18 / RF19 / RF20 / RF21 / RF22 (Faturamento): Billing Service, Reporting Service, Patient Service, Scheduling Service  
+  - Verificação: geração de cobrança por atendimento; aplicação de tabela de convênio; registro de pagamentos; relatórios exportáveis.
+
+- RF23 / RF24 / RF25 (Portal do Paciente): Portal Paciente, Auth Service, Patient Service, Prontuário Service, Document Storage  
+  - Verificação: autenticação; mostrar agendamentos futuros e histórico; downloads permitidos apenas para documentos liberados.
+
+- RNF01 a RNF11 (Não Funcionais):
+  - RNF01 (sessões): Auth Service — política de expiração 30 min.
+  - RNF02, RNF03 (LGPD e controle de acesso): Auth Service + Prontuário + Document Storage + Audit Service — restrições de acesso por vínculo.
+  - RNF04 (hash de senhas): Auth Service — armazenamento seguro de credenciais.
+  - RNF05 (rastreabilidade): Audit Service — registros imutáveis com usuário/data/hora.
+  - RNF06 (desempenho agenda): Calendar Store + Scheduling + caching na camada de apresentação.
+  - RNF07 (object storage): Document Storage externo desacoplado.
+  - RNF08 (disponibilidade): redundância e monitoramento para API Gateway e serviços críticos.
+  - RNF09 / RNF10 (usabilidade/compatibilidade): Frontend responsivo e testes cross-browser.
+  - RNF11 (backup): Backup & Retention Service — diária, retenção >= 30 dias.
+
+Observação: pontos de verificação (testes de aceitação) devem incluir cenários de carga, segurança, e compliance.
 
 ---
 
 ## 7. Gap Analysis
 
-1. Consentimento LGPD e registro explícito
-   - Lacuna: não foi definido como/onde será registrado o consentimento do paciente para armazenamento e compartilhamento de documentos clínicos.
-   - Impacto arquitetural: necessidade de campo e fluxos adicionais no ProntuarioService e UI; logs de consentimento relacionados à auditoria.
-   - Recomendações: definir modelo de consentimento e APIs para registrar/consultar consentimentos. Incluir consentimento como pré-condição para disponibilizar documentos no portal.
+Identificação de lacunas na especificação, impacto arquitetural e recomendações concretas.
 
-2. Especificações de criptografia e gerenciamento de chaves
-   - Lacuna: ausência de requisitos técnicos (algoritmo, rotação de chaves, KMS).
-   - Impacto: projeto de armazenamento de documentos e backups pode não atender conformidade.
-   - Recomendações: definir padrão de criptografia em repouso e em trânsito, política de rotação de chaves e quem gerencia as chaves.
+1. Lacuna: Especificação incompleta do perfil "dentista vinculado ao paciente"
+   - Impacto: regras de autorização para acesso a documentos e prontuário podem estar ambíguas (RNF03).
+   - Recomendação: definir formalmente o modelo de vínculo (ex.: atributo patient.dentistas_vinculados com timestamp; regras para acessos retroativos), incluir casos de transferência de vínculo.
 
-3. Estratégia para prevenção de condição de corrida (agendamentos)
-   - Lacuna: escolha entre reserva temporária, bloqueio pessimista, ou optimistic locking não definida.
-   - Impacto: risco de dupla reserva em pico de concorrência.
-   - Recomendações: adotar reserva temporária com timeout para UI e confirmação atômica; modelar testes de carga e cenários concorrentes.
+2. Lacuna: Não há definição de tamanhos máximos de arquivos e formatos além de JPEG/PNG/PDF (ex.: DICOM)
+   - Impacto: dimensionamento do armazenamento, políticas de upload e pré-processamento de imagens não definidas.
+   - Recomendação: especificar limites por arquivo, tipos aceitos, compressão/thumbnailing e políticas de retenção.
 
-4. Integração e formato das tabelas de convênio
-   - Lacuna: não há especificação de como convênios serão importados/atualizados.
-   - Impacto: geração automática de cobranças pode aplicar valores incorretos.
-   - Recomendações: definir interface de importação (CSV/JSON) e rotina de validação; painel administrativo para revisão.
+3. Lacuna: Ausência de SLAs detalhados para notificações (retries, confirmação de entrega, canais alternativos)
+   - Impacto: comportamento diante de falhas de envio de e-mail não definido; experiência do usuário pode ficar inconsistente.
+   - Recomendação: definir políticas de retry, fila de mensagens, e fallback (ex.: notificação via portal) e metrificar delivery rates.
 
-5. Detalhes de pagamentos (gateways, estornos, conciliação)
-   - Lacuna: não especificado integração com meios de pagamento nem política de reconciliação.
-   - Impacto: impossibilidade de automatizar fluxo de pagamento e relatórios financeiros.
-   - Recomendações: definir requisitos de pagamento (pagamento em cartão, boleto, registro offline), campos de conciliação e exportáveis.
+4. Lacuna: Requisitos de backup/DR não detalham RTO/RPO além da retenção de 30 dias
+   - Impacto: arquitetura de recuperação pode ser subdimensionada; tempo de recuperação não especificado.
+   - Recomendação: definir RTO (tempo máximo de recuperação) e RPO (ponto máximo de perda de dados) por componente crítico (prontuário, agenda, faturamento).
 
-6. Políticas de retenção e exclusão de prontuários e documentos
-   - Lacuna: período de retenção, anonimização e exclusão não definidos.
-   - Impacto: impacto legal e operacional em backups e recuperação.
-   - Recomendações: estabelecer política de guarda de documentos e processos automáticos de anonimização/exclusão.
+5. Lacuna: Comportamento ao alterar grade de horário do dentista (HU08: "não impactar agendamentos já existentes" precisa de regras)
+   - Impacto: mudanças na grade podem gerar conflitos com agendamentos futuros; falta de política de notificação ou migração.
+   - Recomendação: definir regra de transição (p.ex. alteração somente para novos agendamentos; notificar pacientes afetados; opção de remanejar automaticamente com aprovação).
 
-7. Tamanho máximo e tipos de arquivo, processamento de imagens
-   - Lacuna: limites de upload e necessidade de geração de miniaturas/visualização não definidos.
-   - Impacto: dimensionamento de storage e UX (upload lento).
-   - Recomendações: estabelecer limites por tipo e implementar processamento assíncrono para gerar visualizações.
+6. Lacuna: Falta de definição de política para exclusão/edição retroativa de prontuário
+   - Impacto: conflitos entre rastreabilidade (RNF05) e necessidade de correção de erros.
+   - Recomendação: definir política de "emenda" (nova entrada corrige a anterior) vs. remoção física; armazenar versões e permitir anotações de correção com motivo e usuário.
 
-8. Métricas operacionais, monitoramento e SLOs
-   - Lacuna: ausência de métricas detalhadas (tempo de resposta, latência, erros).
-   - Impacto: cumprimento de RNF06 e RNF08 sem definição de como medir.
-   - Recomendações: definir SLOs/SLA, métricas-chave e painéis; criar runbooks para incidentes.
+7. Lacuna: Não definido mecanismo exato para garantir a imutabilidade dos logs (ex.: assinaturas, verificação de integridade)
+   - Impacto: conformidade legal pode exigir métodos verificáveis.
+   - Recomendação: definir mecanismo técnico (hash encadeado, WORM storage, ou similar conceitual) e política de auditoria.
 
-9. Regra de vínculo “dentista vinculado ao paciente”
-   - Lacuna: não está claro se vinculação é dinâmica (por atendimento) ou fixa.
-   - Impacto: autorização no prontuário e no acesso a documentos.
-   - Recomendações: definir modelo de relacionamento paciente-dentista (historical vs. atual), regras para substituições e acesso de equipe.
+8. Lacuna: Requisito RNF06 (agenda unificada < 3s) não possui métricas de carga/escopo (n° dentistas, consultas por dia)
+   - Impacto: não é possível garantir ou validar a meta de performance sem baseline.
+   - Recomendação: obter estimativas de domínio (nº dentistas, consultas diárias, frequência de acesso da recepção) para dimensionamento e definição de caching.
 
-10. Exportações e formato de relatórios (PDF/CSV)
-    - Lacuna: layout e campos obrigatórios em exportações não especificados (ex.: dados sensíveis que devem ser mascarados).
-    - Impacto: divergências entre expectativas e entrega.
-    - Recomendações: definir templates de relatório, campos, e regras de anonimização.
+9. Lacuna: Integração com convênios (RF19) — formato de tabelas, atualização e gestão de versões de tabela
+   - Impacto: aplicação automática de valores pode falhar sem contratos/formatos.
+   - Recomendação: definir formato de import/export para tabelas de convênio, versão, e prioridade de aplicação (data de vigência).
 
-Prioridade das ações recomendadas:
-1. Definição legal (consentimento LGPD) e política de retenção (alta prioridade).
-2. Estratégia concorrência de agendamento e testes de carga (alta).
-3. Especificação de pagamentos e convênios (média-alta).
-4. Criptografia e chave (média).
-5. Limites de upload e processamento de imagens (média).
-6. Métricas/SLOs e runbooks (média).
+10. Lacuna: Requisitos de usabilidade detalhados (fluxos móveis vs desktop, acessibilidade)
+    - Impacto: requisitos RNF09 e RNF10 podem ficar incompletos sem critérios de aceitação de UI.
+    - Recomendação: elaborar guidelines de responsividade, breakpoints e testes cross-browser/assistive technologies.
+
+Ações imediatas recomendadas:
+- Conduzir workshops com stakeholders (clínica, dentistas, jurídico) para resolver lacunas críticas: políticas de vínculo, retenção, SLAs de notificação e backup.
+- Estabelecer um conjunto mínimo de dados de carga (Nº dentistas, Nº consultas/dia, tamanho médio de arquivos) para dimensionamento.
+- Definir contratos de APIs (especificações de endpoints, schemas) que incluam erros e códigos para condições de concorrência no agendamento.
+- Priorizar definição de políticas de auditoria e imutabilidade em conjunto com equipe jurídica/compliance.
 
 ---
 
 Fim do Relatório.
+
+Observações finais:
+- O design acima segue a Diretriz de Neutralidade Tecnológica: apresenta responsabilidades, interfaces e componentes conceituais sem prescrever produtos ou frameworks.
+- Próximo passo recomendado: gerar API contract (OpenAPI-style) e modelos de dados para entidades críticas (Agendamento, Prontuário, Documento, Cobrança) e prototipar os fluxos de alto risco (agendamento concorrente; upload/download de documentos; emissão de cobranças).

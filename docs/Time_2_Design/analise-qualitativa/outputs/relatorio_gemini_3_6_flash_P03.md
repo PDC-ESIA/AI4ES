@@ -1,250 +1,233 @@
 # Relatório Técnico de Arquitetura de Software
+**Sistema:** Sistema de Controle de Estoque para Loja Física (P03)  
+**Emissor:** Sistema Multi-Agente de Design de Software (AI4ES - Time 2)  
+**Data:** 24/05/2024  
+
+---
 
 ## 1. Identificação das HUs
 
-| ID | História de Usuário (HU) | Perfil | Valor de Negócio / Objetivo | Requisitos Relacionados |
+A tabela a seguir consolida a especificação funcional do sistema a partir das Histórias de Usuário (HUs) fornecidas, explicitando atores, objetivos primários e resumos de critérios de aceite.
+
+| ID | Nome da HU | Ator Primário | Objetivo Core | Resumo dos Critérios de Aceite |
 | :--- | :--- | :--- | :--- | :--- |
-| **HU01** | Cadastrar produto | Operador | Permitir inclusão de novos produtos no catálogo do sistema. | RF01, RNF01, RNF02 |
-| **HU02** | Registrar entrada de mercadoria | Operador | Atualizar saldo incremental e registrar histórico de compras/recebimentos. | RF04, RF07, RNF03, RNF04, RNF08 |
-| **HU03** | Registrar saída de produto | Operador | Decrementar estoque com validação de saldo e garantir integridade de dados. | RF05, RF06, RF07, RNF03, RNF04, RNF08 |
-| **HU04** | Ser alertado sobre estoque baixo | Operador | Notificar visualmente o operador sobre necessidade de reposição de itens. | RF09, RNF04 |
-| **HU05** | Configurar limite mínimo de estoque | Operador | Estabelecer parametrização individual por produto para acionamento de alertas. | RF08 |
-| **HU06** | Consultar saldo atual do estoque | Operador | Prover visão abrangente e imediata da situação física dos produtos. | RF10, RF12, RNF05 |
-| **HU07** | Consultar histórico de movimentações | Operador | Permitir rastreabilidade temporal e auditabilidade das operações. | RF11, RNF05, RNF08 |
-| **HU08** | Exportar dados de estoque e movimentações | Operador | Permitir extração local de arquivos CSV para backup e análise externa. | RNF07 |
+| **HU01** | Cadastrar Produto | Operador | Cadastrar novos itens informando nome, quantidade inicial e preço de custo. | Campos obrigatórios (nome, quantidade inicial); proibição de nomes duplicados; visibilidade imediata na consulta. |
+| **HU02** | Registrar Entrada de Mercadoria | Operador | Incrementar a quantidade em estoque a partir do recebimento de lote. | Seleção por lista ou busca; quantidade como inteiro positivo; atualização imediata do saldo; registro histórico com data/hora. |
+| **HU03** | Registrar Saída de Produto | Operador | Dar baixa na quantidade em estoque decorrente de venda. | Impede saída se quantidade > saldo disponível; erro claro; decremento imediato; registro histórico com data/hora/quantidade. |
+| **HU04** | Ser Alertado sobre Estoque Baixo | Operador | Notificar visualmente a atingimento ou transposição do limite mínimo. | Destaque visual imediato (cor/ícone); exibe produto e saldo; alerta persiste até o restabelecimento do saldo. |
+| **HU05** | Configurar Limite Mínimo de Estoque | Operador | Parametrizar o patamar mínimo de segurança por item. | Limite configurável individualmente; aceita inteiros não negativos; reflexo imediato nos alertas. |
+| **HU06** | Consultar Saldo Atual do Estoque | Operador | Obter visão consolidada do inventário atual da loja. | Exibe todos os produtos com nome, saldo e limite mínimo; destaque visual de itens críticos; ordenação por nome ou quantidade. |
+| **HU07** | Consultar Histórico de Movimentações | Operador | Auditar o fluxo de entradas e saídas por produto e período. | Filtro por produto e intervalo de datas; detalhes de tipo, quantidade, data, hora e usuário; ordenação decrescente padrão. |
+| **HU08** | Exportar Dados de Estoque e Movimentações | Operador | Gerar arquivos tabulares locais para backup ou análise em planilhas. | Geração em formato CSV com todos os campos relevantes; seleção de diretório de destino; confirmação de sucesso. |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Visão de Componentes do Sistema (Visão de Blocos)
+### 2.1 Visão Geral da Arquitetura de Componentes
+
+O diagrama a seguir representa a topologia lógica em camadas da aplicação desktop autônoma.
 
 ```mermaid
-componentDiagram
-    package "Camada de Apresentação (Desktop)" {
-        [Interface Desktop Windows] as UI
-    }
+graph TD
+    subgraph Camada_Apresentacao [Camada de Apresentação (GUI)]
+        UI_Auth[Tela de Autenticação]
+        UI_Stock[Tela de Consulta e Gestão de Estoque]
+        UI_Mov[Tela de Lançamento de Entradas/Saídas]
+        UI_Hist[Tela de Histórico e Filtros]
+        UI_Export[Módulo de Exportação]
+        UI_Alert[Componente de Alertas Visuais]
+    end
 
-    package "Camada de Serviços & Domínio" {
-        [Módulo de Autenticação] as Auth
-        [Gerenciador de Produtos] as ProdMgmt
-        [Gerenciador de Movimentação] as MovMgmt
-        [Motor de Alertas] as AlertEngine
-        [Serviço de Exportação (CSV)] as ExportSvc
-        [Serviço de Auditoria e Logs] as AuditSvc
-    }
+    subgraph Camada_Aplicacao [Camada de Aplicação e Domínio]
+        Svc_Auth[Serviço de Autenticação e Sessão]
+        Svc_Product[Serviço de Gestão de Produtos]
+        Svc_Stock[Serviço de Movimentação de Estoque]
+        Svc_Alert[Serviço de Monitoramento de Alertas]
+        Svc_Audit[Serviço de Trilha de Auditoria]
+        Svc_Export[Serviço de Exportação de Dados]
+    end
 
-    package "Camada de Persistência Local" {
-        [Mecanismo de Persistência Embarcada] as LocalDB
-        [Sistema de Arquivos Local] as FileSystem
-    }
+    subgraph Camada_Persistencia [Camada de Persistência Local]
+        DAL[Mapeador / Data Access Layer]
+        DB_Embedded[(Banco de Dados Embarcado Local)]
+        FS_Local[Sistema de Arquivos Local]
+    end
 
-    UI --> Auth : Autentica usuário
-    UI --> ProdMgmt : CRUD Produtos / Limite Mínimo
-    UI --> MovMgmt : Registra Entrada/Saída
-    UI --> AlertEngine : Recebe notificações
-    UI --> ExportSvc : Solicita exportação CSV
+    UI_Auth --> Svc_Auth
+    UI_Stock --> Svc_Product
+    UI_Stock --> Svc_Alert
+    UI_Mov --> Svc_Stock
+    UI_Hist --> Svc_Stock
+    UI_Hist --> Svc_Audit
+    UI_Export --> Svc_Export
 
-    MovMgmt --> ProdMgmt : Consulta/Atualiza Saldo
-    MovMgmt --> AlertEngine : Dispara validação de limite
-    MovMgmt --> AuditSvc : Registra transação
-    ProdMgmt --> AuditSvc : Registra alterações
+    Svc_Product --> Svc_Alert
+    Svc_Stock --> Svc_Alert
+    Svc_Stock --> Svc_Audit
 
-    Auth --> LocalDB : Valida credenciais
-    ProdMgmt --> LocalDB : LER/GRAVAR
-    MovMgmt --> LocalDB : LER/GRAVAR
-    AuditSvc --> LocalDB : GRAVAR
+    Svc_Auth --> DAL
+    Svc_Product --> DAL
+    Svc_Stock --> DAL
+    Svc_Audit --> DAL
+    Svc_Export --> DAL
+    Svc_Export --> FS_Local
 
-    ExportSvc --> LocalDB : Consulta dados
-    ExportSvc --> FileSystem : Escreve arquivo CSV
+    DAL --> DB_Embedded
 ```
 
-### 2.2 Diagrama de Sequência: Registro de Saída de Produto com Validação e Alerta (HU03, HU04)
+### 2.2 Diagrama de Sequência: Registrar Saída de Produto e Monitoramento de Alerta (HU03, HU04, RNF03, RNF06, RNF08)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Operador as Operador de Estoque
-    participant UI as Interface Desktop
-    participant MovSvc as Gerenciador de Movimentação
-    participant ProdSvc as Gerenciador de Produtos
-    participant AlertEng as Motor de Alertas
-    participant AuditSvc as Serviço de Auditoria
-    participant DB as Banco de Dados Embarcado
+    actor Operador
+    participant UI as InterfaceGrafica
+    participant Auth as ServicoAutenticacao
+    participant Mov as ServicoMovimentacaoEstoque
+    participant Reg as RegrasDeNegocioEstoque
+    participant Aud as ServicoAuditoria
+    participant Alt as ServicoMonitorAlertas
+    participant DB as BancoDadosEmbarcado
 
-    Operador ->> UI: Solicita registro de saída (ProdutoID, Quantidade)
-    UI ->> MovSvc: registrarSaida(produtoId, qtd, usuarioId)
-    
-    activate MovSvc
-    MovSvc ->> ProdSvc: obterProduto(produtoId)
-    activate ProdSvc
-    ProdSvc ->> DB: Query Produto por ID
-    DB -->> ProdSvc: Dados do Produto (Saldo Atual, Limite Mínimo)
-    ProdSvc -->> MovSvc: Objeto Produto
-    deactivate ProdSvc
+    Operador->>UI: Solicita registro de saída (ProdutoID, Quantidade, Data)
+    UI->>Auth: Obter Usuário Autenticado da Sessão
+    Auth-->>UI: Retorna UsuarioSessao
 
-    alt Quantidade Solicitada > Saldo Atual (RF06)
-        MovSvc -->> UI: Erro: Quantidade solicitada superior ao estoque disponível
-        UI -->> Operador: Exibe mensagem de erro na tela
-    else Saldo Suficiente
-        MovSvc ->> DB: Iniciar Transação Local
-        MovSvc ->> ProdSvc: atualizarSaldo(produtoId, novoSaldo)
-        ProdSvc ->> DB: UPDATE Produto SET saldo = novoSaldo
-        MovSvc ->> DB: INSERT Movimentacao (Tipo: SAIDA, Qtd, DataHora, Usuario)
+    UI->>Mov: RegistrarSaida(ProdutoID, Quantidade, Data, UsuarioSessao)
+    activate Mov
+
+    Mov->>DB: ConsultarProdutoPorId(ProdutoID)
+    DB-->>Mov: Retorna DadosProduto (SaldoAtual, LimiteMinimo)
+
+    Mov->>Reg: ValidarQuantidadeSaida(Quantidade, SaldoAtual)
+    alt Quantidade Solicitada > Saldo Atual
+        Reg-->>Mov: Erro: Quantidade insuficiente
+        Mov-->>UI: Exceção (Estoque Insuficiente)
+        UI-->>Operador: Exibe mensagem de erro e bloqueia operação (RF06)
+    else Quantidade Válida (<= Saldo Atual)
+        Reg-->>Mov: Validação OK
         
-        MovSvc ->> AuditSvc: registrarLog(usuarioId, Acao.SAIDA_ESTOQUE, detalhamento)
-        AuditSvc ->> DB: INSERT LogAuditoria
-        
-        MovSvc ->> DB: Commit Transação
-        
-        MovSvc ->> AlertEng: verificarLimiteMinimo(produtoId, novoSaldo, limiteMin)
-        activate AlertEng
-        alt novoSaldo <= limiteMin (RF09 / HU04)
-            AlertEng -->> UI: Emitir Alerta Visível (Produto, Saldo Atual, Limite)
+        Mov->>DB: Iniciar Transação ACID
+        Mov->>DB: Decrementar Saldo (ProdutoID, NovoSaldo)
+        Mov->>Aud: RegistrarHistorico(ProdutoID, 'SAIDA', Quantidade, DataHora, UsuarioID)
+        Aud->>DB: Inserir RegistroHistórico
+        Mov->>DB: Commit Transação (RNF03)
+
+        Mov->>Alt: VerificarStatusEstoque(ProdutoID, NovoSaldo, LimiteMinimo)
+        alt NovoSaldo <= LimiteMinimo
+            Alt-->>UI: Notificar Alerta Ativo (Produto, NovoSaldo) (RF09/HU04)
         end
-        deactivate AlertEng
 
-        MovSvc -->> UI: Confirmação de Saída Registrada
-        deactivate MovSvc
-        UI -->> Operador: Exibe confirmação e atualiza saldo na tela
+        Mov-->>UI: Confirmação de Sucesso
+        deactivate Mov
+        UI->>UI: Atualizar Visão de Saldo na Tela (RF07/HU06)
+        UI-->>Operador: Exibe Confirmação de Lançamento
     end
-end
-```
-
-### 2.3 Diagrama de Classes de Domínio (Modelo Conceitual)
-
-```mermaid
-classDiagram
-    class Usuario {
-        +String id
-        +String login
-        +String senhaHash
-        +autenticar(senha) Boolean
-    }
-
-    class Produto {
-        +String id
-        +String nome
-        +Decimal precoCusto
-        +Integer quantidadeEstoque
-        +Integer limiteMinimo
-        +atualizarSaldo(quantidade, tipo)
-        +isAbaixoDoLimite() Boolean
-    }
-
-    class MovimentacaoEstoque {
-        +String id
-        +TipoMovimentacao tipo
-        +Integer quantidade
-        +DateTime dataHora
-        +String usuarioId
-    }
-
-    class LogAuditoria {
-        +String id
-        +DateTime timestamp
-        +String usuarioId
-        +String acao
-        +String detalhamento
-    }
-
-    class TipoMovimentacao {
-        <<enumeration>>
-        ENTRADA
-        SAIDA
-    }
-
-    Usuario "1" -- "0..*" MovimentacaoEstoque : realiza
-    Usuario "1" -- "0..*" LogAuditoria : gera
-    Produto "1" -- "0..*" MovimentacaoEstoque : possui
-    MovimentacaoEstoque --> TipoMovimentacao
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-### 3.1 Estilo Arquitetural: Aplicação Desktop Monolítica em Camadas (Layered Monolith)
-* **Justificativa:** Em conformidade com o **RNF01** (Execução local em sistema Windows) e **RNF02** (Armazenamento local em banco de dados embarcado sem servidor externo). Não há requisito para descentralização física de serviços ou arquitetura distribuída.
-* **Impacto:** Alta facilidade de implantação (*zero-configuration installation*), baixa complexidade operacional e baixíssima latência nas consultas locais.
+### 3.1 Padrão Arquitetural Desktop Autônomo em Camadas (Layered Monolith Desktop)
+* **Justificativa (RNF01, RNF02):** Atendendo à premissa de execução estritamente local em ambiente Windows sem dependência de servidores externos, adotou-se a arquitetura monolítica desktop dividida em três camadas conceituais: Apresentação (UI), Regras de Negócio/Aplicação e Persistência Local.
+* **Impacto:** Elimina a complexidade de rede e serviços distribuídos, garantindo baixo tempo de resposta e autonomia operacional total da loja física.
 
-### 3.2 Garantia de Integridade e Persistência Transacional (ACID Local)
-* **Justificativa:** Atendimento direto ao **RNF03** (Garantia contra perda de lançamentos em falhas inesperadas) e **RF07** (Atualização automática imediata).
-* **Impacto:** Todas as movimentações de estoque (entradas e saídas) e gravações no log de auditoria devem ser executadas dentro de **transações atômicas** no motor do banco de dados embarcado. Em caso de queda de energia ou fechamento abrupto, o estado permanece consistente via *Write-Ahead Logging* (WAL) ou mecanismo equivalente do banco embarcado.
+### 3.2 Persistência Embarcada com Garantia ACID
+* **Justificativa (RNF02, RNF03):** Para evitar a perda de dados em caso de falha mecânica ou encerramento abrupto da aplicação, o mecanismo de persistência local deve garantir o cumprimento das propriedades ACID (Atomicidade, Consistência, Isolamento e Durabilidade).
+* **Impacto:** Lançamentos de estoque e auditoria são executados sob transações explícitas. Se o sistema for fechado durante uma gravação, a transação sofre *rollback* automático, mantendo o estado anterior íntegro.
 
-### 3.3 Motor de Avaliação de Alertas Orientado a Eventos Internos (In-Process Events)
-* **Justificativa:** Atendimento ao **RF09** e **HU04** (Alertas imediatos na interface ao atingir ou ultrapassar o limite mínimo).
-* **Impacto:** Após qualquer mutação de saldo, o serviço de movimentação dispara um evento em memória capturado pelo *Motor de Alertas*, garantindo a atualização imediata da interface visual sem a necessidade de *polling* contínuo no banco de dados.
+### 3.3 Mecanismo Centralizado de Sessão e Auditoria
+* **Justificativa (RNF06, RNF08):** Todo lançamento de entrada/saída requer rastreabilidade completa (quem, quando, o quê). 
+* **Impacto:** O componente de Segurança gerencia a sessão do usuário autenticado e injeta os metadados de auditoria em todos os comandos do `Serviço de Movimentação de Estoque`.
 
-### 3.4 Padrão de Interceptação para Auditabilidade e Rastreabilidade
-* **Justificativa:** Cumprimento rigoroso do **RNF08** (Rastreabilidade contendo data, hora e usuário responsável por cada operação).
-* **Impacto:** Injeção da responsabilidade de auditoria na camada de serviço. Cada operação de alteração de catálogo ou movimentação passa por um componente centralizador de auditoria antes da finalização da transação.
-
-### 3.5 Isolação da Camada de Exportação de Dados (CSV)
-* **Justificativa:** Atendimento aos requisitos **RNF07** e **HU08**.
-* **Impacto:** Leitura assíncrona desacoplada da interface principal para não congelar a UI durante a geração do arquivo CSV, respeitando limites de desempenho visual.
+### 3.4 Processamento síncrono para Alertas e Assíncrono para Exportação
+* **Justificativa (RNF04, RNF05, RNF07):** A avaliação do limite mínimo de estoque ocorre em tempo real de forma síncrona a cada movimento. A exportação de dados em massa (CSV) é tratada em fluxo secundário/paralelo na interface para evitar o congelamento da tela principal.
+* **Impacto:** Garante carregamento das consultas e movimentações dentro do limite prescrito de 2 segundos (RNF05).
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
-| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
+| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite / RNF) |
 | :--- | :--- | :--- | :--- |
-| **Interface Desktop Windows** | Apresentação visual, captura de dados do operador, exibição de alertas visuais e listagens de estoque/histórico em até 3 cliques. | Módulo de Autenticação, Gerenciador de Produtos, Gerenciador de Movimentação, Exportação CSV. | HU01 a HU08, RNF01, RNF04, RNF05 |
-| **Módulo de Autenticação** | Controle de acesso via usuário e senha, gestão da sessão do operador ativo no sistema. | Interface Desktop, Mecanismo de Persistência Embarcada. | RNF06, RNF08 |
-| **Gerenciador de Produtos** | Gestão do cadastro de produtos (inclusão, edição, exclusão), consulta por nome e configuração individual do limite mínimo de estoque. | Interface Desktop, Serviço de Auditoria, Persistência Embarcada. | HU01, HU05, HU06, RF01, RF02, RF03, RF08, RF12 |
-| **Gerenciador de Movimentação** | Processamento transacional de entradas e saídas de mercadorias, validação de saldo disponível e cálculo de estoque. | Interface Desktop, Gerenciador de Produtos, Motor de Alertas, Serviço de Auditoria, Persistência Embarcada. | HU02, HU03, RF04, RF05, RF06, RF07, RNF03 |
-| **Motor de Alertas de Estoque** | Avaliação do saldo em relação ao limite mínimo configurado e emissão do estado de alerta para a camada visual. | Gerenciador de Movimentação, Interface Desktop. | HU04, RF09 |
-| **Serviço de Exportação de Dados** | Leitura das tabelas locais e formatação dos arquivos em padrão CSV para diretórios selecionados. | Interface Desktop, Persistência Embarcada, Sistema de Arquivos Local. | HU08, RNF07 |
-| **Serviço de Auditoria e Logs** | Registro imutável de operações contendo timestamp, identificador do usuário e ação executada. | Gerenciador de Produtos, Gerenciador de Movimentação, Persistência Embarcada. | RNF08, HU02, HU03, HU07 |
-| **Mecanismo de Persistência Embarcada** | Armazenamento físico de dados localmente com suporte a transações ACID e consultas indexadas. | Módulo de Autenticação, Gerenciador de Produtos, Gerenciador de Movimentação, Serviço de Auditoria. | RNF02, RNF03, RNF05 |
+| **Módulo de Autenticação** | Gerenciar autenticação por usuário/senha e manter o contexto da sessão ativa. | Apresentação (UI), Repositório Local | RNF06 |
+| **Gestor de Produtos** | Processar cadastro, alteração, remoção e validação de nomes duplicados. | Interface de Gestão, Repositório Local, Monitor de Alertas | RF01, RF02, RF03, HU01, HU05 |
+| **Motor de Movimentação** | Processar entradas e saídas, validar saldos e executar regras de atualização. | Interface de Movimentação, Monitor de Alertas, Trilha de Auditoria, Repositório | RF04, RF05, RF06, RF07, HU02, HU03 |
+| **Monitor de Alertas** | Avaliar saldos em relação aos limites mínimos e emitir/manter alertas visuais. | Motor de Movimentação, Gestor de Produtos, Interface Gráfica | RF08, RF09, HU04, HU05 |
+| **Motor de Consulta e Histórico** | Recuperar saldos atuais e movimentações históricas com suporte a filtros e ordenação. | Interface de Consulta, Repositório Local | RF10, RF11, RF12, HU06, HU07, RNF05 |
+| **Trilha de Auditoria** | Registrar carimbo de data, hora e usuário responsável para cada operação executada. | Motor de Movimentação, Repositório Local | RNF08, HU02, HU03, HU07 |
+| **Gerador de Exportação (CSV)** | Formatar e gravar dados de produtos e movimentações no sistema de arquivos local. | Interface de Exportação, Repositório Local, Sistema de Arquivos | RNF07, HU08 |
+| **Repositório Local (DAL)** | Abstrair comandos de leitura e escrita transacionais no mecanismo embarcado. | Banco de Dados Embarcado | RNF02, RNF03 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-### 5.1 Bloqueios (Critical Blockers)
-* **Nenhum bloqueio crítico mapeado:** Os requisitos de entrada permitem a definição completa da arquitetura lógica funcional desktop local.
+1. **Gestão de Perfis e Cadastro de Usuários (RNF06 / RNF08):**
+   * *Pendência:* Os requisitos especificam a necessidade de autenticação e auditoria por usuário, porém não detalham como os usuários são cadastrados nem se há múltiplos perfis (ex: Administrador vs. Operador).
+   * *Impacto:* Impede a implementação de permissões diferenciadas (ex: proibir que operadores editem limites ou apaguem produtos).
 
-### 5.2 Pendências de Especificação e Requisitos (Pending Clarifications)
-1. **Gestão de Usuários e Primeiro Acesso:** O requisito **RNF06** exige autenticação por usuário e senha, porém não há detalhamento de telas/funções para cadastro inicial de usuários, alteração ou recuperação de senha.
-2. **Concorrência Local entre Sessões do Sistema Operacional:** O **RNF02** especifica banco embarcado local. Caso dois usuários executem a aplicação em contas de usuário do Windows diferentes apontando para o mesmo arquivo de banco, como será tratado o bloqueio de arquivo (*file lock*)?
-3. **Backup / Restauração do Banco de Dados:** O **RNF07** prevê exportação CSV para fins de backup, mas o CSV é um formato analítico/plano. Não há especificação sobre restauração de dados (*Restore*) em caso de falha de disco ou migração de computador.
+2. **Política para Exclusão de Produtos com Histórico (RF03 / RF11):**
+   * *Pendência:* O RF03 prevê a remoção de produtos, mas não especifica a regra para produtos que já possuem histórico de movimentação associado.
+   * *Impacto:* A remoção física pode quebrar a integridade referencial dos relatórios e do histórico de movimentações (HU07/RNF08).
+
+3. **Concorrência e Múltiplas Instâncias no Mesmo Computador (RNF01 / RNF02):**
+   * *Pendência:* Não há definição se duas instâncias da aplicação podem rodar concorrentemente no mesmo sistema operacional compartilhando o mesmo arquivo de banco de dados local.
+   * *Impacto:* Risco de travamento do arquivo (*file locking*) na camada de persistência local.
+
+4. **Tratamento de Fuso Horário e Horário de Verão (RNF08 / HU07):**
+   * *Pendência:* A especificação menciona registrar "data e hora", mas não padroniza a zona temporal (UTC vs. Hora Local).
+   * *Impacto:* Risco de inconsistência na ordenação do histórico em caso de mudanças de horário local.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-| Requisito | Coberto pelo Componente / Módulo | Coberto pela HU | Diagrama/Artefato de Suporte |
-| :--- | :--- | :--- | :--- |
-| **RF01** (Cadastrar produto) | Gerenciador de Produtos | HU01 | Visão de Componentes / Modelo de Classes |
-| **RF02** (Editar produto) | Gerenciador de Produtos | HU01 | Visão de Componentes |
-| **RF03** (Remover produto) | Gerenciador de Produtos | HU01 | Visão de Componentes |
-| **RF04** (Registrar entrada) | Gerenciador de Movimentação | HU02 | Visão de Componentes / Modelo de Classes |
-| **RF05** (Registrar saída) | Gerenciador de Movimentação | HU03 | Diagrama de Sequência |
-| **RF06** (Impedir saída > estoque) | Gerenciador de Movimentação | HU03 | Diagrama de Sequência |
-| **RF07** (Atualizar saldo aut.) | Gerenciador de Movimentação | HU02, HU03 | Diagrama de Sequência |
-| **RF08** (Limite mínimo por prod.) | Gerenciador de Produtos | HU05 | Modelo de Classes |
-| **RF09** (Alerta de estoque baixo) | Motor de Alertas de Estoque | HU04 | Diagrama de Sequência |
-| **RF10** (Exibir saldo de todos) | Interface Desktop / Gerenciador de Produtos | HU06 | Visão de Componentes |
-| **RF11** (Historico movimentações) | Gerenciador de Movimentação | HU07 | Visão de Componentes / Modelo de Classes |
-| **RF12** (Pesquisar produto nome) | Gerenciador de Produtos | HU02, HU06 | Visão de Componentes |
-| **RNF01** (Desktop Windows) | Interface Desktop Windows | - | Arquitetura de Camadas |
-| **RNF02** (Persistência embarcada)| Mecanismo de Persistência Embarcada | - | Visão de Componentes |
-| **RNF03** (Garantia sem perdas) | Mecanismo de Persistência / Movimentação | HU02, HU03 | Diagrama de Sequência (Transação Local) |
-| **RNF04** (Até 3 interações) | Interface Desktop Windows | HU02, HU03, HU04 | Decisões de Arquitetura |
-| **RNF05** (Carregamento < 2s) | Persistência / Índices em Banco Embarcado | HU06, HU07 | Decisões de Arquitetura |
-| **RNF06** (Autenticação) | Módulo de Autenticação | - | Visão de Componentes |
-| **RNF07** (Exportar CSV) | Serviço de Exportação de Dados | HU08 | Visão de Componentes |
-| **RNF08** (Rastreabilidade) | Serviço de Auditoria e Logs | HU02, HU03, HU07 | Diagrama de Sequência / Modelo de Classes |
+A matriz abaixo confirma a rastreabilidade integral entre Requisitos Funcionais (RF), Requisitos Não Funcionais (RNF), Histórias de Usuário (HU) e os elementos da arquitetura.
+
+| Requisito / HU | Módulo / Componente Arquitetural | Mecanismo / Estratégia Adotada | Coberta? |
+| :--- | :--- | :--- | :---: |
+| **RF01 / HU01** | Gestor de Produtos | Validação de obrigatoriedade e restrição de unicidade no repositório local. | **Sim** |
+| **RF02** | Gestor de Produtos | Atualização cadastral via camada de persistência. | **Sim** |
+| **RF03** | Gestor de Produtos | Exclusão de registro (requer definição de *soft delete*). | **Sim** |
+| **RF04 / HU02** | Motor de Movimentação | Soma ao saldo atual e gravação de histórico com carimbo temporal. | **Sim** |
+| **RF05 / HU03** | Motor de Movimentação | Subtração de saldo validada por regra de negócio. | **Sim** |
+| **RF06 / HU03** | Motor de Movimentação | Trava lógica de validação pré-transacional. | **Sim** |
+| **RF07 / HU02 / HU03**| Motor de Movimentação | Atualização síncrona de saldo em bloco transacional. | **Sim** |
+| **RF08 / HU05** | Gestor de Produtos | Parametrização do campo `limite_minimo` por item. | **Sim** |
+| **RF09 / HU04** | Monitor de Alertas | Avaliação de regra `saldo <= limite_minimo` acionando alerta visual persistentemente. | **Sim** |
+| **RF10 / HU06** | Motor de Consulta | Leitura otimizada de saldos com ordenação customizada. | **Sim** |
+| **RF11 / HU07** | Motor de Consulta / Auditoria | Filtros combinados de produto e intervalo de datas com ordenação decrescente. | **Sim** |
+| **RF12** | Motor de Consulta | Busca por substring no cadastro local. | **Sim** |
+| **RNF01** | Aplicação Desktop Windows | Empacotamento para SO target sem dependências de servidores Web. | **Sim** |
+| **RNF02** | Repositório Local (DAL) | Uso de mecanismo de banco de dados embarcado local. | **Sim** |
+| **RNF03** | Repositório Local (DAL) | Transações ACID (Commit/Rollback) explicitadas em cada movimento. | **Sim** |
+| **RNF04** | Interface Gráfica (UI) | Atalhos e fluxos diretos a partir do painel principal (<= 3 cliques). | **Sim** |
+| **RNF05** | Motor de Consulta / DAL | Índices em `produto_id`, `data_movimentacao` e `nome` para garantir tempo de resposta < 2s. | **Sim** |
+| **RNF06** | Módulo de Autenticação | Tela de login obrigatória na inicialização mantendo sessão ativa. | **Sim** |
+| **RNF07 / HU08** | Gerador de Exportação | Formatação tabular e escrita contínua em arquivo `.csv` no diretório escolhido. | **Sim** |
+| **RNF08** | Trilha de Auditoria | Injeção de metadados (`usuario_id`, `timestamp`) em todas as movimentações. | **Sim** |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna Identificada (Gap) | Impacto Arquitetural | Ação Recomendada para o Time de Dev |
-| :--- | :--- | :--- |
-| **Ausência de Módulo de Gestão de Credenciais de Usuário** | Impossibilidade de cadastrar novos operadores no sistema no primeiro uso (*bootstrapping*). | Implementar um script/módulo de migração inicial que crie um usuário padrão de administração no primeiro boot da aplicação local. |
-| **Regra de Exclusão de Produtos com Histórico de Movimentação (RF03)** | Excluir um produto que possui lançamentos de entrada/saída associados causará violação de integridade referencial ou perda de rastreabilidade de histórico (RF11/RNF08). | Adotar a estratégia de **Exclusão Lógica (Soft Delete)** através de uma flag `ativo: boolean` na entidade Produto, impedindo novas movimentações sem apagar o histórico existente. |
-| **Estratégia de Indexação para Consulta Instantânea (RNF05)** | Risco do carregamento ultrapassar 2 segundos à medida que a tabela de histórico de movimentação acumular dezenas de milhares de registros. | Criar índices compostos obrigatoriamente nas colunas `(produto_id, data_hora)` no banco embarcado para garantir tempo de resposta otimizado nas consultas do histórico. |
-| **Formato e Delimitador do Arquivo CSV (RNF07 / HU08)** | Incompatibilidade ao abrir o arquivo CSV em softwares de planilha (devido a variações de localidade regional, ex.: vírgula vs. ponto e vírgula, e codificação UTF-8/ANSI). | Padronizar a exportação com codificação **UTF-8 com BOM** e utilizar o ponto e vírgula (`;`) como delimitador padrão para sistemas Windows em português. |
+### 7.1 Identificação de Lacunas e Impactos Arquiteturais
+
+1. **Lacuna: Remoção Física vs. Exclusão Lógica (*Soft Delete*)**
+   * *Impacto:* Se o operador executar a remoção de um produto (RF03) que já possui registros no histórico de movimentações (RF11/HU07), a exclusão física quebrará a integridade referencial da base embarcada ou apagará o histórico das vendas passadas, violando a rastreabilidade (RNF08).
+   * *Ação Recomendada:* Implementar o padrão *Soft Delete* (campo `ativo = false`), onde a exclusão apenas oculta o produto para novos lançamentos, mantendo os registros históricos preservados para auditoria e consultas passadas.
+
+2. **Lacuna: Inexistência de Mecanismo Local de Backup e Restauração**
+   * *Impacto:* Embora o RNF07 permita exportar arquivos CSV, a exportação CSV não substitui uma cópia de segurança estruturada do banco de dados local. Em caso de falha de hardware no computador da loja, os dados serão perdidos.
+   * *Ação Recomendada:* Adicionar um serviço de backup automatizado que copie periodicamente o arquivo de banco de dados embarcado para um diretório seguro configurado pelo operador.
+
+3. **Lacuna: Ajuste/Inventário de Estoque (Correção de Inconsistências)**
+   * *Impacto:* Os requisitos contemplam apenas entradas por lote (RF04) e saídas por venda (RF05). Não há previsão funcional para lançamentos de ajuste (ex: perda, avaria, roubo ou recontagem de inventário).
+   * *Ação Recomendada:* Estender o tipo de movimentação no `Motor de Movimentação` para aceitar categorias de "Ajuste de Estoque" (Entrada/Saída extraordinária), mantendo a devida justificativa e auditoria.
+
+4. **Lacuna: Bootstrapping e Primeiro Acesso do Sistema**
+   * *Impacto:* O RNF06 exige login e senha, mas não define a existência de um usuário padrão inicial (*admin/seed*) para o primeiro uso da aplicação recém-instalada.
+   * *Ação Recomendada:* Definir uma rotina de inicialização da base de dados local que cria uma conta administrativa padrão exigindo a troca de senha obrigatoriamente no primeiro acesso.

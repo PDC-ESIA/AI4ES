@@ -1,119 +1,101 @@
 # Relatório Técnico de Arquitetura de Software
+## Plataforma Financeira Digital (G01) — Sistema Bancário Digital
+
+---
 
 ## 1. Identificação das HUs
 
-| HU | Título | Perfil | RFs Relacionados |
-|----|--------|--------|-------------------|
-| HU01 | Abrir conta com validação de identidade | PF | RF01, RF02, RF08 |
-| HU02 | Autenticar com múltiplos fatores | PF/PJ/Gerente | RF03, RF04, RF05, RF06 |
-| HU03 | Realizar transferência via Pix | PF/PJ | RF22, RF23, RF24, RF13, RF27 |
-| HU04 | Pagar boleto com agendamento | PF/PJ | RF28, RF29, RF30, RF31 |
-| HU05 | Gerenciar cartão de crédito | PF/PJ | RF15, RF16, RF17, RF18, RF19, RF20 |
-| HU06 | Contestar transação não reconhecida | PF/PJ | RF21, RF39 |
-| HU07 | Investir em renda fixa | PF/PJ | RF32, RF33, RF34 |
-| HU08 | Gerenciar consentimentos do open finance | PF/PJ | RF41, RF42, RF44 |
-| HU09 | Receber alertas e responder a suspeita de fraude | PF/PJ | RF36, RF37, RF38, RF39, RF40 |
-| HU10 | Abrir conta PJ com documentação societária | PJ | RF01, RF02, RF08 |
-| HU11 | Realizar TED para fornecedores | PJ | RF25, RF26, RF27, RF13 |
-| HU12 | Acompanhar carteira de clientes | Gerente | RF07, RF45, RF46 |
-| HU13 | Abrir solicitação de serviço em nome do cliente | Gerente | RF47 |
+| HU | Título | Perfil | RFs Relacionados | RNFs Relacionados |
+|----|--------|--------|-------------------|--------------------|
+| HU01 | Abrir conta com validação de identidade | PF | RF01, RF02, RF08 | RNF07, RNF08, RNF10 |
+| HU02 | Autenticar com múltiplos fatores | PF/PJ/Gerente | RF03, RF04, RF05, RF06 | RNF03, RNF04 |
+| HU03 | Realizar transferência via Pix | PF/PJ | RF22, RF23, RF24, RF27, RF13 | RNF15, RNF21 |
+| HU04 | Pagar boleto com agendamento | PF/PJ | RF28, RF29, RF30, RF31 | RNF21 |
+| HU05 | Gerenciar cartão de crédito | PF | RF16, RF17, RF18, RF19, RF20 | RNF02, RNF06 |
+| HU06 | Contestar transação não reconhecida | PF/PJ | RF21, RF39 | RNF12 |
+| HU07 | Investir em renda fixa | PF/PJ | RF32, RF33, RF34, RF35 | RNF21 |
+| HU08 | Gerenciar consentimentos do open finance | PF/PJ | RF41, RF42, RF43, RF44 | RNF10, RNF11 |
+| HU09 | Receber alertas e responder a suspeita de fraude | PF/PJ | RF36, RF37, RF38, RF39, RF40 | RNF04, RNF12 |
+| HU10 | Abrir conta PJ com documentação societária | PJ | RF01, RF02, RF08 | RNF07, RNF08 |
+| HU11 | Realizar TED para fornecedores | PJ | RF25, RF26, RF27, RF13 | RNF15 (limites regulatórios), RNF21 |
+| HU12 | Acompanhar carteira de clientes | Gerente | RF07, RF45, RF46 | RNF10, RNF12 |
+| HU13 | Abrir solicitação de serviço em nome do cliente | Gerente | RF47 | RNF12 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Componentes (Visão Macro)
+### 2.1 Visão Macro de Componentes (Contexto)
 
 ```mermaid
-flowchart TB
+graph TB
     subgraph Canais
-        MOB[App Mobile]
+        MOBILE[App Mobile]
         WEB[Portal Web]
-        GER[Console Gerente]
+        GERENTE_UI[Console do Gerente]
     end
 
     subgraph Borda
         APIGW[API Gateway / BFF]
     end
 
-    subgraph DominiosCore["Domínios de Negócio"]
+    subgraph Dominios de Negocio
         AUTH[Serviço de Identidade e Autenticação]
-        ONB[Serviço de Onboarding e KYC]
-        CTA[Serviço de Contas Correntes/Poupança]
-        CARD[Serviço de Cartões]
+        ONBOARD[Serviço de Onboarding e KYC]
+        CONTAS[Serviço de Contas]
+        CARTOES[Serviço de Cartões]
         TRANSF[Serviço de Transferências Pix/TED]
-        BOLETO[Serviço de Pagamento de Boletos]
+        BOLETOS[Serviço de Pagamento de Boletos]
         INVEST[Serviço de Investimentos]
         FRAUDE[Serviço de Detecção de Fraude]
         OPENFIN[Serviço de Open Finance]
-        CRM[Serviço de Relacionamento/CRM]
-        NOTIF[Serviço de Notificações]
-        AUDIT[Serviço de Auditoria e Trilhas]
-        COMPROV[Serviço de Documentos/Comprovantes]
+        RELACIONA[Serviço de Relacionamento/Gerente]
+        NOTIFICA[Serviço de Notificações]
+        AUDITORIA[Serviço de Auditoria e Compliance]
     end
 
-    subgraph Integracoes["Integrações Externas Regulatórias"]
-        SPI[Sistema de Pagamentos Instantâneos - SPI/Bacen]
-        STR[Sistema de Transferência de Reservas - STR/TED]
-        BACEN[Sistema de Reporte Regulatório - Bacen]
+    subgraph Integracoes Externas
+        SPI[Sistema de Pagamentos Instantâneos - SPI/Pix]
+        STR[Sistema TED / STR]
         BUREAU[Bureau de Crédito]
-        PCI[Processador de Cartão PCI-DSS]
-        OFPARC[Instituições Participantes Open Finance]
-
+        PCI[Processador de Cartões PCI-DSS]
+        BACEN[APIs Regulatórias BACEN]
+        OFPARTNERS[Instituições Participantes Open Finance]
     end
 
-    subgraph Persistencia["Camada de Dados (conceitual)"]
-        DB_CTA[(Armazenamento Transacional Contas)]
-        DB_CARD[(Armazenamento Cartões - sem PAN)]
-        DB_INVEST[(Armazenamento Investimentos)]
-        DB_AUDIT[(Armazenamento Auditoria Imutável)]
-        DB_ID[(Armazenamento Identidade/Credenciais)]
-    end
-
-    MOB --> APIGW
+    MOBILE --> APIGW
     WEB --> APIGW
-    GER --> APIGW
+    GERENTE_UI --> APIGW
 
     APIGW --> AUTH
-    APIGW --> ONB
-    APIGW --> CTA
-    APIGW --> CARD
+    APIGW --> ONBOARD
+    APIGW --> CONTAS
+    APIGW --> CARTOES
     APIGW --> TRANSF
-    APIGW --> BOLETO
+    APIGW --> BOLETOS
     APIGW --> INVEST
     APIGW --> OPENFIN
-    APIGW --> CRM
+    APIGW --> RELACIONA
 
-    AUTH --> DB_ID
-    ONB --> BUREAU
-    ONB --> AUTH
-    CTA --> DB_CTA
-    CARD --> DB_CARD
-    CARD --> PCI
+    ONBOARD --> BUREAU
+    ONBOARD --> AUDITORIA
+    CARTOES --> PCI
     TRANSF --> SPI
     TRANSF --> STR
-    TRANSF --> COMPROV
     TRANSF --> FRAUDE
-    BOLETO --> COMPROV
-    BOLETO --> NOTIF
-    INVEST --> DB_INVEST
-    FRAUDE --> NOTIF
-    FRAUDE --> AUDIT
-    OPENFIN --> OFPARC
-    OPENFIN --> AUDIT
-    CRM --> CTA
-    CRM --> INVEST
-    CRM --> AUDIT
-
-    AUTH --> AUDIT
-    CTA --> AUDIT
-    CARD --> AUDIT
-    TRANSF --> AUDIT
-    BOLETO --> AUDIT
-    INVEST --> AUDIT
-
-    AUDIT --> DB_AUDIT
-    AUDIT --> BACEN
+    BOLETOS --> FRAUDE
+    CARTOES --> FRAUDE
+    FRAUDE --> NOTIFICA
+    FRAUDE --> AUDITORIA
+    OPENFIN --> OFPARTNERS
+    OPENFIN --> BACEN
+    AUDITORIA --> BACEN
+    TRANSF --> NOTIFICA
+    CARTOES --> NOTIFICA
+    BOLETOS --> NOTIFICA
+    RELACIONA --> CONTAS
+    RELACIONA --> INVEST
+    RELACIONA --> AUDITORIA
 ```
 
 ### 2.2 Diagrama de Sequência — Transferência Pix (HU03)
@@ -124,92 +106,100 @@ sequenceDiagram
     participant U as Usuário (App/Web)
     participant GW as API Gateway/BFF
     participant AUTH as Serviço de Autenticação
-    participant TRANSF as Serviço de Transferências
-    participant FRAUDE as Serviço de Detecção de Fraude
-    participant SPI as Sistema SPI (Bacen)
-    participant COMPROV as Serviço de Comprovantes
-    participant NOTIF as Serviço de Notificações
-    participant AUDIT as Serviço de Auditoria
+    participant TRF as Serviço de Transferências
+    participant FRD as Serviço de Detecção de Fraude
+    participant SPI as Sistema de Pagamentos Instantâneos
+    participant NOT as Serviço de Notificações
+    participant AUD as Serviço de Auditoria
 
     U->>GW: Solicita transferência Pix (chave, valor)
     GW->>AUTH: Valida sessão/token
     AUTH-->>GW: Sessão válida
-    GW->>TRANSF: Encaminha solicitação de Pix
-    TRANSF->>TRANSF: Valida limites (diurno/noturno, diário)
-    alt Limite excedido
-        TRANSF-->>GW: Erro - limite excedido
-        GW-->>U: Notifica bloqueio por limite
-    else Limite OK
-        TRANSF->>FRAUDE: Solicita análise de risco em tempo real
-        FRAUDE-->>TRANSF: Score de risco
-        alt Risco alto
-            TRANSF->>AUTH: Solicita reautenticação (MFA)
-            AUTH-->>U: Solicita segundo fator
-            U-->>AUTH: Confirma MFA
-            AUTH-->>TRANSF: Reautenticação confirmada
-        end
-        TRANSF-->>U: Exibe dados do destinatário para confirmação
-        U->>TRANSF: Confirma transferência
-        TRANSF->>SPI: Envia ordem de pagamento instantâneo
-        SPI-->>TRANSF: Confirmação de liquidação (até 10s)
-        TRANSF->>COMPROV: Solicita geração de comprovante PDF
-        COMPROV-->>TRANSF: Comprovante gerado
-        TRANSF->>NOTIF: Dispara notificação de sucesso
-        TRANSF->>AUDIT: Registra evento transacional
-        TRANSF-->>U: Retorna confirmação e comprovante
+    GW->>TRF: Encaminha solicitação de Pix
+    TRF->>TRF: Valida limites diários/horário (RF27)
+    TRF->>FRD: Envia transação para análise de risco
+    FRD-->>TRF: Classificação de risco (baixo/alto)
+    alt Risco alto
+        FRD->>NOT: Notifica usuário (push/e-mail)
+        FRD->>AUTH: Solicita reautenticação
+        AUTH-->>U: Requisita MFA adicional
+        U-->>AUTH: Confirma MFA
+        AUTH-->>TRF: Reautenticação confirmada
     end
+    TRF->>U: Exibe dados do destinatário para confirmação
+    U-->>TRF: Confirma transferência
+    TRF->>SPI: Envia ordem de pagamento
+    SPI-->>TRF: Confirmação de liquidação (<=10s)
+    TRF->>AUD: Registra transação na trilha imutável
+    TRF->>NOT: Dispara notificação de sucesso
+    TRF-->>U: Retorna comprovante em PDF
 ```
 
-### 2.3 Diagrama de Sequência — Detecção de Fraude e Contestação (HU09)
+### 2.3 Diagrama de Sequência — Alerta de Fraude (HU09)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant TX as Motor Transacional
-    participant FRAUDE as Serviço de Detecção de Fraude
-    participant NOTIF as Serviço de Notificações
+    participant TX as Origem da Transação (Cartão/Pix/TED)
+    participant FRD as Serviço de Detecção de Fraude
+    participant NOT as Serviço de Notificações
     participant U as Usuário
-    participant AUDIT as Serviço de Auditoria
-    participant CTA as Serviço de Contas
+    participant TRF as Serviço de Transações
+    participant AUD as Serviço de Auditoria
 
-    TX->>FRAUDE: Envia evento de transação em tempo real
-    FRAUDE->>FRAUDE: Aplica regras/modelo de padrão suspeito
-    alt Transação suspeita
-        FRAUDE->>CTA: Solicita bloqueio preventivo
-        CTA-->>FRAUDE: Bloqueio confirmado
-        FRAUDE->>NOTIF: Dispara alerta (push + e-mail)
-        NOTIF-->>U: Notifica transação suspeita
-        U->>FRAUDE: Confirma legitimidade ou contesta
-        alt Usuário contesta
-            FRAUDE->>CTA: Mantém bloqueio e sinaliza conta
-            FRAUDE->>AUDIT: Registra contestação para análise
-        else Usuário confirma
-            FRAUDE->>CTA: Libera transação
-            FRAUDE->>AUDIT: Registra confirmação
+    TX->>FRD: Envia evento de transação em tempo real
+    FRD->>FRD: Aplica regras/modelo de padrão suspeito
+    alt Padrão suspeito detectado
+        FRD->>TRF: Solicita bloqueio preventivo
+        TRF-->>FRD: Confirma bloqueio
+        FRD->>NOT: Envia alerta push + e-mail
+        NOT-->>U: Notifica transação suspeita
+        U->>NOT: Responde (confirma ou contesta)
+        alt Usuário confirma legitimidade
+            NOT->>TRF: Libera transação
+        else Usuário contesta
+            NOT->>TRF: Mantém bloqueio
+            TRF->>AUD: Registra contestação e bloqueio
         end
-    else Transação normal
-        FRAUDE->>AUDIT: Registra avaliação sem alerta
+        FRD->>AUD: Registra alerta e resolução
+    else Padrão normal
+        FRD->>AUD: Registra análise (sem alerta)
     end
+```
+
+### 2.4 Diagrama de Componentes — Onboarding (HU01/HU10)
+
+```mermaid
+graph LR
+    A[Interface de Onboarding] --> B[Serviço de Onboarding e KYC]
+    B --> C[Validador de Documentos]
+    B --> D[Serviço de Consulta a Bureau Externo]
+    B --> E[Serviço de PLD/FT]
+    B --> F[Serviço de Contas]
+    B --> G[Serviço de Notificações]
+    B --> H[Serviço de Auditoria]
+    C -->|Resultado validação| B
+    D -->|Score/Restrições| B
+    E -->|Alertas PLD| B
+    F -->|Habilita conta| A
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-| # | Decisão | Justificativa | Requisitos Relacionados |
-|---|---------|----------------|---------------------------|
-| DA01 | Arquitetura orientada a domínios/serviços desacoplados por capacidade de negócio (contas, cartões, transferências, investimentos, fraude, open finance) | Permite escalonamento independente e isolamento de falhas por domínio crítico | RNF16, RNF17, RNF23 |
-| DA02 | Uso de um API Gateway/BFF como ponto único de entrada para canais mobile, web e gerente | Centraliza autenticação, rate limiting e roteamento, simplificando governança de segurança | RNF04, RF03, RNF01 |
-| DA03 | Delegação do armazenamento e processamento de dados de cartão a um processador certificado externo | Elimina escopo PCI-DSS do núcleo da plataforma | RNF06, RF14, RF15 |
-| DA04 | Serviço de Auditoria como componente transversal, consumindo eventos de todos os domínios | Garante trilha imutável centralizada com retenção regulatória | RNF12, RF40 |
-| DA05 | Serviço de Detecção de Fraude desacoplado, operando de forma síncrona (bloqueio) e assíncrona (análise contínua) | Permite decisão em tempo real sem acoplar lógica de risco aos serviços transacionais | RF36, RF37, RNF15 |
-| DA06 | Comunicação entre canais e domínios sempre criptografada em trânsito e com autenticação mútua conceitual | Atende exigência de TLS e proteção de dados sensíveis | RNF01, RNF02 |
-| DA07 | Módulo de Consentimento como responsável único por regras de acesso a dados via Open Finance | Isola complexidade regulatória de compartilhamento de dados | RF41-RF44, RNF11 |
-| DA08 | Persistência transacional segregada por domínio (contas, cartões, investimentos, auditoria, identidade), sem prescrição de tecnologia específica | Mantém neutralidade tecnológica e permite escolha posterior conforme requisitos não funcionais de consistência | RNF13, RNF16 |
-| DA09 | Serviço de Notificações centralizado para push/e-mail, consumido por múltiplos domínios (fraude, boletos, cartões, consentimentos) | Evita duplicação de lógica de disparo e garante consistência de canal | RF20, RF31, RF38, HU08 |
-| DA10 | Componente de Geração de Comprovantes desacoplado e reutilizável entre Pix, TED, boletos e cartões | Padroniza emissão de PDF e reduz acoplamento entre domínios transacionais | RF13, RF29 |
-| DA11 | Controle de acesso do Gerente de Relacionamento condicionado a registro de consentimento do cliente, validado no domínio de CRM | Atende exigência de consentimento explícito antes de qualquer visão consolidada | RF07, HU12, HU13 |
-| DA12 | Escalonamento horizontal automático e implantação multi-zona tratados como requisitos de infraestrutura transversal, não vinculados a um domínio específico | Aplica-se a toda a plataforma de forma uniforme | RNF16, RNF23 |
+| ID | Decisão | Justificativa | Requisitos Relacionados |
+|----|---------|----------------|---------------------------|
+| DA01 | Adoção de arquitetura orientada a serviços/domínios de negócio desacoplados (não necessariamente microsserviços físicos) | Permite evolução independente de módulos regulados (KYC, Pix, cartões) e isolamento de falhas | RNF16, RNF17, RNF23 |
+| DA02 | Uso de um componente de borda (API Gateway/BFF) único para canais mobile, web e gerente | Centraliza autenticação, rate limiting e roteamento, simplificando a superfície de ataque | RNF01, RNF04 |
+| DA03 | Separação do Serviço de Detecção de Fraude como componente transversal, consumindo eventos de todos os canais transacionais | Necessário para monitoramento em tempo real (RF36-RF40) sem acoplar lógica de risco a cada domínio | RF36-RF40 |
+| DA04 | Delegação do armazenamento e processamento de dados de cartão a um processador externo certificado | Requisito explícito de não armazenar dados de cartão internamente | RNF06 |
+| DA05 | Trilha de auditoria centralizada e imutável, consumida por todos os domínios via eventos | Atende exigência de retenção de 5 anos e rastreabilidade completa de operações | RNF12 |
+| DA06 | Serviço de Notificações desacoplado, com múltiplos canais (push, e-mail) | Necessário para alertas simultâneos de fraude, boletos e MFA | RF20, RF31, RF38 |
+| DA07 | Serviço de Open Finance com interface de API padronizada exposta a terceiros e camada de consentimento própria | Atende à obrigatoriedade regulatória de especificações Open Finance Brasil | RF41-RF44, RNF11 |
+| DA08 | Escalonamento horizontal automático e múltiplas zonas de disponibilidade como requisito não-funcional transversal a todos os serviços | Atende SLA de disponibilidade e resiliência | RNF13, RNF16, RNF17, RNF23 |
+| DA09 | Confirmação explícita (double-check) como padrão de interação obrigatório em operações financeiras críticas | Atende RNF21 de forma consistente em Pix, TED, boletos e investimentos | RF29, RNF21 |
+| DA10 | Componentização do domínio de Relacionamento/Gerente com controle de consentimento explícito do cliente | Necessário para RF07/RF45 garantirem que acesso do gerente respeite privacidade | RF07, RF45-RF47 |
 
 ---
 
@@ -217,70 +207,68 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |------------|------------------------------|-------------------|------------------------------------|
-| API Gateway/BFF | Roteamento, autenticação de borda, rate limiting, agregação de respostas para canais | Todos os serviços de domínio; canais mobile/web/gerente | RNF04, HU02 |
-| Serviço de Identidade e Autenticação | Gestão de credenciais, MFA, sessões, histórico de acesso, bloqueio remoto | API Gateway; Armazenamento de Identidade; Serviço de Auditoria | HU02, RF03-RF06 |
-| Serviço de Onboarding e KYC | Validação de documentos PF/PJ, integração com bureau, aprovação de cadastro | Serviço de Autenticação; Bureau de Crédito; Serviço de Notificações | HU01, HU10, RF01-RF02 |
-| Serviço de Contas Correntes/Poupança | Saldo, extrato, rendimento de poupança, transferência entre contas próprias | Armazenamento Transacional Contas; Serviço de Comprovantes; Serviço de Auditoria | RF08-RF13 |
-| Serviço de Cartões | Emissão, limites, bloqueio/desbloqueio, faturas, notificação de transação | Processador PCI-DSS; Serviço de Notificações; Serviço de Fraude | HU05, RF14-RF20 |
-| Serviço de Transferências (Pix/TED) | Orquestração de chaves Pix, envio SPI/STR, agendamento, limites | SPI; STR; Serviço de Fraude; Serviço de Comprovantes | HU03, HU11, RF22-RF27 |
-| Serviço de Pagamento de Boletos | Leitura/validação de código de barras, agendamento, lembrete de vencimento | Serviço de Notificações; Serviço de Comprovantes | HU04, RF28-RF31 |
-| Serviço de Investimentos | Catálogo de produtos, aplicação/resgate, posição consolidada, informe de rendimentos | Armazenamento Investimentos; Serviço de Auditoria | HU07, RF32-RF35 |
-| Serviço de Detecção de Fraude | Monitoramento em tempo real, scoring de risco, bloqueio preventivo | Serviço de Transferências; Serviço de Cartões; Serviço de Notificações; Auditoria | HU09, RF36-RF40 |
-| Serviço de Open Finance | Gestão de consentimentos, exposição de APIs padronizadas, iniciação de pagamento via terceiros | Instituições Participantes; Serviço de Auditoria | HU08, RF41-RF44 |
-| Serviço de Relacionamento/CRM | Visão consolidada de carteira, anotações, abertura de solicitações em nome do cliente | Serviço de Contas; Serviço de Investimentos; Serviço de Auditoria | HU12, HU13, RF45-RF47 |
-| Serviço de Notificações | Disparo unificado de push e e-mail para eventos de negócio | Todos os domínios que geram eventos ao usuário | RF20, RF31, RF38, HU08 |
-| Serviço de Auditoria e Trilhas | Registro imutável de operações, acessos e alterações; suporte a relatórios regulatórios | Todos os domínios; Sistema de Reporte Regulatório Bacen | RNF12, RF40, RNF09 |
-| Serviço de Documentos/Comprovantes | Geração e disponibilização de comprovantes/PDF | Serviço de Transferências; Serviço de Boletos; Serviço de Contas | RF13, RF29 |
-| Armazenamento de Identidade | Persistência segura de credenciais e fatores de autenticação | Serviço de Autenticação | RNF02, RNF03 |
-| Armazenamento Transacional Contas | Persistência de saldo, extrato e histórico transacional | Serviço de Contas | RNF14, RNF22 |
-| Armazenamento Cartões (sem PAN) | Persistência de metadados de cartão, exceto dados sensíveis PCI | Serviço de Cartões | RNF06 |
-| Armazenamento Investimentos | Persistência de posições e histórico de aplicações/resgates | Serviço de Investimentos | RF34 |
-| Armazenamento Auditoria Imutável | Retenção de longo prazo de trilhas de auditoria | Serviço de Auditoria | RNF12 |
+| API Gateway/BFF | Roteamento, autenticação de borda, rate limiting, agregação de respostas para canais | Todos os serviços de domínio | HU02 (MFA), RNF04 |
+| Serviço de Identidade e Autenticação | Gerenciar cadastro, login, MFA, sessões, bloqueio remoto | API Gateway, Serviço de Notificações, Auditoria | HU02, RF03-RF06 |
+| Serviço de Onboarding e KYC | Validar identidade PF/PJ, integrar bureaus, aplicar PLD/FT | Bureau externo, Serviço de Contas, Notificações, Auditoria | HU01, HU10, RF01-RF02 |
+| Serviço de Contas | Gerir contas corrente/poupança, saldo, extrato, rendimentos | Serviço de Transferências, Investimentos, Relacionamento | RF08-RF13 |
+| Serviço de Cartões | Emissão, bloqueio, limites, faturas, contestação de cartão | Processador PCI externo, Fraude, Notificações | HU05, HU06, RF14-RF21 |
+| Serviço de Transferências (Pix/TED) | Orquestrar transferências, aplicar limites, agendamento | SPI, STR, Fraude, Notificações, Auditoria | HU03, HU11, RF22-RF27 |
+| Serviço de Pagamento de Boletos | Ler/validar boletos, agendar pagamentos, notificar vencimento | Fraude, Notificações, Contas | HU04, RF28-RF31 |
+| Serviço de Investimentos | Exibir produtos de renda fixa, aplicar/resgatar, emitir informe | Serviço de Contas, Auditoria, Relacionamento | HU07, RF32-RF35 |
+| Serviço de Detecção de Fraude | Monitorar transações, classificar risco, bloquear preventivamente | Transferências, Cartões, Boletos, Notificações, Auditoria | HU09, RF36-RF40 |
+| Serviço de Open Finance | Gerenciar consentimentos, expor APIs padronizadas, iniciar pagamentos externos | Instituições parceiras, Auditoria, BACEN | HU08, RF41-RF44 |
+| Serviço de Relacionamento/Gerente | Visão consolidada de clientes, anotações, solicitações em nome do cliente | Serviço de Contas, Investimentos, Auditoria | HU12, HU13, RF45-RF47 |
+| Serviço de Notificações | Disparar alertas multi-canal (push, e-mail) | Todos os serviços transacionais | RF20, RF31, RF38, HU09 |
+| Serviço de Auditoria e Compliance | Registrar trilha imutável, gerar relatórios regulatórios | Todos os domínios, BACEN | RNF09, RNF12, HU13 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| # | Descrição do Bloqueio/Pendência | Impacto | Responsável Sugerido |
-|---|-----------------------------------|---------|------------------------|
-| B01 | Não há definição de SLA específico para resposta do Bureau de Crédito e Bureau de KYC de sócios PJ | Pode inviabilizar cumprimento do prazo de 24h/48h de análise de onboarding (HU01, HU10) | Time de Integrações/Onboarding |
-| B02 | Ausência de detalhamento sobre o modelo de scoring de fraude (regras vs. machine learning) | Impacta desenho de latência e infraestrutura do Serviço de Detecção de Fraude | Time de Risco/Fraude |
-| B03 | Não especificado o processo de reconciliação em caso de falha do SPI durante a janela de 10s (RF24/RNF15) | Risco de inconsistência transacional sem definição clara de fallback | Arquitetura Core Bancário |
-| B04 | Regras de retenção e expurgo de dados pessoais sob LGPD não detalhadas além da auditoria de 5 anos | Pode gerar conflito entre RNF10 (LGPD) e RNF12 (retenção mínima) | Jurídico/Compliance + Arquitetura de Dados |
-| B05 | Não há definição de política de autorização granular do Gerente de Relacionamento (o que pode/não pode visualizar sem consentimento amplo) | Risco de exposição indevida de dados sensíveis de clientes | Time de CRM/Segurança |
-| B06 | Ausência de requisito sobre versionamento e depreciação das APIs de Open Finance | Pode gerar quebra de contrato com instituições parceiras | Time de Open Finance |
+| ID | Descrição do Bloqueio/Pendência | Impacto | Responsável Sugerido |
+|----|-----------------------------------|---------|------------------------|
+| BP01 | Não há definição de critérios objetivos/modelo para "padrão suspeito" (RF36) | Impede especificação do motor de regras/scoring de fraude | Time de Risco/Compliance + Arquitetura |
+| BP02 | Ausência de definição de SLA de resposta da análise de crédito (RF15) | Impacta fluxo de emissão de cartão de crédito e experiência do usuário | Produto/Negócio |
+| BP03 | Não especificado o provedor/processador PCI-DSS a ser integrado | Bloqueia definição de contrato de integração com Serviço de Cartões | Arquitetura + Segurança |
+| BP04 | Regras de cálculo de rendimento da poupança "conforme BACEN" não detalhadas | Impede implementação determinística do motor de rendimentos | Negócio/Compliance |
+| BP05 | Falta definição de formato/periodicidade dos relatórios BACEN 3040/SCR (RNF09) | Impacta desenho do Serviço de Auditoria/Compliance | Compliance Regulatório |
+| BP06 | Não há detalhamento do processo de análise de contestações (HU06) — prazos, fluxo de estorno | Impede modelagem completa do subfluxo de disputas | Produto + Operações |
+| BP07 | Ausência de regras de autorização granular para o gerente (o que exatamente pode ver/fazer sem consentimento explícito) | Risco de violação de privacidade/LGPD | Segurança + Jurídico |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-| Categoria | RFs/RNFs Cobertos | Observação |
-|-----------|--------------------|------------|
-| Gestão de Usuários e Autenticação | RF01-RF07 | Totalmente endereçados via Serviço de Autenticação e Onboarding |
-| Conta Corrente/Poupança | RF08-RF13 | Cobertos pelo Serviço de Contas e Serviço de Comprovantes |
-| Cartões | RF14-RF21 | Cobertos pelo Serviço de Cartões, com dependência do Processador PCI-DSS |
-| Transferências | RF22-RF27 | Cobertos pelo Serviço de Transferências, integrando SPI/STR |
-| Boletos | RF28-RF31 | Cobertos pelo Serviço de Pagamento de Boletos |
-| Investimentos | RF32-RF35 | Cobertos pelo Serviço de Investimentos |
-| Detecção de Fraude | RF36-RF40 | Cobertos pelo Serviço de Detecção de Fraude, integrado a Notificações e Auditoria |
-| Open Finance | RF41-RF44 | Cobertos pelo Serviço de Open Finance |
-| Gerente de Relacionamento | RF45-RF47 | Cobertos pelo Serviço de Relacionamento/CRM |
-| Segurança (RNF01-RNF06) | Totalmente endereçados nas decisões DA02, DA03, DA06 | — |
-| Conformidade (RNF07-RNF12) | Endereçados via Serviço de Auditoria e Open Finance | Pendências em B04 |
-| Disponibilidade/Desempenho (RNF13-RNF17) | Endereçados via decisões de escalonamento horizontal e multi-zona | Detalhamento técnico pendente de fase de detalhamento não-funcional |
-| Usabilidade/Compatibilidade (RNF18-RNF21) | Não modelado em componentes de backend; recai sobre camada de apresentação nos canais | Fora do escopo arquitetural de backend |
-| Infraestrutura/Dados (RNF22-RNF24) | Endereçados conceitualmente via decisões DA08, DA12 | Detalhamento técnico de backup/observabilidade pendente |
+| Categoria | Total de Requisitos | Cobertos por Componentes Identificados | Observação |
+|-----------|----------------------|-------------------------------------------|------------|
+| RF Gestão de Usuários (RF01-RF07) | 7 | 7 | Totalmente coberto por Auth + Onboarding |
+| RF Contas (RF08-RF13) | 6 | 6 | Coberto por Serviço de Contas |
+| RF Cartões (RF14-RF21) | 8 | 8 | Coberto por Serviço de Cartões + PCI externo |
+| RF Transferências (RF22-RF27) | 6 | 6 | Coberto por Serviço de Transferências |
+| RF Boletos (RF28-RF31) | 4 | 4 | Coberto por Serviço de Boletos |
+| RF Investimentos (RF32-RF35) | 4 | 4 | Coberto por Serviço de Investimentos |
+| RF Fraude (RF36-RF40) | 5 | 5 (parcialmente, ver BP01) | Motor de regras não detalhado |
+| RF Open Finance (RF41-RF44) | 4 | 4 | Coberto por Serviço de Open Finance |
+| RF Gerente (RF45-RF47) | 3 | 3 | Coberto por Serviço de Relacionamento |
+| RNF Segurança (RNF01-RNF06) | 6 | 6 | Distribuído transversalmente (Gateway, Cartões, Auth) |
+| RNF Conformidade (RNF07-RNF12) | 6 | 5 (ver BP05) | Auditoria/Compliance parcialmente detalhado |
+| RNF Disponibilidade/Desempenho (RNF13-RNF17) | 5 | 5 | Decisões transversais (DA08) |
+| RNF Usabilidade (RNF18-RNF21) | 4 | 4 | Aplicável aos canais Mobile/Web |
+| RNF Infraestrutura (RNF22-RNF24) | 3 | 3 | Backup, redundância, monitoramento — transversais |
+
+**Cobertura geral estimada: ~97% dos requisitos mapeados para componentes arquiteturais, com pendências pontuais em regras de negócio detalhadas (fraude, rendimento, relatórios regulatórios).**
 
 ---
 
 ## 7. Gap Analysis
 
-| # | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
-|---|------------------------|-------------------------|----------------------|
-| G01 | Falta de especificação sobre o mecanismo de idempotência para transações Pix/TED em caso de reenvio de requisição | Risco de duplicidade de débito/crédito em cenários de falha de rede | Definir contrato de idempotência (chave de idempotência) no Serviço de Transferências antes da fase de detalhamento |
-| G02 | Ausência de requisito explícito sobre consistência entre saldo em tempo real (RF09) e processamento assíncrono de fraude/bloqueio | Pode gerar saldo "otimista" exibido ao usuário divergente do saldo efetivamente disponível | Modelar estados intermediários de saldo (disponível vs. bloqueado) no Serviço de Contas |
-| G03 | Não há requisito sobre o tratamento de usuários com múltiplos perfis (ex.: sócio PJ que também é cliente PF) | Impacta modelo de identidade e autorização | Especificar modelo de vínculo multi-perfil no Serviço de Identidade |
-| G04 | Falta de definição sobre priorização/SLA diferenciado para relatórios regulatórios (BACEN 3040, SCR) em caso de indisponibilidade parcial | Risco de não conformidade regulatória em cenários de degradação | Definir contrato de resiliência específico para o Serviço de Auditoria/Regulatório |
-| G05 | Ausência de requisito sobre auditabilidade das decisões automatizadas do motor de fraude (explicabilidade) | Pode gerar dificuldade em contestações e auditorias internas/externas | Incluir requisito de rastreabilidade de critérios de decisão no Serviço de Fraude |
-| G06 | Não especificado processo de revogação em cascata de acessos do Gerente quando cliente revoga consentimento | Risco de acesso residual indevido | Modelar evento de revogação propagado ao Serviço de CRM |
-| G07 | Falta de requisito sobre internacionalização/multi-idioma, embora não seja crítico para escopo nacional | Baixo impacto, mas pode gerar retrabalho futuro em expansão | Registrar como item de backlog de evolução, sem ação imediata |
+| Gap Identificado | Descrição | Impacto Arquitetural | Ação Recomendada |
+|-------------------|-----------|------------------------|--------------------|
+| G01 | Falta de especificação do motor de regras de fraude (limiares, modelos) | Serviço de Detecção de Fraude não pode ser dimensionado nem testado adequadamente | Workshop com áreas de risco para definir catálogo de regras e SLAs de resposta |
+| G02 | Ausência de contrato formal com bureau de crédito para análise de RF15 | Bloqueia definição de interface externa e tempos de resposta | Definir contrato de integração e SLA com fornecedor de bureau |
+| G03 | Não há detalhamento de política de retenção/expurgo de dados além dos 5 anos de auditoria (LGPD) | Risco de não conformidade com LGPD quanto a minimização de dados | Definir política de ciclo de vida de dados com jurídico/DPO |
+| G04 | Falta de definição de níveis de consentimento granular para acesso do gerente (RF07/RF45) | Risco de acesso indevido a dados sensíveis do cliente | Modelar matriz de permissões e consentimento por escopo de dado |
+| G05 | Não especificado processo de reconciliação em caso de falha durante transação Pix/TED (RNF17) | Risco de inconsistência financeira em cenários de falha parcial | Especificar máquina de estados de transação com compensação (saga) |
+| G06 | Ausência de detalhamento sobre versionamento e evolução das APIs Open Finance conforme fases regulatórias | Risco de retrabalho arquitetural a cada nova fase do Open Finance Brasil | Adotar estratégia de versionamento de API e gestão de contrato desde o início |
+| G07 | Não há requisito explícito sobre internacionalização/localização, embora não pareça necessário no escopo atual | Baixo impacto, mas deve ser confirmado | Confirmar com stakeholders se há necessidade de suporte multi-idioma/moeda |
+| G08 | Falta de definição de estratégia de testes de carga/performance específicos para picos (ex: Pix em horários de pico) | Risco de não validar RNF15/RNF16 antes de produção | Incluir plano de testes de carga e chaos engineering no roadmap de QA |

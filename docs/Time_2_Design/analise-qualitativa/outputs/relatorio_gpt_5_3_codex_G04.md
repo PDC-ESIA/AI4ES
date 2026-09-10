@@ -2,155 +2,207 @@
 
 ## 1. Identificação das HUs
 
-| HU | Perfil | Objetivo de Negócio | Principais RF/RNF Relacionados |
-|---|---|---|---|
-| HU01 | Embarcador | Registrar pedido de frete com dados completos e documentos | RF05, RF06, RF09, RF10, RF13, RNF13 |
-| HU02 | Embarcador | Selecionar transportadora ranqueada e contratar seguro no mesmo fluxo | RF11, RF12, RF41, RF45, RF17 |
-| HU03 | Embarcador | Acompanhar fretes e baixar POD após entrega | RF07, RF31, RF37, RF39, RF34 |
-| HU04 | Embarcador | Abrir e acompanhar sinistro | RF42, RF43, RF44 |
-| HU05 | Transportadora | Aceitar/recusar pedidos e gerir capacidade operacional | RF03, RF13, RF14, RF15, RF35 |
-| HU06 | Transportadora | Monitorar motoristas e ocorrências em tempo real | RF25, RF26, RF31, RF32 |
-| HU07 | Transportadora | Consultar demonstrativo financeiro de repasse | RF46, RF48 |
-| HU08 | Motorista | Registrar coleta com evidências | RF23, RF24, RF26, RF28 |
-| HU09 | Motorista | Registrar entrega com assinatura e gerar POD | RF27, RF37, RF38, RF40, RNF21 |
-| HU10 | Motorista | Registrar ocorrências com fotos e alerta imediato | RF26, RF34, RF35 |
-| HU11 | Destinatário | Rastrear carga sem cadastro | RF30, RF31, RF32, RNF05 |
-| HU12 | Destinatário | Receber notificações por status e gerenciar preferências | RF33, RF31 |
-| HU13 | Administrador | Monitorar SLA e acionar contingência operacional | RF36, RF15, RNF25 |
-| HU14 | Administrador | Acompanhar painel financeiro consolidado | RF49, RF47, RF48 |
+Abaixo, a identificação consolidada das 14 histórias de usuário, com vínculo funcional e não funcional mais crítico para arquitetura.
+
+| HU | Ator | Objetivo de Negócio | RF Principais | RNF Críticos |
+|---|---|---|---|---|
+| HU01 | Embarcador | Registrar pedido de frete com dados e documentos | RF05, RF06, RF09, RF10 | RNF13, RNF24 |
+| HU02 | Embarcador | Selecionar transportadora ranqueada e contratar seguro | RF11, RF12, RF41, RF17 | RNF13, RNF24 |
+| HU03 | Embarcador | Acompanhar fretes e obter POD | RF07, RF31, RF39 | RNF12, RNF15 |
+| HU04 | Embarcador | Abrir e acompanhar sinistro | RF42, RF43, RF44 | RNF09, RNF24 |
+| HU05 | Transportadora | Aceitar/recusar fretes e gerenciar frota | RF03, RF13, RF14, RF15 | RNF13, RNF25 |
+| HU06 | Transportadora | Monitorar motoristas e ocorrências em tempo real | RF25, RF26, RF31, RF32 | RNF15, RNF16, RNF23 |
+| HU07 | Transportadora | Consultar demonstrativo financeiro | RF48, RF45, RF46 | RNF11, RNF25 |
+| HU08 | Motorista | Registrar coleta com evidências | RF23, RF24, RF26 | RNF17, RNF18, RNF21 |
+| HU09 | Motorista | Registrar entrega com assinatura e POD | RF27, RF37, RF38, RF40 | RNF10, RNF17, RNF21 |
+| HU10 | Motorista | Registrar ocorrência em trânsito | RF26, RF34, RF35 | RNF17, RNF15 |
+| HU11 | Destinatário | Rastrear carga por link sem cadastro | RF30, RF31, RF32 | RNF05, RNF06, RNF12 |
+| HU12 | Destinatário | Receber notificações e gerenciar preferências | RF33, RF31 | RNF12, RNF25 |
+| HU13 | Administrador | Monitorar SLA e contingências | RF36, RF15, RF16 | RNF12, RNF25 |
+| HU14 | Administrador | Monitorar painel financeiro consolidado | RF49, RF47, RF46 | RNF11, RNF25 |
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Visão de Componentes (macro)
+### 2.1 Diagrama de Componentes (visão lógica)
 
 ```mermaid
 flowchart LR
-    subgraph Canais
-        WEBE[Portal Embarcador]
-        WEBT[Painel Transportadora]
-        WEBA[Painel Administrador]
-        APPM[App Motorista]
-        LINKD[Portal Rastreamento Destinatário]
-    end
+  subgraph Canais
+    WEBE[Portal Embarcador]
+    WEBT[Portal Transportadora]
+    WEBA[Portal Administrador]
+    APPM[Aplicativo Motorista]
+    LINKD[Portal de Rastreamento por Link]
+  end
 
-    subgraph Nucleo_Plataforma
-        IAM[Gestão de Identidade e Acesso]
-        PED[Gestão de Pedidos de Frete]
-        ROT[Roteamento e Ranqueamento]
-        ACE[Gestão de Aceite/Recusa]
-        OPR[Operação de Transporte]
-        RAS[Rastreamento e ETA]
-        POD[Comprovante de Entrega Digital]
-        FIN[Financeiro e Faturamento]
-        SEG[Seguros e Sinistros]
-        NOTI[Orquestração de Notificações]
-        AUD[Auditoria e Conformidade]
-        MON[Monitoramento de SLA e Operações]
-    end
+  subgraph Core_Plataforma
+    IAM[Gestão de Identidade e Acesso]
+    FRETE[Gestão de Pedidos de Frete]
+    ROTEIRO[Motor de Roteamento e Ranqueamento]
+    ACEITE[Orquestração de Aceite e Reoferta]
+    CTE[Gestão de CT-e e DACTE]
+    TRACK[Gestão de Rastreamento e Eventos]
+    POD[Gestão de POD e Assinaturas]
+    OCOR[Gestão de Ocorrências]
+    SEG[Gestão de Seguros e Sinistros]
+    FIN[Gestão Financeira e Faturamento]
+    NOTIF[Orquestração de Notificações]
+    SLA[Painel Operacional e SLA]
+    AUDIT[Trilha de Auditoria Imutável]
+    DOCS[Gestão Documental]
+    PREF[Preferências de Notificação]
+  end
 
-    subgraph Integracoes_Externas
-        CTE[Serviço de Emissão de CT-e]
-        SEFAZ[SEFAZ]
-        INS[Seguradoras Parceiras]
-        CHMSG[Gateways de E-mail/SMS]
-        TSA[Autoridade de Carimbo de Tempo]
-        MAP[Serviço de Mapas/Rotas]
-    end
+  subgraph Dados
+    CAD[(Repositório Transacional)]
+    GEO[(Repositório Temporal/Geoespacial)]
+    ARQ[(Repositório de Documentos e Evidências)]
+    LOG[(Repositório de Auditoria)]
+  end
 
-    WEBE --> IAM
-    WEBT --> IAM
-    WEBA --> IAM
-    APPM --> IAM
-    LINKD --> RAS
+  subgraph Integracoes_Externas
+    SEFAZ[Serviços Fiscais SEFAZ]
+    CTEEXT[Serviço Externo de Emissão CT-e]
+    SEGEXT[APIs de Seguradoras]
+    MSGEXT[Gateways de E-mail/SMS]
+    TIMESTAMP[Autoridade de Carimbo de Tempo]
+  end
 
-    WEBE --> PED
-    PED --> ROT
-    ROT --> ACE
-    ACE --> NOTI
-    ACE --> OPR
-    OPR --> RAS
-    OPR --> POD
-    POD --> NOTI
-    PED --> SEG
-    PED --> FIN
-    FIN --> MON
-    AUD --> MON
+  WEBE --> IAM
+  WEBT --> IAM
+  WEBA --> IAM
+  APPM --> IAM
+  LINKD --> TRACK
 
-    PED --> CTE
-    CTE --> SEFAZ
-    CTE --> PED
-    SEG --> INS
-    NOTI --> CHMSG
-    POD --> TSA
-    RAS --> MAP
+  WEBE --> FRETE
+  FRETE --> ROTEIRO
+  ROTEIRO --> ACEITE
+  ACEITE --> NOTIF
+  ACEITE --> CTE
+  WEBT --> ACEITE
 
-    IAM --> AUD
-    PED --> AUD
-    ACE --> AUD
-    OPR --> AUD
-    FIN --> AUD
+  APPM --> TRACK
+  APPM --> OCOR
+  APPM --> POD
+  POD --> TIMESTAMP
+
+  WEBE --> SEG
+  SEG --> SEGEXT
+
+  CTE --> CTEEXT
+  CTE --> SEFAZ
+
+  TRACK --> NOTIF
+  PREF --> NOTIF
+  NOTIF --> MSGEXT
+
+  FIN --> CAD
+  FRETE --> CAD
+  ACEITE --> CAD
+  CTE --> CAD
+  SEG --> CAD
+
+  TRACK --> GEO
+  DOCS --> ARQ
+  POD --> ARQ
+  OCOR --> ARQ
+
+  IAM --> AUDIT
+  FRETE --> AUDIT
+  CTE --> AUDIT
+  FIN --> AUDIT
+  AUDIT --> LOG
+
+  SLA --> CAD
+  SLA --> GEO
+  WEBA --> SLA
 ```
 
-### 2.2 Sequência ponta a ponta (pedido → aceite → execução → entrega)
+### 2.2 Diagrama de Sequência — Contratação do Frete até CT-e autorizado
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant EMB as Embarcador
-    participant PORT as Portal Embarcador
-    participant PED as Gestão de Pedidos
-    participant ROT as Roteamento/Ranqueamento
-    participant ACE as Gestão de Aceite
-    participant TRA as Transportadora
-    participant CTE as Módulo Fiscal CT-e
-    participant SEF as SEFAZ
-    participant APP as App Motorista
-    participant OPR as Operação de Transporte
-    participant RAS as Rastreamento/ETA
-    participant NOTI as Notificações
-    participant DES as Destinatário
-    participant POD as Serviço de POD
+    participant E as Embarcador
+    participant PE as Portal Embarcador
+    participant GP as Gestão de Pedidos
+    participant MR as Motor de Roteamento
+    participant OA as Orquestração de Aceite
+    participant PT as Portal Transportadora
+    participant GS as Gestão de Seguros
+    participant GE as API Seguradora
+    participant GC as Gestão de CT-e
+    participant SX as Serviço Externo CT-e
+    participant SF as SEFAZ
+    participant N as Notificações
+    participant A as Auditoria
 
-    EMB->>PORT: Registrar pedido (origem, destino, carga, documentos, valor declarado)
-    PORT->>PED: Criar pedido de frete
-    PED->>ROT: Solicitar ranqueamento
-    ROT-->>PED: Lista ranqueada (preço, prazo, desempenho, veículo)
-    PED-->>PORT: Opções para confirmação
-    EMB->>PORT: Confirmar opção (ou aceite automático por regra)
-    PORT->>ACE: Abrir processo de aceite
-    ACE->>TRA: Notificar novo pedido com prazo de resposta
-    alt Transportadora aceita no prazo
-        TRA-->>ACE: Aceite
-        ACE->>CTE: Solicitar emissão de CT-e
-        CTE->>SEF: Transmitir CT-e
-        SEF-->>CTE: Autorizado
-        CTE-->>PED: CT-e autorizado + DACTE
-        PED->>NOTI: Notificar embarcador/transportadora
-    else Recusa ou timeout
-        TRA-->>ACE: Recusa com justificativa
-        ACE->>ROT: Solicitar próxima transportadora ranqueada
-        ROT-->>ACE: Próxima candidata
-        ACE->>TRA: Nova oferta
+    E->>PE: Registrar pedido (origem, destino, carga, prazo, docs, valor declarado)
+    PE->>GP: Criar pedido de frete
+    GP->>A: Registrar operação crítica
+    GP->>MR: Solicitar roteamento e ranqueamento
+    MR-->>GP: Lista ranqueada (preço, prazo, veículo, desempenho)
+    GP-->>PE: Exibir opções ao embarcador
+
+    E->>PE: Selecionar opção + contratar seguro
+    PE->>GS: Solicitar cotação/contratação
+    GS->>GE: Enviar dados da viagem
+    GE-->>GS: Cotação/apólice
+    GS-->>PE: Seguro confirmado
+
+    PE->>OA: Confirmar frete
+    OA->>PT: Notificar transportadora selecionada
+    PT-->>OA: Aceite do pedido
+    OA->>A: Registrar aceite com data/hora
+
+    OA->>GC: Disparar emissão CT-e
+    GC->>SX: Gerar CT-e
+    SX-->>GC: XML CT-e
+    GC->>SF: Transmitir CT-e para autorização
+    SF-->>GC: Autorizado
+    GC->>A: Registrar evento fiscal
+    GC-->>PE: Disponibilizar DACTE
+    OA->>N: Notificar embarcador e transportadora
+```
+
+### 2.3 Diagrama de Sequência — Operação do Motorista, Rastreamento e POD
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant M as Motorista App
+    participant GT as Gestão de Rastreamento
+    participant GO as Gestão de Ocorrências
+    participant GPOD as Gestão de POD
+    participant TS as Autoridade de Timestamp
+    participant RD as Portal Rastreamento Destinatário
+    participant N as Notificações
+    participant A as Auditoria
+
+    M->>GT: Sincronizar ordens de coleta/entrega
+    M->>GT: Registrar coleta (volumes, fotos, assinatura remetente)
+    GT->>A: Auditar evento de coleta
+    GT->>N: Disparar status "coleta realizada"
+
+    loop Durante transporte ativo
+      M->>GT: Enviar geolocalização periódica
+      GT-->>RD: Atualizar mapa e ETA
     end
 
-    TRA->>APP: Atribuir ordem ao motorista
-    APP->>OPR: Registrar coleta (foto, volumes, assinatura remetente)
-    OPR->>RAS: Publicar evento e posição inicial
-    RAS->>NOTI: Evento relevante (coleta/em trânsito)
-    NOTI->>DES: Enviar e-mail/SMS com link de rastreamento
-    loop Durante transporte
-        APP->>OPR: Enviar geolocalização/ocorrências
-        OPR->>RAS: Atualizar posição e ETA
-        RAS-->>DES: Exibir mapa e histórico em tempo real
+    alt Ocorrência em trânsito
+      M->>GO: Registrar ocorrência + fotos
+      GO->>A: Auditar ocorrência
+      GO->>N: Notificar embarcador e transportadora
     end
-    APP->>OPR: Registrar entrega (foto + assinatura destinatário)
-    OPR->>POD: Gerar POD com geolocalização e timestamp
-    POD-->>PED: POD disponível para download
-    PED->>NOTI: Disparar conclusão da entrega
-    NOTI->>EMB: Notificar entrega concluída
-    NOTI->>DES: Notificar entrega concluída
+
+    M->>GPOD: Confirmar entrega (foto + assinatura destinatário + geolocalização)
+    GPOD->>TS: Solicitar carimbo de tempo
+    TS-->>GPOD: Timestamp válido juridicamente
+    GPOD->>A: Auditar geração do POD
+    GPOD->>N: Notificar entrega concluída
+    GPOD-->>RD: Encerrar link por expiração pós-entrega
 ```
 
 ---
@@ -158,44 +210,40 @@ sequenceDiagram
 ## 3. Decisões de Arquitetura
 
 1. **Arquitetura modular por domínios de negócio**  
-   Separação em módulos: Pedidos, Roteamento, Operação, Rastreamento, Fiscal CT-e, Seguros, Financeiro, Notificações, Auditoria.  
-   **Motivo:** reduzir acoplamento e facilitar evolução regulatória/fiscal sem impactar operação.
+   Separação em contextos: Frete, Roteamento, Aceite, CT-e, Rastreamento, POD, Seguros/Sinistros, Financeiro, Notificação e Auditoria.  
+   **Motivo:** alta coesão funcional e evolução independente (RF05–RF49).
 
-2. **Fluxos orientados a eventos de status logístico**  
-   Mudanças de estado (coleta, trânsito, ocorrência, entrega) propagam para rastreamento, notificações, auditoria e financeiro.  
-   **Motivo:** atender atualização quase em tempo real (RNF15/RNF16) e desacoplar consumidores.
+2. **Orquestração de fluxos críticos com eventos de domínio**  
+   Mudanças de status (coleta, trânsito, ocorrência, entrega, aceite, CT-e autorizado) disparam notificações e atualizações em cadeia.  
+   **Motivo:** reduzir acoplamento e atender tempo real (RF31–RF36, RNF15, RNF16).
 
-3. **Controle de acesso por perfil + políticas de autorização por frete**  
-   Perfis formais (embarcador, transportadora, motorista, destinatário, administrador) com regras de escopo de dados por frete/empresa.  
-   **Motivo:** RF01/RF02 e proteção de geolocalização (RNF06).
+3. **Controle de acesso por perfil e políticas de autorização**  
+   Perfis explícitos (embarcador, transportadora, motorista, destinatário, admin), com MFA onde exigido.  
+   **Motivo:** RF01, RF02, RNF03, RNF06.
 
-4. **Trilha de auditoria imutável para operações críticas**  
-   Registro inviolável para operações fiscais, financeiras, aceite/recusa, alteração de status e ações administrativas.  
-   **Motivo:** RF04, RNF11 e governança de compliance.
+4. **Trilha de auditoria imutável para eventos críticos**  
+   Registro de operações fiscais, financeiras e operacionais com retenção mínima regulatória.  
+   **Motivo:** RF04, RNF11.
 
-5. **Mobile do motorista com estratégia offline-first**  
-   Captura local de eventos (coleta/entrega/ocorrência/geolocalização), fila de sincronização, reenvio com idempotência.  
-   **Motivo:** RF28 e RNF17 (não perder eventos sem conectividade).
+5. **Design offline-first no aplicativo do motorista**  
+   Coleta local de eventos e sincronização confiável após reconexão.  
+   **Motivo:** RF28, HU09, RNF17.
 
-6. **Camada de integração externa por contratos versionados**  
-   Adaptadores isolados para SEFAZ, emissão de CT-e, seguradoras e mensageria de comunicação.  
-   **Motivo:** RNF24, manutenção e troca independente de integrações.
+6. **Canal de rastreamento público com token de acesso limitado**  
+   Link sem cadastro com escopo por frete e expiração controlada.  
+   **Motivo:** RF30, HU11, RNF05.
 
-7. **Mecanismo de contingência fiscal (CT-e offline + sincronização posterior)**  
-   Emissão em contingência com posterior transmissão e reconciliação de status/autorização.  
-   **Motivo:** RF19 e continuidade operacional.
+7. **Camada de integração externa via contratos versionados**  
+   Adaptadores independentes para SEFAZ, emissão CT-e, seguradoras, notificadores.  
+   **Motivo:** RF17–RF22, RF41–RF44, RNF24.
 
-8. **Rastreamento com modelo temporal-geoespacial**  
-   Armazenamento e consulta otimizados para séries temporais e localização com atualização de ETA dinâmica.  
-   **Motivo:** RNF23, RF32 e escalabilidade de telemetria (RNF16).
+8. **Persistência especializada por tipo de dado**  
+   Dados transacionais, trilha fiscal/financeira imutável, documentos/evidências e séries temporais geoespaciais.  
+   **Motivo:** RNF23, RNF22, RF44.
 
-9. **POD com validade jurídica**  
-   Geração de comprovante com assinatura digital, evidências, geolocalização e carimbo de tempo.  
-   **Motivo:** RF37/RF38 e RNF10.
-
-10. **Observabilidade operacional orientada a SLOs**  
-    Métricas de latência de roteamento, disponibilidade de integrações, risco de SLA e taxa de aceite.  
-    **Motivo:** RNF25, RNF12–RNF15.
+9. **Observabilidade orientada a SLA e negócio**  
+   Métricas de latência de roteamento, taxa de aceite, integrações externas e risco de SLA.  
+   **Motivo:** RNF25, HU13, HU14.
 
 ---
 
@@ -203,88 +251,80 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---|---|---|
-| Gestão de Identidade e Acesso | Autenticação, MFA, sessões, autorização por perfil e escopo | Portais, App Motorista, Auditoria | HU01, HU05, HU13 / RF01, RF02, RNF03, RNF04 |
-| Gestão de Usuários/Frota | Cadastro de transportadoras, motoristas e veículos vinculados | Painel Transportadora, Operação | HU05 / RF03 |
-| Gestão de Pedidos de Frete | Criar, alterar, cancelar pedido, anexar documentos, visão consolidada | Portal Embarcador, Roteamento, Fiscal, Seguros, Financeiro | HU01, HU03 / RF05–RF09 |
-| Roteamento e Ranqueamento | Elegibilidade de transportadoras, scoring e ordenação por critérios | Gestão de Pedidos, Aceite | HU01, HU02 / RF10–RF12, RNF13 |
-| Gestão de Aceite/Recusa | Janela de resposta, recusa com justificativa, escalonamento automático | Transportadora, Roteamento, Notificações | HU05 / RF13–RF15 |
-| Índice de Desempenho de Transportadora | Atualiza KPI operacional por entregas, prazos e ocorrências | Operação, Roteamento, Monitoramento | HU02, HU13 / RF16 |
-| Módulo Fiscal CT-e | Emissão, transmissão, contingência, cancelamento/inutilização, DACTE | Gestão de Pedidos, SEFAZ, Auditoria | HU02 / RF17–RF22, RNF07, RNF08 |
-| Operação de Transporte | Ordens de coleta/entrega, eventos de execução e ocorrências | App Motorista, Rastreamento, POD, Notificações | HU08, HU09, HU10 / RF23–RF29 |
-| Sincronização Offline Mobile | Persistência local, fila de envio, deduplicação de eventos | App Motorista, Operação | HU09 / critério offline, RF28, RNF17 |
-| Rastreamento e ETA | Histórico de eventos, posição atual, previsão dinâmica, link público tokenizado | Portal Destinatário, Notificações, Operação | HU11, HU12 / RF30–RF32, RNF05, RNF15 |
-| Orquestração de Notificações | Regras de disparo, preferências de canal, envio de e-mail/SMS | Pedidos, Aceite, Operação, Rastreamento, Canais externos | HU12, HU03, HU05 / RF33–RF36 |
-| POD Digital | Consolidar assinatura, foto, data/hora, geolocalização e timestamp | Operação, Gestão de Pedidos, Notificações | HU03, HU09 / RF37–RF40, RNF10 |
-| Seguros e Sinistros | Cotação/contratação, abertura e acompanhamento de sinistro, dossiê documental | Gestão de Pedidos, Seguradoras, Notificações | HU02, HU04 / RF41–RF44 |
-| Financeiro e Faturamento | Cálculo frete, comissão, faturas, repasses, painel financeiro | Pedidos, Operação, Painéis, Auditoria | HU07, HU14 / RF45–RF49 |
-| Auditoria e Conformidade | Logs críticos imutáveis, retenção, trilhas fiscal/financeira | Todos os módulos centrais | HU13, HU14 / RF04, RNF09, RNF11 |
-| Monitoramento SLA/Operação | Alertas de risco de atraso, pedidos sem aceite, saúde de integrações | Rastreamento, Aceite, Notificações, Painel Admin | HU13 / RF36, RNF25 |
+| Gestão de Identidade e Acesso | Autenticação, MFA, autorização por perfil | Portais, App Motorista, Auditoria | HU01–HU14 / RNF03, RNF04 |
+| Gestão de Usuários e Entidades Operacionais | Cadastro de usuários, motoristas, veículos e vínculos | IAM, Portal Transportadora, Repositório Transacional | HU05 / RF01, RF03 |
+| Gestão de Pedidos de Frete | Criar, consultar e cancelar pedidos; anexar documentos | Portal Embarcador, Documentos, Roteamento, Auditoria | HU01, HU03 / RF05, RF07, RF08, RF09 |
+| Motor de Roteamento e Ranqueamento | Filtrar elegibilidade e rankear transportadoras | Pedidos, Aceite, Índice de Desempenho | HU01, HU02 / RF10, RF11, RF12 |
+| Orquestração de Aceite e Reoferta | Notificar, registrar aceite/recusa, escalonar próxima transportadora | Portal Transportadora, Notificações, CT-e | HU05 / RF13, RF14, RF15 |
+| Gestão de Desempenho de Transportadoras | Calcular índice de performance contínuo | Roteamento, Painel Admin | HU02, HU13 / RF16 |
+| Gestão de CT-e e DACTE | Validar NF-e, emitir/transmitir CT-e, contingência, cancelamento/inutilização, disponibilizar DACTE | Serviço CT-e, SEFAZ, Pedidos, Auditoria | HU02 / RF17–RF22 |
+| Gestão de Rastreamento e ETA | Receber posições, calcular ETA, expor histórico e mapa | App Motorista, Portal Destinatário, Notificações | HU06, HU11 / RF25, RF31, RF32 |
+| Gestão de Ocorrências | Registrar ocorrências operacionais com evidências | App Motorista, Notificações, Sinistros | HU10 / RF26 |
+| Gestão de POD e Assinaturas | Gerar POD com assinatura, foto, geolocalização e timestamp | App Motorista, Timestamp, Documentos, Notificações | HU09 / RF37, RF38, RF39, RF40 |
+| Gestão de Seguros e Sinistros | Cotação/contratação e abertura/acompanhamento de sinistro | APIs Seguradoras, Pedidos, Ocorrências, Documentos | HU02, HU04 / RF41–RF44 |
+| Gestão Financeira e Faturamento | Cálculo de frete, comissão, fatura embarcador, repasse transportadora, painel financeiro | Pedidos, Aceite, Admin, Auditoria | HU07, HU14 / RF45–RF49 |
+| Orquestração de Notificações | Envio de e-mail/SMS por evento e perfil | Rastreamento, Aceite, Ocorrências, POD, Gateways | HU12 / RF33–RF36 |
+| Gestão de Preferências de Notificação | Preferências de canal por destinatário | Portal Rastreamento, Notificações | HU12 / critério “gerenciar preferências” |
+| Painel Operacional e SLA | Alertas de SLA em risco e pedidos sem aceite | Rastreamento, Aceite, Admin | HU13 / RF36 |
+| Gestão Documental e Evidências | Armazenar NF-e, fotos, BO, laudos, POD, DACTE | Pedidos, Ocorrências, POD, Sinistros | HU01, HU04, HU09 / RF09, RF44 |
+| Trilha de Auditoria Imutável | Log inviolável de operações críticas | Todos domínios críticos | HU13, HU14 / RF04, RNF11 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. **Política de cancelamento de pedido (RF08)**: faltam regras detalhadas (janelas, multas, exceções).  
-2. **Critérios e pesos de ranqueamento (RF11/RF12)**: não definidos por tipo de carga/rota.  
-3. **Timeout de aceite e escalonamento (RF15)**: falta parametrização padrão e por transportadora.  
-4. **Modalidades fiscais CT-e (RNF08)**: faltam fluxos de negócio para complementar/anulação/substituto.  
-5. **Regra de expiração do link de rastreamento (HU11/RNF05)**: prazo exato pós-entrega não definido.  
-6. **Contato direto transportadora ↔ motorista (HU06)**: não especifica canais permitidos e requisitos de privacidade.  
-7. **Modelo de inadimplência (RF49/HU14)**: critérios de classificação não detalhados.  
-8. **Governança LGPD (RNF09)**: ausência de requisitos operacionais de consentimento, anonimização e direitos do titular.
+| Tema | Pendência | Impacto Arquitetural | Ação Recomendada |
+|---|---|---|---|
+| Política de cancelamento (RF08) | Regras não detalhadas (janela, multas, exceções) | Fluxo de estado de pedido e faturamento pode divergir | Definir matriz de políticas por perfil/etapa |
+| Critérios e pesos de ranqueamento (RF11/RF12) | Não há fórmula oficial nem governança de alteração | Resultado pode ser contestado por parceiros | Formalizar política versionada e auditável |
+| Contingência CT-e (RF19) | Sem critérios de entrada/saída do modo contingência | Risco fiscal e retrabalho de reconciliação | Definir playbook fiscal-operacional |
+| Validade jurídica da assinatura (RNF10) | Tipo de assinatura eletrônica não explicitado por cenário | Risco de questionamento jurídico do POD | Validar com jurídico e mapear níveis de assinatura |
+| Preferências do destinatário (HU12) | Sem definição de UX e confirmação de consentimento | Risco LGPD/comunicação indevida | Especificar fluxo de consentimento e opt-out |
+| Contato direto com motorista (HU06/HU13) | Canal de contato não definido | Pode expor dados pessoais sensíveis | Definir mediação de contato e políticas de privacidade |
+| SLA “em risco” (HU13) | Regra de risco não formalizada | Alertas falsos positivos/negativos | Definir algoritmo e limiares por rota/tipo de carga |
+| Exportações financeiras (HU07/HU14) | Escopo e segurança dos arquivos não detalhados | Risco de vazamento e inconsistência contábil | Definir layout, trilha de exportação e controle de acesso |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-### 6.1 Cobertura dos RF
+### 6.1 Cobertura de RF (por blocos)
 
-| Bloco de RF | Cobertura Arquitetural | Status |
+| Bloco RF | Cobertura Arquitetural | Componentes-chave | Status |
+|---|---|---|---|
+| RF01–RF04 (Usuários/Acesso/Auditoria) | Perfis, autorização, logs imutáveis | IAM, Gestão de Usuários, Auditoria | Coberto |
+| RF05–RF09 (Pedidos de Frete) | Registro, valor declarado, documentos, cancelamento | Pedidos, Documental, Auditoria | Coberto (política RF08 pendente) |
+| RF10–RF16 (Roteamento/Aceite) | Match, ranking, notificação, reoferta, desempenho | Roteamento, Aceite, Notificação, Desempenho | Coberto |
+| RF17–RF22 (CT-e) | Emissão, validação NF-e, transmissão, contingência, DACTE | Gestão CT-e, Integrações fiscais | Coberto (detalhes contingência pendentes) |
+| RF23–RF29 (Operação Motorista) | Ordens, coleta/entrega, geolocalização, offline, rotas | App Motorista, Rastreamento, POD, Ocorrências | Coberto |
+| RF30–RF32 (Rastreamento) | Link público tokenizado, histórico e ETA | Portal Rastreamento, Rastreamento | Coberto |
+| RF33–RF36 (Notificações/Alertas) | Notificações multicanal e alertas administrativos | Notificações, SLA | Coberto |
+| RF37–RF40 (POD) | Geração jurídica de comprovante e recusa com evidências | POD, Timestamp, Documental | Coberto |
+| RF41–RF44 (Seguro/Sinistro) | Cotação, contratação, abertura e acompanhamento | Seguros/Sinistros, Documental | Coberto |
+| RF45–RF49 (Financeiro) | Cálculo de frete, comissão, faturamento e painéis | Financeiro, Auditoria, Admin | Coberto |
+
+### 6.2 Cobertura de RNF (resumo)
+
+| RNF | Diretriz Arquitetural de Atendimento | Status |
 |---|---|---|
-| RF01–RF04 (Usuários/Acesso/Auditoria) | IAM + Gestão de Usuários/Frota + Auditoria | Coberto |
-| RF05–RF09 (Pedidos de frete) | Gestão de Pedidos + Documentos + Regras de cancelamento | Coberto (com pendência de política detalhada) |
-| RF10–RF16 (Roteamento/seleção) | Roteamento/Ranqueamento + Aceite/Recusa + Índice de desempenho | Coberto |
-| RF17–RF22 (CT-e) | Módulo Fiscal CT-e + Integração SEFAZ + Auditoria | Coberto (pendência de fluxos por modalidade) |
-| RF23–RF29 (Operação motorista) | App Motorista + Operação + Sync Offline + Rotas | Coberto |
-| RF30–RF32 (Rastreamento real time) | Rastreamento/ETA + Portal público tokenizado | Coberto |
-| RF33–RF36 (Notificações) | Orquestração de notificações + regras por evento/perfil | Coberto |
-| RF37–RF40 (POD) | Serviço POD + timestamp jurídico + evidências de recusa | Coberto |
-| RF41–RF44 (Seguros/Sinistros) | Módulo Seguros e Sinistros + dossiê documental | Coberto |
-| RF45–RF49 (Financeiro) | Cálculo frete/comissão + faturamento + repasse + painel admin | Coberto |
-
-### 6.2 Cobertura dos RNF
-
-| RNF | Tratamento Arquitetural | Status |
-|---|---|---|
-| RNF01–RNF06 (Segurança) | Canal seguro, criptografia em repouso, MFA, token de sessão e token de rastreio | Coberto |
-| RNF07–RNF11 (Conformidade) | Validação fiscal por schema vigente, trilha imutável, LGPD e validade jurídica POD | Parcial (LGPD operacional detalhar) |
-| RNF12 (Disponibilidade 99,5%) | Redundância lógica de serviços críticos + monitoramento | Coberto |
-| RNF13–RNF15 (Desempenho) | Fluxos assíncronos + metas de latência nos módulos de roteamento/CT-e/rastreamento | Coberto |
-| RNF16 (Escalabilidade geolocalização) | Ingestão desacoplada e armazenamento temporal-geoespacial | Coberto |
-| RNF17 (Resiliência offline) | Estratégia offline-first + sincronização idempotente | Coberto |
-| RNF18–RNF21 (Usabilidade/Compatibilidade) | Requisitos de UX mobile e web responsivo + fluxo de entrega curto | Coberto |
-| RNF22 (Backup/RPO) | Rotina de backup diário + recuperação com RPO máximo definido | Coberto (detalhar plano DR) |
-| RNF23 (Dados geolocalização) | Repositório otimizado para séries temporais/geoespacial | Coberto |
-| RNF24 (Interoperabilidade) | Adaptadores com contratos versionados | Coberto |
-| RNF25 (Métricas operacionais) | Módulo de monitoramento com painel em tempo real | Coberto |
+| RNF01–RNF06 (Segurança) | Criptografia em trânsito/repouso, MFA, tokenização de link, autorização contextual por frete | Coberto |
+| RNF07–RNF11 (Conformidade) | Camada fiscal versionada, trilha imutável, LGPD, timestamp jurídico | Coberto (detalhes legais pendentes) |
+| RNF12–RNF17 (Disponibilidade/Performance/Resiliência) | Processamento assíncrono orientado a eventos, monitoração de SLA, offline-first | Coberto |
+| RNF18–RNF21 (Usabilidade/Compatibilidade) | Requisitos de UX mobile e web responsivo incorporados em diretrizes de canal | Parcial (depende de design de interface) |
+| RNF22–RNF25 (Infraestrutura/Dados) | Estratégia de backup, repositório geoespacial temporal, APIs versionadas, observabilidade | Coberto |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna | Impacto Arquitetural | Ação Recomendada |
-|---|---|---|
-| Política de cancelamento pouco detalhada (RF08) | Ambiguidade de regras e disputas comerciais | Definir matriz de cancelamento por estágio do pedido e perfis |
-| Pesos de ranqueamento não definidos (RF11/RF12) | Resultado inconsistente entre rotas/cargas | Formalizar política de scoring configurável por segmento |
-| Parâmetros de timeout e reoferta (RF15) | Risco de atraso no aceite | Definir SLA por tipo de frete + fallback administrativo |
-| Fluxos completos de CT-e por modalidade (RNF08) | Não conformidade fiscal parcial | Elaborar casos de uso e sequência por modalidade fiscal |
-| LGPD em nível operacional (RNF09) | Risco regulatório e jurídico | Especificar ciclo de vida de dados pessoais, consentimento e atendimento ao titular |
-| Critérios de “SLA em risco” (RF36/HU13) | Alertas falsos/insuficientes | Definir algoritmo e limiares de risco por rota/região |
-| Requisitos jurídicos de assinatura (RNF10) | Possível contestação do POD | Fixar tipo de assinatura eletrônica por cenário e evidências mínimas |
-| Estratégia de reconciliação offline (RF28/RNF17) | Duplicidade/perda de eventos | Definir chave idempotente, ordenação temporal e política de conflito |
-| Preferências de notificação do destinatário (HU12) | UX incompleta e falhas de comunicação | Especificar modelo de consentimento e alteração via link seguro |
-| Regras de retenção/arquivamento de documentos (RF44/RNF11) | Custos e risco de não conformidade | Definir classes documentais, prazos e política de descarte seguro |
+| Lacuna | Impacto | Risco | Recomendação |
+|---|---|---|---|
+| Modelo de estados do frete não formalizado ponta a ponta | Inconsistência entre módulos (pedido, aceite, CT-e, rastreamento, POD, financeiro) | Alto | Definir máquina de estados canônica com transições válidas e eventos |
+| Política de exceções operacionais (roubo, avaria grave, recusa, devolução) incompleta | Fluxos de sinistro, financeiro e SLA podem divergir | Alto | Especificar fluxos de exceção e responsabilidades por perfil |
+| Sem SLA interno por integração externa (SEFAZ/seguradoras/notificação) | Dificulta cumprir RNF12/RNF14 com previsibilidade | Médio/Alto | Definir contratos de tempo, retentativas e fallback por integração |
+| Governança de dados LGPD não detalhada (retenção, anonimização, base legal) | Exposição regulatória | Alto | Criar matriz de dados pessoais + políticas de retenção/expurgo |
+| Critérios de ETA e recalculo dinâmico não especificados | Pode comprometer HU11/HU12 e alertas de SLA | Médio | Definir algoritmo de ETA, qualidade de dados e frequência de atualização |
+| Regras contábeis/fiscais da comissão e inadimplência pouco detalhadas | Divergência de faturamento e repasse | Médio | Formalizar regras financeiras versionadas e auditáveis |
+| Estratégia de reconciliação offline do app não detalhada | Possível duplicidade/perda lógica de eventos | Alto | Definir idempotência, ordenação e resolução de conflitos na sincronização |
 
---- 
-
-Se quiser, na próxima interação eu posso transformar este relatório em **backlog arquitetural priorizado (épicos + enablers + critérios de pronto)** para execução incremental do time.
+**Conclusão:** a arquitetura proposta cobre integralmente os domínios funcionais e não funcionais do lote, com riscos concentrados em **regras de negócio ainda abertas** (fiscal, jurídico, financeiro e exceções operacionais). A próxima etapa recomendada é um **refinamento de requisitos orientado a estados, políticas e contratos operacionais** para reduzir ambiguidade antes da construção.

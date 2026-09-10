@@ -2,33 +2,40 @@
 
 ## 1. Identificação das HUs
 
-### 1.1 Inventário consolidado de Histórias de Usuário
+### 1.1 Inventário de Histórias de Usuário por Perfil
 
-| HU | Perfil | Objetivo | RFs principalmente atendidos |
-|---|---|---|---|
-| HU01 | Recepcionista | Visualizar agenda unificada (diária/semanal, filtros por dentista) | RF03, RF04, RF06, RF07 |
-| HU02 | Recepcionista | Agendar, cancelar e remarcar consulta com notificação ao paciente | RF05, RF06, RF07, RF08 |
-| HU03 | Recepcionista | Registrar pagamento (total/parcial) e atualizar status de cobrança | RF21 |
-| HU04 | Dentista | Registrar procedimentos no prontuário com rastreabilidade | RF09, RF10, RF13 |
-| HU05 | Dentista | Anexar radiografias/documentos ao prontuário com acesso restrito | RF11, RF12, RNF03, RNF07 |
-| HU06 | Dentista | Consultar prontuário completo com busca por nome/CPF | RF09, RF12 |
-| HU07 | Dentista | Gerar cobrança por atendimento com convênio/particular | RF18, RF19, RF20 |
-| HU08 | Administrador | Cadastrar dentistas e configurar grade de horários | RF01, RF07 |
-| HU09 | Administrador | Gerenciar materiais e alertas de estoque mínimo | RF14, RF15, RF16, RF17 |
-| HU10 | Administrador | Consultar relatório de faturamento e exportar CSV/PDF | RF22 |
-| HU11 | Paciente | Acessar portal para visualizar agenda futura e histórico | RF23, RF24 |
-| HU12 | Paciente | Acessar/download de documentos clínicos liberados | RF23, RF25, RNF03 |
+| Perfil | HUs | Objetivo de Negócio |
+|---|---|---|
+| Recepcionista | HU01, HU02, HU03 | Operação centralizada de agenda e recebimentos |
+| Dentista | HU04, HU05, HU06, HU07 | Continuidade clínica e geração de cobrança por atendimento |
+| Administrador | HU08, HU09, HU10 | Governança operacional (agenda, estoque e faturamento) |
+| Paciente | HU11, HU12 | Autoatendimento via portal para agenda e documentos |
 
-### 1.2 Observações de escopo funcional
-- O sistema é **multiperfil** com controle de acesso por papel (administrador, recepcionista, dentista, paciente).
-- Existem **4 macrodomínios críticos**: Agenda, Prontuário, Faturamento e Estoque.
-- Requisitos não funcionais de **segurança, rastreabilidade e conformidade regulatória** impactam transversalmente todos os módulos.
+### 1.2 Agrupamento por Domínio Funcional
+
+| Domínio | HUs Relacionadas | RF Relacionados |
+|---|---|---|
+| Acesso e Perfis | HU11, HU12 (autenticação do portal), suporte a todos os perfis | RF01, RF02 |
+| Agenda | HU01, HU02, HU08, HU11 | RF03–RF08, RF24 |
+| Prontuário Digital | HU04, HU05, HU06, HU12 | RF09–RF13, RF25 |
+| Materiais e Equipamentos | HU09 | RF14–RF17 |
+| Faturamento | HU03, HU07, HU10 | RF18–RF22 |
+| Portal do Paciente | HU11, HU12 | RF23–RF25 |
+
+### 1.3 Restrições Transversais (RNF críticos)
+
+- **Segurança e conformidade**: RNF01, RNF02, RNF03, RNF04  
+- **Rastreabilidade clínica**: RNF05  
+- **Desempenho de agenda unificada**: RNF06  
+- **Escalabilidade de documentos**: RNF07  
+- **Disponibilidade e continuidade**: RNF08, RNF11  
+- **Experiência de uso e compatibilidade**: RNF09, RNF10  
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de componentes lógicos
+### 2.1 Visão de Componentes (lógica)
 
 ```mermaid
 flowchart LR
@@ -37,146 +44,163 @@ flowchart LR
     U3[Dentista]
     U4[Paciente]
 
-    UIA[Portal Administrativo/Operacional]
-    UIP[Portal do Paciente]
-
-    IAM[Componente de Autenticação e Autorização]
-    AG[Componente de Agenda]
-    PR[Componente de Prontuário]
-    DOC[Componente de Gestão de Documentos Clínicos]
-    FAT[Componente de Faturamento e Cobrança]
-    EST[Componente de Estoque e Materiais]
+    UI[Camada de Interface Web/Portal]
+    AUTH[Componente de Autenticação e Autorização]
+    USER[Componente de Gestão de Usuários]
+    AGENDA[Componente de Agenda]
+    PRONT[Componente de Prontuário Digital]
+    DOCS[Componente de Documentos Clínicos]
+    ESTQ[Componente de Estoque e Materiais]
+    FAT[Componente de Faturamento]
     REL[Componente de Relatórios]
-    NOTI[Componente de Notificações]
-    AUD[Componente de Auditoria Imutável]
-    BUSCA[Componente de Busca de Pacientes]
+    NOTIF[Componente de Notificações]
+    AUDIT[Componente de Auditoria Imutável]
     STORE[(Serviço Externo de Object Storage)]
-    EMAIL[(Serviço Externo de Envio de E-mail)]
-    PERS[(Persistência de Dados Operacionais)]
+    DATA[(Repositório de Dados Transacionais)]
 
-    U1 --> UIA
-    U2 --> UIA
-    U3 --> UIA
-    U4 --> UIP
+    U1 --> UI
+    U2 --> UI
+    U3 --> UI
+    U4 --> UI
 
-    UIA --> IAM
-    UIP --> IAM
+    UI --> AUTH
+    UI --> USER
+    UI --> AGENDA
+    UI --> PRONT
+    UI --> DOCS
+    UI --> ESTQ
+    UI --> FAT
+    UI --> REL
 
-    UIA --> AG
-    UIA --> PR
-    UIA --> FAT
-    UIA --> EST
-    UIA --> REL
-    UIP --> AG
-    UIP --> DOC
+    AGENDA --> NOTIF
+    AGENDA --> DATA
 
-    PR --> DOC
-    DOC --> STORE
-    AG --> NOTI
-    NOTI --> EMAIL
+    PRONT --> AUDIT
+    PRONT --> DATA
 
-    AG --> PERS
-    PR --> PERS
-    FAT --> PERS
-    EST --> PERS
-    IAM --> PERS
-    REL --> PERS
-    BUSCA --> PERS
+    DOCS --> STORE
+    DOCS --> DATA
+    DOCS --> AUTH
 
-    PR --> AUD
-    FAT --> AUD
-    EST --> AUD
-    AG --> AUD
+    ESTQ --> DATA
+    ESTQ --> AUDIT
+
+    FAT --> DATA
+    FAT --> REL
+
+    USER --> DATA
+    AUTH --> DATA
+    REL --> DATA
+    NOTIF --> DATA
+    AUDIT --> DATA
 ```
 
-### 2.2 Diagrama de sequência — Agendamento, validação de conflito e notificação
+### 2.2 Sequência — Agendar consulta com validação de conflito e notificação
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant R as Recepcionista
-    participant UI as Tela de Agenda Unificada
-    participant IAM as Autorização
-    participant AG as Serviço de Agenda
-    participant DISP as Validador de Disponibilidade/Grade
-    participant REPO as Repositório de Agenda
-    participant NOTI as Serviço de Notificação
-    participant MAIL as Serviço de E-mail
-    participant AUD as Auditoria Imutável
+    participant UI as Interface
+    participant Auth as Autenticação/Autorização
+    participant Ag as Agenda
+    participant Gr as Grade do Dentista
+    participant Repo as Repositório Transacional
+    participant N as Notificações
+    participant P as Paciente
 
-    R->>UI: Solicita agendamento (paciente, dentista, data/hora)
-    UI->>IAM: Validar sessão e perfil
-    IAM-->>UI: Perfil recepcionista autorizado
-    UI->>AG: Criar agendamento
-    AG->>DISP: Validar grade do dentista e sobreposição
-    DISP->>REPO: Consultar agenda do dentista no intervalo
-    REPO-->>DISP: Horários ocupados/livres
-    alt Horário disponível e dentro da grade
-        DISP-->>AG: Válido
-        AG->>REPO: Persistir agendamento
-        AG->>AUD: Registrar evento de criação
-        AG->>NOTI: Disparar confirmação
-        NOTI->>MAIL: Enviar e-mail ao paciente
-        MAIL-->>NOTI: Resultado do envio
-        AG-->>UI: Agendamento confirmado
-        UI-->>R: Exibir sucesso
-    else Horário inválido/sobreposto
-        DISP-->>AG: Inválido (motivo)
-        AG-->>UI: Rejeitar operação
-        UI-->>R: Exibir mensagem de conflito
-    end
+    R->>UI: Solicita novo agendamento (dentista, paciente, data/hora)
+    UI->>Auth: Validar sessão e permissão (perfil recepcionista)
+    Auth-->>UI: Permissão concedida
+    UI->>Ag: Criar agendamento
+    Ag->>Gr: Verificar horário dentro da grade configurada
+    Gr-->>Ag: Horário válido
+    Ag->>Repo: Verificar sobreposição para o dentista no intervalo
+    Repo-->>Ag: Sem conflito
+    Ag->>Repo: Persistir agendamento confirmado
+    Ag->>N: Emitir evento de confirmação
+    N->>P: Enviar e-mail de confirmação
+    Ag-->>UI: Retornar sucesso + dados do agendamento
+    UI-->>R: Exibir confirmação
 ```
 
-### 2.3 Diagrama de sequência — Upload e acesso a documento clínico
+### 2.3 Sequência — Upload e acesso a documento clínico
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant D as Dentista
-    participant UI as Tela de Prontuário
-    participant IAM as Autorização
-    participant PR as Serviço de Prontuário
-    participant DOC as Serviço de Documentos
-    participant STORE as Object Storage Externo
-    participant AUD as Auditoria Imutável
-    participant P as Paciente
-    participant PORTAL as Portal do Paciente
+    participant UI as Interface Clínica
+    participant Auth as Autenticação/Autorização
+    participant Doc as Documentos Clínicos
+    participant Pr as Prontuário
+    participant ACL as Controle de Acesso a Documentos
+    participant Store as Object Storage Externo
+    participant Repo as Repositório Transacional
+    participant Pac as Paciente (Portal)
 
-    D->>UI: Enviar radiografia/laudo (upload)
-    UI->>IAM: Validar perfil dentista e vínculo com paciente
-    IAM-->>UI: Autorizado
-    UI->>PR: Registrar metadados no prontuário
-    PR->>DOC: Solicitar armazenamento de arquivo
-    DOC->>STORE: Gravar objeto e metadados
-    STORE-->>DOC: Confirmação de armazenamento
-    DOC-->>PR: Referência do arquivo
-    PR->>AUD: Registrar evento de inclusão de documento
-    PR-->>UI: Documento anexado com sucesso
-
-    P->>PORTAL: Solicita listagem/download de documentos
-    PORTAL->>IAM: Validar autenticação do paciente
-    IAM-->>PORTAL: Autorizado
-    PORTAL->>DOC: Listar somente documentos liberados ao paciente
-    DOC-->>PORTAL: Lista de documentos visíveis
-    PORTAL-->>P: Exibe documentos e opção de download
+    D->>UI: Upload de documento (paciente, arquivo, metadados)
+    UI->>Auth: Validar identidade e vínculo clínico
+    Auth-->>UI: Autorizado
+    UI->>Doc: Solicitar registro de documento
+    Doc->>Store: Armazenar arquivo binário
+    Store-->>Doc: Retornar identificador do objeto
+    Doc->>Repo: Persistir metadados e vínculo ao prontuário
+    Doc->>ACL: Definir política de acesso (dentistas vinculados + paciente)
+    Doc->>Pr: Associar documento ao prontuário do paciente
+    Pr->>Repo: Registrar entrada rastreável
+    Pac->>UI: Solicitar lista/download no portal
+    UI->>Auth: Validar paciente autenticado
+    UI->>Doc: Buscar documentos visíveis ao paciente
+    Doc->>ACL: Verificar permissão explícita
+    ACL-->>Doc: Permitido
+    Doc-->>UI: Link autorizado para download
+    UI-->>Pac: Exibir documento disponível
 ```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-| Decisão | Motivação | Impacto arquitetural | Requisitos relacionados |
-|---|---|---|---|
-| Separar módulos por domínio (Agenda, Prontuário, Faturamento, Estoque, Portal) | Reduzir acoplamento e facilitar evolução | Contratos claros entre componentes e rastreabilidade por domínio | RF03–RF25 |
-| Controle de acesso centralizado por perfil e vínculo clínico | Segurança e privacidade clínica | Autorização aplicada em todas as operações sensíveis | RF02, RNF01, RNF03 |
-| Auditoria imutável para alterações críticas | Conformidade e rastreabilidade legal | Registro obrigatório de quem, quando e o que mudou | RF13, RNF05 |
-| Validação de disponibilidade antes de persistir agendamento | Evitar conflitos de agenda | Regra transacional para bloqueio de sobreposição | RF06, HU02 |
-| Notificação assíncrona de eventos de agenda por e-mail | Desacoplar agendamento de comunicação | Falha de e-mail não impede persistência do agendamento | RF08 |
-| Documentos clínicos em object storage externo | Escalabilidade e desacoplamento de arquivos | Metadados no domínio clínico e binários fora do servidor de aplicação | RF11, RNF07 |
-| Prontuário com separação entre dados clínicos internos e itens compartilháveis | Privacidade do paciente | Portal exibe somente artefatos explicitamente liberados | HU12, RNF03 |
-| Cobrança derivada de atendimento e procedimentos cadastrados | Integridade financeira | Regra de cálculo por modalidade (convênio/particular) | RF18, RF19, RF20 |
-| Estoque com eventos de entrada/saída e alerta por mínimo | Controle operacional | Painel de alertas e vínculo opcional a atendimento | RF15, RF16, RF17 |
-| Relatórios com filtros dimensionais e exportação | Governança financeira | Camada de consulta agregada e formato de exportação | RF22, HU10 |
+1. **Arquitetura modular por domínios de negócio**  
+   Separação lógica em: Acesso/Usuários, Agenda, Prontuário, Documentos, Estoque, Faturamento, Relatórios e Notificações.  
+   **Motivo:** reduzir acoplamento e facilitar evolução por HU.
+
+2. **Autorização baseada em papéis e vínculo clínico (RBAC + regra contextual)**  
+   Perfis fixos (administrador, recepcionista, dentista, paciente) + validações de vínculo paciente/dentista para dados clínicos.  
+   **Motivo:** RF02, RNF03, HU05/HU12.
+
+3. **Regra de agenda com validação síncrona de disponibilidade e não sobreposição**  
+   Criação/remarcação passa por validação de grade e conflito no mesmo fluxo transacional.  
+   **Motivo:** RF06, HU02, RNF06.
+
+4. **Notificações por e-mail desacopladas por evento de negócio**  
+   Agenda publica evento de confirmação/cancelamento/remarcação; Notificações processa envio.  
+   **Motivo:** RF08; maior resiliência operacional.
+
+5. **Prontuário com trilha imutável de auditoria**  
+   Toda alteração registra autor, data/hora, tipo de alteração e identificador do registro.  
+   **Motivo:** RF13, RNF05, conformidade.
+
+6. **Documentos clínicos em armazenamento externo de objetos**  
+   Binário fora do repositório transacional; metadados e ACL no sistema.  
+   **Motivo:** RNF07, RF11, RF25.
+
+7. **Modelo financeiro orientado a cobrança com status e abatimentos**  
+   Cobrança nasce do atendimento; suporta pagamento parcial e saldo em aberto.  
+   **Motivo:** RF20, RF21, HU03, HU07.
+
+8. **Estoque com movimentação auditável e alerta por mínimo**  
+   Entradas/saídas versionadas, com geração de alerta quando saldo ≤ mínimo.  
+   **Motivo:** RF15, RF16, HU09.
+
+9. **Relatórios parametrizados e exportáveis**  
+   Agregações por período, dentista e modalidade com saída CSV/PDF.  
+   **Motivo:** RF22, HU10.
+
+10. **Sessão com timeout de inatividade**  
+    Encerramento automático após 30 min sem interação.  
+    **Motivo:** RNF01.
 
 ---
 
@@ -184,87 +208,83 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---|---|---|
-| Autenticação e Autorização | Autenticar usuário, controlar sessão e permissões por perfil/vínculo | Portais, todos os serviços de domínio | HU11 (portal exige autenticação), RF01, RF02, RNF01, RNF04 |
-| Gestão de Agenda | Manter agendas por dentista, criar/cancelar/remarcar consultas | Autorização, Notificação, Persistência, Auditoria | HU01, HU02, RF03–RF08 |
-| Validador de Disponibilidade/Grade | Aplicar grade do dentista e bloquear sobreposição | Gestão de Agenda, Persistência | HU02 (somente horários disponíveis), RF06, RF07 |
-| Notificações | Enviar e-mails de confirmação/cancelamento/remarcação | Agenda, Serviço externo de e-mail | HU02, RF08 |
-| Prontuário Digital | Registrar histórico clínico, edição e consulta controlada | Documentos, Busca de pacientes, Auditoria, Persistência | HU04, HU06, RF09, RF10, RF12, RF13 |
-| Gestão de Documentos Clínicos | Upload/download e controle de visibilidade de documentos | Prontuário, Portal do Paciente, Object storage | HU05, HU12, RF11, RF25, RNF03, RNF07 |
-| Busca de Pacientes | Busca por nome/CPF para contexto clínico | Prontuário, Persistência | HU06 (localizar por nome/CPF) |
-| Faturamento e Cobrança | Gerar cobrança por atendimento, aplicar tabela convênio/particular, controlar aberto/pago | Persistência, Auditoria, Relatórios | HU03, HU07, RF18–RF21 |
-| Gestão de Convênios e Tabelas | Manter convênios, procedimentos e valores | Faturamento, Persistência | HU07, RF19 |
-| Estoque e Materiais | Cadastro, movimentações, alerta de mínimo, vínculo com atendimento | Persistência, Painel administrativo, Auditoria | HU09, RF14–RF17 |
-| Relatórios de Faturamento | Consolidar faturamento por período/dentista/modalidade e exportar | Faturamento, Persistência | HU10, RF22 |
-| Portal do Paciente | Exibir agendamentos, histórico e documentos liberados | Autorização, Agenda, Documentos | HU11, HU12, RF23, RF24, RF25 |
-| Auditoria Imutável | Registro inviolável de ações críticas | Agenda, Prontuário, Faturamento, Estoque | HU04 (rastreabilidade), RNF05 |
-| Persistência de Dados Operacionais | Armazenar dados transacionais e referenciais | Todos os domínios | Suporte transversal a RFs |
-| Serviço Externo de Object Storage | Armazenar binários clínicos em escala | Gestão de Documentos | RNF07 |
-| Serviço Externo de E-mail | Entrega de notificações de agenda | Notificações | RF08 |
+| Interface Web Interna | UI para administrador, recepcionista e dentista | Auth, Agenda, Prontuário, Estoque, Faturamento, Relatórios | HU01–HU10 |
+| Portal do Paciente | UI de autoatendimento para agenda e documentos | Auth, Agenda, Documentos | HU11, HU12 |
+| Autenticação e Autorização | Login, sessão, perfis e políticas de acesso | Interface, Portal, Documentos, Prontuário, Repositório | RF01, RF02, RNF01, RNF03, RNF04 |
+| Gestão de Usuários | Cadastro e manutenção de usuários/perfis | Auth, Repositório | RF01 |
+| Agenda | Agendamento/cancelamento/remarcação, validação de conflito | Grade de Horário, Repositório, Notificações | HU01, HU02, HU08 / CA de bloqueio de sobreposição |
+| Grade de Horário do Dentista | Regras de disponibilidade por profissional | Agenda, Repositório | HU08 / CA dias da semana e horário início/fim |
+| Notificações | Envio de e-mails de eventos de agenda | Agenda, Repositório | RF08, HU02 |
+| Prontuário Digital | Histórico clínico, registros e edição controlada | Auth, Documentos, Auditoria, Repositório | HU04, HU06 / CA ordem cronológica e rastreabilidade |
+| Documentos Clínicos | Upload, metadados, download e controle de visibilidade | Prontuário, Auth, ACL, Object Storage, Repositório | HU05, HU12 / CA tipos de arquivo e download |
+| Controle de Acesso a Documentos (ACL) | Restringir acesso a dentistas vinculados e paciente | Auth, Documentos, Repositório | RF25, RNF03, HU05, HU12 |
+| Estoque e Materiais | Cadastro, entradas/saídas, saldo mínimo e vínculo com atendimento | Repositório, Auditoria | HU09, RF14–RF17 |
+| Faturamento e Cobrança | Geração de cobrança por atendimento, convênio/particular, pagamentos | Repositório, Relatórios | HU03, HU07 / CA pagamento parcial e status |
+| Relatórios | Consolidação por período/dentista/modalidade e exportação | Faturamento, Repositório | HU10 / CA exportar CSV/PDF |
+| Auditoria Imutável | Registro inviolável de alterações sensíveis | Prontuário, Estoque, Repositório | RNF05, RF13 |
+| Repositório de Dados Transacionais | Persistência de entidades de negócio | Todos os componentes de domínio | Base de todos RF |
+| Serviço Externo de Object Storage | Armazenamento escalável de arquivos clínicos | Documentos Clínicos | RNF07 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-### 5.1 Bloqueios atuais
-- **Nenhum bloqueio impeditivo absoluto** para desenho arquitetural lógico.
-
-### 5.2 Pendências de detalhamento (necessárias antes da implementação)
-1. **Política de consentimento e base legal LGPD** por tipo de dado clínico.  
-2. **Regras de vínculo “dentista do paciente”** (quem pode acessar quando há atendimento compartilhado ou substituição).  
-3. **Política de retenção de documentos clínicos** (prazo legal, descarte, anonimização).  
-4. **Definição operacional de pagamentos parciais** (rateio por procedimentos, multas, ajustes).  
-5. **Formato e conteúdo de exportação PDF/CSV** para relatórios (layout, assinatura, cabeçalhos).  
-6. **Estratégia de contingência para indisponibilidade de e-mail** (reenvio, fila de tentativas, monitoramento).  
-7. **Critério exato do SLA de 99,5%** (janela mensal, exclusões de manutenção).  
-8. **Escopo de backup diário** (inclui metadados + restauração de referências de object storage).
+| Tema | Lacuna/Pendência | Impacto Arquitetural | Ação Recomendada |
+|---|---|---|---|
+| Vínculo “dentista vinculado ao paciente” | Não está definido se vínculo é por atendimento prévio, plano de cuidado ou atribuição manual | Regras de acesso (RNF03) podem divergir | Formalizar regra de vínculo e exceções |
+| Política LGPD/CFO detalhada | Base legal, retenção, anonimização e descarte não detalhados | Risco de não conformidade | Definir política de ciclo de vida de dados clínicos e consentimentos |
+| Escopo de “editar prontuário” | Não define limites do que pode ser alterado retroativamente | Pode conflitar com imutabilidade de auditoria | Definir campos editáveis e estratégia de versionamento |
+| Regras de convênios | Não detalha glosas, coparticipação, validade de tabela | Risco de cálculo incorreto de cobrança | Especificar motor de regras de convênio |
+| Notificação por e-mail | Sem definição de SLA de envio/retentativa | Incerteza operacional em falhas de entrega | Definir política de retentativa, fila e monitoramento |
+| Desempenho RNF06 | Não define volume de dentistas/consultas para meta de 3s | Meta não testável sem carga alvo | Definir perfil de carga e cenários de teste |
+| Disponibilidade RNF08 | “Horário de funcionamento” não parametrizado | Janela de manutenção e SLO indefinidos | Definir calendário de operação por unidade clínica |
+| Backup RNF11 | Sem RPO/RTO explícitos | Estratégia de recuperação incompleta | Definir objetivos de recuperação e testes periódicos |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-### 6.1 Cobertura de RF
+### 6.1 Requisitos Funcionais (RF)
 
-| RF | Cobertura arquitetural | Evidência |
+| RF | Cobertura Arquitetural | Status |
 |---|---|---|
-| RF01–RF02 | Coberto | Componente de Autenticação/Autorização |
-| RF03–RF08 | Coberto | Gestão de Agenda + Validador + Notificação |
-| RF09–RF13 | Coberto | Prontuário + Auditoria + Documentos |
-| RF14–RF17 | Coberto | Estoque e Materiais |
-| RF18–RF22 | Coberto | Faturamento/Cobrança + Convênios + Relatórios |
-| RF23–RF25 | Coberto | Portal do Paciente + Documentos |
+| RF01–RF02 | Auth + Gestão de Usuários + RBAC por perfil | Coberto |
+| RF03–RF07 | Agenda + Grade de Horário + validação de conflito | Coberto |
+| RF08 | Notificações por evento de agenda | Coberto |
+| RF09–RF13 | Prontuário + Auditoria + vínculo com dentista/data/hora | Coberto |
+| RF14–RF17 | Estoque + Movimentações + Alertas + vínculo com atendimento | Coberto |
+| RF18–RF22 | Faturamento/Cobrança + Pagamentos + Relatórios | Coberto |
+| RF23–RF25 | Portal do Paciente + Documentos com ACL | Coberto |
 
-### 6.2 Cobertura de RNF
+### 6.2 Requisitos Não Funcionais (RNF)
 
-| RNF | Cobertura arquitetural | Observação |
+| RNF | Cobertura Arquitetural | Status |
 |---|---|---|
-| RNF01 | Parcialmente detalhado | Sessão e autenticação cobertos; falta política completa de expiração e renovação |
-| RNF02 | Parcialmente detalhado | Princípios incorporados; faltam diretrizes operacionais/jurídicas internas |
-| RNF03 | Coberto | Controle de acesso por perfil e vínculo + segregação de documentos |
-| RNF04 | Coberto | Armazenamento de senha com hash seguro previsto no componente de identidade |
-| RNF05 | Coberto | Auditoria imutável transversal |
-| RNF06 | Parcialmente detalhado | Meta de 3s conhecida; faltam critérios de carga/volume para dimensionamento |
-| RNF07 | Coberto | Object storage externo desacoplado |
-| RNF08 | Parcialmente detalhado | Meta de disponibilidade definida; falta plano de operação/monitoramento |
-| RNF09 | Parcialmente detalhado | Responsividade prevista na interface; falta padrão de design de UI |
-| RNF10 | Parcialmente detalhado | Compatibilidade prevista; falta matriz de testes por navegador |
-| RNF11 | Parcialmente detalhado | Backup diário previsto; falta estratégia formal de restauração/teste |
+| RNF01 | Sessão autenticada com timeout de 30 min | Coberto |
+| RNF02 | Governança de dados clínicos e controles de acesso/auditoria | Parcial (depende de política operacional) |
+| RNF03 | ACL por vínculo clínico + paciente autenticado | Coberto (regra de vínculo pendente) |
+| RNF04 | Armazenamento de senha com hash seguro | Coberto |
+| RNF05 | Log imutável em alterações de prontuário | Coberto |
+| RNF06 | Arquitetura otimizada para consulta unificada | Parcial (depende de metas de carga) |
+| RNF07 | Object storage externo para documentos | Coberto |
+| RNF08 | Requisitos de disponibilidade previstos em operação | Parcial (SLO detalhado pendente) |
+| RNF09 | Camada UI responsiva | Coberto |
+| RNF10 | Compatibilidade navegadores modernos | Coberto |
+| RNF11 | Backup diário com retenção mínima | Parcial (RPO/RTO pendentes) |
 
 ---
 
 ## 7. Gap Analysis
 
-| Lacuna | Impacto Arquitetural | Ação Recomendada |
-|---|---|---|
-| Definição incompleta de regras LGPD/CFO aplicadas ao fluxo clínico | Risco de não conformidade e retrabalho em segurança | Elaborar matriz de dados sensíveis, base legal, perfis de acesso e trilha de consentimento |
-| Critério ambíguo de “dentista vinculado ao paciente” | Pode gerar acesso indevido ou bloqueio indevido de prontuário | Formalizar regra de vínculo (ativo por consulta, por prontuário, por unidade clínica) |
-| Falta de política de versionamento de prontuário e documentos | Dificuldade de auditoria clínica em correções | Definir estratégia de versionamento lógico e rastreio de alterações |
-| Não há detalhamento de concorrência de agendamento | Possível dupla marcação em alta simultaneidade | Definir mecanismo transacional de reserva/confirmacão atômica |
-| Relatório financeiro sem definição semântica completa | Inconsistência entre visão administrativa e operacional | Especificar dicionário de métricas (faturado, recebido, em aberto, estornado) |
-| Backup sem RTO/RPO explícitos | Risco operacional em incidente | Definir objetivos de recuperação e testes periódicos de restauração |
-| RNF06 sem perfil de carga | Meta de desempenho pode não ser atingida em produção | Definir volume esperado (dentistas, consultas/dia, janela de pico) e testes de capacidade |
-| Política de disponibilização de documentos ao paciente não detalhada | Vazamento ou ocultação indevida de informação | Incluir estado explícito “liberado ao paciente” com trilha de auditoria |
-| Falta de tratamento de falhas de notificação | Perda de comunicação com pacientes | Definir reprocessamento, tentativas, monitoramento e alerta operacional |
+| Gap | Evidência | Impacto | Recomendação |
+|---|---|---|---|
+| Regra de autorização clínica incompleta | RNF03/HU05/HU12 não definem todas as exceções | Risco de vazamento ou bloqueio indevido de documentos | Especificar matriz de autorização por cenário (primeira consulta, troca de dentista, multi-especialidade) |
+| Conformidade LGPD/CFO em nível operacional | RNF02 genérico | Não conformidade regulatória | Criar requisitos de retenção, consentimento, revogação, descarte e trilhas de acesso |
+| Escalabilidade/performance sem baseline | RNF06 sem parâmetros quantitativos de volume | Arquitetura não verificável em teste | Definir N (dentistas), M (consultas/dia), P95 de latência e metas por tela |
+| Faturamento de convênio subespecificado | RF19/RF20/HU07 sem regras avançadas | Divergência financeira e retrabalho | Detalhar vigência de tabela, coparticipação, glosa e reajustes |
+| Versionamento de prontuário não explicitado | RF12 permite edição; RNF05 exige imutabilidade de log | Ambiguidade jurídica e clínica | Adotar modelo “registro + correção” com histórico completo visível |
+| Política de continuidade de negócio incompleta | RNF08 e RNF11 sem RTO/RPO | Recuperação incerta após incidente | Definir plano de continuidade com testes de restauração e evidências periódicas |
 
 ---
 
-Se quiser, no próximo passo eu também posso gerar uma versão **“pronta para backlog técnico”**, quebrando esta arquitetura em **épicos, features e tarefas** com critérios de pronto (DoD) por componente.
+Se quiser, na próxima interação eu converto este relatório em **backlog arquitetural executável** (épicos técnicos + critérios de pronto + testes de arquitetura por requisito).

@@ -1,5 +1,5 @@
 # Relatório Técnico de Arquitetura de Software
-## Sistema de Marketplace de Produtos Artesanais (M03)
+## Marketplace de Produtos Artesanais (M03)
 
 ---
 
@@ -7,20 +7,20 @@
 
 | HU | Título | Perfil | RFs Relacionados | RNFs Relacionados |
 |----|--------|--------|-------------------|--------------------|
-| HU01 | Cadastrar produto com fotos | Artesão | RF04, RF06 | RNF04, RNF05, RNF07 |
+| HU01 | Cadastrar produto com fotos | Artesão | RF04, RF05, RF06 | RNF04 |
 | HU02 | Gerenciar estoque dos produtos | Artesão | RF07, RF08, RF09 | RNF08 |
-| HU03 | Acompanhar/atualizar status de pedidos | Artesão | RF19, RF20, RF22 | RNF09, RNF13 |
-| HU04 | Visualizar painel financeiro | Artesão | RF26, RF28, RF29 | RNF06, RNF09 |
-| HU05 | Solicitar saque do saldo | Artesão | RF30 | RNF09, RNF13, RNF11 |
-| HU06 | Responder avaliações | Artesão | RF25 | RNF07 |
-| HU07 | Navegar e pesquisar produtos | Comprador | RF10, RF11 | RNF05, RNF07, RNF10 |
-| HU08 | Adicionar itens ao carrinho e finalizar compra | Comprador | RF13-RF19, RF22 | RNF03, RNF08, RNF09 |
-| HU09 | Acompanhar status dos pedidos | Comprador | RF21, RF22 | RNF07 |
-| HU10 | Avaliar produto após entrega | Comprador | RF23, RF24 | RNF07 |
-| HU11 | Gerenciar categorias | Administrador | RF12 | RNF13 |
-| HU12 | Configurar percentual de comissão | Administrador | RF27 | RNF09, RNF13 |
+| HU03 | Acompanhar e atualizar status dos pedidos | Artesão | RF20, RF22 | RNF13 |
+| HU04 | Visualizar painel financeiro | Artesão | RF28, RF29 | RNF06, RNF09 |
+| HU05 | Solicitar saque do saldo disponível | Artesão | RF30 | RNF09, RNF13 |
+| HU06 | Responder avaliações de compradores | Artesão | RF25 | - |
+| HU07 | Navegar e pesquisar produtos | Comprador | RF10, RF11 | RNF05 |
+| HU08 | Adicionar itens ao carrinho e finalizar compra | Comprador | RF13-RF19, RF22 | RNF03, RNF08 |
+| HU09 | Acompanhar status dos pedidos | Comprador | RF21, RF22 | - |
+| HU10 | Avaliar produto após entrega | Comprador | RF23, RF24 | - |
+| HU11 | Gerenciar categorias da plataforma | Admin | RF12 | - |
+| HU12 | Configurar percentual de comissão | Admin | RF26, RF27 | RNF09, RNF13 |
 
-**Requisitos transversais sem HU explícita:** RF01, RF02, RF03 (identidade/autenticação), RF05 (edição/remoção de produtos — implícito em HU01), RF24 (exibição pública de avaliações — implícito em HU10).
+Requisitos transversais não vinculados diretamente a HU explícita: RF01, RF02, RF03 (Identidade e Acesso); RNF01, RNF02, RNF07, RNF10, RNF11, RNF12 (qualidade sistêmica).
 
 ---
 
@@ -29,149 +29,145 @@
 ### 2.1 Diagrama de Componentes (Visão Macro)
 
 ```mermaid
-graph TB
-    subgraph Cliente
-        WEB[Aplicação Web Responsiva]
+flowchart TB
+    subgraph Cliente["Camada de Apresentação"]
+        WebApp["Aplicação Web Responsiva"]
     end
 
-    subgraph Gateway
-        APIGW[API Gateway / Roteador de Requisições]
+    subgraph Gateway["Camada de Borda"]
+        APIGW["API Gateway / Roteamento e Autenticação"]
     end
 
-    subgraph Dominio_Identidade
-        AUTH[Serviço de Identidade e Acesso]
+    subgraph Dominio["Camada de Domínio (Serviços de Negócio)"]
+        IdentidadeSvc["Serviço de Identidade e Acesso"]
+        CatalogoSvc["Serviço de Catálogo de Produtos"]
+        EstoqueSvc["Serviço de Estoque"]
+        CarrinhoSvc["Serviço de Carrinho"]
+        PedidoSvc["Serviço de Pedidos e Subpedidos"]
+        PagamentoSvc["Serviço de Pagamento"]
+        ComissaoSvc["Serviço de Comissão e Financeiro"]
+        AvaliacaoSvc["Serviço de Avaliações"]
+        NotificacaoSvc["Serviço de Notificações"]
+        AuditoriaSvc["Serviço de Auditoria/Log"]
     end
 
-    subgraph Dominio_Catalogo
-        CAT[Serviço de Catálogo de Produtos]
-        CATEG[Serviço de Categorias]
-        SEARCH[Serviço de Busca]
+    subgraph Infra["Infraestrutura de Apoio"]
+        ObjectStorage["Armazenamento de Objetos (Fotos)"]
+        GatewayPagamento["Gateway de Pagamento Externo (PCI-DSS)"]
+        RepositorioDados["Repositórios de Persistência (por domínio)"]
+        ServicoEmail["Serviço de Envio de E-mail"]
     end
 
-    subgraph Dominio_Comercial
-        CART[Serviço de Carrinho]
-        ORDER[Serviço de Pedidos e Subpedidos]
-        PAY[Serviço de Pagamento]
-        STOCK[Serviço de Estoque]
-    end
+    WebApp --> APIGW
+    APIGW --> IdentidadeSvc
+    APIGW --> CatalogoSvc
+    APIGW --> CarrinhoSvc
+    APIGW --> PedidoSvc
+    APIGW --> ComissaoSvc
+    APIGW --> AvaliacaoSvc
 
-    subgraph Dominio_Financeiro
-        FIN[Serviço Financeiro e Comissão]
-        PAYOUT[Serviço de Saque]
-        LEDGER[Registro Imutável de Transações]
-    end
+    CatalogoSvc --> EstoqueSvc
+    CatalogoSvc --> ObjectStorage
+    CatalogoSvc --> RepositorioDados
 
-    subgraph Dominio_Interacao
-        REVIEW[Serviço de Avaliações]
-        NOTIFY[Serviço de Notificações]
-    end
+    CarrinhoSvc --> CatalogoSvc
+    CarrinhoSvc --> PedidoSvc
 
-    subgraph Infra_Externa
-        OBJSTORE[(Object Storage Externo - Fotos)]
-        GATEWAYPAG[[Gateway de Pagamento Externo PCI-DSS]]
-        EMAIL[[Serviço de E-mail Externo]]
-    end
+    PedidoSvc --> EstoqueSvc
+    PedidoSvc --> PagamentoSvc
+    PedidoSvc --> ComissaoSvc
+    PedidoSvc --> NotificacaoSvc
+    PedidoSvc --> RepositorioDados
 
-    WEB --> APIGW
-    APIGW --> AUTH
-    APIGW --> CAT
-    APIGW --> CATEG
-    APIGW --> SEARCH
-    APIGW --> CART
-    APIGW --> ORDER
-    APIGW --> REVIEW
-    APIGW --> FIN
-    APIGW --> PAYOUT
+    PagamentoSvc --> GatewayPagamento
+    PagamentoSvc --> AuditoriaSvc
 
-    CAT --> OBJSTORE
-    CAT --> STOCK
-    SEARCH --> CAT
-    ORDER --> STOCK
-    ORDER --> PAY
-    PAY --> GATEWAYPAG
-    ORDER --> NOTIFY
-    NOTIFY --> EMAIL
-    ORDER --> FIN
-    FIN --> LEDGER
-    PAYOUT --> LEDGER
-    REVIEW --> ORDER
-    AUTH --> WEB
+    ComissaoSvc --> AuditoriaSvc
+    ComissaoSvc --> RepositorioDados
+
+    AvaliacaoSvc --> PedidoSvc
+    AvaliacaoSvc --> RepositorioDados
+
+    NotificacaoSvc --> ServicoEmail
+    NotificacaoSvc --> WebApp
+
+    IdentidadeSvc --> RepositorioDados
+    AuditoriaSvc --> RepositorioDados
 ```
 
-### 2.2 Diagrama de Sequência — Finalização de Compra com Múltiplos Artesãos (HU08 / RF16-RF22)
+### 2.2 Diagrama de Sequência — Finalização de Compra (HU08, RF16-RF19, RF22, RNF08)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Comprador as Comprador (Cliente Web)
-    participant Gateway as API Gateway
+    participant Comprador as Comprador (WebApp)
+    participant GW as API Gateway
     participant Carrinho as Serviço de Carrinho
     participant Pedido as Serviço de Pedidos
     participant Estoque as Serviço de Estoque
     participant Pagamento as Serviço de Pagamento
     participant GatewayExt as Gateway de Pagamento Externo
-    participant Financeiro as Serviço Financeiro
+    participant Comissao as Serviço de Comissão/Financeiro
     participant Notificacao as Serviço de Notificações
-    participant Email as Serviço de E-mail Externo
+    participant Auditoria as Serviço de Auditoria
 
-    Comprador->>Gateway: Solicita finalização do pedido
-    Gateway->>Carrinho: Obtém itens do carrinho
-    Carrinho-->>Gateway: Retorna itens (múltiplos artesãos)
-    Gateway->>Pedido: Cria pedido consolidado
-    Pedido->>Estoque: Verifica disponibilidade de cada item
-    Estoque-->>Pedido: Confirma estoque disponível
-
-    Pedido->>Pagamento: Solicita processamento de pagamento
-    Pagamento->>GatewayExt: Envia dados de cobrança (HTTPS/PCI-DSS)
-    GatewayExt-->>Pagamento: Retorna aprovação/rejeição
-
-    alt Pagamento aprovado
-        Pagamento-->>Pedido: Confirma pagamento aprovado
-        Pedido->>Estoque: Decrementa estoque por item
-        Estoque-->>Pedido: Confirma decremento
-        Pedido->>Pedido: Gera subpedidos por artesão
-        Pedido->>Financeiro: Registra venda e calcula comissão
-        Financeiro-->>Pedido: Confirma retenção de comissão
-        Pedido->>Notificacao: Dispara confirmação ao comprador
-        Notificacao->>Email: Envia e-mail de confirmação
-        Pedido->>Notificacao: Notifica artesão(s) do novo pedido
-        Notificacao->>Email: Envia e-mail ao(s) artesão(s)
-        Pedido-->>Gateway: Retorna confirmação do pedido
-        Gateway-->>Comprador: Exibe confirmação na plataforma
-    else Pagamento rejeitado/falho
-        Pagamento-->>Pedido: Informa falha no pagamento
-        Pedido->>Pedido: Cancela criação do pedido (rollback)
-        Pedido-->>Gateway: Retorna erro de pagamento
-        Gateway-->>Comprador: Exibe mensagem de falha (sem decremento de estoque)
+    Comprador->>GW: Solicitar finalização do pedido
+    GW->>Carrinho: Obter itens do carrinho
+    Carrinho-->>GW: Itens, quantidades, valores
+    GW->>Pedido: Criar pedido (agrupar por artesão)
+    Pedido->>Estoque: Verificar disponibilidade dos itens
+    alt Estoque insuficiente
+        Estoque-->>Pedido: Rejeitar item(s)
+        Pedido-->>GW: Erro - item indisponível
+        GW-->>Comprador: Notificar indisponibilidade
+    else Estoque disponível
+        Estoque-->>Pedido: Confirmação de reserva
+        Pedido->>Pagamento: Solicitar processamento de pagamento
+        Pagamento->>GatewayExt: Autorizar transação (HTTPS/PCI-DSS)
+        alt Pagamento aprovado
+            GatewayExt-->>Pagamento: Aprovado
+            Pagamento->>Auditoria: Registrar transação imutável
+            Pagamento-->>Pedido: Confirmação de pagamento
+            Pedido->>Estoque: Decrementar estoque
+            Pedido->>Comissao: Calcular e reter comissão
+            Comissao->>Auditoria: Registrar comissão retida
+            Pedido->>Notificacao: Disparar confirmação (comprador e artesão)
+            Notificacao-->>Comprador: E-mail + notificação in-app
+            Notificacao-->>Pedido: Notificar artesão(s) por e-mail
+            Pedido-->>GW: Pedido confirmado (subpedidos criados)
+            GW-->>Comprador: Exibir confirmação do pedido
+        else Pagamento recusado/falha
+            GatewayExt-->>Pagamento: Falha
+            Pagamento->>Auditoria: Registrar falha de pagamento
+            Pagamento-->>Pedido: Falha - reverter reserva
+            Pedido-->>GW: Erro no pagamento
+            GW-->>Comprador: Notificar falha (nenhum estoque decrementado)
+        end
     end
 ```
 
-### 2.3 Diagrama de Sequência — Solicitação de Saque (HU05 / RF30)
+### 2.3 Diagrama de Sequência — Solicitação de Saque (HU05, RF30, RNF09)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Artesao as Artesão (Cliente Web)
-    participant Gateway as API Gateway
-    participant Financeiro as Serviço Financeiro
-    participant Payout as Serviço de Saque
-    participant Ledger as Registro Imutável de Transações
+    participant Artesao as Artesão (WebApp)
+    participant GW as API Gateway
+    participant Financeiro as Serviço de Comissão/Financeiro
+    participant Auditoria as Serviço de Auditoria
     participant Notificacao as Serviço de Notificações
 
-    Artesao->>Gateway: Solicita saque informando dados bancários
-    Gateway->>Financeiro: Consulta saldo líquido disponível
-    Financeiro-->>Gateway: Retorna saldo disponível
-
-    alt Saldo suficiente
-        Gateway->>Payout: Registra solicitação de saque (status: pendente)
-        Payout->>Ledger: Grava registro imutável (data, valor, partes)
-        Payout->>Financeiro: Atualiza saldo disponível (reserva valor em processamento)
-        Financeiro-->>Payout: Confirma atualização
-        Payout->>Notificacao: Notifica artesão sobre solicitação registrada
-        Payout-->>Gateway: Retorna status pendente
-        Gateway-->>Artesao: Exibe confirmação da solicitação
-    else Saldo insuficiente
-        Gateway-->>Artesao: Exibe erro de saldo insuficiente
+    Artesao->>GW: Solicitar saque (dados bancários, valor)
+    GW->>Financeiro: Validar saldo disponível
+    alt Saldo insuficiente
+        Financeiro-->>GW: Rejeitar solicitação
+        GW-->>Artesao: Erro - saldo insuficiente
+    else Saldo suficiente
+        Financeiro->>Financeiro: Registrar solicitação (status: pendente)
+        Financeiro->>Auditoria: Registrar log imutável (data, valor, partes)
+        Financeiro-->>GW: Saldo atualizado (valor em processamento)
+        GW-->>Artesao: Confirmação da solicitação
+        Financeiro->>Notificacao: Notificar status de processamento
     end
 ```
 
@@ -179,45 +175,40 @@ sequenceDiagram
 
 ## 3. Decisões de Arquitetura
 
-| ID | Decisão | Justificativa | Requisitos Relacionados |
-|----|---------|----------------|--------------------------|
-| DA01 | Arquitetura orientada a serviços de domínio (Catálogo, Comercial, Financeiro, Interação, Identidade), comunicando-se via API Gateway | Isola responsabilidades de negócio distintas, favorece evolução independente e alinha-se à separação natural do domínio (produtos, pedidos, finanças, avaliações) | RF01-RF30 |
-| DA02 | Armazenamento de imagens delegado a serviço externo de object storage, referenciado por URL no Serviço de Catálogo | Atende explicitamente RNF04, desacopla mídia do núcleo transacional, melhora escalabilidade | RF04, RNF04 |
-| DA03 | Processamento de pagamento tratado como transação atômica com padrão de compensação (rollback) em caso de falha | Garante que nenhuma cobrança ou decremento de estoque ocorra sem sucesso completo, atendendo RNF08 | RF08, RF09, RF16, RNF08 |
-| DA04 | Pedido consolidado é decomposto em subpedidos por artesão após confirmação de pagamento | Atende requisito de múltiplos vendedores por pedido com status independentes | RF22, HU09 |
-| DA05 | Registro de transações financeiras (venda, comissão, saque) tratado como estrutura imutável (append-only) | Atende RNF09 (rastreabilidade) e RNF13 (auditoria) sem permitir alteração retroativa | RF26, RF30, RNF09, RNF13 |
-| DA06 | Alterações de percentual de comissão aplicadas apenas a vendas futuras, com versionamento do valor vigente | Evita impacto retroativo em vendas já processadas, conforme HU12 | RF27, HU12 |
-| DA07 | Autenticação e controle de acesso centralizados em serviço de Identidade, com verificação de perfil em cada chamada sensível | Atende RNF01, RNF02 e suporta múltiplos perfis por usuário (RF03) | RF01-RF03, RNF01, RNF02 |
-| DA08 | Comunicação com processador de pagamento externo restrita a canal seguro, sem persistência de dados sensíveis de cartão no domínio da aplicação | Atende RNF03 (PCI-DSS) | RF17, RNF03 |
-| DA09 | Notificações (e-mail e in-app) tratadas por serviço dedicado, desacoplado dos serviços de domínio via publicação de eventos | Permite extensão de canais de notificação sem acoplar lógica de negócio | RF18, RF19, RF21 |
-| DA10 | Busca de produtos servida por componente especializado, otimizado para consultas por nome/categoria/artesão com baixa latência | Atende RNF05 (2s) e requisito de busca incremental (HU07) | RF11, RNF05 |
-| DA11 | Avaliações vinculadas ao ciclo de vida do pedido (liberadas apenas após status "entregue"), com resposta única e imutável do artesão | Atende regras de negócio de HU10 e HU06 | RF23, RF25 |
+| ID | Decisão | Justificativa | Requisitos Associados |
+|----|---------|----------------|------------------------|
+| DA01 | Arquitetura orientada a serviços de domínio (Catálogo, Pedido, Pagamento, Comissão, Avaliação, Identidade) desacoplados via API Gateway | Isola responsabilidades de negócio distintas, permite evolução e escala independente por domínio | RF01-RF30 |
+| DA02 | Armazenamento de fotos em serviço externo de objetos, desacoplado da aplicação | Requisito explícito de escalabilidade (RNF04) | RF04, RNF04 |
+| DA03 | Processamento de pagamento delegado a gateway externo especializado, sem persistência de dados de cartão | Conformidade PCI-DSS obrigatória; reduz superfície de risco | RF16, RF17, RNF03 |
+| DA04 | Transação de pedido tratada como operação atômica (reserva de estoque → pagamento → confirmação → decremento) | Garante que falha de pagamento não gere decremento de estoque nem cobrança indevida | RF08, RF09, RNF08 |
+| DA05 | Serviço de Auditoria dedicado para registro imutável de eventos financeiros e críticos | Atende rastreabilidade e manutenibilidade (RNF09, RNF13) sem acoplar lógica de auditoria aos serviços de negócio | RF26, RNF09, RNF13 |
+| DA06 | Pedido decomposto em subpedidos por artesão, com ciclo de vida de status independente | Suporta pedidos multi-artesão com rastreamento individual | RF22, HU03, HU09 |
+| DA07 | Autenticação centralizada com controle de perfil (RBAC conceitual) aplicada no API Gateway | Restringe acesso a áreas administrativas/vendedor de forma uniforme | RNF01, RNF02 |
+| DA08 | Notificações desacopladas via serviço próprio, com múltiplos canais (e-mail, in-app) | Permite extensão futura de canais sem alterar serviços de domínio | RF18, RF19, RF21 |
+| DA09 | Percentual de comissão versionado (histórico de vigência), aplicado apenas a vendas futuras | Preserva integridade de registros já processados (HU12) | RF27, HU12 |
+| DA10 | Interface de apresentação única e responsiva, consumindo os mesmos serviços via API Gateway | Atende requisito de responsividade e compatibilidade multi-navegador sem duplicar lógica de negócio | RNF07, RNF10 |
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
-|---|---|---|---|
-| Serviço de Identidade e Acesso | Cadastro, autenticação, gestão de sessão e perfis múltiplos por usuário | API Gateway, todos os serviços de domínio (validação de perfil) | RF01-RF03, RNF01, RNF02 |
-| Serviço de Catálogo de Produtos | CRUD de produtos, controle de visibilidade (publicar/despublicar), vínculo com fotos | Object Storage, Serviço de Estoque, Serviço de Busca | HU01, RF04-RF06 |
-| Serviço de Categorias | CRUD de categorias, validação de remoção com produtos ativos | Serviço de Catálogo, Serviço de Notificações | HU11, RF12 |
-| Serviço de Busca | Indexação e consulta por nome/categoria/artesão, filtro de itens sem estoque | Serviço de Catálogo | HU07, RF10, RF11 |
-| Serviço de Estoque | Controle de quantidade disponível, bloqueio de compra com estoque zero, decremento pós-confirmação | Serviço de Catálogo, Serviço de Pedidos | HU02, RF07-RF09 |
-| Serviço de Carrinho | Adição/remoção/ajuste de itens, cálculo de subtotal por sessão de compra | Serviço de Catálogo, Serviço de Pedidos | HU08 (critérios 1-2), RF13-RF15 |
-| Serviço de Pedidos e Subpedidos | Consolidação do pedido, geração de subpedidos por artesão, atualização de status | Estoque, Pagamento, Financeiro, Notificações | HU03, HU08, HU09, RF16-RF22 |
-| Serviço de Pagamento | Orquestração da transação de pagamento, garantia de atomicidade | Gateway de Pagamento Externo, Serviço de Pedidos | HU08 (critério 4), RF16, RF17, RNF03, RNF08 |
-| Serviço Financeiro e Comissão | Cálculo/retenção de comissão, cálculo de saldo líquido, exposição de percentual vigente | Serviço de Pedidos, Ledger, Serviço de Saque | HU04, HU12, RF26-RF29 |
-| Serviço de Saque (Payout) | Registro de solicitação de saque, validação de saldo, atualização de saldo em processamento | Serviço Financeiro, Ledger, Notificações | HU05, RF30 |
-| Registro Imutável de Transações (Ledger) | Persistência append-only de eventos financeiros com data/hora/valor/partes | Serviço Financeiro, Serviço de Saque | RNF09, RNF13 |
-| Serviço de Avaliações | Registro de nota/comentário pós-entrega, resposta única do artesão, exibição pública | Serviço de Pedidos (validação de status entregue), Serviço de Catálogo | HU06, HU10, RF23-RF25 |
-| Serviço de Notificações | Disparo de eventos de e-mail e notificação in-app (pedido, status, saque) | Serviço de E-mail Externo, Serviço de Pedidos, Serviço de Saque | RF18, RF19, RF21, HU03 |
-| API Gateway | Roteamento de requisições, ponto único de entrada, aplicação de políticas de autenticação | Todos os serviços de domínio | Transversal — RNF01 |
-| Aplicação Web Responsiva | Interface de usuário adaptável a dispositivos móveis e desktop | API Gateway | RNF07, RNF10 |
-| Object Storage Externo | Armazenamento desacoplado de arquivos de imagem | Serviço de Catálogo | RNF04 |
-| Gateway de Pagamento Externo | Processamento de cobrança conforme PCI-DSS, sem retenção de dados de cartão | Serviço de Pagamento | RNF03, RF17 |
-| Serviço de E-mail Externo | Entrega de comunicações transacionais por e-mail | Serviço de Notificações | RF18, RF19 |
-| Módulo de Log/Auditoria | Registro de eventos críticos (falha de pagamento, saque, alteração de comissão) | Serviço de Pagamento, Serviço de Saque, Serviço Financeiro | RNF13 |
+|------------|------------------------------|-------------------|-------------------------------------|
+| Aplicação Web Responsiva | Interface única para todos os perfis, adaptável a dispositivos | API Gateway | RNF07, RNF10 |
+| API Gateway | Roteamento de requisições, aplicação de autenticação/autorização por perfil | Todos os serviços de domínio | RF01, RF02, RNF01 |
+| Serviço de Identidade e Acesso | Cadastro, autenticação, gestão de múltiplos perfis por usuário | API Gateway, Repositório de Dados | RF01, RF02, RF03, RNF02 |
+| Serviço de Catálogo de Produtos | CRUD de produtos, categorias, publicação/despublicação, busca | Estoque, Object Storage, Repositório de Dados | HU01, HU07, RF04-RF12 |
+| Serviço de Estoque | Controle de quantidade disponível, bloqueio de compra com estoque zero, decremento automático | Catálogo, Serviço de Pedidos | HU02, RF07-RF09 |
+| Serviço de Carrinho | Gestão de itens, quantidades e valores antes da finalização | Catálogo, Serviço de Pedidos | HU08, RF13-RF15 |
+| Serviço de Pedidos e Subpedidos | Orquestração do ciclo de vida do pedido, divisão por artesão, atualização de status | Estoque, Pagamento, Comissão, Notificação | HU03, HU08, HU09, RF16-RF22 |
+| Serviço de Pagamento | Interface com gateway externo, garantia de transação atômica | Gateway de Pagamento Externo, Auditoria | HU08, RF16, RF17, RNF03, RNF08 |
+| Serviço de Comissão e Financeiro | Cálculo/retenção de comissão, painel financeiro, saques, versionamento de percentual | Auditoria, Repositório de Dados | HU04, HU05, HU12, RF26-RF30 |
+| Serviço de Avaliações | Registro de nota/comentário, resposta única do artesão, exibição pública | Serviço de Pedidos, Repositório de Dados | HU06, HU10, RF23-RF25 |
+| Serviço de Notificações | Disparo de e-mails e notificações in-app para eventos de pedido/status | Serviço de E-mail, Aplicação Web | RF18, RF19, RF21, HU03 |
+| Serviço de Auditoria/Log | Registro imutável de eventos financeiros e críticos | Repositório de Dados | RNF09, RNF13, HU05, HU12 |
+| Armazenamento de Objetos (Fotos) | Persistência desacoplada de imagens de produtos | Serviço de Catálogo | RF04, RNF04 |
+| Gateway de Pagamento Externo | Processamento seguro de transações de pagamento | Serviço de Pagamento | RF17, RNF03 |
+| Repositórios de Persistência | Armazenamento estruturado por domínio | Todos os serviços de domínio | Transversal |
 
 ---
 
@@ -225,46 +216,35 @@ sequenceDiagram
 
 | ID | Descrição | Impacto | Responsável Sugerido |
 |----|-----------|---------|------------------------|
-| BP01 | Não há definição de qual(is) método(s) de pagamento serão suportados além do exemplo (cartão/PIX) — impacta modelagem de interface do Serviço de Pagamento | Médio | Time de Produto / Negócio |
-| BP02 | Não há especificação de política de reembolso/cancelamento de pedido após confirmação | Alto — afeta fluxo de estoque, financeiro e notificações | Time de Produto |
-| BP03 | Ausência de regras sobre concorrência de estoque em cenário de alta demanda simultânea (race condition na reserva) | Alto — risco de overselling | Arquitetura/Dev Backend |
-| BP04 | Não definido o formato/prazo de processamento efetivo do saque (integração bancária) além do registro do pedido de saque | Médio | Time de Produto / Financeiro |
-| BP05 | Não há critério de moderação/conteúdo ofensivo para avaliações e respostas | Médio | Time de Produto / Jurídico (LGPD) |
-| BP06 | RNF11 (LGPD) não detalha requisitos específicos de consentimento, retenção e portabilidade de dados | Alto — conformidade legal | Jurídico / DPO |
-| BP07 | Não especificado SLA de notificação (tempo máximo entre evento e envio de e-mail) | Baixo | Time de Produto |
+| BLQ01 | Não há definição do provedor/método específico de pagamento (cartão, PIX ou ambos) além da menção "ao menos um" | Impacta contrato de integração do Serviço de Pagamento | Time de Negócio / Produto |
+| BLQ02 | Não há regra de prazo/janela para processamento do saque (RF30) | Impacta modelagem de estados do fluxo financeiro | Time de Negócio |
+| BLQ03 | Não há definição de política de reembolso/cancelamento de pedido pós-confirmação | Impacto direto no Serviço de Pedidos e Estoque | Time de Produto / Arquitetura |
+| BLQ04 | Ausência de regra sobre reclassificação obrigatória (ou automática) de produtos ao remover categoria (HU11) | Pode gerar produtos "órfãos" sem categoria | Time de Produto |
+| BLQ05 | Não especificado limite de tamanho/formato de fotos enviadas | Impacta contrato de integração com Object Storage | Time Técnico |
+| BLQ06 | Ausência de SLA de tempo de resposta para o Gateway de Pagamento Externo | Pode comprometer RNF05/RNF06 indiretamente em cenários de timeout | Arquitetura / Infraestrutura |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
 | Categoria | Total | Cobertos no Design | Observações |
-|---|---|---|---|
-| RF Gestão de Usuários (RF01-RF03) | 3 | 3 | Cobertos por Serviço de Identidade |
-| RF Catálogo (RF04-RF12) | 9 | 9 | Cobertos por Catálogo, Estoque, Categorias, Busca |
-| RF Carrinho/Pedidos (RF13-RF22) | 10 | 10 | Cobertos por Carrinho, Pedidos, Pagamento, Notificações |
-| RF Avaliações (RF23-RF25) | 3 | 3 | Cobertos por Serviço de Avaliações |
-| RF Comissão/Financeiro (RF26-RF30) | 5 | 5 | Cobertos por Financeiro, Saque, Ledger |
-| **Total RF** | **30** | **30** | 100% mapeado a componentes |
-| RNF Segurança (RNF01-03) | 3 | 3 | Identidade + Pagamento externo |
-| RNF Escalabilidade/Desempenho (RNF04-06) | 3 | 3 | Object Storage, Busca, Financeiro |
-| RNF Usabilidade/Compat. (RNF07,10) | 2 | 2 | Aplicação Web Responsiva |
-| RNF Confiabilidade (RNF08) | 1 | 1 | Padrão transacional em Pagamento |
-| RNF Rastreabilidade/Manutenibilidade (RNF09,13) | 2 | 2 | Ledger + Módulo de Log |
-| RNF Conformidade (RNF11) | 1 | Parcial | Ver BP06 — necessita detalhamento |
-| RNF Disponibilidade (RNF12) | 1 | Não endereçado no design lógico | Depende de decisão de infraestrutura (fora do escopo neutro) |
-| **Total RNF** | **13** | **12 plenos / 1 parcial / 1 dependente de infra** | |
+|-----------|-------|----------------------|--------------|
+| Requisitos Funcionais (RF01-RF30) | 30 | 30 | Integralmente mapeados a componentes e fluxos |
+| Requisitos Não Funcionais (RNF01-RNF13) | 13 | 13 | Cobertos via decisões arquiteturais (Seção 3) |
+| Histórias de Usuário (HU01-HU12) | 12 | 12 | Refletidas em componentes e diagramas de sequência |
+
+Todos os requisitos foram endereçados conceitualmente. Detalhamentos finos de regras de negócio (prazos, formatos, políticas) permanecem como pendências (Seção 5).
 
 ---
 
 ## 7. Gap Analysis
 
 | Gap Identificado | Descrição | Impacto Arquitetural | Ação Recomendada |
-|---|---|---|---|
-| G01 | Falta de especificação sobre concorrência no decremento de estoque (dois compradores simultâneos) | Risco de inconsistência de dados (overselling) mesmo com padrão transacional descrito | Definir estratégia de controle de concorrência (ex.: bloqueio otimista/pessimista) na fase de detalhamento do Serviço de Estoque |
-| G02 | Ausência de fluxo de cancelamento/estorno de pedido | Serviço de Pagamento e Financeiro precisarão de operações de compensação não modeladas | Elicitar requisito de cancelamento com o time de produto antes da implementação |
-| G03 | RNF12 (disponibilidade 99,5%) não possui componente arquitetural correspondente no design lógico, pois depende de decisões de infraestrutura/operação | Risco de tratar requisito não-funcional crítico apenas na fase de implantação | Incluir estratégia de redundância/monitoramento no plano de operação, fora do escopo de design neutro |
-| G04 | Falta de definição sobre retenção e anonimização de dados pessoais (LGPD) além da menção genérica | Serviço de Identidade e Financeiro precisam de políticas de expurgo/anonimização não detalhadas | Realizar levantamento específico de LGPD com DPO/jurídico e traduzir em requisitos técnicos |
-| G05 | Não há requisito sobre auditoria de acesso administrativo (quem visualizou dados sensíveis) | Módulo de Log cobre alterações críticas, mas não leitura/acesso | Avaliar necessidade de trilha de auditoria de acesso, não apenas de alteração |
-| G06 | Ausência de definição sobre limite de tentativas de pagamento falho (possível fraude) | Serviço de Pagamento não tem regra de bloqueio/rate limiting definida | Especificar política de segurança contra tentativas abusivas de pagamento |
-| G07 | Não há critério sobre unicidade de avaliação por item vs. por pedido em caso de múltiplas unidades do mesmo produto | Serviço de Avaliações pode ter ambiguidade na regra "avaliar uma vez" | Esclarecer com stakeholders se a restrição é por produto, por pedido ou por item individual |
-| G08 | Falta de detalhamento sobre o formato dos dados bancários exigidos no saque (moeda única? contas internacionais?) | Serviço de Saque pode requerer modelagem de dados distinta conforme escopo geográfico | Confirmar escopo de mercado (nacional/internacional) com time de negócio |
+|--------------------|-----------|------------------------|---------------------|
+| G01 — Consistência multi-subpedido | Não há definição clara de como o pagamento único é dividido/reconciliado entre múltiplos subpedidos de artesãos distintos (RF22) | Requer mecanismo de rateio e reconciliação financeira entre Pedido e Comissão | Especificar regra de negócio de divisão de valores por subpedido antes da implementação do Serviço de Comissão |
+| G02 — Concorrência de estoque | Não há requisito explícito sobre tratamento de concorrência (dois compradores disputando última unidade) | Risco de inconsistência de estoque sob carga | Definir estratégia de controle de concorrência (ex.: reserva temporária) no Serviço de Estoque |
+| G03 — Idempotência de pagamento | Não há menção a reprocessamento/retentativas em caso de timeout do gateway externo | Risco de cobrança duplicada ou pedido órfão | Incluir requisito de idempotência nas interfaces do Serviço de Pagamento |
+| G04 — Política de dados pessoais (LGPD) | RNF11 exige conformidade, mas não há requisito funcional de portabilidade/exclusão de dados do usuário | Pode gerar não conformidade legal | Adicionar RFs específicos de exportação/anonimização de dados |
+| G05 — Notificação em tempo real de status | HU09 menciona "tempo real", mas não há RF/RNF definindo mecanismo (polling, push, etc.) | Impacta escolha de padrão de comunicação entre Notificação e WebApp | Esclarecer expectativa de latência e mecanismo de atualização com stakeholders |
+| G06 — Auditoria de acesso administrativo | RNF13 cobre eventos críticos de negócio, mas não eventos de acesso/autorização (ex.: tentativas de login administrativo) | Lacuna de segurança/rastreabilidade | Expandir escopo do Serviço de Auditoria para eventos de segurança |
+| G07 — Limite de avaliações por pedido multi-item | HU10 define uma avaliação por item, mas não trata itens duplicados no mesmo pedido (mesma unidade comprada 2x) | Ambiguidade na regra de unicidade de avaliação | Esclarecer se a unicidade é por produto ou por item de pedido |

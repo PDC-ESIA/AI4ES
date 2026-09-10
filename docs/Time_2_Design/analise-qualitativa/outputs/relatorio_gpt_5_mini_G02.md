@@ -2,198 +2,188 @@
 
 ## 1. Identificação das HUs
 
-Lista das Histórias de Usuário (HU) recebidas e seu escopo funcional principal:
+Lista resumida das Histórias de Usuário (HU) mapeadas para o escopo arquitetural:
 
-- HU01 — Cadastrar-se e consentir com o tratamento de dados de saúde (Paciente)  
-- HU02 — Agendar consulta presencial ou por videochamada (Paciente)  
-- HU03 — Participar de consulta por videochamada (Paciente)  
-- HU04 — Visualizar prontuário e resultados de exames (Paciente)  
-- HU05 — Acessar e compartilhar prescrição digital (Paciente)  
-- HU06 — Receber notificação de resultado de exame disponível (Paciente)  
-- HU07 — Validar cadastro com CRM ativo (Médico)  
-- HU08 — Registrar evolução clínica no prontuário (Médico)  
-- HU09 — Emitir prescrição digital com validade jurídica (Médico)  
-- HU10 — Solicitar exame e receber resultado com alerta de valor crítico (Médico)  
-- HU11 — Acessar prontuário compartilhado entre especialidades (Médico)  
-- HU12 — Gerenciar médicos e agendas da unidade (Administrador de Clínica)  
-- HU13 — Acompanhar faturamento por convênio (Administrador de Clínica)  
-- HU14 — Processar autorização prévia de procedimentos (Operador de Plano de Saúde)
+- HU01 — Cadastrar-se e consentir com o tratamento de dados de saúde (Paciente)
+- HU02 — Agendar consulta presencial ou por videochamada (Paciente)
+- HU03 — Participar de consulta por videochamada (Paciente)
+- HU04 — Visualizar prontuário e resultados de exames (Paciente)
+- HU05 — Acessar e compartilhar prescrição digital (Paciente)
+- HU06 — Receber notificação de resultado de exame disponível (Paciente)
+- HU07 — Validar cadastro com CRM ativo (Médico)
+- HU08 — Registrar evolução clínica no prontuário (Médico)
+- HU09 — Emitir prescrição digital com validade jurídica (Médico)
+- HU10 — Solicitar exame e receber resultado com alerta de valor crítico (Médico)
+- HU11 — Acessar prontuário compartilhado entre especialidades (Médico)
+- HU12 — Gerenciar médicos e agendas da unidade (Administrador de clínica)
+- HU13 — Acompanhar faturamento por convênio (Administrador de clínica)
+- HU14 — Processar autorização prévia de procedimentos (Operador de plano de saúde)
 
-Observação: cada HU foi usada como origem para componentes e interfaces descritos adiante; quando aplicável os critérios de aceite dos HUs foram traduzidos em responsabilidades e eventos arquiteturais (ex.: notificações, logs de auditoria, consentimento explícito).
+(As HUs acima derivam dos requisitos funcionais e critérios de aceite fornecidos.)
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-Diagrama de sequência: fluxo principal "Paciente agenda consulta por videochamada" cobrindo autenticação, verificações de cobertura, reserva de agenda, criação de sessão de videochamada e notificações.
+Diagrama de sequência representando um fluxo crítico: agendamento com verificação de cobertura + notificação + ingresso em videochamada. Contém participantes explícitos e autonumber.
 
 ```mermaid
-sequenceDiagram autonumber
-    participant Paciente as Paciente (App/Web)
-    participant UI as Cliente UI
-    participant APIGW as API Gateway
-    participant Auth as Auth & IAM
-    participant UserSvc as User Management
-    participant AgendSvc as Agendamento Service
-    participant PlanSvc as Plano de Saúde Integration
-    participant CRMsvc as CRM/CFM Validation
-    participant Notif as Notification Service
-    participant VC as Videochamada Service
-    participant Storage as Document/Object Storage
-    participant Audit as Audit & Logging
+sequenceDiagram
+    autonumber
+    participant PatientApp as Aplicação Paciente
+    participant AuthService as Serviço de Autenticação (MFA)
+    participant Scheduling as Serviço de Agendamento
+    participant Coverage as Serviço de Elegibilidade (Operadora)
+    participant MR as Serviço de Prontuário (Prontuário Eletrônico)
+    participant Notif as Serviço de Notificações (e-mail/push)
+    participant Video as Serviço de Videochamada (E2EE)
+    participant CertIF as Serviço de Validação CRM / Certificados
 
-    Paciente->>UI: Inicia fluxo de agendamento
-    UI->>APIGW: POST /agendamentos (token)
-    APIGW->>Auth: Validar token e MFA
-    Auth-->>APIGW: Token válido / claims do usuário
-    APIGW->>UserSvc: Obter perfil do paciente (plano, permissões)
-    UserSvc-->>APIGW: Perfil + consentimentos
-    APIGW->>AgendSvc: Solicitar disponibilidade de médico X para horário Y
-    AgendSvc->>AgendSvc: Conferir grade e bloqueios locais
-    AgendSvc->>CRMsvc: (quando necessário) validar médico ativo (assíncrono/cached)
-    CRMsvc-->>AgendSvc: Status CRM
-    AgendSvc->>PlanSvc: Verificar elegibilidade do beneficiário para procedimento (tuss)
-    PlanSvc-->>AgendSvc: Elegível / não elegível (<=5s esperado)
+    Aplicação Paciente->>AuthService: 1) Login + MFA
+    AuthService->>CertIF: 2) Validar credenciais / biometria / token
+    AuthService-->>Aplicação Paciente: 3) Autenticação aprovada
+
+    Aplicação Paciente->>Scheduling: 4) Solicitar criar agendamento (médico, tipo)
+    Scheduling->>MR: 5) Consultar disponibilidade do médico (agenda)
+    MR-->>Scheduling: 6) Disponibilidade retornada
+    Scheduling->>Coverage: 7) Solicitar verificação de cobertura (beneficiário, procedimento)
+    Coverage-->>Scheduling: 8) Elegibilidade em <= 5s (autorizado / negado)
     alt Elegível
-        AgendSvc->>AgendSvc: Reservar slot temporário
-        AgendSvc->>VC: Provisionar sessão de videochamada (metadados, tokens E2EE)
-        VC-->>AgendSvc: Link / token de acesso da sessão
-        AgendSvc->>Storage: Registrar metadados do agendamento
-        AgendSvc->>Audit: Registrar evento de criação de agendamento (user, time, action)
-        AgendSvc->>Notif: Enviar confirmação (push + e-mail) p/ paciente e médico
-        Notif-->>Paciente: Notificação de confirmação
-        Notif-->>Medic: Notificação de confirmação
-        APIGW-->>UI: Confirmação + link de videochamada (quando aplicável)
+        Scheduling->>MR: 9) Persistir agendamento no prontuário
+        MR-->>Scheduling: 10) Confirmação gravação
+        Scheduling->>Notif: 11) Enviar confirmação (e-mail/push) para paciente e médico
+        Notif-->>Aplicação Paciente: 12) Notificação recebida
     else Não elegível
-        APIGW-->>UI: Erro / instrução (coparticipação / particular)
+        Scheduling->>Aplicação Paciente: 13) Informar não elegível / opções de pagamento
     end
+
+    Note right of Aplicação Paciente: Horário da consulta se aproxima (5 min)
+    Notif->>Aplicação Paciente: 14) Push "5 minutos" habilita botão de ingresso
+    Aplicação Paciente->>Video: 15) Solicitar ingresso na sala (token)
+    Aplicação Paciente->>AuthService: 16) Revalidação de sessão curta / token
+    AuthService-->>Video: 17) Emitir token de sessão E2EE
+    Aplicação Paciente-->>Video: 18) Ingresso na videochamada (E2EE)
+    Médico->>Video: 19) Médico ingressa (autenticado)
+    Video-->>MR: 20) Registrar duração da chamada para faturamento/auditoria
+    Video-->>Notif: 21) Notificar encerramento / link para registro e prescrição
 ```
 
-Diagrama de componentes (visão lógica / módulos e principais interfaces):
+Diagrama de componentes (arquitetura lógica, principais módulos e interfaces):
 
 ```mermaid
-graph LR
-    subgraph Clientes
-        Mobile[App Mobile]
-        Web[Portal Web]
+graph TD
+    subgraph Frontend
+        PA[Aplicação Paciente (mobile/web)]
+        MA[Aplicação Médico (mobile/web)]
+        AA[Portal Administrativo]
     end
 
-    subgraph Infraestrutura_APIs
-        APIGW[API Gateway]
-        Auth[Auth & IAM]
-        RateLimiter[Rate Limiter]
-        Audit[Audit & Logging]
-        Metrics[Monitoring & Metrics]
+    subgraph Backend
+        Auth[Serviço de Autenticação & MFA]
+        Users[Gestão de Usuários & Perfis]
+        Scheduling[Serviço de Agendamento]
+        MR[Prontuário Eletrônico (EHR)]
+        Presc[Serviço de Prescrição Digital]
+        Video[Serviço de Videochamada (E2EE)]
+        LabInt[Integração Laboratorial (HL7 FHIR)]
+        Coverage[Serviço de Elegibilidade / Convênios (TISS)]
+        Billing[Gestão de Faturamento / TISS]
+        Notif[Serviço de Notificações]
+        Audit[Trilha de Auditoria Imutável]
+        Storage[Object Storage Criptografado]
+        CertIF[Validação CRM & Certificados (CFM / ICP-Brasil)]
+        Monitoring[Métricas & Monitoramento]
     end
 
-    subgraph Core_Services
-        UserSvc[User & Profile Service]
-        ConsentSvc[Consent Management]
-        AgendSvc[Agendamento Service]
-        Prontuario[Prontuário Eletrônico]
-        Prescricao[Prescrição Digital & Assinatura]
-        DrugCheck[Interações Medicamentosas]
-        VC[Videochamada Service]
-        LabInt[Laboratory Integration (HL7 FHIR)]
-        PlanInt[Operadora / Plano Integration (TISS)]
-        Billing[Billing & Faturamento (TISS)]
-        Admin[Admin / Backoffice]
-        Notif[Notification Service]
-    end
+    PA -->|HTTPS/TLS| Auth
+    MA -->|HTTPS/TLS| Auth
+    AA -->|HTTPS/TLS| Auth
 
-    subgraph Storage_and_Backup
-        DocStore[Object Storage (documentos/imagens)]
-        DB[Transactional Data Store]
-        Archive[Long-term Archive (retenção 20 anos)]
-        KeyMgmt[Key Management (KMS)]
-    end
-
-    Mobile -->|HTTPS/TLS1.2+| APIGW
-    Web -->|HTTPS/TLS1.2+| APIGW
-    APIGW --> Auth
-    APIGW --> RateLimiter
-    APIGW --> UserSvc
-    APIGW --> AgendSvc
-    APIGW --> Prontuario
-    APIGW --> Prescricao
-    APIGW --> VC
-    APIGW --> Admin
-    AgendSvc --> VC
-    AgendSvc --> PlanInt
-    AgendSvc --> UserSvc
-    Prontuario --> DocStore
-    Prontuario --> Audit
-    Prescricao --> KeyMgmt
-    Prescricao --> DrugCheck
-    LabInt --> Prontuario
+    Auth --> Users
+    Users --> CertIF
+    Scheduling --> MR
+    MR --> Storage
+    Presc --> CertIF
+    Presc --> MR
+    Presc --> Storage
+    Video --> Auth
+    Video --> MR
+    Video --> Storage
+    LabInt --> MR
     LabInt --> Notif
-    PlanInt --> Billing
-    Billing --> Archive
-    Notif --> Mobile
-    Notif --> Web
-    Audit --> Archive
-    DB -->|persistência| Archive
-    KeyMgmt --> DocStore
-    Metrics --> APIGW
-    Metrics --> Core_Services
-```
+    Coverage --> Scheduling
+    Coverage --> Billing
+    Billing --> Scheduling
+    Billing --> Coverage
+    Notif --> PA
+    Notif --> MA
+    Notif --> AA
+    MR --> Audit
+    Audit --> Storage
+    Storage -->|Replicação geográfica| Storage
 
-Observações sobre os diagramas:
-- O diagrama de sequência evidencia tempos críticos (ex.: verificação de elegibilidade em até 5s).
-- O componente "Videochamada Service" fornece tokens/metadados e mantém a responsabilidade de E2EE e não gravação de conteúdo, enquanto metadados de sessão (duração, participantes) são persistidos para faturamento/auditoria.
-- Integrações externas (CFM, operadoras, laboratórios) são tratadas via adaptadores/integração padronizada (interfaces HL7 FHIR / TISS).
+    Monitoring --> Auth
+    Monitoring --> Scheduling
+    Monitoring --> MR
+    Monitoring --> Video
+    Monitoring --> Billing
+```
 
 ---
 
 ## 3. Decisões de Arquitetura
 
-1. Arquitetura orientada a serviços (módulos coesos, comunicação via APIs REST/gRPC):
-   - Racional: isolar responsabilidades (Agendamento, Prontuário, Videochamada, Integrações) para escalabilidade horizontal e deploy independente.
-   - Trade-off: overhead operacional de múltiplos serviços e coordenação de transações distribuídas; mitigado por patterns de saga/event-driven para operações longas (ex.: autorização de plano + reserva de slot).
+Lista das principais decisões arquiteturais (AD = Architectural Decision) com justificativa e impactos:
 
-2. Gateway de API como ponto único de entrada:
-   - Racional: centralizar autenticação, autorização, roteamento, rate limiting e logging de borda.
-   - Trade-off: ponto central que exige alta disponibilidade; projetar redundância e health checks.
+AD-01 — Arquitetura por domínios/bounded contexts
+- Decisão: Organizar o sistema em serviços ou módulos por domínio funcional (Autenticação/Usuários, Agendamento, Prontuário, Prescrição, Videochamada, Integrações laboratoriais, Elegibilidade/Convênios, Faturamento, Notificações, Auditoria).
+- Justificativa: Claridade de responsabilidade, isolamento de dados sensíveis, escalabilidade independente por módulo (RNF17).
+- Impacto: Define contratos de API e limites de segurança; facilita compliance e testes.
 
-3. Autenticação e autorização centralizados (Auth & IAM) com suporte a MFA:
-   - Racional: atender RNF03 e RF03; unicidade de políticas de acesso por perfil (RF01, RF04).
-   - Decisão técnica: tokens com claims para perfis e consentimentos; MFA obrigatório para todos os perfis.
+AD-02 — Interfaces baseadas em padrões abertos (FHIR / TISS)
+- Decisão: Expor e consumir APIs estruturadas conforme padrões de interoperabilidade (p.ex. padrões de troca de dados clínicos e faturamento).
+- Justificativa: RNF26 exige uso de padrões abertos; facilita integração com laboratórios e operadoras.
+- Impacto: Modelos de dados e adaptações para versões dos padrões; necessidade de tradutores/mediadores para parceiros legados.
 
-4. Consentimento e governança de acesso ao prontuário:
-   - Racional: cumprir HU01, RF23, RNF07 e RNF12.
-   - Implementar Consent Management como serviço que fornece decisões de autorização dinâmicas (consentimento granular por especialidade/unidade).
+AD-03 — Separação forte entre armazenamento de PHI e metadados
+- Decisão: Armazenar documentos clínicos e imagens em serviço de object storage criptografado em repouso; dados relacionais/metadados em armazenamento separado, com criptografia aplicacional para campos sensíveis.
+- Justificativa: RNF02, RNF18, requisitos de retenção e performance (RNF15).
+- Impacto: Políticas de backup e arquivamento, chaves de criptografia e rotação.
 
-5. Prontuário como serviço de autoridade (single logical record per patient):
-   - Racional: RF19-RF25; entrada imutável após assinatura digital (RF25) e adendos rastreáveis.
-   - Implementar modelo de versão/append-only para entradas do prontuário; assinatura digital anexa à entrada.
+AD-04 — Trilha de auditoria imutável com retenção de longo prazo
+- Decisão: Criar um componente de Auditoria que registre eventos imutáveis (acessos, alterações) com assinatura de integridade e retenção conforme RNF11 (mínimo 20 anos).
+- Justificativa: Requisito regulatório e compliance.
+- Impacto: Requisitos de armazenamento a longo prazo, exportação e processos legais.
 
-6. Prescrição digital com assinatura ICP-Brasil:
-   - Racional: RF27, HU09, RNF06.
-   - Regras: integrar módulo de assinatura que interage com provedores de certificado conforme legislação; assegurar atrelamento da prescrição ao prontuário e disponibilidade do QR/JSON de validação.
+AD-05 — Autenticação forte e MFA universal
+- Decisão: MFA obrigatório para todos os perfis; suporte a OTP por app autenticador e autenticação biométrica no mobile via provedor de autenticação do dispositivo.
+- Justificativa: RF03, RNF01, RNF03.
+- Impacto: Interfaces para provedores de MFA, tratamento de recuperação de conta e logs de autenticação.
 
-7. Videochamada com E2EE e não gravação de conteúdo:
-   - Racional: RNF04, RF14-RF18, HU03.
-   - Metadata (duração, participantes, timestamps) será persistida para faturamento/auditoria sem conteúdo de mídia; design deve prever armazenamento de metadados criptografados e logs de sessão.
+AD-06 — Videochamada com criptografia ponta a ponta (E2EE) e sem gravação de conteúdo
+- Decisão: Implementar E2EE para sessões de teleconsulta; servidores intermediários atuarão apenas para sinalização e/ou encaminhamento de pacotes sem ter acesso ao conteúdo de mídia.
+- Justificativa: RNF04 e HUs relacionados à videochamada.
+- Impacto: Escolhas de topologia (P2P vs roteamento via servidor) e restrições de funcionalidades (por exemplo, gravação proibida no requisito) — necessidade de registrar meta-dados da chamada (duração) sem armazenar mídia.
 
-8. Integrações padronizadas com operadoras e laboratórios (HL7 FHIR e TISS):
-   - Racional: RNF26, RF31-RF35, RF36-RF40, HU10, HU14.
-   - Adaptadores de protocolo isolam o core das variações dos parceiros.
+AD-07 — Serviço de Prescrição integrado ao módulo de assinatura ICP-Brasil
+- Decisão: Fluxo de emissão de prescrições com assinatura digital compatível com ICP-Brasil; interface com provedor de certificados para assinatura (inclui certificados em nuvem homologados).
+- Justificativa: RF27, HU09, RNF06.
+- Impacto: Processo de certificação, gestão de chaves e logs de assinatura.
 
-9. Auditoria imutável e retenção de 20 anos:
-   - Racional: RNF11, RNF23.
-   - Implementar trilha de auditoria append-only com armazenamento arquivável (WORM/immutability) e política de retenção; chaves e logs protegidos por KMS.
+AD-08 — Contratos de SLA e timeouts para integrações externas
+- Decisão: Definir SLAs de tempo para chamadas a operadoras e laboratórios (p.ex. verificação de elegibilidade <= 5s conforme RNF14; respostas de autorização TISS <= 30min conforme HU14), com fallback e mensagens amigáveis ao usuário.
+- Justificativa: RNF14, HU14.
+- Impacto: Necessidade de mecanismos de retry, cache seguro de status e filas para processamento assíncrono.
 
-10. Escalabilidade e resiliência:
-    - Racional: RNF13, RNF17, RNF18.
-    - Projetar serviços stateless quando possível; usar object storage replicado geograficamente para documentos e imagens; fallback e filas para picos (ex.: solicitações de autorização TISS).
+AD-09 — Monitoramento, rate limiting e detecção de anomalias
+- Decisão: Expor métricas operacionais e aplicar controles de rate limiting e detecção de padrões anômalos para acessos ao prontuário (RNF05, RNF25).
+- Justificativa: Segurança e disponibilidade.
+- Impacto: Definição de dashboards, alertas e playbooks de resposta a incidentes.
 
-11. Performance de requisitos críticos:
-    - Racional: RNF14 (elegibilidade <=5s), RNF15 (prontuário <=3s), RNF16 (video 720p/latência <=150ms).
-    - Definir SLAs internos e métricas expostas para monitoramento e alertas.
-
-12. Proteção de dados em repouso e em trânsito:
-    - Racional: RNF01, RNF02, RNF03.
-    - Todos os dados sensíveis criptografados em repouso; TLS 1.2+ em trânsito; senhas com hashing forte; chaves gerenciadas centralmente.
+AD-10 — Política de consentimento e controle de acesso por consentimento
+- Decisão: Implementar mecanismo de consentimento explícito gravado com data/hora e vínculo a regras de autorização para acesso ao prontuário por terceiros; permitir revogação.
+- Justificativa: RF23, HU01, RNF07, RNF12.
+- Impacto: Regras de autorização dinâmicas e UI/UX para gestão de consentimentos.
 
 ---
 
@@ -201,188 +191,158 @@ Observações sobre os diagramas:
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---:|---|---|
-| API Gateway | Entrada única das APIs; roteamento, autenticação inicial, rate limiting | Auth, Rate Limiter, Core Services, Monitoring | HU02, HU03, RNF01, RNF05 |
-| Auth & IAM | Autenticação (MFA), emissão/validação de tokens, gestão de perfis e roles | API Gateway, UserSvc, ConsentSvc | RF03, RF04, HU01 |
-| User & Profile Service | Cadastro de usuários, perfis (paciente, médico, admin), armazenamento de dados do plano | Auth, APIGW, PlanInt | RF01, HU01 |
-| CRM/CFM Validation Adapter | Validação do CRM junto ao CFM, cache de status de registro | UserSvc, AgendSvc, Admin | RF02, HU07 |
-| Consent Management | Registro, revisão e revogação de consentimentos; decisão de acesso ao prontuário | UserSvc, Prontuario, Auth | RF23, HU01, HU11 |
-| Agendamento Service | Gestão de agendas, disponibilidade em tempo real, encaixe urgente, cancelamento/remarcação | UserSvc, PlanInt, VC, Notif, Audit | RF07, RF08, RF10, RF12, RF13, HU02, HU12 |
-| Videochamada Service | Provisionamento de sessões E2EE, tokens de acesso, metadados de sessão (duração) | AgendSvc, APIGW, Notif, Storage | RF14-RF18, HU03 |
-| Prontuário Eletrônico | Gestão do prontuário único, entradas clínicas, documentos, controle de versões e assinaturas | UserSvc, Prescricao, LabInt, ConsentSvc, DocStore, Audit | RF19-RF25, HU04, HU08, HU11 |
-| Prescrição Digital & Assinatura | Emissão de prescrições, integração com módulo de assinatura ICP-Brasil, QR Code/validação | Prontuario, DrugCheck, KeyMgmt, APIGW | RF26-RF30, HU05, HU09 |
-| Drug Interaction Engine | Verificação de interações medicamentosas em tempo real e alertas | Prescricao, Prontuario | RF28, HU09 |
-| Laboratory Integration Adapter | Recebimento de resultados (HL7 FHIR), envio de solicitações, associação ao prontuário | Prontuario, Notif | RF31-RF35, HU06, HU10 |
-| Plano de Saúde Integration Adapter | Verificação de elegibilidade, autorização prévia, faturamento TISS | AgendSvc, Billing, APIGW | RF36-RF41, HU02, HU14 |
-| Billing & TISS Processor | Geração de guias TISS, faturamento eletrônico, registro de coparticipação | PlanInt, Archive, Admin | RF38-RF41, HU13 |
-| Notification Service | Envio de e-mail, push e SMS referentes a confirmações, lembretes e resultados | APIGW, AgendSvc, LabInt, NotifQueues | RF11, HU02, HU06, HU10 |
-| Document/Object Storage | Armazenamento criptografado de documentos e imagens; redundância geográfica | Prontuario, LabInt, Prescricao, Archive | RNF02, RNF18, RF21, RF31 |
-| Audit & Logging | Registro imutável de acessos e alterações no prontuário; trilha para 20 anos | Prontuario, APIGW, Admin, Archive | RNF11, RF06, HU11 |
-| Monitoring & Metrics | Exposição de métricas (latência, erros, disponibilidade) e alertas | Todos os serviços | RNF25, RNF13 |
-| Admin / Backoffice Portal | Gestão de unidades, médicos, agendas, relatórios gerenciais | APIGW, Admin, Billing, AgendSvc | RF42-RF46, HU12, HU13 |
-| Rate Limiter / WAF | Proteção contra abusos e acessos anômalos | APIGW, Auth | RNF05 |
-| Key Management Service (KMS) | Gestão de chaves para criptografia em repouso, assinaturas e tokens | Prescricao, DocStore, Audit | RNF02, RNF06, RNF11 |
-| Archive / Long-term Storage | Retenção de dados e logs por 20 anos, políticas de WORM | Audit, Billing, DocStore | RNF11, RNF23 |
+| Serviço de Autenticação & MFA (Auth) | Gerenciar login, MFA, sessões, encerramento automático | Aplicações (Paciente, Médico, Admin), Serviço de Certificados, Serviço de Notificações, Monitoring | RF03, RF05, HU01, HU03 |
+| Gestão de Usuários & Perfis (Users) | Cadastro de usuários, perfis (paciente, médico, admin, operador), controle de autorização por perfil | Auth, CertIF, MR, Scheduling | RF01, RF04, HU01, HU07 |
+| Validação CRM & Serviços de Certificados (CertIF) | Consulta ao CFM para status de CRM; interface para assinatura ICP-Brasil | Users, Prescrição, Auth | RF02, RF27, HU07, HU09 |
+| Serviço de Agendamento (Scheduling) | Gestão de agendas, encaixes, cancelamentos, regras de prazos | MR, Coverage, Notif, Billing | RF07, RF08, RF10, RF12, RF13, HU02, HU12 |
+| Serviço de Elegibilidade / Convênios (Coverage) | Verificação em tempo real da cobertura junto à operadora (TISS) | Scheduling, Billing, Operadoras externas | RF09, RF36, RF37, RNF14, HU02, HU14 |
+| Serviço de Videochamada (Video) | Criação/gerência de sessões E2EE, tokens de ingresso, compartilhamento de documentos em sessão, registrar duração | Auth, MR, Notif, Storage (apenas para metadados), Monitoring | RF14, RF15, RF16, RF17, RF18, HU03 |
+| Prontuário Eletrônico (MR / EHR) | Gestão de registros clínicos, documentos, permissões por consentimento, histórico | Users, Scheduling, Prescrição, LabInt, Audit, Storage | RF19–RF25, HU04, HU08, HU11 |
+| Serviço de Prescrição Digital (Presc) | Gerar prescrições, aplicar assinatura ICP-Brasil, validar interações medicamentosas | MR, CertIF, Notif, Storage | RF26–RF30, HU05, HU09 |
+| Integração Laboratorial (LabInt) | Receber/solicitar resultados (FHIR), vincular ao prontuário, sinalizar alertas críticos | MR, Notif, Laboratórios parceiros | RF31–RF35, HU06, HU10 |
+| Gestão de Faturamento / TISS (Billing) | Gerar guias/fluxo TISS, processar faturamento e coparticipação | Coverage, Scheduling, Operadoras, Storage | RF36–RF41, HU13, HU14 |
+| Serviço de Notificações (Notif) | Enviar e-mail e push (confirmação, lembretes, resultados) | Todos os frontends, Scheduling, LabInt, Video | RF11, RF32, HU02, HU06, HU10 |
+| Trilha de Auditoria Imutável (Audit) | Registrar logs imutáveis de acessos e alterações com retenção legal | MR, Auth, Presc, Billing, Storage | RF06, RNF11, HU08, HU11 |
+| Object Storage Criptografado (Storage) | Armazenar documentos clínicos, imagens, PDFs, backups com redundância geográfica | MR, Presc, LabInt, Audit, Video | RNF02, RNF18, RNF23 |
+| Monitoring e Observabilidade (Monitoring) | Métricas operacionais, alertas, dashboards | Todos os serviços | RNF25, RNF13, RNF17 |
 
-Observação: "Comunica-se com" indica dependências de runtime e interfaces previstas; adaptadores isolam protocolos de parceiros (CFM, operadoras, laboratórios).
+Observação: "Comunica-se com" lista integrações internas principais; integrações externas com Operadoras, Laboratórios e CFM são tratadas via contratos de API/standards.
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-1. Integração com CFM (CRM Validation):
-   - Bloqueio: disponibilidade e contrato da API pública do CFM; formato e SLA de consulta.
-   - Ação recomendada: validar endpoints e SLAs; definir caching e políticas de revalidação periódica.
+Itens que requerem definição antes ou durante implementação, com impacto e ação recomendada:
 
-2. Acesso a certificados ICP-Brasil em nuvem:
-   - Bloqueio: escolha de provedor homologado e fluxo de integração para assinatura digital (e-CPF ou certificado em nuvem).
-   - Ação recomendada: confirmar requisitos de integração com os fornecedores de certificado e homologação com o CFM.
+1. Integração com CFM (CRM) — especificação da API, SLA e formato de resposta
+   - Impacto: Necessário para RF02, HU07; impede desenvolver fluxo de validação automatizada.
+   - Ação: Negociar contrato de integração e obter documentação técnica da autoridade.
 
-3. Operadoras de plano de saúde (TISS) e laboratórios (FHIR):
-   - Bloqueio: cada parceiro pode ter variações de implementação do padrão; disponibilidade de endpoints para autorização em tempo real.
-   - Ação recomendada: criar contrato de integração (SLAs, formatos, testes de homologação) e desenvolver adaptadores configuráveis.
+2. Provedor de certificados ICP-Brasil e modelo de assinatura (local vs certificado em nuvem)
+   - Impacto: Afeta Prescrição Digital (RF27, HU09) e procedimentos de auditoria; questões de responsabilidade legal e operativa.
+   - Ação: Definir modelo jurídico-operacional e interfaces (API de assinatura) com o time de compliance.
 
-4. Requisitos de retenção de 20 anos e arquivamento:
-   - Bloqueio: implicações de custo e políticas de criptografia/rotacionamento de chaves a longo prazo.
-   - Ação recomendada: definir política de chave (rotações, escrow), plano de arquivamento e testes periódicos de restauração.
+3. Especificação completa do padrão TISS e versão a ser adotada
+   - Impacto: Afeta Billing, Coverage, HU14; necessário para implementar tradução de guias e mensagens.
+   - Ação: Confirmar versão do padrão TISS e obter exemplos e regras de negócio das operadoras parceiras.
 
-5. Especificação de E2EE para videochamada:
-   - Bloqueio: definição de como será feita a troca de chaves (endereçamento de metadados sem gravação) e conformidade com LGPD.
-   - Ação recomendada: detalhar fluxo de chave E2EE (endpoints de troca, duração, armazenamento de metadados) e validar requisitos legais.
+4. Requisitos detalhados de E2EE para video (topologia: P2P vs roteamento intermediário / SFU) e compatibilidade com web/mobile
+   - Impacto: Afeta Video, escalabilidade e latência (RNF16); escolha define capacidade de add-on (compartilhamento de tela, gravação - proibida).
+   - Ação: Realizar prova de conceito (PoC) focada em E2EE que mantenha impossibilidade de gravação pelo servidor.
 
-6. Métricas e SLAs de desempenho (capacidade dimensionamento):
-   - Bloqueio: ausência de estimativas de volume (usuários ativos simultâneos, concorrência de videochamadas).
-   - Ação recomendada: obter estimativas de carga para definir capacidade e testes de stress; criar plano de escalonamento automático.
+5. Política de consentimento (modelo legal e níveis de consentimento)
+   - Impacto: Implementação de RF23, HU01, HU11; necessário para regras de autorização.
+   - Ação: Definir com jurídico e privacidade os tipos de consentimento e formato de registro (estruturado) exigido.
 
-7. Política de consentimento e granularidade:
-   - Bloqueio: nível de granularidade do consentimento (por especialidade, unidade, período) não está totalmente especificado.
-   - Ação recomendada: definir modelos de consentimento (escopos) e mecanismo UX para revogação e histórico.
+6. Retenção e arquivamento para 20 anos: capacidade, custo e formato
+   - Impacto: Storage e Audit; implica políticas de backup (RNF23).
+   - Ação: Definir classificação de dados, tiers de armazenamento e plano de manutenção para long-term retention.
 
-8. Política de retenção vs. direito de esquecimento (LGPD):
-   - Bloqueio: conflito entre retenção obrigatória (20 anos) e solicitações de exclusão de titulares.
-   - Ação recomendada: estabelecer fluxos legais e técnicos (anonymization/pseudonymization) e documentação jurídica.
+7. Especificação de interações medicamentosas (fonte e atualização de base)
+   - Impacto: Presc (RF28, HU09); essencial para alertas e segurança do paciente.
+   - Ação: Definir provedor da base de interações/BD e frequência de atualização.
 
-9. Gestão de interações medicamentosas:
-   - Bloqueio: fonte e atualização da base de conhecimento de interações e parametrização por país/legislação.
-   - Ação recomendada: definir fonte(s) autorizadas e processo de atualização/curadoria.
+8. Requisitos de desempenho detalhados por carga (picos de consultas, concorrent users)
+   - Impacto: Dimensionamento horizontal (RNF17), SLAs.
+   - Ação: Coletar estimativas de volume/peaks para modelagem de escala.
 
-10. SLA para resultado de exames de laboratório:
-    - Bloqueio: tempo de disponibilização dos parceiros (nem todos obedecem a mesma cadência).
-    - Ação recomendada: acordar tempos de resposta mínimos e modos de notificação incremental.
+9. Política de biometria móvel: armazenamento, processamento e consentimento
+   - Impacto: Auth e privacidade; risco legal.
+   - Ação: Definir se biometria será processada localmente no dispositivo ou trafegará; alinhar com LGPD.
+
+10. Definição de alcance de logs e metadados permitidos para video (já que gravação é proibida)
+    - Impacto: Audit e evidências; registrações necessárias para faturamento.
+    - Ação: Padronizar meta-dados (duração, participantes, IPs) que serão armazenados.
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-Resumo de mapeamento entre requisitos (RF / RNF) e elementos arquiteturais (exemplos condensados):
+Resumo de como a arquitetura cobre os principais requisitos (mapeamento simplificado):
 
-- Gestão de Usuários e Acesso (RF01-RF06):
-  - Auth & IAM, User & Profile Service, Rate Limiter, Audit & Logging, Consent Management.
-  - RNF03 (hash de senhas) implementado no User & Profile Service; RNF05 (detecção de acessos anômalos) via Rate Limiter e Monitoring.
+- RF01 (cadastro perfis): Users + Auth (HU01)
+- RF02 (validação CRM): CertIF integrado a Users (HU07)
+- RF03 (MFA): Auth (HU01, HU03)
+- RF04 (controle de acesso por perfil): Users + Auth + MR (HU11)
+- RF05 (encerrar sessão inativa): Auth (RNF01)
+- RF06 (log de acessos ao prontuário): Audit + MR (RNF11)
+- RF07–RF13 (agendamento): Scheduling + Coverage + Notif + MR + Admin (HU02, HU12)
+- RF14–RF18 (videochamada): Video + Auth + MR + Notif + Storage (HU03)
+- RF19–RF25 (prontuário): MR + Audit + Storage + Users (HU04, HU08, HU11)
+- RF26–RF30 (prescrição): Presc + CertIF + MR + Notif (HU05, HU09)
+- RF31–RF35 (laboratórios): LabInt + MR + Notif (HU06, HU10)
+- RF36–RF41 (planos de saúde / faturamento): Coverage + Billing + Scheduling (HU13, HU14)
+- RF42–RF46 (módulo administrativo): AA (Portal Administrativo) + Scheduling + Users + Monitoring (HU12, HU13)
 
-- Agendamento de Consultas (RF07-RF13):
-  - Agendamento Service, UserSvc, PlanInt, VC, Notif, Admin Portal.
-  - Disponibilidade em tempo real (RF08) suportada pelo AgendSvc com sincronização de grade (HU12).
-  - Cobertura do plano (RF09) via Plano de Saúde Integration (RNF14 tempo <=5s).
+Cobertura RNF relevante:
+- RNF01 (TLS) — todas as comunicações cliente-servidor obrigam TLS; especificado no design de redes.
+- RNF02 (AES-256 em repouso) — Storage e criptografia aplicacional definidas.
+- RNF03 (hash de senhas) — Auth responsabilidade.
+- RNF04 (E2EE video) — Video implementa E2EE; metadados registrados no MR/Audit.
+- RNF05 (rate limiting) — Auth e API gateways / ingress definem rate limiting e detecção de anomalias.
+- RNF06 (ICP-Brasil) — Presc e CertIF.
+- RNF07–RNF12 (compliance) — Políticas e componentes Audit, Consent e Data Portability colocados no MR/Users.
+- RNF13–RNF18 (disponibilidade/desempenho/escalabilidade) — Arquitetura orientada a escala horizontal com object storage replicado e métricas/monitoramento.
+- RNF19–RNF22 (compatibilidade/acessibilidade) — Fronteends (PA/MA/AA) projetados para mobile/web responsivo e requisitos de acessibilidade.
+- RNF23–RNF25 (backup/monitoramento/interoperabilidade) — Storage com RPO/RTO definidos; Monitoring expõe métricas; LabInt e Coverage seguem padrões abertos.
 
-- Videochamada Médico-Paciente (RF14-RF18):
-  - Videochamada Service (E2EE), APIGW, Notif, Storage (metadados), Auth.
-  - RNF04 (E2EE, sem gravação de conteúdo) e RNF16 (latência e resolução) tratados no design de VC.
-
-- Prontuário Eletrônico (RF19-RF25):
-  - Prontuário Service, ConsentSvc, DocStore, Audit.
-  - Imutabilidade pós-assinatura (RF25) via append-only entries e adendos identificados; RNF11 retenção 20 anos via Archive.
-
-- Prescrição Digital (RF26-RF30):
-  - Prescrição & Assinatura, Drug Interaction Engine, Prontuario.
-  - RNF06 (certificado ICP-Brasil) implementado no componente de assinatura; QR/validação e controle de receituário especial cobertos.
-
-- Integração com Laboratórios (RF31-RF35):
-  - Laboratory Integration Adapter, Prontuario, Notif.
-  - HL7 FHIR como padrão de troca (RNF26) e notificação imediata (HU06).
-
-- Cobertura por Planos de Saúde (RF36-RF41):
-  - Plano de Saúde Integration Adapter, Billing & TISS Processor, AgendSvc.
-  - Geração e transmissão TISS (RF38, RF40) via componente de faturamento; RF37 elegibilidade em tempo real.
-
-- Módulo Administrativo (RF42-RF46):
-  - Admin Portal, Admin Service, AgendSvc, Billing, Monitoring.
-  - Relatórios e painel de indicadores (RNF25) exposos via Monitoring & Metrics.
-
-- Segurança (RNF01-RNF06):
-  - TLS 1.2+ (RNF01) em APIGW e serviços; criptografia AES-256 em repouso (RNF02) gerenciada via Key Management; Rate Limiter / WAF para RNF05.
-
-- Conformidade Regulatória (RNF07-RNF12):
-  - Consent Management, Audit & Logging, Prescrição & Assinatura, Document retention (Archive), integração TISS e conformidade CFM resolvida por componentes específicos.
-
-- Disponibilidade/Desempenho/Escalabilidade (RNF13-RNF18):
-  - Projetado para deploy em múltiplas zonas, serviços stateless, object storage redundante geograficamente, escalonamento horizontal.
-
-- Usabilidade/Compatibilidade/Acessibilidade (RNF19-RNF22):
-  - Clientes Mobile/Web responsivos; fluxos de ingressos em videochamada projetados conforme HU03/HU02; WCAG 2.1 AA aplicado na camada de frontend.
-
-- Infraestrutura e Dados (RNF23-RNF26):
-  - Backup contínuo, RPO/RTO definidos, Monitoring & Metrics para exposição de latências e taxas de erro; padrões HL7 FHIR e TISS para integrabilidade.
-
-Cobertura por HU: cada HU foi rastreada para um ou mais componentes na tabela da Seção 4; por exemplo:
-- HU02 (Agendar): AgendSvc + PlanInt + Notif + VC + APIGW.
-- HU09 (Prescrição): Prescrição & Assinatura + DrugCheck + Prontuario + KeyMgmt.
-- HU14 (Autorização prévia): PlanInt + Billing + APIGW (TISS).
+Observação: mapeamento detalhado por requisito pode ser expandido em tabela por RF/RNF se requerido.
 
 ---
 
 ## 7. Gap Analysis
 
-Identificação de lacunas na especificação, impactos e recomendações práticas:
+Identificação de lacunas na especificação, impacto arquitetural e recomendações práticas.
 
-1. Lacuna: estimativas de carga e uso (concurrency de videochamadas, número de acessos simultâneos ao prontuário).
-   - Impacto: dificulta dimensionamento, testes de performance e custo de infraestrutura.
-   - Recomendação: coletar projeção de usuários (pico diário, picos simultâneos de chamadas) e definir metas de provisionamento e testes de carga.
+Gap 1 — Especificação insuficiente da API do CFM e SLA de validação de CRM
+- Impacto: Bloqueia implementação do fluxo de validação automática (RF02/HU07).
+- Recomendações: Obter documentação da autoridade reguladora; criar adaptador com retry/backoff; definir fallback manual e processo de aprovação provisória.
 
-2. Lacuna: detalhes operacionais do E2EE para video (troca de chaves, persistência de metadados, multi-participante).
-   - Impacto: decisões de segurança e de UX (por ex., necessidade de re-chaveamento) ficam indefinidas; risco de não conformidade.
-   - Recomendação: especificar fluxo de distribuição de chaves, requisitos de não gravação (como evitar armazenamento acidental), e tratamento de participantes adicionais (ex.: acompanhantes).
+Gap 2 — Topologia E2EE da videochamada e requisitos funcionais conflitantes (compartilhamento de documentos vs. proibição de gravação)
+- Impacto: Definição de arquitetura de media (P2P vs relay) e como suportar compartilhamento de arquivos sem violar RNF04.
+- Recomendações: Validar com seguridade jurídica a lista de meta-dados permitidos; realizar PoC de E2EE com sinalização separada e armazenamento somente de meta-dados e documentos compartilhados via object storage criptografado sob consentimento.
 
-3. Lacuna: política de revogação de consentimento e efeitos retroativos.
-   - Impacto: possivelmente contraditório com retenção obrigatória de 20 anos e exigências de auditoria.
-   - Recomendação: definir regras de negócio para revogação (ex.: impedir novos acessos, registrar revogação mas manter dados por obrigação legal) e automatizar propagação de revogação para caches e provedores terceiros.
+Gap 3 — Modelo de consentimento incompleto (grânulos, escopos, revogação e portabilidade)
+- Impacto: Controle de acesso dinâmico ao prontuário (RF23, RNF07, RNF12).
+- Recomendações: Especificar tipos de consentimento (acesso por profissional, por unidade, por período), API para revogação e fluxo de notificação; registrar consentimentos como objetos imutáveis.
 
-4. Lacuna: especificação de formats/versões exatas de HL7 FHIR e TISS a serem suportados.
-   - Impacto: integração com parceiros pode falhar por incompatibilidade de versão/implementação.
-   - Recomendação: definir versões mínimas (ex.: FHIR STU3/R4 ou versão aplicável) e cenário de fallback; implementar testes de homologação com cada parceiro.
+Gap 4 — Detalhes da base de interações medicamentosas (fonte, atualizações, responsabilidade)
+- Impacto: Segurança clínica das prescrições (RF28, HU09).
+- Recomendações: Definir fornecedor de conteúdos clínicos e processo de atualização; incluir painel de override justificável e registro de justificativa no Audit.
 
-5. Lacuna: política de chave a longo prazo para criptografia (rotações, escrow, recuperação de dados criptografados durante 20 anos).
-   - Impacto: risco de perda de dados por má gestão de chaves; custos legais se dados se tornarem inacessíveis.
-   - Recomendação: definir política KMS com rotação, export seguro/escrow e testes de restauração periódicos.
+Gap 5 — Política de retenção além do valor mínimo (20 anos) — arquivamento vs consulta ativa
+- Impacto: Custos e arquitetura de storage, performance do prontuário e backups.
+- Recomendações: Definir tiers (ativo, arquivado, deep-archive), políticas de restauração e testes de RTO/RPO; incluir processos legais para preservação.
 
-6. Lacuna: regras de negócio para interações medicamentosas (nível de severidade e quem decide override).
-   - Impacto: possíveis alertas clínicos excessivos ou falta de alertas críticos.
-   - Recomendação: documentar critérios de severidade, fluxo de override (registro obrigatório de justificativa) e atualização da base de conhecimento.
+Gap 6 — Níveis de SLAs detalhados para integrações externas (operadoras, laboratórios)
+- Impacto: Experiência do usuário (verificação em <=5s), processo de autorização em <=30min (HU14).
+- Recomendações: Negociar SLAs com parceiros; implementar cache seguro e circuito-breaker; experiência UX para estados pendentes.
 
-7. Lacuna: procedimentos para procedimentos de emergência/encaixe urgente e notificação do médico (priorização / preempção de slots).
-   - Impacto: impacto operacional em agendas e necessidade de regras claras para notificação e aceitação.
-   - Recomendação: definir regras de encaixe, notificações em tempo real e limite de pré-emption; implementar fila de prioridade.
+Gap 7 — Requisitos de acessibilidade detalhados (ex.: fluxos críticos a serem conformes WCAG 2.1 AA)
+- Impacto: Implementação de frontends (RNF21).
+- Recomendações: Definir checklist de conformidade e testes automatizados de acessibilidade no pipeline.
 
-8. Lacuna: teste de conformidade e auditoria (processos para certificação SBIS/CFM).
-   - Impacto: risco de não obtenção de certificação por falta de evidências/processos.
-   - Recomendação: preparar plano de certificação, pacotes de evidência e cronograma de conformidade.
+Gap 8 — Critérios de detecção de anomalias e thresholds para rate limiting
+- Impacto: Segurança e disponibilidade (RNF05).
+- Recomendações: Definir valores iniciais (por perfil e endpoint), métricas mínimas para ajuste e playbooks de mitigação.
 
-9. Lacuna: custos e políticas de arquivamento a longo prazo (storage cold vs hot) e acessos legais.
-   - Impacto: custos operacionais desconhecidos; performance de recuperação.
-   - Recomendação: definir classes de armazenamento (ativo vs arquivado), política de recuperação e estimativas de custo.
+Gap 9 — Especificação de metadados mínimos a armazenar para video (duração, participantes, endereço IP, taxas de bits)
+- Impacto: Auditoria e faturamento (RF16).
+- Recomendações: Definir esquema de metadados e políticas de retenção; validar com compliance.
 
-10. Lacuna: detalhes sobre tratamento de erros e fallback para integrações críticas (operadoras que não respondem em 5s).
-    - Impacto: UX ruim e possibilidade de bloqueio de agendamentos.
-    - Recomendação: definir timeout, retries exponenciais, modo offline (reservas temporárias com exigência de confirmação posterior) e mensagens de UX claras.
+Gap 10 — Procedimentos operacionais para emergência/contingência (downtime dos parceiros)
+- Impacto: Disponibilidade 99,9% e continuidade do atendimento.
+- Recomendações: Documentar plano de contingência, failover manual para autorização, e canais alternativos de comunicação.
 
----
-
-Resumo das ações recomendadas imediatas (prioridade alta):
-- Obter estimativas de carga e acordos de SLA com CFM, operadoras e laboratórios.
-- Definir especificação técnica de E2EE para videochamada e confirmar requisitos de não gravação.
-- Definir política de chave e arquivamento para 20 anos (KMS/escrow/rotações).
-- Especificar versões de HL7 FHIR e TISS e iniciar testes de homologação com parceiros.
-- Documentar fluxos de revogação de consentimento e sua interação com retenção legal.
+Priorização recomendada (curto, médio, longo prazo):
+- Curto: Obter APIs CFM e TISS; definir modelo de assinatura digital; PoC E2EE; políticas de consentimento.
+- Médio: Definir SLAs e caches para elegibilidade; implementar auditoria imutável; base de interações medicamentosas.
+- Longo: Estratégia de arquivamento 20+ anos; testes de escala e disponibilidade; integração completa com múltiplas operadoras/laboratórios.
 
 ---
 
-Fim do Relatório.
+Observações finais rápidas:
+- O design proposto é neutro quanto a fornecedores e tecnologias, focado em responsabilidades, contratos e padrões (FHIR/TISS/ICP-Brasil).
+- Próximo passo recomendado: elaborar um backlog técnico com spikes para PoCs (CFM integration, E2EE PoC, assinatura ICP-Brasil), e um plano de segurança e conformidade com as áreas jurídica e de privacidade.
+
+Fim do relatório.

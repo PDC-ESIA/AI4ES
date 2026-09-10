@@ -1,353 +1,375 @@
 # Relatório Técnico de Arquitetura de Software
 
 ## 1. Identificação das HUs
-Lista das Histórias de Usuário (HU) tratadas neste relatório e seus objetivos funcionais principais:
+Lista das histórias de usuário (HU) presentes no escopo e referência rápida:
 
-- HU01 — Cadastrar produto com fotos  
-  Objetivo: permitir cadastro completo de produtos com múltiplas imagens, publicação imediata.
+- HU01 — Cadastrar produto com fotos
+- HU02 — Gerenciar estoque dos produtos
+- HU03 — Acompanhar e atualizar status dos pedidos recebidos
+- HU04 — Visualizar painel financeiro
+- HU05 — Solicitar saque do saldo disponível
+- HU06 — Responder avaliações de compradores
+- HU07 — Navegar e pesquisar produtos
+- HU08 — Adicionar itens ao carrinho e finalizar compra
+- HU09 — Acompanhar status dos pedidos
+- HU10 — Avaliar produto após entrega
+- HU11 — Gerenciar categorias da plataforma
+- HU12 — Configurar percentual de comissão
 
-- HU02 — Gerenciar estoque dos produtos  
-  Objetivo: atualização manual e automática do estoque; bloquear vendas quando estoque = 0.
-
-- HU03 — Acompanhar e atualizar status dos pedidos recebidos  
-  Objetivo: painel para artesão listar pedidos e alterar status (recebido → em preparação → enviado → entregue).
-
-- HU04 — Visualizar painel financeiro  
-  Objetivo: apresentar histórico de vendas, comissões e saldo líquido disponível.
-
-- HU05 — Solicitar saque do saldo disponível  
-  Objetivo: registrar solicitação de saque com dados bancários e atualizar saldo em processamento.
-
-- HU06 — Responder avaliações de compradores  
-  Objetivo: permitir resposta pública única por avaliação, imutável após publicação.
-
-- HU07 — Navegar e pesquisar produtos  
-  Objetivo: navegação por categorias, busca em tempo real, ocultar produtos sem estoque por padrão.
-
-- HU08 — Adicionar itens ao carrinho e finalizar compra  
-  Objetivo: carrinho consolidado com itens de múltiplos artesãos e pagamento integrado; garantia transacional de pagamento/estoque.
-
-- HU09 — Acompanhar status dos pedidos  
-  Objetivo: visualizar status por subpedido (por artesão), atualizar em tempo real.
-
-- HU10 — Avaliar produto após entrega  
-  Objetivo: avaliação 1–5 e comentário após entrega, única avaliação por item.
-
-- HU11 — Gerenciar categorias da plataforma  
-  Objetivo: CRUD de categorias por administrador com regras ao remover categoria com produtos.
-
-- HU12 — Configurar percentual de comissão  
-  Objetivo: administrar percentual de comissão, afetando vendas futuras e gerando log auditável.
+Observação: os requisitos funcionais (RF01–RF30) e não funcionais (RNF01–RNF13) foram utilizados para validar e traçar cobertura das HUs abaixo.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-A seguir dois diagramas mermaid: (A) sequência de checkout/confirmação de pedido (fluxo crítico para RNF08 e RF13–RF22, RF26–RF29) e (B) diagrama de componentes com interfaces principais.
+a) Diagrama de sequência — Fluxo de finalização de compra (checkout) com criação de subpedidos, pagamento e decremento de estoque. Este diagrama evidencia a exigência transacional (RNF08) e notificação dos artesãos (RF19, RF18, HU08).
 
-A) Fluxo de checkout com múltiplos artesãos, reserva de estoque e confirmação de pagamento
 ```mermaid
 sequenceDiagram
-autonumber
-participant Buyer as Comprador (UI)
-participant CartService as Serviço de Carrinho
-participant ProductService as Catálogo / Estoque
-participant OrderService as Serviço de Pedidos
-participant PaymentGateway as Gateway de Pagamento (externo)
-participant FinanceService as Serviço Financeiro / Comissões
-participant NotificationService as Serviço de Notificações
-participant MediaStorage as Armazenamento de Mídia (externo)
+  autonumber
+  participant Cliente as Comprador (UI)
+  participant Frontend as Frontend Web/Mobile
+  participant API as API Gateway
+  participant Auth as Auth Service
+  participant Cart as Cart Service
+  participant Order as Order Service
+  participant Payment as Payment Service
+  participant Gateway as Payment Gateway
+  participant Stock as Stock/Inventory Service
+  participant Suborder as Suborder Service
+  participant Financial as Financial Service
+  participant Audit as Audit Ledger
+  participant Notify as Notification Service
+  participant Email as Email Service
 
-Buyer->>CartService: Inicia checkout (itens + quantidades)
-CartService->>ProductService: Solicita reserva temporária de estoque (reservar por item)
-ProductService-->>CartService: Confirma reserva por item / falha se sem estoque
-CartService->>OrderService: Cria pedido em estado PENDENTE com subpedidos por artesão
-OrderService->>PaymentGateway: Solicita autorização de pagamento (dados sensíveis não persistidos)
-PaymentGateway-->>OrderService: Resposta autorizada / recusada (assinatura idempotente)
-alt Pagamento autorizado
-  OrderService->>ProductService: Confirma decremento definitivo de estoque (commit reservas)
-  ProductService-->>OrderService: Estoque decrementado / confirmação
-  OrderService->>FinanceService: Gerar lançamentos: receita, comissão retida, saldo líquido (registro imutável)
-  FinanceService-->>OrderService: Confirmação registro financeiro
-  OrderService->>NotificationService: Notifica comprador (e-mail/plataforma) e notifica cada artesão (novo pedido)
-  NotificationService-->>Buyer: Notificação de confirmação de pedido
-  NotificationService-->>Buyer: Envia e-mail com resumo
-  OrderService-->>CartService: Marca pedido como CONFIRMADO (limpa carrinho)
-else Pagamento recusado / falha
-  OrderService->>ProductService: Libera reservas de estoque (rollback)
-  OrderService->>NotificationService: Notifica comprador de falha no pagamento
-  NotificationService-->>Buyer: Notificação de falha
-end
+  Cliente->>Frontend: Finalizar compra (cart + endereço + método de pagamento)
+  Frontend->>API: POST /checkout {cart, paymentMethod, address}
+  API->>Auth: validar token/credenciais
+  Auth-->>API: OK (usuario autenticado)
+  API->>Cart: validar conteúdo do carrinho
+  Cart-->>API: itens, quantidades, preço vigente
+  API->>Order: criar pedido provisório (status: pendente_pagamento)
+  Order-->>API: pedido_id
+  API->>Payment: iniciar autorização de pagamento (pedido_id, valor)
+  Payment->>Gateway: enviar autorização/compra
+  Gateway-->>Payment: resposta (autorizado / negado)
+  alt pagamento autorizado
+    Payment->>Order: confirmar pagamento (pedido_id, transacao_id)
+    Order->>Suborder: gerar subpedidos por artesão (atomicidade lógica)
+    Suborder-->>Order: subpedidos criados
+    Order->>Stock: requisitar decremento de estoque (itens)
+    Stock-->>Order: sucesso / falha por item
+    alt todos os decrementos bem-sucedidos
+      Order->>Financial: registrar venda e calcular comissão
+      Financial-->>Audit: registrar transação financeira imutável
+      Order->>Audit: registrar evento "pedido confirmado"
+      Order->>Notify: notificar comprador (interno)
+      Notify->>Email: enviar e-mail confirmação ao comprador
+      Notify->>Email: enviar e-mail para cada artesão (subpedido)
+      Notify-->>Order: notificações enfileiradas
+      Order->>API: confirmação final (pedido confirmado)
+      API-->>Frontend: 200 OK / página confirmação
+      Frontend-->>Cliente: mostra confirmação e e-mail enviado
+    else falha ao decrementar estoque
+      Order->>Payment: solicitar cancelamento/estorno (id_transacao)
+      Payment->>Gateway: cancelar/autorização reversal
+      Payment-->>Order: cancelamento confirmado
+      Order->>Audit: registrar falha e rollback
+      Order->>API: informar falha por falta de estoque
+      API-->>Frontend: 409 Conflict (item sem estoque)
+      Frontend-->>Cliente: mensagem de falha; sem cobrança
+    end
+  else pagamento negado
+    Payment->>Order: marcar pagamento como negado
+    Order->>Audit: registrar falha de pagamento
+    Order->>API: retorno de falha
+    API-->>Frontend: 402 Payment Required / erro
+    Frontend-->>Cliente: informa falha; sem alteração de estoque
+  end
 ```
 
-B) Diagrama de componentes e interfaces (visão lógica)
+b) Diagrama de componentes — visão lógica de alto nível (serviços e interfaces):
+
 ```mermaid
-graph TD
+graph LR
   subgraph Plataforma
-    UI[Interface Web / Mobile] 
-    Auth[Serviço de Autenticação & Autorização]
-    UserMgmt[Serviço de Gestão de Usuários & Perfis]
-    Catalog[Serviço de Catálogo de Produtos]
-    Media[Adapter -> Armazenamento de Mídia Externo]
-    Cart[Serviço de Carrinho]
-    Order[Serviço de Pedidos & Subpedidos]
-    Inventory[Serviço de Estoque / Reserva]
-    Payment[Adapter -> Gateway de Pagamento Externo]
-    Finance[Serviço Financeiro & Ledger Imutável]
-    Reviews[Serviço de Avaliações]
-    Notifications[Serviço de Notificações (e-mail, in-app)]
-    Admin[Console Administrativo]
-    Audit[Serviço de Logs / Auditoria]
+    UI[Frontend (Web/Mobile)]
+    API[API Gateway / BFF]
+    Auth[Auth Service]
+    Product[Product Catalog Service]
+    Image[File Storage (object storage)]
+    Search[Search & Index Service]
+    Cart[Cart Service]
+    Order[Order & Suborder Service]
+    Stock[Stock/Inventory Service]
+    Payment[Payment Service Integration]
+    Financial[Financial & Commission Service]
+    Notification[Notification Service]
+    Email[Email Delivery Service]
+    Audit[Audit Ledger / Append-only Store]
+    Admin[Admin Service]
+    Analytics[Reporting / Dashboard]
   end
 
-  UI -->|API| Auth
-  UI -->|API| Catalog
-  UI -->|API| Cart
-  UI -->|API| Order
-  UI -->|API| Reviews
-  UI -->|API| Admin
-
-  Auth --> UserMgmt
-  Catalog --> Media
-  Cart --> Inventory
-  Order --> Inventory
+  UI --> API
+  API --> Auth
+  API --> Product
+  API --> Search
+  API --> Cart
+  API --> Order
+  API --> Admin
+  Product --> Image
+  Product --> Search
+  Cart --> Order
   Order --> Payment
-  Payment -->|webhook| Order
-  Order --> Finance
-  Finance --> Audit
-  Order --> Notifications
-  Reviews --> Notifications
-  Admin --> Catalog
-  Admin --> Finance
-  Admin --> Audit
-  UserMgmt --> Audit
+  Order --> Stock
+  Order --> Subgraph{Suborder Service}
+  Order --> Notification
+  Order --> Financial
+  Financial --> Audit
+  Order --> Audit
+  Notification --> Email
+  Admin --> Product
+  Admin --> Financial
+  Analytics --> Audit
 ```
+
+Observações do diagrama:
+- Cada componente representa uma responsabilidade bem definida e interface clara.
+- File Storage é um serviço desacoplado para fotos (RNF04).
+- Audit Ledger é um armazenamento imutável (RNF09) para transações financeiras e eventos críticos (RNF13).
 
 ---
 
 ## 3. Decisões de Arquitetura
-Resumo das decisões arquiteturais principais e justificativas (neutralidade tecnológica mantida).
 
-1. Arquitetura por domínios/bounded contexts
-   - Separar responsabilidades em componentes lógicos: Autenticação, Gestão de Usuários, Catálogo & Mídia, Estoque, Carrinho, Pedidos, Pagamentos, Financeiro/Ledger, Avaliações, Notificações e Administração.
-   - Justificativa: favorece isolação de preocupações (segurança, consistência financeira), manutenção e escalabilidade para requisitos de performance e disponibilidade.
+Lista das decisões principais, justificativa e impacto:
 
-2. Interfaces e protocolos
-   - Interfaces entre componentes expostas via APIs bem definidas (RESTful/HTTP + contratos de mensagens para integrações assíncronas).
-   - Eventos assíncronos para comunicações com menor acoplamento (por ex. notificações, atualização de painéis e atualizações de cache de catálogos).
-   - Justificativa: atende requisitos de usabilidade/performance (RNF05/RNF06) e desacoplamento (RNF04).
+1. Arquitetura orientada a serviços (modular, por responsabilidades)
+   - Justificativa: separação clara entre domínio de produtos, pedidos, estoque, pagamentos, financeiro e notificações melhora escalabilidade (RNF04, RNF05) e manutenibilidade (RNF13).
+   - Impacto: define contrato de APIs internas; requer estratégia de versionamento e monitoramento.
 
-3. Fluxo transacional do checkout (RNF08)
-   - Usar padrão de reserva + confirmação: ao iniciar checkout, reservar estoque (soft lock). Executar autorização/captura de pagamento no gateway externo. Apenas após confirmação de pagamento, confirmar o pedido e decrementar estoque permanentemente. Em caso de falha, liberar reservas.
-   - Implementar idempotência nos pontos de interação com o gateway (webhooks) e proteção contra duplicidade.
-   - Justificativa: garante que não haja cobrança sem decremento de estoque e que falha de pagamento não altere estoque.
+2. Garantia de processamento transacional por composição (SAGA/coordenador lógico)
+   - Justificativa: RNF08 exige que pagamentos e decremento de estoque sejam transacionais; em ambiente distribuído, implementar uma saga orquestrada permite garantir consistência eventual com compensações (cancelamentos de pagamento ou restock).
+   - Impacto: define padrões de idempotência para endpoints, log de correções e mecanismos de retry; aumenta complexidade de tratamento de falhas.
 
-4. Consistência financeira e rastreabilidade (RNF09)
-   - Manter ledger imutável de transações financeiras (venda, comissão, saque) com timestamp, partes envolvidas e valores. Os registros financeiros são gerados por um componente Financeiro separado que expõe interface de consulta ao painel do vendedor.
-   - Todas as alterações críticas (alteração de comissão, saque, confirmação de pedido, falha de pagamento) geram logs auditáveis (RNF13).
+3. Armazenamento de fotos em serviço de object storage desacoplado
+   - Justificativa: RNF04 solicita storage externo para fotos; reduz carga do aplicativo e facilita CDN e redimensionamento.
+   - Impacto: fluxo de upload com geração de URLs e processamento assíncrono de imagens (thumbnails); integração com Search e Product Service.
 
-5. Armazenamento de mídia (RNF04)
-   - Fotos de produtos armazenadas em serviço de object storage desacoplado (acesso via URLs assinadas/links públicos controlados).
-   - O componente de Catálogo mantém referências (metadados) às imagens sem armazenar blobs na aplicação.
+4. Search index específico para busca em tempo real
+   - Justificativa: HU07 requer pesquisa parcial e em tempo real; indexar produtos e categorias em serviço de busca permite atender RNF05 (carregamento rápido).
+   - Impacto: necessidade de sincronização entre Product Service e Search Service (event-driven updates).
 
-6. Segurança e LGPD (RNF01, RNF02, RNF03, RNF11)
-   - Autenticação + autorização baseada em perfis (admin / artesão / comprador), com possibilidade de perfis múltiplos por usuário (RF03).
-   - Senhas armazenadas com hash seguro conforme RNF02 (Ex.: algoritmo de hashing com sal, conforme política do requisito).
-   - Gateway de pagamento tratado como integração externa via HTTPS; dados sensíveis de cartão não são persistidos (RNF03).
-   - Implementar controles de consentimento e exercícios de direitos previstos pela LGPD (ex.: exportação e exclusão de dados pessoais).
+5. Registro imutável para transações financeiras e auditoria
+   - Justificativa: RNF09 exige registro imutável; adotado um Audit Ledger append-only, com logs legíveis por componentes financeiros e de compliance.
+   - Impacto: define políticas de retenção e exportação para auditorias e conformidade LGPD (RNF11).
 
-7. Notificações e atualizações em tempo real
-   - Para atualização de status de pedidos em tempo real (HU03, HU09), suportar canal de push/in-app (sockets) e fallback via polling; além de notificações por e-mail para eventos críticos (RF18, RF19).
+6. Notificações assíncronas e envio de e-mail por fila
+   - Justificativa: evitar bloqueio síncrono em fluxos críticos (checkout) e garantir entrega (RF18, RF19).
+   - Impacto: uso de filas e retries; necessidade de garantia de entrega eventual e observabilidade.
 
-8. Compartimentação de responsabilidades entre pedidos e subpedidos
-   - Ao criar um pedido com itens de múltiplos artesãos, gerar subpedidos por artesão para que cada artesão gerencie seu fluxo (RF22, HU03, HU09). Financeiro calcula comissões e saldos por subpedido.
+7. Painel financeiro com consultas agregadas e cache
+   - Justificativa: RNF06 exige painel em até 3s; combinar consultas pré-aggregadas + cache TTL para evitar latência em relatórios.
+   - Impacto: desenhar materialized views ou agregações periódicas; definir validade e mecanismos de invalidação ao ocorrerem vendas ou saques.
 
-9. Painel financeiro e cálculos de comissão
-   - Componentizar lógica de cálculo (percentual configurável) em FinanceService; alterações de percentual aplicam-se somente a operações futuras e geram log auditável (HU12).
+8. Controle de acesso por perfis e roles
+   - Justificativa: RNF01 e RF01 — validar perfis (administrador, artesão, comprador); um usuário pode ter múltiplos perfis (RF03).
+   - Impacto: Auth Service deve suportar atribuição múltipla de roles e autorização por endpoint (RBAC).
 
-10. Logs e observabilidade
-    - Registrar eventos críticos e métricas de disponibilidade e performance. Logs estruturados com correlação de transações para rastreamento (RNF13, RNF12).
+9. Não armazenar dados de cartão no sistema
+   - Justificativa: RNF03; todas as integrações de cartão via tokenização fornecida pelo gateway.
+   - Impacto: Payment Service atua apenas como orquestrador dos tokens; reduzir surface de compliance.
+
+10. Logs estruturados e eventos críticos registrados centralmente
+    - Justificativa: RNF13 requer logs de eventos críticos.
+    - Impacto: definição de formato de log, rastreabilidade por correlação (request-id).
 
 ---
 
 ## 4. Tabela de Componentes e Rastreabilidade
 
-| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite / RF) |
+| Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |---|---:|---|---|
-| Interface Web / Mobile (UI) | Apresentar fluxos de compra, gestão de produtos, painel do artesão e administração | Auth, Catalog, Cart, Order, Reviews, Admin | HUs: HU01–HU12; RNF07 |
-| Serviço de Autenticação & Autorização (Auth) | Autenticação, sessões, controle de perfis (multi-perfil) e autorização por role | UI, UserMgmt | RF01, RF02, RF03; RNF01, RNF02 |
-| Serviço de Gestão de Usuários (UserMgmt) | CRUD de usuários, perfis, dados pessoais, consentimentos LGPD | Auth, Audit | RF01, HU — perfil; RNF11 |
-| Serviço de Catálogo de Produtos (Catalog) | CRUD de produtos, publicação/despublicação, pesquisa por nome/categoria/artesão, média de avaliações | Media, Inventory, Reviews, UI, Admin | RF04–RF12, HU01, HU07 |
-| Adapter → Armazenamento de Mídia Externo (MediaStorage) | Upload, versão e entrega de fotos de produtos; geração de URLs | Catalog, UI | RNF04; HU01 |
-| Serviço de Carrinho (Cart) | Gerenciar itens do carrinho, ajustes de quantidade, resumo do pedido | UI, Inventory, Order | RF13–RF15, HU08 |
-| Serviço de Estoque / Reserva (Inventory) | Reserva temporária, confirmação/rollback e decremento definitivo de estoque | Catalog, Cart, Order | RF07–RF09; HU02 |
-| Serviço de Pedidos & Subpedidos (Order) | Criar pedidos e subpedidos por artesão, gerenciar estados, integrar com pagamento | Inventory, Payment, Finance, Notifications | RF16–RF22, HU03, HU08, HU09 |
-| Adapter → Gateway de Pagamento Externo (Payment) | Orquestra autorização/captura; expõe webhook para confirmação de pagamento | Order, Finance | RF16–RF19, RNF03, RNF08 |
-| Serviço Financeiro & Ledger Imutável (Finance) | Cálculo e retenção de comissão, registro imutável de transações, painel financeiro do artesão | Order, Admin, Audit | RF26–RF30, RNF09; HU04, HU05, HU12 |
-| Serviço de Avaliações (Reviews) | Gerenciar avaliações, cálculo de média, permitir resposta do artesão (imutável) | Catalog, Notifications | RF23–RF25, HU06, HU10 |
-| Serviço de Notificações (Notification) | Enviar e-mail, notificações in-app; orquestrar notificações por evento | Order, Reviews, Admin, UI | RF18, RF19, HU03 |
-| Console Administrativo (Admin) | Gerenciar categorias, configurar comissão, operações administrativas | Catalog, Finance, Audit | RF12, RF27, HU11, HU12 |
-| Serviço de Logs / Auditoria (Audit) | Registrar logs imutáveis para eventos críticos e alterações de configuração | Todos os componentes | RNF09, RNF13, HU12 |
+| Frontend (Web/Mobile) | Interface responsiva para usuários (vendedores, compradores, admins) | API Gateway | RNF07, HU01, HU07, HU08 |
+| API Gateway / BFF | Roteamento, autenticação inicial, rate limiting, orquestração de chamadas | Frontend, Auth, Product, Order, Cart, Admin | RNF01, RNF10, HU08 |
+| Auth Service | Autenticação, emissão de tokens, gestão de perfis e roles (suporte a múltiplos perfis) | API, User DB | RF01, RF02, RF03, RNF01 |
+| Product Catalog Service | CRUD de produtos, publicação/despublicação, metadados e links para imagens | Image Storage, Search, DB | RF04, RF05, RF06, HU01 |
+| File Storage (object storage) | Armazenamento de fotos e versões (thumbnails) | Product Catalog, Image Processor | RNF04, HU01 |
+| Image Processor (assíncrono) | Processamento de imagens (resize, thumbnails), geração de metadados | File Storage, Product Catalog | HU01, RNF04 |
+| Search & Index Service | Indexação para pesquisa por nome, categoria, artesão; busca parcial em tempo real | Product Catalog, API | RF11, HU07, RNF05 |
+| Cart Service | Manter carrinho do usuário, cálculos de resumo | API, Product, Order, Stock | RF13, RF14, HU08 |
+| Order Service | Criar pedidos/provisórios, transições de status, orquestrar subpedidos | Cart, Payment, Stock, Suborder, Financial, Audit, Notification | RF16, RF18, RF20, RF21, RF22, HU03, HU08, HU09 |
+| Suborder Service | Criar e gerenciar subpedidos por artesão | Order, Stock, Notification | RF22, HU09 |
+| Stock/Inventory Service | Gerenciar quantidades, bloqueio/commit em checkout, sinalização de estoque zero | Product Catalog, Order | RF07, RF08, RF09, HU02 |
+| Payment Service (integração) | Orquestrar autorizações, confirmar/cancelar transações com gateway | Payment Gateway, Order, Financial | RF16, RF17, RNF03, RNF08 |
+| Payment Gateway (externo) | Processamento real de pagamentos (fornecedor externo) | Payment Service | RF16, RF17, RNF03 |
+| Financial & Commission Service | Calcular comissões, reter valores, registrar histórico e saldo para vendedores | Order, Audit, Admin | RF26, RF27, RF28, HU04, HU05 |
+| Payout/Saque Service | Registrar solicitações de saque, expor status e dados bancários para processamento | Financial, Audit | RF30, HU05 |
+| Notification Service | Enfileirar e orquestrar notificações internas e e-mails | Order, Suborder, Email | RF18, RF19, RF21, HU03 |
+| Email Delivery Service | Entrega de e-mails transacionais | Notification | RF18, RF19 |
+| Admin Service | Gerenciar categorias, configurações (ex.: comissão vigente) | Product Catalog, Financial, Audit | RF12, HU11, HU12 |
+| Audit Ledger (append-only) | Registro imutável de transações financeiras e eventos críticos | Financial, Order, Admin, Analytics | RNF09, RNF13 |
+| Reporting / Analytics | Geração de relatórios, dashboards (painel financeiro do artesão) | Financial, Audit, Order | RNF06, HU04 |
+| Reviews & Responses Service | Gerenciar avaliações, média de notas, respostas do artesão | Order, Product, Notification | RF23, RF24, RF25, HU06, HU10 |
+| Background Worker / Scheduler | Processos assíncronos: limpeza, agregações, processamento de imagens, reconciliação de pagamentos | Vários | RNF05, RNF06 |
+
+Observação: "Origem" indica HU ou critério de aceite que motivou o componente.
 
 ---
 
 ## 5. Bloqueios e Pendências
-Itens que precisam de resolução/decisão para implementação e/ou integração, com impacto estimado:
 
-1. Integração com Gateway de Pagamento (PCI-DSS)
-   - Pendência: seleção de provedor e definição do fluxo (autorização vs autorização+captura; suporte a PIX ou equivalente).
-   - Impacto: alta — afeta RNF03 e RNF08 (transações) e a implementação de webhooks/idempotência.
+1. Escolha do provedor de gateway de pagamento e definição do fluxo de cobranças (autorização vs captura)
+   - Impacto: define latência, garantias de reversão, tokenização e requisitos PCI-DSS.
+   - Ação recomendada: selecionar e validar contrato com gateway; definir fluxo de autorização/captura e políticas de retry.
 
-2. Política de reservas de estoque (tempo de reserva)
-   - Pendência: qual o timeout padrão para reservas de estoque no fluxo de checkout (ex.: 10 minutos).
-   - Impacto: médio — afeta concorrência em vendas e experiência do usuário (possíveis cart collisions).
+2. Definição da política de periodicidade de liquidação/pagamento aos artesãos (quando a plataforma efetua repasse)
+   - Impacto: afeta Financial Service, cálculo de comissões, e o processo de saque (HU05).
+   - Ação: decidir periodicidade (diária/seminal/mensal) e regras de retenção.
 
-3. Processo de conciliação e cronograma de repasses/saques
-   - Pendência: definir quando a comissão é retida definitivamente, calendário de repasses e integração bancária para saque.
-   - Impacto: alto — afeta FinanceService, UX do saldo e requisitos legais fiscais.
+3. Especificação de regras de comissão por categoria ou excepcionais (além do percentual global)
+   - Impacto: complexidade no Financial Service e relatórios.
+   - Ação: especificar regimes (por produto, por categoria, promos).
 
-4. Requisitos de KYC e validação de dados bancários para saque
-   - Pendência: nível de verificação exigido para habilitar saques (documentação, limites).
-   - Impacto: alto para conformidade e prevenção de fraudes (RNF11).
+4. Detalhes do processo de saque bancário (integração com instituições financeiras)
+   - Impacto: segurança dos dados bancários (LGPD) e requisitos de verificação.
+   - Ação: definir fluxo operacional para processar saques e validação KYC.
 
-5. Garantia de imutabilidade do ledger financeiro
-   - Pendência: especificar mecanismo (append-only store, assinaturas, WORM) e políticas de retenção, backups e exportação.
-   - Impacto: alto — afeta rastreabilidade (RNF09) e auditoria.
+5. Regras de frete e integração com provedores de envio/confirmacao de entrega
+   - Impacto: HU09 e atualização de status "entregue" — atualmente não há especificação de logística.
+   - Ação: definir se haverá integração com terceiros para rastreamento e confirmação de entrega.
 
-6. SLA e estratégia de alta disponibilidade / recuperação de desastre
-   - Pendência: definições detalhadas de RTO/RPO e arquitetura de redundância regional.
-   - Impacto: alto para atender RNF12 (99,5% disponibilidade).
+6. Política de retenção de dados e consentimento LGPD detalhada
+   - Impacto: armazenamento de dados pessoais, logs, imagens e dados bancários.
+   - Ação: definir prazos de retenção, base legal e mecanismo de anonimização/exclusão.
 
-7. Política de moderação de conteúdo e resposta a avaliações
-   - Pendência: regras para remover avaliações/editar respostas (HU06 impõe resposta única e imutável).
-   - Impacto: baixo/medio para operações e experiência.
+7. Estimativas de carga e dimensionamento (tráfego, quantidades de produtos, QPS)
+   - Impacto: arquitetura de escalabilidade e SLAs (RNF12).
+   - Ação: coletar estimativas de negócio para definir escalonamento e capacidades.
 
-8. Requisitos legais e fiscais (impostos sobre vendas)
-   - Pendência: tratamento e cálculo de impostos por jurisdição, retenções obrigatórias.
-   - Impacto: alto para financeiro e relatórios.
+8. Regras de disputa, reembolso e chargebacks
+   - Impacto: fluxo financeiro (RNF08) e auditoria.
+   - Ação: especificar regras operacionais para reembolsos e responsabilidades.
+
+9. Definir mecanismo de confirmação de entrega (quem valida "entregue")
+   - Impacto: habilitar RF23 e HU10 (avaliar somente após "entregue").
+   - Ação: escolher fontes de verdade (scanner, confirmação manual, webhook do transportador).
+
+10. SLA e garantias para o serviço de Email/Notification
+    - Impacto: entrega de confirmações e notificações críticas.
+    - Ação: definir SLA e estratégia de retry/backup.
 
 ---
 
 ## 6. Cobertura de Requisitos
-Mapeamento resumido RF/HU → componentes responsáveis.
 
-- RF01 / RF02 / RF03 (Usuários e Acesso)
-  - Componentes: Auth, UserMgmt, UI
-  - HUs: Implicitamente suportadas por todas (perfil único/múltiplo).
+Resumo conciso de como os requisitos foram atendidos pelo design:
 
-- RF04 / RF05 / RF06 / RF07 / RF08 / RF09 / RF10 / RF11 / RF12 (Catálogo & Estoque & Categorias)
-  - Componentes: Catalog, MediaStorage, Inventory, Admin
-  - HUs: HU01, HU02, HU07, HU11
+- RF01 (Cadastro de usuários perfis): Auth Service com RBAC e suporte a múltiplos perfis (RF03) — mapeado na Tabela de Componentes.
+- RF02 (Autenticação/sessão): Auth Service + API Gateway tratam login/logout e tokens.
+- RF03 (Usuário com perfis múltiplos): Auth Service permite roles múltiplas; UI exibe switch de contextos.
+- RF04–RF06 (Catálogo CRUD, publicar/despublicar, fotos): Product Catalog + File Storage + Image Processor; publicação controla visibilidade.
+- RF07–RF09 (Estoque, bloqueio compra, decremento após confirmação): Stock/Inventory Service com bloqueio/commit durante saga; decremento somente após pagamento confirmado; bloqueio de itens com estoque zero.
+- RF10–RF11 (Navegação e pesquisa): Product Catalog + Search Service com indexação e busca parcial em tempo real; produtos sem estoque filtrados por padrão (HU07).
+- RF12 (Admin categorias): Admin Service expõe CRUD de categorias; remocao com verificação e notificacao a artesãos (HU11).
+- RF13–RF15 (Carrinho e resumo): Cart Service + Frontend exibem resumo; API compõe dados.
+- RF16–RF19 (Pagamento, integração, confirmações, notificação artesão): Payment Service integra com Payment Gateway (RNF03); Order Service coordena confirmação e Notification Service/Email envia notificações (RF18, RF19).
+- RF20–RF21 (Atualizar e acompanhar status): Order & Suborder Services mantêm estados; Notification Service propaga updates ao comprador (HU03, HU09).
+- RF22 (Pedidos com múltiplos artesãos): Order Service gera subpedidos e trata status individual por subpedido.
+- RF23–RF25 (Avaliações e respostas): Reviews Service guarda avaliações acionadas após status entregue (controle por Order Service); artesão pode responder; resposta única e imutável implementada por regra de negócio (HU06).
+- RF26–RF30 (Comissão, painel, saque): Financial Service calcula e retém comissões; Admin pode configurar percentual (HU12); painel financeiro e histórico via Reporting/Analytics; Payout Service registra solicitações de saque (HU04, HU05).
+- RNF01–RNF02 (Segurança, hash senhas): Auth Service aplica hashing seguro (design exige algoritmo por implementação) e RBAC.
+- RNF03 (Pagamento seguro e PCI-DSS): Design evita armazenar dados de cartão; Payment Service usa tokenização e comunicação HTTPS com gateway.
+- RNF04 (Fotos em object storage): File Storage dedicado e desacoplado.
+- RNF05–RNF06 (Desempenho das listagens e painel): Search Service e agregações pré-computadas + cache para atender latências solicitadas.
+- RNF07 (Usabilidade responsiva): Frontend responsável por UI responsiva (diretriz de projeto).
+- RNF08 (Transacionalidade no pagamento): Saga orquestrada com compensações e checagens idempotentes.
+- RNF09 (Registro imutável): Audit Ledger registra transações financeiras com metadata (data/hora/valor/partes).
+- RNF10 (Compatibilidade navegadores): Frontend deve ser testado nos navegadores mencionados.
+- RNF11 (Conformidade LGPD): Mecanismos de consentimento e anonimização previstos; requer políticas detalhadas (pendência).
+- RNF12 (Disponibilidade 99,5%): Arquitetura de serviços, redundância e monitoramento previstos; requer dimensionamento e SLAs de infra (pendência).
+- RNF13 (Logs de eventos críticos): Audit e logs centralizados cobrem confirmação de pedido, falhas de pagamento, saques e alterações de comissão.
 
-- RF13 / RF14 / RF15 / RF16 / RF17 / RF18 / RF19 / RF20 / RF21 / RF22 (Carrinho & Pedidos)
-  - Componentes: Cart, Order, Payment, Inventory, Notifications, UI
-  - HUs: HU08, HU03, HU09
-
-- RF23 / RF24 / RF25 (Avaliações)
-  - Componentes: Reviews, Catalog, Notifications
-  - HUs: HU06, HU10
-
-- RF26 / RF27 / RF28 / RF29 / RF30 (Comissão e Painel Financeiro)
-  - Componentes: Finance, Admin, Order, Audit
-  - HUs: HU04, HU05, HU12
-
-- RNF01 / RNF02 / RNF03 / RNF11 (Segurança & Conformidade)
-  - Componentes: Auth, UserMgmt, Payment adapter, Audit
-  - Observação: Implementar políticas de LGPD (consentimento, anonimização, exportação/exclusão).
-
-- RNF04 (Armazenamento de fotos)
-  - Componentes: MediaStorage, Catalog
-
-- RNF05 / RNF06 (Desempenho)
-  - Componentes: Catalog (indexação, caches), Finance (pre-aggregações), UI
-  - Observação: usar caches e índices, pre-cálculo de agregados para o painel financeiro.
-
-- RNF08 / RNF09 / RNF13 (Confiabilidade / Rastreabilidade / Logs)
-  - Componentes: Order, Payment, Finance, Audit
-  - Observação: garantir transações compostas e ledger imutável.
-
-- RNF12 (Disponibilidade)
-  - Componentes: arquitetura operacional (infraestrutura), todos os serviços críticos.
-
-Tabela de rastreabilidade consolidada (exemplo parcial)
-| Requisito | Componentes principais |
-|---|---|
-| HU01 / RF04 | Catalog, MediaStorage, UI |
-| HU02 / RF07–RF09 | Inventory, Catalog, Order |
-| HU03 / RF20 | Order, Notifications, UI |
-| HU04 / RF28–RF29 | Finance, Order, UI |
-| HU05 / RF30 | Finance, Admin, Audit |
-| HU06 / RF25 | Reviews, Notifications |
-| HU07 / RF10–RF11 | Catalog, UI, Search (index) |
-| HU08 / RF13–RF19 | Cart, Order, Payment, Inventory, Notifications |
-| HU09 / RF21–RF22 | Order, UI, Notifications |
-| HU10 / RF23 | Reviews, Order |
-| HU11 / RF12 | Admin, Catalog, Notifications |
-| HU12 / RF26–RF27 | Admin, Finance, Audit |
+Rastreabilidade (exemplos):
+- HU01 -> Product Catalog, File Storage, Image Processor
+- HU02 -> Stock/Inventory, Order Service
+- HU04 -> Financial, Audit, Reporting
+- HU08 -> Cart, Order, Payment, Stock, Notification
+- HU12 -> Admin Service, Audit
 
 ---
 
 ## 7. Gap Analysis
-Identificação de lacunas na especificação, impactos arquiteturais e recomendações concretas.
 
-1. Fluxo de pagamentos: autorização vs captura e reembolsos
-   - Lacuna: Não há definição clara sobre autorização temporária, captura ou reembolso e prazos de estorno.
-   - Impacto: Afeta transacionalidade (RNF08), reconciliação financeira e UX de comprador/ar­te­são.
-   - Recomendações: definir políticas de autorização/captura, regras de reembolso e APIs de compensação; validar com o provedor de pagamento escolhido.
+Identificamos lacunas na especificação que impactam a arquitetura, com riscos e recomendações concretas.
 
-2. Temporalidade e regras de repasses/saques
-   - Lacuna: Falta definição do calendário de repasses (ex.: imediato vs semanal) e regras de retenção por disputa.
-   - Impacto: Atinge cálculo de saldo, disponibilidade para saque (HU05) e relatórios fiscais.
-   - Recomendações: definir política de liquidação e retenção; especificar estados financeiros (disponível, em processamento, retido).
+1. Fluxo de liquidação e cronograma de repasse aos artesãos
+   - Lacuna: Não definido quando e como a plataforma repassa valores (imediato ou periódico).
+   - Impacto: afeta cálculo de comissões, disponibilidade de saldo para saque (HU05), responsabilidades financeiras.
+   - Recomendação: definir política de liquidação (ex.: repasse semanal com reconciliação) e regras de bloqueio por disputa.
 
-3. Gestão de devoluções e disputas
-   - Lacuna: Não há requisitos sobre devolução de produtos, estornos ou disputas entre comprador e artesão.
-   - Impacto: Necessário para operação segura; afeta ledger e rollback de comissões/estoque.
-   - Recomendações: adicionar histórias de usuário e requisitos de processo de devolução, prazos e compensações.
+2. Regras de reembolso, chargeback e disputas
+   - Lacuna: Não há procedimentos para retornar valores ao comprador.
+   - Impacto: complexidade do Financial Service e necessidade de integração com gateway para estornos; impacto legal.
+   - Recomendação: especificar cenários de reembolso, responsabilidade sobre devoluções de frete e prazo para disputas.
 
-4. Regras fiscais e tributárias
-   - Lacuna: Ausência de requisitos sobre impostos sobre vendas, emitir notas fiscais ou retenções por jurisdição.
-   - Impacto: Alto para FinanceService e conformidade legal.
-   - Recomendações: obter requisitos fiscais por jurisdição e incorporar cálculo/relatórios fiscais.
+3. Processos de confirmação de entrega e integração logística
+   - Lacuna: Não especificado como o status "entregue" é estabelecido.
+   - Impacto: habilitação de avaliações (RF23/RN10) e resolução de disputas.
+   - Recomendação: decidir integração com transportadoras ou confirmar via confirmação do comprador; definir eventos fonte de verdade.
 
-5. Política de retenção e imutabilidade de logs/ledger
-   - Lacuna: Não especificado o mecanismo e o período de retenção de registros imutáveis.
-   - Impacto: Afeta conformidade e capacidade de auditoria (RNF09).
-   - Recomendações: definir retenção, formato exportável e mecanismo de imutabilidade (append-only, assinaturas).
+4. Detalhamento de dados bancários e compliance LGPD
+   - Lacuna: Ainda sem definição de quais dados bancários serão armazenados e por quanto tempo.
+   - Impacto: requer controles de acesso, criptografia e política de retenção; obriga revisão legal.
+   - Recomendação: especificar dados mínimos, criptografia em repouso e consulta legal para LGPD; definir consentimento claro.
 
-6. Limites de concorrência/controle de concorrência para estoque
-   - Lacuna: Não especificado mecanismo detalhado (optimistic locking, reserving tokens) para evitar oversell em alta concorrência.
-   - Impacto: Pode violar RNF08 e RF08; causar vendas de itens sem estoque.
-   - Recomendações: especificar algoritmos de reserva temporária, timeout e verificação atômica (p.ex. usando locks lógicos/versão).
+5. Política de taxas e possíveis exceções (promoções, isenções)
+   - Lacuna: Comissão global ajustável descrita (HU12), mas sem regras para promoções ou exceções.
+   - Impacto: necessidade de flexibilidade no Financial Service para aplicar regras por produto/categoria.
+   - Recomendação: definir catálogo de regras de comissão (prioridade: global > categoria > produto).
 
-7. Identidade e KYC para saque do artesão
-   - Lacuna: Nível de verificação e dados exigidos não especificados.
-   - Impacto: Risco de fraude, compliance.
-   - Recomendações: definir critérios KYC e limites de saque; integração com validação bancária.
+6. Métricas, SLAs e capacidade esperada
+   - Lacuna: ausência de estimativas de carga (número de usuários, pedidos concorrentes).
+   - Impacto: impede dimensionamento correto para atender disponibilidade 99,5% (RNF12) e latências RNF05/RNF06.
+   - Recomendação: obter estimativas de negocio e planejar teste de carga; definir RTO/RPO.
 
-8. Escalabilidade da busca (real-time search enquanto digita)
-   - Lacuna: não há definição de indexação, latência aceitável para search-as-you-type.
-   - Impacto: RNF05; experiência de busca (HU07).
-   - Recomendações: definir requisitos de latência para busca em tempo real e estratégia de indexação; incluir paginação e caches.
+7. Política de retenção de logs e eventos do Audit Ledger
+   - Lacuna: sem definição de períodos de retenção ou requisitos de exportação para auditoria.
+   - Impacto: conformidade legal e custo de armazenamento.
+   - Recomendação: especificar retenção mínima e processo de exportação seguro para auditorias.
 
-9. Internacionalização / multi-moeda
-   - Lacuna: moeda e localidade não definidos.
-   - Impacto: Financeiro e UX.
-   - Recomendações: definir escopo geográfico e suporte a moedas, formatos e conversões.
+8. Especificação de notificação em tempo real (polling vs websockets vs push)
+   - Lacuna: HU03/HU09 pede atualização em tempo real, mas não especifica tecnologia.
+   - Impacto: afeta escalabilidade do Notification Service e escolhas tecnológicas.
+   - Recomendação: decidir mecanismo (WebSocket/Server-Sent/Push) e dimensionar acordo com simultaneidade.
 
-10. Monitoramento, métricas e SLAs operacionais
-    - Lacuna: sem métricas detalhadas (RTO/RPO, tempo de recuperação) e alertas.
-    - Impacto: cumprimento RNF12.
-    - Recomendações: definir SLOs por componente, runbooks, e estratégia de replicação/backup.
+9. Concurrency control para estoque (concorrência alta em vendas de unidades limitadas)
+   - Lacuna: não explícito se usar lock pessimista, otimista ou reservas temporárias.
+   - Impacto: risco de oversell; performance trade-offs.
+   - Recomendação: definir estratégia (p.ex. reserva no checkout com timeout + confirmação final no pagamento).
+
+10. Detalhes de segurança operacional e testes de penetração
+    - Lacuna: política de segurança e testes regulares não definidas.
+    - Impacto: compliance e risco de vazamento de dados.
+    - Recomendação: agendar avaliação de segurança, definir plano de resposta a incidentes.
+
+11. Tratamento de fotos e direitos autorais
+    - Lacuna: regras sobre persistência de imagens após exclusão de produto ou solicitação do artesão.
+    - Impacto: requisitos legais e espaço de armazenamento.
+    - Recomendação: definir políticas de retenção de mídia e processos de remoção conforme LGPD.
+
+12. Internacionalização / multi-moeda / impostos
+    - Lacuna: não há definição sobre suporte a múltiplas moedas ou cálculo de impostos.
+    - Impacto: afeta Financial Service e checkout.
+    - Recomendação: especificar escopo (local apenas ou multi-país) e regras fiscais necessárias.
+
+Cada lacuna listada acima deve ser tratada como requisito adicional antes da implementação detalhada das partes afetadas (Financial, Payment, Order, Admin). Priorizar por risco e impacto ao negócio.
 
 ---
 
-Observações finais e próxima etapa recomendada:
-- O design proposto atende aos requisitos funcionais e não funcionais fornecidos com uma abordagem modular e neutra em tecnologia.  
-- Recomenda-se que o time técnico priorize a resolução das pendências listadas (pagamento, repasses, KYC, devoluções, SLAs) antes da definição de infra/serviços específicos.  
-- A fase seguinte deve produzir:
-  1) Especificação de integração detalhada com o(s) gateway(s) de pagamento (endpoints, webhooks, idempotência).  
-  2) Contratos de API (endpoints, payloads) para cada componente crítico.  
-  3) Plano de testes de carga para validar RNF05/RNF06 e testes de concorrência de estoque.  
+Fim do Relatório.
 
-Fim do relatório.
+Observações finais rápidas:
+- O design permanece neutro quanto a tecnologias específicas: as decisões descritas são conceituais, e cada componente pode ser implementado com alternativas tecnológicas adequadas ao time.
+- Próximos passos operacionais recomendados: workshop de definição de políticas financeiras (liquidação/saque/comissão), seleção do gateway de pagamento, definição de SLAs e estimativas de carga para dimensionamento.

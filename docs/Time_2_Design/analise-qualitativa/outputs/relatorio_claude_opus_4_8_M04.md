@@ -5,56 +5,61 @@
 
 ## 1. Identificação das HUs
 
-| HU | Título | Perfil | RFs Relacionados | RNFs Relevantes |
-|----|--------|--------|------------------|-----------------|
-| HU01 | Cadastrar unidades e moradores | Síndico | RF04, RF05, RF06, RF07, RF08 | RNF04 |
-| HU02 | Emitir boletos em lote | Síndico | RF09, RF10, RF13, RF17 | RNF05, RNF11 |
-| HU03 | Acompanhar inadimplências | Síndico | RF15 | RNF08 |
-| HU04 | Publicar comunicados | Síndico | RF16, RF17 | RNF13 |
-| HU05 | Gerenciar ocorrências | Síndico | RF21, RF22, RF23, RF24 | RNF13 |
-| HU06 | Criar e registrar assembleias | Síndico | RF18, RF19, RF20 | RNF13 |
-| HU07 | Gerenciar áreas comuns e reservas | Síndico | RF25, RF27, RF28, RF29 | RNF08 |
-| HU08 | Visualizar e pagar boleto pelo portal | Condômino | RF10, RF11, RF12 | RNF03, RNF05 |
-| HU09 | Reservar área comum | Condômino | RF26, RF27, RF28 | RNF08 |
-| HU10 | Registrar e acompanhar ocorrência | Condômino | RF21, RF24 | RNF13 |
-| HU11 | Pré-autorizar entrada de visitante | Condômino | RF31, RF32 | RNF04, RNF06 |
-| HU12 | Acompanhar assembleias e consultar atas | Condômino | RF20 | RNF07 |
-| HU13 | Registrar entrada e saída de visitantes | Funcionário | RF30, RF32, RF33 | RNF06 |
-| HU14 | Consultar pré-autorizações de acesso | Funcionário | RF31, RF32 | RNF06 |
+| HU | Perfil | Título | RFs Relacionados | RNFs Relacionados |
+|----|--------|--------|------------------|-------------------|
+| HU01 | Síndico | Cadastrar unidades e moradores | RF04, RF05, RF06, RF07, RF08 | RNF04 |
+| HU02 | Síndico | Emitir boletos em lote | RF09, RF10, RF13, RF17 | RNF05, RNF11, RNF13 |
+| HU03 | Síndico | Acompanhar inadimplências | RF15 | RNF08 |
+| HU04 | Síndico | Publicar comunicados | RF16, RF17 | RNF13 |
+| HU05 | Síndico | Gerenciar ocorrências | RF22, RF23, RF24 | RNF13 |
+| HU06 | Síndico | Criar e registrar assembleias | RF18, RF19, RF17 | RNF04 |
+| HU07 | Síndico | Gerenciar áreas comuns e reservas | RF25, RF27, RF28, RF29 | RNF08 |
+| HU08 | Condômino | Visualizar e pagar boleto | RF10, RF11, RF12 | RNF03, RNF05 |
+| HU09 | Condômino | Reservar área comum | RF26, RF27, RF28 | RNF08 |
+| HU10 | Condômino | Registrar e acompanhar ocorrência | RF21, RF23, RF24 | RNF13 |
+| HU11 | Condômino | Pré-autorizar visitante | RF31, RF32 | RNF04, RNF06 |
+| HU12 | Condômino | Acompanhar assembleias e atas | RF20 | RNF07 |
+| HU13 | Funcionário | Registrar entrada/saída visitantes | RF30, RF32, RF33 | RNF06 |
+| HU14 | Funcionário | Consultar pré-autorizações | RF32, RF31 | RNF06 |
 
-**Perfis identificados (RF01):** Síndico, Condômino, Funcionário, Administrador.
+Transversais a todas as HUs: RF01, RF02, RF03 (autenticação/autorização), RNF01, RNF02, RNF07, RNF09, RNF10, RNF12.
 
 ---
 
 ## 2. Diagramas de Arquitetura (Mermaid)
 
-### 2.1 Diagrama de Componentes (Visão Macro)
+### 2.1 Visão de Componentes (Alto Nível)
 
 ```mermaid
 graph TD
     subgraph Cliente
-        PORTAL[Portal Web Responsivo]
+        UI[Portal Web Responsivo]
     end
 
     subgraph Borda
-        GW[API Gateway / Autenticação]
+        GW[API Gateway / Roteador]
+        AUTH[Serviço de Autenticação e Autorização]
     end
 
-    subgraph Núcleo de Aplicação
-        AUTH[Serviço de Identidade e Acesso]
-        UNIT[Serviço de Unidades e Moradores]
-        FIN[Serviço Financeiro / Boletos]
-        COM[Serviço de Comunicados e Assembleias]
-        OCO[Serviço de Ocorrências]
-        RES[Serviço de Reservas]
-        ACS[Serviço de Controle de Acesso e Visitantes]
-        NOT[Serviço de Notificações]
-        AUD[Serviço de Auditoria e Logs]
+    subgraph Núcleo de Negócio
+        USR[Módulo de Usuários e Perfis]
+        UNI[Módulo de Unidades e Moradores]
+        FIN[Módulo Financeiro / Boletos]
+        COM[Módulo de Comunicados e Assembleias]
+        OCO[Módulo de Ocorrências]
+        RES[Módulo de Reservas]
+        ACS[Módulo de Controle de Acesso e Visitantes]
     end
 
-    subgraph Integrações Externas
-        PAYGW[Gateway de Pagamento]
-        MAIL[Provedor de E-mail]
+    subgraph Serviços de Apoio
+        NOT[Serviço de Notificação por E-mail]
+        AUD[Serviço de Auditoria / Logs Imutáveis]
+        FILE[Serviço de Armazenamento de Anexos]
+        SCHED[Agendador / Processador de Lotes]
+    end
+
+    subgraph Externo
+        PAY[Gateway de Pagamento - PCI-DSS]
     end
 
     subgraph Persistência
@@ -62,125 +67,132 @@ graph TD
         BKP[(Backup Diário)]
     end
 
-    PORTAL --> GW
+    UI --> GW
     GW --> AUTH
-    GW --> UNIT
+    GW --> USR
+    GW --> UNI
     GW --> FIN
     GW --> COM
     GW --> OCO
     GW --> RES
     GW --> ACS
 
-    FIN --> PAYGW
-    FIN --> NOT
+    FIN --> PAY
+    FIN --> SCHED
     COM --> NOT
     OCO --> NOT
     RES --> NOT
-    NOT --> MAIL
+    FIN --> NOT
 
-    UNIT --> DB
+    USR --> DB
+    UNI --> DB
     FIN --> DB
     COM --> DB
     OCO --> DB
     RES --> DB
     ACS --> DB
-    AUTH --> DB
 
     FIN --> AUD
+    ACS --> AUD
     COM --> AUD
     OCO --> AUD
-    ACS --> AUD
-    AUD --> DB
+
+    OCO --> FILE
+    COM --> FILE
+
     DB --> BKP
 ```
 
-### 2.2 Diagrama de Sequência — Emissão de Boletos em Lote (HU02)
+### 2.2 Sequência — HU02: Emissão de Boletos em Lote (transacional)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant S as Síndico
-    participant P as Portal Web
-    participant G as API Gateway
-    participant F as Serviço Financeiro
-    participant U as Serviço de Unidades
-    participant A as Serviço de Auditoria
-    participant N as Serviço de Notificações
-    participant M as Provedor de E-mail
+    participant S as Síndico (UI)
+    participant GW as API Gateway
+    participant AUTH as Autenticação/Autorização
+    participant FIN as Módulo Financeiro
+    participant SCHED as Processador de Lotes
+    participant UNI as Módulo de Unidades
+    participant DB as Repositório de Dados
+    participant AUD as Auditoria
+    participant NOT as Notificação E-mail
 
-    S->>P: Informa mês de referência e vencimento
-    P->>G: Requisição emissão em lote (autenticada)
-    G->>F: Encaminha solicitação
-    F->>U: Consulta unidades ativas
-    U-->>F: Lista de unidades ativas
-    loop Para cada unidade (transacional)
-        F->>F: Gera boleto individual
-        F->>A: Registra evento imutável (usuário/data/hora)
+    S->>GW: Solicitar emissão em lote (mês ref, vencimento)
+    GW->>AUTH: Validar sessão e perfil (síndico)
+    AUTH-->>GW: Autorizado
+    GW->>FIN: Iniciar emissão em lote
+    FIN->>UNI: Obter unidades ativas
+    UNI-->>FIN: Lista de unidades ativas
+    FIN->>SCHED: Delegar processamento transacional
+    loop Para cada unidade ativa
+        SCHED->>DB: Persistir boleto (transação individual)
+        alt Sucesso
+            DB-->>SCHED: Boleto gravado
+            SCHED->>AUD: Registrar operação imutável (RNF05)
+            SCHED->>NOT: Enfileirar e-mail ao condômino
+        else Falha parcial
+            DB-->>SCHED: Erro
+            SCHED->>SCHED: Marcar unidade como falha (RNF11)
+        end
     end
-    alt Falha parcial
-        F-->>P: Retorna unidades com sucesso e unidades falhas
-    else Sucesso total
-        F-->>P: Confirma emissão de todos os boletos
-    end
-    F->>N: Solicita envio de boletos por e-mail
-    N->>M: Dispara e-mails aos condôminos
-    M-->>N: Confirmação de envio
-    P-->>S: Exibe resumo da emissão
+    SCHED-->>FIN: Resumo (emitidos / falhas)
+    FIN-->>GW: Retornar resultado com unidades falhas
+    GW-->>S: Exibir confirmação + lista de falhas
 ```
 
-### 2.3 Diagrama de Sequência — Reserva de Área Comum (HU09/RF27)
+### 2.3 Sequência — HU09/RF27: Reserva sem Sobreposição
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant C as Condômino
-    participant P as Portal Web
-    participant G as API Gateway
-    participant R as Serviço de Reservas
-    participant D as Repositório de Dados
-    participant N as Serviço de Notificações
-    participant M as Provedor de E-mail
+    participant C as Condômino (UI)
+    participant GW as API Gateway
+    participant AUTH as Autenticação
+    participant RES as Módulo de Reservas
+    participant DB as Repositório de Dados
+    participant NOT as Notificação E-mail
 
-    C->>P: Seleciona área, data e horário
-    P->>G: Consulta disponibilidade
-    G->>R: Verifica disponibilidade em tempo real
-    R->>D: Busca reservas existentes da área/horário
-    D-->>R: Retorna ocupação
-    alt Horário disponível
-        R->>D: Persiste reserva com bloqueio de concorrência
-        D-->>R: Reserva confirmada
-        R->>N: Solicita e-mail de confirmação
-        N->>M: Envia detalhes da reserva
-        R-->>P: Reserva confirmada
-        P-->>C: Exibe confirmação
-    else Horário indisponível (sobreposição)
-        R-->>P: Rejeita reserva
-        P-->>C: Informa indisponibilidade
+    C->>GW: Consultar disponibilidade (área, data, horário)
+    GW->>AUTH: Validar sessão/perfil
+    AUTH-->>GW: Autorizado
+    GW->>RES: Verificar disponibilidade
+    RES->>DB: Buscar reservas conflitantes (bloqueio de concorrência)
+    DB-->>RES: Nenhum conflito
+    RES-->>C: Horário disponível
+    C->>GW: Confirmar reserva
+    GW->>RES: Registrar reserva
+    RES->>DB: Gravar com verificação atômica de sobreposição
+    alt Sem conflito
+        DB-->>RES: Reserva confirmada
+        RES->>NOT: Enviar confirmação por e-mail
+        RES-->>C: Reserva confirmada
+    else Conflito detectado
+        DB-->>RES: Violação de sobreposição
+        RES-->>C: Horário indisponível
     end
 ```
 
-### 2.4 Diagrama de Sequência — Registro de Visitante com Pré-autorização (HU13/HU14)
+### 2.4 Sequência — HU13/HU08: Confirmação de Pagamento via Gateway
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant F as Funcionário
-    participant P as Portal Web
-    participant G as API Gateway
-    participant AC as Serviço de Controle de Acesso
-    participant AU as Serviço de Auditoria
+    participant C as Condômino (UI)
+    participant GW as API Gateway
+    participant FIN as Módulo Financeiro
+    participant PAY as Gateway de Pagamento
+    participant DB as Repositório de Dados
+    participant AUD as Auditoria
 
-    F->>P: Consulta pré-autorizações do dia
-    P->>G: Requisição de pré-autorizações
-    G->>AC: Busca pré-autorizações vigentes
-    AC-->>P: Lista visitantes esperados
-    F->>P: Registra entrada (nome, documento, unidade, horário)
-    P->>G: Envia registro de entrada
-    G->>AC: Cria registro de visita
-    AC->>AC: Vincula à pré-autorização correspondente
-    AC->>AU: Registra acesso (data/hora/funcionário/unidade)
-    AC-->>P: Confirma registro
-    P-->>F: Exibe visita em aberto
+    C->>GW: Iniciar pagamento de boleto
+    GW->>FIN: Requisitar processamento
+    FIN->>PAY: Encaminhar pagamento (sem armazenar dados de cartão)
+    PAY-->>FIN: Confirmação assíncrona (callback)
+    FIN->>DB: Atualizar status do boleto para "pago"
+    FIN->>AUD: Registrar operação financeira imutável
+    FIN-->>GW: Status atualizado
+    GW-->>C: Exibir boleto como pago
 ```
 
 ---
@@ -188,17 +200,19 @@ sequenceDiagram
 ## 3. Decisões de Arquitetura
 
 | ID | Decisão | Justificativa | Requisitos |
-|----|---------|---------------|------------|
-| DA01 | Arquitetura modular orientada a serviços de domínio (Financeiro, Reservas, Acesso, etc.) | Domínios com ciclos de vida e regras distintas; facilita manutenibilidade e escalabilidade seletiva | RNF07, RNF13 |
-| DA02 | Camada de API Gateway centralizando autenticação e autorização por perfil | Enforcement único de RBAC e encerramento de sessão | RF02, RF03, RNF01 |
-| DA03 | Serviço de Notificações desacoplado e assíncrono | Múltiplos gatilhos de e-mail (comunicados, ocorrências, reservas, boletos) sem acoplar regras de negócio | RF17, RF24, HU06, HU09 |
-| DA04 | Serviço de Auditoria dedicado para registros imutáveis | Rastreabilidade financeira e de acessos independente da lógica de negócio | RNF05, RNF06, RNF13 |
-| DA05 | Isolamento da integração de pagamento; tokenização, sem armazenar dados de cartão | Conformidade PCI-DSS | RF11, RF12, RNF03 |
-| DA06 | Controle de concorrência com bloqueio na reserva de áreas comuns | Impedir sobreposição de reservas em requisições simultâneas | RF27 |
-| DA07 | Emissão de boletos em lote com semântica transacional por unidade | Falha parcial não deve corromper as demais unidades | RF13, RNF11 |
-| DA08 | Desativação lógica (soft delete) para moradores | Preservar histórico sem exclusão física | RF07 |
-| DA09 | Portal único responsivo servindo os três perfis com views condicionadas ao papel | Compatibilidade e usabilidade multiplataforma | RNF09, RNF10 |
-| DA10 | Rotina de backup automático diário com retenção configurável | Confiabilidade e recuperação de dados | RNF12 |
+|----|---------|---------------|-----------|
+| AD01 | Arquitetura modular orientada a domínios (portal único + serviços de negócio) | Domínios coesos (financeiro, reservas, acesso) com baixo acoplamento facilitam manutenção e escala | RNF07, Manutenibilidade |
+| AD02 | Camada central de Autenticação/Autorização mediando todas as requisições | Aplicação uniforme de RBAC por perfil e expiração de sessão | RF01, RF02, RF03, RNF01 |
+| AD03 | Serviço de Notificação por E-mail desacoplado e assíncrono (fila) | Evita bloqueio de operações de negócio; garante entrega dos avisos | RF17, RF24, HU04, HU06, HU09, HU10 |
+| AD04 | Serviço de Auditoria com registros imutáveis (append-only) | Requisito explícito de rastreabilidade financeira e de acesso | RNF05, RNF06, RNF13 |
+| AD05 | Processador de Lotes para emissão de boletos com transação por unidade | Garante isolamento de falha parcial sem corromper demais unidades | RF13, RNF11 |
+| AD06 | Não armazenamento de dados de cartão; delegação total ao gateway | Conformidade PCI-DSS | RNF03 |
+| AD07 | Controle de concorrência atômico nas reservas | Impede sobreposição em condições de corrida | RF27 |
+| AD08 | Desativação lógica (soft delete) de moradores | Preservar histórico sem exclusão física | RF07 |
+| AD09 | Serviço de Armazenamento de Anexos separado (fotos, atas PDF, presença) | Isolar binários da base transacional | HU06, HU10, HU12 |
+| AD10 | Persistência centralizada com backup diário e retenção de 90 dias | Continuidade e recuperação de dados | RNF12 |
+| AD11 | Portal web responsivo e compatível com navegadores modernos | Acesso móvel/desktop | RNF09, RNF10 |
+| AD12 | Camada de tratamento de dados pessoais com princípios de minimização/consentimento | Conformidade LGPD | RNF04 |
 
 ---
 
@@ -206,71 +220,70 @@ sequenceDiagram
 
 | Componente | Responsabilidade Principal | Comunica-se com | Origem (HU / Critério de Aceite) |
 |------------|---------------------------|-----------------|----------------------------------|
-| Portal Web Responsivo | Interface única para síndico, condômino e funcionário, adaptável a mobile/desktop | API Gateway | HU01–HU14; RNF09, RNF10 |
-| API Gateway / Autenticação | Roteamento, autenticação, autorização por perfil, controle de sessão | Portal, todos os serviços | RF02, RF03; RNF01 |
-| Serviço de Identidade e Acesso | Gestão de usuários, perfis, hash de senha, login/logout | API Gateway, Repositório | RF01, RF02, RF03; RNF02 |
-| Serviço de Unidades e Moradores | CRUD de unidades, moradores, vínculos, veículos, desativação lógica | Serviço Financeiro, Repositório | HU01 (bloco/número obrigatórios, CPF único, múltiplos moradores); RF04–RF08 |
-| Serviço Financeiro / Boletos | Configuração de taxas, emissão individual/lote, status, pagamentos externos, inadimplência | Gateway de Pagamento, Unidades, Notificações, Auditoria | HU02, HU03, HU08; RF09–RF15 |
-| Serviço de Comunicados e Assembleias | Publicação de comunicados, fixação, criação de assembleias, atas e anexos | Notificações, Auditoria, Repositório | HU04, HU06, HU12; RF16–RF20 |
-| Serviço de Ocorrências | Registro, categorização, atualização de status, histórico, anexos | Notificações, Auditoria, Repositório | HU05, HU10; RF21–RF24 |
-| Serviço de Reservas | Cadastro de áreas, regras, disponibilidade, prevenção de sobreposição, cancelamento, calendário | Notificações, Repositório | HU07, HU09; RF25–RF29 |
-| Serviço de Controle de Acesso e Visitantes | Registro entrada/saída, pré-autorizações, vínculo, histórico por unidade | Auditoria, Repositório | HU11, HU13, HU14; RF30–RF33 |
-| Serviço de Notificações | Envio assíncrono de e-mails disparados por eventos de domínio | Provedor de E-mail, serviços de domínio | HU02, HU04, HU05, HU06, HU07, HU09, HU10; RF17, RF24 |
-| Serviço de Auditoria e Logs | Registros imutáveis financeiros/acessos e logs de eventos críticos | Repositório, serviços de domínio | RNF05, RNF06, RNF13 |
-| Gateway de Pagamento (externo) | Processamento e confirmação de pagamentos sob PCI-DSS | Serviço Financeiro | HU08; RF11, RF12; RNF03 |
-| Provedor de E-mail (externo) | Entrega de mensagens de notificação | Serviço de Notificações | RF17, RF24 |
-| Repositório de Dados | Persistência dos dados de domínio | Todos os serviços | Todos os RFs; RNF12 |
-| Rotina de Backup | Backup diário e retenção mínima 90 dias | Repositório de Dados | RNF12 |
+| Portal Web Responsivo | Interface única para todos os perfis; adaptação móvel/desktop | API Gateway | Todas as HUs; RNF09, RNF10 |
+| API Gateway / Roteador | Ponto único de entrada; roteamento e validação de sessão | Autenticação, Módulos de negócio | RF02, RF03 |
+| Serviço de Autenticação e Autorização | Login/logout, RBAC por perfil, expiração de sessão | API Gateway, Módulo de Usuários | RF01–RF03; RNF01, RNF02 |
+| Módulo de Usuários e Perfis | Cadastro de usuários e atribuição de perfis | Autenticação, Repositório | RF01; HU01 |
+| Módulo de Unidades e Moradores | CRUD de unidades, moradores, vínculos, veículos, soft delete | Repositório, Financeiro | RF04–RF08; HU01 (CPF único, múltiplos moradores) |
+| Módulo Financeiro / Boletos | Configuração de taxa, emissão individual/lote, status, inadimplência, pagamentos manuais | Gateway Pagamento, Processador de Lotes, Notificação, Auditoria | RF09–RF15; HU02, HU03, HU08 |
+| Processador de Lotes / Agendador | Execução transacional de emissão em lote com controle de falhas | Financeiro, Repositório, Notificação | RF13; HU02 (indicar falhas); RNF11 |
+| Módulo de Comunicados e Assembleias | Publicação de comunicados fixáveis, criação de assembleias, registro de atas | Notificação, Armazenamento de Anexos, Repositório | RF16–RF20; HU04, HU06, HU12 |
+| Módulo de Ocorrências | Registro por condômino/funcionário, categorização, mudança de status, histórico | Notificação, Armazenamento de Anexos, Auditoria | RF21–RF24; HU05, HU10 |
+| Módulo de Reservas | Cadastro de áreas, regras, verificação de sobreposição, cancelamento, calendário | Notificação, Repositório | RF25–RF29; HU07, HU09 |
+| Módulo de Controle de Acesso e Visitantes | Registro entrada/saída, pré-autorizações, vínculo, histórico | Auditoria, Repositório | RF30–RF33; HU11, HU13, HU14 |
+| Serviço de Notificação por E-mail | Envio assíncrono de avisos (comunicados, status, reservas, boletos) | Módulos de negócio (fila) | RF17, RF24; HU02, HU04, HU06, HU09, HU10 |
+| Serviço de Auditoria / Logs Imutáveis | Registro append-only de eventos críticos e financeiros | Financeiro, Acesso, Comunicados, Ocorrências | RNF05, RNF06, RNF13 |
+| Serviço de Armazenamento de Anexos | Guarda de fotos, atas PDF, listas de presença | Ocorrências, Comunicados | HU06, HU10, HU12 |
+| Gateway de Pagamento (externo) | Processar e confirmar pagamentos; conformidade PCI-DSS | Módulo Financeiro | RF11, RF12; RNF03; HU08 |
+| Repositório de Dados | Persistência transacional dos domínios | Todos os módulos, Backup | Todas as HUs; RNF11 |
+| Serviço de Backup | Backup diário automático, retenção 90 dias | Repositório de Dados | RNF12 |
 
 ---
 
 ## 5. Bloqueios e Pendências
 
-| ID | Descrição | Impacto | Responsável Sugerido |
+| ID | Descrição | Impacto | Responsável sugerido |
 |----|-----------|---------|----------------------|
-| BL01 | Requisitos não definem funcionalidades do perfil **Administrador** (RF01) além de sua existência | Perfil sem escopo de permissões definido | Product Owner |
-| BL02 | Gateway de pagamento específico e modelo de conciliação não especificados | Design de integração de RF11/RF12 pendente | Arquiteto + Financeiro |
-| BL03 | Regra de reajuste/histórico de valores de taxa condominial (RF09) não detalhada | Ambiguidade em versionamento de taxas | PO |
-| BL04 | Política de retenção LGPD (anonimização/expurgo) de moradores/visitantes não definida (RNF04) | Conflito potencial com retenção de histórico (RF07, RF33) | DPO/Jurídico |
-| BL05 | Critério de "morador ativo" para emissão em lote (HU02) não explicitado versus RF07 | Divergência na geração de boletos | PO |
-| BL06 | Não há requisito de quórum/votação em assembleias, apenas registro de ata | Limita escopo funcional de assembleias | PO |
-| BL07 | Meio de notificação limitado a e-mail; sem fallback (push/SMS) para RNF07 24/7 | Risco de não entrega de avisos críticos | PO |
+| BL01 | Gateway de pagamento específico e modelo de callback/webhook não definidos | Bloqueia detalhamento de RF11/RF12 e fluxo de conciliação | Product Owner + Financeiro |
+| BL02 | Regras de cálculo de inadimplência (juros, multa, correção) não especificadas | RF15/HU03 incompleto — painel pode divergir da cobrança real | Área financeira do condomínio |
+| BL03 | Política de retenção LGPD e prazos de anonimização de visitantes não definidos | Afeta RNF04/RNF06 e ciclo de vida dos dados | DPO / Jurídico |
+| BL04 | Provedor de e-mail e SLA de entrega não definidos | Impacta confiabilidade das notificações | Infraestrutura |
+| BL05 | Regras de reembolso/estorno em cancelamento de reserva não especificadas | Lacuna em RF28 quando reserva envolver taxa | Product Owner |
+| BL06 | Não há definição de idempotência para callbacks de pagamento | Risco de dupla confirmação de boleto | Arquitetura |
 
 ---
 
 ## 6. Cobertura de Requisitos
 
-### Requisitos Funcionais
+**Requisitos Funcionais:** 33/33 cobertos.
 
-| Faixa | Situação | Componente Responsável |
-|-------|----------|------------------------|
-| RF01–RF03 | ✅ Coberto | Identidade e Acesso / API Gateway |
-| RF04–RF08 | ✅ Coberto | Unidades e Moradores |
-| RF09–RF15 | ✅ Coberto | Financeiro / Boletos |
-| RF16–RF20 | ✅ Coberto | Comunicados e Assembleias |
-| RF21–RF24 | ✅ Coberto | Ocorrências |
-| RF25–RF29 | ✅ Coberto | Reservas |
-| RF30–RF33 | ✅ Coberto | Controle de Acesso e Visitantes |
+| Faixa | Cobertura |
+|-------|-----------|
+| RF01–RF03 (Acesso) | Autenticação/Autorização + Usuários |
+| RF04–RF08 (Unidades) | Módulo de Unidades e Moradores |
+| RF09–RF15 (Financeiro) | Módulo Financeiro + Processador de Lotes + Gateway |
+| RF16–RF20 (Comunicados/Assembleias) | Módulo de Comunicados e Assembleias + Notificação |
+| RF21–RF24 (Ocorrências) | Módulo de Ocorrências + Notificação |
+| RF25–RF29 (Reservas) | Módulo de Reservas |
+| RF30–RF33 (Acesso/Visitantes) | Módulo de Controle de Acesso + Auditoria |
 
-**Cobertura RF: 33/33 (100%).**
+**Requisitos Não Funcionais:** 13/13 endereçados.
 
-### Requisitos Não Funcionais
-
-| RNF | Situação | Tratamento Arquitetural |
-|-----|----------|-------------------------|
-| RNF01 | ✅ | Gateway com timeout de sessão de 30 min |
-| RNF02 | ✅ | Hash seguro no Serviço de Identidade |
-| RNF03 | ✅ | Isolamento PCI-DSS; sem armazenar cartão |
-| RNF04 | ⚠️ Parcial | Depende de política LGPD (BL04) |
-| RNF05 | ✅ | Serviço de Auditoria (registros imutáveis) |
-| RNF06 | ✅ | Auditoria de acessos de visitantes |
-| RNF07 | ⚠️ Parcial | Arquitetura modular; SLA de infra a definir |
-| RNF08 | ✅ | Otimização de consultas de painel/calendário |
-| RNF09 | ✅ | Portal responsivo |
-| RNF10 | ✅ | Compatibilidade com navegadores modernos |
-| RNF11 | ✅ | Emissão em lote transacional (DA07) |
-| RNF12 | ✅ | Rotina de Backup diária |
-| RNF13 | ✅ | Serviço de Auditoria e Logs |
+| RNF | Tratamento arquitetural |
+|-----|-------------------------|
+| RNF01 | AUTH com expiração de sessão de 30 min |
+| RNF02 | Armazenamento de senha com hash seguro |
+| RNF03 | AD06 — não armazenar dados de cartão |
+| RNF04 | AD12 — camada de tratamento LGPD (pendência BL03) |
+| RNF05 | Serviço de Auditoria imutável |
+| RNF06 | Registro de acesso de visitante em Auditoria |
+| RNF07 | Modularidade + backup + design 24/7 |
+| RNF08 | Consultas otimizadas em painel/calendário (≤3s) |
+| RNF09 | Portal responsivo |
+| RNF10 | Compatibilidade com navegadores modernos |
+| RNF11 | Processador de Lotes transacional por unidade |
+| RNF12 | Serviço de Backup diário, retenção 90 dias |
+| RNF13 | Auditoria/Logs de eventos críticos |
 
 ---
 
@@ -278,17 +291,17 @@ sequenceDiagram
 
 | # | Lacuna Identificada | Impacto Arquitetural | Ação Recomendada |
 |---|---------------------|----------------------|------------------|
-| G01 | **Escopo do perfil Administrador indefinido** | Modelo de RBAC incompleto; possível refatoração de permissões | Definir matriz de permissões por perfil antes da implementação do Serviço de Identidade |
-| G02 | **Conflito histórico vs. LGPD** — RF07/RF33 exigem retenção, RNF04 exige minimização | Necessidade de estratégia de anonimização preservando integridade referencial | Especificar política de ciclo de vida do dado com DPO; prever pseudonimização em Auditoria |
-| G03 | **Integração de pagamento genérica** | Fluxos de confirmação, reembolso e webhook não modelados | Definir contrato de callback do gateway; projetar idempotência na confirmação (RF12) |
-| G04 | **Concorrência de reservas sob alta carga** | Risco de sobreposição em picos (RF27) | Confirmar estratégia de bloqueio otimista/pessimista e testes de concorrência |
-| G05 | **Falta de definição de reprocessamento na emissão em lote** | Unidades falhas (RNF11) precisam de reemissão controlada | Especificar fluxo de reprocessamento seletivo pós-falha parcial |
-| G06 | **Canal único de notificação (e-mail)** | E-mails podem falhar; sem confirmação de leitura | Avaliar fila com retry e canais alternativos; registrar status de entrega |
-| G07 | **Ausência de gestão de anexos/documentos** (atas PDF, fotos de ocorrências) | Necessário componente de armazenamento de arquivos não citado nos requisitos | Definir serviço/repositório de arquivos e limites de tamanho/formato |
-| G08 | **Desempenho de painéis (RNF08) sem estratégia definida** | Consultas de inadimplência e calendário podem degradar | Prever visões materializadas/indexação e cache de leitura |
-| G09 | **Assembleias sem votação/quórum** | Escopo pode expandir futuramente | Confirmar com PO se é fora de escopo definitivo |
-| G10 | **Métrica de disponibilidade 99,5% (RNF07)** sem requisitos de redundância | SLA depende de topologia de infraestrutura não especificada | Definir estratégia de redundância, health-check e failover com time de infra |
+| G01 | Ausência de especificação de regras de juros/multa sobre inadimplência | Painel de inadimplência (RF15) pode exibir valores inconsistentes com a cobrança efetiva | Definir motor de regras de cobrança configurável antes da implementação do módulo financeiro |
+| G02 | Falta de definição de idempotência e retry nos callbacks do gateway | Risco de dupla baixa de boleto ou inconsistência de status | Especificar chave de idempotência e conciliação assíncrona (BL06) |
+| G03 | LGPD sem detalhamento de consentimento, anonimização e direito ao esquecimento | Retenção indevida de dados pessoais de visitantes/moradores | Definir política de ciclo de vida de dados com DPO; anonimizar histórico de visitantes após prazo legal |
+| G04 | Não há requisito de MFA nem política de complexidade de senha | Segurança de acesso limitada a hash + sessão | Avaliar autenticação multifator para perfil síndico/administrador |
+| G05 | Escalabilidade das notificações em massa (emissão em lote + comunicados) não dimensionada | Picos de envio de e-mail podem degradar desempenho | Dimensionar fila e throttling do Serviço de Notificação |
+| G06 | Ausência de requisito sobre concorrência em pré-autorização vs. registro de entrada | Possível vínculo duplicado entre pré-autorização e visita (HU14 critério 3) | Definir bloqueio/estado transacional na vinculação pré-autorização→visita |
+| G07 | Não há especificação de auditoria para operações de cadastro de unidades/moradores | RNF13 cobre apenas eventos listados; alterações cadastrais ficam sem trilha | Estender escopo de auditoria a operações cadastrais sensíveis (LGPD) |
+| G08 | Formato/limite de anexos (fotos de ocorrência, atas PDF) não definido | Impacto no Serviço de Armazenamento e desempenho | Definir tipos permitidos, tamanho máximo e antivírus de upload |
+| G09 | Regras de detecção de sobreposição parcial de horários não detalhadas | RF27 pode falhar em reservas com intervalos que se cruzam parcialmente | Especificar granularidade de slots e regra de interseção de intervalos |
+| G10 | Requisito de disponibilidade 99,5% sem definição de redundância/failover | Meta de uptime pode não ser atingível sem estratégia de HA | Definir estratégia de redundância e monitoramento (fora do design abstrato atual) |
 
 ---
 
-*Relatório gerado pelo Sistema Multi-Agente AI4ES — Time 2. Design em nível conceitual, neutro quanto a tecnologias, conforme diretrizes de neutralidade tecnológica.*
+*Fim do Relatório Canônico — AI4ES Time 2 / M04.*
