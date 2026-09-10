@@ -1,12 +1,12 @@
 import subprocess
 import json
-import os
 from pathlib import Path
 import logging
 import sys
 from datetime import datetime, timezone
 import re
 
+from shared.security import ambiente_minimo_python, redigir_segredos
 from shared.workspace import get_agent_workspace, get_workspace_root
 
 # Variáveis de controle de estado do agente
@@ -187,11 +187,15 @@ def executar_pytest_tool(caminho_arquivo: str) -> dict:
     # Os fontes materializados preservam a topologia original do Coder. As
     # duas entradas suportam tanto ``from src.modulo`` quanto ``from modulo``
     # sem exigir que o teste gerado manipule sys.path corretamente.
-    env = os.environ.copy()
-    pythonpath = [str(dir_base), str(dir_base / "src")]
-    if env.get("PYTHONPATH"):
-        pythonpath.append(env["PYTHONPATH"])
-    env["PYTHONPATH"] = os.pathsep.join(pythonpath)
+    #
+    # O ambiente do subprocesso usa allowlist (não os.environ.copy()): o
+    # código deste teste foi gerado por LLM a partir de artefatos externos e
+    # não deve enxergar credenciais do processo orquestrador (GOOGLE_API_KEY,
+    # DATABASE_URL, etc.). Mesmo padrão já aplicado no fluxo E2E
+    # (ver shared/security.ambiente_minimo_python).
+    env = ambiente_minimo_python(
+        pythonpath=[str(dir_base), str(dir_base / "src")]
+    )
     
     try:
         logger.info(f"[QA Subagent] Executando testes para {nome_artefato}...")
@@ -307,6 +311,9 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
         log_completo = resultado.stdout
         if resultado.stderr:
             log_completo += f"\n--- AVISOS DE SISTEMA ---\n{resultado.stderr}"
+        # Redige credenciais antes de propagar para code_fix_agent/usuário —
+        # mesmo padrão do fluxo E2E (shared.security.redigir_segredos).
+        log_completo = redigir_segredos(log_completo)
 
         linhas_com_erro = _extrair_linhas_com_erro(resultado.stdout, caminho.name)
 

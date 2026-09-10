@@ -2,13 +2,13 @@
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import time
 from pathlib import Path
 from typing import Any
 
+from shared.security import redigir_segredos as _redigir_segredos
 from shared.workspace import get_agent_workspace
 
 from ..schemas import EntradaE2ENormalizada, ResultadoExecucaoE2E
@@ -71,33 +71,6 @@ def _ambiente_minimo_node() -> dict[str, str]:
         for chave in permitidas
         if (valor := os.environ.get(chave)) is not None
     }
-
-
-def _redigir_segredos(texto: str) -> str:
-    texto = re.sub(
-        r"(?i)\b(authorization\s*[:=]\s*)[^\r\n,;]+",
-        r"\1[REDACTED]",
-        texto,
-    )
-    texto = re.sub(
-        r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+",
-        "Bearer [REDACTED]",
-        texto,
-    )
-    texto = re.sub(
-        (
-            r"(?i)\b(api[_-]?key|access[_-]?token|token|"
-            r"password|passwd|secret)\b(\s*[:=]\s*)([^\s,;]+)"
-        ),
-        r"\1\2[REDACTED]",
-        texto,
-    )
-    return re.sub(
-        r"(https?://)([^/\s:@]+):([^@\s/]+)@",
-        r"\1[REDACTED]@",
-        texto,
-        flags=re.IGNORECASE,
-    )
 
 
 def _resumo_processo(processo: subprocess.CompletedProcess[str]) -> list[str]:
