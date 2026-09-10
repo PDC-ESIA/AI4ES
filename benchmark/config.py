@@ -17,16 +17,48 @@ RESULTS = RAIZ / "results"
 
 PROVIDER = "github_copilot"
 
+# Modelos avaliados: produzem os artefatos que serão pontuados.
+# Todos verificados em 2026-09-10. Constar em /models não basta:
+# "claude-sonnet-4.5" está no catálogo mas o endpoint o recusa, e "gpt-5.6-terra"
+# só aceita /responses — como candidato ele roda via ADK_LLM_MODEL com o prefixo
+# da ponte (github_copilot/responses/gpt-5.6-terra), então aqui vale só o rótulo.
 CANDIDATOS = [
+    "gpt-4o-mini",
     "gpt-5-mini",
+    "gpt-5.4",
+    "gpt-5.6-terra",
     "gemini-3.5-flash",
-    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "claude-haiku-4.5",
+    "claude-opus-5",
 ]
 
+# Modelos que aplicam a rubrica. Independente de CANDIDATOS: os conjuntos podem
+# ser disjuntos, parcialmente sobrepostos ou idênticos.
+JUIZES = [
+    "gpt-5-mini",
+    "gemini-3.6-flash",
+]
 
-# Protocolo §14: o mesmo modelo nunca avalia a própria resposta. Com três
-# candidatos, cada resposta recebe dois juízes independentes.
-JUIZES = {c: [j for j in CANDIDATOS if j != c] for c in CANDIDATOS}
+# Teste piloto: a autoavaliação é permitida e mantém o desenho balanceado (todo
+# candidato recebe os mesmos dois juízes). O cegamento de montar_resposta() faz
+# o juiz desconhecer a autoria, mas não impede que ele reconheça o próprio
+# estilo — viés de auto-preferência continua sendo ameaça à validade.
+# Ative para o experimento definitivo.
+EXCLUIR_AUTOAVALIACAO = False
+
+
+def juizes_de(candidato: str) -> list[str]:
+    """Juízes elegíveis para avaliar um dado candidato."""
+    if not EXCLUIR_AUTOAVALIACAO:
+        return list(JUIZES)
+    return [j for j in JUIZES if j != candidato]
+
+
+def intersecao() -> list[str]:
+    """Modelos que atuam nos dois papéis — sujeitos a autoavaliação."""
+    return [m for m in CANDIDATOS if m in JUIZES]
+
 
 # Protocolo §8. A ordem é fixa e usada tanto no prompt quanto nas tabelas.
 CRITERIOS = [

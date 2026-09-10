@@ -108,10 +108,19 @@ def main() -> None:
     print("=" * 72)
     linhas = []
     for modelo, grupo in consolidado.groupby("candidato"):
-        linhas.append({"candidato": modelo, **descritivas(grupo["nota_final"])})
+        n_juizes = df.loc[df["candidato"] == modelo, "juiz"].nunique()
+        linhas.append(
+            {"candidato": modelo, "n_juizes": n_juizes, **descritivas(grupo["nota_final"])}
+        )
     tabela = pd.DataFrame(linhas).sort_values("media", ascending=False)
     tabela.to_csv(RESULTS / "descritivas.csv", index=False)
     print(tabela.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+
+    if tabela["n_juizes"].nunique() > 1:
+        print(
+            "\naviso: candidatos avaliados por quantidades diferentes de juízes "
+            "(autoavaliação descartada). As médias não têm precisão comparável."
+        )
 
     print()
     print("=" * 72)

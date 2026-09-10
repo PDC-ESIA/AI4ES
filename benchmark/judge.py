@@ -27,14 +27,16 @@ import litellm  # noqa: E402
 from config import (  # noqa: E402
     CANDIDATOS,
     CRITERIOS,
+    EXCLUIR_AUTOAVALIACAO,
     JUDGMENTS,
-    JUIZES,
     MAX_TENTATIVAS_JSON,
     ORDEM_PASTAS,
     ROTULOS,
     RUNS,
     TEMPERATURA_JUIZ,
     TIMEOUT_S,
+    intersecao,
+    juizes_de,
     modelo_litellm,
 )
 from shared.llm import copilot_completion_kwargs  # noqa: E402
@@ -46,9 +48,13 @@ _ESCALA = (
 
 # Identificadores de fornecedor/modelo são removidos do texto antes do envio.
 # Protocolo §14: o juiz não deve receber informação sobre quem produziu a resposta.
+# O sufixo de versão/variante é consumido junto — "Gemini 3.8 Flash" inteiro vira
+# [MODELO], senão o número da versão continuaria identificando a autoria.
 _MARCAS = re.compile(
-    r"\b(gemini|gpt-?\d[\w.\-]*|claude|sonnet|opus|openai|anthropic|copilot|"
-    r"llama|mistral|deepseek|grok)[\w.\-]*",
+    r"\b(?:gemini|gpt|chatgpt|claude|sonnet|opus|haiku|openai|anthropic|copilot|"
+    r"llama|mistral|deepseek|grok|qwen)"
+    r"(?:[\s\-._]*(?:\d[\w.]*|flash|pro|mini|lite|nano|turbo|preview|instruct|"
+    r"codex|sonnet|opus|haiku))*",
     re.IGNORECASE,
 )
 
@@ -215,13 +221,30 @@ def main() -> None:
     if not execucoes:
         sys.exit("nenhuma execução encontrada em benchmark/runs/")
 
+    sobrepostos = intersecao()
+    if sobrepostos:
+        if EXCLUIR_AUTOAVALIACAO:
+            print(
+                "aviso: "
+                + ", ".join(sobrepostos)
+                + " atuam como candidato e juiz; a autoavaliação é descartada e "
+                "esses candidatos recebem um avaliador a menos.\n"
+            )
+        else:
+            print(
+                "aviso: "
+                + ", ".join(sobrepostos)
+                + " avaliam as próprias respostas (às cegas). Registre o viés de "
+                "auto-preferência como ameaça à validade.\n"
+            )
+
     pendentes = feitos = falhos = 0
     for run_dir in execucoes:
         candidato = run_dir.parent.parent.name
         caso = run_dir.parent.name
         execucao = run_dir.name
 
-        for juiz in JUIZES[candidato]:
+        for juiz in juizes_de(candidato):
             destino = JUDGMENTS / f"{candidato}__{caso}__{execucao}__{juiz}.json"
             if destino.exists():
                 continue
@@ -242,6 +265,7 @@ def main() -> None:
                 "candidato": candidato,
                 "caso": caso,
                 "execucao": int(execucao.removeprefix("exec-")),
+                "autoavaliacao": juiz == candidato,
                 "marcas_removidas": scrubs,
                 "caracteres_avaliados": len(resposta),
             }

@@ -1,5 +1,8 @@
 """Extrai tempo, chamadas e tokens do YAML nativo do DebugLoggingPlugin do ADK.
 
+O plugin escreve em modo append e o arquivo acumula execuções de dias diferentes,
+então por padrão só a execução mais recente é considerada.
+
 Uso isolado:
     adk/.venv/bin/python benchmark/metrics.py adk/workspace_output/adk_debug.yaml
 
@@ -20,10 +23,45 @@ def _instante(valor: str | datetime) -> datetime:
     return datetime.fromisoformat(valor.replace("Z", "+00:00"))
 
 
-def extrair_metricas(caminho: Path) -> dict:
+def _intervalo(doc: dict) -> tuple[datetime, datetime]:
+    inicio = _instante(doc["start_time"])
+    marcas = [
+        _instante(e["timestamp"]) for e in doc.get("entries", []) if e.get("timestamp")
+    ]
+    return inicio, max(marcas) if marcas else inicio
+
+
+def _ultima_execucao(documentos: list[dict]) -> list[dict]:
+    """Documentos da execução mais recente.
+
+    O DebugLoggingPlugin abre o arquivo em modo append e o workspace nem sempre
+    é limpo entre runs, então o YAML acumula execuções de dias diferentes. Uma
+    única run gera vários documentos (o agente raiz e cada sub-agente invocado
+    via AgentTool), cujos intervalos se sobrepõem porque os filhos rodam dentro
+    do pai. Agrupar por sobreposição separa as runs sem depender de limiar.
+    """
+    ordenados = sorted(documentos, key=lambda d: _intervalo(d)[0])
+    grupos: list[list[dict]] = []
+    fim_grupo = None
+    for doc in ordenados:
+        inicio, fim = _intervalo(doc)
+        if fim_grupo is None or inicio > fim_grupo:
+            grupos.append([doc])
+            fim_grupo = fim
+        else:
+            grupos[-1].append(doc)
+            fim_grupo = max(fim_grupo, fim)
+    return grupos[-1]
+
+
+def extrair_metricas(caminho: Path, apenas_ultima: bool = True) -> dict:
     documentos = [d for d in yaml.safe_load_all(caminho.read_text(encoding="utf-8")) if d]
     if not documentos:
         raise ValueError(f"nenhuma invocação em {caminho}")
+
+    n_total = len(documentos)
+    if apenas_ultima:
+        documentos = _ultima_execucao(documentos)
 
     inicios = []
     fins = []
@@ -58,6 +96,7 @@ def extrair_metricas(caminho: Path) -> dict:
     return {
         "duracao_total_s": round((fim - inicio).total_seconds(), 3),
         "n_invocacoes_adk": len(documentos),
+        "n_invocacoes_ignoradas": n_total - len(documentos),
         "n_chamadas_llm": len(chamadas),
         "n_erros_llm": erros,
         "tokens_prompt": sum(c["tokens_prompt"] for c in chamadas),
@@ -73,8 +112,19 @@ def extrair_metricas(caminho: Path) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("yaml", type=Path)
+    parser.add_argument(
+        "--todas",
+        action="store_true",
+        help="agrega o arquivo inteiro em vez de só a última execução",
+    )
     args = parser.parse_args()
-    print(json.dumps(extrair_metricas(args.yaml), indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            extrair_metricas(args.yaml, apenas_ultima=not args.todas),
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 if __name__ == "__main__":
