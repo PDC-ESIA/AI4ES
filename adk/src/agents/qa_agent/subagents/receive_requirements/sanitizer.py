@@ -4,6 +4,8 @@ import ast
 import logging
 import re
 
+from shared.security import detectar_credenciais, detectar_riscos_codigo
+
 logger = logging.getLogger("qa_agent")
 
 
@@ -15,6 +17,14 @@ def _validar_e_sanitizar_codigo(codigo: str, id_artefato: str) -> str:
     ast.parse. Se mesmo após sanitização o código permanece inválido,
     levanta ValueError — o chamador propaga o erro para o autocorrect cycle.
 
+    Depois da validação sintática, varre o código por riscos de segurança
+    (leitura de ambiente, execução de processo/código dinâmico, rede fora de
+    loopback, credenciais literais — ver shared.security) antes de liberar o
+    código para ser persistido em disco e executado pelo pytest_runner.
+    Defesa em profundidade complementar ao allowlist de ambiente do
+    pytest_runner (P0): mesmo que algo passe por aqui, o subprocess já roda
+    sem acesso às credenciais do processo pai.
+
     Args:
         codigo: String com código Python emitido pelo LLM.
         id_artefato: ID do artefato (usado nas mensagens de log/erro).
@@ -23,7 +33,8 @@ def _validar_e_sanitizar_codigo(codigo: str, id_artefato: str) -> str:
         Código Python sanitizado e validado.
 
     Raises:
-        ValueError: Se ast.parse falha após sanitização.
+        ValueError: Se ast.parse falha após sanitização, ou se o código
+            apresentar risco de segurança.
     """
     padrao = re.compile(r'\b(pass|return|continue|break|raise)<[^>\n]*>')
     sanitizado = padrao.sub(r'\1', codigo)
@@ -41,5 +52,16 @@ def _validar_e_sanitizar_codigo(codigo: str, id_artefato: str) -> str:
             f"Código gerado para {id_artefato} é inválido após sanitização: "
             f"{e.msg} (linha {e.lineno}). Será reciclado via autocorrect."
         ) from e
+
+    riscos = detectar_riscos_codigo(sanitizado) + detectar_credenciais(sanitizado)
+    if riscos:
+        logger.warning(
+            f"[QA] Código gerado para {id_artefato} bloqueado por risco de "
+            f"segurança: {riscos}"
+        )
+        raise ValueError(
+            f"Código gerado para {id_artefato} apresenta risco de segurança "
+            f"e foi bloqueado antes de ser persistido: {'; '.join(riscos)}."
+        )
 
     return sanitizado
