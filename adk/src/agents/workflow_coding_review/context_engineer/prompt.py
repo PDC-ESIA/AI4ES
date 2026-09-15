@@ -180,6 +180,28 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requisitos, gere 
     - Exemplo (web): 'Retornar status 401 quando credenciais forem inválidas'
     - Exemplo (não-web): 'Encerrar com exit code 1 quando o arquivo de entrada não existir' (CLI) ou 'Lançar ValueError quando o argumento for negativo' (library)
 
+    Cada critério é um OBJETO com três campos, nunca uma string solta:
+    - **id**: "CA-01", "CA-02", ... sequencial DENTRO da task (recomeça em CA-01 a cada task).
+      Este id é a chave que liga o critério ao teste que o comprova — não repita ids na mesma task.
+    - **description**: o texto do critério, no formato descrito acima.
+    - **automatable**: `true` quando o critério pode ser comprovado por um teste
+      automatizado escrito junto com o código; `false` quando comprovar exigiria
+      navegador, inspeção visual ou julgamento humano.
+      A pergunta é sobre o que se consegue automatizar HOJE, com testes de código —
+      não sobre o que seria automatizável em tese com qualquer ferramenta existente.
+      - `true`: 'Retornar status 401 quando credenciais forem inválidas', 'Persistir o
+        ensaio no banco ao criar', 'Lançar ValueError quando o argumento for negativo'
+      - `false`: 'Consigo criar um Ensaio pela interface web', 'A página final do álbum
+        é exibida', 'O visual é minimalista e não compete com as fotos'
+      - Na dúvida entre os dois, marque `true`: um critério cobrado à toa custa pouco,
+        um critério automatizável marcado como `false` nunca ganha teste e some da medição.
+
+    Exemplo do campo completo:
+    "acceptance_criteria": [
+      {"id": "CA-01", "description": "Retornar status 401 quando credenciais forem inválidas", "automatable": true},
+      {"id": "CA-02", "description": "Consigo criar um Ensaio pela interface web", "automatable": false}
+    ]
+
 - **contract**: defina as fronteiras com base nos artefatos de design:
     - inputs: arquivos ou módulos que o Coder pode LER mas NÃO modificar.
     - outputs: arquivos que o Coder deve CRIAR ou MODIFICAR.

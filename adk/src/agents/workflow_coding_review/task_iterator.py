@@ -29,12 +29,25 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
 
+from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
-from .executor.agent import _MARCADOR_ESTAGNACAO
+from .executor.acceptance_score import CHAVE_ACEITE
+from .executor.acceptance_score import CHAVES_DE_CICLO as CHAVES_DE_CICLO_ACEITE
+from .executor.acceptance_score import nota_unificada
+from .executor.loop_policy import (
+    CHAVE_DETALHES,
+    CHAVE_HISTORICO,
+    CHAVE_MOTIVO_PARADA,
+    CHAVES_DE_CICLO,
+    MOTIVOS_PARADA,
+)
 
 logger = logging.getLogger(__name__)
+
+_LIMITE_CONCEITO_C = 0.6
+_LIMITE_CONCEITO_B = 0.9
 
 # Formato do id de task emitido pelo context_engineer ("TASK-XXX (sequencial)",
 # ver context_engineer/prompt.py). Estrito de propósito: o id validado aqui é
@@ -44,12 +57,30 @@ _ID_TASK_RE = re.compile(r"^TASK-[0-9]+$")
 # Chaves de ciclo do loop coder ↔ executor, removidas entre tasks para que uma
 # task nunca herde o desfecho da anterior. Removidas (pop) e não zeradas: quem
 # as consome checa ausência, e `None` não representa ausência sem ambiguidade.
-_CHAVES_CICLO_REMOVIDAS = ("validation", "report_path", "error_report")
+#
+# As chaves da política de progresso vêm de `CHAVES_DE_CICLO` (issue #394) em vez
+# de repetidas aqui: quem as cria é o `loop_policy`, e uma chave nova que
+# escapasse desta limpeza faria a task seguinte herdar o histórico da anterior —
+# a primeira rodada dela seria lida como "sem alteração" e poderia ser cortada
+# antes de qualquer tentativa real.
+_CHAVES_CICLO_REMOVIDAS = (
+    (
+        "validation",
+        "report_path",
+        "error_report",
+    )
+    + CHAVES_DE_CICLO
+    # As da nota de aceite vêm do módulo que as cria, pela mesma razão. Entre
+    # elas está o flag do aviso de cobertura: se ele sobrevivesse à troca de
+    # task, a primeira task o consumiria e nenhuma outra receberia o pedido.
+    + CHAVES_DE_CICLO_ACEITE
+)
 
 # Marcador do 3º ramo do coder (ver coder/prompt.py): a partir da 2ª task,
 # `execution_result` nunca fica ausente — se ficasse, o coder entenderia
 # "primeira execução" e tentaria reconstruir o projeto do zero.
 _MARCADOR_NOVA_TASK = "NOVA_TASK:"
+
 
 def marcador_nova_task(task_id: str) -> str:
     """Conteúdo de `execution_result` injetado a partir da 2ª task."""
@@ -209,18 +240,132 @@ def _normalizar_validation(bruto: Any) -> Optional[dict]:
     return None
 
 
-def _e_estagnacao(execution_result: Any) -> bool:
-    """True quando o executor encerrou o loop por ESTAGNAÇÃO.
+def _motivo_de_travamento(state: dict) -> Optional[str]:
+    """Motivo do encerramento por travamento, se houve um.
 
-    O contrato é o marcador que o executor emite na PRIMEIRA linha de
-    `execution_result` (ver executor/prompt.py, passo 4).
+    Lê o campo TIPADO que a política de progresso grava
+    (`state['loop_stop_reason']`, issue #394). Substituiu o string-sniffing de
+    `"STATUS: bloqueado"` na primeira linha de `execution_result`, que dependia
+    de o LLM do executor escrever o marcador exato — mesma postura do resto
+    deste módulo, que evita confiar em texto cru (ver `_normalizar_validation`).
     """
-    if not isinstance(execution_result, str):
+    motivo = state.get(CHAVE_MOTIVO_PARADA)
+    if motivo in MOTIVOS_PARADA:
+        return motivo
+    return None
+
+
+def _aceite(state: dict) -> dict:
+    """A nota de aceite da última rodada, defensivamente normalizada.
+
+    Report antigo, rodada que não chegou a calcular, ou valor corrompido caem
+    todos no mesmo lugar seguro: sem nota de aceite (`None`) e cobertura zero —
+    o que faz a nota final degradar para a técnica pura, em vez de descontar por
+    algo que não foi medido.
+    """
+    bruto = state.get(CHAVE_ACEITE)
+    if not isinstance(bruto, dict):
+        return {"nota": None, "cobertura": 0.0, "total": 0}
+
+    nota = bruto.get("nota")
+    if isinstance(nota, bool) or not isinstance(nota, (int, float)):
+        nota = None
+    cobertura = bruto.get("cobertura")
+    if isinstance(cobertura, bool) or not isinstance(cobertura, (int, float)):
+        cobertura = 0.0
+    return {**bruto, "nota": nota, "cobertura": float(cobertura)}
+
+
+def _progresso(state: dict) -> dict:
+    """Notas e histórico da task, para o summary do iterator.
+
+    Vai em TODOS os ramos de `classificar_desfecho`, não só no de sucesso: uma
+    task reprovada ou travada é exatamente o caso em que o histórico mais
+    importa para auditoria e para a revisão a jusante.
+
+    Publica TRÊS notas, e a distinção entre elas é o ponto:
+      - `nota_tecnica_final`: "o sistema funciona?" (a de sempre, issue #394);
+      - `nota_aceite`: "atende aos critérios que deu para verificar?";
+      - `nota_final`: a composição das duas, e é ela que vira `conceito`.
+
+    A cobertura anda junto, separada da nota, porque mede coisa diferente: o
+    quanto foi possível verificar. Cobertura baixa é limite da instrumentação,
+    não defeito da entrega — por isso ela informa, mas não desconta.
+    """
+    historico_bruto = state.get(CHAVE_HISTORICO)
+    detalhes_brutos = state.get(CHAVE_DETALHES)
+    historico: list[float] = []
+    detalhes: list[Optional[dict]] = []
+    if isinstance(historico_bruto, list):
+        for indice, nota in enumerate(historico_bruto):
+            if isinstance(nota, bool) or not isinstance(nota, (int, float)):
+                continue
+            historico.append(nota)
+            detalhe = (
+                detalhes_brutos[indice]
+                if isinstance(detalhes_brutos, list) and indice < len(detalhes_brutos)
+                else None
+            )
+            detalhes.append(dict(detalhe) if isinstance(detalhe, dict) else None)
+
+    nota_tecnica = historico[-1] if historico else None
+    aceite = _aceite(state)
+    nota_final = nota_unificada(nota_tecnica, aceite["nota"])
+
+    return {
+        "nota_final": nota_final,
+        "nota_final_10": round(nota_final * 10, 2) if nota_final is not None else None,
+        "conceito": conceito_da_nota(nota_final),
+        "nota_tecnica_final": nota_tecnica,
+        "nota_aceite": aceite["nota"],
+        "cobertura_criterios": aceite["cobertura"],
+        "aceite": aceite,
+        "historico_notas": historico,
+        "detalhes_notas": detalhes,
+    }
+
+
+def conceito_da_nota(nota: Optional[float]) -> Optional[str]:
+    """Converte a nota normalizada (0..1) no conceito público da task.
+
+    Fronteiras (equivalentes a 6/10 e 9/10): até 0.6 (inclusive) é C; acima de 0.6 até
+    0.9 é B; acima de 0.9 é A. ``None`` significa que não houve rodada mensurável.
+    """
+    if nota is None:
+        return None
+    if nota <= _LIMITE_CONCEITO_C:
+        return "C"
+    if nota <= _LIMITE_CONCEITO_B:
+        return "B"
+    return "A"
+
+
+def _base_executavel_comprovada(progresso: dict) -> bool:
+    """True quando o último harness comprovou ambiente, build e app aplicável.
+
+    O conceito sozinho não pode mascarar falha estrutural. Todos os degraus
+    fundamentais presentes precisam valer 1.0; ``app_iniciou`` é opcional para
+    superfícies sem aplicação de topo (bibliotecas, por exemplo).
+    """
+    detalhes = progresso.get("detalhes_notas")
+    if not isinstance(detalhes, list) or not detalhes:
         return False
-    linhas = execution_result.strip().splitlines()
-    if not linhas:
+    ultimo = detalhes[-1]
+    if not isinstance(ultimo, dict):
         return False
-    return linhas[0].strip().casefold().startswith(_MARCADOR_ESTAGNACAO.casefold())
+    obrigatorios = ("minimo_para_rodar", "ambiente_preparado", "build_concluido")
+    if any(ultimo.get(degrau) != 1 for degrau in obrigatorios):
+        return False
+    return "app_iniciou" not in ultimo or ultimo.get("app_iniciou") == 1
+
+
+def _aceitavel_com_ressalvas(progresso: dict, report_path: Optional[str]) -> bool:
+    """Aceitação parcial exige nota B/A, report válido e base executável."""
+    return (
+        report_path is not None
+        and progresso.get("conceito") in ("A", "B")
+        and _base_executavel_comprovada(progresso)
+    )
 
 
 def classificar_desfecho(state: dict, task_id: str) -> dict:
@@ -233,8 +378,32 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
     if not (isinstance(report_path, str) and _report_path_valido(report_path, task_id)):
         report_path = None
 
+    progresso = _progresso(state)
+    motivo_travamento = _motivo_de_travamento(state)
+
     validation = _normalizar_validation(state.get("validation"))
     if validation is None or validation.get("work_item_id") != task_id:
+        # Travamento ANTES de existir veredito. Acontece quando o gate estrutural
+        # recusa todas as rodadas: o coder nunca produz o mínimo executável, o
+        # harness nunca roda e o validador nunca é acionado — mas a política de
+        # progresso encerrou o loop por decisão determinística.
+        #
+        # Sem este ramo, o desfecho virava "validation_ausente_ou_invalida", uma
+        # falha genérica que esconde a informação mais útil que temos: POR QUE o
+        # loop parou. O `loop_stop_reason` é confiável aqui porque é limpo entre
+        # tasks (CHAVES_DE_CICLO), então só pode ser desta task.
+        if motivo_travamento is not None:
+            return {
+                "status": "bloqueado",
+                "blocking_reason": (
+                    "Loop encerrado por falta de progresso antes de haver "
+                    f"veredito (motivo: {motivo_travamento}). O artefato não "
+                    "chegou a ser executável."
+                ),
+                "report_path": report_path,
+                "motivo_terminacao": f"bloqueado_{motivo_travamento}",
+                **progresso,
+            }
         return {
             "status": "reprovado",
             "blocking_reason": (
@@ -243,6 +412,7 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
             ),
             "report_path": report_path,
             "motivo_terminacao": "validation_ausente_ou_invalida",
+            **progresso,
         }
 
     status_veredito = validation.get("status")
@@ -254,21 +424,36 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
             "blocking_reason": blocking_reason,
             "report_path": report_path,
             "motivo_terminacao": "aprovado",
+            **progresso,
         }
 
     if status_veredito == "reprovado":
-        if _e_estagnacao(state.get("execution_result")):
+        if motivo_travamento is not None:
+            if _aceitavel_com_ressalvas(progresso, report_path):
+                return {
+                    "status": "aceito_com_ressalvas",
+                    "blocking_reason": blocking_reason,
+                    "report_path": report_path,
+                    "motivo_terminacao": f"aceito_com_ressalvas_{motivo_travamento}",
+                    **progresso,
+                }
+            # O motivo específico (platô / sem alteração / erro repetido) é
+            # preservado no lugar do antigo "bloqueado_estagnacao" genérico: o
+            # dado já existe e distingue "a solução parou de evoluir" de "o
+            # coder parou de mexer no código", que pedem análises diferentes.
             return {
                 "status": "bloqueado",
                 "blocking_reason": blocking_reason,
                 "report_path": report_path,
-                "motivo_terminacao": "bloqueado_estagnacao",
+                "motivo_terminacao": f"bloqueado_{motivo_travamento}",
+                **progresso,
             }
         return {
             "status": "reprovado",
             "blocking_reason": blocking_reason,
             "report_path": report_path,
             "motivo_terminacao": "reprovado_apos_loop",
+            **progresso,
         }
 
     # Status fora do enum VerdictStatus — fail-closed, como veredito inválido.
@@ -277,6 +462,7 @@ def classificar_desfecho(state: dict, task_id: str) -> dict:
         "blocking_reason": (f"Veredito com status inesperado: {status_veredito!r}."),
         "report_path": report_path,
         "motivo_terminacao": "validation_ausente_ou_invalida",
+        **progresso,
     }
 
 
@@ -285,17 +471,20 @@ def calcular_cobertura(
     expected_task_ids: list[str],
     processed_task_ids: list[str],
     approved_task_ids: list[str],
+    accepted_task_ids: Optional[list[str]] = None,
 ) -> bool:
     """Gate de completude, fail-closed.
 
     `len(expected) > 0` é explícito: sem ele, uma lista vazia satisfaria
     `expected == processed == approved` trivialmente e aprovaria no vácuo.
     """
+    concluidas = set(approved_task_ids) | set(accepted_task_ids or [])
     return (
         input_valid
         and len(expected_task_ids) > 0
         and set(expected_task_ids) == set(processed_task_ids)
-        and set(expected_task_ids) == set(approved_task_ids)
+        and set(expected_task_ids) == concluidas
+        and not (set(approved_task_ids) & set(accepted_task_ids or []))
     )
 
 
@@ -306,6 +495,7 @@ def montar_summary(
     expected_task_ids: list[str],
     processed_task_ids: list[str],
     approved_task_ids: list[str],
+    accepted_task_ids: list[str],
     task_results: dict[str, dict],
 ) -> dict:
     """Monta o `task_iteration_summary` (sempre um objeto novo, sem aliasing)."""
@@ -315,9 +505,21 @@ def montar_summary(
         "expected_task_ids": list(expected_task_ids),
         "processed_task_ids": list(processed_task_ids),
         "approved_task_ids": list(approved_task_ids),
+        "accepted_task_ids": list(accepted_task_ids),
         "task_results": {k: dict(v) for k, v in task_results.items()},
         "cobertura_completa": calcular_cobertura(
-            input_valid, expected_task_ids, processed_task_ids, approved_task_ids
+            input_valid,
+            expected_task_ids,
+            processed_task_ids,
+            approved_task_ids,
+            accepted_task_ids,
+        ),
+        "qualidade_completa": (
+            input_valid
+            and len(expected_task_ids) > 0
+            and set(expected_task_ids) == set(processed_task_ids)
+            and set(expected_task_ids) == set(approved_task_ids)
+            and not accepted_task_ids
         ),
     }
 
@@ -367,6 +569,7 @@ class TaskIterator(BaseAgent):
                     expected_task_ids=[],
                     processed_task_ids=[],
                     approved_task_ids=[],
+                    accepted_task_ids=[],
                     task_results={},
                 ),
             )
@@ -375,6 +578,7 @@ class TaskIterator(BaseAgent):
         expected_task_ids = [t["id"] for t in tasks]
         processed_task_ids: list[str] = []
         approved_task_ids: list[str] = []
+        accepted_task_ids: list[str] = []
         task_results: dict[str, dict] = {}
 
         def _summary() -> dict:
@@ -384,6 +588,7 @@ class TaskIterator(BaseAgent):
                 expected_task_ids=expected_task_ids,
                 processed_task_ids=processed_task_ids,
                 approved_task_ids=approved_task_ids,
+                accepted_task_ids=accepted_task_ids,
                 task_results=task_results,
             )
 
@@ -430,14 +635,28 @@ class TaskIterator(BaseAgent):
                     "blocking_reason": detalhe_erro_operacional(exc),
                     "report_path": None,
                     "motivo_terminacao": "erro_operacional",
+                    # Também aqui: a task pode ter progredido por várias rodadas
+                    # antes do erro operacional, e esse histórico é a única
+                    # pista do que ela chegou a alcançar.
+                    **_progresso(state),
                 }
             else:
                 resultado = classificar_desfecho(state, task_id)
+
+            # O contrato no envelope é a fonte esperada da dimensão de aceite,
+            # mesmo se o arquivo da task ou o report desaparecer durante a run.
+            # Sem este denominador, uma task perdida contribuiria com 0/0 e
+            # inflaria artificialmente a cobertura agregada do manifesto.
+            resultado["criterios_esperados"] = len(
+                normalizar_criterios(task.get("acceptance_criteria"))
+            )
 
             task_results[task_id] = resultado
             processed_task_ids.append(task_id)
             if resultado["status"] == "aprovado":
                 approved_task_ids.append(task_id)
+            elif resultado["status"] == "aceito_com_ressalvas":
+                accepted_task_ids.append(task_id)
 
             logger.info(
                 "[TASK_ITERATOR] Task %s encerrada: status=%s motivo=%s",

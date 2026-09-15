@@ -1,10 +1,11 @@
 """Executor dedicado ao workflow coding_review.
 
 - Compõe harness + AgentTool(validador) + exit_loop.
-- O loop encerra em DUAS condições: quando o veredito do validador é 'aprovado',
-  OU quando o protocolo de estagnação detecta que o coder não fez alterações e o
-  bloqueio se repete (encerramento por estagnação, com status `bloqueado` — NÃO é
-  aprovação). O status técnico de execução do harness, sozinho, nunca encerra.
+- O loop encerra por APROVAÇÃO (veredito do validador) ou por FALTA DE PROGRESSO
+  (política em `loop_policy.py`, issue #394). O status técnico de execução do
+  harness, sozinho, nunca encerra. Ambos os encerramentos são sinalizados por
+  código via `escalate`; o `exit_loop` do prompt é uma via redundante no caminho
+  de aprovação.
 
 ## Relatório de erro ao coder (determinístico)
 
@@ -53,17 +54,26 @@ from src.agents.implementation_validator import root_agent as implementation_val
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from . import prompt as executor_prompt
+from .acceptance_score import (
+    CHAVE_ACEITE,
+    CHAVE_AVISO_COBERTURA,
+    NotaAceite,
+    calcular_nota_aceite,
+)
+from .loop_policy import (
+    CHAVE_HISTORICO,
+    assinatura_erro,
+    fingerprint_mudou,
+    registrar_e_avaliar,
+    registrar_rodada,
+)
+from .progress_score import NotaProgresso, calcular_nota
 from .schemas import ErrorReport, FailedCriterion, FailedStage
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
-
-# Marcador que o prompt manda o executor emitir no encerramento por ESTAGNAÇÃO.
-# Nesse caminho o resumo `bloqueado` é destinado ao reviewer (o loop já vai
-# encerrar), então o callback NÃO o substitui pelo ErrorReport.
-_MARCADOR_ESTAGNACAO = "STATUS: bloqueado"
 
 # Estágios apenas PULADOS são consequência em cascata do que falhou antes
 # ("Abortado: ..."), não trazem evidência útil — só falha/erro entram no report.
@@ -118,9 +128,9 @@ _CABECALHO_RECUSA = (
 def _mensagem_de_recusa(bloqueios, arquivos) -> str:
     """Relatório determinístico devolvido ao coder no lugar do ErrorReport.
 
-    NÃO pode começar com o marcador de estagnação (`STATUS: bloqueado`): o
-    TaskIterator classificaria a task como encerrada por estagnação, e isto é o
-    oposto — é um pedido para continuar implementando.
+    É um pedido para CONTINUAR implementando, não um encerramento: quem decide
+    encerrar por falta de progresso é a política (`loop_policy.py`), a partir do
+    histórico de notas — não deste texto.
     """
     inventario = "\n".join(f"- {a}" for a in arquivos) or "- (workspace vazio)"
     return (
@@ -146,8 +156,16 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
 
     A checagem cobre apenas condições que o harness TAMBÉM reprovaria no estágio
     1 — sem `run.json`, manifesto incoerente, nenhum código. Como falso positivo
-    é impossível nesse conjunto, o gate não precisa de teto de tentativas: nunca
-    trava uma implementação legítima.
+    é impossível nesse conjunto, a RECUSA em si não tem teto de tentativas: o
+    gate nunca cede enquanto faltar o mínimo, e nunca trava uma implementação
+    legítima.
+
+    O que passou a ter limite (issue #394) é o LOOP, não o gate: recusas
+    consecutivas entram na política de progresso como nota 0.0, e o platô acaba
+    encerrando a task. São coisas diferentes — o gate continua recusando
+    corretamente para sempre; o que se reconhece é que um coder incapaz de
+    produzir o mínimo executável depois de várias rodadas está travado, e
+    insistir só queima orçamento.
 
     ATENÇÃO — `state["execution_result"]` é escrito AQUI, na mão: quando um
     `before_agent_callback` devolve Content, o ADK marca `end_invocation=True` e
@@ -170,9 +188,297 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
         "; ".join(resultado.bloqueios),
     )
 
+    # A rodada recusada TAMBÉM entra na política de progresso (issue #394).
+    # Quando este callback devolve Content, o ADK marca `end_invocation` e nenhum
+    # `after_agent_callback` roda — então, se a avaliação não acontecesse aqui,
+    # um coder que trava justamente neste ponto (nunca produz manifesto válido
+    # ou código) não geraria rodada nenhuma no histórico, nenhum gatilho o
+    # enxergaria, e ele só pararia no teto de segurança.
+    #
+    # Nota 0.0 sem detalhamento: o degrau `MINIMO_PARA_RODAR` não foi vencido e
+    # nada a jusante chegou a ser tentado. Sem ExecutionReport não há assinatura
+    # de erro, então o gatilho de erro repetido não se aplica a este caminho.
+    decisao = registrar_e_avaliar(
+        state,
+        nota_total=0.0,
+        nota_detalhe=None,
+        arquivos_mudaram=fingerprint_mudou(state),
+    )
+
     mensagem = _mensagem_de_recusa(resultado.bloqueios, resultado.arquivos)
     state["execution_result"] = mensagem
+
+    if decisao.parar:
+        # `escalate` setado aqui chega ao LoopAgent: o evento do
+        # before_agent_callback é emitido com `actions=callback_context
+        # ._event_actions` ANTES de `end_invocation` cortar o turno.
+        callback_context.actions.escalate = True
+        logger.warning(
+            "[EXECUTABILIDADE] Loop encerrado por %s após recusas consecutivas "
+            "na task %s.",
+            decisao.motivo,
+            state.get("task_id"),
+        )
+
     return types.Content(role="model", parts=[types.Part(text=mensagem)])
+
+
+def _resumo_da_parada(motivo: Optional[str], nota: NotaProgresso) -> str:
+    """Texto do turno quando a política encerra o loop por travamento.
+
+    Destinado ao reviewer a jusante, não ao coder: quando este texto é
+    produzido, o loop já vai encerrar e não haverá nova rodada de correção.
+    """
+    detalhe = ", ".join(
+        f"{degrau}={score:.2f}" for degrau, score in sorted(nota.como_dict().items())
+    )
+    return (
+        f"LOOP ENCERRADO POR FALTA DE PROGRESSO ({motivo}).\n"
+        f"Nota de progresso final: {nota.total:.3f}.\n"
+        f"Degraus: {detalhe}.\n"
+        "Este encerramento NÃO é aprovação — o veredito permanece 'reprovado'."
+    )
+
+
+def _mensagem_de_mapa_fora_de_escopo(aceite: NotaAceite, task_id: str) -> str:
+    """Pedido específico para o caso "os testes existem, o manifesto é que não".
+
+    O harness descarta o mapa inteiro quando o `acceptance_task_id` não é o da
+    Task corrente — proteção contra os testes de uma task serem citados como
+    evidência do `CA-01` de outra, que descreve coisa diferente. Mas o efeito
+    colateral é que TODOS os critérios reaparecem como "sem teste vinculado", e
+    o pedido genérico mandaria escrever testes que muito provavelmente já estão
+    escritos. Como o aviso é de uso ÚNICO por task, gastá-lo com a instrução
+    errada custa a cobertura inteira.
+    """
+    declarada = aceite.task_id_do_mapa
+    origem = (
+        f"declara `acceptance_task_id: {declarada!r}`"
+        if declarada
+        else "não declara `acceptance_task_id`"
+    )
+    return (
+        "EXECUÇÃO BEM-SUCEDIDA — o vínculo teste↔critério do `run.json` está "
+        "fora de escopo e foi INTEIRAMENTE descartado.\n\n"
+        f"O manifesto {origem}, mas esta execução é da task `{task_id}`. Por "
+        "isso NENHUM dos vínculos de `acceptance_tests` foi considerado, e "
+        "todos os critérios aparecem sem teste vinculado — mesmo os que já têm "
+        "teste. Os testes da task anterior não são evidência do `CA-01` desta, "
+        "que descreve outra coisa.\n\n"
+        "NÃO altere o código de produção. Nesta mesma rodada, regrave o "
+        "`run.json` com `tool_criar_arquivo(\"run.json\", ...)` — este arquivo "
+        "é o único que você pode sobrescrever no modo INCREMENTO:\n"
+        f"1. `acceptance_task_id`: exatamente `{task_id}`.\n"
+        "2. `acceptance_tests`: os critérios DESTA task como chaves, apontando "
+        "para os testes que exercitam cada um. Reaproveite os testes que já "
+        "existem e escreva apenas os que faltarem.\n"
+        "3. Preserve `build`, `run` e `test` que já funcionam.\n\n"
+        "Este pedido é feito UMA única vez por task."
+    )
+
+
+def _mensagem_de_cobertura(pendentes: list[str], aceite: NotaAceite) -> str:
+    """Pedido determinístico para o coder fechar a cobertura de critérios.
+
+    NÃO pode começar com um marcador de encerramento nem parecer um ErrorReport:
+    a execução foi bem-sucedida, e o que se pede é um acréscimo pontual — não
+    correção de defeito. O texto diz isso explicitamente para o coder não sair
+    reescrevendo o que já funciona.
+    """
+    lista = "\n".join(f"- {identificador}" for identificador in pendentes)
+    return (
+        "EXECUÇÃO BEM-SUCEDIDA — falta apenas vincular testes a critérios de "
+        "aceite.\n\n"
+        "O build, a inicialização e a suíte atual passaram. NÃO altere o código "
+        "de produção e NÃO refaça o que já funciona.\n\n"
+        f"Critérios automatizáveis ainda sem teste vinculado "
+        f"({len(pendentes)} de {aceite.total}):\n"
+        f"{lista}\n\n"
+        "O vínculo não aprova o critério — quem julga é um validador "
+        "independente, que lê o teste. Ele é o endereço da evidência.\n\n"
+        "Para CADA um deles, nesta mesma rodada:\n"
+        "1. Escreva um teste que exercite o comportamento descrito no critério, "
+        "com asserção real sobre o resultado — não um teste que só importa o "
+        "módulo.\n"
+        "2. Declare o vínculo em `acceptance_tests`, no `run.json`, usando o id "
+        "do critério como chave e o identificador do teste como valor.\n"
+        "3. Confirme que `acceptance_task_id` é o id da task ATUAL: um manifesto "
+        "que aponte para outra task tem TODOS os vínculos descartados.\n"
+        "4. Garanta que os comandos de `test` listem cada teste pelo nome (em "
+        "pytest, `-v`) — sem isso o resultado do teste não chega ao relatório.\n\n"
+        "Este pedido é feito UMA única vez por task: se algum critério não puder "
+        "ser exercitado por teste de código, siga em frente — ele será "
+        "registrado sem vínculo, sem reprovar a entrega."
+    )
+
+
+def _emitir_aviso_de_cobertura(
+    callback_context, aceite: NotaAceite
+) -> Optional[types.Content]:
+    """Concede UMA rodada extra para o coder fechar a cobertura de critérios.
+
+    INERTE COM O HARNESS ATUAL, e de propósito: o estágio 7 emite `nao_avaliado`
+    para todo critério, nenhum outcome é endereçável, `criterios_enderecaveis`
+    vem sempre vazio e este callback devolve `None` na primeira linha. A razão
+    está em `harness_schemas.OUTCOMES_ENDERECAVEIS` — mais testes escritos pelo
+    próprio coder não convertem critério em aceite, então gastar uma rodada
+    pedindo teste seria loop sem desfecho. O mecanismo continua aqui porque a
+    avaliação de aceite vai voltar apoiada em evidência independente; o que está
+    desligado é a cobrança, não o desenho.
+
+    Roda no caminho de APROVAÇÃO, imediatamente antes do encerramento: a
+    execução já está tecnicamente correta e o loop iria fechar. Em vez de fechar,
+    segura por uma rodada e devolve ao coder a lista de critérios automatizáveis
+    sem teste.
+
+    Três propriedades tornam isto seguro, e as três são deliberadas:
+
+    - **Uma vez por task.** O aviso é um flag de uso único, não um orçamento:
+      esgotado, a task aprova mesmo com a cobertura em aberto. Um critério que
+      não tem como virar teste (jornada de interface) custa no máximo uma rodada
+      e nunca trava a task, que é a diferença entre isto e o degrau de critérios
+      que precisou ser removido da nota técnica.
+    - **Contador PRÓPRIO.** Não toca no orçamento de falhas distintas nem no
+      histórico de notas da `loop_policy`. Cobrança de teste não é tropeço
+      técnico: misturar os dois faria uma task devendo um teste consumir a
+      paciência reservada a bugs, ou o inverso — o loop ler a cobrança como
+      sintoma de travamento e cortar a task por um motivo errado.
+    - **Não bloqueia por cobertura.** Se o coder ignorar o pedido, a rodada
+      seguinte aprova. O que sobrar em aberto vira cobertura registrada, nunca
+      reprovação.
+
+    O que acontecer com os testes novos (passarem, quebrarem, revelarem um bug)
+    é problema TÉCNICO comum, já coberto pela nota de progresso e pela política
+    de continuidade — nada novo precisa ser ensinado a elas.
+
+    TRADE-OFF ACEITO, e é o único risco real deste mecanismo: se o teste novo
+    FALHAR, a rodada seguinte é reprovada e a task, que ia aprovar, volta ao
+    loop. Ela pode terminar bloqueada se o coder não conseguir fechar. Isso é
+    deliberado — um teste vermelho significa que o critério não é atendido de
+    fato, e aprovar ali teria sido um falso positivo. O custo é assumido em
+    troca de descobrir o defeito; o teto do LoopAgent segue como rede.
+
+    Returns:
+        O Content do pedido quando o aviso é emitido; `None` para deixar o
+        encerramento seguir normalmente.
+    """
+    state = callback_context.state
+    pendentes = aceite.criterios_enderecaveis
+    if not pendentes or state.get(CHAVE_AVISO_COBERTURA):
+        return None
+
+    state[CHAVE_AVISO_COBERTURA] = True
+    task_id = state.get("task_id") or ""
+    # Mapa descartado por escopo não é falta de teste: o conserto é o manifesto,
+    # e o aviso de uso único tem de pedir exatamente isso.
+    if aceite.mapa_fora_de_escopo and task_id:
+        mensagem = _mensagem_de_mapa_fora_de_escopo(aceite, task_id)
+        logger.warning(
+            "[COBERTURA] Task %s: mapa acceptance_tests descartado (declarava "
+            "%r); concedida UMA rodada para corrigir o manifesto.",
+            task_id,
+            aceite.task_id_do_mapa,
+        )
+    else:
+        mensagem = _mensagem_de_cobertura(pendentes, aceite)
+        logger.info(
+            "[COBERTURA] Task %s aprovada tecnicamente com %d critério(s) sem "
+            "teste (%s); concedida UMA rodada para fechar a cobertura.",
+            task_id,
+            len(pendentes),
+            ", ".join(pendentes),
+        )
+    state["execution_result"] = mensagem
+    return types.Content(role="model", parts=[types.Part(text=mensagem)])
+
+
+def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
+    """PRIMEIRO `after_agent_callback` do executor — a política da issue #394.
+
+    Calcula a nota da rodada e decide, POR CÓDIGO, se o loop continua. Substitui
+    o "protocolo anti-estagnação" do prompt, que dependia de o LLM do executor
+    perceber o travamento e declarar por conta própria.
+
+    A ordem na lista de callbacks é carga estrutural, não estilo: o ADK para no
+    PRIMEIRO callback que devolve `Content` não-vazio, e `montar_error_report`
+    devolve `Content` em toda rodada reprovada — o caso comum. Se este callback
+    viesse depois, nunca rodaria justamente nas rodadas que importam.
+
+    Returns:
+        `Content` apenas quando a política decide PARAR por travamento —
+        substituindo o turno, para que o coder não receba um relatório
+        "conserte isto" numa rodada que não vai existir. Nos demais casos
+        devolve `None`, deixando `montar_error_report` seguir normalmente.
+    """
+    state = callback_context.state
+    validation = state.get("validation")
+    if not validation:
+        # Mesma degradação de `montar_error_report`: sem veredito não há como
+        # medir a rodada, e inventar uma nota seria pior que não registrar.
+        logger.warning(
+            "cr_executor: state['validation'] ausente; rodada não entra no "
+            "histórico de progresso."
+        )
+        return None
+
+    exec_report = _carregar_execution_report(callback_context)
+    nota = calcular_nota(exec_report)
+
+    # Nota de aceite: dimensão SEPARADA, publicada no state. Não entra no
+    # histórico de progresso nem na assinatura de erro — a política de
+    # continuidade continua cega para ela, de propósito.
+    #
+    # Calculada a CADA rodada, e não só no fechamento da task. O motivo é o
+    # mesmo que faz `_progresso` acompanhar todos os desfechos no TaskIterator:
+    # uma task que termina por platô ou bloqueio nunca tem "rodada de
+    # fechamento", e é justamente nela que a medida importa para auditoria. Com
+    # o cálculo restrito à aprovação, toda task travada ficaria sem dimensão de
+    # aceite. O valor é sobrescrito a cada rodada e quem consome lê o último —
+    # que é sempre o da evidência mais recente.
+    aceite = calcular_nota_aceite(exec_report)
+    state[CHAVE_ACEITE] = aceite.como_dict()
+
+    if validation.get("status") == "aprovado":
+        # A rodada aprovada TAMBÉM entra no histórico: sem isso, a nota final da
+        # task seria a da penúltima rodada (reprovada) — e o critério de aceite
+        # pede a nota final registrada.
+        registrar_rodada(state, nota.total, nota.como_dict())
+
+        # Antes de encerrar: uma única chance de fechar a cobertura de critérios.
+        aviso = _emitir_aviso_de_cobertura(callback_context, aceite)
+        if aviso is not None:
+            return aviso
+
+        # Encerramento determinístico. O prompt continua pedindo `exit_loop` ao
+        # LLM no caminho de aprovação; as duas vias são independentes e
+        # redundantes de propósito, como o teto do LoopAgent.
+        callback_context.actions.escalate = True
+        logger.info(
+            "[PROGRESSO] Task %s aprovada com nota %.3f (histórico=%s); "
+            "aceite=%s cobertura=%.0f%%.",
+            state.get("task_id"),
+            nota.total,
+            state.get(CHAVE_HISTORICO),
+            aceite.nota,
+            aceite.cobertura * 100,
+        )
+        # `None` preserva o texto de confirmação que o executor já produz.
+        return None
+
+    decisao = registrar_e_avaliar(
+        state,
+        nota_total=nota.total,
+        nota_detalhe=nota.como_dict(),
+        arquivos_mudaram=fingerprint_mudou(state),
+        assinatura_erro_atual=assinatura_erro(exec_report),
+    )
+    if not decisao.parar:
+        return None
+
+    callback_context.actions.escalate = True
+    resumo = _resumo_da_parada(decisao.motivo, nota)
+    state["execution_result"] = resumo
+    return types.Content(role="model", parts=[types.Part(text=resumo)])
 
 
 def montar_error_report(callback_context) -> Optional[types.Content]:
@@ -183,9 +489,11 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
     Retorna `None` (preservando a saída original do executor) quando:
     - `state['validation']` está ausente — o mecanismo de propagação não
       disparou; degrada para a prosa do LLM em vez de emitir relatório vazio;
-    - o veredito real é 'aprovado' — não há erro a relatar;
-    - o turno é o encerramento por ESTAGNAÇÃO — o resumo `bloqueado` é destinado
-      ao reviewer e não pode ser sobrescrito.
+    - o veredito real é 'aprovado' — não há erro a relatar.
+
+    Não precisa mais tratar o encerramento por travamento: quando a política
+    decide parar, ela devolve `Content` e o ADK interrompe a cadeia de callbacks
+    antes de chegar aqui (ver `aplicar_politica_de_progresso`).
     """
     validation = callback_context.state.get("validation")
     if not validation:
@@ -196,10 +504,6 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
         return None
 
     if validation.get("status") != "reprovado":
-        return None
-
-    raw = callback_context.state.get("execution_result", "") or ""
-    if _MARCADOR_ESTAGNACAO.casefold() in raw.casefold():
         return None
 
     exec_report = _carregar_execution_report(callback_context)
@@ -264,4 +568,8 @@ agent = LlmAgent(
     ],
 )
 agent.before_agent_callback = recusar_execucao_incompleta
-agent.after_agent_callback = montar_error_report
+# A ORDEM é carga estrutural: o ADK executa os callbacks em sequência e PARA no
+# primeiro que devolver `Content` não-vazio. `montar_error_report` devolve
+# `Content` em toda rodada reprovada — o caso comum —, então a política precisa
+# vir antes, ou nunca rodaria justamente nas rodadas que ela existe para julgar.
+agent.after_agent_callback = [aplicar_politica_de_progresso, montar_error_report]
