@@ -4,6 +4,7 @@ import json
 import re
 from urllib.parse import urljoin
 
+from shared.security import detectar_credenciais, detectar_riscos_spec_ts
 from shared.workspace import get_agent_workspace
 
 from ..schemas import (
@@ -375,6 +376,17 @@ def gerar_playwright_spec(
         entrada,
         cenarios,
     )
+
+    # Varredura de segurança antes de persistir — equivalente de P3 para
+    # TypeScript (detectar_riscos_codigo é AST-only, não serve para .ts).
+    riscos = detectar_riscos_spec_ts(conteudo) + detectar_credenciais(conteudo)
+    if riscos:
+        raise ValueError(
+            f"Spec Playwright para {nome_base!r} apresenta risco de "
+            f"segurança e foi bloqueado antes de ser persistido: "
+            f"{'; '.join(riscos)}."
+        )
+
     destino = get_agent_workspace("e2e_test_generator").resolve()
     destino.mkdir(parents=True, exist_ok=True)
     arquivo = (destino / f"{_slug(nome_base)}.spec.ts").resolve()

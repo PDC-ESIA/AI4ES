@@ -2,6 +2,8 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from shared.security import redigir_segredos
+
 
 def _resolve_doubt_dir() -> Path:
     """Resolve o diretório de doubt artifacts via workspace em runtime.
@@ -69,7 +71,7 @@ class DoubtArtifactGenerator:
 """
 
     @classmethod
-    def generate(cls, id_artefato: str, motivo: str, trecho_suspeito: str, caminho_base: Path, 
+    def generate(cls, id_artefato: str, motivo: str, trecho_suspeito: str,
                  trigger_type: str = "loop", resolution_type: str = None, status_validacao: str = None) -> str:
         """Gera arquivo de doubt artifact a partir de template.
 
@@ -77,7 +79,6 @@ class DoubtArtifactGenerator:
         id_artefato: Identificador do artefato.
         motivo: Motivo da geração do artifact.
         trecho_suspeito: O trecho exato de código, regra ou prompt que causou a dúvida ou ambiguidade.
-        caminho_base: Path base para diretório de doubt_artifacts.
         trigger_type: Tipo de gatilho (loop, syntax, timeout, etc.).
 
         Returns:
@@ -89,21 +90,23 @@ class DoubtArtifactGenerator:
         # 1. Lógica de Caminho — resolve via workspace em runtime
         doubt_dir = _resolve_doubt_dir()
         doubt_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # 2. Timestamps e Nome do Arquivo
         timestamp_file = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
         timestamp_display = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        
+
         nome_arquivo = f"Doubt_Artifact_{id_artefato}_{timestamp_file}.md"
         caminho_final = doubt_dir / nome_arquivo
 
         # 3. Preparação dos dados
+        # motivo/trecho_suspeito vêm de artefato externo (requisito, código,
+        # log) — redige antes de persistir em disco, mesmo padrão de P1/P3.
         data = {
             "artifact_id": id_artefato,
             "timestamp": timestamp_display,
             "module_name": "qa_agent / pytest_runner",
-            "reason_for_invalidation": motivo,
-            "suspect_code_or_prompt": trecho_suspeito,
+            "reason_for_invalidation": redigir_segredos(motivo),
+            "suspect_code_or_prompt": redigir_segredos(trecho_suspeito),
             "input_artifact_name": "N/A",
             "action_attempted": "Execução de testes",
             "system_raw_response": "ERR_LOOP detectado",

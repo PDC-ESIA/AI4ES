@@ -2,11 +2,13 @@
 
 import ast
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from shared.workspace import get_workspace_root
+from shared.security import redigir_segredos
+from shared.workspace import get_agent_workspace
 
 from ..schemas import (
     ContratoAPIDescobertoE2E,
@@ -144,22 +146,84 @@ def _esta_contido(caminho: Path, raiz: Path) -> bool:
         return False
 
 
+# E2E gera specs contra o projeto PRODUZIDO PELO CODER — é a aplicação de
+# fato, o alvo real de uma jornada E2E. requirements/design produzem
+# documentos (HUs, diagramas, markdown), não a aplicação: não há nada
+# executável para inspecionar ali, e não há caso de uso documentado ou
+# testado para o E2E ler esses agentes. "e2e_test_generator" (o próprio
+# workspace do subagente) também é aceito para permitir reinspecionar specs
+# já materializados. Nomes exatamente como `get_agent_workspace` espera
+# (ver AGENT_DIRS em shared/workspace.py).
+_ROOTS_PERMITIDOS_E2E = ("e2e_test_generator", "coder")
+
+
+def _raizes_permitidas_e2e() -> list[Path]:
+    return [get_agent_workspace(nome).resolve() for nome in _ROOTS_PERMITIDOS_E2E]
+
+
 def _resolver_workspace(workspace_projeto: str) -> tuple[Path | None, str | None]:
+    """Resolve e valida `workspace_projeto` contra a allowlist explícita.
+
+    Antes, qualquer caminho dentro de `get_workspace_root()` inteiro
+    (workspace_output/) era aceito — incluindo `requirements/` e `design/`,
+    que não têm nenhum caso de uso legítimo para o E2E. Antes disso ainda,
+    `_RAIZ_ADK` (o repositório inteiro do ADK — `src/`, `shared/`,
+    `pyproject.toml`, etc.) também era aceito, sem caso de uso documentado.
+    Ambos removidos: agora só as raízes em `_ROOTS_PERMITIDOS_E2E` (ver
+    comentário acima) são aceitas. Caminhos relativos continuam resolvidos
+    a partir de `_RAIZ_ADK` apenas para permitir a forma
+    `workspace_output/coder` sem exigir path absoluto — isso não amplia o
+    que é aceito, só afeta como um caminho relativo é montado antes da
+    checagem de contenção abaixo.
+    """
     candidato = Path(workspace_projeto).expanduser()
     if not candidato.is_absolute():
         candidato = _RAIZ_ADK / candidato
     candidato = candidato.resolve()
-    raizes_permitidas = {_RAIZ_ADK.resolve(), get_workspace_root().resolve()}
-    if not any(_esta_contido(candidato, raiz) for raiz in raizes_permitidas):
+    raizes = _raizes_permitidas_e2e()
+    if not any(_esta_contido(candidato, raiz) for raiz in raizes):
         return None, (
-            "workspace_projeto deve estar dentro do projeto ADK ou do workspace "
-            "gerenciado dos agentes."
+            "workspace_projeto deve estar dentro do projeto produzido pelo "
+            "Coder (workspace_output/coder) ou do workspace do próprio E2E "
+            "(workspace_output/tests/e2e); requirements/design produzem "
+            "documentos, não a aplicação, e não são inspecionáveis por "
+            "esta tool."
         )
     if not candidato.exists():
         return None, f"workspace_projeto não existe: {candidato}"
     if not candidato.is_dir():
         return None, "workspace_projeto deve apontar para um diretório."
     return candidato, None
+
+
+def _caminho_debug_log_excluido() -> Path | None:
+    """Resolve o caminho do log de depuração nativo do ADK (ver
+    shared/observability.py), do mesmo jeito que
+    shared.workspace.get_workspace_root() resolve caminhos relativos
+    (contra Path.cwd(), respeitando ADK_DEBUG_LOG_PATH quando customizado).
+
+    Esse arquivo nunca deve ser lido pela inspeção de projeto do E2E: quando
+    ADK_LOG_PLUGIN=file, ele contém prompt e resposta completos de TODOS os
+    agentes da sessão, incluindo qualquer segredo que tenha vazado para
+    dentro de um prompt antes de chegar às varreduras de P0-P3.
+
+    Desde que o default de ADK_DEBUG_LOG_PATH passou a ficar fora de
+    workspace_output/ (ver shared/observability.py:_DEBUG_LOG_PADRAO), essa
+    exclusão deixou de ser a única barreira — o default nem cai dentro da
+    única raiz que `_resolver_workspace` aceita hoje. Mantida como defesa
+    extra para o caso de ADK_DEBUG_LOG_PATH customizado apontar de volta
+    para dentro de workspace_output/.
+    """
+    bruto = os.environ.get(
+        "ADK_DEBUG_LOG_PATH", str(_RAIZ_ADK / "logs" / "adk_debug.yaml")
+    )
+    caminho = Path(bruto).expanduser()
+    if not caminho.is_absolute():
+        caminho = Path.cwd() / caminho
+    try:
+        return caminho.resolve()
+    except OSError:
+        return None
 
 
 def _arquivos_do_workspace(
@@ -171,6 +235,7 @@ def _arquivos_do_workspace(
     if erro or raiz is None:
         return [], [], [erro or "workspace_projeto inválido."]
 
+    debug_log = _caminho_debug_log_excluido()
     arquivos: list[_ArquivoInspecao] = []
     limites: list[str] = []
     total_bytes = 0
@@ -189,6 +254,8 @@ def _arquivos_do_workspace(
             resolvido = caminho.resolve()
             if not _esta_contido(resolvido, raiz):
                 continue
+            if debug_log is not None and resolvido == debug_log:
+                continue
             tamanho = resolvido.stat().st_size
             if tamanho > _MAX_BYTES_ARQUIVO:
                 limites.append(f"arquivo ignorado por tamanho: {relativo.as_posix()}")
@@ -196,7 +263,9 @@ def _arquivos_do_workspace(
             if total_bytes + tamanho > _MAX_BYTES_TOTAL:
                 limites.append(f"limite total de {_MAX_BYTES_TOTAL} bytes atingido")
                 break
-            conteudo = resolvido.read_text(encoding="utf-8", errors="replace")
+            conteudo = redigir_segredos(
+                resolvido.read_text(encoding="utf-8", errors="replace")
+            )
         except OSError:
             continue
         arquivos.append(_ArquivoInspecao(relativo.as_posix(), conteudo))

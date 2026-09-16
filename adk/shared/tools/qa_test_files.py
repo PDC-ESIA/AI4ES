@@ -6,6 +6,7 @@ import ast
 import hashlib
 from pathlib import Path
 
+from shared.security import validar_seguranca_codigo
 from shared.tools.pytest_runner import _normalizar_caminho_arquivo
 from shared.workspace import get_agent_workspace
 
@@ -96,6 +97,13 @@ def write_qa_test(caminho_arquivo: str, conteudo: str) -> dict:
     Esta ferramenta nunca escreve em código de produção. O destino precisa
     ser um ``test_*.py`` dentro de ``workspace_output/tests/inputs``.
 
+    Antes de escrever, `conteudo` passa pela mesma varredura de segurança
+    (P3 — `shared.security.validar_seguranca_codigo`) usada na geração
+    inicial de pytest em `receive_requirements`: sem isso, uma correção do
+    code_fix_agent podia introduzir leitura de env, execução de processo,
+    rede externa ou credencial hardcoded sem qualquer checagem, já que essa
+    função só validava sintaxe e mutação de `sys.path`.
+
     Args:
         caminho_arquivo: Path do teste a corrigir.
         conteudo: Conteúdo Python completo já corrigido.
@@ -118,6 +126,7 @@ def write_qa_test(caminho_arquivo: str, conteudo: str) -> dict:
                 "O teste não pode alterar sys.path; use o conftest.py "
                 "da suíte materializada pelo QA."
             )
+        validar_seguranca_codigo(conteudo, path.stem)
         path.write_text(conteudo, encoding="utf-8")
         encoded = conteudo.encode("utf-8")
         return {

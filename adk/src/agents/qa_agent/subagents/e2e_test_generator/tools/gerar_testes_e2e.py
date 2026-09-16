@@ -1251,14 +1251,20 @@ def gerar_testes_e2e(
                 arquivos_gerados = [resultado_geracao.arquivo]
                 geracao = resultado_geracao.model_dump(mode="json")
             except Exception as exc:  # fronteira da tool: sempre retornar estruturado
+                # ValueError aqui é sempre uma rejeição deliberada com
+                # mensagem clara (varredura de segurança ou path fora do
+                # workspace) — vale repassar ao chamador. Outras exceções
+                # ficam só com o tipo, para não vazar traceback interno.
+                mensagem = (
+                    f"Não foi possível gerar o spec Playwright: {exc}"
+                    if isinstance(exc, ValueError)
+                    else f"Não foi possível gerar o spec Playwright ({type(exc).__name__})."
+                )
                 bloqueios.append(
                     BloqueioE2E(
                         codigo="ERRO_GERACAO_PLAYWRIGHT",
                         categoria=CategoriaBloqueio.GERACAO_CODIGO,
-                        mensagem=(
-                            "Não foi possível gerar o spec Playwright "
-                            f"({type(exc).__name__})."
-                        ),
+                        mensagem=mensagem,
                         campos_ausentes=[],
                     )
                 )

@@ -4,7 +4,7 @@ import ast
 import logging
 import re
 
-from shared.security import detectar_credenciais, detectar_riscos_codigo
+from shared.security import validar_seguranca_codigo
 
 logger = logging.getLogger("qa_agent")
 
@@ -53,15 +53,6 @@ def _validar_e_sanitizar_codigo(codigo: str, id_artefato: str) -> str:
             f"{e.msg} (linha {e.lineno}). Será reciclado via autocorrect."
         ) from e
 
-    riscos = detectar_riscos_codigo(sanitizado) + detectar_credenciais(sanitizado)
-    if riscos:
-        logger.warning(
-            f"[QA] Código gerado para {id_artefato} bloqueado por risco de "
-            f"segurança: {riscos}"
-        )
-        raise ValueError(
-            f"Código gerado para {id_artefato} apresenta risco de segurança "
-            f"e foi bloqueado antes de ser persistido: {'; '.join(riscos)}."
-        )
+    validar_seguranca_codigo(sanitizado, id_artefato)
 
     return sanitizado

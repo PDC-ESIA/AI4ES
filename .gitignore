@@ -21,6 +21,11 @@ workspace_output/
 adk/workspace_output/*
 !adk/workspace_output/.ai4se_workspace
 
+# Log de depuração nativo do ADK (shared/observability.py:_DEBUG_LOG_PADRAO).
+# Fica fora de workspace_output/ de propósito — contém prompt/resposta
+# completos de todos os agentes quando ADK_LOG_PLUGIN=file.
+adk/logs/
+
 # Environment variables
 .env
 .env.*

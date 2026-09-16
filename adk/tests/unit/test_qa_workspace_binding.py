@@ -247,7 +247,6 @@ def test_doubt_tool_resolve_via_workspace(monkeypatch, tmp_path):
     result = dt.DoubtArtifactGenerator.generate(
         trigger_type="test",
         trecho_suspeito="x",
-        caminho_base=Path("doubt_artifacts"),
         id_artefato="TEST-001",
         motivo="teste de binding",
     )
@@ -262,6 +261,32 @@ def test_doubt_tool_resolve_via_workspace(monkeypatch, tmp_path):
     assert str(tmp_path) in saved_path, (
         f"Doubt artifact não foi para workspace: {saved_path}"
     )
+
+
+def test_doubt_tool_redige_credencial_em_trecho_suspeito(monkeypatch, tmp_path):
+    """P6.2: trecho_suspeito/motivo vêm de artefato externo — não podem
+    persistir credencial em texto puro no .md gerado."""
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
+
+    import importlib
+    from adk.shared.tools import doubt_tool as dt
+    importlib.reload(dt)
+
+    result = dt.DoubtArtifactGenerator.generate(
+        trigger_type="security",
+        trecho_suspeito="api_key = \"sk-real-vazando-123\"",
+        id_artefato="TEST-002",
+        motivo="Requisito menciona token = ghp_outro_real_segredo diretamente.",
+    )
+
+    import re
+    match = re.search(r"Artefato salvo em (.+?\.md)\.", result)
+    assert match, f"Mensagem inesperada: {result}"
+    conteudo = Path(match.group(1)).read_text(encoding="utf-8")
+
+    assert "sk-real-vazando-123" not in conteudo
+    assert "ghp_outro_real_segredo" not in conteudo
+    assert "[REDACTED]" in conteudo
 
 
 def test_doubt_artifact_resolve_via_workspace(monkeypatch, tmp_path):

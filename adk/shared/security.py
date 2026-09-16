@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ast
 import ipaddress
+import logging
 import math
 import os
 import re
@@ -30,8 +31,11 @@ def redigir_segredos(texto: str) -> str:
     antes de propagar adiante.
 
     Cobre: header Authorization, tokens Bearer, pares chave=valor para
-    api_key/access_token/token/password/secret, e credenciais embutidas em
-    URL (https://user:senha@host).
+    api_key/access_token/token/password/secret (com ou sem aspas ao redor da
+    chave e/ou do valor — cobre tanto `api_key=valor`/`api_key: valor`
+    quanto o formato JSON `"api_key": "valor"` e o YAML com valor entre
+    aspas `api_key: "valor"`), e credenciais embutidas em URL
+    (https://user:senha@host).
     """
     texto = re.sub(
         r"(?i)\b(authorization\s*[:=]\s*)[^\r\n,;]+",
@@ -43,12 +47,27 @@ def redigir_segredos(texto: str) -> str:
         "Bearer [REDACTED]",
         texto,
     )
+    def _substituir_atribuicao(match: re.Match) -> str:
+        chave, aspas_chave, separador, aspas_valor = (
+            match.group(1),
+            match.group(2),
+            match.group(3),
+            match.group(4),
+        )
+        return f"{chave}{aspas_chave}{separador}{aspas_valor}[REDACTED]{aspas_valor}"
+
     texto = re.sub(
         (
             r"(?i)\b(api[_-]?key|access[_-]?token|token|"
-            r"password|passwd|secret)\b(\s*[:=]\s*)([^\s,;]+)"
+            r"password|passwd|secret)\b"
+            # Grupo 4 (aspas do valor) é reaberto via \4 para consumir a
+            # aspa de FECHAMENTO real do valor (se houver) — sem isso, ela
+            # sobra no texto original e duplica com a aspa que a própria
+            # substituição reinsere (ex.: {"api_key": "[REDACTED]""} ao
+            # invés de {"api_key": "[REDACTED]"}).
+            r"([\"']?)(\s*[:=]\s*)([\"']?)([^\s,;\"']+)\4"
         ),
-        r"\1\2[REDACTED]",
+        _substituir_atribuicao,
         texto,
     )
     return re.sub(
@@ -114,6 +133,10 @@ def ambiente_minimo_python(pythonpath: list[str] | None = None) -> dict[str, str
 _PREFIXOS_RISCO_REDE = ("socket.", "requests.", "httpx.", "aiohttp.", "urllib.request.")
 
 _LOOPBACK_HOSTNAMES = {"localhost"}
+
+# Segmento exato (não substring) proibido em qualquer import — a suíte
+# materializada pelo QA nunca deve referenciar o workspace fora de si mesma.
+_SEGMENTOS_IMPORT_PROIBIDOS = {"coder", "workspace_output"}
 
 
 def _dotted(node: ast.expr) -> str:
@@ -216,7 +239,16 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
     exemplo, `s = requests.Session(); s.get(url)` não é detectado nessa
     segunda chamada. É uma limitação aceita: esta função é uma camada de
     defesa em profundidade complementar ao allowlist de ambiente do
-    pytest_runner (P0), não a única barreira.
+    pytest_runner (P0), não a única barreira. Também não tenta detectar
+    ofuscação de import/sys.path via `getattr`/nomes indiretos — fora de
+    escopo, mesma limitação aceita.
+
+    Também detecta import (não regex — só `ast.Import`/`ast.ImportFrom`
+    reais) cujo módulo tenha "coder" ou "workspace_output" como segmento
+    exato: a suíte materializada nunca deve importar de fora de si mesma
+    (ver REGRAS DE ISOLAMENTO em code_fix_agent/prompt.py — "nunca
+    referencie workspace_output/coder"). Um módulo como "encoder" não é
+    pego (segmento precisa bater exatamente, não por substring).
 
     Retorna lista vazia quando não há risco. Código sintaticamente inválido
     também retorna lista vazia — validar sintaxe é responsabilidade de
@@ -231,6 +263,23 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
     riscos: list[str] = []
 
     for node in ast.walk(arvore):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            modulos = (
+                [node.module] if isinstance(node, ast.ImportFrom) and node.module
+                else [alias.name for alias in node.names] if isinstance(node, ast.Import)
+                else []
+            )
+            for modulo in modulos:
+                segmentos = {parte.lower() for parte in modulo.split(".")}
+                if segmentos & _SEGMENTOS_IMPORT_PROIBIDOS:
+                    riscos.append(
+                        f"linha {node.lineno}: import fora da suíte "
+                        f"materializada ({modulo}) — nunca referencie "
+                        "workspace_output/coder; use a cópia local "
+                        "(ex.: from src.modulo import funcao)"
+                    )
+            continue
+
         if isinstance(node, ast.Subscript):
             dotted = _resolver_dotted(_dotted(node.value), aliases)
             if dotted == "os.environ":
@@ -359,3 +408,112 @@ def detectar_credenciais(texto: str) -> list[str]:
                 f"'{nome_suspeito}' (valor com aparência de segredo real)"
             )
     return achados
+
+
+# ---------------------------------------------------------------------------
+# Decisão P3 reutilizável: mesma varredura (riscos + credenciais) usada tanto
+# na geração inicial de pytest (receive_requirements.sanitizer) quanto na
+# correção do code_fix_agent (shared.tools.qa_test_files.write_qa_test) — um
+# único ponto de decisão para não duplicar a lógica de bloqueio nos dois
+# lugares.
+# ---------------------------------------------------------------------------
+
+_logger_seguranca = logging.getLogger("qa_agent")
+
+
+def validar_seguranca_codigo(codigo: str, identificador: str) -> None:
+    """Levanta ValueError se `codigo` apresentar risco de segurança (P3).
+
+    Reúne `detectar_riscos_codigo` + `detectar_credenciais` numa única
+    decisão de bloqueio, com mensagem no mesmo formato usada pelos dois
+    chamadores atuais. Não retorna nada quando não há risco (nem sanitiza,
+    nem transforma `codigo` — só decide).
+    """
+    riscos = detectar_riscos_codigo(codigo) + detectar_credenciais(codigo)
+    if riscos:
+        _logger_seguranca.warning(
+            f"[QA] Código para {identificador} bloqueado por risco de "
+            f"segurança: {riscos}"
+        )
+        raise ValueError(
+            f"Código para {identificador} apresenta risco de segurança e "
+            f"foi bloqueado antes de ser persistido: {'; '.join(riscos)}."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Varredura de riscos em specs Playwright (.spec.ts) gerados por LLM — mesma
+# motivação de detectar_riscos_codigo, mas para TypeScript, onde não há um
+# parser AST disponível aqui; usa regex sobre o texto, como
+# detectar_credenciais já faz para outros formatos.
+# ---------------------------------------------------------------------------
+
+_PADRAO_PROCESS_ENV = re.compile(r"\bprocess\s*\.\s*env\b")
+_PADRAO_REQUIRE_PERIGOSO = re.compile(
+    r"require\s*\(\s*[\"'](child_process|fs)[\"']\s*\)"
+)
+_PADRAO_CHAMADA_REDE_TS = re.compile(
+    r"\b(?:fetch|request|axios(?:\.\w+)?)\s*\(\s*[\"'`]([^\"'`]+)[\"'`]"
+)
+
+
+def _host_ts_ou_none(alvo: str) -> str | None:
+    """Extrai o host de uma URL usada num spec TS, ou None se for caminho
+    relativo (mesma origem do base_url, já validado em outro lugar)."""
+    if alvo.startswith("/"):
+        return None
+    return alvo
+
+
+def detectar_riscos_spec_ts(codigo_ts: str) -> list[str]:
+    """Varre um `.spec.ts` gerado por LLM antes de persistir.
+
+    Detecta: leitura de variável de ambiente do processo Node
+    (`process.env`), import de módulo Node de baixo nível
+    (`require('child_process')`/`require('fs')`) e requisição de rede
+    (`fetch`/`request`/`axios`) para um host literal que não seja
+    localhost/127.0.0.1/::1 — mesma política de "execução autônoma restrita
+    a loopback" de `detectar_riscos_codigo`. Uma URL relativa (`fetch('/api/x')`)
+    é tratada como mesma origem do `base_url` (já validado alhures) e não é
+    sinalizada. Uma URL com interpolação de template string
+    (`` `${base}/x` ``) não é estaticamente verificável — falha fechada,
+    mesmo padrão do restante do pipeline.
+
+    Como não há parser TypeScript disponível aqui, usa regex sobre o texto
+    — diferente de `detectar_riscos_codigo` (AST), que é possível só porque
+    o Python tem `ast` na biblioteca padrão.
+
+    Retorna lista vazia quando não há risco.
+    """
+    riscos: list[str] = []
+    for numero, linha in enumerate(codigo_ts.splitlines(), start=1):
+        if _PADRAO_PROCESS_ENV.search(linha):
+            riscos.append(
+                f"linha {numero}: leitura de variável de ambiente do "
+                "processo (process.env) — specs não devem acessar o "
+                "ambiente do host"
+            )
+        if _PADRAO_REQUIRE_PERIGOSO.search(linha):
+            riscos.append(
+                f"linha {numero}: import de módulo Node de baixo nível "
+                "(child_process/fs) — specs não devem executar processos "
+                "nem acessar o filesystem fora do harness Playwright"
+            )
+        for match in _PADRAO_CHAMADA_REDE_TS.finditer(linha):
+            alvo = match.group(1)
+            if "${" in alvo:
+                riscos.append(
+                    f"linha {numero}: requisição de rede com host não "
+                    "verificável estaticamente (template string) — "
+                    "execução autônoma só pode acessar localhost/127.0.0.1"
+                )
+                continue
+            host = _host_ts_ou_none(alvo)
+            if host is None or _eh_loopback(host):
+                continue
+            riscos.append(
+                f"linha {numero}: requisição de rede a host externo "
+                f"({alvo}) — execução autônoma só pode acessar "
+                "localhost/127.0.0.1/::1"
+            )
+    return riscos
