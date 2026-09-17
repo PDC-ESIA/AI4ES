@@ -25,7 +25,11 @@ from shared.tools.filesystem import (
 )
 
 from . import prompt as coder_prompt
-from .workspace_guard import auditar_remocao, bloquear_sobrescrita_herdada
+from .workspace_guard import (
+    anunciar_arquivos_herdados,
+    auditar_remocao,
+    bloquear_sobrescrita_herdada,
+)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
@@ -57,6 +61,10 @@ agent = LlmAgent(
         _bind(FunctionTool(tool_ler_workspace)),
         _bind(FunctionTool(tool_listar_workspace)),
     ],
+    # As frentes da proteção inter-task (ver `workspace_guard`): `anunciar_`
+    # avisa que o projeto já existe antes da primeira escrita da task;
+    # `bloquear_` recusa a sobrescrita se o aviso não bastar; `auditar_`
+    # registra remoções e libera o caminho removido da baseline.
     before_tool_callback=bloquear_sobrescrita_herdada,
-    after_tool_callback=auditar_remocao,
+    after_tool_callback=[anunciar_arquivos_herdados, auditar_remocao],
 )
