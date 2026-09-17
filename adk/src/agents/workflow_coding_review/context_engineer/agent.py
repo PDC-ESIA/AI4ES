@@ -18,8 +18,7 @@ from google.adk.agents.callback_context import CallbackContext
 from shared.tools.coding_tools.context_engineer_tools import (
     tool_salvar_task_cr_adk,
     tool_salvar_macro_context_cr_adk,
-    tool_ler_requirements_adk,
-    tool_ler_design_adk,
+    tool_ler_artefatos_adk,
     tool_gerar_doubt_artifact_adk,
     tool_emitir_manifesto_bloqueado_adk,
     tool_aguardar_resolucao_bloqueio_adk,
@@ -51,8 +50,7 @@ agent = LlmAgent(
     tools=[
         tool_salvar_task_cr_adk,
         tool_salvar_macro_context_cr_adk,
-        tool_ler_requirements_adk,
-        tool_ler_design_adk,
+        tool_ler_artefatos_adk,
         tool_gerar_doubt_artifact_adk,
         tool_emitir_manifesto_bloqueado_adk,
         tool_aguardar_resolucao_bloqueio_adk,
