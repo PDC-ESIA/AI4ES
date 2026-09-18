@@ -1,7 +1,10 @@
 import os
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from shared.tools.build_fix_prompt import build_fix_prompt_from_error, build_fix_prompt_from_pytest
+from shared.tools.build_fix_prompt import (
+    build_fix_prompt_from_error,
+    build_fix_prompt_from_pytest,
+)
 from shared.tools.qa_test_files import (
     executar_teste_unitario_corrigido,
     read_qa_test,
@@ -19,14 +22,10 @@ agent = LlmAgent(
         "corrige somente o teste existente e o reexecuta pelo perfil detectado."
     ),
     tools=[
-        FunctionTool(
-            func=build_fix_prompt_from_error
-        ),
-        FunctionTool(
-            func=build_fix_prompt_from_pytest
-        ),
+        FunctionTool(func=build_fix_prompt_from_error),
+        FunctionTool(func=build_fix_prompt_from_pytest),
         FunctionTool(func=read_qa_test),
         FunctionTool(func=write_qa_test),
         FunctionTool(func=executar_teste_unitario_corrigido),
-    ]
+    ],
 )

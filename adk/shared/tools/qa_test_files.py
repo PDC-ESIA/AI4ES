@@ -50,7 +50,16 @@ def _altera_sys_path(tree: ast.AST) -> bool:
             and expr.attr == "path"
         )
 
-    mutators = {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse"}
+    mutators = {
+        "append",
+        "extend",
+        "insert",
+        "remove",
+        "pop",
+        "clear",
+        "sort",
+        "reverse",
+    }
     for node in ast.walk(tree):
         if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -66,7 +75,9 @@ def _altera_sys_path(tree: ast.AST) -> bool:
             and node.func.attr in mutators
         ):
             obj = node.func.value
-            if _is_sys_path(obj) or (isinstance(obj, ast.Name) and obj.id in path_aliases):
+            if _is_sys_path(obj) or (
+                isinstance(obj, ast.Name) and obj.id in path_aliases
+            ):
                 return True
     return False
 
@@ -92,9 +103,8 @@ def _is_managed_test(path: Path) -> bool:
             or resolved.name.casefold().endswith("_test.py")
         )
     if resolved.is_relative_to(e2e):
-        return (
-            resolved.suffix.casefold() in _NODE_SUFFIXES
-            and _is_node_test_name(resolved.name)
+        return resolved.suffix.casefold() in _NODE_SUFFIXES and _is_node_test_name(
+            resolved.name
         )
     if not resolved.is_relative_to(coder):
         return False
@@ -103,8 +113,7 @@ def _is_managed_test(path: Path) -> bool:
     parts = tuple(part.casefold() for part in relative.parts)
     suffix = resolved.suffix.casefold()
     in_test_directory = any(
-        part in {"__tests__", "spec", "specs", "test", "tests"}
-        for part in parts[:-1]
+        part in {"__tests__", "spec", "specs", "test", "tests"} for part in parts[:-1]
     )
     if suffix == ".py":
         return in_test_directory and (
@@ -175,8 +184,7 @@ def _resolve_qa_test(caminho_arquivo: str) -> Path:
         return existing[0]
     if len(existing) > 1:
         raise ValueError(
-            "O caminho do teste é ambíguo: "
-            + ", ".join(str(path) for path in existing)
+            "O caminho do teste é ambíguo: " + ", ".join(str(path) for path in existing)
         )
 
     if len(received.parts) == 1:
@@ -185,8 +193,7 @@ def _resolve_qa_test(caminho_arquivo: str) -> Path:
             return matches[0]
         if len(matches) > 1:
             raise ValueError(
-                "O nome do teste é ambíguo: "
-                + ", ".join(str(path) for path in matches)
+                "O nome do teste é ambíguo: " + ", ".join(str(path) for path in matches)
             )
 
     fallback = candidates[0]
@@ -303,9 +310,7 @@ def write_qa_test(caminho_arquivo: str, conteudo: str) -> dict:
         return {"status": "erro", "erro": str(exc)}
 
 
-def executar_teste_unitario_corrigido(
-    caminho_arquivo: str, perfil: str = ""
-) -> dict:
+def executar_teste_unitario_corrigido(caminho_arquivo: str, perfil: str = "") -> dict:
     """Reexecuta um teste corrigido com o executor fixo de seu perfil."""
     try:
         path = _resolve_qa_test(caminho_arquivo)

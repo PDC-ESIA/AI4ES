@@ -10,6 +10,7 @@ from shared.testing import (
     prepare_request,
 )
 from shared.testing.profile_orchestration import (
+    block_prepared_result,
     load_artifacts,
     resolve_managed_project_root,
 )
@@ -156,19 +157,7 @@ def preparar_testes_e2e(
             tool_context=tool_context,
         )
     except (KeyError, ValueError) as exc:
-        total = int(prepared.get("resumo", {}).get("total", 0) or 0)
-        return {
-            **prepared,
-            "status": "bloqueado",
-            "resumo": {
-                "total": total,
-                "sucessos": 0,
-                "bloqueados": max(1, total),
-                "falhas": 0,
-                "executados": 0,
-            },
-            "bloqueios": [{"codigo": "ADAPTADOR_E2E_INVALIDO", "mensagem": str(exc)}],
-        }
+        return block_prepared_result(prepared, "ADAPTADOR_E2E_INVALIDO", str(exc))
     normalized = normalize_e2e_result(
         prepared["inspecao"], profile, adapter_result, artifacts
     )

@@ -18,73 +18,73 @@ do usuário foram ocultados; os resultados técnicos foram preservados.
 
 Detecção, resultado e cobertura:
 
-![Resultado do perfil python-pytest](dev_ui/python-pytest/01-resultado.png)
+[Ver resultado do perfil python-pytest no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Retorno estruturado da execução:
 
-![Execução do perfil python-pytest](dev_ui/python-pytest/02-execucao.png)
+[Ver execução do perfil python-pytest no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Node/TypeScript — Vitest
 
 Detecção do perfil e resumo:
 
-![Detecção do perfil node-vitest](dev_ui/node-vitest/01-perfil.png)
+[Ver detecção do perfil node-vitest no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Retorno estruturado da inspeção:
 
-![Execução do perfil node-vitest](dev_ui/node-vitest/02-execucao.png)
+[Ver execução do perfil node-vitest no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Node/TypeScript — Jest
 
 Detecção do perfil e resumo:
 
-![Detecção do perfil node-jest](dev_ui/node-jest/01-perfil.png)
+[Ver detecção do perfil node-jest no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Saída do Jest e cobertura:
 
-![Execução do perfil node-jest](dev_ui/node-jest/02-execucao.png)
+[Ver execução do perfil node-jest no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Node — node:test
 
 Detecção do perfil e resumo:
 
-![Resultado do perfil node-node-test](dev_ui/node-node-test/01-resultado.png)
+[Ver resultado do perfil node-node-test no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Retorno estruturado da execução:
 
-![Execução do perfil node-node-test](dev_ui/node-node-test/02-execucao.png)
+[Ver execução do perfil node-node-test no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Lista de testes executados:
 
-![Saída do perfil node-node-test](dev_ui/node-node-test/03-saida.png)
+[Ver saída do perfil node-node-test no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Node — Mocha
 
 Detecção do perfil, execução e resumo:
 
-![Detecção do perfil node-mocha](dev_ui/node-mocha/01-perfil.png)
+[Ver detecção do perfil node-mocha no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Retorno estruturado da execução:
 
-![Execução do perfil node-mocha](dev_ui/node-mocha/02-execucao.png)
+[Ver execução do perfil node-mocha no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Java — JUnit
 
 O primeiro ciclo encontrou uma falha de asserção. O Code Fix alterou somente o
 teste, reexecutou o JUnit e concluiu com 12 testes aprovados.
 
-![Resultado final do perfil java-junit](dev_ui/java-junit/01-resultado-final.png)
+[Ver resultado final do perfil java-junit no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Falha inicial que acionou a autocorreção:
 
-![Falha inicial do perfil java-junit](dev_ui/java-junit/02-falha-inicial.png)
+[Ver falha inicial do perfil java-junit no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Go — testing
 
 Detecção do perfil, resultado e cobertura:
 
-![Resultado do perfil go-testing](dev_ui/go-testing/01-resultado.png)
+[Ver resultado do perfil go-testing no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 Retorno estruturado da execução:
 
-![Execução do perfil go-testing](dev_ui/go-testing/02-execucao.png)
+[Ver execução do perfil go-testing no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)

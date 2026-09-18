@@ -65,7 +65,7 @@ Todos os níveis retornam o mesmo contrato básico:
 
 Integração e E2E também preservam comando, código de saída, `stdout`, `stderr`
 e demais dados do executor em `resultado_bruto`. Isso permite que a Dev UI,
-os testes automatizados e os coletores de evidência consumam o mesmo formato.
+os testes automatizados e os três subagentes consumam o mesmo formato.
 
 ## Code Fix multistack
 
@@ -77,9 +77,6 @@ controlada, a correção do teste e a reexecução final com sucesso.
 
 ## Compatibilidade e isolamento
 
-- O fluxo aceita caminhos e processos em Windows e Linux.
-- A saída do processo é configurada em UTF-8 no Windows para que mensagens
-  Unicode dos plugins do ADK não bloqueiem a Dev UI.
 - O executor limita a execução ao workspace autorizado e valida os caminhos
   antes de acessar projetos ou testes.
 - Comandos são representados como listas de argumentos e executados sem
@@ -94,36 +91,11 @@ controlada, a correção do teste e a reexecução final com sucesso.
 - Runtime, gerenciador de build, Playwright, navegador e dependências do projeto
   devem existir no ambiente antes da execução.
 
-## Automação e reprodução
+## Validação realizada
 
-Foram adicionadas fixtures isoladas, scripts de coleta e duas matrizes de CI:
-
-- `unit-profile-matrix.yml`: executa os sete perfis unitários com os runtimes
-  correspondentes e publica os arquivos de evidência;
-- `qa-multilevel-matrix.yml`: executa os quatro perfis de integração e os
-  quatro perfis E2E, incluindo a preparação do Chromium para Playwright.
-
-Na pasta `adk`, a validação local pode ser reproduzida com:
-
-```powershell
-# Contratos, seleção de perfil, adaptadores e normalização
-.\.venv\Scripts\python.exe -m pytest `
-  tests/unit/test_profile_based_test_agents.py `
-  tests/unit/test_multistack_integration_adapters.py `
-  tests/unit/test_result_normalization.py -q
-
-# Execução real da matriz de integração e E2E
-.\.venv\Scripts\python.exe -m pytest `
-  tests/integration/test_multistack_profiles_real.py -q
-
-# Coleta reproduzível dos sete perfis unitários
-.\.venv\Scripts\python.exe scripts\unit_profile_evidence.py `
-  collect --profile all --bootstrap-runtime
-
-# Coleta reproduzível dos quatro perfis de integração e quatro perfis E2E
-.\.venv\Scripts\python.exe scripts\qa_multilevel_evidence.py `
-  --level all --profile all
-```
+Durante a implementação foram executados testes automatizados dos catálogos,
+inspetores, adaptadores, normalização e perfis reais. Os resultados consolidados
+e as evidências da Dev UI permanecem neste diretório.
 
 ### Execução pela Dev UI
 
@@ -134,26 +106,9 @@ $env:ADK_AGENTS_DIR = "src/agents"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8081
 ```
 
-Abra `http://127.0.0.1:8081/dev-ui/?app=workflow_qa`. Para preparar um
-workspace unitário isolado, execute:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\unit_profile_evidence.py `
-  prepare-dev-ui --profile node-jest
-```
-
-Configure `WORKSPACE_OUTPUT_DIR` com o `workspace_output` criado. Para
-integração, use a fixture correspondente em
-`tests/fixtures/integration_profiles/<perfil>/project`. Para E2E,
-disponibilize a aplicação local antes de enviar o prompt:
-
-```powershell
-.\.venv\Scripts\python.exe -m http.server 8765 `
-  --bind 127.0.0.1 --directory tests/fixtures/e2e_profiles
-```
-
-O alvo E2E da fixture fica disponível em
-`http://127.0.0.1:8765/index.html`.
+Abra `http://127.0.0.1:8081/dev-ui/?app=workflow_qa` com o projeto já
+persistido no workspace do Coder. Para E2E, a aplicação alvo precisa estar
+disponível em uma URL local de loopback.
 
 ## Resultados automatizados
 
@@ -163,9 +118,7 @@ O alvo E2E da fixture fica disponível em
 | Integração | 4 | 8 testes aprovados, 2 por stack |
 | E2E | 4 | 4 testes Playwright aprovados, 1 por stack |
 
-Cada execução gera um `evidence.json` próprio com perfil, runtime, comando,
-hashes dos arquivos, logs, contagens e resultado normalizado. Os resumos
-consolidados estão disponíveis em:
+Os resumos consolidados dos testes executados estão disponíveis em:
 
 - [resultados automatizados dos perfis unitários](evidencias_unit_profiles/runs/handoff-final-20260831/SUMMARY.md);
 - [resultados automatizados de integração e E2E](evidencias_multilevel/runs/handoff-final-20260831/SUMMARY.md).
@@ -192,16 +145,16 @@ As capturas completas estão no
 
 ### Testes de integração
 
-As sessões registram a solicitação, o planejamento, a seleção do perfil, o
-teste gerado e o resultado normalizado das quatro stacks. Python, Node e Go
-possuem execução bem-sucedida registrada. Na máquina usada para a captura de
+O resumo preserva a seleção do perfil, a geração e o resultado final observado
+nas quatro stacks. Python, Node e Go possuem execução bem-sucedida registrada.
+Na máquina usada para a captura de
 Java, o perfil e o JUnit/Maven foram identificados e o teste foi gerado, mas a
 execução retornou o bloqueio ambiental esperado porque Maven não estava no
 `PATH`. O mesmo perfil Java está aprovado na matriz automatizada, executada em
 ambiente com o runtime preparado.
 
-As transcrições completas estão no
-[resumo das sessões de integração](evidencias_integracao_dev_ui/RESUMO.md).
+Os resultados estão no
+[resumo de integração](evidencias_integracao_dev_ui/RESUMO.md).
 
 ### Testes E2E
 
@@ -210,7 +163,7 @@ capturas comprovam a seleção de `python-e2e`, `node-e2e`, `java-e2e` e
 `go-e2e`, a execução pelo Playwright e o resultado final de 1 teste aprovado e
 0 falhas em cada stack.
 
-Os quatro prints estão no
+Os quatro prints estão vinculados pelo Google Drive no
 [resumo visual dos testes E2E](evidencias_e2e_dev_ui/RESUMO.md).
 
 ## Resultado do PR
@@ -219,5 +172,5 @@ O QA Agent passa a oferecer uma interface única para testes multistack sem
 transformar um runner específico em interpretador universal. O comportamento
 comum — inspeção, seleção, isolamento, bloqueios e normalização — é
 compartilhado, enquanto geração e execução permanecem especializadas por nível
-e perfil. A entrega inclui cobertura automatizada, fixtures reproduzíveis,
-matrizes de CI, resultados estruturados e evidências de uso real pela Dev UI.
+e perfil. A entrega preserva resultados estruturados e evidências de uso real
+pela Dev UI.

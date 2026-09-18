@@ -7,7 +7,7 @@ import re
 from typing import Any
 
 
-def _counts(total: int, failed: int = 0, skipped: int = 0) -> dict[str, int]:
+def test_counts(total: int, failed: int = 0, skipped: int = 0) -> dict[str, int]:
     return {
         "total": total,
         "sucessos": max(0, total - failed - skipped),
@@ -35,15 +35,15 @@ def _go_counts(output: str) -> dict[str, int]:
     }
 
 
-def parse_integration_counts(framework: str, output: str) -> dict[str, int]:
-    """Converte os formatos conhecidos para contagens comuns."""
+def parse_test_counts(framework: str, output: str) -> dict[str, int]:
+    """Converte a saída dos runners conhecidos para contagens comuns."""
     if framework == "go-testing":
         return _go_counts(output)
     if framework == "pytest":
         passed = int((re.search(r"(\d+) passed", output) or [0, 0])[1])
         failed = int((re.search(r"(\d+) failed", output) or [0, 0])[1])
         skipped = int((re.search(r"(\d+) skipped", output) or [0, 0])[1])
-        return _counts(passed + failed + skipped, failed, skipped)
+        return test_counts(passed + failed + skipped, failed, skipped)
     if framework == "vitest":
         summary = next(
             (
@@ -56,7 +56,7 @@ def parse_integration_counts(framework: str, output: str) -> dict[str, int]:
         passed = int((re.search(r"(\d+)\s+passed", summary) or [0, 0])[1])
         failed = int((re.search(r"(\d+)\s+failed", summary) or [0, 0])[1])
         skipped = int((re.search(r"(\d+)\s+skipped", summary) or [0, 0])[1])
-        return _counts(passed + failed + skipped, failed, skipped)
+        return test_counts(passed + failed + skipped, failed, skipped)
     if framework == "jest":
         match = re.search(
             r"Tests:\s*(?:(\d+) failed,\s*)?(?:(\d+) skipped,\s*)?"
@@ -68,12 +68,12 @@ def parse_integration_counts(framework: str, output: str) -> dict[str, int]:
             failed, skipped, _passed, total = (
                 int(value or 0) for value in match.groups()
             )
-            return _counts(total, failed, skipped)
+            return test_counts(total, failed, skipped)
     if framework == "mocha":
         passed = int((re.search(r"(\d+) passing", output) or [0, 0])[1])
         failed = int((re.search(r"(\d+) failing", output) or [0, 0])[1])
         skipped = int((re.search(r"(\d+) pending", output) or [0, 0])[1])
-        return _counts(passed + failed + skipped, failed, skipped)
+        return test_counts(passed + failed + skipped, failed, skipped)
     if framework == "node:test":
         values = {
             key: (
@@ -89,7 +89,7 @@ def parse_integration_counts(framework: str, output: str) -> dict[str, int]:
             )
             for key in ("tests", "pass", "fail", "skipped")
         }
-        return _counts(values["tests"], values["fail"], values["skipped"])
+        return test_counts(values["tests"], values["fail"], values["skipped"])
     if framework.startswith("junit"):
         matches = re.findall(
             r"Tests run:\s*(\d+),\s*Failures:\s*(\d+),\s*"
@@ -98,24 +98,28 @@ def parse_integration_counts(framework: str, output: str) -> dict[str, int]:
         )
         if matches:
             total, failures, errors, skipped = map(int, matches[-1])
-            return _counts(total, failures + errors, skipped)
+            return test_counts(total, failures + errors, skipped)
         gradle = re.search(
             r"(\d+) tests completed(?:, (\d+) failed)?(?:, (\d+) skipped)?",
             output,
         )
         if gradle:
             total, failed, skipped = (int(value or 0) for value in gradle.groups())
-            return _counts(total, failed, skipped)
+            return test_counts(total, failed, skipped)
         statuses = re.findall(
             r"^.+\s>\s.+\s(PASSED|FAILED|SKIPPED)\s*$",
             output,
             re.MULTILINE,
         )
         if statuses:
-            return _counts(
+            return test_counts(
                 len(statuses), statuses.count("FAILED"), statuses.count("SKIPPED")
             )
-    return _counts(0)
+    return test_counts(0)
+
+
+# Nome público preservado para consumidores anteriores à normalização comum.
+parse_integration_counts = parse_test_counts
 
 
 def normalize_integration_execution(raw: dict[str, Any]) -> dict[str, Any]:
@@ -125,7 +129,7 @@ def normalize_integration_execution(raw: dict[str, Any]) -> dict[str, Any]:
     stderr = str(raw.get("stderr") or "")
     output = "\n".join(part for part in (stdout, stderr) if part).strip()
     blocked = raw.get("status") == "bloqueado"
-    counts = _counts(0) if blocked else parse_integration_counts(framework, output)
+    counts = test_counts(0) if blocked else parse_test_counts(framework, output)
     return_code = raw.get("codigo_saida")
     no_tests = not blocked and return_code == 0 and counts["total"] == 0
     if blocked:
@@ -200,7 +204,10 @@ def normalize_integration_result(
             if isinstance(raw_execution, dict)
             else None
         )
-        if normalized_execution is not None and normalized_execution["status"] != "bloqueado":
+        if (
+            normalized_execution is not None
+            and normalized_execution["status"] != "bloqueado"
+        ):
             executions += 1
 
         raw_status = detail.get("status")
@@ -344,8 +351,7 @@ def normalize_e2e_result(
         blocked = scope_count
 
     artifact_ids = [
-        str(item.get("id_artefato") or item.get("id") or "SEM_ID")
-        for item in artifacts
+        str(item.get("id_artefato") or item.get("id") or "SEM_ID") for item in artifacts
     ] or ["SEM_ID"]
     if execution is not None:
         detail_status = execution["status"]
@@ -396,4 +402,6 @@ __all__ = [
     "normalize_integration_execution",
     "normalize_integration_result",
     "parse_integration_counts",
+    "parse_test_counts",
+    "test_counts",
 ]

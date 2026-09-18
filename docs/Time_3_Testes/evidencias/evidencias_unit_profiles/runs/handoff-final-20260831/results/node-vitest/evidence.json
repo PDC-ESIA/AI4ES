@@ -22,13 +22,12 @@
         "--no-fund"
       ]
     ],
-    "minimum_tests": 2,
-    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\node-vitest"
+    "minimum_tests": 2
   },
   "runtime": {
     "available": true,
     "command": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
       "--version"
     ],
     "output": "v24.19.0"
@@ -38,8 +37,8 @@
     "commands": [
       {
         "command": [
-          "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
-          "C:\\Users\\Henrique Lima\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\\node-v24.19.0-win-x64\\node_modules\\npm\\bin\\npm-cli.js",
+          ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+          "AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\\node-v24.19.0-win-x64\\node_modules\\npm\\bin\\npm-cli.js",
           "install",
           "--ignore-scripts",
           "--no-audit",
@@ -53,8 +52,8 @@
   "workspace": {
     "profile_id": "node-vitest",
     "title": "Node/TypeScript com Vitest",
-    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output",
-    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src",
+    "workspace_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output",
+    "project_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src",
     "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para src/calculator.ts. Valide a soma de dois números e que divisão por zero lança RangeError.",
     "expected": {
       "inspection_status": "suportado",
@@ -62,8 +61,8 @@
       "execution_status": "sucesso",
       "minimum_tests": 2
     },
-    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\dev_ui_session.json",
-    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.ts"
+    "session_file": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\dev_ui_session.json",
+    "test_path": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.ts"
   },
   "source_sha256": {
     "package-lock.json": "a1efb6990af708f83fc705bc7fa4c056f32975f8630afb34b0b551dc2aa6fe61",
@@ -74,7 +73,7 @@
   "inspection": {
     "status": "suportado",
     "tipo_teste": "unitario",
-    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src",
+    "projeto": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src",
     "perfil": {
       "profile_id": "node-vitest",
       "language": "javascript-typescript",
@@ -113,8 +112,8 @@
     "tipo_teste": "unitario",
     "perfil": "node-vitest",
     "comando": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
-      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src\\node_modules\\vitest\\vitest.mjs",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-vitest\\workspace_output\\coder\\src\\node_modules\\vitest\\vitest.mjs",
       "run",
       "tests/unit/calculator.test.ts",
       "--reporter=verbose"
@@ -130,7 +129,7 @@
       "formato": "lcov",
       "arquivo": null
     },
-    "saida": "RUN  v3.2.7 C:/Users/Henrique Lima/Documents/GitHub/AI4ES/adk/evidencias_unit_profiles/workspaces/handoff-final-20260831/node-vitest/workspace_output/coder/src\n\n ✓ tests/unit/calculator.test.ts > calculator > adds two numbers 2ms\n ✓ tests/unit/calculator.test.ts > calculator > rejects division by zero 0ms\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Start at  23:40:50\n   Duration  2.30s (transform 743ms, setup 0ms, collect 771ms, tests 5ms, environment 0ms, prepare 858ms)",
+    "saida": "RUN  v3.2.7 adk/evidencias_unit_profiles/workspaces/handoff-final-20260831/node-vitest/workspace_output/coder/src\n\n ✓ tests/unit/calculator.test.ts > calculator > adds two numbers 2ms\n ✓ tests/unit/calculator.test.ts > calculator > rejects division by zero 0ms\n\n Test Files  1 passed (1)\n      Tests  2 passed (2)\n   Start at  23:40:50\n   Duration  2.30s (transform 743ms, setup 0ms, collect 771ms, tests 5ms, environment 0ms, prepare 858ms)",
     "erros": []
   },
   "normalized_result": {

@@ -48,7 +48,9 @@ def test_comando_node_usa_vitest_local_sem_npx(tmp_path, monkeypatch):
     entry.parent.mkdir(parents=True)
     entry.write_text("", encoding="utf-8")
     test_file = _test_file(tmp_path, "tests/integration/service.test.ts")
-    monkeypatch.setattr(integration_adapters, "_command_path", lambda _name: "/node")
+    monkeypatch.setattr(
+        integration_adapters.runtime_adapters.shutil, "which", lambda _name: "/node"
+    )
 
     command, framework, blocker = integration_adapters.build_integration_command(
         "node-integration", tmp_path, test_file
@@ -71,7 +73,9 @@ def test_comando_java_usa_junit_maven(tmp_path, monkeypatch):
         "package com.example; class ServiceIntegrationTest {}\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(integration_adapters, "_command_path", lambda _name: "/mvn")
+    monkeypatch.setattr(
+        integration_adapters.runtime_adapters.shutil, "which", lambda _name: "/mvn"
+    )
 
     command, framework, blocker = integration_adapters.build_integration_command(
         "java-integration", tmp_path, test_file
@@ -89,7 +93,9 @@ def test_comando_java_usa_junit_maven(tmp_path, monkeypatch):
 def test_comando_go_usa_pacote_do_teste(tmp_path, monkeypatch):
     (tmp_path / "go.mod").write_text("module sample\n", encoding="utf-8")
     test_file = _test_file(tmp_path, "service/service_integration_test.go")
-    monkeypatch.setattr(integration_adapters, "_command_path", lambda _name: "/go")
+    monkeypatch.setattr(
+        integration_adapters.runtime_adapters.shutil, "which", lambda _name: "/go"
+    )
 
     command, framework, blocker = integration_adapters.build_integration_command(
         "go-integration", tmp_path, test_file

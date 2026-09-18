@@ -22,7 +22,9 @@ from .prompt import QA_PROMPT
 _qa_cache = create_qa_agent_response_cache(prompt_text=QA_PROMPT)
 
 
-async def _after_model_callback(callback_context, llm_response: LlmResponse) -> LlmResponse | None:
+async def _after_model_callback(
+    callback_context, llm_response: LlmResponse
+) -> LlmResponse | None:
     """Chains cache storage and E2E result emission."""
     await _qa_cache.after_model_callback(callback_context, llm_response)
     return emitir_resultado_e2e_sem_reinterpretacao(callback_context, llm_response)

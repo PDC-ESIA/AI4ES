@@ -30,7 +30,9 @@ def test_node_usa_instalacao_local_sem_npx(
     local_entry = tmp_path / entry
     local_entry.parent.mkdir(parents=True)
     local_entry.write_text("", encoding="utf-8")
-    monkeypatch.setattr(unit_runner, "_command_path", lambda name: f"/{name}")
+    monkeypatch.setattr(
+        unit_runner.runtime_adapters.shutil, "which", lambda name: f"/{name}"
+    )
 
     command, blocker, _coverage = unit_runner._build_command(
         profile_id, tmp_path, test_file
@@ -44,19 +46,28 @@ def test_node_usa_instalacao_local_sem_npx(
 
 def test_node_test_aceita_arquivo_typescript_declarado(tmp_path, monkeypatch):
     test_file = _test_file(tmp_path, "tests/unit/sample.test.ts")
-    monkeypatch.setattr(unit_runner, "_command_path", lambda name: f"/{name}")
+    monkeypatch.setattr(
+        unit_runner.runtime_adapters.shutil, "which", lambda name: f"/{name}"
+    )
 
     command, blocker, _coverage = unit_runner._build_command(
         "node-node-test", tmp_path, test_file
     )
 
     assert blocker is None
-    assert command == ["/node", "--test", "tests/unit/sample.test.ts"]
+    assert command == [
+        "/node",
+        "--experimental-strip-types",
+        "--test",
+        "tests/unit/sample.test.ts",
+    ]
 
 
 def test_framework_node_ausente_retorna_bloqueio(tmp_path, monkeypatch):
     test_file = _test_file(tmp_path)
-    monkeypatch.setattr(unit_runner, "_command_path", lambda name: f"/{name}")
+    monkeypatch.setattr(
+        unit_runner.runtime_adapters.shutil, "which", lambda name: f"/{name}"
+    )
 
     command, blocker, _coverage = unit_runner._build_command(
         "node-vitest", tmp_path, test_file
@@ -72,7 +83,9 @@ def test_java_maven_usa_nome_qualificado(tmp_path, monkeypatch):
     test_file.write_text(
         "package com.example; class CalculatorTest {}\n", encoding="utf-8"
     )
-    monkeypatch.setattr(unit_runner, "_command_path", lambda name: f"/{name}")
+    monkeypatch.setattr(
+        unit_runner.runtime_adapters.shutil, "which", lambda name: f"/{name}"
+    )
 
     command, blocker, _coverage = unit_runner._build_command(
         "java-junit", tmp_path, test_file
@@ -92,7 +105,9 @@ def test_java_maven_usa_classe_declarada_em_nome_legado(tmp_path, monkeypatch):
         "package com.example; class CalculatorTestGenerated {}\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(unit_runner, "_command_path", lambda name: f"/{name}")
+    monkeypatch.setattr(
+        unit_runner.runtime_adapters.shutil, "which", lambda name: f"/{name}"
+    )
 
     command, blocker, _coverage = unit_runner._build_command(
         "java-junit", tmp_path, test_file
@@ -106,7 +121,9 @@ def test_go_usa_go_mod_e_gera_coverprofile(tmp_path, monkeypatch):
     (tmp_path / "go.mod").write_text("module sample\n", encoding="utf-8")
     test_file = _test_file(tmp_path, "calculator_test.go")
     coverage = tmp_path / "coverage"
-    monkeypatch.setattr(unit_runner, "_command_path", lambda name: f"/{name}")
+    monkeypatch.setattr(
+        unit_runner.runtime_adapters.shutil, "which", lambda name: f"/{name}"
+    )
     monkeypatch.setattr(unit_runner, "get_agent_workspace", lambda _name: tmp_path)
 
     command, blocker, coverage_path = unit_runner._build_command(

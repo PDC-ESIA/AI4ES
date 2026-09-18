@@ -35,12 +35,12 @@
   "runtime": {
     "available": true,
     "command": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
       "--version"
     ],
     "output": "v24.19.0"
   },
-  "workspace": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output",
+  "workspace": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output",
   "source_sha256": {
     ".ai4se_workspace": "6237bf8dacef6cc528d6a37ff59dd7a1e179ba9517e383e8d19b9a5ad2c21404",
     "tests/e2e/node-e2e.spec.playwright-report.json": "87840ecf46238c518c42b74be3da868f4de66ea90548d1d4fa64b5bc0a0debdb",
@@ -55,8 +55,8 @@
     "testes_aprovados": 1,
     "testes_falhos": 0,
     "testes_pulados": 0,
-    "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
-    "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
+    "arquivo_relatorio": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
+    "diretorio_artefatos": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
     "falhas": [],
     "logs_resumidos": [
       "Running 1 test using 1 worker",
@@ -107,7 +107,7 @@
       "executados": 1
     },
     "arquivos_gerados": [
-      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts"
+      "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts"
     ],
     "detalhes": [
       {
@@ -115,7 +115,7 @@
         "status": "sucesso",
         "fluxo": "A",
         "framework": "playwright-typescript",
-        "arquivo_gerado": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts",
+        "arquivo_gerado": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts",
         "resultado_execucao": {
           "status": "sucesso",
           "tipo_teste": "e2e",
@@ -129,8 +129,8 @@
             "falhas": 0,
             "ignorados": 0
           },
-          "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
-          "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
+          "arquivo_relatorio": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
+          "diretorio_artefatos": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
           "saida": "Running 1 test using 1 worker\n[1/1] [chromium] › evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts:3:5 › fluxo de confirmação funciona\n1 passed (1.6s)",
           "erros": [],
           "resultado_bruto": {
@@ -142,8 +142,8 @@
             "testes_aprovados": 1,
             "testes_falhos": 0,
             "testes_pulados": 0,
-            "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
-            "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
+            "arquivo_relatorio": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
+            "diretorio_artefatos": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
             "falhas": [],
             "logs_resumidos": [
               "Running 1 test using 1 worker",
@@ -155,7 +155,7 @@
         "resultado_bruto": {
           "tipo_saida": "executado",
           "arquivos_gerados": [
-            "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts"
+            "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts"
           ],
           "resultado_execucao": {
             "status": "aprovado",
@@ -166,8 +166,8 @@
             "testes_aprovados": 1,
             "testes_falhos": 0,
             "testes_pulados": 0,
-            "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
-            "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
+            "arquivo_relatorio": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
+            "diretorio_artefatos": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
             "falhas": [],
             "logs_resumidos": [
               "Running 1 test using 1 worker",
@@ -183,7 +183,7 @@
     "resultado_bruto": {
       "tipo_saida": "executado",
       "arquivos_gerados": [
-        "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts"
+        "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.ts"
       ],
       "resultado_execucao": {
         "status": "aprovado",
@@ -194,8 +194,8 @@
         "testes_aprovados": 1,
         "testes_falhos": 0,
         "testes_pulados": 0,
-        "arquivo_relatorio": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
-        "diretorio_artefatos": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
+        "arquivo_relatorio": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\node-e2e.spec.playwright-report.json",
+        "diretorio_artefatos": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-e2e\\workspace_output\\tests\\e2e\\test-results\\node-e2e.spec",
         "falhas": [],
         "logs_resumidos": [
           "Running 1 test using 1 worker",

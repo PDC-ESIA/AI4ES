@@ -68,9 +68,7 @@ def test_code_fix_le_e_altera_testes_multistack(
         "coder/src/calculator.go",
     ],
 )
-def test_code_fix_rejeita_codigo_de_producao(
-    tmp_path, monkeypatch, relative_path
-):
+def test_code_fix_rejeita_codigo_de_producao(tmp_path, monkeypatch, relative_path):
     workspace = tmp_path / "workspace"
     production = workspace / relative_path
     production.parent.mkdir(parents=True)
@@ -94,9 +92,7 @@ def test_code_fix_reexecuta_node_pelo_perfil_detectado(tmp_path, monkeypatch):
         '{"type":"commonjs","scripts":{"test":"node --test"}}\n',
         encoding="utf-8",
     )
-    (project / "calculator.js").write_text(
-        "module.exports = {};\n", encoding="utf-8"
-    )
+    (project / "calculator.js").write_text("module.exports = {};\n", encoding="utf-8")
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace))
     captured = {}
 

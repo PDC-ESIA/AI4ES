@@ -25,8 +25,6 @@ Knobs (via ambiente):
 
 import logging
 import os
-import sys
-from typing import TextIO
 
 from google.adk.cli.utils.logs import setup_adk_logger
 from google.adk.plugins import DebugLoggingPlugin
@@ -35,7 +33,9 @@ from google.adk.plugins import DebugLoggingPlugin
 # qualificado em `extra_plugins` — o loader do ADK aceita instâncias de
 # BasePlugin diretamente (não só classes), permitindo injetar output_path.
 debug_logging_plugin = DebugLoggingPlugin(
-    output_path=os.environ.get("ADK_DEBUG_LOG_PATH", "workspace_output/adk_debug.yaml")
+    output_path=os.environ.get(
+        "ADK_DEBUG_LOG_PATH", "workspace_output/adk_debug.yaml"
+    )
 )
 
 
@@ -50,26 +50,12 @@ def _resolve_level(default: int = logging.INFO) -> int:
     return getattr(logging, raw.upper(), default)
 
 
-def _configure_utf8_stream(stream: TextIO | None) -> None:
-    """Permite que plugins do ADK imprimam Unicode no console do Windows."""
-    reconfigure = getattr(stream, "reconfigure", None)
-    if not callable(reconfigure):
-        return
-    try:
-        reconfigure(encoding="utf-8", errors="backslashreplace")
-    except OSError, ValueError:
-        # Alguns runners substituem stdout/stderr por streams não reconfiguráveis.
-        return
-
-
 def setup_logging() -> None:
     """Configura o logging nativo do ADK a partir de LOG_LEVEL.
 
     Substitui o antigo ``logger.setLevel`` local de app/main.py (que não
     instalava handler). Idempotente o suficiente para ser chamado no boot.
     """
-    _configure_utf8_stream(sys.stdout)
-    _configure_utf8_stream(sys.stderr)
     setup_adk_logger(level=_resolve_level())
 
 

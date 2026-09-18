@@ -11,7 +11,6 @@
 | e2e | java-e2e | sucesso | 1 |
 | e2e | go-e2e | sucesso | 1 |
 
-Cada JSON preserva comando, runtime, hashes, logs e resultado bruto.
-Os prints da Dev UI são evidências visuais complementares e não substituem os
-resultados automatizados deste diretório. Consulte também as
+Esta tabela preserva o resultado consolidado da execução automatizada. Consulte
+também as
 [execuções E2E na Dev UI](../../../evidencias_e2e_dev_ui/RESUMO.md).

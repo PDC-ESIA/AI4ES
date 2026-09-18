@@ -14,13 +14,12 @@
     ],
     "requirement": "Gere e execute testes unitários para calculator.py. Valide a soma de dois números e que divisão por zero lança ValueError.",
     "bootstrap_commands": [],
-    "minimum_tests": 2,
-    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\python-pytest"
+    "minimum_tests": 2
   },
   "runtime": {
     "available": true,
     "command": [
-      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\.venv\\Scripts\\python.exe",
+      "adk\\.venv\\Scripts\\python.exe",
       "--version"
     ],
     "output": "Python 3.14.4"
@@ -32,8 +31,8 @@
   "workspace": {
     "profile_id": "python-pytest",
     "title": "Python/FastAPI com pytest",
-    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output",
-    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src",
+    "workspace_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output",
+    "project_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src",
     "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para calculator.py. Valide a soma de dois números e que divisão por zero lança ValueError.",
     "expected": {
       "inspection_status": "suportado",
@@ -41,8 +40,8 @@
       "execution_status": "sucesso",
       "minimum_tests": 2
     },
-    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\dev_ui_session.json",
-    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src\\test_calculator.py"
+    "session_file": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\dev_ui_session.json",
+    "test_path": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src\\test_calculator.py"
   },
   "source_sha256": {
     "calculator.py": "5f4d910f9714320d428d9f43eae7cabbb90d4d2b294d7cdae0935d0c27ad4c66",
@@ -52,7 +51,7 @@
   "inspection": {
     "status": "suportado",
     "tipo_teste": "unitario",
-    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src",
+    "projeto": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src",
     "perfil": {
       "profile_id": "python-pytest",
       "language": "python",
@@ -94,7 +93,7 @@
     "testes_gerados": [
       {
         "nome": "test_calculator",
-        "arquivo": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src\\test_calculator.py",
+        "arquivo": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\python-pytest\\workspace_output\\coder\\src\\test_calculator.py",
         "resultado": "passou"
       }
     ],

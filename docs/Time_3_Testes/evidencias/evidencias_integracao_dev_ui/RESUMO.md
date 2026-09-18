@@ -10,15 +10,6 @@ do perfil, geração do teste e retorno normalizado.
 | `java-integration` | concluída | não executada: Maven ausente no ambiente usado | bloqueio ambiental |
 | `go-integration` | concluída | teste de integração aprovado | sucesso |
 
-## Sessões completas
-
-| Perfil | Transcrição |
-| --- | --- |
-| `python-integration` | [ver sessão](python-integration-sessao.md) |
-| `node-integration` | [ver sessão](node-integration-sessao.md) |
-| `java-integration` | [ver sessão](java-integration-sessao.md) |
-| `go-integration` | [ver sessão](go-integration-sessao.md) |
-
 O bloqueio do Java não impediu a seleção do perfil nem a geração do teste. A
 execução depende de Maven ou Gradle disponível no ambiente da Dev UI.
 

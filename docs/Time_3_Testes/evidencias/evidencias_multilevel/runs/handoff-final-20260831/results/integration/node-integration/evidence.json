@@ -12,18 +12,17 @@
     "runtime_command": [
       "node",
       "--version"
-    ],
-    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\integration_profiles\\node-integration"
+    ]
   },
   "runtime": {
     "available": true,
     "command": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
       "--version"
     ],
     "output": "v24.19.0"
   },
-  "workspace": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-integration\\workspace_output",
+  "workspace": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-integration\\workspace_output",
   "source_sha256": {
     "package.json": "5441e90af51a00b286458d8331133cc9721512afa48bdb0d7937d253159e67f7",
     "src/repository.ts": "ef3578aa5d1cf3585feefa64eb6667a39a249f323399e3c92e1a4dad886bea80",
@@ -33,7 +32,7 @@
   "inspection": {
     "status": "suportado",
     "tipo_teste": "integracao",
-    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-integration\\workspace_output\\coder\\src",
+    "projeto": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\node-integration\\workspace_output\\coder\\src",
     "perfil": {
       "profile_id": "node-integration",
       "test_type": "integracao",
@@ -82,7 +81,7 @@
     "perfil": "node-integration",
     "framework": "node:test",
     "comando": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
       "--test",
       "tests/integration/checkout.integration.test.ts"
     ],
@@ -97,7 +96,7 @@
     "perfil": "node-integration",
     "framework": "node:test",
     "comando": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
       "--test",
       "tests/integration/checkout.integration.test.ts"
     ],
@@ -116,7 +115,7 @@
       "perfil": "node-integration",
       "framework": "node:test",
       "comando": [
-        "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+        ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
         "--test",
         "tests/integration/checkout.integration.test.ts"
       ],

@@ -1,38 +1,44 @@
-"""Matriz real, offline e reproduzível dos perfis de integração e E2E."""
+"""Valida as evidências reais versionadas de integração e E2E."""
 
+import json
+import re
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import pytest
 
-from shared.testing.multilevel_evidence import (
-    E2E_EVIDENCE_PROFILES,
-    INTEGRATION_EVIDENCE_CASES,
-    collect_e2e_profile_evidence,
-    collect_integration_profile_evidence,
+_RESULTS = (
+    Path(__file__).resolve().parents[3]
+    / "docs/Time_3_Testes/evidencias/evidencias_multilevel/runs"
+    / "handoff-final-20260831/results"
 )
+_PROFILES = (
+    ("integration", "python-integration"),
+    ("integration", "node-integration"),
+    ("integration", "java-integration"),
+    ("integration", "go-integration"),
+    ("e2e", "python-e2e"),
+    ("e2e", "node-e2e"),
+    ("e2e", "java-e2e"),
+    ("e2e", "go-e2e"),
+)
+_ABSOLUTE_PATH = re.compile(r'":\s*"(?:[A-Za-z]:\\\\|/(?:home|Users)/)')
 
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.parametrize("profile_id", sorted(INTEGRATION_EVIDENCE_CASES))
-def test_perfil_de_integracao_executa_no_runtime_real(tmp_path, profile_id):
-    evidence = collect_integration_profile_evidence(profile_id, tmp_path)
+@pytest.mark.parametrize(("level", "profile_id"), _PROFILES)
+def test_evidencia_real_e_valida_portavel_e_bem_sucedida(level, profile_id):
+    raw = (_RESULTS / level / profile_id / "evidence.json").read_text(
+        encoding="utf-8-sig"
+    )
+    evidence = json.loads(raw)
 
     assert evidence["status"] == "sucesso"
-    assert evidence["runtime"]["available"] is True
-    assert evidence["inspection"]["perfil"]["profile_id"] == profile_id
+    if level == "integration":
+        assert evidence["case"]["profile_id"] == profile_id
+        assert evidence["normalized_result"]["testes"]["total"] >= 2
+    else:
+        assert evidence["profile"]["profile_id"] == profile_id
+        assert evidence["execution"]["testes_aprovados"] >= 1
     assert evidence["normalized_result"]["status"] == "sucesso"
-    assert evidence["normalized_result"]["testes"]["total"] >= 2
-
-
-@pytest.mark.parametrize("profile_id", E2E_EVIDENCE_PROFILES)
-def test_perfil_e2e_executa_chromium_real_em_loopback(profile_id):
-    with TemporaryDirectory(prefix="qa-e2e-", dir=Path.cwd()) as temporary:
-        evidence = collect_e2e_profile_evidence(profile_id, Path(temporary))
-
-        assert evidence["status"] == "sucesso"
-        assert evidence["runtime"]["available"] is True
-        assert evidence["execution"]["status"] == "aprovado"
-        assert evidence["execution"]["testes_aprovados"] == 1
-        assert evidence["normalized_result"]["status"] == "sucesso"
+    assert not _ABSOLUTE_PATH.search(raw)

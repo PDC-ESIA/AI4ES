@@ -301,7 +301,7 @@ def _declared_node_module_type(root: Path) -> str:
         return ""
     try:
         package = json.loads(package_json.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return ""
     value = package.get("type") if isinstance(package, dict) else None
     return value.strip().casefold() if isinstance(value, str) else ""
@@ -322,9 +322,7 @@ def _node_module_instruction(profile_id: str, root: Path, target: Path) -> str:
     )
 
 
-def _requires_explicit_commonjs(
-    profile_id: str, root: Path, target: Path
-) -> bool:
+def _requires_explicit_commonjs(profile_id: str, root: Path, target: Path) -> bool:
     return (
         profile_id in {"node-node-test", "node-mocha"}
         and target.suffix.casefold() in {".js", ".cjs"}
@@ -502,9 +500,7 @@ def gerar_testes_do_perfil(
     details: list[dict[str, Any]] = []
 
     for artifact in artifacts:
-        artifact_id = str(
-            artifact.get("id_artefato") or artifact.get("id") or "SEM_ID"
-        )
+        artifact_id = str(artifact.get("id_artefato") or artifact.get("id") or "SEM_ID")
         try:
             _materialize_inline_sources(artifact, root)
             sources = _source_files(root, profile.source_suffixes)
@@ -537,16 +533,14 @@ def gerar_testes_do_perfil(
                 target,
                 sources,
             )
-            if (
-                _requires_explicit_commonjs(profile_id, root, target)
-                and re.search(r"(?m)^\s*import\s", generated)
+            if _requires_explicit_commonjs(profile_id, root, target) and re.search(
+                r"(?m)^\s*import\s", generated
             ):
                 generated = _repair_commonjs_test(generated)
             code = _sanitize_code(profile_id, generated)
             code = _normalize_generated_code(profile_id, code, root, target)
-            if (
-                _requires_explicit_commonjs(profile_id, root, target)
-                and re.search(r"(?m)^\s*(?:import|export)\s", code)
+            if _requires_explicit_commonjs(profile_id, root, target) and re.search(
+                r"(?m)^\s*(?:import|export)\s", code
             ):
                 raise ValueError(
                     "O teste gerado permaneceu incompatível com CommonJS após correção."

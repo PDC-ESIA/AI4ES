@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
-from shared.testing import UNIT_TEST_PROFILES, inspect_unit_test_project
+from shared.testing import (
+    UNIT_TEST_PROFILES,
+    inspect_request,
+    inspect_unit_test_project,
+)
 from shared.testing.coder_stack import load_coder_stack
+from shared.testing.profile_orchestration import (
+    artifact_file_names,
+    blocked_test_result,
+    load_artifacts,
+    resolve_managed_project_root,
+)
 from shared.tools.pytest_runner import executar_pytest_tool
-from shared.workspace import get_agent_workspace, get_workspace_root
 from src.agents.qa_agent.subagents.receive_requirements.orchestration import (
     receber_requisitos,
 )
@@ -24,69 +32,7 @@ _NON_PYTHON_PROFILES = {
 
 
 def _blocked(code: str, message: str, *, inspection: dict | None = None) -> dict:
-    return {
-        "status": "bloqueado",
-        "tipo_teste": "unitario",
-        "inspecao": inspection,
-        "perfil": inspection.get("perfil") if inspection else None,
-        "resumo": {
-            "total": 0,
-            "sucessos": 0,
-            "bloqueados": 1,
-            "falhas": 0,
-            "executados": 0,
-        },
-        "arquivos_gerados": [],
-        "detalhes": [],
-        "bloqueios": [{"codigo": code, "mensagem": message}],
-    }
-
-
-def _resolve_project_root(workspace_projeto: str) -> Path:
-    workspace_root = get_workspace_root().resolve()
-    if workspace_projeto and workspace_projeto.strip():
-        received = Path(workspace_projeto.strip()).expanduser()
-        candidate = received if received.is_absolute() else workspace_root / received
-        candidate = candidate.resolve()
-    else:
-        candidate = get_agent_workspace("cr_coder").resolve()
-
-    if candidate != workspace_root and not candidate.is_relative_to(workspace_root):
-        raise ValueError(
-            "workspace_projeto deve permanecer dentro do workspace gerenciado."
-        )
-    return candidate
-
-
-def _parse_declared_files(arquivos_declarados_json: str) -> list[str]:
-    try:
-        raw = json.loads(arquivos_declarados_json or "[]")
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"arquivos_declarados_json inválido: {exc}") from exc
-    if not isinstance(raw, list):
-        raise ValueError("arquivos_declarados_json deve ser uma lista JSON.")
-
-    names: list[str] = []
-    for item in raw:
-        if isinstance(item, str) and item.strip():
-            names.append(item.strip())
-        elif isinstance(item, dict):
-            value = item.get("path") or item.get("nome") or item.get("filename")
-            if isinstance(value, str) and value.strip():
-                names.append(value.strip())
-    return names
-
-
-def _load_artifacts(artefatos_json: str) -> list[dict[str, Any]]:
-    try:
-        raw = json.loads(artefatos_json)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"artefatos_json inválido: {exc}") from exc
-    if isinstance(raw, dict):
-        raw = [raw]
-    if not isinstance(raw, list) or not all(isinstance(item, dict) for item in raw):
-        raise ValueError("artefatos_json deve conter um objeto ou lista de objetos.")
-    return raw
+    return blocked_test_result("unitario", code, message, inspection=inspection)
 
 
 def _requirement_text(artifact: dict[str, Any]) -> str:
@@ -133,9 +79,7 @@ def _normalize_artifacts(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]
     normalized: list[dict[str, Any]] = []
     for artifact in artifacts:
         item = dict(artifact)
-        item.setdefault(
-            "id_artefato", str(item.get("id") or "SEM_ID")
-        )
+        item.setdefault("id_artefato", str(item.get("id") or "SEM_ID"))
         item.setdefault("tipo", "RF")
         if not isinstance(item.get("conteudo"), str) or not item["conteudo"].strip():
             requirement = _requirement_text(item)
@@ -176,60 +120,17 @@ def _normalize_artifacts(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]
     return normalized
 
 
-def _artifact_file_names(artifacts: list[dict[str, Any]]) -> list[str]:
-    names: list[str] = []
-    for artifact in artifacts:
-        support_files = artifact.get("arquivos_apoio", [])
-        if isinstance(support_files, list):
-            for item in support_files:
-                if isinstance(item, str) and item.strip():
-                    names.append(item.strip())
-                elif isinstance(item, dict):
-                    value = item.get("path") or item.get("nome") or item.get("filename")
-                    if isinstance(value, str) and value.strip():
-                        names.append(value.strip())
-
-        parts = artifact.get("parts")
-        if not isinstance(parts, list):
-            content = artifact.get("content")
-            parts = content.get("parts") if isinstance(content, dict) else None
-        if isinstance(parts, list):
-            for part in parts:
-                inline = part.get("inlineData") if isinstance(part, dict) else None
-                if isinstance(inline, dict):
-                    value = inline.get("displayName") or inline.get("name")
-                    if isinstance(value, str) and value.strip():
-                        names.append(value.strip())
-    return names
-
-
 def inspecionar_projeto_unitario(
     workspace_projeto: str = "",
     arquivos_declarados_json: str = "[]",
     stack_declarada: str = "",
 ) -> dict:
     """Identifica deterministicamente o perfil de teste unitário do projeto."""
-    try:
-        project_root = _resolve_project_root(workspace_projeto)
-        declared_files = _parse_declared_files(arquivos_declarados_json)
-    except ValueError as exc:
-        return {
-            "status": "bloqueado",
-            "tipo_teste": "unitario",
-            "projeto": None,
-            "perfil": None,
-            "confianca": 0.0,
-            "evidencias": [],
-            "arquivos_fonte": [],
-            "bloqueios": [
-                {"codigo": "ENTRADA_INSPECAO_INVALIDA", "mensagem": str(exc)}
-            ],
-        }
-    effective_stack = stack_declarada or load_coder_stack()
-    return inspect_unit_test_project(
-        project_root,
-        declared_files=declared_files,
-        declared_stack=effective_stack,
+    return inspect_request(
+        UNIT_TEST_PROFILES,
+        workspace_project=workspace_projeto,
+        declared_files_json=arquivos_declarados_json,
+        declared_stack=stack_declarada,
     )
 
 
@@ -240,15 +141,15 @@ def gerar_testes_unitarios(
 ) -> dict:
     """Inspeciona, gera e executa testes unitários no perfil suportado."""
     try:
-        artifacts = _normalize_artifacts(_load_artifacts(artefatos_json))
-        project_root = _resolve_project_root(workspace_projeto)
+        artifacts = _normalize_artifacts(load_artifacts(artefatos_json))
+        project_root = resolve_managed_project_root(workspace_projeto)
     except ValueError as exc:
         return _blocked("ENTRADA_UNITARIA_INVALIDA", str(exc))
 
     effective_stack = stack_declarada or load_coder_stack()
     inspection = inspect_unit_test_project(
         project_root,
-        declared_files=_artifact_file_names(artifacts),
+        declared_files=artifact_file_names(artifacts),
         declared_stack=effective_stack,
     )
     if inspection["status"] != "suportado":
@@ -266,9 +167,7 @@ def gerar_testes_unitarios(
     profile = inspection.get("perfil") or {}
     profile_id = profile.get("profile_id")
     if profile_id == "python-pytest":
-        generation = receber_requisitos(
-            json.dumps(artifacts, ensure_ascii=False)
-        )
+        generation = receber_requisitos(json.dumps(artifacts, ensure_ascii=False))
     elif profile_id in _NON_PYTHON_PROFILES:
         generation = gerar_testes_do_perfil(profile_id, artifacts, project_root)
     else:

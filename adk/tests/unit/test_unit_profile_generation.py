@@ -102,7 +102,15 @@ def test_gera_no_layout_nativo_e_executa(
 
 
 @pytest.mark.parametrize(
-    ("profile_id", "source_path", "source", "existing_path", "generated", "expected_path", "expected_symbol"),
+    (
+        "profile_id",
+        "source_path",
+        "source",
+        "existing_path",
+        "generated",
+        "expected_path",
+        "expected_symbol",
+    ),
     [
         (
             "java-junit",
@@ -250,17 +258,11 @@ def test_sem_conteudo_e_sem_codigo_permanece_bloqueado(tmp_path):
     assert "requisito textual nem código-fonte" in detail["mensagem"]
 
 
-def test_node_test_corrige_esm_quando_projeto_declara_commonjs(
-    tmp_path, monkeypatch
-):
-    (tmp_path / "package.json").write_text(
-        '{"type":"commonjs"}\n', encoding="utf-8"
-    )
+def test_node_test_corrige_esm_quando_projeto_declara_commonjs(tmp_path, monkeypatch):
+    (tmp_path / "package.json").write_text('{"type":"commonjs"}\n', encoding="utf-8")
     source = tmp_path / "src" / "calculator.js"
     source.parent.mkdir()
-    source.write_text(
-        "module.exports = { add: (a, b) => a + b };\n", encoding="utf-8"
-    )
+    source.write_text("module.exports = { add: (a, b) => a + b };\n", encoding="utf-8")
     generated_esm = (
         "import test from 'node:test';\n"
         "import assert from 'node:assert/strict';\n"

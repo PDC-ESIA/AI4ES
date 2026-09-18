@@ -14,13 +14,12 @@
     ],
     "requirement": "Gere e execute testes unitários para calculator.go. Valide a soma de dois números e que divisão por zero retorna erro.",
     "bootstrap_commands": [],
-    "minimum_tests": 2,
-    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\go-testing"
+    "minimum_tests": 2
   },
   "runtime": {
     "available": true,
     "command": [
-      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "Program Files\\Go\\bin\\go.EXE",
       "version"
     ],
     "output": "go version go1.24.1 windows/amd64"
@@ -32,8 +31,8 @@
   "workspace": {
     "profile_id": "go-testing",
     "title": "Go com testing",
-    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output",
-    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\coder\\src",
+    "workspace_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output",
+    "project_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\coder\\src",
     "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para calculator.go. Valide a soma de dois números e que divisão por zero retorna erro.",
     "expected": {
       "inspection_status": "suportado",
@@ -41,8 +40,8 @@
       "execution_status": "sucesso",
       "minimum_tests": 2
     },
-    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\dev_ui_session.json",
-    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\coder\\src\\calculator_test.go"
+    "session_file": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\dev_ui_session.json",
+    "test_path": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\coder\\src\\calculator_test.go"
   },
   "source_sha256": {
     "calculator.go": "401df63533e8f5bd8f54e160a142714b892f4a3e6dc7a79e2cd822a4542c0cb5",
@@ -52,7 +51,7 @@
   "inspection": {
     "status": "suportado",
     "tipo_teste": "unitario",
-    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\coder\\src",
+    "projeto": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\coder\\src",
     "perfil": {
       "profile_id": "go-testing",
       "language": "go",
@@ -84,10 +83,10 @@
     "tipo_teste": "unitario",
     "perfil": "go-testing",
     "comando": [
-      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "Program Files\\Go\\bin\\go.EXE",
       "test",
       "-json",
-      "-coverprofile=C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\tests\\unit\\coverage\\calculator_test.out",
+      "-coverprofile=adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\tests\\unit\\coverage\\calculator_test.out",
       "."
     ],
     "testes": {
@@ -99,7 +98,7 @@
     "cobertura": {
       "percentual": 75.0,
       "formato": "go-coverprofile",
-      "arquivo": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\tests\\unit\\coverage\\calculator_test.out"
+      "arquivo": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\go-testing\\workspace_output\\tests\\unit\\coverage\\calculator_test.out"
     },
     "saida": "{\"Time\":\"2026-08-31T23:39:02.1428104-03:00\",\"Action\":\"start\",\"Package\":\"example.com/qa-evidence\"}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestAdd\"}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestAdd\",\"Output\":\"=== RUN   TestAdd\\n\"}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestAdd\",\"Output\":\"--- PASS: TestAdd (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestAdd\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"run\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestDivideRejectsZero\"}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestDivideRejectsZero\",\"Output\":\"=== RUN   TestDivideRejectsZero\\n\"}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestDivideRejectsZero\",\"Output\":\"--- PASS: TestDivideRejectsZero (0.00s)\\n\"}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-evidence\",\"Test\":\"TestDivideRejectsZero\",\"Elapsed\":0}\n{\"Time\":\"2026-08-31T23:39:02.6438557-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-evidence\",\"Output\":\"PASS\\n\"}\n{\"Time\":\"2026-08-31T23:39:02.6560472-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-evidence\",\"Output\":\"coverage: 75.0% of statements\\n\"}\n{\"Time\":\"2026-08-31T23:39:02.6632044-03:00\",\"Action\":\"output\",\"Package\":\"example.com/qa-evidence\",\"Output\":\"ok  \\texample.com/qa-evidence\\t0.514s\\tcoverage: 75.0% of statements\\n\"}\n{\"Time\":\"2026-08-31T23:39:02.6637265-03:00\",\"Action\":\"pass\",\"Package\":\"example.com/qa-evidence\",\"Elapsed\":0.521}",
     "erros": []

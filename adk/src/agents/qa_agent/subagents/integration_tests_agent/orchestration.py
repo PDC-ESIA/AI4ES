@@ -7,6 +7,7 @@ from shared.testing import (
     prepare_request,
 )
 from shared.testing.profile_orchestration import (
+    block_prepared_result,
     load_artifacts,
     resolve_managed_project_root,
 )
@@ -63,21 +64,9 @@ def preparar_testes_integracao(
             profile["profile_id"], artifacts, project_root
         )
     except (KeyError, ValueError) as exc:
-        total = int(prepared.get("resumo", {}).get("total", 0) or 0)
-        return {
-            **prepared,
-            "status": "bloqueado",
-            "resumo": {
-                "total": total,
-                "sucessos": 0,
-                "bloqueados": max(1, total),
-                "falhas": 0,
-                "executados": 0,
-            },
-            "bloqueios": [
-                {"codigo": "ADAPTADOR_INTEGRACAO_INVALIDO", "mensagem": str(exc)}
-            ],
-        }
+        return block_prepared_result(
+            prepared, "ADAPTADOR_INTEGRACAO_INVALIDO", str(exc)
+        )
     normalized = normalize_integration_result(
         prepared["inspecao"], profile, adapter_result
     )

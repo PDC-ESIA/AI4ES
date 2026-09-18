@@ -185,9 +185,7 @@ def test_fluxo_python_gera_e_executa_sem_alterar_runner(tmp_path, monkeypatch):
     assert result["detalhes"][0]["resultado_execucao"]["status"] == "sucesso"
 
 
-def test_fluxo_python_normaliza_resumo_do_workflow_como_conteudo(
-    tmp_path, monkeypatch
-):
+def test_fluxo_python_normaliza_resumo_do_workflow_como_conteudo(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     project = workspace / "coder" / "src"
     project.mkdir(parents=True)
@@ -213,9 +211,7 @@ def test_fluxo_python_normaliza_resumo_do_workflow_como_conteudo(
                     "Somar dois números e lançar ValueError na divisão por zero."
                 ),
                 "objetivo_qa": "Executar somente testes unitários.",
-                "arquivos_relevantes": [
-                    "workspace_output/coder/src/calculator.py"
-                ],
+                "arquivos_relevantes": ["workspace_output/coder/src/calculator.py"],
             }
         )
     )

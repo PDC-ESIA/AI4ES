@@ -11,7 +11,7 @@ from google.genai import types
 
 sys.modules.setdefault("litellm", py_types.SimpleNamespace(drop_params=False))
 
-from shared.cache.qa_agent_cache import QaAgentResponseCache
+from shared.cache.qa_agent_cache import QaAgentResponseCache  # noqa: E402
 
 
 class FakeClock:
@@ -207,7 +207,9 @@ async def test_erro_do_modelo_libera_fluxo_da_mesma_chave():
     assert cached is None
     assert cache._pending_key(leader_context) in cache._pending
 
-    follower_task = asyncio.create_task(cache.before_model_callback(follower_context, request))
+    follower_task = asyncio.create_task(
+        cache.before_model_callback(follower_context, request)
+    )
     await asyncio.sleep(0)
     assert not follower_task.done()
 

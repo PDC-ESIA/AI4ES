@@ -2,33 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-
-
-@dataclass(frozen=True)
-class UnitTestProfile:
-    """Capacidade conhecida de teste unitário para uma stack do Coder."""
-
-    profile_id: str
-    language: str
-    framework: str
-    source_suffixes: tuple[str, ...]
-    marker_files: tuple[str, ...]
-    test_file_pattern: str
-    coverage_format: str | None
-    executor: str | None
-    implemented: bool
-
-    def to_dict(self) -> dict:
-        return asdict(self)
+from .test_profiles import TestProfile, TestProfileRegistry, UnitTestProfile
 
 
 _NODE_SUFFIXES = (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx")
 
 _PROFILES = (
-    UnitTestProfile(
+    TestProfile(
         profile_id="python-pytest",
-        language="python",
+        test_type="unitario",
+        stack="python",
         framework="pytest",
         source_suffixes=(".py",),
         marker_files=("pyproject.toml", "pytest.ini", "requirements.txt", "setup.cfg"),
@@ -37,9 +20,10 @@ _PROFILES = (
         executor="pytest_runner",
         implemented=True,
     ),
-    UnitTestProfile(
+    TestProfile(
         profile_id="node-vitest",
-        language="javascript-typescript",
+        test_type="unitario",
+        stack="javascript-typescript",
         framework="vitest",
         source_suffixes=_NODE_SUFFIXES,
         marker_files=("package.json", "vitest.config.js", "vitest.config.ts"),
@@ -48,9 +32,10 @@ _PROFILES = (
         executor="vitest_runner",
         implemented=True,
     ),
-    UnitTestProfile(
+    TestProfile(
         profile_id="node-jest",
-        language="javascript-typescript",
+        test_type="unitario",
+        stack="javascript-typescript",
         framework="jest",
         source_suffixes=_NODE_SUFFIXES,
         marker_files=("package.json", "jest.config.js", "jest.config.ts"),
@@ -59,9 +44,10 @@ _PROFILES = (
         executor="jest_runner",
         implemented=True,
     ),
-    UnitTestProfile(
+    TestProfile(
         profile_id="node-node-test",
-        language="javascript-typescript",
+        test_type="unitario",
+        stack="javascript-typescript",
         framework="node:test",
         source_suffixes=_NODE_SUFFIXES,
         marker_files=("package.json",),
@@ -70,9 +56,10 @@ _PROFILES = (
         executor="node_test_runner",
         implemented=True,
     ),
-    UnitTestProfile(
+    TestProfile(
         profile_id="node-mocha",
-        language="javascript-typescript",
+        test_type="unitario",
+        stack="javascript-typescript",
         framework="mocha",
         source_suffixes=_NODE_SUFFIXES,
         marker_files=("package.json", ".mocharc.json", ".mocharc.js"),
@@ -81,9 +68,10 @@ _PROFILES = (
         executor="mocha_runner",
         implemented=True,
     ),
-    UnitTestProfile(
+    TestProfile(
         profile_id="node-unconfigured",
-        language="javascript-typescript",
+        test_type="unitario",
+        stack="javascript-typescript",
         framework="unconfigured",
         source_suffixes=_NODE_SUFFIXES,
         marker_files=("package.json",),
@@ -92,9 +80,10 @@ _PROFILES = (
         executor=None,
         implemented=False,
     ),
-    UnitTestProfile(
+    TestProfile(
         profile_id="java-junit",
-        language="java",
+        test_type="unitario",
+        stack="java",
         framework="junit",
         source_suffixes=(".java",),
         marker_files=("pom.xml", "build.gradle", "build.gradle.kts"),
@@ -103,9 +92,10 @@ _PROFILES = (
         executor="junit_runner",
         implemented=True,
     ),
-    UnitTestProfile(
+    TestProfile(
         profile_id="go-testing",
-        language="go",
+        test_type="unitario",
+        stack="go",
         framework="testing",
         source_suffixes=(".go",),
         marker_files=("go.mod",),
@@ -116,9 +106,7 @@ _PROFILES = (
     ),
 )
 
-UNIT_TEST_PROFILES: dict[str, UnitTestProfile] = {
-    profile.profile_id: profile for profile in _PROFILES
-}
+UNIT_TEST_PROFILES = TestProfileRegistry("unitario", _PROFILES)
 
 _ALIASES = {
     "python": "python-pytest",
@@ -174,3 +162,12 @@ def resolve_unit_test_profile(value: str) -> UnitTestProfile | None:
 def list_unit_test_profiles() -> list[dict]:
     """Lista serializável usada por tools e documentação do agente."""
     return [profile.to_dict() for profile in _PROFILES]
+
+
+__all__ = [
+    "UNIT_TEST_PROFILES",
+    "UnitTestProfile",
+    "get_unit_test_profile",
+    "list_unit_test_profiles",
+    "resolve_unit_test_profile",
+]

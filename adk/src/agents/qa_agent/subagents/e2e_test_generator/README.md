@@ -24,5 +24,5 @@ Limites do adaptador:
 
 Todos os perfis retornam o mesmo envelope com status, resumo, arquivos,
 detalhes e bloqueios. O retorno original do Playwright permanece em
-`resultado_bruto`. A matriz automatizada está em
-`.github/workflows/qa-multilevel-matrix.yml`.
+`resultado_bruto`. A matriz automatizada é exercitada por
+`adk/tests/integration/test_multistack_profiles_real.py`.

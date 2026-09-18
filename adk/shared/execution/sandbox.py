@@ -21,7 +21,6 @@ velocidade; use `DockerSandbox` quando o isolamento forte for necessário.
 from __future__ import annotations
 
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -47,25 +46,7 @@ _DEFAULT_NOFILE = 1024  # descritores de arquivo abertos
 
 # Chaves de ambiente preservadas ao montar um env limpo. Nada além disto é
 # herdado do processo pai — segredos/vars do host não vazam para o comando.
-_CLEAN_ENV_KEYS = (
-    "PATH",
-    "HOME",
-    "LANG",
-    "LC_ALL",
-    "TMPDIR",
-    "TERM",
-    # Necessarias para resolver executaveis e temporarios no Windows.
-    "SYSTEMROOT",
-    "WINDIR",
-    "PATHEXT",
-    "COMSPEC",
-    "TEMP",
-    "TMP",
-    "USERPROFILE",
-    "LOCALAPPDATA",
-    "APPDATA",
-    "PROGRAMDATA",
-)
+_CLEAN_ENV_KEYS = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "TERM")
 
 # Defaults do DockerSandbox.
 _DOCKER_DEFAULT_BASE_IMAGE = "python:3.12-slim"  # usado quando não há Dockerfile
@@ -121,102 +102,6 @@ def _clean_env(extra: Optional[dict[str, str]]) -> dict[str, str]:
     if extra:
         base.update(extra)
     return base
-
-
-def _powershell_executable() -> str:
-    """Localiza PowerShell moderno ou o Windows PowerShell nativo."""
-    for executable in ("pwsh.exe", "powershell.exe"):
-        resolved = shutil.which(executable)
-        if resolved:
-            return resolved
-
-    system_root = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
-    if system_root:
-        fallback = (
-            Path(system_root)
-            / "System32"
-            / "WindowsPowerShell"
-            / "v1.0"
-            / "powershell.exe"
-        )
-        if fallback.is_file():
-            return str(fallback)
-
-    raise FileNotFoundError(
-        "PowerShell nao encontrado. Instale o PowerShell 7 ou habilite o "
-        "Windows PowerShell para usar o DirectSandbox no Windows."
-    )
-
-
-def _shell_command(command: str) -> list[str]:
-    """Monta o comando para o shell nativo da plataforma."""
-    if os.name != "nt":
-        return ["/bin/sh", "-c", command]
-
-    # Os manifestos existentes usam ${VAR}, sintaxe do shell POSIX.
-    # $env:VAR e o equivalente explicito no PowerShell.
-    command = re.sub(
-        r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}",
-        lambda match: f"$env:{match.group(1)}",
-        command,
-    )
-    script = (
-        "$ErrorActionPreference = 'Stop'; "
-        f"{command}; "
-        "$__ai4es_ok = $?; $__ai4es_code = $LASTEXITCODE; "
-        "if ($null -ne $__ai4es_code) { exit $__ai4es_code }; "
-        "if (-not $__ai4es_ok) { exit 1 }"
-    )
-    return [
-        _powershell_executable(),
-        "-NoLogo",
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        script,
-    ]
-
-
-def _process_group_kwargs(preexec) -> dict[str, object]:
-    """Retorna as opcoes de isolamento suportadas pela plataforma."""
-    if os.name == "nt":
-        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
-    return {"preexec_fn": preexec}
-
-
-def _terminate_process_tree(proc: subprocess.Popen) -> None:
-    """Encerra o processo e seus descendentes sem depender de POSIX."""
-    if proc.poll() is not None:
-        return
-
-    if os.name == "nt":
-        taskkill = shutil.which("taskkill.exe") or shutil.which("taskkill")
-        if taskkill:
-            try:
-                subprocess.run(
-                    [taskkill, "/PID", str(proc.pid), "/T", "/F"],
-                    capture_output=True,
-                    check=False,
-                    timeout=5,
-                )
-            except (OSError, subprocess.TimeoutExpired):
-                pass
-        if proc.poll() is None:
-            try:
-                proc.kill()
-            except OSError:
-                pass
-        return
-
-    try:
-        os.killpg(os.getpgid(proc.pid), 15)
-    except (AttributeError, OSError):
-        try:
-            proc.terminate()
-        except OSError:
-            pass
 
 
 def _make_preexec(mem_bytes: int, cpu_seconds: int, nofile: int):
@@ -292,18 +177,17 @@ class DirectSandbox:
     def exec(
         self, command: str, *, timeout: int, env: Optional[dict[str, str]] = None
     ) -> CommandResult:
-        """Executa `command` no shell da plataforma, bloqueando ate o fim."""
+        """Executa `command` via `/bin/sh -c`, bloqueando até o fim ou timeout."""
         preexec = _make_preexec(self._mem_bytes, self._cpu_seconds, self._nofile)
-        process_kwargs = _process_group_kwargs(preexec)
         try:
             proc = subprocess.run(
-                _shell_command(command),
+                ["/bin/sh", "-c", command],
                 cwd=str(self.workdir),
                 env=_clean_env(env),
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                **process_kwargs,
+                preexec_fn=preexec,
             )
             return CommandResult(
                 exit_code=proc.returncode,
@@ -325,19 +209,15 @@ class DirectSandbox:
         """Inicia `command` em segundo plano, redirecionando saída para um log."""
         self._service_log = self.root / ".sandbox_service.log"
         preexec = _make_preexec(self._mem_bytes, self._cpu_seconds, self._nofile)
-        process_kwargs = _process_group_kwargs(preexec)
         log_fh = self._service_log.open("wb")
-        try:
-            self._proc = subprocess.Popen(
-                _shell_command(command),
-                cwd=str(self.workdir),
-                env=_clean_env(env),
-                stdout=log_fh,
-                stderr=subprocess.STDOUT,
-                **process_kwargs,
-            )
-        finally:
-            log_fh.close()
+        self._proc = subprocess.Popen(
+            ["/bin/sh", "-c", command],
+            cwd=str(self.workdir),
+            env=_clean_env(env),
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
+            preexec_fn=preexec,
+        )
 
     def logs(self) -> str:
         """Lê os logs acumulados do serviço em segundo plano (se houver)."""
@@ -348,12 +228,18 @@ class DirectSandbox:
     def cleanup(self) -> None:
         """Encerra o grupo de processos do serviço e remove o diretório temp."""
         if self._proc is not None:
-            _terminate_process_tree(self._proc)
+            try:
+                os.killpg(os.getpgid(self._proc.pid), 15)  # SIGTERM ao grupo
+            except (ProcessLookupError, PermissionError, OSError):
+                try:
+                    self._proc.terminate()
+                except OSError:
+                    pass
             try:
                 self._proc.wait(timeout=5)
-            except (OSError, subprocess.TimeoutExpired):
+            except subprocess.TimeoutExpired:
                 try:
-                    self._proc.kill()
+                    os.killpg(os.getpgid(self._proc.pid), 9)  # SIGKILL
                 except OSError:
                     pass
             self._proc = None

@@ -62,7 +62,9 @@ class QaAgentResponseCache:
         self.poll_interval_seconds = poll_interval_seconds
         self.clock = clock or datetime.utcnow
         self._coordinator = _SingleFlightCoordinator()
-        self._backend = create_cache_backend(self.database_url) if self.database_url else None
+        self._backend = (
+            create_cache_backend(self.database_url) if self.database_url else None
+        )
         # ADK cria uma instância nova de CallbackContext a cada hook (before/after/
         # on_error), então o estado pendente não pode viver como atributo do
         # contexto: guardamos aqui, correlacionado pelo EventActions compartilhado
@@ -103,7 +105,9 @@ class QaAgentResponseCache:
 
         try:
             while True:
-                cached_value = await asyncio.to_thread(self._backend.get, identity.cache_key, self.clock())
+                cached_value = await asyncio.to_thread(
+                    self._backend.get, identity.cache_key, self.clock()
+                )
                 if cached_value is not None:
                     return _response_from_text(cached_value)
 
@@ -131,7 +135,9 @@ class QaAgentResponseCache:
                 self._coordinator.complete(identity.cache_key)
                 return None
 
-            cached_value = await asyncio.to_thread(self._backend.get, identity.cache_key, self.clock())
+            cached_value = await asyncio.to_thread(
+                self._backend.get, identity.cache_key, self.clock()
+            )
             if cached_value is not None:
                 await self._safe_release_lock(lock_handle)
                 self._coordinator.complete(identity.cache_key)
@@ -182,7 +188,9 @@ class QaAgentResponseCache:
     ) -> LlmResponse | None:
         pending = self._pending.get(self._pending_key(callback_context))
         if pending:
-            logger.warning("QA cache releasing in-flight entry after model error: %s", error)
+            logger.warning(
+                "QA cache releasing in-flight entry after model error: %s", error
+            )
             await self._finalize_pending(callback_context, store_value=None)
         return None
 
@@ -194,7 +202,9 @@ class QaAgentResponseCache:
             request_contents=llm_request.contents,
         )
 
-    async def _finalize_pending(self, callback_context: Any, store_value: str | None) -> None:
+    async def _finalize_pending(
+        self, callback_context: Any, store_value: str | None
+    ) -> None:
         pending = self._pending.pop(self._pending_key(callback_context), None)
         if not pending:
             return
@@ -220,7 +230,9 @@ class QaAgentResponseCache:
                         expires_at,
                     )
         except Exception as exc:
-            logger.warning("QA cache failed to persist response for %s: %s", cache_key, exc)
+            logger.warning(
+                "QA cache failed to persist response for %s: %s", cache_key, exc
+            )
         finally:
             await self._safe_release_lock(lock_handle)
             self._coordinator.complete(cache_key)

@@ -243,9 +243,7 @@ def _completar_campos_administrativos_e2e(
         for campo, valor in padroes.items():
             if campo not in relatorio:
                 relatorio[campo] = valor
-                campos_completados.append(
-                    f"relatorio_conformidade_esperado.{campo}"
-                )
+                campos_completados.append(f"relatorio_conformidade_esperado.{campo}")
 
     handoff_context = plan.get("handoff_context")
     if isinstance(handoff_context, dict):

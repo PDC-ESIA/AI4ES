@@ -8,16 +8,15 @@ from .integration_adapters import (
     detect_node_integration_framework,
     execute_integration_adapter,
 )
-from .profile_inspector import inspect_test_project
+from .profile_inspector import inspect_test_project, inspect_unit_test_project
 from .profile_orchestration import inspect_request, prepare_request
-from .project_inspector import inspect_unit_test_project
 from .result_normalization import (
     normalize_e2e_result,
     normalize_integration_execution,
     normalize_integration_result,
     parse_integration_counts,
 )
-from .test_profiles import StackTestProfile, TestProfileRegistry
+from .test_profiles import StackTestProfile, TestProfile, TestProfileRegistry
 from .unit_profiles import (
     UNIT_TEST_PROFILES,
     UnitTestProfile,
@@ -31,6 +30,7 @@ __all__ = [
     "E2E_TEST_PROFILES",
     "INTEGRATION_TEST_PROFILES",
     "StackTestProfile",
+    "TestProfile",
     "TestProfileRegistry",
     "UNIT_TEST_PROFILES",
     "UnitTestProfile",

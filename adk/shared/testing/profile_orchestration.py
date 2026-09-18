@@ -1,4 +1,4 @@
-"""Entrada e saída comuns dos agentes de integração e E2E por perfis."""
+"""Entrada e saída comuns dos três agentes de teste orientados por perfis."""
 
 from __future__ import annotations
 
@@ -27,6 +27,21 @@ def resolve_managed_project_root(workspace_project: str) -> Path:
             "workspace_projeto deve permanecer dentro do workspace gerenciado."
         )
     return candidate
+
+
+def validate_test_path(
+    project_root: Path,
+    test_path: Path,
+    *,
+    invalid_message: str = "O teste deve existir dentro do projeto gerenciado.",
+) -> tuple[Path, Path]:
+    """Valida um teste já materializado sem permitir fuga do projeto."""
+    root, test = project_root.resolve(), test_path.resolve()
+    if not root.is_dir():
+        raise ValueError(f"Projeto não encontrado: {root}")
+    if not test.is_file() or not test.is_relative_to(root):
+        raise ValueError(invalid_message)
+    return root, test
 
 
 def parse_declared_files(value: str) -> list[str]:
@@ -66,22 +81,32 @@ def artifact_file_names(artifacts: list[dict[str, Any]]) -> list[str]:
     names: list[str] = []
     for artifact in artifacts:
         support_files = artifact.get("arquivos_apoio", [])
-        if not isinstance(support_files, list):
-            continue
-        for item in support_files:
-            if isinstance(item, str) and item.strip():
-                names.append(item.strip())
-            elif isinstance(item, dict):
-                name = item.get("path") or item.get("nome") or item.get("filename")
-                if isinstance(name, str) and name.strip():
-                    names.append(name.strip())
+        if isinstance(support_files, list):
+            for item in support_files:
+                if isinstance(item, str) and item.strip():
+                    names.append(item.strip())
+                elif isinstance(item, dict):
+                    name = item.get("path") or item.get("nome") or item.get("filename")
+                    if isinstance(name, str) and name.strip():
+                        names.append(name.strip())
+        parts = artifact.get("parts")
+        if not isinstance(parts, list):
+            content = artifact.get("content")
+            parts = content.get("parts") if isinstance(content, dict) else None
+        if isinstance(parts, list):
+            for part in parts:
+                inline = part.get("inlineData") if isinstance(part, dict) else None
+                if isinstance(inline, dict):
+                    name = inline.get("displayName") or inline.get("name")
+                    if isinstance(name, str) and name.strip():
+                        names.append(name.strip())
     return names
 
 
 def blocked_test_result(
     test_type: str, code: str, message: str, *, inspection: dict | None = None
 ) -> dict:
-    """Cria o envelope estável compartilhado pelos dois agentes."""
+    """Cria o envelope estável compartilhado pelos três agentes."""
     blockers = inspection.get("bloqueios", []) if inspection else []
     if not blockers:
         blockers = [{"codigo": code, "mensagem": message}]
@@ -100,6 +125,23 @@ def blocked_test_result(
         "arquivos_gerados": [],
         "detalhes": [],
         "bloqueios": blockers,
+    }
+
+
+def block_prepared_result(prepared: dict, code: str, message: str) -> dict:
+    """Transforma uma preparação válida em bloqueio estável de adaptador."""
+    total = int(prepared.get("resumo", {}).get("total", 0) or 0)
+    return {
+        **prepared,
+        "status": "bloqueado",
+        "resumo": {
+            "total": total,
+            "sucessos": 0,
+            "bloqueados": max(1, total),
+            "falhas": 0,
+            "executados": 0,
+        },
+        "bloqueios": [{"codigo": code, "mensagem": message}],
     }
 
 

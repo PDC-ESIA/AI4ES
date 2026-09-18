@@ -13,16 +13,16 @@ resultado normalizado sem falhas.
 
 ## Python
 
-![Execução do perfil Python E2E](prints/python-e2e.png)
+[Ver execução do perfil Python E2E no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## TypeScript/Node
 
-![Execução do perfil Node E2E](prints/node-e2e.png)
+[Ver execução do perfil Node E2E no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Java
 
-![Execução do perfil Java E2E](prints/java-e2e.png)
+[Ver execução do perfil Java E2E no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)
 
 ## Go
 
-![Execução do perfil Go E2E](prints/go-e2e.png)
+[Ver execução do perfil Go E2E no Google Drive](https://drive.google.com/drive/folders/1Q7TkGS9jmEaVFtBcthiBC8BNfmP9-mMF?usp=sharing)

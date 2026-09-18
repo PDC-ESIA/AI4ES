@@ -1,16 +1,16 @@
-"""Contratos comuns para catálogos de perfis de teste."""
+"""Contrato e registro comuns aos perfis unitários, de integração e E2E."""
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import Iterator, Literal
 
-TestType = Literal["integracao", "e2e"]
+TestType = Literal["unitario", "integracao", "e2e"]
 
 
 @dataclass(frozen=True)
-class StackTestProfile:
-    """Descreve um adaptador de stack para integração ou E2E."""
+class TestProfile:
+    """Descreve a detecção, geração e execução de um perfil de teste."""
 
     profile_id: str
     test_type: TestType
@@ -19,13 +19,23 @@ class StackTestProfile:
     source_suffixes: tuple[str, ...]
     marker_files: tuple[str, ...]
     test_file_pattern: str
-    generator: str | None
     executor: str | None
+    generator: str | None = None
     aliases: tuple[str, ...] = ()
     implemented: bool = False
+    coverage_format: str | None = None
+
+    @property
+    def language(self) -> str:
+        """Alias legado usado pelos consumidores de perfis unitários."""
+        return self.stack
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+StackTestProfile = TestProfile
+UnitTestProfile = TestProfile
 
 
 class TestProfileRegistry:
@@ -34,10 +44,10 @@ class TestProfileRegistry:
     def __init__(
         self,
         test_type: TestType,
-        profiles: tuple[StackTestProfile, ...] = (),
+        profiles: tuple[TestProfile, ...] = (),
     ) -> None:
         self.test_type = test_type
-        self._profiles: dict[str, StackTestProfile] = {}
+        self._profiles: dict[str, TestProfile] = {}
         for profile in profiles:
             if profile.test_type != test_type:
                 raise ValueError(
@@ -51,14 +61,23 @@ class TestProfileRegistry:
     def __len__(self) -> int:
         return len(self._profiles)
 
-    def get(self, profile_id: str) -> StackTestProfile | None:
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._profiles)
+
+    def __getitem__(self, profile_id: str) -> TestProfile:
+        return self._profiles[profile_id]
+
+    def get(self, profile_id: str) -> TestProfile | None:
         return self._profiles.get(profile_id)
 
     def list(self) -> list[dict]:
         return [profile.to_dict() for profile in self._profiles.values()]
 
-    def values(self) -> tuple[StackTestProfile, ...]:
+    def values(self) -> tuple[TestProfile, ...]:
         return tuple(self._profiles.values())
+
+    def items(self) -> tuple[tuple[str, TestProfile], ...]:
+        return tuple(self._profiles.items())
 
     def resolve(self, value: str) -> tuple[StackTestProfile, ...]:
         """Resolve ID, stack ou framework sem escolher empates silenciosamente."""
@@ -76,3 +95,12 @@ class TestProfileRegistry:
             if normalized in aliases:
                 matches.append(profile)
         return tuple(matches)
+
+
+__all__ = [
+    "StackTestProfile",
+    "TestProfile",
+    "TestProfileRegistry",
+    "TestType",
+    "UnitTestProfile",
+]

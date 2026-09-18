@@ -45,19 +45,7 @@ Use `ADK_AGENTS_DIR=src/agents` e abra
 
 ## Validar
 
-```powershell
-# Testes automatizados dos perfis e adaptadores
-.\.venv\Scripts\python.exe -m pytest `
-  tests/unit/test_profile_based_test_agents.py `
-  tests/unit/test_multistack_integration_adapters.py `
-  tests/unit/test_result_normalization.py -q
-
-# Matriz real de integração e E2E
-.\.venv\Scripts\python.exe -m pytest `
-  tests/integration/test_multistack_profiles_real.py -q
-```
-
-Os comandos completos de reprodução e os caminhos das evidências estão em
+Os resultados já coletados e os caminhos das evidências estão em
 [`PR_QA_MULTISTACK.md`](../../../../docs/Time_3_Testes/evidencias/PR_QA_MULTISTACK.md).
 
 ## Contrato de saída

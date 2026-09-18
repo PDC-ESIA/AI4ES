@@ -22,13 +22,12 @@
         "--no-fund"
       ]
     ],
-    "minimum_tests": 2,
-    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\unit_profiles\\node-jest"
+    "minimum_tests": 2
   },
   "runtime": {
     "available": true,
     "command": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
       "--version"
     ],
     "output": "v24.19.0"
@@ -38,8 +37,8 @@
     "commands": [
       {
         "command": [
-          "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
-          "C:\\Users\\Henrique Lima\\AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\\node-v24.19.0-win-x64\\node_modules\\npm\\bin\\npm-cli.js",
+          ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+          "AppData\\Local\\Microsoft\\WinGet\\Packages\\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\\node-v24.19.0-win-x64\\node_modules\\npm\\bin\\npm-cli.js",
           "install",
           "--ignore-scripts",
           "--no-audit",
@@ -53,8 +52,8 @@
   "workspace": {
     "profile_id": "node-jest",
     "title": "Node/TypeScript com Jest",
-    "workspace_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output",
-    "project_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src",
+    "workspace_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output",
+    "project_root": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src",
     "prompt": "Execute somente o fluxo de testes unitários. O código-fonte já está persistido no workspace do Coder; detecte a stack sem usar stack_declarada. Não execute integração nem E2E. Gere e execute testes unitários para src/calculator.js. Valide a soma de dois números e que divisão por zero lança RangeError.",
     "expected": {
       "inspection_status": "suportado",
@@ -62,8 +61,8 @@
       "execution_status": "sucesso",
       "minimum_tests": 2
     },
-    "session_file": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\dev_ui_session.json",
-    "test_path": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.js"
+    "session_file": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\dev_ui_session.json",
+    "test_path": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src\\tests\\unit\\calculator.test.js"
   },
   "source_sha256": {
     "coverage/clover.xml": "6ec4ba7f3364ce6ee1ac6d5f9e3d3e200994c2edc843550992472e9be88f99fa",
@@ -86,7 +85,7 @@
   "inspection": {
     "status": "suportado",
     "tipo_teste": "unitario",
-    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src",
+    "projeto": "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src",
     "perfil": {
       "profile_id": "node-jest",
       "language": "javascript-typescript",
@@ -125,8 +124,8 @@
     "tipo_teste": "unitario",
     "perfil": "node-jest",
     "comando": [
-      "C:\\Users\\Henrique Lima\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
-      "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src\\node_modules\\jest\\bin\\jest.js",
+      ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+      "adk\\evidencias_unit_profiles\\workspaces\\handoff-final-20260831\\node-jest\\workspace_output\\coder\\src\\node_modules\\jest\\bin\\jest.js",
       "tests/unit/calculator.test.js",
       "--runInBand",
       "--coverage"

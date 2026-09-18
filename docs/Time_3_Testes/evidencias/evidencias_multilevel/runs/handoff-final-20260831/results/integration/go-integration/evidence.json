@@ -12,18 +12,17 @@
     "runtime_command": [
       "go",
       "version"
-    ],
-    "fixture_root": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\tests\\fixtures\\integration_profiles\\go-integration"
+    ]
   },
   "runtime": {
     "available": true,
     "command": [
-      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "Program Files\\Go\\bin\\go.EXE",
       "version"
     ],
     "output": "go version go1.24.1 windows/amd64"
   },
-  "workspace": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\go-integration\\workspace_output",
+  "workspace": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\go-integration\\workspace_output",
   "source_sha256": {
     "checkout_integration_test.go": "90c0e0791618441cfb71d806bf02ff5390e26a0fd91a10b4119be53c130ad878",
     "go.mod": "448eee3c8b67f80d7a7b9ae62c20e1d33d1d74613e06a6d4b15befa249a9e82d",
@@ -33,7 +32,7 @@
   "inspection": {
     "status": "suportado",
     "tipo_teste": "integracao",
-    "projeto": "C:\\Users\\Henrique Lima\\Documents\\GitHub\\AI4ES\\adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\go-integration\\workspace_output\\coder\\src",
+    "projeto": "adk\\evidencias_multilevel\\runs\\handoff-final-20260831\\workspaces\\go-integration\\workspace_output\\coder\\src",
     "perfil": {
       "profile_id": "go-integration",
       "test_type": "integracao",
@@ -72,7 +71,7 @@
     "perfil": "go-integration",
     "framework": "go-testing",
     "comando": [
-      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "Program Files\\Go\\bin\\go.EXE",
       "test",
       "-json",
       "."
@@ -88,7 +87,7 @@
     "perfil": "go-integration",
     "framework": "go-testing",
     "comando": [
-      "C:\\Program Files\\Go\\bin\\go.EXE",
+      "Program Files\\Go\\bin\\go.EXE",
       "test",
       "-json",
       "."
@@ -108,7 +107,7 @@
       "perfil": "go-integration",
       "framework": "go-testing",
       "comando": [
-        "C:\\Program Files\\Go\\bin\\go.EXE",
+        "Program Files\\Go\\bin\\go.EXE",
         "test",
         "-json",
         "."

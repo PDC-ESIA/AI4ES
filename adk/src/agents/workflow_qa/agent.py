@@ -12,7 +12,9 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
-from src.agents.qa_agent.subagents.integration_tests_agent.agent import agent as integration_tests_agent
+from src.agents.qa_agent.subagents.integration_tests_agent.agent import (
+    agent as integration_tests_agent,
+)
 from src.agents.qa_agent.subagents.code_fix_agent.agent import agent as code_fix_agent
 from src.agents.qa_agent.subagents.unit_test_generator.orchestration import (
     gerar_testes_unitarios,
@@ -121,16 +123,13 @@ def _emit_qa_manifest(callback_context) -> None:
         status = PhaseStatus.PARTIAL
 
     passed = sum(
-        int(report.get("summary", {}).get("passed", 0) or 0)
-        for report in reports
+        int(report.get("summary", {}).get("passed", 0) or 0) for report in reports
     )
     failed = sum(
-        int(report.get("summary", {}).get("failed", 0) or 0)
-        for report in reports
+        int(report.get("summary", {}).get("failed", 0) or 0) for report in reports
     )
     skipped = sum(
-        int(report.get("summary", {}).get("skipped", 0) or 0)
-        for report in reports
+        int(report.get("summary", {}).get("skipped", 0) or 0) for report in reports
     )
 
     manifest = PhaseManifest(
@@ -148,13 +147,15 @@ def _emit_qa_manifest(callback_context) -> None:
     state = callback_context.state
     manifests = list(state.get("phase_manifests", []) or [])
     manifests = [
-        item for item in manifests
+        item
+        for item in manifests
         if not isinstance(item, dict) or item.get("phase") != "qa"
     ]
     manifests.append(manifest.model_dump(mode="json"))
 
     state["qa_manifest"] = manifest.model_dump(mode="json")
     state["phase_manifests"] = manifests
+
 
 _INSTRUCTION = """
 Você é o pipeline de QA / Testes do Time 3.

@@ -199,9 +199,7 @@ def test_qa_preserva_pacote_src_com_multiplos_fontes(monkeypatch, tmp_path: Path
 def test_code_fix_consegue_alterar_teste_fisicamente(monkeypatch, tmp_path: Path):
     workspace = tmp_path / "workspace"
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace))
-    test_file = (
-        workspace / "tests" / "inputs" / "rf_test_001" / "test_rf_test_001.py"
-    )
+    test_file = workspace / "tests" / "inputs" / "rf_test_001" / "test_rf_test_001.py"
     test_file.parent.mkdir(parents=True)
     test_file.write_text("from src.inexistente import x\n", encoding="utf-8")
 
@@ -223,9 +221,7 @@ def test_code_fix_consegue_alterar_teste_fisicamente(monkeypatch, tmp_path: Path
 def test_code_fix_rejeita_manipulacao_de_sys_path(monkeypatch, tmp_path: Path):
     workspace = tmp_path / "workspace"
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace))
-    test_file = (
-        workspace / "tests" / "inputs" / "rf_test_001" / "test_rf_test_001.py"
-    )
+    test_file = workspace / "tests" / "inputs" / "rf_test_001" / "test_rf_test_001.py"
     test_file.parent.mkdir(parents=True)
     original = "def test_original():\n    assert True\n"
     test_file.write_text(original, encoding="utf-8")
@@ -300,14 +296,10 @@ def test_receive_ignora_path_sugerido_e_retorna_canonico(
         )
     )
 
-    expected = (
-        workspace / "tests" / "inputs" / "rf_001" / "test_rf_001.py"
-    ).resolve()
+    expected = (workspace / "tests" / "inputs" / "rf_001" / "test_rf_001.py").resolve()
     assert result["status"] == "sucesso"
     assert Path(result["arquivo_gerado"]) == expected
-    assert not (
-        workspace / "tests" / "inputs" / "artefactsTests"
-    ).exists()
+    assert not (workspace / "tests" / "inputs" / "artefactsTests").exists()
 
 
 def test_workflow_qa_usa_fluxo_unitario_deterministico_em_vez_de_agent_tool():
@@ -315,7 +307,8 @@ def test_workflow_qa_usa_fluxo_unitario_deterministico_em_vez_de_agent_tool():
     from src.agents.workflow_qa.agent import agent
 
     unit_tool = next(
-        tool for tool in agent.tools
+        tool
+        for tool in agent.tools
         if getattr(tool, "name", "") == "gerar_testes_unitarios"
     )
 

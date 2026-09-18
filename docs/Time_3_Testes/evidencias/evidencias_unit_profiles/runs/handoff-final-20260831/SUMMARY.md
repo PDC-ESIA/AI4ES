@@ -10,4 +10,4 @@
 | node-vitest | suportado | sucesso | 2 | — |
 | python-pytest | suportado | sucesso | 2 | 92.31% |
 
-Os JSONs individuais preservam comando, runtime, hashes, inspeção e saída.
+Esta tabela preserva o resultado consolidado da execução automatizada.

@@ -92,9 +92,7 @@ def get_workspace_root() -> Path:
 
     resolved = resolved.resolve()
 
-    logger.debug(
-        f"[WORKSPACE] {_ENV_WORKSPACE}='{raw}' → resolvido para: {resolved}"
-    )
+    logger.debug(f"[WORKSPACE] {_ENV_WORKSPACE}='{raw}' → resolvido para: {resolved}")
     return resolved
 
 

@@ -19,7 +19,9 @@ from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.genai import types
 
-from src.agents.qa_agent.subagents.action_planner.agent import agent as action_planner_agent
+from src.agents.qa_agent.subagents.action_planner.agent import (
+    agent as action_planner_agent,
+)
 from shared.tools.planner_tools import plan_validator
 
 
@@ -169,7 +171,11 @@ def _plano_rapido(request: str) -> Optional[str]:
         "checklist_inicial": [
             {"id": "CHK-01", "descricao": "Detectar perfil.", "status": "pendente"},
             {"id": "CHK-02", "descricao": "Executar testes.", "status": "pendente"},
-            {"id": "CHK-03", "descricao": "Normalizar resultado.", "status": "pendente"},
+            {
+                "id": "CHK-03",
+                "descricao": "Normalizar resultado.",
+                "status": "pendente",
+            },
         ],
         "handoff_context": {
             "objetivo": f"Executar somente teste {nivel}.",
@@ -213,11 +219,15 @@ async def _invoke_once(request: str, user_id: str = "qa-pipeline") -> str:
             memory_service=InMemoryMemoryService(),
         )
         session = await runner.session_service.create_session(
-            app_name=action_planner_agent.name, user_id=user_id, state={},
+            app_name=action_planner_agent.name,
+            user_id=user_id,
+            state={},
         )
         content = types.Content(
-            role="user", parts=[types.Part.from_text(text=request)],
+            role="user",
+            parts=[types.Part.from_text(text=request)],
         )
+
         async def _coletar_resposta() -> str:
             last_text = ""
             async for event in runner.run_async(

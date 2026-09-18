@@ -187,7 +187,9 @@ def test_normaliza_execucao_e2e_aprovada_por_artefato():
     assert result["resultado_bruto"] is raw
 
 
-@pytest.mark.parametrize("runtime_status", ["bloqueado_infraestrutura", "timeout", "erro_execucao"])
+@pytest.mark.parametrize(
+    "runtime_status", ["bloqueado_infraestrutura", "timeout", "erro_execucao"]
+)
 def test_normaliza_bloqueios_de_infraestrutura_e2e(runtime_status):
     raw = {
         "tipo_saida": "executado",

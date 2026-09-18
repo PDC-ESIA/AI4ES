@@ -130,7 +130,9 @@ async def test_invocar_retorna_first_quando_valido():
 
     valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
 
-    with patch.object(planner_wrapper, "_invoke_once", AsyncMock(return_value=valid_json)) as mock_invoke:
+    with patch.object(
+        planner_wrapper, "_invoke_once", AsyncMock(return_value=valid_json)
+    ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
 
     assert result == valid_json
@@ -159,7 +161,8 @@ async def test_invocar_tenta_segunda_quando_first_empty():
     valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
 
     with patch.object(
-        planner_wrapper, "_invoke_once",
+        planner_wrapper,
+        "_invoke_once",
         AsyncMock(side_effect=["", valid_json]),
     ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
@@ -212,7 +215,8 @@ async def test_invocar_fallback_quando_ambas_empty():
     from src.agents.workflow_qa.tools import planner_wrapper
 
     with patch.object(
-        planner_wrapper, "_invoke_once",
+        planner_wrapper,
+        "_invoke_once",
         AsyncMock(side_effect=["", "   "]),
     ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
@@ -263,6 +267,7 @@ def test_workflow_qa_usa_function_tool_e_nao_agent_tool_para_planner():
 def test_workflow_qa_instruction_menciona_invocar_planejamento_qa():
     """_INSTRUCTION foi atualizado pra referenciar a nova tool."""
     from src.agents.workflow_qa.agent import agent as qa_pipeline
+
     assert "invocar_planejamento_qa" in qa_pipeline.instruction
     # E NÃO menciona mais "Encaminhe a entrada ao action_planner_agent"
     # (pode mencionar action_planner_agent como conceito histórico em outro lugar)
