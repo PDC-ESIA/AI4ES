@@ -20,10 +20,15 @@ Cobre:
 
 import json
 from pathlib import Path
+
+import pytest
 from unittest.mock import MagicMock, patch
 
 from shared.execution.sandbox import CommandResult
-from shared.tools.coding_tools.harness_execucao import executar_harness_validacao
+from shared.tools.coding_tools.harness_execucao import (
+    executar_harness_validacao,
+    resultados_por_teste,
+)
 from shared.tools.coding_tools.harness_schemas import ExecutionReport
 
 _STAGE_ORDER = [
@@ -141,6 +146,8 @@ def _manifest_service(**over):
         "sandbox": "direct",
     }
     m.update(over)
+    if m.get("acceptance_tests") and "acceptance_task_id" not in m:
+        m["acceptance_task_id"] = "TASK-001"
     return m
 
 
@@ -434,7 +441,7 @@ def test_healthcheck_falha_marca_inicializacao(tmp_path):
 # Estágio de testes: sucesso, falha, timeout, pulado
 # ===========================================================================
 
-def test_testes_falharam_marcam_falha_sem_veredito(tmp_path):
+def test_testes_falharam_derrubam_status_tecnico(tmp_path):
     coder, execution, tasks = _dirs(tmp_path)
     _write_task(tasks)
     _write_manifest(coder, _manifest_service())
@@ -455,8 +462,9 @@ def test_testes_falharam_marcam_falha_sem_veredito(tmp_path):
     assert testes["evidence"]["resultados"][0]["resumo"]["falharam"] == 1
     # Nenhum campo de veredito vazou.
     assert not ({"verdict", "aprovado", "veredito", "approved"} & set(testes["evidence"].keys()))
-    # Testes não são estágio crítico: a falha deles NÃO derruba o overall.
-    assert result["overall_status"] == "sucesso"
+    # Regressão: build + app no ar não podem esconder uma suíte vermelha. Antes
+    # isto produzia overall=sucesso, nota 0.6 e aprovação imediata da task.
+    assert result["overall_status"] == "falha"
 
 
 def test_testes_timeout_marca_falha(tmp_path):
@@ -477,6 +485,7 @@ def test_testes_timeout_marca_falha(tmp_path):
 
     assert testes["status"] == "falha"
     assert testes["error_code"] == "TESTES_TIMEOUT"
+    assert result["overall_status"] == "falha"
 
 
 def test_testes_pulado_quando_manifesto_sem_test(tmp_path):
@@ -544,6 +553,237 @@ def test_estagio7_verbo_com_payload_nao_e_checado_via_get(tmp_path):
 
 
 # ===========================================================================
+# Estágio 1 — critérios com identidade (formato novo) e o shim do formato antigo
+# ===========================================================================
+
+def test_estagio7_aceita_task_no_formato_novo_de_criterios(tmp_path):
+    """Task com critérios como OBJETOS (id/description/automatable).
+
+    O harness lê a task do DISCO, e `tool_salvar_task_cr` grava o JSON cru que o
+    LLM produziu — então é este formato, e não o modelo Pydantic, que chega aqui.
+    """
+    coder, execution, tasks = _dirs(tmp_path)
+    criteria = [
+        {
+            "id": "CA-01",
+            "description": "A rota GET / responde 200",
+            "automatable": True,
+        },
+        {
+            "id": "CA-02",
+            "description": "Consigo criar um Ensaio pela interface web",
+            "automatable": False,
+        },
+    ]
+    _write_task(tasks, criteria=criteria)
+    _write_manifest(coder, _manifest_service())
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    # A evidência e o report seguem falando o texto do critério (contrato do
+    # validador inalterado nesta fase) — o que muda é a origem, agora estruturada.
+    textos = [c["description"] for c in criteria]
+    assert result["acceptance_criteria"] == textos
+    assert [e["criterion"] for e in result["criteria_evidence"]] == textos
+
+    # A classificação NÃO se confunde com `checkable`: o critério de interface é
+    # `automatable=False` na task, mas quem decide `checkable` continua sendo o
+    # que o harness conseguiu observar naquela execução.
+    assert result["criteria_evidence"][0]["checkable"] is True
+    assert result["criteria_evidence"][1]["checkable"] is False
+
+
+def test_estagio7_task_no_formato_antigo_continua_funcionando(tmp_path):
+    """Shim de transição: tasks geradas antes da mudança seguem válidas."""
+    coder, execution, tasks = _dirs(tmp_path)
+    criteria = ["A rota GET / responde 200", "O sistema deve ser intuitivo"]
+    _write_task(tasks, criteria=criteria)
+    _write_manifest(coder, _manifest_service())
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    assert result["acceptance_criteria"] == criteria
+    assert [e["criterion"] for e in result["criteria_evidence"]] == criteria
+
+
+def test_estagio7_criterios_malformados_nao_derrubam_a_execucao(tmp_path):
+    """Entrada de LLM inaproveitável degrada para "sem critério", nunca levanta."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria="não é uma lista")
+    _write_manifest(coder, _manifest_service())
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    assert result["acceptance_criteria"] == []
+    assert result["criteria_evidence"] == []
+    assert result["overall_status"] == "sucesso"
+
+
+# ===========================================================================
+# Estágio 1 — mapa teste ↔ critério (Fase 1)
+# ===========================================================================
+
+def _criterios_objeto():
+    return [
+        {"id": "CA-01", "description": "A rota GET / responde 200", "automatable": True},
+        {"id": "CA-02", "description": "Persistir o ensaio", "automatable": True},
+        {
+            "id": "CA-03",
+            "description": "Consigo criar um Ensaio pela interface web",
+            "automatable": False,
+        },
+    ]
+
+
+def _estagio(result, nome):
+    return next(s for s in result["stages"] if s["stage"] == nome)
+
+
+def test_estagio1_registra_mapa_teste_criterio_do_manifesto(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_tests={
+                "CA-01": ["tests/test_rotas.py::test_raiz"],
+                "CA-02": ["tests/test_ensaios.py::test_persiste"],
+            }
+        ),
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    evidencia = _estagio(result, "preparacao_ambiente")["evidence"]
+
+    assert evidencia["acceptance_tests"] == {
+        "CA-01": ["tests/test_rotas.py::test_raiz"],
+        "CA-02": ["tests/test_ensaios.py::test_persiste"],
+    }
+    assert evidencia["acceptance_tests_ids_desconhecidos"] == []
+    # Só os automatizáveis entram na conta: CA-03 não é cobrável por teste.
+    assert "2/2 automatizáveis com teste declarado" in (
+        _estagio(result, "preparacao_ambiente")["summary"]
+    )
+
+
+def test_estagio1_casa_o_mapa_mesmo_com_grafia_diferente_do_id(tmp_path):
+    """O coder escreve o mapa lendo a Task; a grafia do id pode variar."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(coder, _manifest_service(acceptance_tests={"ca-1": ["t::a"]}))
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    evidencia = _estagio(result, "preparacao_ambiente")["evidence"]
+
+    assert evidencia["acceptance_tests"] == {"CA-01": ["t::a"]}
+
+
+def test_estagio1_id_inexistente_no_mapa_nao_falha_a_execucao(tmp_path):
+    """Anotação errada é registrada como evidência, nunca como falha técnica."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_tests={"CA-01": ["t::a"], "CA-99": ["t::b"], "XPTO": ["t::c"]}
+        ),
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    estagio1 = _estagio(result, "preparacao_ambiente")
+
+    assert estagio1["status"] == "sucesso"
+    assert result["overall_status"] == "sucesso"
+    assert estagio1["evidence"]["acceptance_tests"] == {"CA-01": ["t::a"]}
+    assert sorted(estagio1["evidence"]["acceptance_tests_ids_desconhecidos"]) == [
+        "CA-99",
+        "XPTO",
+    ]
+
+
+def test_estagio1_manifesto_com_mapa_malformado_nao_aborta(tmp_path):
+    """Mapa inválido não pode derrubar o estágio 1 (crítico) e zerar a nota."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(coder, _manifest_service(acceptance_tests="CA-01"))
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    assert _estagio(result, "preparacao_ambiente")["status"] == "sucesso"
+    assert result["overall_status"] == "sucesso"
+    assert _estagio(result, "preparacao_ambiente")["evidence"]["acceptance_tests"] == {}
+
+
+def test_estagio1_sem_mapa_declarado_segue_normalmente(tmp_path):
+    """Fase 1 só COLETA o vínculo; a ausência dele ainda não tem consequência."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(coder, _manifest_service())
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    estagio1 = _estagio(result, "preparacao_ambiente")
+
+    assert estagio1["status"] == "sucesso"
+    assert estagio1["evidence"]["acceptance_tests"] == {}
+    assert "0/2 automatizáveis com teste declarado" in estagio1["summary"]
+
+
+def test_estagio1_ignora_mapa_stale_de_outra_task(tmp_path):
+    """CA-01 da task anterior não pode comprovar CA-01 da task corrente."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, task_id="TASK-002", criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_task_id="TASK-001",
+            acceptance_tests={"CA-01": ["tests/test_task_1.py::test_antigo"]},
+        ),
+    )
+
+    result = _run("TASK-002", coder, execution, tasks, _sandbox_ok())
+    estagio1 = _estagio(result, "preparacao_ambiente")
+
+    assert estagio1["status"] == "sucesso"
+    assert estagio1["evidence"]["acceptance_tests"] == {}
+    assert estagio1["evidence"]["acceptance_tests_task_id"] == "TASK-001"
+    assert estagio1["evidence"]["acceptance_tests_escopo_valido"] is False
+    assert "0/2 automatizáveis com teste declarado" in estagio1["summary"]
+    # O descarte tem de aparecer no RELATÓRIO: no log do servidor ele é
+    # indistinguível de "o coder não declarou vínculo nenhum".
+    assert "descartado" in estagio1["summary"]
+    assert "TASK-001" in estagio1["summary"]
+    assert "TASK-002" in estagio1["summary"]
+
+
+def test_estagio1_com_mapa_em_escopo_nao_avisa_descarte(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(coder, _manifest_service(acceptance_tests={"CA-01": ["t::a"]}))
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+
+    assert "descartado" not in _estagio(result, "preparacao_ambiente")["summary"]
+
+
+def test_estagio1_ignora_mapa_sem_namespace_da_task(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_task_id=None,
+            acceptance_tests={"CA-01": ["tests/test_antigo.py::test_stale"]},
+        ),
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok())
+    evidencia = _estagio(result, "preparacao_ambiente")["evidence"]
+
+    assert evidencia["acceptance_tests"] == {}
+    assert evidencia["acceptance_tests_escopo_valido"] is False
+
+
+# ===========================================================================
 # Serialização JSON + markdown + sobrescrita atômica
 # ===========================================================================
 
@@ -587,3 +827,408 @@ def test_task_ausente_erro_estagio1(tmp_path):
     assert prep["status"] == "erro"
     assert prep["error_code"] == "TASK_NAO_ENCONTRADA"
     assert sandbox.setup_called is False
+
+
+# ===========================================================================
+# Estágio 6 — desfecho por teste individual (Fase 2)
+# ===========================================================================
+
+_SAIDA_VERBOSA = """\
+============================= test session starts ==============================
+collected 3 items
+
+tests/test_a.py::test_passa PASSED                                       [ 33%]
+tests/test_a.py::test_quebra FAILED                                      [ 66%]
+tests/test_b.py::test_pula SKIPPED                                       [100%]
+
+=========================== short test summary info ============================
+FAILED tests/test_a.py::test_quebra - AssertionError: esperado 1, obtido 2
+========================= 1 passed, 1 failed, 1 skipped ========================
+"""
+
+
+def test_estagio6_identifica_desfecho_de_cada_teste(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+    sandbox = FakeSandbox(
+        exec_results={"pytest": CommandResult(1, _SAIDA_VERBOSA, "", False)},
+        logs_text="",
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    estagio = _estagio(result, "testes_automatizados")
+    testes = {t["nodeid"]: t["outcome"] for t in estagio["evidence"]["resultados"][0]["testes"]}
+
+    assert testes == {
+        "tests/test_a.py::test_passa": "passou",
+        "tests/test_a.py::test_quebra": "falhou",
+        "tests/test_b.py::test_pula": "pulado",
+    }
+    assert estagio["evidence"]["testes_identificados"] == 3
+
+
+def test_estagio6_resumo_agregado_permanece_intacto(tmp_path):
+    """A nota de progresso e a assinatura de erro leem `resumo` — é contrato."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+    sandbox = FakeSandbox(
+        exec_results={"pytest": CommandResult(1, _SAIDA_VERBOSA, "", False)},
+        logs_text="",
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    resumo = _estagio(result, "testes_automatizados")["evidence"]["resultados"][0]["resumo"]
+
+    assert resumo == {"passaram": 1, "falharam": 1, "erros": 0, "total": 2}
+
+
+def test_estagio6_sem_saida_verbosa_nao_infere_que_passou(tmp_path):
+    """Suíte verde sem `-v`: nenhum teste NOMEADO, e nada é dado por comprovado."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+
+    result = _run("TASK-001", coder, execution, tasks, _sandbox_ok(tests_passed=5))
+    estagio = _estagio(result, "testes_automatizados")
+
+    assert estagio["status"] == "sucesso"
+    assert estagio["evidence"]["resultados"][0]["resumo"]["passaram"] == 5
+    assert estagio["evidence"]["resultados"][0]["testes"] == []
+    assert estagio["evidence"]["testes_identificados"] == 0
+
+
+def test_estagio6_sem_verbose_ainda_capta_os_que_falharam(tmp_path):
+    """O resumo final do pytest lista os que falharam mesmo sem `-v`."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+    saida = (
+        "tests/test_a.py .F\n"
+        "=========================== short test summary info ===========================\n"
+        "FAILED tests/test_a.py::test_quebra - AssertionError\n"
+        "========================= 1 passed, 1 failed =========================\n"
+    )
+    sandbox = FakeSandbox(
+        exec_results={"pytest": CommandResult(1, saida, "", False)}, logs_text=""
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    testes = _estagio(result, "testes_automatizados")["evidence"]["resultados"][0]["testes"]
+
+    assert testes == [{"nodeid": "tests/test_a.py::test_quebra", "outcome": "falhou"}]
+
+
+def test_estagio6_desfecho_mais_severo_vence_quando_ha_duas_leituras(tmp_path):
+    """Linha verbosa e resumo final discordando: nunca inflar para 'passou'."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+    saida = (
+        "tests/test_a.py::test_x PASSED\n"
+        "=========================== short test summary info ===========================\n"
+        "ERROR tests/test_a.py::test_x - fixture quebrou no teardown\n"
+    )
+    sandbox = FakeSandbox(
+        exec_results={"pytest": CommandResult(1, saida, "", False)}, logs_text=""
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    testes = _estagio(result, "testes_automatizados")["evidence"]["resultados"][0]["testes"]
+
+    assert testes == [{"nodeid": "tests/test_a.py::test_x", "outcome": "erro"}]
+
+
+def test_estagio6_saida_colorida_e_parseada(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks)
+    _write_manifest(coder, _manifest_service())
+    saida = "tests/test_a.py::test_x \x1b[32mPASSED\x1b[0m  [100%]\n1 passed in 0.01s\n"
+    sandbox = FakeSandbox(
+        exec_results={"pytest": CommandResult(0, saida, "", False)}, logs_text=""
+    )
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    testes = _estagio(result, "testes_automatizados")["evidence"]["resultados"][0]["testes"]
+
+    assert testes == [{"nodeid": "tests/test_a.py::test_x", "outcome": "passou"}]
+
+
+# ---------------------------------------------------------------------------
+# resultados_por_teste — leitura consolidada da evidência
+# ---------------------------------------------------------------------------
+
+
+def test_resultados_por_teste_consolida_varios_comandos():
+    estagio = {
+        "evidence": {
+            "resultados": [
+                {"testes": [{"nodeid": "t::a", "outcome": "passou"}]},
+                {"testes": [{"nodeid": "t::b", "outcome": "falhou"}]},
+            ]
+        }
+    }
+
+    assert resultados_por_teste(estagio) == {"t::a": "passou", "t::b": "falhou"}
+
+
+def test_resultados_por_teste_mantem_o_desfecho_mais_severo():
+    """Mesmo teste em dois comandos: prevalece o que NÃO comprova."""
+    estagio = {
+        "evidence": {
+            "resultados": [
+                {"testes": [{"nodeid": "t::a", "outcome": "passou"}]},
+                {"testes": [{"nodeid": "t::a", "outcome": "falhou"}]},
+            ]
+        }
+    }
+
+    assert resultados_por_teste(estagio) == {"t::a": "falhou"}
+
+
+@pytest.mark.parametrize(
+    "estagio",
+    [
+        None,
+        "texto",
+        {},
+        {"evidence": None},
+        {"evidence": {"resultados": None}},
+        {"evidence": {"resultados": ["texto"]}},
+        {"evidence": {"resultados": [{"testes": [{"nodeid": 7, "outcome": "passou"}]}]}},
+        {"evidence": {"resultados": [{"testes": [{"nodeid": "t::a", "outcome": "xpto"}]}]}},
+    ],
+)
+def test_resultados_por_teste_ignora_evidencia_inutilizavel(estagio):
+    assert resultados_por_teste(estagio) == {}
+
+
+# ===========================================================================
+# Estágio 7 — resultado por critério a partir dos testes vinculados (Fase 3)
+# ===========================================================================
+
+def _sandbox_com_testes(*linhas_verbosas, exit_code=0):
+    """FakeSandbox cuja suíte emite saída verbosa com os testes informados."""
+    corpo = "\n".join(linhas_verbosas)
+    return FakeSandbox(
+        exec_results={
+            "pytest": CommandResult(exit_code, f"{corpo}\n1 passed in 0.01s", "", False)
+        },
+        logs_text="INFO [app] serviço no ar",
+    )
+
+
+def _evidencia_por_id(result):
+    return {e["criterion_id"]: e for e in result["criteria_evidence"]}
+
+
+def test_criterio_com_teste_que_passou_permanece_nao_avaliado(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder, _manifest_service(acceptance_tests={"CA-01": ["tests/t.py::test_ok"]})
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_ok PASSED  [100%]")
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert ev["CA-01"]["linked_tests"] == ["tests/t.py::test_ok"]
+    assert ev["CA-01"]["checkable"] is False
+    assert "tests/t.py::test_ok → passou" in ev["CA-01"]["observed"]
+    assert "não usados para avaliar semanticamente" in ev["CA-01"]["observed"]
+
+
+def test_criterio_com_teste_que_falhou_permanece_nao_avaliado(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder, _manifest_service(acceptance_tests={"CA-01": ["tests/t.py::test_ko"]})
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_ko FAILED  [100%]", exit_code=1)
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert "tests/t.py::test_ko → falhou" in ev["CA-01"]["observed"]
+
+
+def test_criterio_com_teste_declarado_que_nao_rodou(tmp_path):
+    """Nodeid errado continua auditável, mas não avalia o critério."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(acceptance_tests={"CA-01": ["tests/t.py::test_inexistente"]}),
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_outro PASSED")
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert "Sem resultado observado" in ev["CA-01"]["observed"]
+
+
+def test_criterio_automatizavel_sem_teste_declarado(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(coder, _manifest_service())
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, _sandbox_ok()))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert ev["CA-02"]["outcome"] == "nao_avaliado"
+
+
+def test_criterio_nao_automatizavel_tambem_permanece_nao_avaliado(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(coder, _manifest_service())
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, _sandbox_ok()))
+
+    assert ev["CA-03"]["outcome"] == "nao_avaliado"
+    assert ev["CA-03"]["automatable"] is False
+
+
+def test_vinculo_declarado_nao_prevalece_sobre_a_politica(tmp_path):
+    """Nem um vínculo explícito transforma teste técnico em aceite."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder, _manifest_service(acceptance_tests={"CA-03": ["tests/t.py::test_ui"]})
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_ui PASSED")
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-03"]["outcome"] == "nao_avaliado"
+    assert ev["CA-03"]["automatable"] is False
+
+
+def test_cobertura_parcial_nao_avalia_o_criterio(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_tests={"CA-01": ["tests/t.py::test_a", "tests/t.py::test_b"]}
+        ),
+    )
+    sandbox = _sandbox_com_testes(
+        "tests/t.py::test_a PASSED", "tests/t.py::test_b FAILED", exit_code=1
+    )
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+
+
+def test_teste_pulado_nao_comprova_o_criterio(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder, _manifest_service(acceptance_tests={"CA-01": ["tests/t.py::test_skip"]})
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_skip SKIPPED")
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+
+
+def test_estagio7_resume_a_contagem_por_resultado(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder, _manifest_service(acceptance_tests={"CA-01": ["tests/t.py::test_ok"]})
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_ok PASSED")
+
+    result = _run("TASK-001", coder, execution, tasks, sandbox)
+    evidencia = _estagio(result, "validacoes_work_item")["evidence"]
+
+    assert evidencia["total_criterios"] == 3
+    assert evidencia["criterios_avaliados"] == 0
+    assert evidencia["por_resultado"] == {"nao_avaliado": 3}
+
+
+def test_task_no_formato_antigo_produz_evidencia_com_id_gerado(tmp_path):
+    """Sem classificação declarada, o critério legado é tratado como automatizável."""
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=["Critério legado A", "Critério legado B"])
+    _write_manifest(coder, _manifest_service())
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, _sandbox_ok()))
+
+    assert set(ev) == {"CA-01", "CA-02"}
+    assert all(e["outcome"] == "nao_avaliado" for e in ev.values())
+    assert all(e["automatable"] is True for e in ev.values())
+
+
+def test_teste_ausente_nao_avalia_o_criterio(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_tests={
+                "CA-01": ["tests/t.py::test_a", "tests/t.py::test_ausente"]
+            }
+        ),
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_a PASSED")
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+    assert "tests/t.py::test_ausente" in ev["CA-01"]["observed"]
+
+
+def test_falha_observada_com_teste_ausente_nao_avalia_o_criterio(tmp_path):
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_tests={
+                "CA-01": [
+                    "tests/t.py::test_a",
+                    "tests/t.py::test_b",
+                    "tests/t.py::test_ausente",
+                ]
+            }
+        ),
+    )
+    sandbox = _sandbox_com_testes(
+        "tests/t.py::test_a PASSED", "tests/t.py::test_b FAILED", exit_code=1
+    )
+
+    ev = _evidencia_por_id(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert ev["CA-01"]["outcome"] == "nao_avaliado"
+
+
+def test_criterio_nao_avaliado_nao_pede_novo_teste(tmp_path):
+    """A política não cria loop para tentar converter teste em aceite."""
+    from src.agents.workflow_coding_review.executor.acceptance_score import (
+        calcular_nota_aceite,
+    )
+
+    coder, execution, tasks = _dirs(tmp_path)
+    _write_task(tasks, criteria=_criterios_objeto())
+    _write_manifest(
+        coder,
+        _manifest_service(
+            acceptance_tests={
+                "CA-01": ["tests/t.py::test_a", "tests/t.py::test_ausente"]
+            }
+        ),
+    )
+    sandbox = _sandbox_com_testes("tests/t.py::test_a PASSED")
+
+    aceite = calcular_nota_aceite(_run("TASK-001", coder, execution, tasks, sandbox))
+
+    assert aceite.criterios_enderecaveis == []
+    assert aceite.nota is None

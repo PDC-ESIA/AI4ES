@@ -1,4 +1,28 @@
-"""Proteção determinística contra sobrescrita cega entre tasks do coder."""
+"""Proteção determinística contra sobrescrita cega entre tasks do coder.
+
+Duas metades da mesma defesa, uma reativa e outra preventiva:
+
+- `bloquear_sobrescrita_herdada` (before_tool_callback) RECUSA a sobrescrita
+  integral de um arquivo de task anterior. É a rede que garante que nada se
+  perde.
+- `anunciar_arquivos_herdados` (after_tool_callback) AVISA, antes de a primeira
+  escrita ser tentada, que o projeto já existe e quais arquivos são dele.
+
+A segunda existe por uma observação de execução real (run do "fotógrafo",
+6 tasks): em TODAS as tasks a partir da 2ª, a primeira ação do coder sobre o
+código era `tool_criar_arquivo("PLAN.md")` — ou seja, ele entrava no ramo
+"primeira execução" do prompt e tentava replanejar e reconstruir o projeto do
+zero, apesar de o prompt dizer explicitamente para não fazer isso. O guard
+bloqueou 19 de 19 tentativas e nada foi destruído, mas a task inteira era gasta
+batendo na parede — e terminava em `sem_alteracao_arquivos` ou `erro_repetido`.
+
+O que a mesma run mostrou que FUNCIONA: depois de cada bloqueio, o coder lia o
+arquivo corretamente (`tool_ler_arquivo`) na sequência, sem exceção. Ou seja,
+ele reage ao RESULTADO DE UMA TOOL de forma muito mais confiável do que a uma
+instrução em prosa no system prompt. `anunciar_arquivos_herdados` usa esse
+canal: leva o aviso para dentro da resposta da tool que o coder chama primeiro
+em toda task, em vez de esperar que ele se lembre do prompt.
+"""
 
 from __future__ import annotations
 
@@ -6,12 +30,54 @@ import logging
 from pathlib import PurePosixPath
 from typing import Any, MutableMapping
 
-from shared.workspace import get_agent_workspace
+from shared.workspace import AGENT_DIRS, get_agent_workspace
 
 logger = logging.getLogger(__name__)
 
 CHAVE_ARQUIVOS_HERDADOS = "coder_arquivos_herdados_da_task"
 NOME_TOOL_REMOCAO = "tool_remover_arquivo"
+
+# Arquivos que a task corrente REGERA por definição, e que por isso ficam fora
+# da proteção inter-task. Só `run.json` está aqui, e não por conveniência: ele é
+# o manifesto DA TASK, não código acumulado. Desde que `acceptance_task_id`
+# passou a namespacear o mapa teste↔critério, um `run.json` herdado é
+# obrigatoriamente stale a partir da 2ª task — e o harness falha fechado,
+# descartando toda a cobertura declarada. Mantê-lo na baseline bloquearia
+# `tool_criar_arquivo("run.json")`, que é exatamente o que o prompt manda fazer,
+# e a cobertura de aceite seria zero em toda task depois da primeira.
+ARQUIVOS_REGERAVEIS = frozenset({"run.json"})
+
+# Raiz do workspace COMPARTILHADO, tal como o coder a enxerga nas tools de
+# leitura (`tool_ler_workspace("coder/tasks/TASK-001.json")`).
+_RAIZ_COMPARTILHADA = "coder"
+
+# Subpastas do workspace compartilhado, derivadas do mapa oficial de agentes
+# para não divergirem dele: hoje `src`, `tasks`, `execution`, `review` e
+# `validation`.
+#
+# O erro que isto pega é de ESCOPO, não de nome: as tools de escrita já estão
+# enraizadas em `coder/src`, então `coder/src/app/main.py` grava em
+# `coder/src/coder/src/app/main.py` e `coder/tasks/TASK-006.json` cria um
+# contrato falso dentro do código — os dois em silêncio, com `sucesso: true`.
+# A checagem exige a subpasta conhecida no segundo segmento justamente para não
+# barrar um pacote legítimo do projeto que por acaso se chame `coder/`.
+SUBPASTAS_COMPARTILHADAS = frozenset(
+    partes[1]
+    for destino in AGENT_DIRS.values()
+    if len(partes := PurePosixPath(destino).parts) > 1
+    and partes[0] == _RAIZ_COMPARTILHADA
+)
+
+# Tool cuja resposta carrega o aviso. É a PRIMEIRA chamada do coder em toda
+# task (confirmado na run do "fotógrafo": 6 chamadas, uma por task, sempre
+# abrindo a task), então o aviso chega antes da primeira decisão de escrita e
+# uma única vez — sem poluir as dezenas de leituras que vêm depois.
+_TOOL_ANUNCIADA = "tool_listar_workspace"
+
+# Teto de caminhos listados no aviso. Um projeto grande não pode transformar o
+# aviso num despejo de contexto; o que importa é o coder saber QUE o projeto
+# existe e reconhecer os arquivos de topo.
+_MAX_ARQUIVOS_NO_AVISO = 80
 
 
 def preparar_arquivos_herdados(
@@ -47,6 +113,16 @@ def _normalizar_caminho(caminho: object) -> str | None:
     return None if normalizado in ("", ".") else normalizado
 
 
+def _e_prefixo_compartilhado(caminho: str) -> bool:
+    """Diz se o caminho endereça o workspace compartilhado em vez do próprio."""
+    partes = PurePosixPath(caminho).parts
+    return (
+        len(partes) > 1
+        and partes[0] == _RAIZ_COMPARTILHADA
+        and partes[1] in SUBPASTAS_COMPARTILHADAS
+    )
+
+
 def bloquear_sobrescrita_herdada(tool, args, tool_context) -> dict | None:
     """Impede ``tool_criar_arquivo`` de sobrescrever arquivo de task anterior.
 
@@ -55,6 +131,29 @@ def bloquear_sobrescrita_herdada(tool, args, tool_context) -> dict | None:
     ``tool_substituir_trecho``; apenas a substituição integral e cega é barrada.
     """
     if getattr(tool, "name", None) != "tool_criar_arquivo":
+        return None
+
+    caminho = _normalizar_caminho(args.get("caminho"))
+    if caminho is not None and _e_prefixo_compartilhado(caminho):
+        return {
+            "sucesso": False,
+            "codigo": "PREFIXO_DE_WORKSPACE_PROIBIDO",
+            "erro": (
+                f"O caminho '{caminho}' começa com um prefixo do workspace "
+                "COMPARTILHADO, mas as ferramentas de código já estão "
+                "enraizadas em 'coder/src' — o arquivo seria criado no lugar "
+                "errado, em silêncio. Para código, informe apenas o caminho "
+                "relativo dentro de src (ex.: 'app/main.py'). As demais pastas "
+                f"de 'coder/' ({', '.join(sorted(SUBPASTAS_COMPARTILHADAS))}) "
+                "são somente leitura para este agente: use tool_ler_workspace "
+                "para lê-las."
+            ),
+            "caminho": caminho,
+        }
+
+    if caminho in ARQUIVOS_REGERAVEIS:
+        # Antes da checagem de baseline de propósito: um manifesto que a task
+        # tem de reescrever não pode depender do estado da fotografia.
         return None
 
     herdados = tool_context.state.get(CHAVE_ARQUIVOS_HERDADOS)
@@ -73,7 +172,6 @@ def bloquear_sobrescrita_herdada(tool, args, tool_context) -> dict | None:
             "caminho": args.get("caminho"),
         }
 
-    caminho = _normalizar_caminho(args.get("caminho"))
     if caminho is None or caminho not in set(herdados):
         return None
 
@@ -87,6 +185,65 @@ def bloquear_sobrescrita_herdada(tool, args, tool_context) -> dict | None:
             "tool_substituir_trecho. Não recrie o projeto nem o PLAN.md."
         ),
         "caminho": caminho,
+    }
+
+
+def anunciar_arquivos_herdados(tool, args, tool_context, tool_response):
+    """Anexa à resposta de `tool_listar_workspace` o estado real do projeto.
+
+    Transforma o aviso "o projeto já existe, não recrie" de instrução em prosa
+    (que a run do "fotógrafo" mostrou ser ignorada em 5 de 5 tasks) em DADO
+    ESTRUTURADO devolvido por uma tool — o canal ao qual o coder comprovadamente
+    reage. Ver a docstring do módulo para a evidência.
+
+    Só atua quando há arquivos herdados, isto é, a partir da 2ª task. Na
+    primeira o projeto está sendo criado do zero e o aviso seria falso.
+
+    Returns:
+        Dict que SUBSTITUI a resposta da tool (o ADK usa o retorno não-`None` do
+        `after_tool_callback` no lugar do original), preservando a listagem em
+        `itens`. `None` deixa a resposta original intacta — inclusive quando a
+        tool devolveu erro, caso em que anexar o aviso só confundiria.
+    """
+    if getattr(tool, "name", None) != _TOOL_ANUNCIADA:
+        return None
+
+    herdados = tool_context.state.get(CHAVE_ARQUIVOS_HERDADOS)
+    if not isinstance(herdados, list) or not herdados:
+        return None
+
+    # A tool sinaliza falha devolvendo uma string "Erro: ..." em vez da lista.
+    if not isinstance(tool_response, list):
+        return None
+
+    mostrados = [c for c in herdados[:_MAX_ARQUIVOS_NO_AVISO] if isinstance(c, str)]
+    omitidos = len(herdados) - len(mostrados)
+
+    return {
+        "itens": tool_response,
+        "projeto_ja_implementado": True,
+        "arquivos_existentes_no_workspace": mostrados,
+        "arquivos_omitidos_deste_aviso": omitidos,
+        "instrucao_obrigatoria": (
+            "O projeto JÁ foi implementado por uma task anterior desta mesma "
+            "execução — os arquivos acima já existem no workspace. NÃO recrie o "
+            "PLAN.md, NÃO refaça o planejamento e NÃO reimplemente o que já "
+            "está pronto: `tool_criar_arquivo` sobre qualquer um desses "
+            "caminhos será RECUSADO. Para alterar um arquivo existente, leia-o "
+            "com `tool_ler_arquivo` e edite o trecho com "
+            "`tool_substituir_trecho`. Use `tool_criar_arquivo` apenas para "
+            "arquivos NOVOS, exigidos especificamente pela task atual."
+        ),
+        "excecao_run_json": (
+            "`run.json` é a ÚNICA exceção: ele é o manifesto DESTA task e DEVE "
+            "ser reescrito com `tool_criar_arquivo(\"run.json\", ...)` — a "
+            "chamada é aceita. Leia o atual com `tool_ler_arquivo(\"run.json\")`, "
+            "preserve build/run/test que já funcionam e atualize "
+            "`acceptance_task_id` com o id da task ATUAL e `acceptance_tests` "
+            "com os testes que comprovam os critérios DELA. Um `run.json` que "
+            "ainda aponte para a task anterior tem TODOS os vínculos "
+            "descartados, e a cobertura de aceite desta task fica zerada."
+        ),
     }
 
 
