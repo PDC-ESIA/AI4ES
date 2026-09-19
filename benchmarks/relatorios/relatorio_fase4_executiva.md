@@ -9,7 +9,7 @@
 
 ## 1. Resumo executivo
 
-Esta rodada executa uma **porcentagem substancial dos datasets totais** definidos para a Fase 4, mantendo a viabilidade de execução em poucas horas por meio de chamadas paralelas controladas por rate-limit. Os mesmos prompts zero-shot, modelos e métricas do piloto foram utilizados, com as melhorias implementadas após a Fase 3:
+Esta rodada executa uma **porcentagem substancial dos datasets totais**, mantendo a viabilidade de execução em poucas horas por meio de chamadas paralelas controladas por rate-limit. Foram utilizados prompts zero-shot padronizados e métricas consistentes em toda a execução:
 
 - detecção e retry de `reasoning_truncated` para `gpt-5-mini`;
 - extração de span do contexto para melhorar F1 em SQuAD 2.0;
@@ -282,7 +282,7 @@ Com base nos resultados da Fase 4 Executiva, recomenda-se:
 |---|---|---|
 | `benchmarks/rodadas/fase4-executiva/config.yaml` | Configuração da rodada executiva |
 | `benchmarks/rodadas/fase4-executiva/prompts.yaml` | Prompts zero-shot com evidências para HotpotQA |
-| `benchmarks/rodadas/fase4-executiva/subsets/` | Subsets determinísticos + manifest |
+| `benchmarks/rodadas/fase4-executiva/subsets/` | Subsets determinísticos + manifest, gerados localmente e não versionados |
 | `benchmarks/rodadas/fase4-executiva/resultados/<modelo>/<benchmark>/runs.jsonl` | Registros brutos |
 | `benchmarks/rodadas/fase4-executiva/resultados/summary.json` | Métricas agregadas |
 | `benchmarks/rodadas/fase4-executiva/resultados/summary.md` | Tabela comparativa resumida |

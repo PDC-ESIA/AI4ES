@@ -11,10 +11,10 @@ O juiz deve ser um modelo forte e distinto do avaliado, conforme boas práticas
 do protocolo (§8.6). Resultados são gravados em JSONL e podem ser agregados.
 
 Uso:
-    python llm_judge.py --rodada fase3-piloto \
+    python llm_judge.py --rodada fase4-executiva \
         --judge github_copilot/gemini-3.1-pro-preview \
         --samples 50 \
-        --output benchmarks/rodadas/fase3-piloto/resultados/judge_results.jsonl
+        --output benchmarks/rodadas/fase4-executiva/resultados/judge_results.jsonl
 """
 
 import argparse
@@ -134,7 +134,7 @@ def call_judge(cfg: dict, judge: str, question: str, context: str, golds: list[s
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rodada", default="fase3-piloto")
+    parser.add_argument("--rodada", default="fase4-executiva")
     parser.add_argument("--judge", default="github_copilot/gemini-3.1-pro-preview")
     parser.add_argument("--samples", type=int, default=50, help="número de respostas a avaliar por benchmark")
     parser.add_argument("--output", default="", help="caminho do JSONL de saída")
@@ -176,7 +176,7 @@ def main() -> int:
 
     tasks = []
     for bench in benchmarks:
-        subset_path = subsets_dir / f"{bench}_pilot.jsonl"
+        subset_path = subsets_dir / f"{bench}.jsonl"
         if not subset_path.exists():
             print(f"[aviso] subset não encontrado: {subset_path}")
             continue

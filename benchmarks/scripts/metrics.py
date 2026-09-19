@@ -1,4 +1,4 @@
-"""Métricas do piloto da Fase 3 (Protocolo §9.4 e §10).
+"""Métricas do benchmark de QA (Protocolo §9.4 e §10).
 
 Métricas implementadas:
   - EM (Exact Match) e F1 token-level, normalização estilo SQuAD official.
@@ -7,10 +7,8 @@ Métricas implementadas:
   - Quasi Exact Match (GAIA): normalização por tipo (string/número/lista).
   - pass^k (consistência): fração de casos com k/k repetições corretas.
 
-Nota sobre Supporting Fact P/R (HotpotQA): o prompt padronizado do piloto pede
-apenas a resposta curta, não evidências — portanto SF P/R é N/A nesta rodada
-(decisão documentada no relatório; versão com prompt de evidências fica para a
-Fase 4, conforme ajuste ao protocolo).
+Nota sobre Supporting Fact P/R (HotpotQA): quando o prompt solicita títulos de
+parágrafos como evidência, são calculadas precisão, revocação e F1 dos títulos.
 
 Todos os comparadores são case-insensitive e ignoram pontuação/artigos.
 """

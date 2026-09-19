@@ -1,7 +1,7 @@
-"""Download e normalização dos datasets do piloto da Fase 3 (benchmark QA).
+"""Download e normalização dos datasets do benchmark de QA.
 
 Baixa os 5 datasets definidos no Protocolo de Avaliação (seção 4.4) e os
-normaliza para um esquema unificado JSONL em benchmark/datasets/normalized/.
+normaliza para um esquema unificado JSONL em benchmarks/datasets/normalized/.
 
 Datasets e fontes (verificados em 21/08/2026):
   - nq_open          google-research-datasets/nq_open  (split validation, parquet API)
@@ -11,9 +11,9 @@ Datasets e fontes (verificados em 21/08/2026):
   - gaia_l1          gaia-benchmark/GAIA              (2023/validation/metadata.level1.parquet,
                                                       apenas itens text-only)
 
-Autenticação: HF_TOKEN carregado de benchmark/.env (necessário para o GAIA, gated).
+Autenticação: HF_TOKEN carregado de benchmarks/.env (necessário para o GAIA, gated).
 
-Rastreabilidade: cada execução grava/atualiza benchmark/datasets/manifest.json com
+Rastreabilidade: cada execução grava/atualiza benchmarks/datasets/manifest.json com
 repo, revisão (sha), URLs, data do download e contagens — conforme §6 do protocolo.
 
 Uso:
@@ -33,7 +33,7 @@ import requests
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[2]
-BENCH_DIR = ROOT / "benchmark"
+BENCH_DIR = ROOT / "benchmarks"
 DATASETS_DIR = BENCH_DIR / "datasets"
 RAW_DIR = DATASETS_DIR / "raw"
 NORM_DIR = DATASETS_DIR / "normalized"

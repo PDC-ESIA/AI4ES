@@ -1,10 +1,11 @@
-"""Amostragem determinística dos subsets do piloto da Fase 3.
+"""Amostragem determinística dos subsets de uma rodada do benchmark.
 
-Gera os subconjuntos reduzidos (rodada piloto) a partir dos datasets
-normalizados em benchmark/datasets/normalized/, com seed global fixa para
+Gera os subconjuntos da rodada a partir dos datasets normalizados em
+benchmarks/datasets/normalized/, com seed global fixa para
 reprodutibilidade, e grava em benchmarks/rodadas/<nome-da-rodada>/subsets/.
 
-Tamanhos definidos no plano (benchmark/plano-fase3-piloto.md):
+Os tamanhos são lidos da chave ``subsets`` no config.yaml da rodada. Na
+ausência dessa chave, são usados os valores de fallback definidos neste módulo:
   nq_open=20, squad_v2=20 (estratificado por answerable), hotpot_qa=20,
   longbench_qasper=10, gaia_l1=10.
 
@@ -12,7 +13,7 @@ Rastreabilidade: subsets/manifest.json da rodada registra seed, método,
 proporções e o SHA-256 de cada arquivo gerado.
 
 Uso:
-    python sample_subsets.py --rodada fase3-piloto [--seed 42] [--sizes nq_open=20,...]
+    python sample_subsets.py --rodada fase4-executiva [--seed 42] [--sizes nq_open=20,...]
 """
 
 import argparse
@@ -76,7 +77,7 @@ def sample_stratified_answerable(rows: list[dict], n: int, rng: random.Random) -
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rodada", default="fase3-piloto")
+    parser.add_argument("--rodada", default="fase4-executiva")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--sizes", default="", help="ex.: nq_open=30,squad_v2=20")
     args = parser.parse_args()
@@ -111,7 +112,7 @@ def main() -> int:
         else:
             amostra = sample_uniform(rows, n, rng)
             metodo = "uniforme aleatório simples"
-        out = out_dir / f"{name}_pilot.jsonl"
+        out = out_dir / f"{name}.jsonl"
         write_jsonl(out, amostra)
         resp = {
             "arquivo": str(out.relative_to(ROOT)),

@@ -2,26 +2,19 @@
 
 Infraestrutura do estudo de benchmarking para o Agente de Testes/QA, executada
 em rodadas autocontidas. Cada rodada vive em
-`benchmarks/rodadas/<nome-da-rodada>/` e contém: configuração, prompts,
-subsets e resultados. O código em `benchmarks/scripts/` é reutilizado entre
-as rodadas.
+`benchmarks/rodadas/<nome-da-rodada>/` e contém configuração, prompts e
+resultados. Datasets e subsets são gerados localmente e não são versionados.
+O código em `benchmarks/scripts/` é reutilizado entre as rodadas.
 
 ## Layout (orientado a rodadas)
 
 ```
 benchmarks/
 ├── rodadas/
-│   ├── fase3-piloto/                 # piloto pequeno (Fase 3)
-│   │   ├── config.yaml
-│   │   ├── prompts.yaml
-│   │   ├── subsets/                  # JSONLs amostrados + manifest
-│   │   └── resultados/
-│   │       ├── <modelo>/<benchmark>/runs.jsonl
-│   │       └── summary.{json,md}
-│   └── fase4-executiva/              # rodada executiva (Fase 4 representativa)
+│   └── fase4-executiva/              # rodada executiva representativa
 │       ├── config.yaml
 │       ├── prompts.yaml
-│       ├── subsets/
+│       ├── subsets/                  # gerado localmente; gitignored
 │       └── resultados/
 │           ├── <modelo>/<benchmark>/runs.jsonl
 │           ├── summary.{json,md}
@@ -39,9 +32,9 @@ benchmarks/
 └── .venv/                            # ambiente (gitignored)
 ```
 
-Datasets brutos ficam em `benchmark/datasets/` (**gitignored**, compartilhados
-entre rodadas); os subsets versionados por rodada são a entrada real dos
-experimentos.
+Datasets brutos e normalizados ficam em `benchmarks/datasets/` e os subsets
+em `benchmarks/rodadas/<nome-da-rodada>/subsets/`. Ambos são **gitignored** e
+podem ser regenerados deterministicamente pelos scripts abaixo.
 
 ## Modelos avaliados nas rodadas atuais
 
@@ -65,7 +58,7 @@ indisponível e removido das rodadas.
 /opt/homebrew/opt/python@3.14/bin/python3.14 -m venv benchmarks/.venv
 benchmarks/.venv/bin/pip install litellm pyarrow pyyaml python-dotenv requests tenacity matplotlib
 
-# 2. Credenciais — benchmark/.env (gitignored):
+# 2. Credenciais — benchmarks/.env (gitignored):
 #    HF_TOKEN=...            (GAIA, gated no Hugging Face)
 #    GOOGLE_API_KEY=...      (fallback para Gemini via LiteLLM)
 #    Copilot: device-flow automático via preflight (~/.config/litellm/github_copilot)

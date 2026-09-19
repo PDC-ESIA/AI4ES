@@ -2,6 +2,8 @@
 adk/artifacts/
 
 # Benchmarks — dataset baixado dinamicamente e resultados de execução
+benchmarks/datasets/
+benchmarks/rodadas/*/subsets/
 benchmarks/humaneval/datasets/
 benchmarks/humaneval/results/
 benchmarks/construcao/resultados/

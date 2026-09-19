@@ -1,9 +1,8 @@
 # Configuração da Fase 4 Executiva — Benchmark do Agente de QA.
 #
-# Esta rodada mantém a representatividade da Fase 4 (datasets maiores que o
-# piloto) mas com tamanhos viáveis para execução em poucas horas usando o
-# runner paralelo. Cumpre o requisito da Fase 4 de executar uma porcentagem
-# substancial dos datasets totais disponibilizados.
+# Esta rodada usa amostras representativas dos datasets, com tamanhos viáveis
+# para execução em poucas horas usando o runner paralelo. Cumpre o requisito
+# de executar uma porcentagem substancial dos datasets disponibilizados.
 #
 # Estimativa de chamadas:
 #   5 modelos × (500+1000+500+100+42 casos) × 3 reps ≈ 32.130 chamadas

@@ -1,6 +1,6 @@
-"""Preflight de credenciais dos modelos do piloto.
+"""Preflight de credenciais dos modelos de uma rodada do benchmark.
 
-1. Gemini: exige GOOGLE_API_KEY (ou GEMINI_API_KEY) em benchmark/.env ou ambiente.
+1. Gemini: exige GOOGLE_API_KEY (ou GEMINI_API_KEY) em benchmarks/.env ou ambiente.
 2. Copilot: usa o Authenticator do LiteLLM (~/.config/litellm/github_copilot/).
    Sem credencial válida, dispara o device-flow: imprime URL + código para
    autorizar no navegador e aguarda a conclusão.
@@ -19,7 +19,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(ROOT / "benchmark" / ".env")
+load_dotenv(ROOT / "benchmarks" / ".env")
 
 if os.environ.get("GOOGLE_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
     os.environ["GEMINI_API_KEY"] = os.environ["GOOGLE_API_KEY"]
@@ -27,7 +27,7 @@ if os.environ.get("GOOGLE_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
 
 def preflight_gemini(model: str) -> bool:
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
-        print("[gemini] SEM CHAVE: adicione GOOGLE_API_KEY=... em benchmark/.env")
+        print("[gemini] SEM CHAVE: adicione GOOGLE_API_KEY=... em benchmarks/.env")
         return False
     import litellm
 
@@ -86,7 +86,7 @@ def preflight_copilot(model: str) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rodada", default="fase3-piloto")
+    parser.add_argument("--rodada", default="fase4-executiva")
     parser.add_argument("--model", default="", help="valida apenas este(s) modelo(s), vírgula")
     args = parser.parse_args()
 

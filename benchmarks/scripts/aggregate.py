@@ -1,4 +1,4 @@
-"""Agregação dos resultados da rodada piloto da Fase 3.
+"""Agregação dos resultados de uma rodada do benchmark de QA.
 
 Lê os registros JSONL em benchmarks/rodadas/<rodada>/resultados/<modelo>/<benchmark>/runs.jsonl,
 calcula as métricas do Protocolo (§9.4/§10) por modelo×benchmark e produz:
@@ -7,10 +7,10 @@ calcula as métricas do Protocolo (§9.4/§10) por modelo×benchmark e produz:
   - benchmarks/rodadas/<rodada>/resultados/summary.md    (tabela comparativa legível)
 
 Falhas de execução (api_error/timeout) são contadas separadamente das falhas
-de qualidade do modelo — requisito da Fase 4 antecipado aqui.
+de qualidade do modelo.
 
 Uso:
-    python aggregate.py --rodada fase3-piloto
+    python aggregate.py --rodada fase4-executiva
 """
 
 import argparse
@@ -33,7 +33,7 @@ def load_jsonl(path: Path) -> list[dict]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rodada", default="fase3-piloto")
+    parser.add_argument("--rodada", default="fase4-executiva")
     args = parser.parse_args()
 
     rodada_dir = RODADAS_DIR / args.rodada
@@ -59,7 +59,7 @@ def main() -> int:
             if not records:
                 continue
             model_real = records[0]["model"]
-            cases = {c["id"]: c for c in load_jsonl(subsets_dir / f"{bench}_pilot.jsonl")}
+            cases = {c["id"]: c for c in load_jsonl(subsets_dir / f"{bench}.jsonl")}
 
             # Deduplicação: reexecuções geram múltiplos registros por (caso, repetição);
             # a última ocorrência é o resultado final daquele par.

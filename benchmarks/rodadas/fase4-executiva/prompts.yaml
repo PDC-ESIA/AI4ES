@@ -1,4 +1,4 @@
-# Prompts padronizados do piloto (Protocolo §7).
+# Prompts padronizados da rodada executiva (Protocolo §7).
 # Zero-shot, idênticos para todos os modelos. Sem few-shot, sem ajuste por modelo.
 # Variáveis disponíveis: {question}, {context}
 

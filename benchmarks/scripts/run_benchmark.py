@@ -1,4 +1,4 @@
-"""Runner da rodada piloto da Fase 3.
+"""Runner de uma rodada do benchmark de QA.
 
 Executa: modelo × benchmark × caso × repetição, chamando cada LLM via LiteLLM
 com parâmetros idênticos (rodadas/<nome>/config.yaml) e gravando um registro JSONL por
@@ -10,10 +10,10 @@ adk/shared/llm.py (evita cota reduzida de "utility models").
 
 Retomada: registros existentes com status ok/empty são pulados; falhas de API
 (api_error/timeout) são reexecutadas — falhas de infra ficam separadas das
-falhas de qualidade nas métricas (requisito antecipado da Fase 4).
+falhas de qualidade nas métricas.
 
 Uso:
-    python run_benchmark.py --rodada fase3-piloto [--dry-run] [--limit N] \
+    python run_benchmark.py --rodada fase4-executiva [--dry-run] [--limit N] \
         [--models gemini/gemini-2.5-flash,...] [--benchmarks nq_open,...]
 """
 
@@ -261,7 +261,7 @@ def call_model(cfg: dict, model: str, messages: list[dict], benchmark: str = "")
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rodada", default="fase3-piloto",
+    parser.add_argument("--rodada", default="fase4-executiva",
                         help="nome do diretório em benchmarks/rodadas/")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=0, help="máx. casos por benchmark")
@@ -292,7 +292,7 @@ def main() -> int:
     planos = []
     for model in models:
         for bench in benchmarks:
-            subset_path = subsets_dir / f"{bench}_pilot.jsonl"
+            subset_path = subsets_dir / f"{bench}.jsonl"
             cases = load_jsonl(subset_path)
             if args.limit:
                 cases = cases[: args.limit]
@@ -367,7 +367,7 @@ def main() -> int:
         }
 
     for model, bench, _, _, _, _, runs_file in planos:
-        cases = {c["id"]: c for c in load_jsonl(subsets_dir / f"{bench}_pilot.jsonl")}
+        cases = {c["id"]: c for c in load_jsonl(subsets_dir / f"{bench}.jsonl")}
         if args.limit:
             cases = dict(list(cases.items())[: args.limit])
         final_statuses = ("ok", "empty", "reasoning_truncated")
