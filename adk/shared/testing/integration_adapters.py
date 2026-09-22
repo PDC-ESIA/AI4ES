@@ -33,7 +33,7 @@ def _blocked(profile_id: str, code: str, message: str) -> dict[str, Any]:
 def _package_dependencies(root: Path) -> set[str]:
     try:
         package = json.loads((root / "package.json").read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         return set()
     dependencies: set[str] = set()
     for field in ("dependencies", "devDependencies", "peerDependencies"):
