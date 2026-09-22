@@ -1,0 +1,21 @@
+{
+  "labels": [
+    "claude-sonnet-4.5",
+    "gemini-3.1-pro-preview",
+    "gemini-3.5-flash",
+    "gemini-3.7-flash",
+    "gpt-5-mini"
+  ],
+  "datasets": [
+    {
+      "label": "FPA SQuAD 2.0",
+      "data": [
+        0.20558882235528944,
+        0.12175648702594812,
+        0.17697937458416485,
+        0.09514304723885564,
+        0.5934797072521621
+      ]
+    }
+  ]
+}
