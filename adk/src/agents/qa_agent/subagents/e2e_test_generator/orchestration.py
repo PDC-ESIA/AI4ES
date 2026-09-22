@@ -40,7 +40,7 @@ def _artefatos_com_handoff(artefatos_json: str, plano_acao: str) -> str:
         return artefatos_json
     try:
         plan = json.loads(plano_acao)
-    except json.JSONDecodeError, TypeError:
+    except (json.JSONDecodeError, TypeError):
         return artefatos_json
     handoff = plan.get("handoff_context", {}) if isinstance(plan, dict) else {}
     original = handoff.get("entrada_original") if isinstance(handoff, dict) else None
