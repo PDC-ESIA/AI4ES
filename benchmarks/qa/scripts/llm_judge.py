@@ -34,7 +34,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from run_benchmark import (  # noqa: E402
+from benchmarks.qa.scripts.run_benchmark import (  # noqa: E402
     TokenBucketRateLimiter,
     copilot_extra_headers,
     effective_max_tokens,

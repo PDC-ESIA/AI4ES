@@ -21,7 +21,7 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from metrics import aggregate_benchmark, case_metrics, latency_percentiles  # noqa: E402
+from benchmarks.qa.scripts.metrics import aggregate_benchmark, case_metrics, latency_percentiles  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RODADAS_DIR = ROOT / "benchmarks" / "rodadas"

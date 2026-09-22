@@ -34,7 +34,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from metrics import extract_answer  # noqa: E402
+from benchmarks.qa.scripts.metrics import extract_answer  # noqa: E402
 
 RODADAS_DIR = ROOT / "benchmarks" / "rodadas"
 

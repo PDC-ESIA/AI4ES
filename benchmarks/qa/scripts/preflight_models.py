@@ -65,7 +65,7 @@ def preflight_copilot(model: str) -> bool:
         return False
     print(f"[copilot] credencial obtida ({token[:6]}...). Testando {model}...")
     import litellm
-    from run_benchmark import copilot_extra_headers
+    from benchmarks.qa.scripts.run_benchmark import copilot_extra_headers
 
     try:
         resp = litellm.completion(
