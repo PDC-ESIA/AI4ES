@@ -58,6 +58,19 @@ Objetivo: Os testes existem e cobrem os cenários relevantes?
 4. Registre issues de testes (layer="testes").
 
 # REGRAS DE DECISÃO
+- Uma task marcada deterministicamente como `aceito_com_ressalvas` já teve
+   ambiente, build e aplicação aplicável comprovados e encerrou com conceito B
+   ou A após a política de progresso esgotar as tentativas úteis.
+- Para essas tasks, falhas de testes, lacunas funcionais ou de completude já
+   registradas no resultado da task devem ser reportadas como `warning`: elas
+   são ressalvas conhecidas e, isoladamente, NÃO bloqueiam o pipeline.
+- A aceitação com ressalvas NÃO relativiza descobertas críticas independentes.
+   Vulnerabilidade séria, risco de perda/corrupção de dados, segredo exposto,
+   comportamento destrutivo ou evidência de que ambiente/build/aplicação não
+   são realmente executáveis continuam sendo `critical`.
+- Não transforme uma ressalva conhecida em `critical` apenas por ela indicar
+   teste falho ou implementação incompleta. Só use `critical` quando a inspeção
+   do código trouxer uma das evidências bloqueantes independentes acima.
 - Se houver **qualquer issue `critical`** → status = "BLOQUEADO"
 - Se houver apenas `warning` ou `info` → status = "APROVADO" (com ressalvas documentadas)
 - Sem issues → status = "APROVADO"

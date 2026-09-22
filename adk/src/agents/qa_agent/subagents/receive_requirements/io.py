@@ -25,41 +25,48 @@ for _IMPORT_DIR in (_SUITE_DIR / "src", _SUITE_DIR):
 '''
 
 
-def _tests_dir() -> Path:
-    """workspace_output/tests/inputs/ resolvido em runtime.
+def _tests_dir(workspace_agent: str = "receive_requirements") -> Path:
+    """workspace_output/tests/<agent>/ resolvido em runtime.
 
     Centraliza o destino dos arquivos pytest gerados pelo subagente.
     Resolvido em runtime para respeitar WORKSPACE_OUTPUT_DIR env var.
     """
-    return get_agent_workspace("receive_requirements")
+    return get_agent_workspace(workspace_agent)
 
 
-def _doubt_dir() -> Path:
+def _doubt_dir(workspace_agent: str = "receive_requirements") -> Path:
     """Sibling 'doubt_artifacts' dentro do diretório de testes."""
-    return _tests_dir() / "doubt_artifacts"
+    return _tests_dir(workspace_agent) / "doubt_artifacts"
 
 
-async def _gerar_doubt_artifact(id_artefato: str, motivo: str) -> str:
+async def _gerar_doubt_artifact(
+    id_artefato: str,
+    motivo: str,
+    workspace_agent: str = "receive_requirements",
+    agent_label: str = "qa_agent",
+) -> str:
     """Gera arquivo de doubt artifact para artefato bloqueado.
 
     Args:
         id_artefato: Identificador do artefato.
         motivo: Motivo do bloqueio.
+        workspace_agent: Chave do workspace do subagente que chamou.
+        agent_label: Rótulo do agente registrado no artefato.
 
     Returns:
         str: Caminho do arquivo gerado.
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    _doubt_dir().mkdir(parents=True, exist_ok=True)
+    _doubt_dir(workspace_agent).mkdir(parents=True, exist_ok=True)
 
     nome = f"Doubt_Artifact_{id_artefato}_{timestamp}.md"
-    caminho = _doubt_dir() / nome
+    caminho = _doubt_dir(workspace_agent) / nome
 
     conteudo = f"""# Doubt Artifact — QA Agent
 
 **ID do Artefato:** {id_artefato}
 **Data/Hora:** {timestamp}
-**Agente:** qa_agent
+**Agente:** {agent_label}
 **Status:** BLOQUEADO — aguardando intervenção humana
 
 ---
@@ -136,7 +143,7 @@ def _descobrir_fontes_persistidos() -> list[Path]:
     return sources
 
 
-def _salvar_bootstrap_pytest(destino: Path) -> Path:
+def _salvar_bootstrap_pytest(destino: Path, workspace_agent: str = "receive_requirements") -> Path:
     """Torna imports dos fontes materializados reproduzíveis fora do runner.
 
     Quando o Coder entrega ``src/init.py`` ou omite o marcador do pacote, cria
@@ -144,10 +151,10 @@ def _salvar_bootstrap_pytest(destino: Path) -> Path:
     ``import src`` resolva para o pacote interno do próprio ADK, sem modificar
     nenhum arquivo de produção.
     """
-    tests_root = get_agent_workspace("receive_requirements").resolve()
+    tests_root = get_agent_workspace(workspace_agent).resolve()
     destino = destino.resolve()
     if not destino.is_relative_to(tests_root):
-        raise ValueError("A suíte deve permanecer dentro de tests/inputs.")
+        raise ValueError(f"A suíte deve permanecer dentro de {tests_root}.")
 
     source_dir = destino / "src"
     if source_dir.is_dir() and any(source_dir.glob("*.py")):

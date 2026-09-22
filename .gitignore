@@ -6,6 +6,8 @@ benchmarks/datasets/
 benchmarks/rodadas/*/subsets/
 benchmarks/humaneval/datasets/
 benchmarks/humaneval/results/
+benchmarks/coding_review/humaneval/datasets/
+benchmarks/coding_review/humaneval/results/
 benchmarks/construcao/resultados/
 
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)

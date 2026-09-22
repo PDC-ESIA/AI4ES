@@ -21,7 +21,6 @@ velocidade; use `DockerSandbox` quando o isolamento forte for necessário.
 from __future__ import annotations
 
 import os
-import resource
 import shlex
 import shutil
 import subprocess
@@ -30,6 +29,11 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Protocol, runtime_checkable
+
+try:
+    import resource  # POSIX-only; ausente no Windows
+except ImportError:
+    resource = None  # type: ignore[assignment]
 
 import docker
 
@@ -106,7 +110,11 @@ def _make_preexec(mem_bytes: int, cpu_seconds: int, nofile: int):
     Cada `setrlimit` é best-effort: se a plataforma não suportar um limite, ele
     é ignorado em vez de abortar o processo filho. `os.setsid` cria um novo
     grupo de processos, permitindo encerrar serviços em segundo plano por grupo.
+    Em plataformas sem `resource` (ex.: Windows) retorna `None`, o que faz o
+    `subprocess` ignorar o preexec.
     """
+    if resource is None:
+        return None
 
     def _apply() -> None:
         for res, soft in (

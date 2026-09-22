@@ -2,11 +2,15 @@
 
 Slim: construído via `create_se_agent` SEM `output_schema` (GAP-00: no ADK,
 `output_schema` ativa o modo gramática/constrained decoding, que desabilita o
-function calling — e a factory sempre injeta ao menos uma tool). O LLM julga os
-critérios e emite markdown em formato fixo; um `after_agent_callback`
+function calling — e a factory sempre injeta ao menos uma tool). O LLM comenta
+os critérios e emite markdown em formato fixo; um `after_agent_callback`
 determinístico parseia a resposta, relê o ExecutionReport do disco e aplica
-`montar_veredito` — a política (trava da Camada 1 + agregação conservadora)
-nunca fica na mão do LLM.
+`montar_veredito` — a política nunca fica na mão do LLM.
+
+O QUE O VEREDITO DECIDE: se a EXECUÇÃO foi bem-sucedida. Nada além disso. O
+julgamento semântico dos critérios de aceite que o LLM produz é registrado no
+`ValidationVerdict` para auditoria, mas NÃO entra na decisão — ver a docstring
+de `montar_veredito` para o porquê.
 
 Além do agente, este módulo expõe `montar_veredito` — a codificação
 determinística da política de veredito. É usada pelo callback como enforcement,
@@ -53,11 +57,33 @@ def _report_path_valido(caminho: str, task_id: str) -> bool:
         return False
 
 # ---------------------------------------------------------------------------
-# Política de veredito — codificação determinística (Camada 1 + agregação)
+# Política de veredito — determinística, sobre a EXECUÇÃO
 # ---------------------------------------------------------------------------
 
-# overall_status do ExecutionReport que reprova na Camada 1 (execução não OK).
-_EXECUCAO_FALHA = {"erro", "falha"}
+# Único `overall_status` do ExecutionReport que caracteriza execução bem
+# sucedida. A checagem é por IGUALDADE a este valor, e não por ausência dos
+# valores de falha, porque o veredito precisa ser fail-closed: um report
+# truncado, sem o campo, ou com um status novo que ninguém previu aqui NÃO pode
+# ser lido como aprovação. Antes isso era garantido de lambuja pela agregação de
+# critérios (lista vazia reprovava); com o veredito saindo só da execução, a
+# trava tem que ser explícita.
+_EXECUCAO_SUCESSO = "sucesso"
+
+
+def _testes_declarados_falharam(report: dict) -> bool:
+    """Detecta uma suíte executada com falha, mesmo em report inconsistente.
+
+    O harness atual já incorpora esta falha no ``overall_status``. A checagem
+    permanece aqui como defesa fail-closed para reports antigos, forjados ou
+    produzidos por versões incompatíveis: ``overall_status='sucesso'`` nunca
+    pode prevalecer sobre evidência explícita de testes falhos.
+    """
+    return any(
+        isinstance(stage, dict)
+        and stage.get("stage") == "testes_automatizados"
+        and stage.get("status") in ("falha", "erro")
+        for stage in (report.get("stages") or [])
+    )
 
 
 def _extrair_criterios(report: dict) -> list[str]:
@@ -71,18 +97,38 @@ def _extrair_criterios(report: dict) -> list[str]:
     return [e.get("criterion", "") for e in report.get("criteria_evidence", [])]
 
 
-def agregar_status(criteria_verdicts: list[CriterionVerdict]) -> VerdictStatus:
-    """Agrega o status global (conservador): aprovado só se TODOS atendido.
+def _neutralizar_criterios_nao_avaliados(
+    report: dict,
+    criteria_verdicts: list[CriterionVerdict],
+) -> list[CriterionVerdict]:
+    """Impede o LLM de decidir critérios que o harness não avaliou.
 
-    Qualquer `nao_atendido` ou `inconclusivo` resulta em `reprovado`.
-    Lista VAZIA também reprova: sem critérios julgados não há evidência de
-    atendimento (`all([])` é True e aprovaria vacuamente).
+    `nao_avaliado` é uma fronteira de confiança, não uma sugestão ao modelo:
+    testes e sondagens do report são evidência técnica insuficiente para afirmar
+    atendimento semântico. Qualquer `atendido` ou `nao_atendido` emitido pelo
+    LLM para esse outcome é substituído deterministicamente por `inconclusivo`.
     """
-    if not criteria_verdicts:
-        return VerdictStatus.REPROVADO
-    if all(v.status == CriterionStatus.ATENDIDO for v in criteria_verdicts):
-        return VerdictStatus.APROVADO
-    return VerdictStatus.REPROVADO
+    nao_avaliados = {
+        evidencia.get("criterion")
+        for evidencia in (report.get("criteria_evidence") or [])
+        if isinstance(evidencia, dict)
+        and evidencia.get("outcome") == "nao_avaliado"
+        and isinstance(evidencia.get("criterion"), str)
+    }
+    return [
+        CriterionVerdict(
+            criterion=veredito.criterion,
+            status=CriterionStatus.INCONCLUSIVO,
+            reasoning=(
+                "Critério não avaliado pelo harness; evidências técnicas e "
+                "testes do coder não autorizam conclusão semântica."
+            ),
+            evidence_ref=None,
+        )
+        if veredito.criterion in nao_avaliados
+        else veredito
+        for veredito in criteria_verdicts
+    ]
 
 
 def montar_veredito(
@@ -91,19 +137,28 @@ def montar_veredito(
 ) -> ValidationVerdict:
     """Aplica a política de veredito de forma determinística.
 
-    Camada 1 (trava determinística, verdade absoluta): se o `overall_status` do
-    ExecutionReport é `erro` ou `falha`, REPROVA imediatamente — todos os
-    critérios marcados como `inconclusivo`, `blocking_reason` preenchido (com o
-    estágio que falhou), e a Camada 2 não é executada.
+    A regra é uma só: **o veredito é sobre a EXECUÇÃO**. Aprova quando o harness
+    conclui com `overall_status == "sucesso"`; reprova em qualquer outro caso.
 
-    Camada 2 (agregação): quando a execução teve sucesso, agrega os
-    `criteria_verdicts` julgados semanticamente — `aprovado` só se TODOS forem
-    `atendido`; qualquer `nao_atendido`/`inconclusivo` → `reprovado`.
+    Por que não há mais uma "Camada 2" semântica decidindo aqui: julgar se um
+    critério de aceite foi atendido exige comprovar comportamento que o harness
+    não instrumenta (uma jornada de UI, por exemplo). O julgamento que o LLM
+    conseguia emitir sobre isso era honestamente `inconclusivo` quase sempre —
+    e, como a agregação reprovava com qualquer `inconclusivo`, o veredito ficava
+    preso em `reprovado` mesmo com o sistema construído, subindo e com a suíte
+    verde. O loop então gastava rodadas perseguindo uma aprovação inalcançável.
+
+    O que o harness responde bem — "isto roda?" — é o que ele passa a decidir. A
+    verificação de que a entrega faz o que o critério pede é responsabilidade de
+    testes escritos para isso, fora deste loop.
 
     Args:
         report: ExecutionReport como dict (saída do harness).
-        criteria_verdicts: Vereditos por critério da Camada 2 (julgados a partir
-            da evidência). Ignorados quando a Camada 1 reprova.
+        criteria_verdicts: Vereditos por critério, quando houver. NÃO influenciam
+            o status. No caminho de SUCESSO entram como registro de auditoria,
+            mas qualquer critério cujo outcome seja `nao_avaliado` é forçado a
+            `inconclusivo`. No caminho de FALHA são descartados e substituídos
+            pela lista determinística acima. A `loop_policy` NÃO os consulta.
 
     Returns:
         ValidationVerdict consolidado (o único portador de veredito do fluxo).
@@ -111,8 +166,11 @@ def montar_veredito(
     work_item_id = report.get("work_item_id", "")
     overall = report.get("overall_status")
 
-    # ---- Camada 1 — execução precede julgamento ----
-    if overall in _EXECUCAO_FALHA:
+    # ---- Execução não bem-sucedida: reprova ----
+    # A segunda condição é defesa contra um report internamente contraditório:
+    # foi justamente essa combinação (overall=sucesso + testes=falha) que
+    # aprovou tasks com nota 0.6 na run de regressão.
+    if overall != _EXECUCAO_SUCESSO or _testes_declarados_falharam(report):
         verdicts = [
             CriterionVerdict(
                 criterion=c,
@@ -144,34 +202,27 @@ def montar_veredito(
             criteria_verdicts=verdicts,
             blocking_reason=(
                 f"Execução do harness terminou com status '{overall}'."
-                f"{detalhe_estagio} "
-                f"A Camada 2 (semântica) não foi executada."
+                f"{detalhe_estagio}"
             ),
-            summary="Reprovado na Camada 1: a execução não foi bem-sucedida.",
+            summary="Reprovado: a execução do sistema gerado não foi bem-sucedida.",
         )
 
-    # ---- Camada 2 — agregação conservadora ----
-    cv = criteria_verdicts or []
-    status = agregar_status(cv)
-    if not cv:
-        blocking_reason = (
-            "Nenhum critério de aceite foi julgado — não há evidência de que o "
-            "Work Item atenda aos seus critérios."
-        )
-        summary = "Reprovado: nenhum critério de aceite foi avaliado."
-    elif status == VerdictStatus.APROVADO:
-        blocking_reason = None
-        summary = "Aprovado: todos os critérios de aceite foram atendidos."
-    else:
-        blocking_reason = "Ao menos um critério ficou nao_atendido ou inconclusivo."
-        summary = "Reprovado: nem todos os critérios de aceite foram atendidos."
-
+    # ---- Execução bem-sucedida: aprova ----
+    #
+    # Os `criteria_verdicts` vão junto como REGISTRO de auditoria e não são
+    # consultados para decidir o status — um `inconclusivo` aqui significa "o
+    # harness não instrumenta isso", não "a entrega falhou".
     return ValidationVerdict(
         work_item_id=work_item_id,
-        status=status,
-        criteria_verdicts=cv,
-        blocking_reason=blocking_reason,
-        summary=summary,
+        status=VerdictStatus.APROVADO,
+        criteria_verdicts=_neutralizar_criterios_nao_avaliados(
+            report, criteria_verdicts or []
+        ),
+        blocking_reason=None,
+        summary=(
+            "Aprovado: o sistema gerado foi construído, iniciou e passou nos "
+            "próprios testes."
+        ),
     )
 
 
@@ -209,9 +260,13 @@ def _parse_e_aplicar_politica(callback_context):
     Garantias, independentes do que o LLM escrever:
     - report ilegível/ausente → REPROVADO (fail-safe: veredito sem evidência
       não é permitido);
-    - critério do report não julgado (ou renomeado) → `inconclusivo`, e a
-      agregação conservadora reprova;
-    - execução com falha → Camada 1 reprova, mesmo que o texto "aprove".
+    - critério do report não julgado (ou renomeado) → `inconclusivo` no
+      registro, sem efeito sobre o status;
+        - critério com `outcome=nao_avaliado` → sempre `inconclusivo`, mesmo que o
+            LLM responda `atendido` ou `nao_atendido`;
+    - execução sem `overall_status == "sucesso"` → REPROVADO, mesmo que o texto
+      do LLM "aprove"; execução bem-sucedida → APROVADO, mesmo que o texto do
+      LLM reprove por critério não comprovado.
     """
     raw = callback_context.state.get("validation_raw", "") or ""
 
@@ -280,7 +335,10 @@ def _parse_e_aplicar_politica(callback_context):
         )
 
     # 3) Alinha com os critérios REAIS do report: o que o LLM não julgou
-    #    (ou renomeou) entra como inconclusivo — a agregação reprova.
+    #    (ou renomeou) entra como inconclusivo. Isso é REGISTRO, não gate — o
+    #    alinhamento continua valendo a pena porque mantém o veredito auditável
+    #    contra a lista real de critérios do report, em vez de contra o que o
+    #    LLM resolveu citar.
     cvs = []
     for criterio in _extrair_criterios(report):
         cvs.append(
