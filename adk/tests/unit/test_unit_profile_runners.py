@@ -195,6 +195,18 @@ def test_normaliza_eventos_go():
     }
 
 
+@pytest.mark.parametrize(
+    ("profile_id", "output"),
+    [
+        ("node-vitest", "All files | 80 | 66.66 | 100 | 80 |"),
+        ("node-jest", "All files |     80 |   66.66 |    100 |     80 |"),
+        ("node-node-test", "all files | 80 | 66.66 | 100 | 80 |"),
+    ],
+)
+def test_cobertura_node_tabular_sem_percentual(profile_id, output):
+    assert unit_runner._coverage_percent(profile_id, output) == 80.0
+
+
 def test_execucao_sem_testes_e_falha(tmp_path, monkeypatch):
     test_file = _test_file(tmp_path, "sample.test.js")
     monkeypatch.setattr(

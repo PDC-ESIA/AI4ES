@@ -85,9 +85,9 @@ def _coverage_percent(profile_id: str, output: str) -> float | None:
     output = _strip_ansi(output)
     patterns = {
         "go-testing": r"coverage:\s*([\d.]+)%",
-        "node-vitest": r"All files[^\n]*?([\d.]+)\s*%",
-        "node-jest": r"All files[^\n]*?([\d.]+)\s*%",
-        "node-node-test": r"all files[^\n]*?([\d.]+)\s*%",
+        "node-vitest": r"All files[^\n]*?(?:\|\s*|\s+)([\d.]+)(?=\s*(?:\||%))",
+        "node-jest": r"All files[^\n]*?(?:\|\s*|\s+)([\d.]+)(?=\s*(?:\||%))",
+        "node-node-test": r"all files[^\n]*?(?:\|\s*|\s+)([\d.]+)(?=\s*(?:\||%))",
         "java-junit": r"Total[^%\n]*?([\d.]+)%",
     }
     pattern = patterns.get(profile_id)

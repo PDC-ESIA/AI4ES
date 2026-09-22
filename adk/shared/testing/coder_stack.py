@@ -47,7 +47,7 @@ def load_coder_stack(macro_context_path: Path | None = None) -> str:
         return ""
     try:
         macro_context = json.loads(path.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         return ""
     if not isinstance(macro_context, dict):
         return ""

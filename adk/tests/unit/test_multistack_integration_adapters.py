@@ -39,6 +39,19 @@ def test_comando_python_de_integracao_usa_interpretador_atual(tmp_path):
     ]
 
 
+def test_comando_python_sem_pytest_retorna_bloqueio(tmp_path, monkeypatch):
+    test_file = _test_file(tmp_path, "tests/integration/test_service.py")
+    monkeypatch.setattr(integration_adapters, "_has_pytest", lambda: False)
+
+    command, framework, blocker = integration_adapters.build_integration_command(
+        "python-integration", tmp_path, test_file
+    )
+
+    assert command is None
+    assert framework == "pytest"
+    assert blocker == "pytest não está disponível no ambiente."
+
+
 def test_comando_node_usa_vitest_local_sem_npx(tmp_path, monkeypatch):
     (tmp_path / "package.json").write_text(
         json.dumps({"devDependencies": {"vitest": "latest"}}),
@@ -129,6 +142,23 @@ def test_execucao_de_integracao_e_sem_shell_e_define_ci(tmp_path, monkeypatch):
     assert result["status"] == "sucesso"
     assert observed["shell"] is False
     assert observed["env"]["CI"] == "1"
+
+
+def test_execucao_python_sem_pytest_retorna_bloqueio(tmp_path, monkeypatch):
+    test_file = _test_file(tmp_path, "tests/integration/test_service.py")
+    monkeypatch.setattr(integration_adapters, "_has_pytest", lambda: False)
+
+    result = integration_adapters.execute_integration_adapter(
+        "python-integration", tmp_path, test_file
+    )
+
+    assert result["status"] == "bloqueado"
+    assert result["bloqueios"] == [
+        {
+            "codigo": "RUNTIME_DEPENDENCY_MISSING",
+            "mensagem": "pytest não está disponível no ambiente.",
+        }
+    ]
 
 
 @pytest.mark.parametrize(

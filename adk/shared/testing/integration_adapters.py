@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,10 @@ def _blocked(profile_id: str, code: str, message: str) -> dict[str, Any]:
         "stderr": "",
         "bloqueios": [{"codigo": code, "mensagem": message}],
     }
+
+
+def _has_pytest() -> bool:
+    return find_spec("pytest") is not None
 
 
 def _package_dependencies(root: Path) -> set[str]:
@@ -67,6 +72,8 @@ def build_integration_command(
     )
     relative_test = test.relative_to(root).as_posix()
     if profile_id == "python-integration":
+        if not _has_pytest():
+            return None, "pytest", "pytest não está disponível no ambiente."
         return (
             [sys.executable, "-m", "pytest", relative_test, "-q", "--tb=short"],
             "pytest",

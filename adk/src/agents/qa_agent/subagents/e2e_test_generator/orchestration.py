@@ -70,7 +70,7 @@ def _contrato_canonico_do_handoff(plano_acao: str) -> dict:
     """Extrai fatos E2E do pedido original, sem depender do resumo do modelo."""
     try:
         plan = json.loads(plano_acao)
-    except json.JSONDecodeError, TypeError:
+    except (json.JSONDecodeError, TypeError):
         return {}
     handoff = plan.get("handoff_context", {}) if isinstance(plan, dict) else {}
     original = handoff.get("entrada_original") if isinstance(handoff, dict) else None

@@ -337,6 +337,7 @@ def test_agent_e_planner_expoem_fluxos_unitario_e_bases_por_perfis():
     assert "e2e_test_generator" in qa_tools
     assert "executar_testes_de_integracao" not in qa_tools
     assert "gerar_testes_unitarios" in pipeline_tools
+    assert "e2e_test_generator" in pipeline_tools
     assert "integration_tests_agent" in pipeline_tools
     assert "executar_testes_de_integracao" not in pipeline_tools
     assert "unit_test_generator" in planner_tools

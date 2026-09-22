@@ -232,7 +232,7 @@ def _node_unit_profile(
     for package_file in package_files:
         try:
             package = json.loads(_read_small_text(package_file))
-        except json.JSONDecodeError, TypeError:
+        except (json.JSONDecodeError, TypeError):
             continue
         dependencies: dict[str, object] = {}
         for key in ("dependencies", "devDependencies", "peerDependencies"):

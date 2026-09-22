@@ -301,7 +301,7 @@ def _declared_node_module_type(root: Path) -> str:
         return ""
     try:
         package = json.loads(package_json.read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         return ""
     value = package.get("type") if isinstance(package, dict) else None
     return value.strip().casefold() if isinstance(value, str) else ""

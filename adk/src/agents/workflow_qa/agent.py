@@ -12,6 +12,9 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
+from src.agents.qa_agent.subagents.e2e_test_generator.agent import (
+    agent as e2e_test_generator,
+)
 from src.agents.qa_agent.subagents.integration_tests_agent.agent import (
     agent as integration_tests_agent,
 )
@@ -292,6 +295,7 @@ agent = LlmAgent(
     tools=[
         FunctionTool(invocar_planejamento_qa),
         FunctionTool(gerar_testes_unitarios),
+        AgentTool(agent=e2e_test_generator),
         AgentTool(agent=integration_tests_agent),
         AgentTool(agent=code_fix_agent),
         FunctionTool(executar_pytest_tool),
