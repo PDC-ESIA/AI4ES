@@ -35,18 +35,18 @@ async def test_protocolo_de_bloqueio_emite_as_tres_tools(
 
 
 @pytest.mark.eval
-async def test_bloqueia_quando_o_design_erra_o_nome_do_arquivo(
+async def test_nao_bloqueia_por_nome_de_arquivo_do_design(
     workspace_semeado, evalset, rodar_eval
 ):
-    """Reproduz o incidente de 13/08 — o portão do Passo 2 é *string matching*.
+    """O cenário do incidente de 13/08, com o desfecho invertido pelo #391.
 
     Os requisitos estão completos e a análise técnica existe em disco, mas com o nome
-    `analise_arquitetural_*.md`. Como `context_engineer_tools.py:332` compara
-    `nome.startswith("analise_tecnica_")`, a tool devolve
-    `artefatos_minimos_presentes=False` e o agente deve bloquear.
-
-    O PR #405 endureceu o prompt do Time 2 para o nome sair certo; este caso mede a
-    outra ponta — se o Time 4 ainda reage corretamente quando sai errado.
+    `analise_arquitetural_*.md`. Até o #391 o portão do Passo 2 era *string matching*
+    em `analise_tecnica_` e o agente bloqueava. O #391 (PR #411) trocou isso por
+    classificação semântica — o prompt diz que o bloqueio é "por ausência de CONTEÚDO
+    suficiente, nunca por nome de arquivo", e `tool_ler_artefatos` lê a pasta pelo
+    fallback sem filtrar nome. O caso mede essa promessa: o agente persiste em vez de
+    bloquear.
     """
     workspace_semeado("projeto_design_torto")
     await rodar_eval(

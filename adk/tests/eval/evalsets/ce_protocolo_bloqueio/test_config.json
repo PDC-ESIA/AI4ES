@@ -14,7 +14,7 @@
       "code_config": {
         "name": "tests.eval.metrics.contrato_de_tools"
       },
-      "description": "O cr_context_engineer declarou ao modelo exatamente as 7 tools esperadas."
+      "description": "O cr_context_engineer declarou ao modelo exatamente as 6 tools esperadas."
     }
   }
 }

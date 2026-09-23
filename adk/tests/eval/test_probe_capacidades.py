@@ -9,7 +9,7 @@ A pergunta que ele responde é o achado **U3** da §2-A do `PLANO_POC.md`:
 populados pelo `_RequestIntercepterPlugin` a partir do `LlmRequest` real. Se isso
 valer com `LiteLlm`/`github_copilot` — e não só com Gemini —, abre-se a
 possibilidade de assertar sobre **o prompt renderizado**, que é o buraco da PP3
-(21 `prompt.py`, 5.247 linhas, zero testes).
+(os `prompt.py` dos agentes, sem nenhum teste semântico).
 
 O teste passa em qualquer cenário: o resultado é o relatório impresso. O que ele
 não deixa passar é a mecânica quebrada.

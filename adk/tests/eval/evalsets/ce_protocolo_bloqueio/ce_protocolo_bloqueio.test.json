@@ -40,8 +40,7 @@
                   "aguardar_resolucao_bloqueio",
                   "tool_emitir_manifesto_bloqueado",
                   "tool_gerar_doubt_artifact",
-                  "tool_ler_design",
-                  "tool_ler_requirements",
+                  "tool_ler_artefatos",
                   "tool_salvar_macro_context_cr",
                   "tool_salvar_task_cr"
                 ]

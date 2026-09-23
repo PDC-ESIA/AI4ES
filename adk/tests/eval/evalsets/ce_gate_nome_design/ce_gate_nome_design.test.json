@@ -1,10 +1,10 @@
 {
   "eval_set_id": "ai4es_ce_gate_nome_design",
   "name": "context-engineer-portao-por-nome-de-arquivo",
-  "description": "Requisitos completos e analise tecnica presente em disco — mas com o nome FORA da convencao: analise_arquitetural_catalogo_livros.md em vez de analise_tecnica_*.md. O portao do Passo 2 (context_engineer_tools.py:332) e string matching em 'analise_tecnica_', entao devolve artefatos_minimos_presentes=False e o pipeline deve bloquear. Reproduz o incidente de 13/08. O PR #405 endureceu o prompt do Time 2 para reduzir a chance de o nome sair errado; este caso mede se o Time 4 reage corretamente quando ele sai.",
+  "description": "Requisitos completos e analise tecnica presente em disco — mas com o nome FORA da convencao (analise_arquitetural_catalogo_livros.md em vez de analise_tecnica_*.md) e sem manifesto de design no contexto. Ate o #391 o portao do Passo 2 era string matching em 'analise_tecnica_' e o agente bloqueava (incidente de 13/08). O #391 (PR #411) trocou isso por classificacao semantica: o prompt diz que 'o bloqueio e por ausencia de CONTEUDO suficiente, nunca por nome de arquivo', e tool_ler_artefatos le a pasta design/ pelo fallback sem filtrar nome. Este caso mede essa promessa: o agente deve ler as duas fases e PERSISTIR tasks e contexto macro. Se bloquear, a trajetoria vira doubt -> manifesto -> aguardar e o caso reprova.",
   "eval_cases": [
     {
-      "eval_id": "bloqueia_quando_analise_tecnica_tem_nome_fora_da_convencao",
+      "eval_id": "nao_bloqueia_quando_analise_tecnica_tem_nome_fora_da_convencao",
       "conversation": [
         {
           "invocation_id": "ce-gate-001",
@@ -20,17 +20,16 @@
             "role": "model",
             "parts": [
               {
-                "text": "(nao avaliado neste eval set) A invocacao termina com a chamada pendente de aguardar_resolucao_bloqueio; os criterios olham so a sequencia de tools."
+                "text": "(nao avaliado neste eval set) Contexto macro e tasks persistidos em coder/tasks/ a partir do RF-001 e do RF-002; os criterios olham so a sequencia de tools."
               }
             ]
           },
           "intermediate_data": {
             "tool_uses": [
-              { "name": "tool_ler_requirements" },
-              { "name": "tool_ler_design" },
-              { "name": "tool_gerar_doubt_artifact" },
-              { "name": "tool_emitir_manifesto_bloqueado" },
-              { "name": "aguardar_resolucao_bloqueio" }
+              { "name": "tool_ler_artefatos" },
+              { "name": "tool_ler_artefatos" },
+              { "name": "tool_salvar_task_cr" },
+              { "name": "tool_salvar_macro_context_cr" }
             ],
             "intermediate_responses": []
           }

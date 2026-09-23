@@ -13,14 +13,14 @@ que é o que a suíte unitária não alcança por construção.
 ```bash
 cd adk
 
-# tudo (~2min20s, 9 testes)
+# tudo menos o juiz (9 testes; ~2min40s com gpt-5.3-codex em 16/09)
 AI4ES_EVAL=1 uv run --with pandas --with rouge-score pytest tests/eval -q
 
 # um caso só
 AI4ES_EVAL=1 uv run --with pandas --with rouge-score \
   pytest tests/eval/test_eval_context_engineer.py::test_protocolo_de_bloqueio_emite_as_tres_tools -q
 
-# incluindo a camada de juiz LLM (mais cara — ver abaixo)
+# incluindo a camada de juiz LLM (10 testes; ~3min40s em 23/09; mais cara — ver abaixo)
 AI4ES_EVAL=1 AI4ES_EVAL_JUIZ=1 uv run --with pandas --with rouge-score pytest tests/eval -q
 
 # saída detalhada do ADK (tabela por invocação) — exige tabulate
@@ -84,7 +84,7 @@ mudança de política.
 | Teste | O que prova |
 |---|---|
 | `test_protocolo_de_bloqueio_emite_as_tres_tools` | As 3 tools do protocolo de bloqueio ocorrem na ordem, incluindo o `LongRunningFunctionTool` que **pausa** o pipeline |
-| `test_bloqueia_quando_o_design_erra_o_nome_do_arquivo` | Reage certo ao portão por nome (`analise_tecnica_*`) — o incidente de 13/08 |
+| `test_nao_bloqueia_por_nome_de_arquivo_do_design` | Não bloqueia quando a análise técnica tem nome fora da convenção — a promessa do #391, que acabou com o portão por nome (`analise_tecnica_*`) do incidente de 13/08 |
 | `test_caminho_feliz_age_em_vez_de_narrar` | O agente **age** em vez de escrever "Agora vou criar as tasks…" e encerrar o turno |
 
 ### `cr_review_analyzer`

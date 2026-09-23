@@ -26,8 +26,8 @@
           },
           "intermediate_data": {
             "tool_uses": [
-              { "name": "tool_ler_requirements" },
-              { "name": "tool_ler_design" },
+              { "name": "tool_ler_artefatos" },
+              { "name": "tool_ler_artefatos" },
               { "name": "tool_salvar_task_cr" },
               { "name": "tool_salvar_macro_context_cr" }
             ],

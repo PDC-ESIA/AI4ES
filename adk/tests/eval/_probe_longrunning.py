@@ -15,7 +15,8 @@ de (b).
 Uso (de adk/):
     AI4ES_EVAL_WORKSPACE=... uv run python tests/eval/_probe_longrunning.py
 
-Arquivo temporário de investigação — apagar depois de registrar o resultado.
+Mantido como diagnóstico reproduzível da limitação 1 do README (`LongRunningFunctionTool`
+some da trajetória). Não é teste: o pytest não o coleta.
 """
 
 import asyncio
