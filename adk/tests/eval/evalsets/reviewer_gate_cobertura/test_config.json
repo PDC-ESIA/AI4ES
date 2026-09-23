@@ -1,0 +1,27 @@
+{
+  "criteria": {
+    "ai4es_tool_sequence_in_order": 1.0,
+    "ai4es_resposta_contem": 1.0,
+    "ai4es_contrato_de_tools": 1.0
+  },
+  "custom_metrics": {
+    "ai4es_tool_sequence_in_order": {
+      "code_config": {
+        "name": "tests.eval.metrics.tool_sequence_in_order"
+      },
+      "description": "O reviewer leu ao menos um arquivo do coder antes de opinar."
+    },
+    "ai4es_resposta_contem": {
+      "code_config": {
+        "name": "tests.eval.metrics.resposta_contem"
+      },
+      "description": "O gate de cobertura sobrepos o status e inseriu o bloco delimitado."
+    },
+    "ai4es_contrato_de_tools": {
+      "code_config": {
+        "name": "tests.eval.metrics.contrato_de_tools"
+      },
+      "description": "O cr_review_analyzer declarou ao modelo apenas tool_ler_arquivo."
+    }
+  }
+}

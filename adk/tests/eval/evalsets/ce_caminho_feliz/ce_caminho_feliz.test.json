@@ -1,0 +1,45 @@
+{
+  "eval_set_id": "ai4es_ce_caminho_feliz",
+  "name": "context-engineer-caminho-feliz",
+  "description": "Requisitos e design corretos em disco. O agente deve LER as duas fases e PERSISTIR o contexto macro e ao menos uma task. O que este caso pega e o modo de falha numero 1 da lista do CLAUDE.md: o agente escreve 'Agora vou criar as tasks...' e encerra o turno sem chamar ferramenta nenhuma — no ADK um LlmAgent termina a vez ao devolver texto sem function call. Trajetoria vazia reprova aqui.",
+  "eval_cases": [
+    {
+      "eval_id": "le_as_duas_fases_e_persiste_contexto_e_tasks",
+      "conversation": [
+        {
+          "invocation_id": "ce-feliz-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Gere as tasks de codificacao a partir dos manifestos abaixo.\n\n## phase: requirements (status: ok)\nsummary: Requisitos elicitados e validados para o catalogo de livros.\nartifacts:\n  - tipo=HU id=HU-001 path=requirements/HUs/HU-001.md\n  - tipo=RF id=RF-001 path=requirements/RFs/RF-001.md\n  - tipo=RF id=RF-002 path=requirements/RFs/RF-002.md\ndoubts:\n\n## phase: design (status: ok)\nsummary: Analise tecnica concluida para a HU-001.\nartifacts:\n  - tipo=analise id=HU-001 path=design/analise_tecnica_HU-001.md\ndoubts:\n"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Contexto macro e tasks de codificacao persistidos em coder/tasks/ a partir do RF-001 e do RF-002, com rastreabilidade ate a HU-001 e a analise tecnica."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              { "name": "tool_ler_requirements" },
+              { "name": "tool_ler_design" },
+              { "name": "tool_salvar_task_cr" },
+              { "name": "tool_salvar_macro_context_cr" }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {}
+      }
+    }
+  ]
+}

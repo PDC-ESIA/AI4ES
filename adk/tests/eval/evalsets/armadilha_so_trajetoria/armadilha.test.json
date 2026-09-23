@@ -1,0 +1,47 @@
+{
+  "eval_set_id": "ai4es_armadilha_trajetoria_verde",
+  "name": "armadilha-trajetoria-verde-agente-em-failsafe",
+  "description": "MESMO caso do validator_aprovado, mas SEM session_input.state. Sem task_id no state, _report_path_valido rejeita o caminho ecoado e o validador cai no fail-safe (reprovado por falta de evidencia). A trajetoria de tools continua identica — o agente chamou tool_ler_arquivo com o caminho certo — entao tool_trajectory_avg_score marca 1.0 e PASSA, com o agente rodando degradado. E o achado principal do spike de 01/09 (secao 4), aqui como regressao executavel. O par armadilha_com_resposta usa este mesmo caso com response_match_score e REPROVA.",
+  "eval_cases": [
+    {
+      "eval_id": "trajetoria_verde_com_agente_em_failsafe",
+      "conversation": [
+        {
+          "invocation_id": "armadilha-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "report_path: {{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json\n\nValide o Work Item TASK-EVAL-001 a partir do ExecutionReport nesse caminho."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "{\"work_item_id\": \"TASK-EVAL-001\", \"status\": \"aprovado\", \"criteria_verdicts\": [{\"criterion\": \"A API expoe GET /health retornando 200 com corpo {\\\"status\\\": \\\"ok\\\"}\", \"status\": \"inconclusivo\", \"reasoning\": \"Critério não avaliado pelo harness; evidências técnicas e testes do coder não autorizam conclusão semântica.\", \"evidence_ref\": null}, {\"criterion\": \"A suite de testes automatizados executa e passa integralmente\", \"status\": \"inconclusivo\", \"reasoning\": \"Critério não avaliado pelo harness; evidências técnicas e testes do coder não autorizam conclusão semântica.\", \"evidence_ref\": null}], \"blocking_reason\": null, \"summary\": \"Aprovado: o sistema gerado foi construído, iniciou e passou nos próprios testes.\"}"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "tool_ler_arquivo",
+                "args": {
+                  "caminho": "{{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {}
+      }
+    }
+  ]
+}

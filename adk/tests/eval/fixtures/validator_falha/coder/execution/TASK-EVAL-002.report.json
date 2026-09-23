@@ -1,0 +1,60 @@
+{
+  "work_item_id": "TASK-EVAL-002",
+  "iteration": 3,
+  "generated_at": "2026-09-07T10:30:00-03:00",
+  "acceptance_criteria": [
+    "A API expoe POST /pedidos criando o pedido e retornando 201",
+    "A suite de testes automatizados executa e passa integralmente"
+  ],
+  "overall_status": "falha",
+  "stages": [
+    {
+      "stage": "preparacao_ambiente",
+      "status": "sucesso",
+      "duration_seconds": 11.9,
+      "summary": "Dependencias instaladas a partir de requirements.txt",
+      "evidence": {
+        "comando": "python -m pip install -r requirements.txt",
+        "exit_code": 0
+      },
+      "error_code": null
+    },
+    {
+      "stage": "implantacao_artefato",
+      "status": "sucesso",
+      "duration_seconds": 2.7,
+      "summary": "Artefato implantado no sandbox direct",
+      "evidence": { "workdir": "." },
+      "error_code": null
+    },
+    {
+      "stage": "inicializacao_aplicacao",
+      "status": "falha",
+      "duration_seconds": 30.0,
+      "summary": "A aplicacao nao respondeu ao healthcheck dentro do tempo limite",
+      "evidence": {
+        "healthcheck": "/",
+        "saida": "ModuleNotFoundError: No module named 'app.repositorio'"
+      },
+      "error_code": "HEALTHCHECK_TIMEOUT"
+    },
+    {
+      "stage": "testes_automatizados",
+      "status": "pulado",
+      "duration_seconds": 0.0,
+      "summary": "Estagio pulado: a aplicacao nao subiu",
+      "evidence": {},
+      "error_code": null
+    },
+    {
+      "stage": "validacoes_work_item",
+      "status": "pulado",
+      "duration_seconds": 0.0,
+      "summary": "Estagio pulado: a aplicacao nao subiu",
+      "evidence": {},
+      "error_code": null
+    }
+  ],
+  "criteria_evidence": [],
+  "total_duration_seconds": 44.6
+}

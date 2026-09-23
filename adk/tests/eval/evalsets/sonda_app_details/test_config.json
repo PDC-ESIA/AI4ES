@@ -1,0 +1,13 @@
+{
+  "criteria": {
+    "ai4es_sonda": 1.0
+  },
+  "custom_metrics": {
+    "ai4es_sonda": {
+      "code_config": {
+        "name": "tests.eval.metrics.sonda"
+      },
+      "description": "Instrumentacao: registra o que a avaliacao enxergou e devolve sempre 1.0."
+    }
+  }
+}

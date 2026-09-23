@@ -1,0 +1,61 @@
+{
+  "eval_set_id": "ai4es_validator_aprovado",
+  "name": "validator-report-verde",
+  "description": "Caminho feliz do implementation_validator, com session_input.state semeado (task_id + report_path). Sem esse state o guard de seguranca rejeita o caminho e o agente cai no fail-safe — ver o eval set armadilha_*. Alem da trajetoria, ancora a RESPOSTA: desde o #406 o veredito e decidido so pela execucao (overall_status == sucesso) e todo criterio com outcome nao_avaliado e forcado a inconclusivo com texto fixo — a resposta final e 100% gerada em Python por montar_veredito, entao o ROUGE e estavel.",
+  "eval_cases": [
+    {
+      "eval_id": "aprova_quando_execucao_verde_e_criterios_atendidos",
+      "conversation": [
+        {
+          "invocation_id": "val-aprov-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "report_path: {{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json\n\nValide o Work Item TASK-EVAL-001 a partir do ExecutionReport nesse caminho."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "{\"work_item_id\": \"TASK-EVAL-001\", \"status\": \"aprovado\", \"criteria_verdicts\": [{\"criterion\": \"A API expoe GET /health retornando 200 com corpo {\\\"status\\\": \\\"ok\\\"}\", \"status\": \"inconclusivo\", \"reasoning\": \"Critério não avaliado pelo harness; evidências técnicas e testes do coder não autorizam conclusão semântica.\", \"evidence_ref\": null}, {\"criterion\": \"A suite de testes automatizados executa e passa integralmente\", \"status\": \"inconclusivo\", \"reasoning\": \"Critério não avaliado pelo harness; evidências técnicas e testes do coder não autorizam conclusão semântica.\", \"evidence_ref\": null}], \"blocking_reason\": null, \"summary\": \"Aprovado: o sistema gerado foi construído, iniciou e passou nos próprios testes.\"}"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "tool_ler_arquivo",
+                "args": {
+                  "caminho": "{{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          },
+          "app_details": {
+            "agent_details": {
+              "implementation_validator": {
+                "name": "implementation_validator",
+                "tool_declarations": [
+                  "tool_ask_clarification",
+                  "tool_ler_arquivo"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {
+          "task_id": "TASK-EVAL-001",
+          "report_path": "{{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json"
+        }
+      }
+    }
+  ]
+}
