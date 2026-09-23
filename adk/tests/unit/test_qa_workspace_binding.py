@@ -121,6 +121,10 @@ def test_pytest_runner_nao_aprova_suite_totalmente_ignorada(tmp_path):
 
 
 def test_pytest_runner_importa_pacote_src_materializado(monkeypatch, tmp_path):
+    import os
+    import pytest
+    if os.environ.get("QA_SANDBOX_INTEGRATION") != "1":
+        pytest.skip("Requer Docker e imagem QA; habilite QA_SANDBOX_INTEGRATION=1")
     workspace = tmp_path / "workspace_output"
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(workspace))
     suite = workspace / "tests" / "inputs" / "rf_test_001"

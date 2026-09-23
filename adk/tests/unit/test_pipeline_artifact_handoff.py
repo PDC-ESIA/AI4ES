@@ -311,6 +311,18 @@ def test_code_fix_rejeita_correcao_com_credencial_hardcoded(monkeypatch, tmp_pat
     assert test_file.read_text(encoding="utf-8") == original
 
 
+def test_code_fix_rejeita_credencial_em_dicionario(monkeypatch, tmp_path: Path):
+    test_file, original = _preparar_teste_existente(monkeypatch, tmp_path)
+    from shared.tools.qa_test_files import write_qa_test
+
+    result = write_qa_test(str(test_file),
+        'def test_x():\n    data = {"api_key": "sk-real-Abc123xyz"}\n    assert data\n')
+    assert result["status"] == "erro"
+    assert "risco de segurança" in result["erro"]
+    assert "sk-real-Abc123xyz" not in result["erro"]
+    assert test_file.read_text(encoding="utf-8") == original
+
+
 def test_code_fix_rejeita_import_de_fora_da_suite(monkeypatch, tmp_path: Path):
     """Regra de isolamento do prompt do code_fix_agent ('nunca referencie
     workspace_output/coder') agora tem backstop de código via

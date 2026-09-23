@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from shared.security import redigir_segredos
+from shared.qa_disclosure import arquivo_privado
 from shared.workspace import get_agent_workspace
 
 from ..schemas import (
@@ -240,6 +241,8 @@ def _arquivos_do_workspace(
     limites: list[str] = []
     total_bytes = 0
     for caminho in raiz.rglob("*"):
+        if arquivo_privado(caminho.relative_to(raiz)):
+            continue
         if not caminho.is_file():
             continue
         relativo = caminho.relative_to(raiz)

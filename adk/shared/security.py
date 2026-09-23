@@ -48,24 +48,27 @@ def redigir_segredos(texto: str) -> str:
         texto,
     )
     def _substituir_atribuicao(match: re.Match) -> str:
+        offset = 0 if match.group(1) is not None else 5
         chave, aspas_chave, separador, aspas_valor = (
-            match.group(1),
-            match.group(2),
-            match.group(3),
-            match.group(4),
+            match.group(offset + 1),
+            match.group(offset + 2),
+            match.group(offset + 3),
+            match.group(offset + 4),
         )
         return f"{chave}{aspas_chave}{separador}{aspas_valor}[REDACTED]{aspas_valor}"
 
     texto = re.sub(
         (
             r"(?i)\b(api[_-]?key|access[_-]?token|token|"
-            r"password|passwd|secret)\b"
+            r"password|passwd|secret|senha|authorization)\b"
             # Grupo 4 (aspas do valor) é reaberto via \4 para consumir a
             # aspa de FECHAMENTO real do valor (se houver) — sem isso, ela
             # sobra no texto original e duplica com a aspa que a própria
             # substituição reinsere (ex.: {"api_key": "[REDACTED]""} ao
             # invés de {"api_key": "[REDACTED]"}).
-            r"([\"']?)(\s*[:=]\s*)([\"']?)([^\s,;\"']+)\4"
+            r"([\"']?)(\s*[:=]\s*)([\"'])((?:\\.|(?!\4)[^\\])*)\4"
+            r"|\b(api[_-]?key|access[_-]?token|token|password|passwd|secret|senha|authorization)"
+            r"\b([\"']?)(\s*[:=]\s*)()([^\s,;\"']+)"
         ),
         _substituir_atribuicao,
         texto,
@@ -170,6 +173,23 @@ def _mapa_aliases_import(arvore: ast.AST) -> dict[str, str]:
             for alias in node.names:
                 nome_local = alias.asname or alias.name
                 aliases[nome_local] = f"{node.module}.{alias.name}"
+    # Propaga aliases por atribuição sem executar o código. A união conservadora
+    # evita perder o risco quando um nome é reatribuído em outro escopo.
+    for _ in range(8):
+        mudou = False
+        for node in ast.walk(arvore):
+            if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+                origem = _resolver_dotted(_dotted(node.value), aliases)
+                if not origem or not origem.startswith(("os.", "subprocess.", "importlib.",
+                                                         *_PREFIXOS_RISCO_REDE)):
+                    continue
+                alvos = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for alvo in alvos:
+                    if isinstance(alvo, ast.Name) and alvo.id not in aliases:
+                        aliases[alvo.id] = origem
+                        mudou = True
+        if not mudou:
+            break
     return aliases
 
 
@@ -235,7 +255,8 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
     pytest_runner).
 
     Resolve aliases simples de import (`import x as y`,
-    `from x import y as z`) mas não segue atribuições de variável — por
+    `from x import y as z`) e atribuições diretas de funções/módulos. Não
+    acompanha instâncias retornadas por chamadas — por
     exemplo, `s = requests.Session(); s.get(url)` não é detectado nessa
     segunda chamada. É uma limitação aceita: esta função é uma camada de
     defesa em profundidade complementar ao allowlist de ambiente do
@@ -263,6 +284,9 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
     riscos: list[str] = []
 
     for node in ast.walk(arvore):
+        if isinstance(node, (ast.Name, ast.Attribute)) and isinstance(node.ctx, ast.Load):
+            if _resolver_dotted(_dotted(node), aliases) == "os.environ":
+                riscos.append(f"linha {node.lineno}: acesso ao ambiente do host (os.environ)")
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             modulos = (
                 [node.module] if isinstance(node, ast.ImportFrom) and node.module
@@ -335,13 +359,13 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
 # Detecção (não redação) de credenciais literais em texto/código gerado.
 # ---------------------------------------------------------------------------
 
-_PADRAO_AUTHORIZATION = re.compile(r"(?i)\bauthorization\s*[:=]\s*\S+")
+_PADRAO_AUTHORIZATION = re.compile(r"(?i)\bauthorization[\"']?\s*[:=]\s*\S+")
 _PADRAO_BEARER = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
 _PADRAO_URL_CREDENCIAL = re.compile(r"(?i)https?://[^/\s:@]+:[^@\s/]+@")
 _PADRAO_ATRIBUICAO_SUSPEITA = re.compile(
     r"""(?ix)
     \b(api[_-]?key|access[_-]?token|token|password|passwd|secret|senha)\w*
-    \s*[:=]\s*
+    ["']?\s*[:=]\s*
     ['"]([^'"]+)['"]
     """
 )
@@ -448,19 +472,23 @@ def validar_seguranca_codigo(codigo: str, identificador: str) -> None:
 # detectar_credenciais já faz para outros formatos.
 # ---------------------------------------------------------------------------
 
-_PADRAO_PROCESS_ENV = re.compile(r"\bprocess\s*\.\s*env\b")
+_PADRAO_PROCESS_ENV = re.compile(r"\bprocess\s*(?:\.\s*env\b|\[\s*['\"]env['\"]\s*\])")
 _PADRAO_REQUIRE_PERIGOSO = re.compile(
-    r"require\s*\(\s*[\"'](child_process|fs)[\"']\s*\)"
+    r"(?:\b(?:require|import)\s*\(\s*|\bfrom\s*|\bimport\s*)"
+    r"[\"'](?:node:)?(?:child_process|fs|net|http|https|http2|tls|dgram|dns)"
+    r"(?:/[^\"']*)?[\"']"
 )
 _PADRAO_CHAMADA_REDE_TS = re.compile(
-    r"\b(?:fetch|request|axios(?:\.\w+)?)\s*\(\s*[\"'`]([^\"'`]+)[\"'`]"
+    r"\b(?:fetch|request(?:\s*\.\s*\w+)?|axios(?:\s*\.\s*\w+)?|"
+    r"page\s*\.\s*goto)\s*\(\s*"
 )
+_PADRAO_ALVO_TS = re.compile(r"([\"'`])((?:\\.|(?!\1)[^\\])*)\1\s*(?=[,)])")
 
 
 def _host_ts_ou_none(alvo: str) -> str | None:
     """Extrai o host de uma URL usada num spec TS, ou None se for caminho
     relativo (mesma origem do base_url, já validado em outro lugar)."""
-    if alvo.startswith("/"):
+    if alvo.startswith("/") and not alvo.startswith(("//", "/\\")):
         return None
     return alvo
 
@@ -486,34 +514,32 @@ def detectar_riscos_spec_ts(codigo_ts: str) -> list[str]:
     Retorna lista vazia quando não há risco.
     """
     riscos: list[str] = []
-    for numero, linha in enumerate(codigo_ts.splitlines(), start=1):
-        if _PADRAO_PROCESS_ENV.search(linha):
+    # Inspeciona o texto completo: chamadas/imports podem quebrar linhas.
+    for padrao, descricao in (
+        (_PADRAO_PROCESS_ENV, "leitura de variável de ambiente (process.env)"),
+        (_PADRAO_REQUIRE_PERIGOSO,
+         "import de módulo Node de baixo nível (child_process/fs/rede)"),
+    ):
+        for match in padrao.finditer(codigo_ts):
+            numero = codigo_ts.count("\n", 0, match.start()) + 1
+            riscos.append(f"linha {numero}: {descricao}")
+    for match in _PADRAO_CHAMADA_REDE_TS.finditer(codigo_ts):
+        numero = codigo_ts.count("\n", 0, match.start()) + 1
+        literal = _PADRAO_ALVO_TS.match(codigo_ts, match.end())
+        alvo = literal.group(2) if literal else ""
+        if not literal or "${" in alvo or "\\" in alvo:
             riscos.append(
-                f"linha {numero}: leitura de variável de ambiente do "
-                "processo (process.env) — specs não devem acessar o "
-                "ambiente do host"
+                f"linha {numero}: requisição de rede com host não "
+                "verificável estaticamente — execução autônoma só pode "
+                "acessar localhost/127.0.0.1"
             )
-        if _PADRAO_REQUIRE_PERIGOSO.search(linha):
-            riscos.append(
-                f"linha {numero}: import de módulo Node de baixo nível "
-                "(child_process/fs) — specs não devem executar processos "
-                "nem acessar o filesystem fora do harness Playwright"
-            )
-        for match in _PADRAO_CHAMADA_REDE_TS.finditer(linha):
-            alvo = match.group(1)
-            if "${" in alvo:
-                riscos.append(
-                    f"linha {numero}: requisição de rede com host não "
-                    "verificável estaticamente (template string) — "
-                    "execução autônoma só pode acessar localhost/127.0.0.1"
-                )
-                continue
-            host = _host_ts_ou_none(alvo)
-            if host is None or _eh_loopback(host):
-                continue
-            riscos.append(
-                f"linha {numero}: requisição de rede a host externo "
-                f"({alvo}) — execução autônoma só pode acessar "
-                "localhost/127.0.0.1/::1"
-            )
+            continue
+        host = _host_ts_ou_none(alvo)
+        if host is None or _eh_loopback(host):
+            continue
+        # Não inclua a URL: ela própria pode conter uma credencial.
+        riscos.append(
+            f"linha {numero}: requisição de rede a host externo "
+            "— execução autônoma só pode acessar localhost/127.0.0.1/::1"
+        )
     return riscos

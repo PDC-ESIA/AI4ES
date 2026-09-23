@@ -1205,13 +1205,9 @@ def gerar_testes_e2e(
     resultado_execucao = None
     runtime_alvo = None
 
-    base_url_descoberta = any(
-        item.startswith("base_url:") for item in descobertas_aplicadas
-    )
     if (
         validacao.pode_gerar_codigo
         and validacao.pode_executar
-        and base_url_descoberta
     ):
         runtime_alvo = iniciar_runtime_alvo(
             normalizada,
@@ -1278,6 +1274,7 @@ def gerar_testes_e2e(
                 resultado_execucao = executar_playwright(
                     normalizada,
                     arquivos_gerados[0],
+                    runtime_alvo=runtime_alvo,
                 )
             except Exception as exc:  # fronteira da tool: não vazar exceção ao agente
                 resultado_execucao = ResultadoExecucaoE2E(

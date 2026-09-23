@@ -2,11 +2,12 @@ import subprocess
 import json
 from pathlib import Path
 import logging
-import sys
 from datetime import datetime, timezone
 import re
 
-from shared.security import ambiente_minimo_python, redigir_segredos
+from shared.security import redigir_segredos
+from shared.qa_sandbox import executar_isolado, SandboxIndisponivel
+from shared.qa_disclosure import resumir_evidencia, identificador_publico, tipo_erro_publico
 from shared.workspace import get_agent_workspace, get_workspace_root
 
 # Variáveis de controle de estado do agente
@@ -18,6 +19,8 @@ logger = logging.getLogger("qa_agent_tool")
 def _gerar_doubt_artifact_sincrono(id_artefato: str, motivo: str) -> str:
     """Gera o doubt artifact estritamente dentro do workspace do agente de QA."""
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    id_artefato = identificador_publico(id_artefato)
+    motivo = resumir_evidencia(motivo)
     from shared.workspace import get_agent_workspace
     doubt_dir = get_agent_workspace("receive_requirements") / "doubt_artifacts"
     doubt_dir.mkdir(parents=True, exist_ok=True)
@@ -167,59 +170,44 @@ def executar_pytest_tool(caminho_arquivo: str) -> dict:
             caminho
         )
 
-    arquivo_report_json = dir_base / 'report.json'
     arquivo_cov_json = dir_base / 'coverage.json'
-
-    # Adicionando --cov-report=json para capturar a cobertura exata e cumprir o DoD
-    # --tb=short garante tracebacks concisos com número de linha exato
-    comando = [
-        sys.executable, 
-        "-m", 
-        "pytest", 
-        str(caminho), 
-        "--cov=.", 
-        "--json-report", 
-        f"--json-report-file={arquivo_report_json}",
-        "--cov-report=json",
-        "--tb=short"
-    ]
-
-    # Os fontes materializados preservam a topologia original do Coder. As
-    # duas entradas suportam tanto ``from src.modulo`` quanto ``from modulo``
-    # sem exigir que o teste gerado manipule sys.path corretamente.
-    #
-    # O ambiente do subprocesso usa allowlist (não os.environ.copy()): o
-    # código deste teste foi gerado por LLM a partir de artefatos externos e
-    # não deve enxergar credenciais do processo orquestrador (GOOGLE_API_KEY,
-    # DATABASE_URL, etc.). Mesmo padrão já aplicado no fluxo E2E
-    # (ver shared/security.ambiente_minimo_python).
-    env = ambiente_minimo_python(
-        pythonpath=[str(dir_base), str(dir_base / "src")]
-    )
     
     try:
         logger.info(f"[QA Subagent] Executando testes para {nome_artefato}...")
-        resultado = subprocess.run(
-            comando,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=str(dir_base),
-            env=env,
+        raiz = get_agent_workspace("receive_requirements").resolve()
+        if not caminho.is_relative_to(raiz) or caminho.suffix != ".py" or not caminho.name.startswith("test_"):
+            raise ValueError("Somente testes materializados do QA podem ser executados.")
+        dados = executar_isolado(dir_base, caminho.name)
+        resultado = subprocess.CompletedProcess(
+            args=["qa-sandbox", "pytest"], returncode=dados["exit_code"],
+            stdout=f'{dados["passed"]} passed, {dados["failed"]} failed, {dados["skipped"]} skipped',
+            stderr="",
         )
         
-        parsed = _parse_resultados_pytest(caminho, resultado, arquivo_cov_json)
+        parsed = _parse_resultados_pytest(caminho, resultado, arquivo_cov_json,
+                                         ler_cobertura=False)
+        if parsed["erros"]:
+            parsed["erros"][0]["linhas_com_erro"] = [
+                {"linha": erro["line"], "erro": erro["type"]} for erro in dados.get("errors", [])
+            ]
+        total = dados["num_statements"]
+        cobertas = min(dados["covered_lines"], total)
+        parsed["cobertura"] = {"percentual": round(100 * cobertas / total, 2) if total else 0,
+                              "linhas_cobertas": cobertas, "linhas_totais": total}
         if parsed["status"] == "sucesso":
             _contador_execucoes[str(caminho)] = 0
 
         return parsed
         
+    except SandboxIndisponivel:
+        return _gerar_erro_execucao("ERR_SANDBOX_INDISPONIVEL",
+                                   "Execução bloqueada: sandbox do QA indisponível.", caminho)
     except subprocess.TimeoutExpired:
         logger.error(f"[QA Subagent] Timeout ao executar {caminho}")
         return _gerar_erro_execucao("ERR_TIMEOUT", "Execução ultrapassou o tempo limite 30s.", caminho)
     except Exception as e:
-        logger.error(f"[QA Subagent] Erro fatal na execução: {e}")
-        return _gerar_erro_execucao("ERR_TESTE_FALHOU_CRITICO", str(e), caminho)
+        logger.error("[QA Subagent] Execução bloqueada (%s).", type(e).__name__)
+        return _gerar_erro_execucao("ERR_TESTE_FALHOU_CRITICO", "Execução isolada bloqueada.", caminho)
     
 
 def _extrair_linhas_com_erro(stdout: str, nome_arquivo: str) -> list[dict]:
@@ -244,7 +232,7 @@ def _extrair_linhas_com_erro(stdout: str, nome_arquivo: str) -> list[dict]:
         chave = (match.group(1), match.group(2))
         if chave not in vistos:
             vistos.add(chave)
-            encontrados.append({"linha": int(match.group(1)), "erro": match.group(2).strip()})
+            encontrados.append({"linha": int(match.group(1)), "erro": tipo_erro_publico(match.group(2))})
     return encontrados
 
 
@@ -270,7 +258,8 @@ def _classificar_resultado(stdout: str, returncode: int) -> tuple[str, int, int]
         return "falha_total", passou, falhou
 
 
-def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProcess, cov_json_path: Path) -> dict:
+def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProcess, cov_json_path: Path,
+                            *, ler_cobertura: bool = True) -> dict:
     """Parse do resultado de execução pytest com extração de cobertura.
 
     Args:
@@ -294,7 +283,7 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
         "linhas_totais": 0
     }
 
-    if cov_json_path.exists() and (qtd_passou + qtd_falhou) > 0:
+    if ler_cobertura and cov_json_path.exists() and (qtd_passou + qtd_falhou) > 0:
         try:
             with open(cov_json_path, "r", encoding="utf-8") as f:
                 cov_data = json.load(f)
@@ -313,9 +302,11 @@ def _parse_resultados_pytest(caminho: Path, resultado: subprocess.CompletedProce
             log_completo += f"\n--- AVISOS DE SISTEMA ---\n{resultado.stderr}"
         # Redige credenciais antes de propagar para code_fix_agent/usuário —
         # mesmo padrão do fluxo E2E (shared.security.redigir_segredos).
-        log_completo = redigir_segredos(log_completo)
+        log_completo = resumir_evidencia(log_completo)
 
-        linhas_com_erro = _extrair_linhas_com_erro(resultado.stdout, caminho.name)
+        linhas_com_erro = _extrair_linhas_com_erro(
+            redigir_segredos(resultado.stdout), caminho.name
+        )
 
         nenhum_executado = qtd_passou == 0 and qtd_falhou == 0
         erros.append({

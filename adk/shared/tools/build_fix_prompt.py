@@ -1,5 +1,6 @@
 from typing import Optional
 from .log_parser_tool import parse_pytest_log
+from shared.qa_disclosure import resumir_evidencia, tipo_erro_publico
  
  
 # ── builders de prompt ────────────────────────────────────────────────────────
@@ -37,6 +38,13 @@ def build_fix_prompt(
     Returns:
         str: Prompt estruturado para o agente de correção.
     """
+    # Conteúdo livre pode conter prompts internos/código privado sem qualquer
+    # padrão de segredo. O corretor lê o teste pela ferramenta confinada.
+    error_description = tipo_erro_publico(error_description) + ": " + resumir_evidencia(error_description)
+    original_code = resumir_evidencia(original_code) if original_code else None
+    test_code = resumir_evidencia(test_code) if test_code else None
+    context = resumir_evidencia(context) if context else None
+    language = language if language in {"Python", "TypeScript", "JavaScript"} else "Python"
     secoes = []
  
     secoes.append(_secao(
@@ -86,7 +94,7 @@ def build_fix_prompt(
             "3. Reescreva APENAS o trecho ou função que precisa ser corrigido.\n"
             "4. Não altere partes do código que não estão relacionadas ao erro.\n"
             "5. Garanta que o código corrigido seja compatível com os testes fornecidos.\n"
-            "6. Retorne o código corrigido dentro de um bloco de código com a linguagem especificada."
+            "6. Leia o teste autorizado com read_qa_test; evidências brutas foram omitidas."
         )
     ))
  
@@ -138,7 +146,7 @@ def build_fix_prompt_from_error(
     return {
         "prompt": prompt,
         "metadata": {
-            "language": language,
+            "language": language if language in {"Python", "TypeScript", "JavaScript"} else "Python",
             "has_original_code": original_code is not None,
             "has_test_code": test_code is not None,
             "has_context": context is not None,

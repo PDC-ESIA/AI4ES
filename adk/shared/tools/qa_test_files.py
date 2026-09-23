@@ -6,7 +6,7 @@ import ast
 import hashlib
 from pathlib import Path
 
-from shared.security import validar_seguranca_codigo
+from shared.security import validar_seguranca_codigo, redigir_segredos
 from shared.tools.pytest_runner import _normalizar_caminho_arquivo
 from shared.workspace import get_agent_workspace
 
@@ -85,7 +85,7 @@ def read_qa_test(caminho_arquivo: str) -> dict:
         return {
             "status": "ok",
             "path": str(path),
-            "conteudo": path.read_text(encoding="utf-8"),
+            "conteudo": redigir_segredos(path.read_text(encoding="utf-8")),
         }
     except (OSError, ValueError) as exc:
         return {"status": "erro", "erro": str(exc)}

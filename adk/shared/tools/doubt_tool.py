@@ -1,8 +1,9 @@
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.security import redigir_segredos
+from shared.tools.doubt_artifact import _safe_file_part
+from shared.qa_disclosure import resumir_evidencia, identificador_publico
 
 
 def _resolve_doubt_dir() -> Path:
@@ -95,7 +96,8 @@ class DoubtArtifactGenerator:
         timestamp_file = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
         timestamp_display = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        nome_arquivo = f"Doubt_Artifact_{id_artefato}_{timestamp_file}.md"
+        id_artefato = identificador_publico(id_artefato)
+        nome_arquivo = f"Doubt_Artifact_{_safe_file_part(id_artefato)}_{timestamp_file}.md"
         caminho_final = doubt_dir / nome_arquivo
 
         # 3. Preparação dos dados
@@ -105,8 +107,8 @@ class DoubtArtifactGenerator:
             "artifact_id": id_artefato,
             "timestamp": timestamp_display,
             "module_name": "qa_agent / pytest_runner",
-            "reason_for_invalidation": redigir_segredos(motivo),
-            "suspect_code_or_prompt": redigir_segredos(trecho_suspeito),
+            "reason_for_invalidation": resumir_evidencia(motivo),
+            "suspect_code_or_prompt": resumir_evidencia(trecho_suspeito),
             "input_artifact_name": "N/A",
             "action_attempted": "Execução de testes",
             "system_raw_response": "ERR_LOOP detectado",
@@ -130,7 +132,7 @@ class DoubtArtifactGenerator:
             
         # 5. Renderização e Escrita final
         try:
-            content = cls.TEMPLATE.format(**data)
+            content = redigir_segredos(cls.TEMPLATE.format(**data))
             caminho_final.write_text(content, encoding="utf-8")
             # Persistencia
             print(f"\n[LOG] Sucesso: Artefato de dúvida persistido localmente em: {caminho_final}")
