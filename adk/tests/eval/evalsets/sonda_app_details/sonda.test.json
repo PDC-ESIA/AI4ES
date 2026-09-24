@@ -1,7 +1,7 @@
 {
   "eval_set_id": "ai4es_sonda_app_details",
   "name": "sonda-app-details",
-  "description": "Instrumentacao, nao gate. Roda o implementation_validator uma vez e registra em metrics.CAPTURA o que a avaliacao enxergou — em especial se Invocation.app_details vem populado quando o modelo e LiteLlm (github_copilot). Responde ao achado U3 da secao 2-A do PLANO_POC.",
+  "description": "Instrumentacao, nao gate. Roda o implementation_validator uma vez e registra em metrics.CAPTURA o que a avaliacao enxergou — em especial se Invocation.app_details vem populado quando o modelo e LiteLlm (github_copilot). Responde se da para assertar sobre o prompt renderizado e as tools declaradas ao modelo.",
   "eval_cases": [
     {
       "eval_id": "sonda_validator_report_verde",

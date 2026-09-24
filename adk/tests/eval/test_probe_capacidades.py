@@ -4,12 +4,11 @@ Não é gate de comportamento do pipeline — é verificação da própria ferra
 Roda uma avaliação instrumentada (métrica `ai4es_sonda`, que nunca reprova) e
 inspeciona o objeto `Invocation` que o ADK entregou às métricas.
 
-A pergunta que ele responde é o achado **U3** da §2-A do `PLANO_POC.md`:
-`Invocation.app_details.agent_details[].instructions` e `.tool_declarations` são
-populados pelo `_RequestIntercepterPlugin` a partir do `LlmRequest` real. Se isso
-valer com `LiteLlm`/`github_copilot` — e não só com Gemini —, abre-se a
-possibilidade de assertar sobre **o prompt renderizado**, que é o buraco da PP3
-(os `prompt.py` dos agentes, sem nenhum teste semântico).
+A pergunta que ele responde: `Invocation.app_details.agent_details[].instructions` e
+`.tool_declarations` são populados pelo `_RequestIntercepterPlugin` a partir do
+`LlmRequest` real? Se isso valer com `LiteLlm`/`github_copilot` — e não só com
+Gemini —, abre-se a possibilidade de assertar sobre **o prompt renderizado**; hoje os
+`prompt.py` dos agentes não têm nenhum teste semântico.
 
 O teste passa em qualquer cenário: o resultado é o relatório impresso. O que ele
 não deixa passar é a mecânica quebrada.
@@ -56,13 +55,13 @@ async def test_o_que_a_avaliacao_enxerga(workspace_semeado, evalset, rodar_eval)
         print("    " + registro["resposta_final"][:400].replace("\n", "\n    "))
 
     print("\n" + "-" * 78)
-    print("VEREDITO DO PROBE (achado U3 do PLANO_POC §2-A)")
+    print("VEREDITO DO PROBE")
     print(f"  app_details populado com LiteLlm : {tem_app_details}")
     print(f"  instruction renderizada visível  : {tem_instructions}")
     if tem_instructions:
         print("  => Dá para assertar sobre o PROMPT renderizado por métrica custom,")
-        print("     sem servidor web e sem adk conformance. Gancho para a PP3.")
+        print("     sem servidor web e sem adk conformance.")
     else:
-        print("  => NÃO dá. Para regressão de prompt resta o adk conformance (U1+U2),")
+        print("  => NÃO dá. Para regressão de prompt resta o adk conformance,")
         print("     que exige servidor em 127.0.0.1:8000 e plugins registrados.")
     print("=" * 78)

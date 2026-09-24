@@ -1,7 +1,7 @@
 {
   "eval_set_id": "ai4es_ce_gate_nome_design",
   "name": "context-engineer-portao-por-nome-de-arquivo",
-  "description": "Requisitos completos e analise tecnica presente em disco — mas com o nome FORA da convencao (analise_arquitetural_catalogo_livros.md em vez de analise_tecnica_*.md) e sem manifesto de design no contexto. Ate o #391 o portao do Passo 2 era string matching em 'analise_tecnica_' e o agente bloqueava (incidente de 13/08). O #391 (PR #411) trocou isso por classificacao semantica: o prompt diz que 'o bloqueio e por ausencia de CONTEUDO suficiente, nunca por nome de arquivo', e tool_ler_artefatos le a pasta design/ pelo fallback sem filtrar nome. Este caso mede essa promessa: o agente deve ler as duas fases e PERSISTIR tasks e contexto macro. Se bloquear, a trajetoria vira doubt -> manifesto -> aguardar e o caso reprova.",
+  "description": "Requisitos completos e analise tecnica presente em disco — mas com o nome FORA da convencao (analise_arquitetural_catalogo_livros.md em vez de analise_tecnica_*.md) e sem manifesto de design no contexto. Ate o #391 o portao do Passo 2 era string matching em 'analise_tecnica_' e o agente bloqueava sempre que a analise saia com outro nome. O #391 (PR #411) trocou isso por classificacao semantica: o prompt diz que 'o bloqueio e por ausencia de CONTEUDO suficiente, nunca por nome de arquivo', e tool_ler_artefatos le a pasta design/ pelo fallback sem filtrar nome. Este caso mede essa promessa: o agente deve ler as duas fases e PERSISTIR tasks e contexto macro. Se bloquear, a trajetoria vira doubt -> manifesto -> aguardar e o caso reprova.",
   "eval_cases": [
     {
       "eval_id": "nao_bloqueia_quando_analise_tecnica_tem_nome_fora_da_convencao",

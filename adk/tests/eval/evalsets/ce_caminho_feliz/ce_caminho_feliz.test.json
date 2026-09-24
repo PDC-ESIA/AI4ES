@@ -1,7 +1,7 @@
 {
   "eval_set_id": "ai4es_ce_caminho_feliz",
   "name": "context-engineer-caminho-feliz",
-  "description": "Requisitos e design corretos em disco. O agente deve LER as duas fases e PERSISTIR o contexto macro e ao menos uma task. O que este caso pega e o modo de falha numero 1 da lista do CLAUDE.md: o agente escreve 'Agora vou criar as tasks...' e encerra o turno sem chamar ferramenta nenhuma — no ADK um LlmAgent termina a vez ao devolver texto sem function call. Trajetoria vazia reprova aqui.",
+  "description": "Requisitos e design corretos em disco. O agente deve LER as duas fases e PERSISTIR o contexto macro e ao menos uma task. O que este caso pega e o modo de falha mais comum dos agentes do pipeline: o agente escreve 'Agora vou criar as tasks...' e encerra o turno sem chamar ferramenta nenhuma — no ADK um LlmAgent termina a vez ao devolver texto sem function call. Trajetoria vazia reprova aqui.",
   "eval_cases": [
     {
       "eval_id": "le_as_duas_fases_e_persiste_contexto_e_tasks",

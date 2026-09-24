@@ -4,8 +4,8 @@ Uma tool, sem workspace binding, e a política de veredito codificada em Python
 (`montar_veredito`), o que torna a resposta final estável o bastante para servir de
 âncora junto da trajetória.
 
-O par `armadilha_*` é o coração deste arquivo: transforma o achado principal do spike
-de 01/09 em regressão executável.
+O par `armadilha_*` é o coração deste arquivo: prova, como regressão executável, que
+métrica de trajetória sozinha não basta como gate.
 """
 
 import pytest
@@ -49,16 +49,16 @@ async def test_reprova_quando_a_execucao_falhou(workspace_semeado, evalset, roda
 
 
 # ---------------------------------------------------------------------------
-# A armadilha do spike (§4 de notas/spike-adk-eval.md), como regressão
+# A armadilha: trajetória correta com o agente degradado, como regressão
 # ---------------------------------------------------------------------------
 # Mesmo eval case, sem `session_input.state`. O validador cai no fail-safe e emite
 # `reprovado` por falta de evidência — mas chamou `tool_ler_arquivo` com o caminho
 # certo, então a trajetória é idêntica à do caminho feliz.
 #
 # Os dois testes abaixo formam uma afirmação só: **métrica de trajetória sozinha não
-# é gate**. Se algum dia o primeiro falhar ou o segundo passar, a premissa mudou e o
-# PLANO_POC/relatório precisam ser revistos — que é justamente o que se quer de um
-# teste de regressão sobre um achado.
+# é gate**. Se algum dia o primeiro falhar ou o segundo passar, a premissa mudou e
+# esta afirmação precisa ser revista — que é justamente o que se quer de um teste de
+# regressão sobre uma constatação.
 
 
 @pytest.mark.eval
@@ -81,8 +81,8 @@ async def test_armadilha_a_ancora_de_resposta_pega_o_que_a_trajetoria_nao_pega(
 
     assert "response_match_score" in str(excecao.value), (
         "Esperava a reprovação vir de response_match_score. Se a falha veio de "
-        "tool_trajectory_avg_score, a armadilha deixou de existir — reveja o "
-        "PLANO_POC §6.1 antes de mexer neste teste."
+        "tool_trajectory_avg_score, a armadilha deixou de existir — reveja a "
+        "premissa do par armadilha_* antes de mexer neste teste."
     )
 
 
@@ -98,7 +98,7 @@ async def test_juiz_llm_aprova_o_veredito_correto(
 ):
     """`final_response_match_v2` sobre o mesmo caso do caminho feliz.
 
-    Fica fora do gate padrão por causa do custo medido no spike: **+9 chamadas e +92%
+    Fica fora do gate padrão por causa do custo medido: **+9 chamadas e +92%
     de tokens para um único caso**, porque o juiz sampleia `num_samples=5` vezes por
     invocação e agrega por voto de maioria.
 
@@ -108,8 +108,8 @@ async def test_juiz_llm_aprova_o_veredito_correto(
     a fixture `evalset` resolve por `AI4ES_EVAL_JUDGE_MODEL` ou, na falta, pelo
     `ADK_LLM_MODEL` do `.env` — o mesmo modelo do agente, condição de auto-preferência
     (Zheng et al.) que fica declarada como limite, não escondida. Como o juiz resolve o
-    modelo pelo `LLMRegistry`, este é o caminho que o **defeito 16** sequestra — roda
-    como produção roda, sem o `X-Initiator: user`.
+    modelo pelo `LLMRegistry`, passa pelo mesmo registro de `app/main.py` que anula as
+    subclasses de `shared/llm.py` — roda como produção roda, sem o `X-Initiator: user`.
     """
     workspace_semeado("validator_verde")
     await rodar_eval(evalset("juiz_validator_aprovado"), agent_module=MODULO)

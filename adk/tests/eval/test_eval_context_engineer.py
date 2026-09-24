@@ -38,7 +38,7 @@ async def test_protocolo_de_bloqueio_emite_as_tres_tools(
 async def test_nao_bloqueia_por_nome_de_arquivo_do_design(
     workspace_semeado, evalset, rodar_eval
 ):
-    """O cenário do incidente de 13/08, com o desfecho invertido pelo #391.
+    """O cenário do antigo portão por nome, com o desfecho invertido pelo #391.
 
     Os requisitos estão completos e a análise técnica existe em disco, mas com o nome
     `analise_arquitetural_*.md`. Até o #391 o portão do Passo 2 era *string matching*
@@ -60,9 +60,9 @@ async def test_caminho_feliz_age_em_vez_de_narrar(
 ):
     """Com requisitos e design corretos, o agente lê as duas fases e persiste.
 
-    Pega o modo de falha nº 1 da lista do `CLAUDE.md`: no ADK um `LlmAgent` encerra a
-    vez ao devolver texto sem function call, e vários agentes escrevem *"Agora vou
-    criar as tasks…"* como mensagem final. Trajetória vazia reprova aqui.
+    Pega o modo de falha mais comum dos agentes do pipeline: no ADK um `LlmAgent`
+    encerra a vez ao devolver texto sem function call, e vários agentes escrevem
+    *"Agora vou criar as tasks…"* como mensagem final. Trajetória vazia reprova aqui.
     """
     workspace_semeado("projeto_completo")
     await rodar_eval(

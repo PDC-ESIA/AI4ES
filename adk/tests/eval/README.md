@@ -4,7 +4,7 @@ PoC que usa o `AgentEvaluator` nativo do ADK 1.33.0 para testar **três agentes 
 em nível de comportamento — trajetória de ferramentas, resposta final e contrato de tools —,
 que é o que a suíte unitária não alcança por construção.
 
-> ⚠️ **Estes testes gastam chamadas de LLM reais.** São opt-in: sem `AI4ES_EVAL=1` tudo é
+> **Estes testes gastam chamadas de LLM reais.** São opt-in: sem `AI4ES_EVAL=1` tudo é
 > pulado, inclusive num `uv run pytest` nu. Isso importa porque `testpaths = ["tests"]`
 > coleta este diretório junto com o resto.
 
@@ -61,13 +61,12 @@ eval = ["pandas>=2.0", "rouge-score>=0.1.2", "tabulate>=0.9"]
 |---|---|
 | `test_aprova_report_verde_com_state_semeado` | Caminho feliz, com âncora de trajetória **e** de resposta |
 | `test_reprova_quando_a_execucao_falhou` | `overall_status: falha` reprova mesmo se o LLM "aprovar" — a política é de `montar_veredito` |
-| `test_armadilha_trajetoria_verde_com_agente_em_failsafe` | 🚨 A trajetória **passa** com o agente em fail-safe |
+| `test_armadilha_trajetoria_verde_com_agente_em_failsafe` | A trajetória **passa** com o agente em fail-safe |
 | `test_armadilha_a_ancora_de_resposta_pega_o_que_a_trajetoria_nao_pega` | O mesmo caso **reprova** quando se ancora no resultado |
 
 Os dois últimos são o mesmo eval case com dois `test_config.json`, e formam **uma afirmação
-só: métrica de trajetória sozinha não é gate**. É o achado principal do spike de 01/09 (§4 de
-`atividades/testes-sistemas-agenticos/notas/spike-adk-eval.md`) virado regressão executável.
-Se um dia o primeiro falhar ou o segundo passar, a premissa mudou.
+só: métrica de trajetória sozinha não é gate**, aqui como regressão executável. Se um dia
+o primeiro falhar ou o segundo passar, a premissa mudou.
 
 As fixtures de `ExecutionReport` (`fixtures/validator_*/coder/execution/`) seguem o contrato
 do harness desde o #406: cada `criteria_evidence` traz `criterion_id`, `automatable`,
@@ -84,7 +83,7 @@ mudança de política.
 | Teste | O que prova |
 |---|---|
 | `test_protocolo_de_bloqueio_emite_as_tres_tools` | As 3 tools do protocolo de bloqueio ocorrem na ordem, incluindo o `LongRunningFunctionTool` que **pausa** o pipeline |
-| `test_nao_bloqueia_por_nome_de_arquivo_do_design` | Não bloqueia quando a análise técnica tem nome fora da convenção — a promessa do #391, que acabou com o portão por nome (`analise_tecnica_*`) do incidente de 13/08 |
+| `test_nao_bloqueia_por_nome_de_arquivo_do_design` | Não bloqueia quando a análise técnica tem nome fora da convenção — a promessa do #391, que acabou com o portão por nome (`analise_tecnica_*`) |
 | `test_caminho_feliz_age_em_vez_de_narrar` | O agente **age** em vez de escrever "Agora vou criar as tasks…" e encerrar o turno |
 
 ### `cr_review_analyzer`
@@ -114,7 +113,7 @@ registradas via o ponto de extensão oficial (`custom_metrics` no `test_config.j
 | `ai4es_resposta_contem` | Cada linha da resposta esperada aparece na obtida — para quando parte da resposta é determinística e o resto é prosa |
 | `ai4es_sonda` | Instrumentação; nunca reprova |
 
-## 🚨 Duas limitações do ADK que a PoC teve de contornar
+## Duas limitações do ADK que a PoC teve de contornar
 
 **1. `LongRunningFunctionTool` some da trajetória.** `Event.is_final_response()` devolve
 `True` assim que o evento tem `long_running_tool_ids` (`events/event.py:91-92`), e
@@ -143,7 +142,7 @@ por state (`state["tasks"]`, `state["validation"]`, `state["task_iteration_summa
 | Sequência de tools divergente | O log de `metrics.py` imprime esperado × obtido. Confira antes de mexer no eval set — pode ser achado sobre o pipeline |
 | Caso pontua 0.5 com `num_runs=2` | Não-determinismo real, quantificado. É informação, não *flakiness* a esconder |
 | `response_match_score` baixo | O ROUGE-1 pune divergência de prosa. Baixe o limiar **e registre o número observado** — não suba o limiar até passar |
-| `429 user_global_rate_limited` | Defeito 16: `app/main.py:13-15` anula as subclasses de `shared/llm.py`, e o `X-Initiator: user` nunca sai |
+| `429 user_global_rate_limited` | Não é da PoC: `app/main.py:13-15` registra de novo os prefixos de modelo com a `LiteLlm` base, anulando as subclasses de `shared/llm.py`, e o header `X-Initiator: user` nunca é enviado |
 
 ## Notas de mecânica
 
@@ -154,8 +153,7 @@ por state (`state["tasks"]`, `state["validation"]`, `state["task_iteration_summa
 - O `conftest.py` importa `app.main` logo em seguida, como o uvicorn faz. Sem isso o
   `load_dotenv` não roda, os agentes nascem com `gemini-2.5-flash`, e o `LLMRegistry`
   (que é `@lru_cache`) resolve na ordem errada.
-- Os eval sets são versionados com o placeholder `{{WORKSPACE}}`, resolvido em runtime — o
-  spike gravava `/home/<usuário>/...` no JSON e não era portável.
-- A PoC **não corrige o defeito 16**: roda como produção roda.
-
-Desenho completo, achados e decisões: `atividades/testes-sistemas-agenticos/PLANO_POC.md`.
+- Os eval sets são versionados com o placeholder `{{WORKSPACE}}`, resolvido em runtime,
+  para o JSON não carregar caminho absoluto de máquina.
+- A PoC **não corrige** o registro de modelos de `app/main.py` citado acima: roda como
+  produção roda.

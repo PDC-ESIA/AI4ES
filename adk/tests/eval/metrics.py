@@ -85,7 +85,7 @@ CAMINHOS_DAS_FUNCOES = {
 # ---------------------------------------------------------------------------
 # O `AgentEvaluator` não devolve os resultados: ele imprime e levanta AssertionError.
 # Esta lista é a única forma de inspecionar o que a avaliação realmente enxergou.
-# Usada pelo probe de `app_details` (§2-A.1 U3 do PLANO_POC) e como ferramenta de
+# Usada pelo probe de `app_details` (`test_probe_capacidades.py`) e como ferramenta de
 # depuração quando um caso falha por motivo não óbvio.
 CAPTURA: list[dict[str, Any]] = []
 
@@ -103,7 +103,7 @@ def limpar_captura() -> None:
 def nomes_das_tools(invocation: Optional[Invocation]) -> list[str]:
     """Sequência de nomes de tool de uma invocação, na ordem em que ocorreram.
 
-    🚨 Inclui deliberadamente as chamadas presentes no `final_response`, e não só as
+    Inclui deliberadamente as chamadas presentes no `final_response`, e não só as
     de `intermediate_data`. Sem isso, **toda chamada a um `LongRunningFunctionTool`
     desaparece da trajetória** — verificado em 07/09, e a explicação é exata:
 

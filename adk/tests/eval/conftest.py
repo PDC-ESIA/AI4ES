@@ -16,14 +16,14 @@ A ordem das quatro coisas que este módulo faz no import é o ponto, não um det
 2. **`import app.main` em seguida**, que é como o uvicorn faz. Sem ele o `load_dotenv`
    não roda e os agentes nascem com `gemini-2.5-flash`, porque cada `agent.py` lê
    `ADK_LLM_MODEL` no import. E o `LLMRegistry.resolve` é `@lru_cache`: quem resolve
-   primeiro vence, então uma ordem diferente daqui não reproduz produção (foi a armadilha
-   de medição da §6 do spike).
+   primeiro vence, então uma ordem diferente daqui não reproduz produção.
 3. **Registro das métricas próprias** de `tests/eval/metrics.py`.
 4. **Guarda de coerência** conferindo que o binding do reviewer caiu no workspace da
    avaliação — em vez de avaliar em silêncio contra o workspace de trabalho.
 
-🔒 Nada aqui corrige o defeito 16: a avaliação roda como produção roda, e o modelo
-resolve para `LiteLlm` sem o header `X-Initiator: user`. É deliberado.
+Nada aqui corrige o registro de modelos de `app/main.py` (que anula as subclasses de
+`shared/llm.py`): a avaliação roda como produção roda, e o modelo resolve para
+`LiteLlm` sem o header `X-Initiator: user`. É deliberado.
 """
 
 from __future__ import annotations
@@ -126,9 +126,8 @@ def _preparar_ambiente() -> None:
             "Rode a avaliação sozinha (`pytest tests/eval`), não junto de tests/unit."
         )
 
-    # (5) Contador de custo. A PP6 da pesquisa é "quanto custa testar", e o
-    #     AgentEvaluator não reporta nada disso. Mesma instrumentação do
-    #     spike/run_passo4.py, para os números seguirem comparáveis.
+    # (5) Contador de custo: quanto custa testar (chamadas, tokens, tempo). O
+    #     AgentEvaluator não reporta nada disso.
     _instalar_contador_de_custo()
 
 
@@ -250,7 +249,7 @@ def _validar_setup():
 
 
 def pytest_terminal_summary(terminalreporter):
-    """Resumo de custo da rodada — a resposta da PP6, que o ADK não reporta."""
+    """Resumo de custo da rodada (chamadas, tokens, tempo), que o ADK não reporta."""
     if not LIGADO or not CHAMADAS_LLM:
         return
 
@@ -302,8 +301,7 @@ def evalset(tmp_path):
     """Renderiza um eval set para `tmp_path`, resolvendo os placeholders.
 
     - `{{WORKSPACE}}` → o workspace da avaliação. Os eval sets são versionados com o
-      placeholder no lugar do caminho absoluto; o spike gravava `/home/danig/...`
-      direto no JSON, o que não era portável.
+      placeholder no lugar do caminho absoluto, para o JSON ser portável entre máquinas.
     - `{{JUDGE_MODEL}}` → o modelo-juiz dos casos com `AI4ES_EVAL_JUIZ=1`:
       `AI4ES_EVAL_JUDGE_MODEL` se definida, senão o `ADK_LLM_MODEL` do `.env` (o
       mesmo modelo do agente — condição de auto-preferência, declarada como limite).
