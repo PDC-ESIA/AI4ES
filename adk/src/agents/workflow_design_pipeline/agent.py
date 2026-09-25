@@ -11,6 +11,7 @@ from src.agents.validator.agent import agent as validator
 from src.agents.io_agent.agent import agent as io_agent
 from shared.tools.design_hitl_tool import aguardar_resolucao_doubt
 
+from .gate import gate_parallel_branch
 from .manifest import emit_design_manifest
 
 _DEFAULT_MODEL = "github_copilot/gpt-4"
@@ -210,13 +211,24 @@ pipeline_controller = LlmAgent(
     ],
 )
 
+# ⚠️ Os especialistas importados acima são singletons de módulo (uma única
+# instância por processo, compartilhada com design_orchestrator e orchestrator).
+# Um SequentialAgent/ParallelAgent assume a POSSE do sub_agent (grava
+# parent_agent), então compor a árvore com a instância global só funciona na
+# primeira vez. O `adk web` carrega este módulo DUAS vezes — como
+# `workflow_design_pipeline` (agent_loader, a partir de agents_dir=src/agents) e
+# como `src.agents.workflow_design_pipeline` (import dos orchestrators) — e a
+# segunda composição quebrava com "Agent `mermaid_specialist` already has a
+# parent agent". `clone()` devolve uma cópia idêntica e sem parent, tornando a
+# montagem idempotente. Sub-agentes criados aqui (ex.: diagram_flow) não
+# precisam de clone: já nascem novos a cada carga do módulo.
 diagram_flow = SequentialAgent(
     name="diagram_flow",
     description="FASE_FINAL: Processamento de diagramas e relatório. SÓ PODE RODAR APÓS A ANALISE_TECNICA ESTAR PRONTA.",
     sub_agents=[
-        mermaid_specialist,
-        validator,
-        markdown_specialist,
+        mermaid_specialist.clone(),
+        validator.clone(),
+        markdown_specialist.clone(),
     ],
 )
 
@@ -224,9 +236,14 @@ parallel_branch = ParallelAgent(
     name="parallel_branch",
     description="ERRO_SE_ACESSADO_AGORA: Este bloco contém especialistas que dependem CRITICAMENTE da saída do PASSO_OBRIGATORIO_1. Não ativar enquanto o status não for PIPELINE_STAGE_1_COMPLETE.",
     sub_agents=[
-        prototyping_specialist,
+        prototyping_specialist.clone(),
         diagram_flow,
     ],
+    # Gate determinístico: a description acima é só documentação, não uma
+    # regra aplicada — sem isto, o SequentialAgent raiz roda parallel_branch
+    # incondicionalmente mesmo quando pipeline_controller recusa a análise
+    # técnica (ver gate.py para o incidente real que motivou este fix).
+    before_agent_callback=gate_parallel_branch,
 )
 
 agent = SequentialAgent(

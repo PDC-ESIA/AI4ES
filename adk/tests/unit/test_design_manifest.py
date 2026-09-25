@@ -220,6 +220,21 @@ def test_doubt_artifact_solto_em_pasta_de_artefato_nao_conta_como_artefato(tmp_p
     assert "Doubt_Artifact_Clarification" in doubt_ids
 
 
+def test_artifact_path_e_relativo_ao_workspace_output(tmp_path):
+    """Regressão: os paths do manifesto de design devem ser relativos a
+    workspace_output/ (ex.: "design/analysis/x.md"), no mesmo padrão de
+    requirements (`requirements/...`) e coding (`coder/...`) — nunca com o
+    prefixo "workspace_output/" embutido, que quebrava a resolução do path
+    pelas fases seguintes."""
+    root = _design_tree(tmp_path, validation="pass")
+    m = build_design_manifest(root)
+    assert m.artifacts, "deve encontrar ao menos um artefato"
+    for a in m.artifacts:
+        assert not a.path.startswith("workspace_output"), a.path
+        assert a.path.startswith("design/"), a.path
+        assert "\\" not in a.path
+
+
 def test_analise_tecnica_fora_de_analysis_nao_e_coletada(tmp_path):
     """Regressão da mesma run real: o mapeamento antigo escaneava a raiz de
     design/ para o tipo "analise", mas design_filesystem.py sempre salva em
@@ -289,6 +304,21 @@ def test_emissor_acrescenta_em_phase_manifests_sem_perder_anteriores(tmp_path, m
     assert manifests[1]["status"] == "ok"
     # O item acrescentado precisa validar contra o contrato compartilhado.
     PhaseManifest.model_validate(manifests[1])
+
+
+def test_emissor_substitui_manifesto_da_propria_fase(tmp_path, monkeypatch):
+    """Reexecução não deve duplicar o manifesto de design na lista
+    phase_manifests — mesmo padrão de
+    requirements/manifest.py::test_emit_substitui_manifesto_da_propria_fase."""
+    _design_tree(tmp_path, validation="pass")
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "workspace_output"))
+
+    ctx = _FakeCtx()
+    emit_design_manifest(ctx)
+    emit_design_manifest(ctx)
+
+    phases = [m["phase"] for m in ctx.state["phase_manifests"]]
+    assert phases == ["design"]
 
 
 def test_session_id_persiste_em_disco_mas_nao_em_phase_manifests(tmp_path, monkeypatch):
