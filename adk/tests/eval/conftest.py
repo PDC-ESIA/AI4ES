@@ -4,7 +4,7 @@ Estes testes **gastam chamadas de LLM reais**. São opt-in: sem `AI4ES_EVAL=1` t
 pulado, inclusive num `uv run pytest` nu — que coletaria este diretório, porque o
 `pyproject.toml` declara `testpaths = ["tests"]`.
 
-    AI4ES_EVAL=1 uv run --with pandas --with rouge-score pytest tests/eval -q
+    AI4ES_EVAL=1 uv run --group eval pytest tests/eval -q
 
 A ordem das quatro coisas que este módulo faz no import é o ponto, não um detalhe:
 
@@ -69,7 +69,7 @@ WORKSPACE = Path(
 #: `tabulate` só é preciso com AI4ES_EVAL_DETALHE=1; `gepa` não é usado.
 _DEPENDENCIAS = ("pandas", "rouge_score")
 
-_COMANDO = "AI4ES_EVAL=1 uv run --with pandas --with rouge-score pytest tests/eval -q"
+_COMANDO = "AI4ES_EVAL=1 uv run --group eval pytest tests/eval -q"
 
 #: `fixtures/projeto_revisavel/` contém a suíte do projeto FICTÍCIO que o reviewer vai
 #: analisar, e `workspace_output/` recebe uma cópia dela a cada caso semeado. Nenhuma
@@ -206,7 +206,8 @@ def pytest_collection_modifyitems(config, items):
         motivo = pytest.mark.skip(
             reason=(
                 f"faltam os extras do ADK eval: {', '.join(_AUSENTES)}. "
-                f"São obrigatórios para qualquer métrica. Rode: {_COMANDO}"
+                "São obrigatórios para qualquer métrica e ficam no grupo `eval` do "
+                f"pyproject.toml. Rode: {_COMANDO}"
             )
         )
     else:
@@ -350,8 +351,7 @@ def rodar_eval():
     """Chama `AgentEvaluator.evaluate` com os defaults da PoC.
 
     `print_detailed_results` fica desligado por padrão: quando ligado, o ADK importa
-    `pandas` e `tabulate` para montar a tabela (`agent_evaluator.py:423-424`), e
-    `tabulate` não está no overlay mínimo.
+    `pandas` e `tabulate` para montar a tabela (`agent_evaluator.py:423-424`).
     """
     from google.adk.evaluation.agent_evaluator import AgentEvaluator
 

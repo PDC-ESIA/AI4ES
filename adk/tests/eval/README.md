@@ -14,18 +14,17 @@ que é o que a suíte unitária não alcança por construção.
 cd adk
 
 # tudo menos o juiz (6 testes)
-AI4ES_EVAL=1 uv run --with pandas --with rouge-score pytest tests/eval -q
+AI4ES_EVAL=1 uv run --group eval pytest tests/eval -q
 
 # um caso só
-AI4ES_EVAL=1 uv run --with pandas --with rouge-score \
+AI4ES_EVAL=1 uv run --group eval \
   pytest tests/eval/test_eval_context_engineer.py::test_protocolo_de_bloqueio_emite_as_tres_tools -q
 
 # incluindo a camada de juiz LLM (7 testes; mais cara — ver abaixo)
-AI4ES_EVAL=1 AI4ES_EVAL_JUIZ=1 uv run --with pandas --with rouge-score pytest tests/eval -q
+AI4ES_EVAL=1 AI4ES_EVAL_JUIZ=1 uv run --group eval pytest tests/eval -q
 
-# saída detalhada do ADK (tabela por invocação) — exige tabulate
-AI4ES_EVAL=1 AI4ES_EVAL_DETALHE=1 uv run --with pandas --with rouge-score --with tabulate \
-  pytest tests/eval -q
+# saída detalhada do ADK (tabela por invocação)
+AI4ES_EVAL=1 AI4ES_EVAL_DETALHE=1 uv run --group eval pytest tests/eval -q
 ```
 
 | Variável | Efeito | Default |
@@ -34,24 +33,17 @@ AI4ES_EVAL=1 AI4ES_EVAL_DETALHE=1 uv run --with pandas --with rouge-score --with
 | `AI4ES_EVAL_JUIZ=1` | Liga também os casos com juiz LLM | desligado |
 | `AI4ES_EVAL_JUDGE_MODEL` | Modelo-juiz (`{{JUDGE_MODEL}}` nos `test_config.json`). O juiz **não** herda o default do ADK (`gemini-2.5-flash`, sem credencial aqui) | o `ADK_LLM_MODEL` do `.env` — mesmo modelo do agente |
 | `AI4ES_EVAL_NUM_RUNS` | Execuções por caso — limiar 1.0 exige conformidade em todas | `2` |
-| `AI4ES_EVAL_DETALHE=1` | `print_detailed_results` do ADK (exige `pandas`+`tabulate`) | desligado |
+| `AI4ES_EVAL_DETALHE=1` | `print_detailed_results` do ADK | desligado |
 | `AI4ES_EVAL_WORKSPACE` | Onde semear o workspace da avaliação | `tests/eval/workspace_output` |
 
-### Por que `--with pandas --with rouge-score`
+### Por que o grupo `eval`
 
-**São obrigatórios para qualquer métrica**, mesmo as que não usam nenhum dos dois: a cadeia
-de import de `metric_evaluator_registry` passa por `vertex_ai_eval_facade` (pandas) e
-`final_response_match_v1` (rouge-score). E o `AgentEvaluator` importa o `LocalEvalService`
-**lazy, dentro da função** (`agent_evaluator.py:557`), então a falta só aparece no meio da
-execução — o `conftest` detecta antes e pula com a mensagem certa.
-
-O overlay do `uv` não toca `pyproject.toml` nem `uv.lock`. Para promover isto a gate de
-verdade, a equipe pode colar:
-
-```toml
-[dependency-groups]
-eval = ["pandas>=2.0", "rouge-score>=0.1.2", "tabulate>=0.9"]
-```
+`pandas` e `rouge-score` **são obrigatórios para qualquer métrica**, mesmo as que não usam
+nenhum dos dois: a cadeia de import de `metric_evaluator_registry` passa por
+`vertex_ai_eval_facade` (pandas) e `final_response_match_v1` (rouge-score). `tabulate` só
+entra com `AI4ES_EVAL_DETALHE=1`. O grupo `eval` do `pyproject.toml` não é instalado por
+padrão, então quem não roda a avaliação não baixa nada disso. Sem o grupo, o `conftest`
+pula tudo com a mensagem certa, em vez de a falta aparecer no meio da execução.
 
 ## O que cada caso prova
 
