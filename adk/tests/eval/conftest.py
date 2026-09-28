@@ -1,29 +1,10 @@
-"""Mecânica da PoC de avaliação com o pacote `evaluation` do ADK.
+"""Mecânica da avaliação de agentes com o `AgentEvaluator` do ADK.
 
-Estes testes **gastam chamadas de LLM reais**. São opt-in: sem `AI4ES_EVAL=1` tudo é
-pulado, inclusive num `uv run pytest` nu — que coletaria este diretório, porque o
-`pyproject.toml` declara `testpaths = ["tests"]`.
+Opt-in: sem `AI4ES_EVAL=1`, tudo daqui é pulado, inclusive num `uv run pytest` sem
+argumentos. Com ela, o módulo prepara o ambiente no import, numa ordem que importa
+(comentários em `_preparar_ambiente`), e imprime o custo da rodada ao final.
 
     AI4ES_EVAL=1 uv run --group eval pytest tests/eval -q
-
-A ordem das quatro coisas que este módulo faz no import é o ponto, não um detalhe:
-
-1. **`WORKSPACE_OUTPUT_DIR` primeiro.** `shared/tools/coding_tools/review_tools.py:35-37`
-   resolve `_WORKSPACE_ROOT`/`_CODER_WS`/`_REVIEW_WS` em **tempo de import** (e
-   `get_agent_workspace` ainda cria os diretórios como efeito colateral). O
-   `cr_review_analyzer` portanto **não é isolável por monkeypatch** — a variável tem de
-   estar no ambiente antes de o módulo ser importado.
-2. **`import app.main` em seguida**, que é como o uvicorn faz. Sem ele o `load_dotenv`
-   não roda e os agentes nascem com `gemini-2.5-flash`, porque cada `agent.py` lê
-   `ADK_LLM_MODEL` no import. E o `LLMRegistry.resolve` é `@lru_cache`: quem resolve
-   primeiro vence, então uma ordem diferente daqui não reproduz produção.
-3. **Registro das métricas próprias** de `tests/eval/metrics.py`.
-4. **Guarda de coerência** conferindo que o binding do reviewer caiu no workspace da
-   avaliação — em vez de avaliar em silêncio contra o workspace de trabalho.
-
-Nada aqui corrige o registro de modelos de `app/main.py` (que anula as subclasses de
-`shared/llm.py`): a avaliação roda como produção roda, e o modelo resolve para
-`LiteLlm` sem o header `X-Initiator: user`. É deliberado.
 """
 
 from __future__ import annotations
@@ -38,18 +19,8 @@ import pytest
 
 _AQUI = Path(__file__).resolve().parent
 
-# `tests.eval.metrics` é o caminho que o bloco `custom_metrics` dos test_config.json usa
-# para achar as métricas próprias. `tests/` e `tests/eval/` não têm `__init__.py`, então
-# `tests` é um *namespace package* — e o `AssertionRewritingHook` do pytest, que fica no
-# `sys.meta_path`, sombreia namespace packages que ainda não estejam em `sys.modules`.
-# Medido: `from tests.eval import metrics` funciona daqui (o conftest é importado antes
-# do hook entrar em ação para módulos de teste) e falha de dentro de um módulo de teste
-# com `ModuleNotFoundError: No module named 'tests.eval'`.
-#
-# Importar aqui, no topo e sem condição, resolve os dois lados: garante o `sys.path` e
-# deixa `tests` / `tests.eval` cacheados em `sys.modules` antes de qualquer módulo de
-# teste ser importado. O import é barato de propósito — `metrics.py` só puxa o registry
-# do ADK (e portanto `pandas`/`rouge_score`) dentro de `registrar_metricas_ai4es()`.
+# `tests` é namespace package, e o hook de asserções do pytest o sombreia dentro dos
+# módulos de teste: importar `metrics` aqui o deixa em `sys.modules` antes da coleta.
 _RAIZ_ADK = _AQUI.parents[1]
 if str(_RAIZ_ADK) not in sys.path:
     sys.path.insert(0, str(_RAIZ_ADK))
@@ -59,28 +30,24 @@ from tests.eval import metrics  # noqa: E402  -- depende do sys.path acima
 #: Ligado só com AI4ES_EVAL=1. Ver `pytest_collection_modifyitems`.
 LIGADO = os.environ.get("AI4ES_EVAL") == "1"
 
-#: Workspace isolado da avaliação. Coberto por `.gitignore:19` (`workspace_output/`).
+#: Workspace isolado da avaliação. Coberto pelo `.gitignore` (`workspace_output/`).
 WORKSPACE = Path(
     os.environ.get("AI4ES_EVAL_WORKSPACE") or (_AQUI / "workspace_output")
 ).resolve()
 
-#: Obrigatórias para QUALQUER eval: a cadeia de import de `metric_evaluator_registry`
-#: passa por `vertex_ai_eval_facade` (pandas) e `final_response_match_v1` (rouge_score).
-#: `tabulate` só é preciso com AI4ES_EVAL_DETALHE=1; `gepa` não é usado.
+#: Obrigatórias para qualquer métrica (a cadeia de import do registry de métricas do
+#: ADK passa por elas). Vêm do grupo `eval` do pyproject.toml.
 _DEPENDENCIAS = ("pandas", "rouge_score")
 
 _COMANDO = "AI4ES_EVAL=1 uv run --group eval pytest tests/eval -q"
 
-#: `fixtures/projeto_revisavel/` contém a suíte do projeto FICTÍCIO que o reviewer vai
-#: analisar, e `workspace_output/` recebe uma cópia dela a cada caso semeado. Nenhuma
-#: das duas é teste desta suíte: sem isto o pytest tenta importá-las e quebra a coleta
-#: (o `tests/__init__.py` de lá colide com o nosso namespace package `tests`).
+#: `fixtures/` e `workspace_output/` guardam o projeto fictício que os agentes analisam,
+#: com testes próprios; não são testes desta suíte.
 collect_ignore = ["fixtures", "workspace_output"]
 
 
 def dependencias_ausentes() -> list[str]:
-    """Extras do ADK que faltam. O import real é lazy, então a falta só apareceria
-    no meio da avaliação, com stack trace confuso."""
+    """Extras do ADK que faltam, detectados antes de a avaliação começar."""
     ausentes = []
     for modulo in _DEPENDENCIAS:
         try:
@@ -96,10 +63,10 @@ _ERRO_DE_SETUP: str | None = None
 
 
 def _preparar_ambiente() -> None:
-    """Passos 1 a 4 da docstring, nesta ordem. Chamado só quando LIGADO."""
+    """Prepara o ambiente da avaliação. Chamado só quando LIGADO."""
     global _METRICAS_REGISTRADAS, _ERRO_DE_SETUP
 
-    # (1) Antes de qualquer import de agente.
+    # (1) Antes de qualquer import de agente: tools resolvem o workspace no import.
     os.environ["WORKSPACE_OUTPUT_DIR"] = str(WORKSPACE)
     WORKSPACE.mkdir(parents=True, exist_ok=True)
     # O marker é o que autoriza `init_workspace()` a limpar este diretório.
@@ -108,26 +75,25 @@ def _preparar_ambiente() -> None:
         encoding="utf-8",
     )
 
-    # (2) Caminho fiel ao uvicorn: .env carregado e registry resolvido na ordem certa.
+    # (2) Como o uvicorn faz: carrega o .env e resolve os modelos na mesma ordem.
     importlib.import_module("app.main")
 
-    # (3) Métricas próprias (o módulo já foi importado no topo; aqui é o registro).
+    # (3) Registra as métricas próprias no ADK.
     _METRICAS_REGISTRADAS = metrics.registrar_metricas_ai4es()
 
-    # (4) Guarda: o reviewer congelou o binding no import — conferir onde caiu.
+    # (4) Guarda: o reviewer congela o workspace no import; conferir onde caiu.
     review_tools = importlib.import_module("shared.tools.coding_tools.review_tools")
     coder_ws = Path(review_tools._CODER_WS).resolve()
     if coder_ws != WORKSPACE and WORKSPACE not in coder_ws.parents:
         _ERRO_DE_SETUP = (
             "O binding do cr_review_analyzer aponta para fora do workspace da "
             f"avaliação.\n  esperado dentro de: {WORKSPACE}\n  obtido: {coder_ws}\n\n"
-            "Causa: review_tools.py:35-37 resolve _CODER_WS em tempo de IMPORT, então "
+            "Causa: review_tools.py resolve _CODER_WS em tempo de IMPORT, então "
             "algum outro módulo importou o reviewer antes deste conftest rodar. "
             "Rode a avaliação sozinha (`pytest tests/eval`), não junto de tests/unit."
         )
 
-    # (5) Contador de custo: quanto custa testar (chamadas, tokens, tempo). O
-    #     AgentEvaluator não reporta nada disso.
+    # (5) Contador de custo: o AgentEvaluator não reporta chamadas, tokens nem tempo.
     _instalar_contador_de_custo()
 
 
@@ -279,11 +245,7 @@ def pytest_terminal_summary(terminalreporter):
 
 @pytest.fixture
 def workspace_semeado():
-    """Recria o workspace da avaliação e copia uma árvore de `fixtures/` para dentro.
-
-    Reusa `init_workspace()` do projeto — que já traz a guarda do marker
-    `.ai4se_workspace` contra rmtree em diretório errado.
-    """
+    """Recria o workspace da avaliação com `init_workspace()` e copia uma fixture."""
     from shared.workspace import init_workspace
 
     def _semear(nome_fixture: str) -> Path:
@@ -299,18 +261,12 @@ def workspace_semeado():
 
 @pytest.fixture
 def evalset(tmp_path):
-    """Renderiza um eval set para `tmp_path`, resolvendo os placeholders.
+    """Copia um eval set para `tmp_path`, resolvendo os placeholders.
 
-    - `{{WORKSPACE}}` → o workspace da avaliação. Os eval sets são versionados com o
-      placeholder no lugar do caminho absoluto, para o JSON ser portável entre máquinas.
-    - `{{JUDGE_MODEL}}` → o modelo-juiz dos casos com `AI4ES_EVAL_JUIZ=1`:
-      `AI4ES_EVAL_JUDGE_MODEL` se definida, senão o `ADK_LLM_MODEL` do `.env` (o
-      mesmo modelo do agente — condição de auto-preferência, declarada como limite).
-      Sem nenhum dos dois, falha aqui com a mensagem certa, em vez de o ADK cair no
-      default `gemini-2.5-flash` (`eval_metrics.py:79`) e morrer sem credencial Google.
-
-    Copia a pasta inteira porque o `AgentEvaluator` procura o `test_config.json` **no
-    mesmo diretório** do arquivo de casos (`find_config_for_test_file`).
+    `{{WORKSPACE}}` vira o workspace da avaliação. `{{JUDGE_MODEL}}` vira
+    `AI4ES_EVAL_JUDGE_MODEL` ou, na falta, `ADK_LLM_MODEL`; sem nenhum dos dois, falha
+    aqui, em vez de o ADK cair no juiz default, que exige credencial Google. A pasta vai
+    inteira porque o ADK procura o `test_config.json` ao lado do arquivo de casos.
     """
 
     def _preparar(nome: str) -> str:
@@ -348,11 +304,7 @@ def evalset(tmp_path):
 
 @pytest.fixture
 def rodar_eval():
-    """Chama `AgentEvaluator.evaluate` com os defaults da PoC.
-
-    `print_detailed_results` fica desligado por padrão: quando ligado, o ADK importa
-    `pandas` e `tabulate` para montar a tabela (`agent_evaluator.py:423-424`).
-    """
+    """Chama `AgentEvaluator.evaluate` com os defaults da suíte."""
     from google.adk.evaluation.agent_evaluator import AgentEvaluator
 
     async def _rodar(
