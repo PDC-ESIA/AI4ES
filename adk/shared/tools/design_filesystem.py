@@ -21,7 +21,7 @@ def _find_root(start_path: Path, target: str = "adk") -> Path:
     for parent in start_path.parents:
         if parent.name == target:
             return parent
-    return start_path.parents[4]  # Fallback seguro (Atualizar se necessário)
+    return start_path.parents[2]  # .../<adk>/shared/tools/design_filesystem.py → <adk>
 
 ADK_DIR = _find_root(Path(__file__).resolve())
 DESIGN_DIR = ADK_DIR / "workspace_output" / "design"
