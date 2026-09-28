@@ -13,14 +13,14 @@ que é o que a suíte unitária não alcança por construção.
 ```bash
 cd adk
 
-# tudo menos o juiz (9 testes; ~2min40s com gpt-5.3-codex em 16/09)
+# tudo menos o juiz (6 testes)
 AI4ES_EVAL=1 uv run --with pandas --with rouge-score pytest tests/eval -q
 
 # um caso só
 AI4ES_EVAL=1 uv run --with pandas --with rouge-score \
   pytest tests/eval/test_eval_context_engineer.py::test_protocolo_de_bloqueio_emite_as_tres_tools -q
 
-# incluindo a camada de juiz LLM (10 testes; ~3min40s em 23/09; mais cara — ver abaixo)
+# incluindo a camada de juiz LLM (7 testes; mais cara — ver abaixo)
 AI4ES_EVAL=1 AI4ES_EVAL_JUIZ=1 uv run --with pandas --with rouge-score pytest tests/eval -q
 
 # saída detalhada do ADK (tabela por invocação) — exige tabulate
@@ -61,12 +61,9 @@ eval = ["pandas>=2.0", "rouge-score>=0.1.2", "tabulate>=0.9"]
 |---|---|
 | `test_aprova_report_verde_com_state_semeado` | Caminho feliz, com âncora de trajetória **e** de resposta |
 | `test_reprova_quando_a_execucao_falhou` | `overall_status: falha` reprova mesmo se o LLM "aprovar" — a política é de `montar_veredito` |
-| `test_armadilha_trajetoria_verde_com_agente_em_failsafe` | A trajetória **passa** com o agente em fail-safe |
-| `test_armadilha_a_ancora_de_resposta_pega_o_que_a_trajetoria_nao_pega` | O mesmo caso **reprova** quando se ancora no resultado |
 
-Os dois últimos são o mesmo eval case com dois `test_config.json`, e formam **uma afirmação
-só: métrica de trajetória sozinha não é gate**, aqui como regressão executável. Se um dia
-o primeiro falhar ou o segundo passar, a premissa mudou.
+Por que todo caso se ancora no resultado, e não só na trajetória: ver o
+[ADR 0001](../../../docs/adr/0001-avaliacao-de-agentes-com-agentevaluator.md).
 
 As fixtures de `ExecutionReport` (`fixtures/validator_*/coder/execution/`) seguem o contrato
 do harness desde o #406: cada `criteria_evidence` traz `criterion_id`, `automatable`,
@@ -92,12 +89,6 @@ mudança de política.
 |---|---|
 | `test_gate_de_cobertura_sobrepoe_o_veredito_do_llm` | O reviewer **leu** o código, e o gate de cobertura sobrepôs o status que o LLM escreveu |
 
-### Probe
-
-`test_probe_capacidades.py` não é gate — é instrumentação. Roda a métrica `ai4es_sonda`
-(que nunca reprova) e imprime o que o `AgentEvaluator` entrega às métricas. Foi como se
-verificou que `app_details` é populado com `LiteLlm`.
-
 ## Métricas próprias (`metrics.py`)
 
 A métrica nativa `tool_trajectory_avg_score` compara **nome E argumentos** com igualdade
@@ -107,11 +98,9 @@ registradas via o ponto de extensão oficial (`custom_metrics` no `test_config.j
 
 | Métrica | O que mede |
 |---|---|
-| `ai4es_tool_sequence_exact` | Sequência de **nomes** de tool idêntica |
 | `ai4es_tool_sequence_in_order` | Tools esperadas na ordem esperada, tolerando extras |
 | `ai4es_contrato_de_tools` | As tools **declaradas ao modelo** são exatamente as esperadas (o que foi *oferecido*, não o que foi *chamado*) |
 | `ai4es_resposta_contem` | Cada linha da resposta esperada aparece na obtida — para quando parte da resposta é determinística e o resto é prosa |
-| `ai4es_sonda` | Instrumentação; nunca reprova |
 
 ## Duas limitações do ADK que a PoC teve de contornar
 
@@ -122,9 +111,9 @@ intermediários (`:315-317`). O `function_call` da tool long-running vai parar e
 `final_response` e some de `intermediate_data`.
 
 Medido: a avaliação do protocolo de bloqueio reportava, em **4 de 4 execuções**, a sequência
-parando em `tool_emitir_manifesto_bloqueado`. O `_probe_longrunning.py` (Runner cru, sem
-eval) mostrou as três chamadas e o `long_running_tool_ids` preenchido — **o agente estava
-certo; a leitura da trajetória é que era incompleta**. `nomes_das_tools` em `metrics.py`
+parando em `tool_emitir_manifesto_bloqueado`. O mesmo agente num `Runner` cru, sem o eval,
+mostrou as três chamadas e o `long_running_tool_ids` preenchido — **o agente estava certo;
+a leitura da trajetória é que era incompleta**. Como reproduzir: ver o ADR 0001. `nomes_das_tools` em `metrics.py`
 inclui as chamadas do `final_response` justamente por isso. Sem esse cuidado,
 `tool_trajectory_avg_score` dá **falso negativo em todo caso de HITL** — e o HITL do Time 4
 *é* um `LongRunningFunctionTool`.

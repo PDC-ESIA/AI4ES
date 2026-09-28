@@ -16,8 +16,8 @@ pipeline) cujos argumentos incluem descrição em texto livre escrita pelo LLM. 
 precisa ser garantido ali é **a sequência**, não o texto: um bloqueio parcial (doubt
 escrito, manifesto não emitido) não pausa nada.
 
-`ai4es_tool_sequence_*` mede exatamente isso: a sequência de **nomes** de tool, ignorando
-argumentos.
+`ai4es_tool_sequence_in_order` mede exatamente isso: a sequência de **nomes** de tool,
+ignorando argumentos.
 
 Contrato com o ADK
 ------------------
@@ -49,9 +49,8 @@ os handoffs por state do Time 4 (`state["tasks"]`, `state["validation"]`,
 
 from __future__ import annotations
 
-import hashlib
 import logging
-from typing import Any, Optional, Sequence
+from typing import Optional, Sequence
 
 from google.adk.evaluation.eval_case import (
     ConversationScenario,
@@ -64,35 +63,16 @@ from google.adk.evaluation.evaluator import EvaluationResult, PerInvocationResul
 # Nomes públicos — os mesmos que vão no `criteria` do test_config.json.
 _LOG = logging.getLogger(__name__)
 
-METRICA_SEQUENCIA_EXATA = "ai4es_tool_sequence_exact"
 METRICA_SEQUENCIA_EM_ORDEM = "ai4es_tool_sequence_in_order"
 METRICA_CONTRATO_DE_TOOLS = "ai4es_contrato_de_tools"
 METRICA_RESPOSTA_CONTEM = "ai4es_resposta_contem"
-METRICA_SONDA = "ai4es_sonda"
 
 # Caminhos de import usados no bloco `custom_metrics` do test_config.json.
 CAMINHOS_DAS_FUNCOES = {
-    METRICA_SEQUENCIA_EXATA: "tests.eval.metrics.tool_sequence_exact",
     METRICA_SEQUENCIA_EM_ORDEM: "tests.eval.metrics.tool_sequence_in_order",
     METRICA_CONTRATO_DE_TOOLS: "tests.eval.metrics.contrato_de_tools",
     METRICA_RESPOSTA_CONTEM: "tests.eval.metrics.resposta_contem",
-    METRICA_SONDA: "tests.eval.metrics.sonda",
 }
-
-
-# ---------------------------------------------------------------------------
-# Sonda — instrumentação, não gate
-# ---------------------------------------------------------------------------
-# O `AgentEvaluator` não devolve os resultados: ele imprime e levanta AssertionError.
-# Esta lista é a única forma de inspecionar o que a avaliação realmente enxergou.
-# Usada pelo probe de `app_details` (`test_probe_capacidades.py`) e como ferramenta de
-# depuração quando um caso falha por motivo não óbvio.
-CAPTURA: list[dict[str, Any]] = []
-
-
-def limpar_captura() -> None:
-    """Zera a captura da sonda. Chame antes de cada avaliação instrumentada."""
-    CAPTURA.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -103,26 +83,8 @@ def limpar_captura() -> None:
 def nomes_das_tools(invocation: Optional[Invocation]) -> list[str]:
     """Sequência de nomes de tool de uma invocação, na ordem em que ocorreram.
 
-    Inclui deliberadamente as chamadas presentes no `final_response`, e não só as
-    de `intermediate_data`. Sem isso, **toda chamada a um `LongRunningFunctionTool`
-    desaparece da trajetória** — verificado em 07/09, e a explicação é exata:
-
-    - `Event.is_final_response()` devolve `True` assim que o evento tem
-      `long_running_tool_ids` (`events/event.py:91-92`);
-    - `evaluation_generator._convert_events_to_invocations` monta os eventos
-      intermediários com `[... for e in events_to_add if e is not final_event]`
-      (`:315-317`), ou seja, **descarta o evento final**;
-    - logo, o `function_call` da tool long-running vai parar em `final_response` e
-      some de `intermediate_data`.
-
-    Consequência medida: a avaliação do `ce_protocolo_bloqueio` reportava, em 4 de 4
-    execuções, a sequência parando em `tool_emitir_manifesto_bloqueado`. Um probe com
-    `Runner` cru mostrou as três chamadas e o `long_running_tool_ids` preenchido — o
-    agente estava certo, a leitura da trajetória é que era incompleta.
-
-    Isso importa muito aqui: o HITL do Time 4 **é** um `LongRunningFunctionTool`
-    (`aguardar_resolucao_bloqueio`), então a métrica nativa
-    `tool_trajectory_avg_score` daria falso negativo em todo caso de pausa.
+    Lê também o `final_response`, onde o ADK deixa a chamada de um
+    `LongRunningFunctionTool` (ver `docs/adr/0001-avaliacao-de-agentes-com-agentevaluator.md`).
     """
     if invocation is None:
         return []
@@ -186,12 +148,11 @@ def _e_subsequencia(esperados: Sequence[str], obtidos: Sequence[str]) -> bool:
 def _avaliar(
     actual_invocations: list[Invocation],
     expected_invocations: Optional[list[Invocation]],
-    exato: bool,
 ) -> EvaluationResult:
     """Motor comum: 1.0 por invocação conforme, 0.0 caso contrário."""
     if expected_invocations is None:
         raise ValueError(
-            "ai4es_tool_sequence_* precisa de invocações esperadas — declare "
+            "ai4es_tool_sequence_in_order precisa de invocações esperadas — declare "
             "`intermediate_data.tool_uses` no eval case."
         )
 
@@ -200,20 +161,15 @@ def _avaliar(
         nomes_obtidos = nomes_das_tools(obtida)
         nomes_esperados = nomes_das_tools(esperada)
 
-        conforme = (
-            nomes_obtidos == nomes_esperados
-            if exato
-            else _e_subsequencia(nomes_esperados, nomes_obtidos)
-        )
+        conforme = _e_subsequencia(nomes_esperados, nomes_obtidos)
         if not conforme:
             # O AgentEvaluator só reporta "Expected 1.0, but got 0.0", e a saída
             # detalhada dele exige pandas+tabulate. Sem isto, toda falha de sequência
             # obriga uma segunda rodada só para descobrir o que o agente fez.
             _LOG.warning(
-                "[ai4es_tool_sequence_%s] sequência divergente\n"
+                "[ai4es_tool_sequence_in_order] sequência divergente\n"
                 "  esperado: %s\n"
                 "  obtido  : %s",
-                "exact" if exato else "in_order",
                 nomes_esperados,
                 nomes_obtidos,
             )
@@ -242,20 +198,6 @@ def _avaliar(
 # ---------------------------------------------------------------------------
 
 
-def tool_sequence_exact(
-    eval_metric: EvalMetric,
-    actual_invocations: list[Invocation],
-    expected_invocations: Optional[list[Invocation]] = None,
-    conversation_scenario: Optional[ConversationScenario] = None,
-) -> EvaluationResult:
-    """A sequência de nomes de tool tem de ser idêntica — nem falta nem sobra.
-
-    Use quando o contrato é fechado: exatamente estas tools, nesta ordem.
-    """
-    del eval_metric, conversation_scenario  # o limiar vem do test_config
-    return _avaliar(actual_invocations, expected_invocations, exato=True)
-
-
 def tool_sequence_in_order(
     eval_metric: EvalMetric,
     actual_invocations: list[Invocation],
@@ -268,8 +210,8 @@ def tool_sequence_in_order(
     agente pode legitimamente chamar outras tools no meio — o caso do protocolo de
     bloqueio do `cr_context_engineer`.
     """
-    del eval_metric, conversation_scenario
-    return _avaliar(actual_invocations, expected_invocations, exato=False)
+    del eval_metric, conversation_scenario  # o limiar vem do test_config
+    return _avaliar(actual_invocations, expected_invocations)
 
 
 def contrato_de_tools(
@@ -280,7 +222,7 @@ def contrato_de_tools(
 ) -> EvaluationResult:
     """O agente declarou ao modelo exatamente as tools esperadas — nem a mais, nem a menos.
 
-    Não olha o que foi *chamado* (isso é `ai4es_tool_sequence_*`), e sim o que foi
+    Não olha o que foi *chamado* (isso é `ai4es_tool_sequence_in_order`), e sim o que foi
     **oferecido** ao modelo. Pega uma classe de defeito que nenhum teste atual alcança:
     uma tool removida, renomeada ou acrescentada em `agent.py` muda o espaço de ações do
     agente em silêncio, e a suíte unitária continua verde porque a tool em si funciona.
@@ -395,63 +337,6 @@ def resposta_contem(
     )
 
 
-def sonda(
-    eval_metric: EvalMetric,
-    actual_invocations: list[Invocation],
-    expected_invocations: Optional[list[Invocation]] = None,
-    conversation_scenario: Optional[ConversationScenario] = None,
-) -> EvaluationResult:
-    """Registra o que a avaliação enxergou e devolve 1.0 — nunca reprova.
-
-    Não é gate: é instrumentação. Serve para responder "o `app_details` é populado
-    quando o modelo é `LiteLlm`?" e para depurar caso que falha sem motivo aparente.
-    """
-    del eval_metric, expected_invocations, conversation_scenario
-
-    for invocacao in actual_invocations:
-        detalhes_por_agente = {}
-        app_details = getattr(invocacao, "app_details", None)
-        declaradas = nomes_das_tools_declaradas(invocacao)
-        for nome, detalhe in (
-            getattr(app_details, "agent_details", None) or {}
-        ).items():
-            instrucoes = getattr(detalhe, "instructions", None) or ""
-            detalhes_por_agente[nome] = {
-                "tem_instructions": bool(instrucoes),
-                "tamanho_instructions": len(instrucoes),
-                "hash_instructions": hashlib.sha256(
-                    instrucoes.encode("utf-8")
-                ).hexdigest()[:16],
-                "instructions": instrucoes,
-                "tools_declaradas": declaradas.get(nome, []),
-            }
-
-        CAPTURA.append(
-            {
-                "invocation_id": invocacao.invocation_id,
-                "tools_chamadas": nomes_das_tools(invocacao),
-                "app_details_presente": app_details is not None,
-                "agentes": detalhes_por_agente,
-                "resposta_final": "\n".join(
-                    p.text
-                    for p in (getattr(invocacao.final_response, "parts", None) or [])
-                    if getattr(p, "text", None)
-                ),
-            }
-        )
-
-    return EvaluationResult(
-        overall_score=1.0,
-        overall_eval_status=EvalStatus.PASSED,
-        per_invocation_results=[
-            PerInvocationResult(
-                actual_invocation=inv, score=1.0, eval_status=EvalStatus.PASSED
-            )
-            for inv in actual_invocations
-        ],
-    )
-
-
 # ---------------------------------------------------------------------------
 # Registro no MetricEvaluatorRegistry do ADK
 # ---------------------------------------------------------------------------
@@ -480,10 +365,6 @@ def registrar_metricas_ai4es() -> list[str]:
     )
 
     descricoes = {
-        METRICA_SEQUENCIA_EXATA: (
-            "Sequência de nomes de tool idêntica à esperada, ignorando argumentos. "
-            "1.0 quando conforme, 0.0 caso contrário."
-        ),
         METRICA_SEQUENCIA_EM_ORDEM: (
             "Tools esperadas ocorrem na ordem esperada, ignorando argumentos e "
             "tolerando chamadas extras. 1.0 quando conforme, 0.0 caso contrário."
@@ -495,10 +376,6 @@ def registrar_metricas_ai4es() -> list[str]:
         METRICA_RESPOSTA_CONTEM: (
             "Cada linha não-vazia da resposta esperada aparece na resposta obtida. "
             "Score é a fração de marcadores presentes."
-        ),
-        METRICA_SONDA: (
-            "Instrumentação: registra o que a avaliação enxergou em metrics.CAPTURA "
-            "e devolve sempre 1.0. Não é gate."
         ),
     }
 

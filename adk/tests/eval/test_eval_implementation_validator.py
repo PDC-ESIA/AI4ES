@@ -3,9 +3,6 @@
 Uma tool, sem workspace binding, e a política de veredito codificada em Python
 (`montar_veredito`), o que torna a resposta final estável o bastante para servir de
 âncora junto da trajetória.
-
-O par `armadilha_*` é o coração deste arquivo: prova, como regressão executável, que
-métrica de trajetória sozinha não basta como gate.
 """
 
 import pytest
@@ -20,7 +17,7 @@ async def test_aprova_report_verde_com_state_semeado(
     """Caminho feliz: trajetória, resposta e contrato de tools, juntos.
 
     O `session_input.state` traz `task_id` e `report_path` — sem eles o guard de
-    segurança do validador rejeita o caminho. Ver `test_armadilha_*`.
+    segurança do validador rejeita o caminho e o agente cai no fail-safe.
 
     A fixture segue o contrato do `ExecutionReport` desde o #406 (`criterion_id`,
     `automatable`, `outcome`, `linked_tests`). Com `outcome: nao_avaliado` em todo
@@ -46,44 +43,6 @@ async def test_reprova_quando_a_execucao_falhou(workspace_semeado, evalset, roda
     """
     workspace_semeado("validator_falha")
     await rodar_eval(evalset("validator_reprovado_execucao"), agent_module=MODULO)
-
-
-# ---------------------------------------------------------------------------
-# A armadilha: trajetória correta com o agente degradado, como regressão
-# ---------------------------------------------------------------------------
-# Mesmo eval case, sem `session_input.state`. O validador cai no fail-safe e emite
-# `reprovado` por falta de evidência — mas chamou `tool_ler_arquivo` com o caminho
-# certo, então a trajetória é idêntica à do caminho feliz.
-#
-# Os dois testes abaixo formam uma afirmação só: **métrica de trajetória sozinha não
-# é gate**. Se algum dia o primeiro falhar ou o segundo passar, a premissa mudou e
-# esta afirmação precisa ser revista — que é justamente o que se quer de um teste de
-# regressão sobre uma constatação.
-
-
-@pytest.mark.eval
-async def test_armadilha_trajetoria_verde_com_agente_em_failsafe(
-    workspace_semeado, evalset, rodar_eval
-):
-    """A trajetória PASSA com o agente rodando degradado. Este é o defeito."""
-    workspace_semeado("validator_verde")
-    await rodar_eval(evalset("armadilha_so_trajetoria"), agent_module=MODULO)
-
-
-@pytest.mark.eval
-async def test_armadilha_a_ancora_de_resposta_pega_o_que_a_trajetoria_nao_pega(
-    workspace_semeado, evalset, rodar_eval
-):
-    """O mesmo caso REPROVA quando se ancora também no resultado."""
-    workspace_semeado("validator_verde")
-    with pytest.raises(AssertionError) as excecao:
-        await rodar_eval(evalset("armadilha_com_resposta"), agent_module=MODULO)
-
-    assert "response_match_score" in str(excecao.value), (
-        "Esperava a reprovação vir de response_match_score. Se a falha veio de "
-        "tool_trajectory_avg_score, a armadilha deixou de existir — reveja a "
-        "premissa do par armadilha_* antes de mexer neste teste."
-    )
 
 
 # ---------------------------------------------------------------------------
