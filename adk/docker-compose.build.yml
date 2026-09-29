@@ -1,8 +1,10 @@
 services:
   adk:
     build: .
+    # Porta do HOST configurável via ADK_HOST_PORT (default 8081); a porta
+    # interna do container é sempre 8081. Ex.: homologação usa 60050.
     ports:
-      - "8081:8081"
+      - "${ADK_HOST_PORT:-8081}:8081"
     env_file:
       - .env
     volumes:

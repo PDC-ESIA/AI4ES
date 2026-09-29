@@ -120,6 +120,12 @@ docker compose -f docker-compose.build.yml up --build
 
 Acesse `http://localhost:8081/dev-ui/?app=orchestrator`.
 
+A porta publicada no host é configurável por `ADK_HOST_PORT` no `.env` (default `8081`). Dentro do container o servidor continua na `8081`, então só o mapeamento muda. Exemplo para homologação:
+
+```bash
+ADK_HOST_PORT=60050 docker compose up -d
+```
+
 ### Primeira execução — autenticação obrigatória
 
 Na **primeira vez** que o container subir, o LiteLLM iniciará o fluxo de autenticação OAuth do GitHub Copilot. Para completá-lo:
