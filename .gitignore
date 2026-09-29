@@ -6,6 +6,14 @@ benchmarks/coding_review/humaneval/datasets/
 benchmarks/coding_review/humaneval/results/
 benchmarks/coding_review/mbpp/datasets/
 benchmarks/coding_review/mbpp/results/
+# SlopCodeBench: a issue pede o run commitado em results/ (report.json,
+# report.md, metadata.json). Só o material bruto fica fora — o workspace do
+# coder e qualquer cópia de spec/teste do benchmark (os arquivos do SCBench
+# trazem canary pedindo que não entrem em corpora públicos).
+benchmarks/coding_review/slopcodebench/results/*/workspace/
+# Catálogo de problemas (specs, testes ocultos, soluções) e harness oficial com
+# seu venv, ambos baixados dinamicamente.
+benchmarks/coding_review/slopcodebench/datasets/
 benchmarks/construcao/resultados/
 
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
