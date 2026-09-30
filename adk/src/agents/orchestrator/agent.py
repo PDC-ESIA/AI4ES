@@ -41,6 +41,7 @@ from src.agents.workflow_qa.agent import agent as qa_pipeline
 
 from shared.workspace import init_workspace
 from shared.preflight import ensure_llm_ready
+from shared.token_usage import TokenUsage, bind_stage, token_usage_plugin
 
 from src.agents.orchestrator._helpers import (
     _build_function_response_payload,
@@ -182,6 +183,9 @@ class _PipelineOrchestrator(BaseAgent):
             ))],
         )
 
+        usage = TokenUsage.from_dict(state.get("token_usage"))
+        bind_stage(usage, paused)
+
         last_text = ""
         new_pause = None
         async for event in runner.run_async(
@@ -197,6 +201,8 @@ class _PipelineOrchestrator(BaseAgent):
                     elif _is_pending_long_running_call(part, event):
                         new_pause = part.function_call
 
+        state["token_usage"] = usage.to_dict()
+
         if new_pause is not None:
             # Pausa encadeada — atualiza state, mantém runner.
             _set_pause_state(
@@ -211,6 +217,7 @@ class _PipelineOrchestrator(BaseAgent):
                 "paused_pipeline": state["paused_pipeline"],
                 "paused_inner_session_id": state["paused_inner_session_id"],
                 "paused_function_call": state["paused_function_call"],
+                "token_usage": state["token_usage"],
             })
             return
 
@@ -221,12 +228,17 @@ class _PipelineOrchestrator(BaseAgent):
         state["accumulated_outputs"] = accumulated
         await runner.close()
         self._live_runners.pop(outer_sid, None)
-        yield self._make_state_event({
-            "paused_pipeline": None,
-            "paused_inner_session_id": None,
-            "paused_function_call": None,
-            "accumulated_outputs": accumulated,
-        })
+        yield self._make_text_event(
+            self.name,
+            usage.format_report(),
+            state_delta={
+                "paused_pipeline": None,
+                "paused_inner_session_id": None,
+                "paused_function_call": None,
+                "accumulated_outputs": accumulated,
+                "token_usage": state["token_usage"],
+            },
+        )
 
     async def _handle_fresh_run(
         self, ctx: InvocationContext, outer_sid: str, user_text: str
@@ -235,6 +247,8 @@ class _PipelineOrchestrator(BaseAgent):
         # Fresh run reseta accumulated (nova conversa SDLC).
         state["accumulated_outputs"] = []
         accumulated: list[tuple[str, str]] = []
+        usage = TokenUsage()
+        state["token_usage"] = usage.to_dict()
 
         # Manifestos das fases anteriores — contrato leve entre Times.
         phase_manifests = _load_phase_manifests(state)
@@ -281,7 +295,10 @@ class _PipelineOrchestrator(BaseAgent):
                 session_service=InMemorySessionService(),
                 memory_service=InMemoryMemoryService(),
                 credential_service=ctx.credential_service,
-                plugins=ctx.plugin_manager.plugins if ctx.plugin_manager else None,
+                plugins=[
+                    *(ctx.plugin_manager.plugins if ctx.plugin_manager else []),
+                    token_usage_plugin,
+                ],
             )
             # Repassa os manifestos acumulados para o pipeline ler paths do workspace.
             inner_state = {
@@ -291,6 +308,7 @@ class _PipelineOrchestrator(BaseAgent):
                 app_name=pipeline.name, user_id=ctx.user_id, state=inner_state,
             )
 
+            bind_stage(usage, pipeline.name)
             last_text = ""
             pending_pause = None
             async for event in runner.run_async(
@@ -355,6 +373,7 @@ class _PipelineOrchestrator(BaseAgent):
                     time.perf_counter() - stage_started_at,
                 )
                 self._live_runners[outer_sid] = (runner, inner_session.id)
+                state["token_usage"] = usage.to_dict()
                 _set_pause_state(
                     state,
                     pipeline_name=pipeline.name,
@@ -370,6 +389,7 @@ class _PipelineOrchestrator(BaseAgent):
                     "paused_function_call": state["paused_function_call"],
                     "accumulated_outputs": accumulated,
                     "phase_manifests": state.get("phase_manifests", []),
+                    "token_usage": state["token_usage"],
                 })
                 return  # NÃO roda pipelines subsequentes
 
@@ -393,13 +413,19 @@ class _PipelineOrchestrator(BaseAgent):
             outer_sid,
         )
         state["accumulated_outputs"] = accumulated
-        yield self._make_state_event({
-            "accumulated_outputs": accumulated,
-            "paused_pipeline": None,
-            "paused_inner_session_id": None,
-            "paused_function_call": None,
-            "phase_manifests": state.get("phase_manifests", []),
-        })
+        state["token_usage"] = usage.to_dict()
+        yield self._make_text_event(
+            self.name,
+            usage.format_report(),
+            state_delta={
+                "accumulated_outputs": accumulated,
+                "paused_pipeline": None,
+                "paused_inner_session_id": None,
+                "paused_function_call": None,
+                "phase_manifests": state.get("phase_manifests", []),
+                "token_usage": state["token_usage"],
+            },
+        )
 
     @staticmethod
     def _make_text_event(

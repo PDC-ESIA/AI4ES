@@ -23,6 +23,7 @@ from src.agents.qa_agent.subagents.action_planner.agent import (
     agent as action_planner_agent,
 )
 from shared.tools.planner_tools import plan_validator
+from shared.token_usage import token_usage_plugin
 
 
 _EMPTY_THRESHOLD = 8
@@ -217,6 +218,7 @@ async def _invoke_once(request: str, user_id: str = "qa-pipeline") -> str:
             agent=action_planner_agent,
             session_service=InMemorySessionService(),
             memory_service=InMemoryMemoryService(),
+            plugins=[token_usage_plugin],
         )
         session = await runner.session_service.create_session(
             app_name=action_planner_agent.name,

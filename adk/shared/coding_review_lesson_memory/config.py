@@ -178,4 +178,8 @@ def get_memory() -> AsyncMemory:
                 "vector_store": _vector_store_config(),
             }
         )
+        # O mem0 chama o Gemini fora do ADK — contabiliza no workflow corrente.
+        from shared.token_usage import instrument_genai_client
+
+        instrument_genai_client(getattr(_memory.llm, "client", None))
     return _memory

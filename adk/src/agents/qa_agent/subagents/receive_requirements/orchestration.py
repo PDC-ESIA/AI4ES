@@ -1,6 +1,7 @@
 """Orquestração do subagente receive_requirements: entrypoint da tool, paralelismo e priorização."""
 
 import asyncio
+import contextvars
 import json
 import logging
 import os
@@ -41,7 +42,8 @@ def _run_async(coro):
         # Há um loop rodando (FastAPI/ADK) — executa em thread separada
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as pool:
-            future = pool.submit(asyncio.run, coro)
+            # copy_context: propaga o workflow corrente da contagem de tokens.
+            future = pool.submit(contextvars.copy_context().run, asyncio.run, coro)
             return future.result()
     except RuntimeError:
         # Sem loop rodando — pode usar asyncio.run normalmente
