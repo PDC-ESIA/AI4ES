@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import re
+from shared.security import redigir_segredos
+from shared.qa_disclosure import resumir_evidencia, identificador_publico
 
 
 def _resolve_doubt_dir() -> Path:
@@ -87,7 +89,7 @@ def _text(value: str, fallback: str = "N/A") -> str:
     Returns:
         str: String representando o valor.
     """
-    return str(value) if value is not None else fallback
+    return resumir_evidencia(value) if value is not None else fallback
 
 
 def gerar_doubt_artifact(
@@ -114,12 +116,13 @@ def gerar_doubt_artifact(
         dict: Status e path do artefato gerado.
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    artifact_id = identificador_publico(artifact_id)
     safe_artifact_id = _safe_file_part(artifact_id)
     doubt_dir = _resolve_doubt_dir()
     doubt_dir.mkdir(parents=True, exist_ok=True)
 
     content = (
-        DOUBT_ARTEFACT_TEMPLATE.replace("{{artifact_id}}", _text(artifact_id))
+        DOUBT_ARTEFACT_TEMPLATE.replace("{{artifact_id}}", artifact_id)
         .replace("{{timestamp}}", timestamp)
         .replace("{{agent_name}}", "action_planner")
         .replace("{{module_name}}", _text(module_name))
@@ -131,7 +134,7 @@ def gerar_doubt_artifact(
     )
 
     path = doubt_dir / f"Doubt_Artefact_{safe_artifact_id}_{timestamp}.md"
-    path.write_text(content, encoding="utf-8")
+    path.write_text(redigir_segredos(content), encoding="utf-8")
 
     return {
         "status": "ok",

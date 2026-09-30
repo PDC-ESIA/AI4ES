@@ -127,3 +127,21 @@ def test_code_fix_expoe_reexecucao_multistack():
     assert "read_qa_test" in tools
     assert "write_qa_test" in tools
     assert "executar_teste_unitario_corrigido" in tools
+
+
+@pytest.mark.parametrize(("relative_path", "content"), [
+    ("coder/src/tests/unit/secret.test.js", 'test("x", () => { const api_key = "sk-real-Abc123xyz"; });'),
+    ("coder/src/src/test/java/SecretTest.java", 'class SecretTest { @Test void x() { String api_key = "sk-real-Abc123xyz"; } }'),
+    ("coder/src/secret_test.go", 'package app\nfunc TestX(t *testing.T) { api_key = "sk-real-Abc123xyz" }'),
+    ("coder/src/tests/unit/env.test.js", 'test("x", () => { const value = process.env.GOOGLE_API_KEY; });'),
+])
+def test_multistack_preserva_guardrails_antes_de_escrever(tmp_path, monkeypatch, relative_path, content):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
+    path = tmp_path / relative_path
+    path.parent.mkdir(parents=True)
+    path.write_text("original", encoding="utf-8")
+    result = qa_test_files.write_qa_test(str(path), content)
+    assert result["status"] == "erro"
+    assert "risco de segurança" in result["erro"]
+    assert "sk-real-Abc123xyz" not in result["erro"]
+    assert path.read_text(encoding="utf-8") == "original"

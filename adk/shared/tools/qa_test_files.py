@@ -7,6 +7,7 @@ import hashlib
 import re
 from pathlib import Path
 
+from shared.security import validar_seguranca_codigo, redigir_segredos, detectar_credenciais, detectar_riscos_spec_ts
 from shared.testing import (
     executar_teste_unitario,
     inspect_unit_test_project,
@@ -233,7 +234,13 @@ def _validate_corrected_content(path: Path, content: str) -> None:
                 "O teste não pode alterar sys.path; use o conftest.py "
                 "da suíte materializada pelo QA."
             )
+        validar_seguranca_codigo(content, path.stem)
         return
+    riscos = detectar_credenciais(content)
+    if suffix in _NODE_SUFFIXES:
+        riscos += detectar_riscos_spec_ts(content)
+    if riscos:
+        raise ValueError("Conteúdo apresenta risco de segurança: " + "; ".join(riscos))
     if suffix in _NODE_SUFFIXES and not re.search(
         r"\b(?:describe|it|test)\s*\(", content
     ):
@@ -268,7 +275,7 @@ def read_qa_test(caminho_arquivo: str) -> dict:
             "status": "ok",
             "path": str(path),
             "linguagem": _language(path),
-            "conteudo": path.read_text(encoding="utf-8"),
+            "conteudo": redigir_segredos(path.read_text(encoding="utf-8")),
         }
     except (OSError, ValueError) as exc:
         return {"status": "erro", "erro": str(exc)}
@@ -280,9 +287,16 @@ def write_qa_test(caminho_arquivo: str, conteudo: str) -> dict:
     Esta ferramenta nunca escreve em código de produção. O destino precisa ser
     reconhecido como teste gerado de Python, Node/TypeScript, Java ou Go.
 
+    Antes de escrever, `conteudo` passa pela mesma varredura de segurança
+    (P3 — `shared.security.validar_seguranca_codigo`) usada na geração
+    inicial de pytest em `receive_requirements`: sem isso, uma correção do
+    code_fix_agent podia introduzir leitura de env, execução de processo,
+    rede externa ou credencial hardcoded sem qualquer checagem, já que essa
+    função só validava sintaxe e mutação de `sys.path`.
+
     Args:
         caminho_arquivo: Path do teste a corrigir.
-        conteudo: Conteúdo Python completo já corrigido.
+        conteudo: Conteúdo completo corrigido na linguagem original.
 
     Returns:
         Objeto com status, path, bytes escritos e SHA-256 do novo conteúdo.
