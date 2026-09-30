@@ -65,6 +65,38 @@ def test_cobertura_exige_summary_completo_e_consistente(review_tools_module):
         ) is False
 
 
+def test_task_aceita_com_ressalvas_comprova_cobertura(review_tools_module):
+    summary = _summary(completa=False)
+    summary.update(
+        {
+            "approved_task_ids": ["TASK-001"],
+            "accepted_task_ids": ["TASK-002"],
+            "cobertura_completa": True,
+            "qualidade_completa": False,
+        }
+    )
+    summary["task_results"]["TASK-002"].update(
+        {
+            "status": "aceito_com_ressalvas",
+            "motivo_terminacao": "aceito_com_ressalvas_plato_nota",
+            "nota_final": 0.8,
+            "conceito": "B",
+        }
+    )
+
+    assert review_tools_module.cobertura_comprovada(
+        {"task_iteration_summary": summary}
+    ) is True
+
+    original = "## Status: APROVADO\n\n## Resumo\nEntrega funcional com ressalvas."
+
+    class Ctx:
+        state = {"review_analysis": original, "task_iteration_summary": summary}
+
+    assert review_tools_module._persist_review(Ctx()) is None
+    assert Ctx.state["review_analysis"] == original
+
+
 def test_gate_remove_status_conflitante_preserva_corpo_e_e_idempotente(
     review_tools_module,
 ):

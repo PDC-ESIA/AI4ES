@@ -47,6 +47,8 @@ AGENT_DIRS: dict[str, str] = {
     "action_planner": "tests/planning",
     "code_fix_agent": "tests/fixes",
     "receive_requirements": "tests/inputs",
+    "integration_tests_agent": "tests/integration_tests",
+    "unit_test_generator": "tests/unit",
     "e2e_test_generator": "tests/e2e",
     # Time 4 — Codificação
     "context_engineer": "tasks",
@@ -90,9 +92,7 @@ def get_workspace_root() -> Path:
 
     resolved = resolved.resolve()
 
-    logger.debug(
-        f"[WORKSPACE] {_ENV_WORKSPACE}='{raw}' → resolvido para: {resolved}"
-    )
+    logger.debug(f"[WORKSPACE] {_ENV_WORKSPACE}='{raw}' → resolvido para: {resolved}")
     return resolved
 
 

@@ -113,3 +113,148 @@ def test_load_manifest_caminho_feliz(tmp_path):
     assert m.healthcheck == "/health"
     assert m.build == ["pip install -r requirements.txt"]
     assert m.env["DATABASE_URL"] == "sqlite:///./app.db"
+
+
+# ---------------------------------------------------------------------------
+# acceptance_tests — mapa critério → testes (só a FORMA é tratada aqui)
+# ---------------------------------------------------------------------------
+
+def test_acceptance_tests_default_vazio():
+    m = RunManifest(surface="none", test=["pytest -q"])
+    assert m.acceptance_tests == {}
+
+
+def test_acceptance_tests_preserva_mapa_bem_formado():
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_tests={"CA-01": ["t/a.py::x"], "CA-02": ["t/b.py::y", "t/b.py::z"]},
+    )
+    assert m.acceptance_tests == {
+        "CA-01": ["t/a.py::x"],
+        "CA-02": ["t/b.py::y", "t/b.py::z"],
+    }
+
+
+def test_acceptance_task_id_define_namespace_do_mapa():
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_task_id="TASK-002",
+        acceptance_tests={"CA-01": ["t/a.py::x"]},
+    )
+
+    assert m.acceptance_task_id == "TASK-002"
+
+    
+def test_acceptance_task_id_remove_espacos_externos():
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_task_id="  TASK-002  ",
+        acceptance_tests={"CA-01": ["t/a.py::x"]},
+    )
+
+    assert m.acceptance_task_id == "TASK-002"
+
+
+@pytest.mark.parametrize("valor", [42, True, [], {}, "", "   ", None])
+def test_acceptance_task_id_malformado_nao_invalida_manifesto(valor):
+    """Erro no bookkeeping descarta cobertura, sem impedir build e testes."""
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_task_id=valor,
+        acceptance_tests={"CA-01": ["t/a.py::x"]},
+    )
+
+    assert m.acceptance_task_id is None
+    assert m.acceptance_tests == {"CA-01": ["t/a.py::x"]}
+
+
+def test_acceptance_tests_aceita_teste_unico_fora_de_lista():
+    """Erro comum de LLM; absorver custa nada e evita perder cobertura real."""
+    m = RunManifest(
+        surface="none", test=["pytest -q"], acceptance_tests={"CA-01": "t/a.py::x"}
+    )
+    assert m.acceptance_tests == {"CA-01": ["t/a.py::x"]}
+
+
+@pytest.mark.parametrize(
+    "valor", ["texto", 42, ["CA-01"], None]
+)
+def test_acceptance_tests_malformado_nao_invalida_o_manifesto(valor):
+    """O mapa é bookkeeping: recusá-lo abortaria o estágio 1 (crítico).
+
+    Sem esta tolerância, um erro de anotação zeraria a nota técnica do coder —
+    punindo tecnicamente algo que não é defeito do artefato.
+    """
+    m = RunManifest(surface="none", test=["pytest -q"], acceptance_tests=valor)
+    assert m.acceptance_tests == {}
+
+
+def test_acceptance_tests_descarta_entradas_inaproveitaveis_mantendo_o_resto():
+    m = RunManifest(
+        surface="none",
+        test=["pytest -q"],
+        acceptance_tests={
+            "CA-01": ["t/a.py::x"],
+            "CA-02": [],
+            "CA-03": ["  ", ""],
+            "CA-04": 42,
+            "CA-05": [7, "t/b.py::y", None],
+        },
+    )
+    assert m.acceptance_tests == {"CA-01": ["t/a.py::x"], "CA-05": ["t/b.py::y"]}
+
+
+def test_load_manifest_le_acceptance_tests_do_disco(tmp_path):
+    p = tmp_path / "run.json"
+    p.write_text(
+        json.dumps(
+            {
+                "surface": "service",
+                "run": "uvicorn app:app",
+                "port": 8000,
+                "test": ["pytest -q"],
+                "acceptance_tests": {"CA-01": ["tests/test_a.py::test_x"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    m = load_manifest(p)
+    assert m.acceptance_tests == {"CA-01": ["tests/test_a.py::test_x"]}
+
+
+def test_load_manifest_com_acceptance_tests_invalido_nao_levanta(tmp_path):
+    p = tmp_path / "run.json"
+    p.write_text(
+        json.dumps(
+            {
+                "surface": "none",
+                "test": ["pytest -q"],
+                "acceptance_tests": "CA-01",
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert load_manifest(p).acceptance_tests == {}
+
+
+def test_load_manifest_com_acceptance_task_id_invalido_nao_levanta(tmp_path):
+    p = tmp_path / "run.json"
+    p.write_text(
+        json.dumps(
+            {
+                "surface": "none",
+                "test": ["pytest -q"],
+                "acceptance_task_id": 42,
+                "acceptance_tests": {"CA-01": ["tests/test_a.py::test_x"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifesto = load_manifest(p)
+    assert manifesto.acceptance_task_id is None
+    assert manifesto.acceptance_tests == {"CA-01": ["tests/test_a.py::test_x"]}

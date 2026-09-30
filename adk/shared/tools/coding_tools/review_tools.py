@@ -132,10 +132,14 @@ def _normalizar_summary(summary: Any) -> Optional[dict]:
     expected = summary.get("expected_task_ids")
     processed = summary.get("processed_task_ids")
     approved = summary.get("approved_task_ids")
+    accepted = summary.get("accepted_task_ids", [])
     task_results = summary.get("task_results")
     cobertura = summary.get("cobertura_completa")
+    qualidade = summary.get("qualidade_completa")
 
     if type(input_valid) is not bool or type(cobertura) is not bool:
+        return None
+    if qualidade is not None and type(qualidade) is not bool:
         return None
     if not isinstance(input_errors, list) or not all(
         isinstance(erro, dict) for erro in input_errors
@@ -143,7 +147,7 @@ def _normalizar_summary(summary: Any) -> Optional[dict]:
         return None
     if not all(
         isinstance(ids, list) and all(isinstance(task_id, str) for task_id in ids)
-        for ids in (expected, processed, approved)
+        for ids in (expected, processed, approved, accepted)
     ):
         return None
     if not isinstance(task_results, dict) or not all(
@@ -158,10 +162,16 @@ def _normalizar_summary(summary: Any) -> Optional[dict]:
         "expected_task_ids": list(expected),
         "processed_task_ids": list(processed),
         "approved_task_ids": list(approved),
+        "accepted_task_ids": list(accepted),
         "task_results": {
             task_id: dict(resultado) for task_id, resultado in task_results.items()
         },
         "cobertura_completa": cobertura,
+        "qualidade_completa": (
+            qualidade
+            if qualidade is not None
+            else cobertura and not accepted
+        ),
     }
 
 
@@ -170,11 +180,14 @@ def _cobertura_recalculada(summary: dict) -> bool:
     expected = summary["expected_task_ids"]
     processed = summary["processed_task_ids"]
     approved = summary["approved_task_ids"]
+    accepted = summary["accepted_task_ids"]
+    concluidas = set(approved) | set(accepted)
     return (
         summary["input_valid"] is True
         and len(expected) > 0
         and set(expected) == set(processed)
-        and set(expected) == set(approved)
+        and set(expected) == concluidas
+        and not (set(approved) & set(accepted))
     )
 
 
@@ -204,11 +217,12 @@ def _linhas_de_pendencia(summary: dict) -> list[str]:
 
     esperadas = summary.get("expected_task_ids") or []
     aprovadas = set(summary.get("approved_task_ids") or [])
+    aceitas = set(summary.get("accepted_task_ids") or [])
     resultados = summary.get("task_results")
     resultados = resultados if isinstance(resultados, dict) else {}
 
     for task_id in esperadas:
-        if task_id in aprovadas:
+        if task_id in aprovadas or task_id in aceitas:
             continue
         resultado = resultados.get(task_id)
         if isinstance(resultado, dict):

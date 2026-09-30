@@ -31,6 +31,7 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 _COPILOT_PREFIXES = ("github_copilot/", "github/")
+_OPENROUTER_PREFIX = "openrouter/"
 _DEFAULT_TIMEOUT = 10.0
 _DEFAULT_RENEW_ATTEMPTS = 2
 
@@ -42,6 +43,13 @@ _ABORT_MESSAGE = (
     "Para reautenticar, rode:\n"
     "    python adk/scripts/copilot_auth.py\n\n"
     "Último erro: {error}"
+)
+
+_OPENROUTER_ABORT_MESSAGE = (
+    "[preflight] O modelo configurado usa o provedor OpenRouter, mas a variável "
+    "de ambiente OPENROUTER_API_KEY não está definida. O prompt foi abortado.\n\n"
+    "Defina a chave no ambiente ou no .env:\n"
+    "    OPENROUTER_API_KEY=sk-or-...\n"
 )
 
 
@@ -110,10 +118,20 @@ async def _health_check(model: str, timeout: float) -> None:
 async def ensure_llm_ready(model: str | None = None) -> PreflightResult:
     """Health-check rápido do LLM, com renovação de token e retries.
 
-    Para providers não-Copilot é no-op (ok=True). Ver docstring do módulo.
+    Para providers não-Copilot é no-op (ok=True), exceto OpenRouter, que
+    apenas valida a presença de OPENROUTER_API_KEY. Ver docstring do módulo.
     Nunca levanta: encapsula todas as falhas no PreflightResult.
     """
     model = model or os.environ.get("ADK_LLM_MODEL", "")
+
+    # OpenRouter: validação leve — sem ping de rede, apenas checa a credencial.
+    if model.startswith(_OPENROUTER_PREFIX):
+        if not os.environ.get("OPENROUTER_API_KEY"):
+            logger.error("[PREFLIGHT] OPENROUTER_API_KEY ausente; abortando prompt.")
+            return PreflightResult(ok=False, message=_OPENROUTER_ABORT_MESSAGE)
+        logger.info("[PREFLIGHT] OpenRouter: OPENROUTER_API_KEY presente.")
+        return PreflightResult(ok=True)
+
     if not model.startswith(_COPILOT_PREFIXES):
         return PreflightResult(ok=True)
 

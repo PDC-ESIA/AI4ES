@@ -12,6 +12,7 @@ from shared.observability import resolved_plugins, setup_logging
 
 LLMRegistry._register(r"github_copilot/.*", LiteLlm)
 LLMRegistry._register(r"github/.*", LiteLlm)
+LLMRegistry._register(r"openrouter/.*", LiteLlm)
 
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")

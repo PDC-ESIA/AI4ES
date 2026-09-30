@@ -9,7 +9,7 @@ def _capturar(texto: str, padrao: str) -> str | None:
     encontrado = re.search(padrao, texto, flags=re.IGNORECASE | re.MULTILINE)
     if not encontrado:
         return None
-    return encontrado.group(1).strip().rstrip(".,;")
+    return encontrado.group(1).strip().rstrip(".,;:")
 
 
 def _chave_dado(nome: str) -> str:
@@ -20,8 +20,33 @@ def _chave_dado(nome: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]+", "_", sem_acentos).strip("_").lower() or "valor"
 
 
+def _texto_requisitos(requisitos: Any) -> str:
+    """Recompõe o texto explícito mesmo quando ele chega em artefatos JSON."""
+    if isinstance(requisitos, str):
+        return requisitos.strip()
+    if isinstance(requisitos, list):
+        return "\n".join(
+            texto for item in requisitos if (texto := _texto_requisitos(item))
+        )
+    if isinstance(requisitos, dict):
+        for chave in (
+            "conteudo",
+            "content",
+            "descricao",
+            "description",
+            "requisito",
+            "requirement",
+            "texto",
+        ):
+            if chave in requisitos:
+                texto = _texto_requisitos(requisitos[chave])
+                if texto:
+                    return texto
+    return ""
+
+
 def _linhas_fluxo(texto: str) -> list[str]:
-    return [
+    numeradas = [
         encontrado.group(1).strip()
         for encontrado in re.finditer(
             r"(?:^|\s)\d+[.)]\s+(.+?)(?=\s+\d+[.)]\s+|$)",
@@ -29,6 +54,40 @@ def _linhas_fluxo(texto: str) -> list[str]:
             flags=re.DOTALL,
         )
     ]
+    if numeradas:
+        return numeradas
+
+    inicio = re.search(
+        r"\b(?:verificar|validar|preencher|clicar)\b",
+        texto,
+        flags=re.IGNORECASE,
+    )
+    if not inicio:
+        return []
+    trecho = texto[inicio.start() :]
+    fim = re.search(
+        r"\.\s*(?:gere|execute|retorne)\b",
+        trecho,
+        flags=re.IGNORECASE,
+    )
+    if fim:
+        trecho = trecho[: fim.start()]
+
+    acoes = list(
+        re.finditer(
+            r"\b(?:verificar|validar|preencher|clicar)\b",
+            trecho,
+            flags=re.IGNORECASE,
+        )
+    )
+    linhas: list[str] = []
+    for indice, acao in enumerate(acoes):
+        fim_acao = acoes[indice + 1].start() if indice + 1 < len(acoes) else None
+        linha = trecho[acao.start() : fim_acao].strip(" ,;.\n\r")
+        linha = re.sub(r"\s+e\s*$", "", linha, flags=re.IGNORECASE)
+        if linha:
+            linhas.append(linha)
+    return linhas
 
 
 def _extrair_passos(
@@ -67,6 +126,25 @@ def _extrair_passos(
             )
             continue
 
+        preencher_simples = re.search(
+            r"""\bpreencher\s+(?:o\s+)?campo\s+["']([^"']+)["']\s+
+            (?:com|usando)\s+["']([^"']+)["']""",
+            linha,
+            flags=re.IGNORECASE | re.VERBOSE,
+        )
+        if preencher_simples:
+            nome, valor = preencher_simples.groups()
+            chave = _chave_dado(nome)
+            dados[chave] = valor
+            passos.append(
+                {
+                    "acao": "preencher",
+                    "localizador": {"tipo": "label", "valor": nome},
+                    "chave_dado": chave,
+                }
+            )
+            continue
+
         clicar = re.search(
             r"""\bclicar\s+(?:no|na)\s+(bot\S*|link)\s+com\s+nome\s+
             acess\S*\s+["']([^"']+)["']""",
@@ -88,6 +166,23 @@ def _extrair_passos(
             )
             continue
 
+        clicar_texto = re.search(
+            r"""\bclicar\s+(?:em|no|na)\s+["']([^"']+)["']""",
+            linha,
+            flags=re.IGNORECASE,
+        )
+        if clicar_texto:
+            passos.append(
+                {
+                    "acao": "clicar",
+                    "localizador": {
+                        "tipo": "text",
+                        "valor": clicar_texto.group(1),
+                    },
+                }
+            )
+            continue
+
         verificar_texto = re.search(
             r"""\bverificar\b.*?\btexto\s+["']([^"']+)["'].*?
             (?:aparece|vis[ií]vel|exibid[oa])""",
@@ -101,6 +196,23 @@ def _extrair_passos(
                     "localizador": {
                         "tipo": "text",
                         "valor": verificar_texto.group(1),
+                    },
+                }
+            )
+            continue
+
+        verificar_conteudo = re.search(
+            r"""\b(?:verificar|validar)\b.*?\b(?:t[ií]tulo|mensagem|texto)\s+["']([^"']+)["']""",
+            linha,
+            flags=re.IGNORECASE,
+        )
+        if verificar_conteudo:
+            passos.append(
+                {
+                    "acao": "verificar_visivel",
+                    "localizador": {
+                        "tipo": "text",
+                        "valor": verificar_conteudo.group(1),
                     },
                 }
             )
@@ -126,17 +238,18 @@ def extrair_contrato_textual_e2e(requisitos: Any) -> dict[str, Any]:
     expressão reconhecida no texto original.
     """
 
-    if not isinstance(requisitos, str) or not requisitos.strip():
+    texto = _texto_requisitos(requisitos)
+    if not texto:
         return {}
-    texto = requisitos.strip()
 
     base_url = _capturar(
         texto,
         r"^\s*[-*]?\s*URL\s+base\s*:\s*(https?://\S+)",
     )
+    base_url = base_url or _capturar(texto, r"\b(https?://[^\s,;]+)")
     rota = _capturar(texto, r"^\s*[-*]?\s*Rota\s*:\s*(/\S+)")
     passos, dados, rota_acesso = _extrair_passos(texto)
-    rota = rota or rota_acesso
+    rota = rota or rota_acesso or base_url
 
     contrato: dict[str, Any] = {}
     if base_url:
@@ -144,7 +257,11 @@ def extrair_contrato_textual_e2e(requisitos: Any) -> dict[str, Any]:
     if base_url or rota:
         contrato["tipo_sistema"] = "web"
     if rota:
-        nome = rota.strip("/").replace("-", " ").replace("_", " ").title()
+        nome = (
+            "Jornada E2E"
+            if rota.startswith(("http://", "https://"))
+            else rota.strip("/").replace("-", " ").replace("_", " ").title()
+        )
         contrato["rotas_ou_telas"] = [
             {
                 "nome": nome or "Jornada E2E",

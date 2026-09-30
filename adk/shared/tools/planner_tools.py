@@ -5,26 +5,55 @@ from typing import Any
 
 QA_AGENT_TOOLS = [
     {
-        "name": "receber_requisitos",
+        "name": "unit_test_generator",
         "agent": "qa_agent",
-        "category": "requirements_to_pytest",
-        "summary": "Recebe artefatos RF, HU, UC, RNF ou RN em JSON e gera suites pytest.",
+        "category": "requirements_to_unit_tests",
+        "summary": (
+            "Inspeciona a stack e gera testes unitarios pelo perfil registrado; "
+            "executa perfis Python/FastAPI, Node/Express (JavaScript e "
+            "TypeScript), Java/Spring e Go."
+        ),
         "input_contract": (
-            "String JSON com um artefato ou lista de artefatos contendo "
-            "id_artefato, tipo, conteudo, modulo e criticidade."
+            "Entrada original com requisito, codigo, nomes de arquivos e, "
+            "opcionalmente, stack declarada e workspace do projeto."
         ),
         "output_contract": (
-            "Relatorio consolidado com status, resumo de sucessos/bloqueios/falhas "
-            "e detalhes por artefato."
+            "Inspecao deterministica, perfil selecionado, arquivos gerados, "
+            "execucoes normalizadas e bloqueios."
         ),
         "use_when": [
-            "A entrada principal e um requisito ou artefato de requisito.",
-            "O objetivo e gerar testes pytest a partir de comportamento esperado.",
-            "Ha codigo acompanhado de requisito que precisa virar criterio testavel.",
+            "O objetivo e gerar testes unitarios a partir de requisito ou codigo.",
+            "A stack precisa ser identificada antes da geracao.",
+            "Ha codigo acompanhado de requisito que precisa virar teste isolado.",
         ],
         "avoid_when": [
             "O usuario pediu apenas execucao de um arquivo de teste ja existente.",
-            "A entrada nao possui comportamento verificavel nem codigo inferivel.",
+            "O usuario pediu teste de integracao ou E2E.",
+        ],
+    },
+    {
+        "name": "integration_tests_agent",
+        "agent": "qa_agent",
+        "category": "requirements_to_integration_tests",
+        "summary": (
+            "Inspeciona, gera e executa testes de integração por perfil nas "
+            "quatro famílias do Coder."
+        ),
+        "input_contract": (
+            "Requisito ou código com contexto suficiente para identificar os "
+            "componentes e a fronteira de integração."
+        ),
+        "output_contract": (
+            "Envelope normalizado com perfil, resumo, arquivos, detalhes e "
+            "bloqueios; a saída original permanece em resultado_bruto."
+        ),
+        "use_when": [
+            "O usuário pede explicitamente testes de integração.",
+            "O cenário deve exercitar a colaboração entre dois ou mais componentes.",
+        ],
+        "avoid_when": [
+            "O objetivo é isolar uma única unidade de código.",
+            "O usuário pediu somente E2E ou execução de arquivo existente.",
         ],
     },
     {
@@ -32,8 +61,8 @@ QA_AGENT_TOOLS = [
         "agent": "qa_agent",
         "category": "requirements_to_e2e_plan",
         "summary": (
-            "Transforma requisitos e contexto técnico em um plano E2E e, "
-            "quando seguro, gera um spec Playwright."
+            "Inspeciona e executa o adaptador Playwright TypeScript nas quatro "
+            "famílias do Coder."
         ),
         "input_contract": (
             "Plano validado com handoff_context.entrada_original preservado; "
@@ -41,21 +70,17 @@ QA_AGENT_TOOLS = [
             "também podem ser enviados como argumento direto."
         ),
         "output_contract": (
-            "Inspeção de framework/entrypoint/rotas, plano E2E e bloqueios; "
-            "para jornadas web ou contratos API verificáveis, arquivo `.spec.ts` "
-            "gerado e execução local controlada "
-            "quando ambiente e perfil de comando forem autorizados."
+            "Envelope normalizado com perfil, resumo, specs, execução e "
+            "bloqueios; a resposta Playwright permanece em resultado_bruto."
         ),
         "use_when": [
-            "O usuário pede testes E2E, Playwright ou fluxo ponta a ponta.",
+            "O usuário pede testes E2E ou fluxo ponta a ponta.",
             "O objetivo é mapear uma jornada web/API completa.",
-            "O usuário pede geração e execução local de um spec Playwright.",
             "É necessário identificar lacunas antes de automatizar o fluxo.",
         ],
         "avoid_when": [
-            "O usuário pede testes unitários ou de integração em pytest.",
+            "O usuário pede testes unitários ou de integração.",
             "O usuário pede execução de um arquivo pytest existente.",
-            "O sistema alvo é exclusivamente CLI ou agêntico neste MVP.",
         ],
     },
     {
@@ -218,9 +243,7 @@ def _completar_campos_administrativos_e2e(
         for campo, valor in padroes.items():
             if campo not in relatorio:
                 relatorio[campo] = valor
-                campos_completados.append(
-                    f"relatorio_conformidade_esperado.{campo}"
-                )
+                campos_completados.append(f"relatorio_conformidade_esperado.{campo}")
 
     handoff_context = plan.get("handoff_context")
     if isinstance(handoff_context, dict):

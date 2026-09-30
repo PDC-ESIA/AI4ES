@@ -15,16 +15,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from shared.workspace import get_workspace_root
+
 from .design_logger import IOLogger
 
 def _find_root(start_path: Path, target: str = "adk") -> Path:
     for parent in start_path.parents:
         if parent.name == target:
             return parent
-    return start_path.parents[4]  # Fallback seguro (Atualizar se necessário)
+    return start_path.parents[2]  # .../<adk>/shared/tools/design_filesystem.py → <adk>
 
 ADK_DIR = _find_root(Path(__file__).resolve())
-DESIGN_DIR = ADK_DIR / "workspace_output" / "design"
+# Artefatos seguem WORKSPACE_OUTPUT_DIR (como o resto do projeto): no container
+# o código em ADK_DIR é read-only e o workspace é um volume à parte.
+DESIGN_DIR = get_workspace_root() / "design"
 
 ANALYSIS_DIR = DESIGN_DIR / "analysis"
 DIAGRAMS_DIR = DESIGN_DIR / "diagrams"
@@ -59,7 +63,7 @@ def _resolve_dirs(base_dir: str | None = None) -> Dict[str, Path]:
     Resolve o conjunto de diretórios de design usado por uma chamada.
 
     Sem base_dir (default — comportamento histórico preservado): usa a raiz
-    fixa e compartilhada DESIGN_DIR (workspace_output/design), a mesma para
+    fixa e compartilhada DESIGN_DIR (<WORKSPACE_OUTPUT_DIR>/design), a mesma para
     todos os agentes do pipeline.
 
     Com base_dir: trata o valor como a raiz de um workspace isolado — por
@@ -88,12 +92,12 @@ def _resolve_dirs(base_dir: str | None = None) -> Dict[str, Path]:
 def _safety_root(base_dir: str | None = None) -> Path:
     """
     Raiz usada para validar que nenhuma leitura/escrita escapa da área
-    permitida (ver _is_safe_path). Sem base_dir, a área permitida é todo o
-    projeto (ADK_DIR) — comportamento histórico. Com base_dir, a área
-    permitida é restrita ao próprio workspace isolado — verificação MAIS
-    estrita, nunca mais permissiva.
+    permitida (ver _is_safe_path). Sem base_dir, a área permitida é
+    DESIGN_DIR (que pode ficar fora de ADK_DIR quando WORKSPACE_OUTPUT_DIR
+    aponta para outro lugar). Com base_dir, a área permitida é restrita ao
+    próprio workspace isolado. TEMPLATE_DIR é sempre liberado em _is_safe_path.
     """
-    return Path(base_dir).resolve() if base_dir else ADK_DIR.resolve()
+    return Path(base_dir).resolve() if base_dir else DESIGN_DIR.resolve()
 
 
 def _ensure_dirs(dirs: Dict[str, Path]) -> None:
@@ -133,7 +137,8 @@ _FOLDER_ALIAS_DISPLAY = (
     "PROTOTYPE, PROTOTYPE_DIR, PROTOTYPE_FOLDER, "
     "REPORT, REPORT_DIR, REPORT_FOLDER, "
     "DOUBT, DOUBT_DIR, DOUBT_FOLDER, "
-    "TEMPLATE_DIR, TEMPLATE_FOLDER"
+    "TEMPLATE, TEMPLATE_DIR, TEMPLATE_FOLDER, "
+    "VALIDATION, VALIDATION_DIR, VALIDATION_FOLDER"
 )
 
 
@@ -164,6 +169,10 @@ def _folder_aliases(dirs: Dict[str, Path]) -> Dict[str, Path]:
         "template":         dirs["template"],
         "template_dir":     dirs["template"],
         "template_folder":  dirs["template"],
+        # VALIDATION
+        "validation":        dirs["validation"],
+        "validation_dir":    dirs["validation"],
+        "validation_folder": dirs["validation"],
     }
 
 

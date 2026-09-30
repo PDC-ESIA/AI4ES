@@ -435,7 +435,7 @@ REGRAS FINAIS:
 PROTOCOLO ANTI-EMPTY (OBRIGATÓRIO):
 PROIBIDO devolver resposta vazia ao pipeline pai. Se você não conseguir gerar o
 relatório por qualquer motivo (input inválido, ferramenta indisponível, dúvida
-sobre formato), gere um artefato com sufixo `_BLOCKED.md` e o salve em REPORT_DIR
+sobre formato), gere um artefato com sufixo `_BLOCKED.md` e o salve em REPORT/
 explicando o motivo, e retorne ao pipeline o caminho absoluto desse arquivo.
 Antes de salvá-lo, adquira o lock desse nome de arquivo com
 acquire_lock(filepath="REPORT/relatorio_<hu_ids>_BLOCKED.md", caller="markdown_specialist")

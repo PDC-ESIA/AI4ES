@@ -8,6 +8,11 @@ de cada task) e Task (Context Window completo para o coder), além de TasksOutpu
 from typing import Any, Optional
 from pydantic import BaseModel, Field, field_validator
 
+from shared.tools.coding_tools.criterios_aceite import (
+    AcceptanceCriterion,
+    normalizar_criterios,
+)
+
 
 class MacroContext(BaseModel):
     """Contexto global — compartilhado por todas as tasks da sessão."""
@@ -112,21 +117,46 @@ class Task(BaseModel):
         default_factory=list,
         description="Regras de negócio específicas desta task",
     )
-    acceptance_criteria: list[str] = Field(
+    acceptance_criteria: list[AcceptanceCriterion] = Field(
         description=(
             "Critérios de aceitação verificáveis derivados dos RFs, RNFs "
-            "e decisões de design disponíveis no workspace"
+            "e decisões de design disponíveis no workspace. Cada um com id "
+            "próprio (CA-01, CA-02...) e classificação de automatizabilidade"
         )
     )
     contract: Contract = Field(
         description="Fronteiras: o que ler e o que produzir"
     )
 
+    @field_validator("acceptance_criteria", mode="before")
+    @classmethod
+    def _coerce_acceptance_criteria(cls, v: Any) -> list[AcceptanceCriterion]:
+        """Normaliza qualquer forma aceita antes da validação de tipo.
+
+        Absorve tanto o formato antigo (lista de strings) quanto um id ausente,
+        repetido ou fora do padrão — ver `normalizar_criterios`. A normalização
+        NÃO é exclusiva daqui: a task chega ao harness pelo disco, onde
+        `tool_salvar_task_cr` grava o JSON cru do LLM sem passar por este
+        modelo. Este validador cobre o caminho do `state`; o harness chama o
+        mesmo helper ao ler o arquivo.
+        """
+        return normalizar_criterios(v)
+
     requirement_id: str = Field(
         description=(
             "ID do requisito funcional de origem desta task "
             "(ex: RF-001). Garante rastreabilidade até o Time 1."
         )
+    )
+
+    requirement_refs: list[str] = Field(
+        default_factory=list,
+        description=(
+            "IDs de todos os artefatos de requirements que contribuíram para "
+            "esta task — RNFs, RNs, HUs e outros além do RF de origem. "
+            "requirement_id é o RF principal; requirement_refs complementa "
+            "com todos os demais que enriqueceram o contexto."
+        ),
     )
     design_refs: list[str] = Field(
         default_factory=list,

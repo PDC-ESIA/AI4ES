@@ -11,7 +11,7 @@ from google.genai import types
 
 sys.modules.setdefault("litellm", py_types.SimpleNamespace(drop_params=False))
 
-from shared.cache.qa_agent_cache import QaAgentResponseCache
+from shared.cache.qa_agent_cache import QaAgentResponseCache  # noqa: E402
 
 
 class FakeClock:
@@ -27,7 +27,9 @@ class FakeClock:
 
 @dataclass
 class FakeContext:
-    custom_metadata: dict = field(default_factory=dict)
+    # ADK cria uma instância de contexto por hook; "actions" é o objeto
+    # compartilhado entre before/after/on_error de uma mesma chamada real.
+    actions: object = field(default_factory=object)
 
 
 def make_request(text: str, model: str = "gemini-2.5-flash") -> LlmRequest:
@@ -90,7 +92,7 @@ async def test_cache_miss_grava_resposta():
 
     cached = await cache.before_model_callback(context, request)
     assert cached is None
-    assert "qa_agent_cache" in context.custom_metadata
+    assert cache._pending_key(context) in cache._pending
 
     response = make_response("resultado salvo")
     await cache.after_model_callback(context, response)
@@ -203,9 +205,11 @@ async def test_erro_do_modelo_libera_fluxo_da_mesma_chave():
 
     cached = await cache.before_model_callback(leader_context, request)
     assert cached is None
-    assert "qa_agent_cache" in leader_context.custom_metadata
+    assert cache._pending_key(leader_context) in cache._pending
 
-    follower_task = asyncio.create_task(cache.before_model_callback(follower_context, request))
+    follower_task = asyncio.create_task(
+        cache.before_model_callback(follower_context, request)
+    )
     await asyncio.sleep(0)
     assert not follower_task.done()
 
@@ -219,4 +223,4 @@ async def test_erro_do_modelo_libera_fluxo_da_mesma_chave():
 
     assert release_called.is_set()
     assert follower_result is None
-    assert "qa_agent_cache" not in leader_context.custom_metadata
+    assert cache._pending_key(leader_context) not in cache._pending
