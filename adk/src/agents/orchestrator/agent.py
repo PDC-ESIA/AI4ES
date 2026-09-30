@@ -151,9 +151,13 @@ class _PipelineOrchestrator(BaseAgent):
             )
             state["token_usage"] = usage.to_dict()
             local = f"no workflow **{stage}**" if stage else "antes do primeiro workflow"
+            # ParallelAgent embrulha a falha em ExceptionGroup — mostra a causa real.
+            cause: BaseException = exc
+            while isinstance(cause, BaseExceptionGroup) and cause.exceptions:
+                cause = cause.exceptions[0]
             note = (
                 f"Execução interrompida {local}: "
-                f"`{type(exc).__name__}: {str(exc)[:300]}`"
+                f"`{type(cause).__name__}: {str(cause)[:300]}`"
             )
             yield self._make_text_event(
                 self.name,

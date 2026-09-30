@@ -183,3 +183,38 @@ def test_orchestrator_emite_relatorio_parcial_e_propaga_erro(monkeypatch):
     assert eventos[-1].actions.state_delta["token_usage"] == {
         "requisitos": {"input": 1200, "output": 300}
     }
+
+
+def test_orchestrator_relatorio_parcial_desembrulha_exception_group(monkeypatch):
+    import pytest
+    from google.genai import types
+
+    import src.agents.orchestrator.agent as orch
+    from shared.preflight import PreflightResult
+
+    async def _preflight_ok():
+        return PreflightResult(ok=True)
+
+    async def _fresh_que_falha(self, ctx, outer_sid, user_text, usage):
+        bind_stage(usage, "design_pipeline")
+        if False:
+            yield
+        raise ExceptionGroup("unhandled errors in a TaskGroup", [ValueError("429 TPM")])
+
+    monkeypatch.setattr(orch, "ensure_llm_ready", _preflight_ok)
+    monkeypatch.setattr(orch._PipelineOrchestrator, "_handle_fresh_run", _fresh_que_falha)
+    ctx = SimpleNamespace(
+        session=SimpleNamespace(state={}, id="s2"),
+        user_content=types.Content(role="user", parts=[types.Part(text="oi")]),
+    )
+
+    async def _coletar():
+        eventos = []
+        with pytest.raises(ExceptionGroup):
+            async for ev in orch.root_agent._run_async_impl(ctx):
+                eventos.append(ev)
+        return eventos
+
+    texto = asyncio.run(_coletar())[-1].content.parts[0].text
+    assert "no workflow **design**" in texto
+    assert "`ValueError: 429 TPM`" in texto
