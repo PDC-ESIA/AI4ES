@@ -41,7 +41,12 @@ from src.agents.workflow_qa.agent import agent as qa_pipeline
 
 from shared.workspace import init_workspace
 from shared.preflight import ensure_llm_ready
-from shared.token_usage import TokenUsage, bind_stage, token_usage_plugin
+from shared.token_usage import (
+    TokenUsage,
+    bind_stage,
+    current_stage,
+    token_usage_plugin,
+)
 
 from src.agents.orchestrator._helpers import (
     _build_function_response_payload,
@@ -107,29 +112,62 @@ class _PipelineOrchestrator(BaseAgent):
             return
 
         paused = state.get("paused_pipeline")
+        # Resume continua o acumulado salvo na pausa; fresh run começa do zero.
+        usage = (
+            TokenUsage.from_dict(state.get("token_usage")) if paused else TokenUsage()
+        )
 
-        # === Branch RESUME ===
-        if paused:
+        try:
+            # === Branch RESUME ===
+            if paused:
+                logger.info(
+                    "[ORCHESTRATOR] Retomando pipeline pausado '%s' (session=%s)",
+                    paused,
+                    outer_sid,
+                )
+                async for ev in self._handle_resume(
+                    ctx, outer_sid, user_text, usage
+                ):
+                    yield ev
+                return
+
+            # === Branch FRESH RUN ===
             logger.info(
-                "[ORCHESTRATOR] Retomando pipeline pausado '%s' (session=%s)",
-                paused,
+                "[ORCHESTRATOR] Fresh run iniciado: %d pipelines (session=%s)",
+                len(self._pipelines),
                 outer_sid,
             )
-            async for ev in self._handle_resume(ctx, outer_sid, user_text):
+            async for ev in self._handle_fresh_run(ctx, outer_sid, user_text, usage):
                 yield ev
-            return
-
-        # === Branch FRESH RUN ===
-        logger.info(
-            "[ORCHESTRATOR] Fresh run iniciado: %d pipelines (session=%s)",
-            len(self._pipelines),
-            outer_sid,
-        )
-        async for ev in self._handle_fresh_run(ctx, outer_sid, user_text):
-            yield ev
+        except Exception as exc:
+            # Execução abortada (ex.: rate limit do provedor): emite o consumo
+            # até aqui antes de propagar o erro, senão os tokens gastos somem.
+            stage = current_stage()
+            logger.warning(
+                "[ORCHESTRATOR] Execução falhou no workflow '%s'; emitindo "
+                "relatório parcial de tokens (session=%s)",
+                stage,
+                outer_sid,
+            )
+            state["token_usage"] = usage.to_dict()
+            local = f"no workflow **{stage}**" if stage else "antes do primeiro workflow"
+            note = (
+                f"Execução interrompida {local}: "
+                f"`{type(exc).__name__}: {str(exc)[:300]}`"
+            )
+            yield self._make_text_event(
+                self.name,
+                usage.format_report(note=note),
+                state_delta={"token_usage": state["token_usage"]},
+            )
+            raise
 
     async def _handle_resume(
-        self, ctx: InvocationContext, outer_sid: str, user_text: str
+        self,
+        ctx: InvocationContext,
+        outer_sid: str,
+        user_text: str,
+        usage: TokenUsage,
     ) -> AsyncGenerator[Event, None]:
         state = ctx.session.state
         paused = state["paused_pipeline"]
@@ -183,7 +221,6 @@ class _PipelineOrchestrator(BaseAgent):
             ))],
         )
 
-        usage = TokenUsage.from_dict(state.get("token_usage"))
         bind_stage(usage, paused)
 
         last_text = ""
@@ -241,13 +278,16 @@ class _PipelineOrchestrator(BaseAgent):
         )
 
     async def _handle_fresh_run(
-        self, ctx: InvocationContext, outer_sid: str, user_text: str
+        self,
+        ctx: InvocationContext,
+        outer_sid: str,
+        user_text: str,
+        usage: TokenUsage,
     ) -> AsyncGenerator[Event, None]:
         state = ctx.session.state
         # Fresh run reseta accumulated (nova conversa SDLC).
         state["accumulated_outputs"] = []
         accumulated: list[tuple[str, str]] = []
-        usage = TokenUsage()
         state["token_usage"] = usage.to_dict()
 
         # Manifestos das fases anteriores — contrato leve entre Times.

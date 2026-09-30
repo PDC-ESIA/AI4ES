@@ -132,3 +132,54 @@ def test_todo_runner_isolado_recebe_plugins():
             if "plugins=" not in trecho:
                 faltando.append(rel)
     assert not faltando, f"Runner sem plugins= (tokens não contados): {faltando}"
+
+
+# --- Relatório parcial quando a execução falha ---
+
+
+def test_orchestrator_emite_relatorio_parcial_e_propaga_erro(monkeypatch):
+    import pytest
+    from google.genai import types
+
+    import src.agents.orchestrator.agent as orch
+    from shared.preflight import PreflightResult
+    from shared.token_usage import record_usage
+
+    async def _preflight_ok():
+        return PreflightResult(ok=True)
+
+    async def _fresh_que_falha(self, ctx, outer_sid, user_text, usage):
+        bind_stage(usage, "requirements_pipeline")
+        record_usage(1200, 300)
+        yield orch._PipelineOrchestrator._make_text_event("x", "evento normal")
+        raise RuntimeError("Rate limit reached for gpt-4.1")
+
+    monkeypatch.setattr(orch, "ensure_llm_ready", _preflight_ok)
+    monkeypatch.setattr(
+        orch._PipelineOrchestrator, "_handle_fresh_run", _fresh_que_falha
+    )
+
+    ctx = SimpleNamespace(
+        session=SimpleNamespace(state={}, id="s1"),
+        user_content=types.Content(role="user", parts=[types.Part(text="oi")]),
+    )
+
+    async def _coletar():
+        eventos = []
+        with pytest.raises(RuntimeError, match="Rate limit"):
+            async for ev in orch.root_agent._run_async_impl(ctx):
+                eventos.append(ev)
+        return eventos
+
+    eventos = asyncio.run(_coletar())
+    texto = eventos[-1].content.parts[0].text
+    assert "(parcial)" in texto
+    assert "no workflow **requisitos**" in texto
+    assert "RuntimeError: Rate limit reached" in texto
+    assert "| requisitos | 1,200 | 300 | 1,500 |" in texto
+    assert ctx.session.state["token_usage"] == {
+        "requisitos": {"input": 1200, "output": 300}
+    }
+    assert eventos[-1].actions.state_delta["token_usage"] == {
+        "requisitos": {"input": 1200, "output": 300}
+    }

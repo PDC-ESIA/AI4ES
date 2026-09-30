@@ -63,15 +63,20 @@ class TokenUsage:
     def from_dict(cls, data: Optional[dict[str, Any]]) -> "TokenUsage":
         return cls(data or {})
 
-    def format_report(self) -> str:
+    def format_report(self, note: Optional[str] = None) -> str:
+        """Tabela markdown; ``note`` sinaliza relatório parcial (execução falhou)."""
+
         def row(label: str, inp: int, out: int) -> str:
             return f"| {label} | {inp:,} | {out:,} | {inp + out:,} |"
 
         labels = [s for s in _REPORT_ORDER] + sorted(
             s for s in self.stages if s not in _REPORT_ORDER
         )
+        title = "**Consumo de tokens da execução**"
+        if note:
+            title = f"**Consumo de tokens da execução (parcial)**\n\n{note}"
         lines = [
-            "**Consumo de tokens da execução**",
+            title,
             "",
             "| Workflow | Entrada | Saída | Total |",
             "|---|---:|---:|---:|",
@@ -92,6 +97,12 @@ _current: ContextVar[Optional[tuple[TokenUsage, str]]] = ContextVar(
 def bind_stage(usage: TokenUsage, pipeline_name: str) -> None:
     """Direciona os tokens das próximas chamadas LLM para o workflow dado."""
     _current.set((usage, STAGE_LABELS.get(pipeline_name, pipeline_name)))
+
+
+def current_stage() -> Optional[str]:
+    """Rótulo do workflow corrente, ou None fora de uma execução."""
+    bound = _current.get()
+    return bound[1] if bound else None
 
 
 def record_usage(input_tokens: int, output_tokens: int) -> None:
