@@ -36,6 +36,8 @@ GRADE_ERROR = "error"
 GRADE_NOT_GRADED = "not_graded"
 # O loop nunca rodou (ex.: pull da imagem falhou): nada a corrigir.
 GRADE_PREP_FAILED = "falha_preparacao"
+# O provedor de LLM falhou (cota, rede, credencial): o loop não chegou ao fim.
+GRADE_PROVIDER_FAILED = "falha_provedor_llm"
 # Status em que o gabarito é conhecido (entram na matriz da métrica 3).
 _GABARITO_CONHECIDO = frozenset({GRADE_RESOLVED, GRADE_UNRESOLVED, GRADE_EMPTY_PATCH})
 
@@ -49,7 +51,8 @@ PARADA_OUTRO = "outro"
 # pelo próprio `loop_runner` (erro/timeout da instância).
 MOTIVO_APROVADO = "aprovado"
 PREFIXOS_POLITICA = ("bloqueado_", "aceito_com_ressalvas_")
-MOTIVOS_ERRO = frozenset({"erro_operacional", "timeout_da_instancia"})
+MOTIVOS_ERRO = frozenset({"erro_operacional", "timeout_da_instancia", "estouro_de_contexto"})
+MOTIVO_ESTOURO_CONTEXTO = "estouro_de_contexto"
 
 STATUS_ACEITO_COM_RESSALVAS = "aceito_com_ressalvas"
 STATUS_TESTES_PULADO = "pulado"
@@ -266,7 +269,15 @@ def _operacional(registros: list[dict[str, Any]]) -> dict[str, Any]:
         for agente, linha in (uso_instancia.get("por_agente") or {}).items():
             por_agente[agente].update({k: int(v or 0) for k, v in linha.items()})
     return {
-        "erros_operacionais": [r["instance_id"] for r in registros if r.get("erro") and not r.get("timeout")],
+        "erros_operacionais": [
+            r["instance_id"] for r in registros
+            if r.get("erro") and not r.get("timeout")
+            and r.get("motivo_terminacao") != MOTIVO_ESTOURO_CONTEXTO
+        ],
+        "estouros_de_contexto": [
+            r["instance_id"] for r in registros
+            if r.get("motivo_terminacao") == MOTIVO_ESTOURO_CONTEXTO
+        ],
         "timeouts": [r["instance_id"] for r in registros if r.get("timeout")],
         "ambiente_violado": [
             r["instance_id"] for r in registros if (r.get("guarda") or {}).get("ambiente_violado")
@@ -275,6 +286,12 @@ def _operacional(registros: list[dict[str, Any]]) -> dict[str, Any]:
             r["instance_id"] for r in registros if (r.get("guarda") or {}).get("venv_no_manifesto")
         ],
         "duracao_total_s": round(sum(float(r.get("duracao_s") or 0) for r in registros), 2),
+        "pausa_rate_limit_total_s": round(
+            sum(float(r.get("pausa_rate_limit_s") or 0) for r in registros), 2
+        ),
+        "pausa_ritmo_total_s": round(
+            sum(float(r.get("pausa_ritmo_s") or 0) for r in registros), 2
+        ),
         "uso_llm": {
             **dict(uso),
             "total_tokens": uso.get("prompt_tokens", 0) + uso.get("completion_tokens", 0),

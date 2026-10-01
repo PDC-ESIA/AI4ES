@@ -24,7 +24,8 @@ def test_nomes_de_estagio_batem_com_o_harness():
 
 
 def test_motivos_de_erro_da_instancia_sao_conhecidos_pelas_metricas():
-    assert {loop_runner.MOTIVO_ERRO_OPERACIONAL, loop_runner.MOTIVO_TIMEOUT} == MOTIVOS_ERRO
+    assert {loop_runner.MOTIVO_ERRO_OPERACIONAL, loop_runner.MOTIVO_TIMEOUT,
+            loop_runner.MOTIVO_ESTOURO_CONTEXTO} == MOTIVOS_ERRO
 
 
 def test_resumo_do_execution_report():
@@ -79,3 +80,14 @@ def test_grava_a_task_onde_o_harness_procura(tmp_path):
 
 def test_json_safe_converte_enum():
     assert loop_runner.json_safe({"s": _Status.APROVADO}) == {"s": "aprovado"}
+
+
+def test_estouro_de_contexto_tem_rotulo_proprio():
+    copilot = ("BadRequestError: litellm.BadRequestError: Github_copilotException - prompt "
+               "token count of 169117 exceeds the limit of 128000")
+    assert loop_runner.is_context_overflow(copilot)
+    assert loop_runner.is_context_overflow("ContextWindowExceededError: maximum context length")
+    assert not loop_runner.is_context_overflow("ValueError: outra coisa")
+    assert loop_runner.motivo_do_erro(copilot, timed_out=False) == "estouro_de_contexto"
+    assert loop_runner.motivo_do_erro("ValueError: x", timed_out=False) == "erro_operacional"
+    assert loop_runner.motivo_do_erro(copilot, timed_out=True) == "timeout_da_instancia"

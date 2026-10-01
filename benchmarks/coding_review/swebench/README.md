@@ -83,6 +83,28 @@ Se a preparação de uma instância falhar (ex.: o pull da imagem caiu), ela é
 registrada como `falha_preparacao` e **refeita** na retomada; se a falha
 persistir, ela conta como não resolvida na métrica 1 e fica fora da métrica 3.
 
+**Controle de ritmo.** O Copilot limita a **vazão** de tokens numa janela de
+tempo, independentemente dos créditos do mês, e, depois de estourado, bloqueia
+por um bom tempo (medido: ~50 min). Por isso, antes de cada chamada ao modelo
+o plugin de guarda espera o necessário para a média ficar abaixo de
+`--max-tokens-per-minute` (padrão **50.000**, entrada + saída; `0` desliga),
+com 1 minuto de folga para rajadas. O padrão saiu do que foi medido: o bloqueio
+veio com ~3 milhões de tokens em ~12 min, e a reposição estimada é de ~60 mil
+tokens por minuto. A espera fica registrada à parte (`pausa_ritmo_s`) e não
+entra na duração ativa do loop.
+
+Se o **provedor de LLM** falhar no meio de uma instância (rate limit, cota,
+credencial expirada, rede), o run **espera e refaz a instância do zero**: 10
+minutos na primeira vez, dobrando a cada nova tentativa (`--provider-wait`,
+`--provider-retries`; padrão 4 tentativas, ~2,5 h de espera no total). O
+Copilot limita o ritmo de chamadas ("rate limit for utility models"), e um run
+de 30 instâncias bate nesse limite várias vezes. Se o bloqueio persistir depois
+das tentativas, o run **para** com o aviso de como retomar, e a instância fica
+marcada como `falha_provedor`, a ser refeita na retomada. Nada disso conta como
+falha do loop. Estouro de contexto **não** entra nessa regra: ele é resultado do
+próprio loop. Com o `gpt-4` (32k de contexto) ele foi sistemático; por isso a
+linha de base usa o `gpt-4.1` (128k).
+
 ## Decisões de desenho
 
 | Decisão | O que foi feito | Por quê |
@@ -158,6 +180,7 @@ diretório antes do commit: ele não é ignorado pelo git.
 | `--seed` | 42 | Seed do sorteio |
 | `--instance-ids` | — | Usa estas instâncias em vez do sorteio |
 | `--dataset-revision` | `78f471bf…` | Revisão do dataset no Hugging Face |
+| `--max-tokens-per-minute` | 50000 | Teto de tokens por minuto enviados ao LLM (controle de ritmo; `0` desliga) |
 | `--instance-timeout` | 3600 | Teto (s) do loop por instância — aproximado: só é checado quando o harness devolve o controle, então pode passar pelo tempo de um build ou de uma bateria de testes |
 | `--swebench-python` | `.venv-swebench/bin/python` | Python do harness oficial |
 | `--grading-workers` | 2 | Workers do harness oficial |
@@ -222,10 +245,13 @@ das oficiais; o passo 3 confirma o mesmo numa imagem oficial.
   teste fraco, ausência de teste ou validador permissivo — os qualificadores
   ajudam a separar, mas não resolvem sozinhos.
 - **A métrica 1 depende mais do coder do que do executor.** O coder não tem
-  ferramenta de busca e lê arquivos inteiros; em repositórios grandes, espere
-  estouro de contexto. Os tokens ficam registrados por instância e por agente,
-  incluindo o `implementation_validator` (contado pelo plugin, porque ele roda
-  num Runner interno do `AgentTool`).
+  ferramenta de busca e lê arquivos inteiros; em repositórios grandes, ele
+  estoura o contexto do modelo. Medido: com o `gpt-4` (32k) já na 2ª rodada, e
+  com o `gpt-4.1` (128k) até no 1º turno de uma instância do astropy (169 mil
+  tokens). Esses casos saem com o motivo `estouro_de_contexto` (categoria
+  "outro" na métrica 2). Os tokens ficam registrados por instância e por
+  agente, incluindo o `implementation_validator` (contado pelo plugin, porque
+  ele roda num Runner interno do `AgentTool`).
 - **Conflitos com o prompt de sistema do coder.** Ele manda criar virtualenv e
   usar `sandbox` direct. A guarda restaura o `sandbox`, mas não reescreve os
   comandos do coder — instâncias com virtualenv no `run.json` são listadas no

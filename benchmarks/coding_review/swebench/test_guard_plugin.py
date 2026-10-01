@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+
+import pytest
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -165,3 +167,246 @@ def test_contabiliza_uso_de_llm_por_agente_inclusive_o_validador(tmp_path: Path)
     assert totais["por_agente"]["implementation_validator"]["prompt_tokens"] == 30
     plugin.start_instance(IMAGEM)
     assert plugin.usage_totals()["llm_interactions"] == 0
+
+
+class _ErroRateLimit(Exception):
+    pass
+
+
+_ErroRateLimit.__name__ = "RateLimitError"
+
+
+class _ModeloFalso:
+    """Modelo que falha com os erros dados e depois responde."""
+
+    def __init__(self, erros):
+        self._erros = list(erros)
+        self.chamadas = 0
+
+    async def generate_content_async(self, llm_request, stream=False):
+        self.chamadas += 1
+        if self._erros:
+            raise self._erros.pop(0)
+        yield SimpleNamespace(texto="resposta", partial=False)
+
+
+def _contexto(modelo):
+    agente = SimpleNamespace(canonical_model=modelo)
+    return SimpleNamespace(_invocation_context=SimpleNamespace(agent=agente))
+
+
+def _plugin_com_pausa(tmp_path: Path, esperas: list, maximo: float = 1000.0):
+    async def _dormir(segundos):
+        esperas.append(segundos)
+
+    plugin = BenchmarkGuardPlugin(tmp_path, rate_limit_initial_wait=60,
+                                  rate_limit_max_wait=maximo, sleep=_dormir)
+    plugin.start_instance(IMAGEM)
+    return plugin
+
+
+def test_rate_limit_pausa_e_repete_a_mesma_chamada(tmp_path: Path):
+    esperas: list = []
+    plugin = _plugin_com_pausa(tmp_path, esperas)
+    modelo = _ModeloFalso([_ErroRateLimit("429 utility models")])
+
+    resposta = asyncio.run(plugin.on_model_error_callback(
+        callback_context=_contexto(modelo), llm_request=object(),
+        error=_ErroRateLimit("exceeded your rate limit"),
+    ))
+
+    assert resposta.texto == "resposta"
+    assert esperas == [60, 120]  # 1ª repetição ainda limitada; a 2ª passa
+    assert modelo.chamadas == 2
+    assert plugin.summary()["pausas_rate_limit_s"] == [60, 120]
+
+
+def test_pausa_respeita_o_teto_e_devolve_o_erro_ao_loop(tmp_path: Path):
+    esperas: list = []
+    plugin = _plugin_com_pausa(tmp_path, esperas, maximo=200)
+    modelo = _ModeloFalso([_ErroRateLimit("429")] * 5)
+    resposta = asyncio.run(plugin.on_model_error_callback(
+        callback_context=_contexto(modelo), llm_request=object(),
+        error=_ErroRateLimit("rate limit"),
+    ))
+    assert resposta is None  # 60 + 120 = 180; a próxima (240) passaria do teto
+    assert esperas == [60, 120]
+
+
+def test_estouro_de_contexto_e_outros_erros_nao_sao_pausados(tmp_path: Path):
+    esperas: list = []
+    plugin = _plugin_com_pausa(tmp_path, esperas)
+    modelo = _ModeloFalso([])
+    for erro in (
+        ValueError("prompt token count of 142900 exceeds the limit of 128000"),
+        ValueError("outra falha"),
+    ):
+        assert asyncio.run(plugin.on_model_error_callback(
+            callback_context=_contexto(modelo), llm_request=object(), error=erro,
+        )) is None
+    assert esperas == [] and modelo.chamadas == 0
+
+
+def test_erro_diferente_na_repeticao_e_propagado(tmp_path: Path):
+    import pytest
+
+    esperas: list = []
+    plugin = _plugin_com_pausa(tmp_path, esperas)
+    modelo = _ModeloFalso([ValueError("prompt token count of 200000 exceeds the limit of 128000")])
+    with pytest.raises(ValueError, match="exceeds the limit"):
+        asyncio.run(plugin.on_model_error_callback(
+            callback_context=_contexto(modelo), llm_request=object(),
+            error=_ErroRateLimit("429"),
+        ))
+
+
+def test_pausa_funciona_com_um_llmagent_real_do_adk(tmp_path: Path):
+    from google.adk.agents import LlmAgent
+    from google.adk.apps import App
+    from google.adk.models.base_llm import BaseLlm
+    from google.adk.models.llm_response import LlmResponse
+    from google.adk.runners import Runner
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from google.genai import types
+
+    class _LlmComRateLimit(BaseLlm):
+        chamadas: int = 0
+
+        async def generate_content_async(self, llm_request, stream=False):
+            self.chamadas += 1
+            if self.chamadas == 1:
+                raise _ErroRateLimit("429 you've exceeded your rate limit for utility models")
+            yield LlmResponse(content=types.Content(role="model",
+                                                    parts=[types.Part(text="ok depois da pausa")]))
+
+    llm = _LlmComRateLimit(model="falso")
+    agente = LlmAgent(name=CODER_AGENT_NAME, model=llm, instruction="responda")
+    esperas: list = []
+    plugin = _plugin_com_pausa(tmp_path, esperas)
+    environment.write_benchmark_files(tmp_path, IMAGEM)
+
+    async def _rodar():
+        runner = Runner(app=App(name="teste_pausa", root_agent=agente, plugins=[plugin]),
+                        session_service=InMemorySessionService())
+        sessao = await runner.session_service.create_session(app_name="teste_pausa", user_id="u")
+        textos = []
+        async for evento in runner.run_async(
+            user_id="u", session_id=sessao.id,
+            new_message=types.Content(role="user", parts=[types.Part(text="oi")]),
+        ):
+            if evento.content and evento.content.parts:
+                textos += [p.text for p in evento.content.parts if p.text]
+        await runner.close()
+        return textos
+
+    textos = asyncio.run(_rodar())
+    assert textos[-1] == "ok depois da pausa"
+    assert llm.chamadas == 2 and esperas == [60]
+
+
+class _Relogio:
+    def __init__(self):
+        self.agora = 1000.0
+
+    def __call__(self):
+        return self.agora
+
+
+def _plugin_com_ritmo(tmp_path: Path, tpm: int):
+    relogio, esperas = _Relogio(), []
+
+    async def _dormir(segundos):
+        esperas.append(segundos)
+        relogio.agora += segundos
+
+    plugin = BenchmarkGuardPlugin(tmp_path, max_tokens_per_minute=tpm,
+                                  sleep=_dormir, clock=relogio)
+    plugin.start_instance(IMAGEM)
+    return plugin, relogio, esperas
+
+
+def _consumir(plugin, prompt: int, saida: int = 0, agente: str = CODER_AGENT_NAME):
+    uso = SimpleNamespace(prompt_token_count=prompt, candidates_token_count=saida)
+    asyncio.run(plugin.after_model_callback(
+        callback_context=SimpleNamespace(agent_name=agente),
+        llm_response=SimpleNamespace(usage_metadata=uso, partial=False),
+    ))
+
+
+def _antes_da_chamada(plugin):
+    return asyncio.run(plugin.before_model_callback(
+        callback_context=SimpleNamespace(agent_name=CODER_AGENT_NAME), llm_request=object()
+    ))
+
+
+def test_ritmo_faz_a_chamada_esperar_para_caber_no_teto(tmp_path: Path):
+    plugin, relogio, esperas = _plugin_com_ritmo(tmp_path, tpm=50_000)
+    assert _antes_da_chamada(plugin) is None and esperas == []  # sem consumo, sem espera
+    _consumir(plugin, prompt=100_000)  # 2 min do teto; 1 min de folga
+    _antes_da_chamada(plugin)
+    assert esperas == [60.0]
+    assert plugin.summary()["pausa_ritmo_s"] == 60.0
+
+
+def test_ritmo_permite_rajada_curta_e_acumula_divida(tmp_path: Path):
+    plugin, relogio, esperas = _plugin_com_ritmo(tmp_path, tpm=60_000)
+    _consumir(plugin, prompt=30_000)  # 30 s de teto: dentro da folga de 60 s
+    _antes_da_chamada(plugin)
+    assert esperas == []
+    _consumir(plugin, prompt=60_000)  # dívida total: 90 s
+    _antes_da_chamada(plugin)
+    assert esperas == [pytest.approx(30.0)]
+    relogio.agora += 600  # muito tempo depois, a dívida já foi paga
+    _antes_da_chamada(plugin)
+    assert len(esperas) == 1
+
+
+def test_ritmo_desligado_e_divida_sobrevive_a_troca_de_instancia(tmp_path: Path):
+    desligado, _, esperas = _plugin_com_ritmo(tmp_path, tpm=0)
+    _consumir(desligado, prompt=10_000_000)
+    _antes_da_chamada(desligado)
+    assert esperas == []
+
+    plugin, _, esperas = _plugin_com_ritmo(tmp_path, tpm=50_000)
+    _consumir(plugin, prompt=100_000)
+    plugin.start_instance(IMAGEM)  # o provedor não zera o limite entre instâncias
+    _antes_da_chamada(plugin)
+    assert esperas == [60.0]
+
+
+def test_ritmo_funciona_com_um_llmagent_real_do_adk(tmp_path: Path):
+    from google.adk.agents import LlmAgent
+    from google.adk.apps import App
+    from google.adk.models.base_llm import BaseLlm
+    from google.adk.models.llm_response import LlmResponse
+    from google.adk.runners import Runner
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+    from google.genai import types
+
+    class _LlmGrande(BaseLlm):
+        async def generate_content_async(self, llm_request, stream=False):
+            yield LlmResponse(
+                content=types.Content(role="model", parts=[types.Part(text="ok")]),
+                usage_metadata=types.GenerateContentResponseUsageMetadata(
+                    prompt_token_count=100_000, candidates_token_count=0
+                ),
+            )
+
+    plugin, _, esperas = _plugin_com_ritmo(tmp_path, tpm=50_000)
+    agente = LlmAgent(name=CODER_AGENT_NAME, model=_LlmGrande(model="falso"), instruction="r")
+
+    async def _rodar():
+        runner = Runner(app=App(name="teste_ritmo", root_agent=agente, plugins=[plugin]),
+                        session_service=InMemorySessionService())
+        sessao = await runner.session_service.create_session(app_name="teste_ritmo", user_id="u")
+        for texto in ("primeira", "segunda"):
+            async for _ in runner.run_async(
+                user_id="u", session_id=sessao.id,
+                new_message=types.Content(role="user", parts=[types.Part(text=texto)]),
+            ):
+                pass
+        await runner.close()
+
+    asyncio.run(_rodar())
+    assert esperas == [60.0]  # a 2ª chamada esperou o consumo da 1ª caber no teto
+    assert plugin.usage_totals()["prompt_tokens"] == 200_000

@@ -193,11 +193,14 @@ def _secao_operacional(op: dict[str, Any]) -> list[str]:
     return [
         "## Operacional",
         "",
+        f"- **Estouros de contexto do modelo:** {_lista('estouros_de_contexto')}",
         f"- **Erros operacionais:** {_lista('erros_operacionais')}",
         f"- **Timeouts de instância:** {_lista('timeouts')}",
         f"- **Ambiente restaurado pela guarda:** {_lista('ambiente_violado')}",
         f"- **Coder usou virtualenv no `run.json`:** {_lista('venv_no_manifesto')}",
-        f"- **Duração total do loop:** {op.get('duracao_total_s', 0)}s",
+        f"- **Duração total do loop:** {op.get('duracao_total_s', 0)}s, das quais "
+        f"{op.get('pausa_ritmo_total_s', 0)}s em espera do controle de ritmo e "
+        f"{op.get('pausa_rate_limit_total_s', 0)}s em pausa por rate limit do provedor",
         f"- **Interações com LLM:** {uso.get('llm_interactions', 0)}",
         f"- **Tokens (entrada/saída/total):** {uso.get('prompt_tokens', 0)}/"
         f"{uso.get('completion_tokens', 0)}/{uso.get('total_tokens', 0)}",

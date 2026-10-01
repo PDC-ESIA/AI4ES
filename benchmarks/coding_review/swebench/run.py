@@ -58,6 +58,7 @@ from benchmarks.coding_review.swebench.dataset import (
 from benchmarks.coding_review.swebench.metrics import (
     GRADE_NOT_GRADED,
     GRADE_PREP_FAILED,
+    GRADE_PROVIDER_FAILED,
     aggregate,
 )
 from benchmarks.coding_review.swebench.report import render_markdown
@@ -118,6 +119,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--instance-timeout", type=int, default=3600,
                    help=("Teto (s) de wall-clock do loop por instância (default: 3600). "
                          "Aproximado: só é checado quando o harness devolve o controle."))
+    p.add_argument("--max-tokens-per-minute", type=int, default=50_000,
+                   help=("Teto de tokens (entrada+saída) por minuto enviados ao LLM; o "
+                         "loop espera antes de cada chamada para respeitá-lo. Evita o "
+                         "rate limit do provedor. 0 desliga (default: 50000)."))
+    p.add_argument("--provider-retries", type=int, default=4,
+                   help=("Novas tentativas de uma instância quando o provedor de LLM "
+                         "falha (rate limit, cota, rede) antes de parar o run (default: 4)."))
+    p.add_argument("--provider-wait", type=int, default=600,
+                   help=("Espera (s) antes da 1ª nova tentativa; dobra a cada uma "
+                         "(default: 600 → 10, 20, 40, 80 min)."))
     p.add_argument("--swebench-python", default=os.environ.get(
                        "SWEBENCH_PYTHON", str(_DEFAULT_SWEBENCH_PYTHON)),
                    help="Python do venv com o harness oficial (`swebench`).")
@@ -284,8 +295,48 @@ def _append_progresso(caminho: Path, registro: dict[str, Any]) -> None:
 
 
 def _concluida(registro: dict[str, Any] | None) -> bool:
-    """Instância que a retomada pode pular (falha na preparação é refeita)."""
-    return registro is not None and not registro.get("falha_preparacao")
+    """Instância que a retomada pode pular.
+
+    Falha na preparação e falha do provedor de LLM são refeitas: nenhuma das
+    duas diz nada sobre o loop.
+    """
+    return (
+        registro is not None
+        and not registro.get("falha_preparacao")
+        and not registro.get("falha_provedor")
+    )
+
+
+# Exceções do LiteLLM que indicam o PROVEDOR indisponível (cota, rate limit,
+# credencial, rede), e não o comportamento do loop. `ContextWindowExceededError`
+# fica de fora de propósito: estourar o contexto é resultado do loop.
+_ERROS_DE_PROVEDOR = frozenset({
+    "RateLimitError", "AuthenticationError", "PermissionDeniedError",
+    "APIConnectionError", "ServiceUnavailableError", "InternalServerError",
+    "Timeout", "APIError",
+})
+_SINAIS_DE_COTA = ("rate limit", "ratelimit", "quota", "insufficient_quota")
+# 429 como código isolado: "prompt token count of 142900" contém "429".
+_HTTP_429 = re.compile(r"(?<!\d)429(?!\d)")
+
+
+def _falha_do_provedor(erro: str | None) -> bool:
+    """Se o erro da instância veio do provedor de LLM (e não do loop).
+
+    Estouro de contexto nunca conta: é resultado do loop, mesmo quando o
+    provedor o devolve como um erro HTTP genérico.
+    """
+    from benchmarks.coding_review.swebench.loop_runner import is_context_overflow
+
+    if not erro or is_context_overflow(erro):
+        return False
+    tipo = erro.split(":", 1)[0].strip().rsplit(".", 1)[-1]
+    texto = erro.lower()
+    return (
+        tipo in _ERROS_DE_PROVEDOR
+        or any(sinal in texto for sinal in _SINAIS_DE_COTA)
+        or bool(_HTTP_429.search(texto))
+    )
 
 
 def _git_saida(raiz: Path, *args: str) -> str | None:
@@ -494,6 +545,15 @@ def _montar_registro(inst: SWEInstance, run, seed, patch_result, patch_rel: str 
         "erro": run.error,
         "timeout": run.timed_out,
         "duracao_s": run.duration_s,
+        # Pausas da guarda (rate limit e controle de ritmo) não são tempo do loop.
+        "pausa_rate_limit_s": sum(run.guarda.get("pausas_rate_limit_s") or []),
+        "pausa_ritmo_s": run.guarda.get("pausa_ritmo_s") or 0.0,
+        "duracao_ativa_s": round(
+            run.duration_s
+            - sum(run.guarda.get("pausas_rate_limit_s") or [])
+            - (run.guarda.get("pausa_ritmo_s") or 0.0),
+            2,
+        ),
         "uso": run.uso,
         "texto_final": run.texto_final,
         "desfecho": desfecho,
@@ -511,7 +571,9 @@ async def _executar_loop(args: argparse.Namespace, run_dir: Path,
 
     coder_src = get_agent_workspace("cr_coder")
     tasks_dir = get_agent_workspace("cr_context_engineer")
-    plugin = BenchmarkGuardPlugin(coder_src)
+    plugin = BenchmarkGuardPlugin(
+        coder_src, max_tokens_per_minute=args.max_tokens_per_minute
+    )
 
     progress_path = run_dir / PROGRESS_FILE
     patches_dir = run_dir / PATCHES_DIR
@@ -527,19 +589,40 @@ async def _executar_loop(args: argparse.Namespace, run_dir: Path,
             print(f"{prefixo}: CACHE")
             continue
         if anterior is not None:
-            print(f"{prefixo}: refazendo (a preparação tinha falhado)")
+            causa = "a preparação" if anterior.get("falha_preparacao") else "o provedor de LLM"
+            print(f"{prefixo}: refazendo ({causa} tinha falhado)")
 
-        # Isolamento: todo o `coder/` (src, tasks, execution, validation...) zera.
-        environment.clear_directory(coder_src.parent)
-        try:
-            seed = environment.seed_workspace(coder_src, inst.image)
-        except Exception as exc:  # noqa: BLE001 — falha vira registro, não queda
-            print(f"{prefixo}: FALHA NA PREPARAÇÃO ({exc})")
-            _append_progresso(progress_path, _registro_de_falha_na_preparacao(inst, str(exc)))
+        # Rate limit do provedor é temporário: espera (com backoff) e refaz a
+        # instância do zero, para o run seguir sozinho. Só depois das
+        # tentativas é que ele para, como antes.
+        seed, run, erro_preparacao = None, None, None
+        for tentativa in range(args.provider_retries + 1):
+            # Isolamento: todo o `coder/` (src, tasks, execution...) zera.
+            environment.clear_directory(coder_src.parent)
+            try:
+                seed = environment.seed_workspace(coder_src, inst.image)
+            except Exception as exc:  # noqa: BLE001 — falha vira registro, não queda
+                erro_preparacao = str(exc)
+                break
+            loop_runner.write_task_file(tasks_dir, inst)
+            run = await loop_runner.run_loop(
+                inst, plugin=plugin, timeout_s=args.instance_timeout
+            )
+            if not _falha_do_provedor(run.error) or tentativa == args.provider_retries:
+                break
+            espera = args.provider_wait * (2 ** tentativa)
+            print(
+                f"{prefixo}: LLM indisponível ({str(run.error)[:110]}). Nova tentativa "
+                f"{tentativa + 1}/{args.provider_retries} em {espera / 60:.0f} min."
+            )
+            await asyncio.sleep(espera)
+
+        if erro_preparacao is not None:
+            print(f"{prefixo}: FALHA NA PREPARAÇÃO ({erro_preparacao})")
+            _append_progresso(
+                progress_path, _registro_de_falha_na_preparacao(inst, erro_preparacao)
+            )
             continue
-        loop_runner.write_task_file(tasks_dir, inst)
-
-        run = await loop_runner.run_loop(inst, plugin=plugin, timeout_s=args.instance_timeout)
 
         patch_erro = None
         try:
@@ -555,6 +638,18 @@ async def _executar_loop(args: argparse.Namespace, run_dir: Path,
         (run_dir / patch_rel).write_text(patch_result.patch, encoding="utf-8")
 
         registro = _montar_registro(inst, run, seed, patch_result, patch_rel, patch_erro)
+        if _falha_do_provedor(run.error):
+            # Cota/rede/credencial: seguir só gravaria falsas falhas do loop em
+            # todas as instâncias restantes. Para aqui; a retomada refaz esta.
+            registro["falha_provedor"] = True
+            _append_progresso(progress_path, registro)
+            print(f"{prefixo}: LLM INDISPONÍVEL ({run.error})")
+            raise SystemExit(
+                "[run] Run interrompido: o provedor de LLM continuou falhando depois de "
+                f"{args.provider_retries} nova(s) tentativa(s) (cota, rate limit, "
+                "credencial ou rede). Nada foi contabilizado como falha do loop. "
+                f"Quando normalizar, retome com --resume-dir {run_dir}"
+            )
         _append_progresso(progress_path, registro)
         print(
             f"{prefixo}: rodadas={registro['rodadas']} "
@@ -592,19 +687,23 @@ def _fase_grading(
         (versão, código de saída) acompanham o relatório.
     """
     modelo = model_name_for_predictions(args.model)
-    avaliaveis = [r for r in registros if not r.get("falha_preparacao")]
+    avaliaveis = [
+        r for r in registros
+        if not r.get("falha_preparacao") and not r.get("falha_provedor")
+    ]
     patches = [(r["instance_id"], _ler_patch(run_dir, r)) for r in avaliaveis]
     predictions_path = run_dir / PREDICTIONS_FILE
     grading.write_predictions(predictions_path, patches, model_name_or_path=modelo)
 
     saida = {
         r["instance_id"]: {
-            "status": GRADE_PREP_FAILED, "resolvido": False, "patch_aplicado": None,
-            "detalhe": r.get("erro") or "Falha na preparação do workspace.",
-            "causa": GRADE_PREP_FAILED,
+            "status": GRADE_PREP_FAILED if r.get("falha_preparacao") else GRADE_PROVIDER_FAILED,
+            "resolvido": False, "patch_aplicado": None,
+            "detalhe": r.get("erro") or "Falha antes de o loop produzir resultado.",
+            "causa": GRADE_PREP_FAILED if r.get("falha_preparacao") else GRADE_PROVIDER_FAILED,
         }
         for r in registros
-        if r.get("falha_preparacao")
+        if r.get("falha_preparacao") or r.get("falha_provedor")
     }
     run_id = run_dir.name
     meta: dict[str, Any] = {"swebench_version": swebench_version, "run_id": run_id,
@@ -786,8 +885,23 @@ def _consolidar(
     excluidas: frozenset[str] = frozenset(),
     sanidade_executor: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    from benchmarks.coding_review.swebench.loop_runner import (
+        MOTIVO_ERRO_OPERACIONAL,
+        MOTIVO_ESTOURO_CONTEXTO,
+        is_context_overflow,
+    )
+
     nao_avaliado = {"status": GRADE_NOT_GRADED, "resolvido": None,
                     "patch_aplicado": None, "detalhe": "Correção não executada."}
+    # Registros gravados antes do rótulo `estouro_de_contexto` existir saíam
+    # como `erro_operacional`; o texto do erro basta para reclassificá-los.
+    registros = [
+        {**r, "motivo_terminacao": MOTIVO_ESTOURO_CONTEXTO}
+        if r.get("motivo_terminacao") == MOTIVO_ERRO_OPERACIONAL
+        and is_context_overflow(r.get("erro"))
+        else r
+        for r in registros
+    ]
     instancias = [
         {
             **r,
@@ -876,9 +990,9 @@ def main(argv: list[str] | None = None) -> int:
         _testar_docker()
         from src.agents.workflow_coding_review.agent import _code_execute_loop
 
-        _registrar_ambiente(
-            metadata, _coletar_ambiente(_code_execute_loop.max_iterations, swebench_version)
-        )
+        ambiente = _coletar_ambiente(_code_execute_loop.max_iterations, swebench_version)
+        ambiente["max_tokens_por_minuto"] = args.max_tokens_per_minute
+        _registrar_ambiente(metadata, ambiente)
         _gravar_metadata(run_dir, metadata)
         asyncio.run(_executar_loop(args, run_dir, instancias))
     elif swebench_version is not None:

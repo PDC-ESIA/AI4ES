@@ -323,3 +323,136 @@ def test_sanidade_do_executor_entra_no_relatorio(tmp_path):
                                 sanidade_executor=sanidade)
     markdown = run.render_markdown(relatorio)
     assert "**1/2**" in markdown and "timeout_do_comando_de_teste" in markdown
+
+
+@pytest.mark.parametrize(
+    "erro, esperado",
+    [
+        ("RateLimitError: litellm.RateLimitError: 429 quota exceeded", True),
+        ("AuthenticationError: token do Copilot expirou", True),
+        ("APIConnectionError: connection reset", True),
+        ("BadRequestError: Error code: 429 - you have exceeded your quota", True),
+        ("ContextWindowExceededError: prompt longo demais", False),
+        ("Instância excedeu o teto de 3600s.", False),
+        ("ValueError: algo no loop", False),
+        (None, False),
+    ],
+)
+def test_erro_do_provedor_e_distinguido_de_falha_do_loop(erro, esperado):
+    assert run._falha_do_provedor(erro) is esperado
+
+
+def test_falha_do_provedor_e_refeita_e_fica_fora_da_correcao(tmp_path, monkeypatch):
+    assert not run._concluida({"instance_id": "a__a-1", "falha_provedor": True})
+    run_dir = tmp_path / "run_x"
+    run_dir.mkdir()
+    registros = [_registro("a__a-1", None, falha_provedor=True)]
+    args = argparse.Namespace(model="m", swebench_python="/venv/bin/python",
+                              grading_workers=2, grading_timeout=1800)
+    chamadas = []
+    monkeypatch.setattr(grading, "run_official_grading",
+                        lambda comando, *, grading_dir: chamadas.append(comando) or 0)
+    resultados, _ = run._fase_grading(args, run_dir, registros, tmp_path / "t.parquet", "5.0.2")
+    assert chamadas == []
+    assert resultados["a__a-1"]["status"] == "falha_provedor_llm"
+
+
+# ---------------------------------------------------------------------------
+# Laço do loop com rate limit (adk real para o workspace; loop, preparação e
+# patch falsos — sem LLM e sem Docker)
+# ---------------------------------------------------------------------------
+
+
+def _preparar_laco(tmp_path, monkeypatch, erros):
+    import asyncio
+
+    from benchmarks.coding_review.swebench import bootstrap, environment, loop_runner
+    from benchmarks.coding_review.swebench import patch as patch_mod
+
+    bootstrap.ensure_adk_on_path()
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    preparacoes, esperas = [], []
+    monkeypatch.setattr(environment, "seed_workspace",
+                        lambda ws, image, client=None: preparacoes.append(image)
+                        or environment.SeedResult(baseline_tree="t"))
+    monkeypatch.setattr(loop_runner, "write_task_file", lambda pasta, inst: None)
+    respostas = iter(erros)
+
+    async def _run_loop(inst, *, plugin, timeout_s):
+        erro = next(respostas)
+        return loop_runner.LoopRun(
+            instance_id=inst.instance_id, duration_s=1.0, error=erro,
+            desfecho={"motivo_terminacao": "erro_operacional" if erro else "aprovado",
+                      "status": "reprovado" if erro else "aprovado"},
+            veredito_validador=None if erro else "aprovado",
+            guarda={"rodadas_executor": 1},
+        )
+
+    async def _sleep(segundos):
+        esperas.append(segundos)
+
+    monkeypatch.setattr(loop_runner, "run_loop", _run_loop)
+    monkeypatch.setattr(patch_mod, "extract_patch",
+                        lambda *a, **k: patch_mod.PatchResult(patch="diff\n", files=["x.py"]))
+    monkeypatch.setattr(asyncio, "sleep", _sleep)
+    run_dir = tmp_path / "run_x"
+    run_dir.mkdir()
+    args = argparse.Namespace(instance_timeout=10, provider_retries=2, provider_wait=60,
+                              max_tokens_per_minute=0)
+    return run_dir, args, preparacoes, esperas
+
+
+def test_rate_limit_espera_e_refaz_a_instancia(tmp_path, monkeypatch):
+    import asyncio
+
+    run_dir, args, preparacoes, esperas = _preparar_laco(
+        tmp_path, monkeypatch, ["RateLimitError: 429 utility models", None]
+    )
+    inst = _instancias()[0]
+    asyncio.run(run._executar_loop(args, run_dir, [inst]))
+
+    assert esperas == [60]
+    assert len(preparacoes) == 2  # a instância é refeita do zero
+    registro = run._carregar_progresso(run_dir / run.PROGRESS_FILE)[inst.instance_id]
+    assert registro["veredito_validador"] == "aprovado"
+    assert not registro.get("falha_provedor")
+
+
+def test_rate_limit_persistente_para_o_run_sem_contar_como_falha_do_loop(tmp_path, monkeypatch):
+    import asyncio
+
+    run_dir, args, preparacoes, esperas = _preparar_laco(
+        tmp_path, monkeypatch, ["RateLimitError: 429"] * 3
+    )
+    inst = _instancias()[0]
+    with pytest.raises(SystemExit, match="continuou falhando"):
+        asyncio.run(run._executar_loop(args, run_dir, [inst]))
+
+    assert esperas == [60, 120]  # backoff dobrando
+    registro = run._carregar_progresso(run_dir / run.PROGRESS_FILE)[inst.instance_id]
+    assert registro["falha_provedor"] is True
+    assert not run._concluida(registro)
+
+
+def test_estouro_de_contexto_nunca_e_falha_do_provedor():
+    # "142900" contém "429": não pode virar rate limit.
+    assert not run._falha_do_provedor(
+        "BadRequestError: Github_copilotException - prompt token count of 142900 "
+        "exceeds the limit of 128000"
+    )
+    assert run._falha_do_provedor("APIError: HTTP 429 Too Many Requests")
+    assert not run._falha_do_provedor("ValueError: id 14290 inválido")
+
+
+def test_registro_antigo_de_estouro_e_reclassificado_no_relatorio():
+    erro = "BadRequestError: prompt token count of 169117 exceeds the limit of 128000"
+    registros = [_registro("a__a-1", None, motivo_terminacao="erro_operacional", erro=erro,
+                           veredito_validador=None, rodadas=0, historico_notas=[])]
+    metadata = {"parametros": _params(), "ambiente": {"max_loop_iterations": 20}}
+    relatorio = run._consolidar(metadata, registros, None)
+    assert relatorio["instancias"][0]["motivo_terminacao"] == "estouro_de_contexto"
+    m = relatorio["metricas"]
+    assert m["metrica_2_loop"]["motivo_parada_detalhe"]["outro"] == {"estouro_de_contexto": 1}
+    assert m["operacional"]["estouros_de_contexto"] == ["a__a-1"]
+    assert m["operacional"]["erros_operacionais"] == []
+    assert "Estouros de contexto do modelo:** 1" in run.render_markdown(relatorio)

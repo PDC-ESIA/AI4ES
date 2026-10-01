@@ -35,6 +35,33 @@ from .dataset import SWEInstance
 APP_NAME = "swebench_coding_review"
 MOTIVO_ERRO_OPERACIONAL = "erro_operacional"
 MOTIVO_TIMEOUT = "timeout_da_instancia"
+# O contexto da conversa passou do limite do modelo. É resultado do loop (o
+# coder lê arquivos inteiros e não tem busca), não do provedor — mas merece
+# rótulo próprio em vez de um `erro_operacional` genérico.
+MOTIVO_ESTOURO_CONTEXTO = "estouro_de_contexto"
+_SINAIS_ESTOURO_CONTEXTO = (
+    "contextwindowexceeded",
+    "context_length_exceeded",
+    "maximum context length",
+    "context length",
+    "prompt token count",
+    "exceeds the limit of",
+)
+
+
+def is_context_overflow(erro: str | None) -> bool:
+    """Se o erro da instância é o contexto da conversa estourando o limite."""
+    texto = (erro or "").lower()
+    return any(sinal in texto for sinal in _SINAIS_ESTOURO_CONTEXTO)
+
+
+def motivo_do_erro(erro: str, *, timed_out: bool) -> str:
+    """`motivo_terminacao` de uma instância que terminou em erro."""
+    if timed_out:
+        return MOTIVO_TIMEOUT
+    if is_context_overflow(erro):
+        return MOTIVO_ESTOURO_CONTEXTO
+    return MOTIVO_ERRO_OPERACIONAL
 
 # Nomes de estágio do harness (`harness_schemas.StageName`), conferidos por teste.
 STAGE_PREPARACAO = "preparacao_ambiente"
@@ -236,7 +263,7 @@ async def run_loop(
         desfecho = {
             **desfecho,
             "status": "reprovado",
-            "motivo_terminacao": MOTIVO_TIMEOUT if timed_out else MOTIVO_ERRO_OPERACIONAL,
+            "motivo_terminacao": motivo_do_erro(erro, timed_out=timed_out),
             "blocking_reason": erro,
         }
 
