@@ -100,18 +100,40 @@ nenhum teste unitário. A métrica de instrumentação que fez essa medição (`
   nome do arquivo de design. O caso que assertava o bloqueio foi invertido e confirmou a política
   nova com LLM real, em 2 de 2 execuções. Não foi medido se a suíte antiga teria reprovado antes
   da atualização.
+- **O coder encerra o turno respondendo ao próprio prompt (01/10).** Na primeira rodada com LLM,
+  o caso do `cr_coder_agent` reprovou em 2 de 4 execuções, as duas do mesmo jeito: uma chamada ao
+  modelo, nenhuma tool e a resposta final "Sim, o bloco está vazio.". O prompt do coder, desde o
+  PR #406, abre com "Responda a UMA pergunta antes de agir: o bloco acima está vazio?" para
+  escolher entre criar o projeto e incrementá-lo. Às vezes o modelo responde em texto, e um agente
+  que devolve texto sem chamada de tool termina a vez. Pela leitura do prompt, não por medição: no
+  pipeline, o executor recusaria a rodada por falta de `run.json` e de código, e o coder voltaria
+  no modo de incremento, sem plano. A correção é da redação do prompt, não do caso.
 
 Um caso que falha pode querer dizer "o sistema regrediu" ou "a regra mudou de propósito". Só
 quem lê o PR que mudou o sistema sabe qual. No segundo caso o eval set se atualiza junto, e o
 diff dele registra a mudança.
 
-### 6. Custo
+### 6. Relação com os benchmarks do coder
+
+Os benchmarks de `benchmarks/coding_review/` (HumanEval e MBPP) também rodam o `cr_coder_agent`
+isolado, mas medem capacidade: `pass@k` sobre centenas de problemas, com os testes oficiais de
+cada conjunto. Para isso, eles impõem regras próprias ao coder (um único `solution.py`,
+`surface: none`) e declaram que `run.json` e `README.md` não entram na avaliação. O caso do coder
+desta suíte mede o contrário: se ele lê o contrato da task, fica nas suas tools e entrega o que o
+executor exige para rodar. São perguntas complementares, e nenhuma substitui a outra.
+
+### 7. Custo
 
 Em 23/09, a suíte de então (10 testes, com o juiz), com `github_copilot/gpt-5.3-codex` e duas
 execuções por caso: 60 chamadas de LLM, 296.942 tokens, 3min36s, sem 429. O caso com juiz custa
 cerca de 3 vezes um caso sem juiz (13 das 21 chamadas numa rodada de 16/09), porque o juiz
 amostra 5 vezes por invocação. O `conftest.py` imprime chamadas, tokens e tempo ao fim de cada
 rodada, porque o `AgentEvaluator` não reporta custo.
+
+Em 01/10, a suíte atual (8 testes, com o juiz e o caso do coder), mesmo modelo e duas execuções
+por caso: 74 chamadas, 553.575 tokens, 5min11s, sem 429. Com três testes de investigação a menos
+e o caso do coder a mais, o total de tokens quase dobrou. O custo do caso do coder sozinho não foi
+isolado: nas duas rodadas só dele, o coder parou na primeira chamada (evidência 5).
 
 ## Consequências
 

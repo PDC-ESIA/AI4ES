@@ -30,6 +30,9 @@ from tests.eval import metrics  # noqa: E402  -- depende do sys.path acima
 #: Ligado só com AI4ES_EVAL=1. Ver `pytest_collection_modifyitems`.
 LIGADO = os.environ.get("AI4ES_EVAL") == "1"
 
+#: Execuções por caso. Limiar 1.0 exige conformidade em todas.
+NUM_RUNS = int(os.environ.get("AI4ES_EVAL_NUM_RUNS", "2"))
+
 #: Workspace isolado da avaliação. Coberto pelo `.gitignore` (`workspace_output/`).
 WORKSPACE = Path(
     os.environ.get("AI4ES_EVAL_WORKSPACE") or (_AQUI / "workspace_output")
@@ -81,17 +84,22 @@ def _preparar_ambiente() -> None:
     # (3) Registra as métricas próprias no ADK.
     _METRICAS_REGISTRADAS = metrics.registrar_metricas_ai4es()
 
-    # (4) Guarda: o reviewer congela o workspace no import; conferir onde caiu.
-    review_tools = importlib.import_module("shared.tools.coding_tools.review_tools")
-    coder_ws = Path(review_tools._CODER_WS).resolve()
-    if coder_ws != WORKSPACE and WORKSPACE not in coder_ws.parents:
-        _ERRO_DE_SETUP = (
-            "O binding do cr_review_analyzer aponta para fora do workspace da "
-            f"avaliação.\n  esperado dentro de: {WORKSPACE}\n  obtido: {coder_ws}\n\n"
-            "Causa: review_tools.py resolve _CODER_WS em tempo de IMPORT, então "
-            "algum outro módulo importou o reviewer antes deste conftest rodar. "
-            "Rode a avaliação sozinha (`pytest tests/eval`), não junto de tests/unit."
-        )
+    # (4) Guarda: reviewer e coder congelam o workspace no import; conferir onde caiu.
+    congelados = {
+        "cr_review_analyzer": "shared.tools.coding_tools.review_tools",
+        "cr_coder_agent": "src.agents.workflow_coding_review.coder.agent",
+    }
+    for agente, modulo in congelados.items():
+        coder_ws = Path(importlib.import_module(modulo)._CODER_WS).resolve()
+        if coder_ws != WORKSPACE and WORKSPACE not in coder_ws.parents:
+            _ERRO_DE_SETUP = (
+                f"O binding do {agente} aponta para fora do workspace da avaliação."
+                f"\n  esperado dentro de: {WORKSPACE}\n  obtido: {coder_ws}\n\n"
+                f"Causa: {modulo} resolve _CODER_WS em tempo de IMPORT, então algum "
+                "outro módulo o importou antes deste conftest rodar. Rode a "
+                "avaliação sozinha (`pytest tests/eval`), não junto de tests/unit."
+            )
+            break
 
     # (5) Contador de custo: o AgentEvaluator não reporta chamadas, tokens nem tempo.
     _instalar_contador_de_custo()
@@ -233,8 +241,7 @@ def pytest_terminal_summary(terminalreporter):
     terminalreporter.write_line(f"tempo em LLM    : {segundos:.1f}s")
     terminalreporter.write_line(f"modelo(s)       : {', '.join(modelos)}")
     terminalreporter.write_line(
-        f"num_runs        : {os.environ.get('AI4ES_EVAL_NUM_RUNS', '2')}"
-        "   (limiar 1.0 exige conformidade em todas)"
+        f"num_runs        : {NUM_RUNS}   (limiar 1.0 exige conformidade em todas)"
     )
 
 
@@ -303,6 +310,12 @@ def evalset(tmp_path):
 
 
 @pytest.fixture
+def num_runs() -> int:
+    """Execuções por caso, para os testes que conferem o disco a cada execução."""
+    return NUM_RUNS
+
+
+@pytest.fixture
 def rodar_eval():
     """Chama `AgentEvaluator.evaluate` com os defaults da suíte."""
     from google.adk.evaluation.agent_evaluator import AgentEvaluator
@@ -316,7 +329,7 @@ def rodar_eval():
         await AgentEvaluator.evaluate(
             agent_module=agent_module,
             eval_dataset_file_path_or_dir=caminho_evalset,
-            num_runs=num_runs or int(os.environ.get("AI4ES_EVAL_NUM_RUNS", "2")),
+            num_runs=num_runs or NUM_RUNS,
             agent_name=agent_name,
             print_detailed_results=os.environ.get("AI4ES_EVAL_DETALHE") == "1",
         )
