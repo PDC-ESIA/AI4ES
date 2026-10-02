@@ -164,7 +164,7 @@ def test_callback_com_analise_vazia_lista_pendencias_e_retorna_content(
     assert "TASK-002: reprovado" in texto
     assert Ctx.state["review_analysis"] == texto
 
-    report = Path(rt._REVIEW_WS) / "verificacao_revisao.md"
+    report = Path(rt._review_ws()) / "verificacao_revisao.md"
     assert report.read_text(encoding="utf-8") == texto
 
 
@@ -182,7 +182,7 @@ def test_callback_cobertura_completa_preserva_texto_e_nao_retorna_content(
 
     assert rt._persist_review(Ctx()) is None
     assert Ctx.state["review_analysis"] == original
-    report = Path(rt._REVIEW_WS) / "verificacao_revisao.md"
+    report = Path(rt._review_ws()) / "verificacao_revisao.md"
     assert report.read_text(encoding="utf-8") == original
 
 
@@ -233,6 +233,6 @@ def test_runner_propaga_bloqueio_como_ultimo_evento(review_tools_module):
         for part in event.content.parts
         if part.text
     ]
-    report = Path(rt._REVIEW_WS) / "verificacao_revisao.md"
+    report = Path(rt._review_ws()) / "verificacao_revisao.md"
     assert textos[-1].startswith("## Status: BLOQUEADO")
     assert textos[-1] == report.read_text(encoding="utf-8")

@@ -41,9 +41,11 @@ def _run_async(coro):
         asyncio.get_running_loop()
         # Há um loop rodando (FastAPI/ADK) — executa em thread separada
         import concurrent.futures
+        # copy_context: a thread nova herda os ContextVars da sessão (workspace)
+        # e o workflow corrente da contagem de tokens.
+        ctx = contextvars.copy_context()
         with concurrent.futures.ThreadPoolExecutor() as pool:
-            # copy_context: propaga o workflow corrente da contagem de tokens.
-            future = pool.submit(contextvars.copy_context().run, asyncio.run, coro)
+            future = pool.submit(ctx.run, asyncio.run, coro)
             return future.result()
     except RuntimeError:
         # Sem loop rodando — pode usar asyncio.run normalmente

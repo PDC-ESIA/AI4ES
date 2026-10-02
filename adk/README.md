@@ -100,7 +100,13 @@ $WORKSPACE_OUTPUT_DIR/
 └── ...
 ```
 
-O workspace e limpo e recriado pelo **orchestrator** no inicio de cada fresh run. Um marker `.ai4se_workspace` e gravado na raiz para evitar que `init_workspace()` apague acidentalmente um diretorio que nao seja workspace.
+Cada sessão ADK tem o próprio workspace em `<WORKSPACE_OUTPUT_DIR>/<yyyyMMdd-HHmm>-<session_id>/` (ex.: `20261002-0235-1d7ce9d1-...`), com a estrutura acima. A pasta é criada na primeira execução da sessão (via `SessionWorkspacePlugin`, registrado em `app/main.py`), com o timestamp da criação, e reaproveitada nas seguintes. Nada é apagado automaticamente; para remover o workspace de uma sessão:
+
+```bash
+curl -X DELETE http://localhost:8081/workspaces/<session_id>   # só o session_id, sem o timestamp
+```
+
+Um marker `.ai4se_workspace` é gravado em cada pasta de sessão, e a remoção é recusada em diretórios sem ele. Fora de uma run ADK (scripts, benchmarks, testes), a raiz é o próprio `WORKSPACE_OUTPUT_DIR`.
 
 ## Execução com Docker
 
@@ -369,7 +375,7 @@ rm -rf adk/workspace_output/   # limpa artefatos da run anterior
 rm -rf /tmp/fotografo-app      # limpa o app gerado
 ```
 
-Reinicie o uvicorn do `adk/`, reabra o Dev UI e cole o prompt de novo. O `orchestrator` executa `init_workspace()` no início de cada fresh run e recria `workspace_output/` zerado.
+Reinicie o uvicorn do `adk/`, reabra o Dev UI e cole o prompt de novo. Uma sessão nova do Dev UI começa com o workspace vazio em `workspace_output/<yyyyMMdd-HHmm>-<session_id>/`.
 
 ## GitHub Copilot (LiteLLM)
 

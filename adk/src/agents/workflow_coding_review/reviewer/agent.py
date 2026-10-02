@@ -30,9 +30,9 @@ from shared.coding_review_lesson_memory.error_log import (
 )
 from shared.tools.coding_tools.filesystem_coding import tool_ler_arquivo
 from shared.tools.coding_tools.review_tools import (
-    _CODER_WS,
-    _REVIEW_WS,
     _bind,
+    _coder_ws,
+    _review_ws,
     _discover_coder_files,
     _inject_static_findings,
     _persist_review,
@@ -46,14 +46,14 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
-# Re-exportados para uso/teste via atributo do módulo (ex.: agent._CODER_WS,
+# Re-exportados para uso/teste via atributo do módulo (ex.: agent._coder_ws(),
 # agent._discover_coder_files) — mantém compatibilidade com quem referencia esses
 # nomes diretamente aqui, embora a implementação viva em review_tools.py.
 __all__ = [
     "agent",
     "_analyzer",
-    "_CODER_WS",
-    "_REVIEW_WS",
+    "_coder_ws",
+    "_review_ws",
     "_discover_coder_files",
     "_inject_static_findings",
     "_persist_review",
@@ -228,7 +228,7 @@ def _analyzer_instruction_provider(ctx) -> str:
         _ANALYZER_INSTRUCTION_TEMPLATE
         .replace("__TASK_OUTCOMES__", _render_task_outcomes(state))
         .replace("__STATIC_FINDINGS__", static_block or "Análise estática não disponível.")
-        .replace("__CODER_WS__", _CODER_WS)
+        .replace("__CODER_WS__", _coder_ws())
         .replace("__FILES__", _discover_coder_files())
     )
 
@@ -240,7 +240,7 @@ _analyzer = LlmAgent(
     instruction=_analyzer_instruction_provider,
     output_key="review_analysis",
     tools=[
-        _bind(FunctionTool(tool_ler_arquivo), _CODER_WS),
+        _bind(FunctionTool(tool_ler_arquivo), "cr_coder"),
     ],
 )
 

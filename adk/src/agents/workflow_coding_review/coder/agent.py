@@ -11,8 +11,13 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import types
 
-from shared.agent_factory import _bind_tool_to_workspace
-from shared.workspace import get_agent_workspace, get_workspace_root
+from shared.agent_factory import (
+    _bind_tool_to_workspace,
+    lazy_agent_workspace,
+    lazy_workspace_root,
+    session_instruction,
+)
+from shared.workspace import get_agent_workspace
 from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
     tool_ler_arquivo,
@@ -34,15 +39,19 @@ from .workspace_guard import (
 _DEFAULT_MODEL = "gemini-2.5-flash"
 _model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
 
-_WORKSPACE_ROOT = str(get_workspace_root())
-_CODER_WS = str(get_agent_workspace("cr_coder"))
-
-
+# Workspace resolvido a cada chamada/invocação: a raiz depende da sessão.
 def _bind(tool):
-    return _bind_tool_to_workspace(tool, _CODER_WS, _WORKSPACE_ROOT)
+    return _bind_tool_to_workspace(
+        tool, lazy_agent_workspace("cr_coder"), lazy_workspace_root()
+    )
 
 
-_INSTRUCTION = coder_prompt.build_instruction(_CODER_WS)
+def render_instruction() -> str:
+    """Instrução (template, sem injeção de state) para o workspace da sessão."""
+    return coder_prompt.build_instruction(str(get_agent_workspace("cr_coder")))
+
+
+_INSTRUCTION = session_instruction(render_instruction)
 
 agent = LlmAgent(
     model=_model,
