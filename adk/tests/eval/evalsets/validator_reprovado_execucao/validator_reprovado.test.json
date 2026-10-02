@@ -1,0 +1,50 @@
+{
+  "eval_set_id": "ai4es_validator_reprovado_execucao",
+  "name": "validator-execucao-falhou-reprova",
+  "description": "ExecutionReport com overall_status=falha. O implementation_validator reprova de imediato e marca todos os criterios como inconclusivo, INDEPENDENTE do que o LLM julgar — a politica vive em montar_veredito, nao no texto do modelo. Como a resposta final e montada em Python, o ROUGE aqui e estavel.",
+  "eval_cases": [
+    {
+      "eval_id": "reprova_quando_execucao_falhou",
+      "conversation": [
+        {
+          "invocation_id": "val-repro-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "report_path: {{WORKSPACE}}/coder/execution/TASK-EVAL-002.report.json\n\nValide o Work Item TASK-EVAL-002 a partir do ExecutionReport nesse caminho."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "{\"work_item_id\": \"TASK-EVAL-002\", \"status\": \"reprovado\", \"criteria_verdicts\": [{\"criterion\": \"A API expoe POST /pedidos criando o pedido e retornando 201\", \"status\": \"inconclusivo\", \"reasoning\": \"Execução terminou com status 'falha'; o critério não pôde ser comprovado.\", \"evidence_ref\": null}, {\"criterion\": \"A suite de testes automatizados executa e passa integralmente\", \"status\": \"inconclusivo\", \"reasoning\": \"Execução terminou com status 'falha'; o critério não pôde ser comprovado.\", \"evidence_ref\": null}], \"blocking_reason\": \"Execução do harness terminou com status 'falha'. Estágio que falhou: 'inicializacao_aplicacao' (error_code=HEALTHCHECK_TIMEOUT).\", \"summary\": \"Reprovado: a execução do sistema gerado não foi bem-sucedida.\"}"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "tool_ler_arquivo",
+                "args": {
+                  "caminho": "{{WORKSPACE}}/coder/execution/TASK-EVAL-002.report.json"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {
+          "task_id": "TASK-EVAL-002",
+          "report_path": "{{WORKSPACE}}/coder/execution/TASK-EVAL-002.report.json"
+        }
+      }
+    }
+  ]
+}

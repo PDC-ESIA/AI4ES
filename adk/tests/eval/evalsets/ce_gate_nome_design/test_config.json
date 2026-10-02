@@ -1,0 +1,12 @@
+{
+  "criteria": {
+    "ai4es_tool_sequence_in_order": 1.0
+  },
+  "custom_metrics": {
+    "ai4es_tool_sequence_in_order": {
+      "code_config": {
+        "name": "tests.eval.metrics.tool_sequence_in_order"
+      }
+    }
+  }
+}

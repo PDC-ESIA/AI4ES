@@ -1,0 +1,48 @@
+{
+  "eval_set_id": "ai4es_reviewer_gate_cobertura",
+  "name": "reviewer-gate-de-cobertura-sobrepoe-o-llm",
+  "description": "Ha codigo em coder/src/ para revisar, mas NAO ha task_iteration_summary no state — ou seja, o TaskIterator nao comprovou cobertura das tasks. Duas coisas sao medidas: (1) o reviewer LEU os arquivos do coder, em vez de alucinar a revisao; (2) o gate deterministico de cobertura (_persist_review -> aplicar_gate_de_cobertura) sobrepos o veredito, qualquer que tenha sido o que o LLM escreveu. Os marcadores exigidos sao gerados em Python puro, nao pelo modelo. Nao se usa response_match_score aqui: o ROUGE-1 do ADK pontua por f-measure e puniria a referencia curta contra o corpo longo da analise.",
+  "eval_cases": [
+    {
+      "eval_id": "gate_bloqueia_e_reviewer_leu_o_codigo",
+      "conversation": [
+        {
+          "invocation_id": "rev-gate-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Revise a implementacao produzida pelo coder para o catalogo de livros, aplicando as 4 camadas (completude, arquitetura, corretude, testes)."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "## Status: BLOQUEADO\n<!-- task-coverage-gate:start -->\n<!-- task-coverage-gate:end -->"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [{ "name": "tool_ler_arquivo" }],
+            "intermediate_responses": []
+          },
+          "app_details": {
+            "agent_details": {
+              "cr_review_analyzer": {
+                "name": "cr_review_analyzer",
+                "tool_declarations": ["tool_ler_arquivo"]
+              }
+            }
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {}
+      }
+    }
+  ]
+}

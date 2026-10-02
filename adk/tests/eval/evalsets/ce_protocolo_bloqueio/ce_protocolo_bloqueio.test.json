@@ -1,0 +1,59 @@
+{
+  "eval_set_id": "ai4es_ce_protocolo_bloqueio",
+  "name": "context-engineer-protocolo-de-bloqueio",
+  "description": "O CASO CENTRAL DA PoC. O manifesto de requirements chega com status=blocked. O Passo 0 do prompt manda executar TRES tools em sequencia: tool_gerar_doubt_artifact -> tool_emitir_manifesto_bloqueado -> aguardar_resolucao_bloqueio (esta ultima e o LongRunningFunctionTool que PAUSA o pipeline para o humano). Como o ADK nao aceita tools em paralelo, sao tres oportunidades de abandonar o protocolo no meio — e um bloqueio parcial (doubt escrito, manifesto nao emitido) nao pausa nada. Nenhum teste do repositorio verifica isso hoje. Os argumentos sao texto livre do LLM, por isso a metrica e ai4es_tool_sequence_in_order (so nomes) e nao tool_trajectory_avg_score (que exige igualdade exata de args).",
+  "eval_cases": [
+    {
+      "eval_id": "emite_as_tres_tools_do_protocolo_na_ordem",
+      "conversation": [
+        {
+          "invocation_id": "ce-bloq-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Gere as tasks de codificacao a partir dos manifestos abaixo.\n\n## phase: requirements (status: blocked)\nsummary: A elicitacao foi interrompida: o cliente nao confirmou as regras de emprestimo, e os RFs de reserva ficaram sem criterio de aceite verificavel.\nartifacts:\n  - tipo=HU id=HU-001 path=requirements/HUs/HU-001.md\ndoubts:\n  - id=D-001 severidade=alta bloqueante=True path=requirements/doubts/D-001.md\n"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "(nao avaliado neste eval set) Quando o protocolo se completa, a invocacao termina com a CHAMADA pendente de aguardar_resolucao_bloqueio — nao ha texto de modelo. Os criterios deste eval set olham so a sequencia de tools."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              { "name": "tool_gerar_doubt_artifact" },
+              { "name": "tool_emitir_manifesto_bloqueado" },
+              { "name": "aguardar_resolucao_bloqueio" }
+            ],
+            "intermediate_responses": []
+          },
+          "app_details": {
+            "agent_details": {
+              "cr_context_engineer": {
+                "name": "cr_context_engineer",
+                "tool_declarations": [
+                  "aguardar_resolucao_bloqueio",
+                  "tool_emitir_manifesto_bloqueado",
+                  "tool_gerar_doubt_artifact",
+                  "tool_ler_artefatos",
+                  "tool_salvar_macro_context_cr",
+                  "tool_salvar_task_cr"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {}
+      }
+    }
+  ]
+}

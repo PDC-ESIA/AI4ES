@@ -1,0 +1,62 @@
+{
+  "eval_set_id": "ai4es_coder_cli",
+  "name": "coder-projeto-aceito-pelo-gate-do-executor",
+  "description": "O cr_coder_agent recebe a saida do context engineer (uma task de CLI em Python so com a biblioteca padrao) e tem o contrato da task em disco, em coder/tasks/. As metricas conferem que ele le o contrato do disco antes de escrever e que o modelo recebe exatamente as 6 tools do coder, nenhuma de git. A ancora de resultado fica no teste, depois de cada execucao: o gate de executabilidade do executor aceita coder/src, ha README.md e a surface do run.json e 'command'.",
+  "eval_cases": [
+    {
+      "eval_id": "entrega_projeto_executavel_a_partir_do_contrato",
+      "conversation": [
+        {
+          "invocation_id": "coder-cli-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "{\"status\": \"concluido\", \"bloqueio\": null, \"macro_context\": {\"summary\": \"Contador de palavras de arquivo de texto, em linha de comando.\", \"product_type\": \"cli\", \"tech_stack\": [\"Python 3\", \"somente a biblioteca padrão\"], \"global_rules\": [\"Sem dependências de terceiros: apenas a biblioteca padrão do Python.\", \"Testes com unittest, da biblioteca padrão.\"]}, \"tasks\": [{\"id\": \"TASK-001\", \"type\": \"component\", \"complexity\": \"low\", \"description\": \"Implementar a CLI do contador de palavras: recebe o caminho de um arquivo de texto como único argumento, imprime na saída padrão o número de palavras do arquivo e termina com código 0. Se o arquivo não existir, escreve uma mensagem de erro na saída de erro e termina com código 1.\", \"business_rules\": [\"Palavra é qualquer sequência de caracteres separada por espaço em branco.\", \"Arquivo vazio tem 0 palavras.\"], \"acceptance_criteria\": [{\"id\": \"CA-01\", \"description\": \"Dado um arquivo com o texto 'um dois tres', a CLI imprime 3 e termina com código 0.\", \"automatable\": true}, {\"id\": \"CA-02\", \"description\": \"Dado um caminho de arquivo inexistente, a CLI escreve uma mensagem de erro na saída de erro e termina com código 1.\", \"automatable\": true}], \"contract\": {\"inputs\": [], \"outputs\": [\"Módulo da CLI do contador de palavras\", \"Testes que cobrem CA-01 e CA-02\"], \"interfaces\": [\"CLI: python -m contador <caminho_do_arquivo>\"]}, \"requirement_id\": \"RF-001\", \"requirement_refs\": [], \"design_refs\": []}]}"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "(nao avaliado neste eval set) O resultado e conferido em disco pelo teste."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "tool_ler_workspace"
+              },
+              {
+                "name": "tool_criar_arquivo"
+              }
+            ],
+            "intermediate_responses": []
+          },
+          "app_details": {
+            "agent_details": {
+              "cr_coder_agent": {
+                "name": "cr_coder_agent",
+                "tool_declarations": [
+                  "tool_criar_arquivo",
+                  "tool_ler_arquivo",
+                  "tool_ler_workspace",
+                  "tool_listar_workspace",
+                  "tool_remover_arquivo",
+                  "tool_substituir_trecho"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {}
+      }
+    }
+  ]
+}
