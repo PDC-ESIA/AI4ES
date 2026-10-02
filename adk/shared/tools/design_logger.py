@@ -25,12 +25,16 @@ from shared.workspace import get_workspace_root
 # "HIGH"    → READ também é registrado.
 LOG_DETAIL: str = "HIGH"
 
-_LOG_FILE = get_workspace_root() / "design" / "io_operations.log"
+def _log_file():
+    """Log da sessão corrente (<workspace da sessão>/design/io_operations.log)."""
+    return get_workspace_root() / "design" / "io_operations.log"
+
 
 def _write(entry: str) -> None:
     """Abre o log em modo append e escreve uma entrada já formatada."""
-    _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with _LOG_FILE.open("a", encoding="utf-8") as f:
+    log_file = _log_file()
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    with log_file.open("a", encoding="utf-8") as f:
         f.write(entry)
 
 

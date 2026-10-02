@@ -28,15 +28,19 @@ def _find_root(start_path: Path, target: str = "adk") -> Path:
 ADK_DIR = _find_root(Path(__file__).resolve())
 # Artefatos seguem WORKSPACE_OUTPUT_DIR (como o resto do projeto): no container
 # o código em ADK_DIR é read-only e o workspace é um volume à parte.
-DESIGN_DIR = get_workspace_root() / "design"
+# A pasta é resolvida a cada uso (<workspace da sessão>/design) via
+# _design_dir()/_locks_dir(). DESIGN_DIR/LOCKS_DIR ficam como override
+# explícito (None = seguir a sessão corrente) — usado pelos testes.
+DESIGN_DIR: Path | None = None
+LOCKS_DIR: Path | None = None
 
-ANALYSIS_DIR = DESIGN_DIR / "analysis"
-DIAGRAMS_DIR = DESIGN_DIR / "diagrams"
-PROTOTYPE_DIR = DESIGN_DIR / "prototypes"
-REPORT_DIR = DESIGN_DIR / "reports"
-DOUBT_DIR = DESIGN_DIR / "doubts"
-OFFICIAL_DIR = DESIGN_DIR / "entrega_final" # Sujeito a mudanças
-LOCKS_DIR = DESIGN_DIR / ".locks"
+
+def _design_dir() -> Path:
+    return DESIGN_DIR if DESIGN_DIR is not None else get_workspace_root() / "design"
+
+
+def _locks_dir() -> Path:
+    return LOCKS_DIR if LOCKS_DIR is not None else _design_dir() / ".locks"
 
 TEMPLATE_DIR = ADK_DIR / "shared" / "templates"
 LOG_FILENAME = "io_operations.log"
@@ -75,7 +79,7 @@ def _resolve_dirs(base_dir: str | None = None) -> Dict[str, Path]:
     ⚠️  templates NUNCA são escopados por base_dir — são sempre lidos do
     TEMPLATE_DIR global do projeto.
     """
-    root = Path(base_dir).resolve() if base_dir else DESIGN_DIR
+    root = Path(base_dir).resolve() if base_dir else _design_dir()
     return {
         "root": root,
         "analysis": root / "analysis",
@@ -97,7 +101,7 @@ def _safety_root(base_dir: str | None = None) -> Path:
     aponta para outro lugar). Com base_dir, a área permitida é restrita ao
     próprio workspace isolado. TEMPLATE_DIR é sempre liberado em _is_safe_path.
     """
-    return Path(base_dir).resolve() if base_dir else DESIGN_DIR.resolve()
+    return Path(base_dir).resolve() if base_dir else _design_dir().resolve()
 
 
 def _ensure_dirs(dirs: Dict[str, Path]) -> None:
@@ -315,7 +319,7 @@ def _find_existing_file(filename: str, dirs: Dict[str, Path], root: Path) -> "Pa
 
 def _lock_path(filename: str) -> Path:
     safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", filename)
-    return LOCKS_DIR / f"{safe_name}.lock"
+    return _locks_dir() / f"{safe_name}.lock"
 
 
 def _read_lock(lock_file: Path) -> "Dict[str, Any] | None":
@@ -921,7 +925,7 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
         for f in sorted(root.rglob("*")):
             if not f.is_file():
                 continue
-            if LOCKS_DIR.resolve() in f.resolve().parents:
+            if _locks_dir().resolve() in f.resolve().parents:
                 continue
             if f.name.startswith("Doubt_Artifact") and BACKUP_PREFIX not in f.name:
                 resolved = f.resolve()
@@ -1422,7 +1426,7 @@ def acquire_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
         if not filename:
             return {"status": "error", "error": "Nome de arquivo vazio."}
 
-        LOCKS_DIR.mkdir(parents=True, exist_ok=True)
+        _locks_dir().mkdir(parents=True, exist_ok=True)
         lock_file = _lock_path(filename)
         payload = json.dumps(
             {"owner": caller, "filepath": filename, "acquired_at": datetime.now().isoformat()},

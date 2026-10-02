@@ -39,9 +39,9 @@ de credencial/capacidade feita por um lado afeta o outro sem aviso). Cada
 feature com seu próprio banco, cada uma com seu ciclo de vida.
 
 O caminho local, quando usado, fica fora de `WORKSPACE_OUTPUT_DIR` porque
-`init_workspace()` apaga esse diretório a cada prompt novo (ver
-`shared/workspace.py`); a memória precisa sobreviver a isso independente do
-backend.
+lá cada sessão tem sua própria pasta, removível a pedido do usuário (ver
+`shared/workspace.py`); a memória é compartilhada entre sessões e precisa
+sobreviver a isso independente do backend.
 
 Nota sobre Chroma em vez de Qdrant (o default do mem0 e já dependência do
 projeto) no caminho local: o provider Qdrant do mem0 (v3, busca híbrida BM25)

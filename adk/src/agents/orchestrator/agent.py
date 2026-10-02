@@ -239,7 +239,8 @@ class _PipelineOrchestrator(BaseAgent):
         # Manifestos das fases anteriores — contrato leve entre Times.
         phase_manifests = _load_phase_manifests(state)
 
-        # Inicializa (limpa e recria) o workspace de saída dos agentes.
+        # Garante o workspace da sessão (<WORKSPACE_OUTPUT_DIR>/<yyyyMMdd-HHmm>-<session_id>).
+        # Não apaga nada: nova prompt na mesma sessão reaproveita a pasta.
         init_workspace()
 
         # Se houver _live_runner legado em outer_sid (sessão zombie), fecha.
