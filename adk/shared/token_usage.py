@@ -105,6 +105,26 @@ def current_stage() -> Optional[str]:
     return bound[1] if bound else None
 
 
+def _output_tokens(meta: Any) -> int:
+    """Tokens de saída (resposta + raciocínio) de um ``usage_metadata``.
+
+    A semântica de ``candidates_token_count`` varia: no Gemini exclui o
+    raciocínio (reportado à parte em ``thoughts_token_count``); via LiteLlm
+    ele recebe o ``completion_tokens`` da OpenAI, que JÁ inclui o raciocínio,
+    e ``thoughts_token_count`` repete esse valor. Por isso deriva a saída de
+    ``total - prompt``, igual nos dois casos; só soma os campos quando o
+    total não vem preenchido.
+    """
+    prompt = getattr(meta, "prompt_token_count", None) or 0
+    total = getattr(meta, "total_token_count", None) or 0
+    tool_prompt = getattr(meta, "tool_use_prompt_token_count", None) or 0
+    if total:
+        return max(total - prompt - tool_prompt, 0)
+    return (getattr(meta, "candidates_token_count", None) or 0) + (
+        getattr(meta, "thoughts_token_count", None) or 0
+    )
+
+
 def record_usage(input_tokens: int, output_tokens: int) -> None:
     """Soma tokens no workflow corrente; no-op fora de uma execução do orchestrator."""
     bound = _current.get()
@@ -141,11 +161,7 @@ def instrument_genai_client(client: Any) -> None:
         response = original(*args, **kwargs)
         meta = getattr(response, "usage_metadata", None)
         if meta is not None:
-            record_usage(
-                meta.prompt_token_count or 0,
-                (meta.candidates_token_count or 0)
-                + (getattr(meta, "thoughts_token_count", None) or 0),
-            )
+            record_usage(meta.prompt_token_count or 0, _output_tokens(meta))
         return response
 
     generate_content._token_usage_wrapped = True
@@ -163,11 +179,7 @@ class TokenUsagePlugin(BasePlugin):
         # Chunks parciais de streaming repetem o uso; conta só a resposta final.
         if meta is None or getattr(llm_response, "partial", False):
             return None
-        record_usage(
-            meta.prompt_token_count or 0,
-            (meta.candidates_token_count or 0)
-            + (getattr(meta, "thoughts_token_count", None) or 0),
-        )
+        record_usage(meta.prompt_token_count or 0, _output_tokens(meta))
         return None
 
 

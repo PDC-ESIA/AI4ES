@@ -6,11 +6,12 @@ from types import SimpleNamespace
 from shared.token_usage import TokenUsage, TokenUsagePlugin, bind_stage
 
 
-def _resp(prompt, cand, thoughts=None, partial=False):
+def _resp(prompt, cand, thoughts=None, partial=False, total=None):
     meta = SimpleNamespace(
         prompt_token_count=prompt,
         candidates_token_count=cand,
         thoughts_token_count=thoughts,
+        total_token_count=total,
     )
     return SimpleNamespace(usage_metadata=meta, partial=partial)
 
@@ -218,3 +219,20 @@ def test_orchestrator_relatorio_parcial_desembrulha_exception_group(monkeypatch)
     texto = asyncio.run(_coletar())[-1].content.parts[0].text
     assert "no workflow **design**" in texto
     assert "`ValueError: 429 TPM`" in texto
+
+
+def test_saida_openai_via_litellm_nao_duplica_raciocinio():
+    # LiteLlm: candidates = completion_tokens (já inclui raciocínio) e
+    # thoughts = reasoning_tokens; total = prompt + completion.
+    usage, plugin = TokenUsage(), TokenUsagePlugin()
+    bind_stage(usage, "design_pipeline")
+    _call(plugin, _resp(1000, 300, thoughts=200, total=1300))
+    assert usage.stages["design"] == {"input": 1000, "output": 300}
+
+
+def test_saida_gemini_soma_raciocinio_separado():
+    # Gemini: candidates exclui raciocínio; total = prompt + candidates + thoughts.
+    usage, plugin = TokenUsage(), TokenUsagePlugin()
+    bind_stage(usage, "design_pipeline")
+    _call(plugin, _resp(1000, 100, thoughts=200, total=1300))
+    assert usage.stages["design"] == {"input": 1000, "output": 300}
