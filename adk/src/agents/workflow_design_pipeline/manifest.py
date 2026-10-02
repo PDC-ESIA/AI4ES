@@ -100,15 +100,21 @@ def _design_root() -> Path:
 
 
 def _repo_relative(path: Path, root: Path) -> str:
-    """Caminho relativo à raiz do repo (o pai de `workspace_output/`).
+    """Caminho relativo à raiz do workspace ativo (o pai de `design/`).
 
-    Ex.: `<repo>/adk/workspace_output/design/diagrams/HU-001.mmd`
-         → `workspace_output/design/diagrams/HU-001.mmd`.
-    Fallback: caminho absoluto, se a relativização não for possível.
+    Mesma convenção dos manifestos de requisitos e de codificação, e a que os
+    leitores (design `read_phase_artifact`, coder `tool_ler_artefatos`, QA)
+    resolvem a partir de `get_workspace_root()`:
+
+    `<WORKSPACE_OUTPUT_DIR>/<yyyyMMdd-HHmm>-<sessão>/design/diagrams/HU-001.mmd`
+        → `design/diagrams/HU-001.mmd`.
+
+    Relativizar a um nível acima (`design/../..`) vazava o nome da pasta da
+    sessão para o path (`<yyyyMMdd-HHmm>-<sessão>/design/...`), que o coder não
+    consegue resolver. Fallback: caminho absoluto.
     """
     try:
-        base = root.parent.parent  # design/ → workspace_output/ → base
-        return os.path.relpath(path, base)
+        return Path(os.path.relpath(path, root.parent)).as_posix()
     except (ValueError, OSError):
         return str(path)
 

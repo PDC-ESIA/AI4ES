@@ -1585,12 +1585,12 @@ def release_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
 # Ponto crítico confirmado (ver `extracao_manifesto_requisitos.md`, seção 5):
 # os `path` gravados pelo emissor de Requisitos são relativos à RAIZ DO
 # WORKSPACE (`get_workspace_root()`, que já É `workspace_output/`) — ex.:
-# "requirements/HUs/HU-001.md", SEM o prefixo "workspace_output/". Isso é
-# diferente da convenção que o próprio manifesto de Design usa para os SEUS
-# artifacts (`workflow_design_pipeline/manifest.py::_repo_relative`, relativo
-# à raiz do repo, COM o prefixo "workspace_output/"). `read_phase_artifact`
-# resolve pela convenção confirmada (sem prefixo) e normaliza defensivamente
-# um prefixo "workspace_output/" caso apareça — ver docstring da função.
+# "requirements/HUs/HU-001.md", SEM o prefixo "workspace_output/". O manifesto
+# de Design segue a mesma convenção para os SEUS artifacts
+# (`workflow_design_pipeline/manifest.py::_repo_relative`, ex.:
+# "design/analysis/x.md"). `read_phase_artifact` resolve por essa convenção e
+# normaliza defensivamente um prefixo legado ("workspace_output/" ou o nome da
+# pasta da sessão) caso apareça — ver docstring da função.
 
 def read_phase_manifest(
     phase: str,
@@ -1693,13 +1693,12 @@ def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, 
     `path` via `f.relative_to(ws_root)`). Um `path` real hoje se parece com
     "requirements/HUs/HU-001.md" — SEM o prefixo "workspace_output/".
 
-    Isso é diferente da convenção que o próprio manifesto de Design usa
-    (`workflow_design_pipeline/manifest.py::_repo_relative`, relativo à raiz
-    do repo, COM o prefixo "workspace_output/"). Como essa divergência entre
-    fases é uma possibilidade real (cada emissor decide sua própria
-    convenção hoje), esta função resolve primeiro pela convenção confirmada
-    (sem prefixo) e, defensivamente, tenta de novo removendo um eventual
-    prefixo "workspace_output/" antes de desistir — nunca aceita o path como
+    O manifesto de Design usa a mesma convenção
+    (`workflow_design_pipeline/manifest.py::_repo_relative`). Como manifestos
+    antigos ainda podem trazer um prefixo ("workspace_output/" ou, numa versão
+    intermediária, o nome da pasta da sessão), esta função resolve primeiro
+    pela convenção (sem prefixo) e, defensivamente, tenta de novo removendo
+    esses prefixos antes de desistir — nunca aceita o path como
     absoluto nem sai de dentro de workspace_output/, porque `path` vem de um
     manifesto de OUTRA fase (dado externo ao design, não confiável por
     padrão).
@@ -1727,9 +1726,10 @@ def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, 
         # aceita também — sem isso, um manifesto de outra fase que adote essa
         # convenção seria recusado por engano.
         if not candidate.exists():
-            prefix = f"{workspace_root.name}/"
-            if path.startswith(prefix):
-                candidate = (workspace_root / path[len(prefix):]).resolve()
+            for prefix in ("workspace_output/", f"{workspace_root.name}/"):
+                if path.startswith(prefix):
+                    candidate = (workspace_root / path[len(prefix):]).resolve()
+                    break
 
         if not candidate.is_relative_to(workspace_root):
             return {
