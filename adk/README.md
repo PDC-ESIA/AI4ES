@@ -108,6 +108,17 @@ curl -X DELETE http://localhost:8081/workspaces/<session_id>   # só o session_i
 
 Um marker `.ai4se_workspace` é gravado em cada pasta de sessão, e a remoção é recusada em diretórios sem ele. Fora de uma run ADK (scripts, benchmarks, testes), a raiz é o próprio `WORKSPACE_OUTPUT_DIR`.
 
+### Consumo de tokens
+
+Ao fim de cada execução (ou quando ela falha), o `orchestrator` emite uma tabela com os tokens de entrada e saída — total e por workflow (requisitos, design, coder_reviewer, qa). Os comportamentos abaixo são opcionais e ficam **desligados por padrão** (vazio = comportamento histórico); ligue com `true` no `.env`. Descrição completa em `.env.example` e `shared/pipeline_flags.py`.
+
+| Variável | Efeito |
+|---|---|
+| `AI4ES_TOKEN_USAGE_PERSIST` | grava o consumo no state ao fim de cada workflow e em `<workspace da sessão>/token_usage.json` a cada chamada LLM |
+| `AI4ES_TOKEN_REPORT_ON_PAUSE` | tabela parcial também quando a execução pausa |
+| `AI4ES_TOKEN_REPORT_DETAIL` | acrescenta o consumo por agente (top 10) |
+| `AI4ES_TOKEN_SESSION_TOTAL` | acumula as execuções da sessão e mostra o total da sessão |
+
 ## Execução com Docker
 
 Pré-requisito: **Docker** (e Docker Compose) instalados. Copie `.env.example` para `.env` e preencha.

@@ -14,11 +14,20 @@ Chamadas LLM que não passam pelo ADK precisam registrar explicitamente:
 ``record_litellm_response`` após ``litellm.completion`` e
 ``instrument_genai_client`` no cliente Gemini do mem0. Threads criadas à mão
 devem propagar o contexto (``contextvars.copy_context().run``).
+
+Além do total por workflow, o acumulador guarda o consumo por agente
+(entrada/saída/chamadas). Opcionalmente (``persist_path``) grava um snapshot
+JSON a cada chamada — ver ``shared.pipeline_flags``.
 """
 
 from __future__ import annotations
 
+import json
+import os
+import threading
 from contextvars import ContextVar
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from google.adk.plugins.base_plugin import BasePlugin
@@ -33,20 +42,80 @@ STAGE_LABELS: dict[str, str] = {
 
 _REPORT_ORDER = ("requisitos", "design", "coder_reviewer", "qa")
 
+# Agentes de chamadas feitas fora do ADK (sem callback_context).
+AGENT_LITELLM = "litellm_direto"
+AGENT_MEM0 = "mem0"
+
+_DETAIL_TOP_N = 10
+
+
+def _empty() -> dict[str, int]:
+    return {"input": 0, "output": 0}
+
 
 class TokenUsage:
-    """Acumulador de tokens de entrada/saída por workflow."""
+    """Acumulador de tokens de entrada/saída por workflow e por agente."""
 
-    def __init__(self, stages: Optional[dict[str, dict[str, int]]] = None):
+    def __init__(
+        self,
+        stages: Optional[dict[str, dict[str, int]]] = None,
+        agents: Optional[dict[str, dict[str, dict[str, int]]]] = None,
+    ):
         self.stages: dict[str, dict[str, int]] = {
             k: {"input": int(v.get("input", 0)), "output": int(v.get("output", 0))}
             for k, v in (stages or {}).items()
         }
+        self.agents: dict[str, dict[str, dict[str, int]]] = {
+            stage: {
+                name: {
+                    "input": int(v.get("input", 0)),
+                    "output": int(v.get("output", 0)),
+                    "calls": int(v.get("calls", 0)),
+                }
+                for name, v in by_agent.items()
+            }
+            for stage, by_agent in (agents or {}).items()
+        }
+        # Snapshot JSON opcional, gravado a cada add() (ver orchestrator).
+        self.persist_path: Optional[Path] = None
+        self.persist_meta: dict[str, Any] = {}
+        self._lock = threading.Lock()
 
-    def add(self, stage: str, input_tokens: int, output_tokens: int) -> None:
-        bucket = self.stages.setdefault(stage, {"input": 0, "output": 0})
-        bucket["input"] += input_tokens
-        bucket["output"] += output_tokens
+    def add(
+        self,
+        stage: str,
+        input_tokens: int,
+        output_tokens: int,
+        agent: Optional[str] = None,
+    ) -> None:
+        with self._lock:
+            bucket = self.stages.setdefault(stage, _empty())
+            bucket["input"] += input_tokens
+            bucket["output"] += output_tokens
+            if agent:
+                a = self.agents.setdefault(stage, {}).setdefault(
+                    agent, {"input": 0, "output": 0, "calls": 0}
+                )
+                a["input"] += input_tokens
+                a["output"] += output_tokens
+                a["calls"] += 1
+        if self.persist_path is not None:
+            self.write_snapshot()
+
+    def merge(self, other: "TokenUsage") -> "TokenUsage":
+        """Soma ``other`` neste acumulador (por workflow e por agente)."""
+        for stage, v in other.stages.items():
+            b = self.stages.setdefault(stage, _empty())
+            b["input"] += v["input"]
+            b["output"] += v["output"]
+        for stage, by_agent in other.agents.items():
+            for name, v in by_agent.items():
+                a = self.agents.setdefault(stage, {}).setdefault(
+                    name, {"input": 0, "output": 0, "calls": 0}
+                )
+                for k in ("input", "output", "calls"):
+                    a[k] += v[k]
+        return self
 
     @property
     def total_input(self) -> int:
@@ -59,32 +128,117 @@ class TokenUsage:
     def to_dict(self) -> dict[str, dict[str, int]]:
         return {k: dict(v) for k, v in self.stages.items()}
 
+    def agents_dict(self) -> dict[str, dict[str, dict[str, int]]]:
+        return {s: {n: dict(v) for n, v in a.items()} for s, a in self.agents.items()}
+
     @classmethod
-    def from_dict(cls, data: Optional[dict[str, Any]]) -> "TokenUsage":
-        return cls(data or {})
+    def from_dict(
+        cls,
+        data: Optional[dict[str, Any]],
+        agents: Optional[dict[str, Any]] = None,
+    ) -> "TokenUsage":
+        return cls(data or {}, agents or {})
 
-    def format_report(self, note: Optional[str] = None) -> str:
-        """Tabela markdown; ``note`` sinaliza relatório parcial (execução falhou)."""
+    # ── Persistência opcional ─────────────────────────────────────────────
 
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            **self.persist_meta,
+            "current_run": {
+                "total": {"input": self.total_input, "output": self.total_output},
+                "workflows": self.to_dict(),
+                "agents": self.agents_dict(),
+            },
+        }
+
+    def write_snapshot(self) -> None:
+        """Grava o snapshot de forma atômica; falha de I/O nunca derruba a execução."""
+        path = self.persist_path
+        if path is None:
+            return
+        try:
+            with self._lock:
+                data = json.dumps(self.snapshot(), ensure_ascii=False, indent=2)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}")
+            tmp.write_text(data, encoding="utf-8")
+            os.replace(tmp, path)
+        except OSError:
+            pass
+
+    # ── Relatório ─────────────────────────────────────────────────────────
+
+    def _labels(self) -> list[str]:
+        return list(_REPORT_ORDER) + sorted(
+            s for s in self.stages if s not in _REPORT_ORDER
+        )
+
+    def _table(self) -> list[str]:
         def row(label: str, inp: int, out: int) -> str:
             return f"| {label} | {inp:,} | {out:,} | {inp + out:,} |"
 
-        labels = [s for s in _REPORT_ORDER] + sorted(
-            s for s in self.stages if s not in _REPORT_ORDER
-        )
-        title = "**Consumo de tokens da execução**"
-        if note:
-            title = f"**Consumo de tokens da execução (parcial)**\n\n{note}"
         lines = [
-            title,
-            "",
             "| Workflow | Entrada | Saída | Total |",
             "|---|---:|---:|---:|",
             row("Total", self.total_input, self.total_output),
         ]
-        for label in labels:
-            s = self.stages.get(label, {"input": 0, "output": 0})
+        for label in self._labels():
+            s = self.stages.get(label, _empty())
             lines.append(row(label, s["input"], s["output"]))
+        return lines
+
+    def _agent_table(self, top_n: int = _DETAIL_TOP_N) -> list[str]:
+        rows = [
+            (stage, name, v)
+            for stage, by_agent in self.agents.items()
+            for name, v in by_agent.items()
+        ]
+        if not rows:
+            return []
+        rows.sort(key=lambda r: r[2]["input"] + r[2]["output"], reverse=True)
+        lines = [
+            f"**Consumo por agente** (top {min(top_n, len(rows))} de {len(rows)})",
+            "",
+            "| Workflow | Agente | Chamadas | Entrada | Saída | Total |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+        for stage, name, v in rows[:top_n]:
+            lines.append(
+                f"| {stage} | {name} | {v['calls']:,} | {v['input']:,} | "
+                f"{v['output']:,} | {v['input'] + v['output']:,} |"
+            )
+        return lines
+
+    def format_report(
+        self,
+        note: Optional[str] = None,
+        *,
+        detail: bool = False,
+        session_total: Optional["TokenUsage"] = None,
+        session_runs: int = 0,
+    ) -> str:
+        """Tabela markdown.
+
+        ``note`` sinaliza relatório parcial (falha/pausa/parada); ``detail``
+        acrescenta o consumo por agente; ``session_total`` acrescenta o
+        acumulado de todas as execuções da sessão.
+        """
+        title = "**Consumo de tokens da execução**"
+        if note:
+            title = f"**Consumo de tokens da execução (parcial)**\n\n{note}"
+        lines = [title, "", *self._table()]
+        if detail:
+            agent_lines = self._agent_table()
+            if agent_lines:
+                lines += ["", *agent_lines]
+        if session_total is not None:
+            lines += [
+                "",
+                f"**Total da sessão** ({session_runs} execução(ões))",
+                "",
+                *session_total._table(),
+            ]
         return "\n".join(lines)
 
 
@@ -125,16 +279,18 @@ def _output_tokens(meta: Any) -> int:
     )
 
 
-def record_usage(input_tokens: int, output_tokens: int) -> None:
+def record_usage(
+    input_tokens: int, output_tokens: int, agent: Optional[str] = None
+) -> None:
     """Soma tokens no workflow corrente; no-op fora de uma execução do orchestrator."""
     bound = _current.get()
     if bound is None:
         return
     usage, stage = bound
-    usage.add(stage, input_tokens or 0, output_tokens or 0)
+    usage.add(stage, input_tokens or 0, output_tokens or 0, agent=agent)
 
 
-def record_litellm_response(response: Any) -> None:
+def record_litellm_response(response: Any, agent: str = AGENT_LITELLM) -> None:
     """Contabiliza uma resposta de ``litellm.completion`` chamado fora do ADK."""
     usage = getattr(response, "usage", None)
     if usage is None and isinstance(response, dict):
@@ -142,10 +298,10 @@ def record_litellm_response(response: Any) -> None:
     if usage is None:
         return
     get = usage.get if isinstance(usage, dict) else (lambda k: getattr(usage, k, 0))
-    record_usage(get("prompt_tokens") or 0, get("completion_tokens") or 0)
+    record_usage(get("prompt_tokens") or 0, get("completion_tokens") or 0, agent=agent)
 
 
-def instrument_genai_client(client: Any) -> None:
+def instrument_genai_client(client: Any, agent: str = AGENT_MEM0) -> None:
     """Envolve ``client.models.generate_content`` (google-genai) para contabilizar.
 
     Usado no cliente Gemini que o mem0 cria internamente — chamadas que não
@@ -161,7 +317,7 @@ def instrument_genai_client(client: Any) -> None:
         response = original(*args, **kwargs)
         meta = getattr(response, "usage_metadata", None)
         if meta is not None:
-            record_usage(meta.prompt_token_count or 0, _output_tokens(meta))
+            record_usage(meta.prompt_token_count or 0, _output_tokens(meta), agent=agent)
         return response
 
     generate_content._token_usage_wrapped = True
@@ -179,7 +335,11 @@ class TokenUsagePlugin(BasePlugin):
         # Chunks parciais de streaming repetem o uso; conta só a resposta final.
         if meta is None or getattr(llm_response, "partial", False):
             return None
-        record_usage(meta.prompt_token_count or 0, _output_tokens(meta))
+        record_usage(
+            meta.prompt_token_count or 0,
+            _output_tokens(meta),
+            agent=getattr(callback_context, "agent_name", None),
+        )
         return None
 
 

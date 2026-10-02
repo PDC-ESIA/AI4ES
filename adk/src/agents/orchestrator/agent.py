@@ -15,11 +15,15 @@ Estado persistido em ctx.session.state (sessão externa):
     paused_inner_session_id: str | None
     paused_function_call: {id, name, args} | None
 
+Contagem de tokens opcional (desligada por padrão, ver `shared.pipeline_flags`):
+persistência por workflow e em token_usage.json, consumo por agente, tabela
+nas pausas e total acumulado da sessão.
+
 Estado em memória do processo (NÃO persistido — limitação documentada):
     _live_runners: dict[outer_session_id, tuple[Runner, inner_session_id]]
 """
 
-from typing import Any, AsyncGenerator, ClassVar, Dict, List, Tuple
+from typing import Any, AsyncGenerator, ClassVar, Dict, List, Optional, Tuple
 
 import logging
 import time
@@ -39,9 +43,11 @@ from src.agents.workflow_design_pipeline.agent import agent as design_pipeline
 from src.agents.workflow_coding_review.agent import agent as coding_review_pipeline
 from src.agents.workflow_qa.agent import agent as qa_pipeline
 
-from shared.workspace import init_workspace
+from shared import pipeline_flags as flags
+from shared.workspace import get_workspace_root, init_workspace
 from shared.preflight import ensure_llm_ready
 from shared.token_usage import (
+    STAGE_LABELS,
     TokenUsage,
     bind_stage,
     current_stage,
@@ -70,6 +76,12 @@ from src.agents.orchestrator._helpers import (
 # capturam os sub-pipelines mas não a linha do tempo por estágio — este logger
 # cobre exatamente esse gap (início/fim/duração/desfecho de cada pipeline).
 logger = logging.getLogger("google_adk.orchestrator")
+
+TOKEN_SNAPSHOT_FILENAME = "token_usage.json"
+
+
+def _stage_label(pipeline_name: str) -> str:
+    return STAGE_LABELS.get(pipeline_name, pipeline_name)
 
 
 class _PipelineOrchestrator(BaseAgent):
@@ -114,8 +126,13 @@ class _PipelineOrchestrator(BaseAgent):
         paused = state.get("paused_pipeline")
         # Resume continua o acumulado salvo na pausa; fresh run começa do zero.
         usage = (
-            TokenUsage.from_dict(state.get("token_usage")) if paused else TokenUsage()
+            TokenUsage.from_dict(
+                state.get("token_usage"), state.get("token_usage_agents")
+            )
+            if paused
+            else TokenUsage()
         )
+        self._setup_usage(state, outer_sid, usage, new_run=not paused)
 
         try:
             # === Branch RESUME ===
@@ -149,7 +166,6 @@ class _PipelineOrchestrator(BaseAgent):
                 stage,
                 outer_sid,
             )
-            state["token_usage"] = usage.to_dict()
             local = f"no workflow **{stage}**" if stage else "antes do primeiro workflow"
             # ParallelAgent embrulha a falha em ExceptionGroup — mostra a causa real.
             cause: BaseException = exc
@@ -159,10 +175,9 @@ class _PipelineOrchestrator(BaseAgent):
                 f"Execução interrompida {local}: "
                 f"`{type(cause).__name__}: {str(cause)[:300]}`"
             )
+            delta = self._usage_delta(state, usage, status="falhou")
             yield self._make_text_event(
-                self.name,
-                usage.format_report(note=note),
-                state_delta={"token_usage": state["token_usage"]},
+                self.name, self._report(state, usage, note=note), state_delta=delta
             )
             raise
 
@@ -254,12 +269,18 @@ class _PipelineOrchestrator(BaseAgent):
                 function_call_name=new_pause.name,
                 function_call_args=dict(new_pause.args or {}),
             )
-            yield self._make_state_event({
+            delta = {
                 "paused_pipeline": state["paused_pipeline"],
                 "paused_inner_session_id": state["paused_inner_session_id"],
                 "paused_function_call": state["paused_function_call"],
                 "token_usage": state["token_usage"],
-            })
+            }
+            pause_text = self._pause_text(state, usage, paused)
+            if pause_text:
+                delta.update(self._usage_delta(state, usage, status="pausada"))
+                yield self._make_text_event(self.name, pause_text, state_delta=delta)
+            else:
+                yield self._make_state_event(delta)
             return
 
         # Conclusão: cleanup.
@@ -269,15 +290,16 @@ class _PipelineOrchestrator(BaseAgent):
         state["accumulated_outputs"] = accumulated
         await runner.close()
         self._live_runners.pop(outer_sid, None)
+        delta = self._usage_delta(state, usage, status="concluída")
         yield self._make_text_event(
             self.name,
-            usage.format_report(),
+            self._report(state, usage),
             state_delta={
                 "paused_pipeline": None,
                 "paused_inner_session_id": None,
                 "paused_function_call": None,
                 "accumulated_outputs": accumulated,
-                "token_usage": state["token_usage"],
+                **delta,
             },
         )
 
@@ -428,14 +450,20 @@ class _PipelineOrchestrator(BaseAgent):
                     function_call_args=dict(pending_pause.args or {}),
                 )
                 state["accumulated_outputs"] = accumulated
-                yield self._make_state_event({
+                delta = {
                     "paused_pipeline": state["paused_pipeline"],
                     "paused_inner_session_id": state["paused_inner_session_id"],
                     "paused_function_call": state["paused_function_call"],
                     "accumulated_outputs": accumulated,
                     "phase_manifests": state.get("phase_manifests", []),
                     "token_usage": state["token_usage"],
-                })
+                }
+                pause_text = self._pause_text(state, usage, pipeline.name)
+                if pause_text:
+                    delta.update(self._usage_delta(state, usage, status="pausada"))
+                    yield self._make_text_event(self.name, pause_text, state_delta=delta)
+                else:
+                    yield self._make_state_event(delta)
                 return  # NÃO roda pipelines subsequentes
 
             # Pipeline concluiu sem pausa.
@@ -451,6 +479,14 @@ class _PipelineOrchestrator(BaseAgent):
             phase_manifests = _load_phase_manifests(state)
             await runner.close()
 
+            if flags.token_usage_persist():
+                # Checkpoint do consumo por workflow: sobrevive a queda/interrupção.
+                yield self._make_state_event({
+                    "accumulated_outputs": accumulated,
+                    "phase_manifests": state.get("phase_manifests", []),
+                    **self._usage_delta(state, usage, status="em andamento"),
+                })
+
         logger.info(
             "[ORCHESTRATOR] Fresh run concluído: %d/%d pipelines (session=%s)",
             len(accumulated),
@@ -458,18 +494,104 @@ class _PipelineOrchestrator(BaseAgent):
             outer_sid,
         )
         state["accumulated_outputs"] = accumulated
-        state["token_usage"] = usage.to_dict()
+        delta = self._usage_delta(state, usage, status="concluída")
         yield self._make_text_event(
             self.name,
-            usage.format_report(),
+            self._report(state, usage),
             state_delta={
                 "accumulated_outputs": accumulated,
                 "paused_pipeline": None,
                 "paused_inner_session_id": None,
                 "paused_function_call": None,
                 "phase_manifests": state.get("phase_manifests", []),
-                "token_usage": state["token_usage"],
+                **delta,
             },
+        )
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Helpers de contagem de tokens
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _pause_text(
+        self, state: dict[str, Any], usage: TokenUsage, pipeline_name: str
+    ) -> str:
+        """Tabela parcial na pausa (AI4ES_TOKEN_REPORT_ON_PAUSE); vazia se desligada."""
+        if not flags.token_report_on_pause():
+            return ""
+        label = _stage_label(pipeline_name)
+        return self._report(state, usage, note=f"Execução pausada em **{label}**.")
+
+    def _setup_usage(
+        self,
+        state: dict[str, Any],
+        outer_sid: str,
+        usage: TokenUsage,
+        *,
+        new_run: bool,
+    ) -> None:
+        if flags.token_session_total() and new_run:
+            runs = state.get("token_usage_runs") or []
+            state["token_usage_run"] = len(runs) + 1
+        if flags.token_usage_persist():
+            usage.persist_path = get_workspace_root() / TOKEN_SNAPSHOT_FILENAME
+            usage.persist_meta = {
+                "session_id": outer_sid,
+                "run": state.get("token_usage_run"),
+                "status": "em andamento",
+                "previous_runs": [
+                    r for r in state.get("token_usage_runs") or []
+                    if r.get("run") != state.get("token_usage_run")
+                ],
+            }
+
+    def _usage_delta(
+        self, state: dict[str, Any], usage: TokenUsage, *, status: str
+    ) -> dict[str, Any]:
+        """Grava o consumo no state e devolve as chaves para o state_delta."""
+        state["token_usage"] = usage.to_dict()
+        delta: dict[str, Any] = {"token_usage": state["token_usage"]}
+        if (
+            flags.token_usage_persist()
+            or flags.token_report_detail()
+            or flags.token_session_total()
+        ):
+            state["token_usage_agents"] = usage.agents_dict()
+            delta["token_usage_agents"] = state["token_usage_agents"]
+        if flags.token_session_total():
+            run = state.get("token_usage_run") or 1
+            entry = {
+                "run": run,
+                "status": status,
+                "workflows": usage.to_dict(),
+                "agents": usage.agents_dict(),
+            }
+            runs = [r for r in state.get("token_usage_runs") or [] if r.get("run") != run]
+            runs.append(entry)
+            runs.sort(key=lambda r: r.get("run", 0))
+            state["token_usage_runs"] = runs
+            delta["token_usage_runs"] = runs
+            delta["token_usage_run"] = run
+        if usage.persist_path is not None:
+            usage.persist_meta["status"] = status
+            usage.write_snapshot()
+        return delta
+
+    def _report(
+        self, state: dict[str, Any], usage: TokenUsage, note: Optional[str] = None
+    ) -> str:
+        session_total = None
+        runs = state.get("token_usage_runs") or []
+        if flags.token_session_total() and runs:
+            session_total = TokenUsage()
+            for r in runs:
+                session_total.merge(
+                    TokenUsage.from_dict(r.get("workflows"), r.get("agents"))
+                )
+        return usage.format_report(
+            note,
+            detail=flags.token_report_detail(),
+            session_total=session_total,
+            session_runs=len(runs),
         )
 
     @staticmethod
