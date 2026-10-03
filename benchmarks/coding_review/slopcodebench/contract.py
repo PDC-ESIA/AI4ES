@@ -41,7 +41,8 @@ def build_task_contract(
         ],
         "contract": {
             "tech_stack": "python",
-            "product_type": "cli",
+            # CLI ou serviço HTTP: quem define é a especificação do checkpoint.
+            "product_type": "conforme a especificação",
             "entry_file": entry_file,
             "checkpoint": checkpoint,
         },
@@ -59,7 +60,8 @@ def build_coder_message(checkpoint: str, prompt: str, entry_file: str) -> str:
 
 ## Stack e produto
 - `tech_stack`: Python 3.12.
-- `product_type`: cli.
+- `product_type`: o que a especificação abaixo descreve (programa de linha de
+  comando ou serviço HTTP), invocado a partir do ponto de entrada abaixo.
 
 ## Regras OBRIGATÓRIAS do benchmark (sobrepõem-se a qualquer default)
 1. O ponto de entrada do programa é `{entry_file}`, na RAIZ do seu workspace.

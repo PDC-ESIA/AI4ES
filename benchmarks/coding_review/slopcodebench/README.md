@@ -85,7 +85,8 @@ python -m benchmarks.coding_review.slopcodebench.run --model github_copilot/gpt-
   anterior, só a spec nova e o workspace (protocolo do paper, seção 2.2).
 - **Prompt oficial.** O enunciado é o template `just-solve` do SlopCodeBench,
   renderizado pela função do próprio harness, dentro do contrato de entrada que
-  o coder espera (stack Python, produto CLI, arquivo de entrada).
+  o coder espera (stack Python e arquivo de entrada; o tipo de produto — CLI ou
+  serviço HTTP — é o que a especificação do checkpoint descreve).
 - **Continuidade entre checkpoints.** A partir do 2º checkpoint, o estado da
   sessão é semeado como o `TaskIterator` do workflow faz entre tasks
   (`NOVA_TASK:` + fotografia dos arquivos herdados pelo `workspace_guard`). Nada
