@@ -433,6 +433,11 @@ def _fmt(valor, sufixo: str = "") -> str:
     return f"{valor}{sufixo}"
 
 
+def _fmt_int(valor) -> str:
+    """Contagens (ex.: linhas adicionadas) sem casas decimais."""
+    return "—" if valor is None else str(int(valor))
+
+
 def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
     """Grava o relatório JSON e um resumo Markdown; devolve os dois caminhos."""
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -560,7 +565,7 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         linhas.append(
             f"| {c['problem']} | {c['checkpoint']} | {c['state']} | {_fmt(c['strict_pass_rate'])} | "
             f"{_fmt(c['isolated_pass_rate'])} | {_fmt(c['core_pass_rate'])} | "
-            f"{_fmt(c['lines_added'])} | {_fmt(c['lines_removed'])} | "
+            f"{_fmt_int(c['lines_added'])} | {_fmt_int(c['lines_removed'])} | "
             f"{_fmt(c['delta.churn_ratio'])} | {_fmt(c['verbosity'])} | {_fmt(c['erosion'])} |"
         )
 

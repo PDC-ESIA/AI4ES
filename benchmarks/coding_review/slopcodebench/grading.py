@@ -478,6 +478,7 @@ def _h_results(payload: dict) -> dict:
     import yaml
     from slop_code import common
     from slop_code.entrypoints import evaluation as evaluation_entry
+    from slop_code.entrypoints.commands import repopulate_diffs
     from slop_code.entrypoints.evaluation.metrics import update_results_jsonl
     from slop_code.evaluation import ProblemConfig
 
@@ -495,6 +496,11 @@ def _h_results(payload: dict) -> dict:
         estados = payload["states"].get(problem_path.name, {})
         with (problem_dir / common.RUN_INFO_FILENAME).open("w") as f:
             yaml.dump({"summary": {"checkpoints": estados}}, f, sort_keys=True)
+        # `diff.json` de cada checkpoint (snapshot vs. snapshot anterior), de
+        # onde saem `lines_added`/`lines_removed`/`churn_ratio`. O runner
+        # oficial o grava ao fechar o checkpoint; aqui usamos a lógica do
+        # comando oficial `slop-code repopulate-diffs`.
+        repopulate_diffs._process_problem(problem_dir)
         problem_reports, _ = evaluation_entry.create_problem_reports(
             problem_dir, ProblemConfig.from_yaml(problem_path)
         )
