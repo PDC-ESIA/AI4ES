@@ -91,9 +91,11 @@ python -m benchmarks.coding_review.slopcodebench.run --model github_copilot/gpt-
   sessão é semeado como o `TaskIterator` do workflow faz entre tasks
   (`NOVA_TASK:` + fotografia dos arquivos herdados pelo `workspace_guard`). Nada
   no prompt, no guard ou no loop é alterado.
-- **Pass policy oficial `any`.** Se um checkpoint passa em zero testes, ou o
-  coder falha, a trajetória do problema para ali; os checkpoints restantes
-  contam como não resolvidos.
+- **Pass policy oficial `any`.** É a política padrão do harness e, no código
+  dele, nunca reprova por resultado de teste: todos os checkpoints rodam, mesmo
+  com 0 testes passando. A trajetória de um problema só para se o coder falhar
+  (erro na geração), como o runner oficial faz com erro do agente; os
+  checkpoints restantes contam como não resolvidos.
 
 ## Métricas
 

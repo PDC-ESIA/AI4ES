@@ -10,8 +10,9 @@ Fluxo:
 2. sorteia o subset de problemas (seed fixa);
 3. para cada problema, percorre os checkpoints EM ORDEM sobre o mesmo
    workspace: roda o coder (geração), salva o snapshot e avalia com a suíte
-   oculta oficial (grading). Segue a pass policy oficial `any`: se um checkpoint
-   passa em zero testes, ou o coder falha, a trajetória do problema para ali;
+   oculta oficial (grading). Segue a pass policy oficial `any`, que nunca
+   interrompe por resultado de teste: a trajetória do problema só para se o
+   coder falhar (como o runner oficial ao erro do agente);
 4. consolida os checkpoints com as funções oficiais (`checkpoint_results.jsonl`)
    e persiste um relatório JSON + resumo Markdown com as três métricas.
 """
@@ -244,7 +245,12 @@ def _estados_dos_checkpoints(
 
 
 def _interrompe_trajetoria(detalhe: dict) -> bool:
-    """Early stop da pass policy oficial `any`: erro do coder ou zero testes passando."""
+    """Early stop como no runner oficial: erro do coder ou pass policy reprovada.
+
+    Com a política padrão `any`, `passed_policy` é sempre verdadeiro (ver
+    `PassPolicy.check` no harness), então na prática só o erro do coder para a
+    trajetória.
+    """
     return bool(detalhe.get("coder_error")) or not detalhe.get("passed_policy")
 
 
@@ -354,7 +360,7 @@ async def _executar_problema(
 
         if _interrompe_trajetoria(detalhe):
             print(
-                f"[run] {problema.name}: trajetória interrompida (pass policy `any`)."
+                f"[run] {problema.name}: trajetória interrompida (erro do coder)."
             )
             break
 

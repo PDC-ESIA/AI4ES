@@ -7,8 +7,8 @@ oficial chama a cada checkpoint:
 - ``evaluate_agent_snapshot``: roda a suíte oculta do checkpoint (core,
   functionality, error e regressão dos checkpoints anteriores) no container
   Docker do ambiente e calcula as métricas de qualidade do snapshot;
-- ``PassPolicy.ANY``: política padrão do harness — a trajetória para quando um
-  checkpoint passa em zero testes (os restantes contam como não resolvidos);
+- ``PassPolicy.ANY``: política padrão do harness; no código dele ela nunca
+  reprova por resultado de teste, então todos os checkpoints rodam;
 - ``create_problem_reports`` + ``update_results_jsonl``: consolidam cada
   checkpoint numa linha de ``checkpoint_results.jsonl`` (pass rates, diff,
   churn, verbosidade e erosão via ``scb-check``).
