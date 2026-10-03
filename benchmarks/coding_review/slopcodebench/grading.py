@@ -69,6 +69,9 @@ SNAPSHOT_DIR_NAME = "snapshot"
 INFERENCE_RESULT_FILENAME = "inference_result.json"
 CHECKPOINT_RESULTS_FILENAME = "checkpoint_results.jsonl"
 
+# Códigos de saída de um subprocesso morto por Ctrl+C/kill (sinal ou 128 + sinal).
+_SAIDAS_POR_INTERRUPCAO = frozenset({-2, -15, 130, 143})
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _MODULE = "benchmarks.coding_review.slopcodebench.grading"
 
@@ -160,6 +163,10 @@ def _chamar_harness(operacao: str, payload: dict) -> dict:
             cwd=_REPO_ROOT,
             env=env,
         )
+        if proc.returncode in _SAIDAS_POR_INTERRUPCAO:
+            # O Ctrl+C chega também a este subprocesso. Não é falha da
+            # avaliação: o run é interrompido sem registrar o checkpoint.
+            raise KeyboardInterrupt(f"Operação '{operacao}' do harness interrompida.")
         if proc.returncode != 0 or not saida.is_file():
             raise RuntimeError(
                 f"Operação '{operacao}' do harness falhou (exit={proc.returncode}):\n"

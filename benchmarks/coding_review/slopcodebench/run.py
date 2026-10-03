@@ -359,9 +359,7 @@ async def _executar_problema(
         print(f"[run] {rotulo}: {status} (coder {duracao_coder}s)")
 
         if _interrompe_trajetoria(detalhe):
-            print(
-                f"[run] {problema.name}: trajetória interrompida (erro do coder)."
-            )
+            print(f"[run] {problema.name}: trajetória interrompida (erro do coder).")
             break
 
     return detalhes

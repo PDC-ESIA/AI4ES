@@ -58,12 +58,19 @@ def llm_indisponivel(exc: BaseException) -> bool:
     """Diz se a exceção (ou alguma causa dela) é indisponibilidade do LLM."""
     import litellm
 
+    import openai
+
     tipos = (
         litellm.RateLimitError,
         litellm.APIConnectionError,
         litellm.AuthenticationError,
         litellm.ServiceUnavailableError,
         litellm.BudgetExceededError,
+        # `litellm.Timeout` herda de `openai.APITimeoutError` ->
+        # `openai.APIConnectionError`, e não de `litellm.APIConnectionError`:
+        # sem estas duas, o timeout do provider virava "erro do coder".
+        litellm.Timeout,
+        openai.APIConnectionError,
     )
     atual: BaseException | None = exc
     while atual is not None:

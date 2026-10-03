@@ -341,3 +341,32 @@ def test_comando_de_retomada_repete_parametros_validados(tmp_path):
     assert "--seed 7" in comando
     assert "--checkpoint-timeout 600" in comando
     assert "--limit" not in comando
+
+
+def test_llm_indisponivel_reconhece_timeout_do_provider(coder_runner):
+    """Timeout do provider (caso real do run) não pode virar erro do coder."""
+    import litellm
+
+    timeout = litellm.Timeout(
+        message="Request timed out.", model="gpt-4", llm_provider="github_copilot"
+    )
+    assert coder_runner.llm_indisponivel(timeout)
+
+
+def test_ctrl_c_na_avaliacao_interrompe_sem_registrar(monkeypatch, tmp_path):
+    """Subprocesso do harness morto por Ctrl+C vira interrupção, não falha."""
+    import subprocess
+
+    from benchmarks.coding_review.slopcodebench import grading
+
+    python = tmp_path / ".venv" / "bin" / "python"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    monkeypatch.setenv(grading.HARNESS_PATH_ENV, str(tmp_path))
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, returncode=-2),
+    )
+    with pytest.raises(KeyboardInterrupt):
+        grading.check_harness()
