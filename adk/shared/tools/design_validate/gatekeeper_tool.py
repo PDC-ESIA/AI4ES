@@ -37,7 +37,13 @@ def validate_artifact(content: str, format: str) -> dict:
             line_number    (int|None)  – Linha aproximada do erro, quando detectável.
             suggested_fix  (str|None)  – Ação concreta para corrigir o artefato.
     """
-    if format == "mmd":
+    if (
+        isinstance(content, str)
+        and isinstance(format, str)
+        and format.strip().lower() == "mmd"
+    ):
+        # Entradas inválidas (None, tipos errados) seguem para o gatekeeper,
+        # que devolve EMPTY_CONTENT/erro estruturado em vez de TypeError.
         # O arquivo salvo já é gravado sem cercas (save_artifact). O conteúdo
         # recebido aqui, porém, costuma vir de uma leitura repassada como
         # Markdown (```mermaid ... ```); sem isto, essa embalagem reprova o

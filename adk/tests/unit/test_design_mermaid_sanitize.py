@@ -59,3 +59,13 @@ def test_validator_e_mermaid_leem_direto():
     assert {"validate_artifact_file", "read_multiple_files",
             "read_analysis_sections", "list_design_files"} <= nomes(validator)
     assert "read_analysis_sections" in nomes(mermaid)
+
+
+def test_gatekeeper_entradas_invalidas_nao_levantam_excecao():
+    r = validate_artifact(None, "mmd")
+    assert r["valid"] is False
+
+
+@pytest.mark.parametrize("fmt", ["MMD", " mmd "])
+def test_gatekeeper_normaliza_formato_antes_de_sanitizar(fmt):
+    assert validate_artifact(CERCADO, fmt)["valid"]
