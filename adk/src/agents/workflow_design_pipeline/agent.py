@@ -10,6 +10,17 @@ from src.agents.prototyping_specialist.agent import agent as prototyping_special
 from src.agents.validator.agent import agent as validator
 from src.agents.io_agent.agent import agent as io_agent
 from shared.tools.design_hitl_tool import aguardar_resolucao_doubt
+from shared.tools.design_filesystem import (
+    check_active_blocks,
+    clear_design_folder,
+    list_design_files,
+    validate_analysis_sections,
+)
+from shared.agent_factory import (
+    _bind_tool_to_workspace,
+    lazy_agent_workspace,
+    lazy_workspace_root,
+)
 
 from .manifest import emit_design_manifest
 
@@ -28,6 +39,12 @@ Sua responsabilidade TERMINA quando analise_tecnica estiver confirmada em design
 Você NÃO aciona protótipos, diagramas nem relatórios.
 
 IDIOMA: Português brasileiro.
+
+OPERAÇÕES DIRETAS (sem Agente IO):
+Limpar design_dir, listar arquivos de design, verificar a completude estrutural da
+análise técnica e verificar Doubt_Artifacts bloqueados são chamadas que você faz
+DIRETAMENTE, com caller="pipeline_controller". O Agente IO é usado só na ETAPA 1-B
+(manifesto de Requisitos e leitura das HUs referenciadas nele).
 
 IDENTIFICAÇÃO AO AGENTE IO:
 Em toda mensagem enviada ao Agente IO, inicie com: "[pipeline_controller]"
@@ -48,7 +65,7 @@ Você é o detentor do token de execução.
 ETAPA 1 — LIMPEZA DO DESIGN_DIR
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Acione o Agente IO: "[pipeline_controller] Limpe o diretório design_dir."
+Limpe o diretório design_dir (chamada direta de limpeza).
 - Erro: responda "PIPELINE_ERROR: falha na limpeza — <erro>" e encerre.
 - Sucesso: avance para ETAPA 2.
 
@@ -106,14 +123,14 @@ ETAPA 2 — ANÁLISE TÉCNICA (BLOQUEANTE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. Acione o design_architect com o comando: 'Analise o seguinte conteúdo de HUs e gere a análise técnica em ANALYSIS/: '. Deixe claro que não há arquivo de origem e que ele deve usar este texto como fonte única.
-2. APÓS o retorno do design_architect, você DEVE obrigatoriamente executar a ferramenta list_design_files do Agente IO.
+2. APÓS o retorno do design_architect, você DEVE obrigatoriamente listar os arquivos de design (chamada direta de listagem).
 3. Se o arquivo 'analise_tecnica_*.md' NÃO aparecer na lista, você deve perguntar ao design_architect: "Onde está o arquivo de análise técnica? Confirme o salvamento."
 4. Repita a verificação de listagem até que o arquivo esteja presente.
 
-⚠️ VOCÊ SÓ PODE AVANÇAR PARA A ETAPA 3 APÓS VER O ARQUIVO NA LISTA DO AGENTE IO.
+⚠️ VOCÊ SÓ PODE AVANÇAR PARA A ETAPA 3 APÓS VER O ARQUIVO NA LISTAGEM.
 
 Valide que o CONTEÚDO DO ARQUIVO SALVO contém TODAS as seções obrigatórias.
-⛔ ESTA VALIDAÇÃO É DETERMINÍSTICA, NÃO NARRATIVA: acione o Agente IO para pedir a
+⛔ ESTA VALIDAÇÃO É DETERMINÍSTICA, NÃO NARRATIVA: faça diretamente a
 verificação estrutural de completude do arquivo confirmado (a checagem que conta
 os marcadores de fim de seção e reporta quais seções estão ausentes ou vazias) —
 NÃO tente avaliar completude apenas lendo o texto e "achando" que está completo.
@@ -145,7 +162,7 @@ ETAPA 3 — VERIFICAÇÃO DE BLOQUEIOS (HITL)
 
 Após validar o conteúdo da análise técnica, verifique bloqueios:
 
-Acione o Agente IO: "[pipeline_controller] Verifique se há Doubt_Artifacts bloqueados em design_dir."
+Verifique diretamente se há Doubt_Artifacts bloqueados em design_dir (chamada direta de verificação de bloqueios).
 
 SE não houver bloqueios (has_blocks: false):
 → Avance diretamente para ETAPA 4.
@@ -163,37 +180,26 @@ SE houver bloqueios (has_blocks: true):
 2. NÃO emita nenhum texto além da chamada da tool.
 3. Quando a tool retornar, leia `decision`:
    - "cancelar" → encerre com "PIPELINE_ERROR: lote cancelado pelo solicitante."
-   - "retomar"  → chame check_active_blocks novamente via Agente IO.
+   - "retomar"  → repita a verificação direta de bloqueios (check_active_blocks).
        - Se ainda houver bloqueios: chame `aguardar_resolucao_doubt`
          de novo com os bloqueios remanescentes (pausa encadeada — já
          suportada pelo orchestrator).
-       - Se não houver mais bloqueios: avance para ETAPA 4.
+       - Se não houver mais bloqueios: para cada Doubt_Artifact que estava
+         bloqueado, acione o design_architect com: "Retomada: o Doubt_Artifact
+         <caminho> foi resolvido. Comentário do solicitante: <comments retornado
+         pela pausa, se houver>. Aplique o PROTOCOLO DE RETOMADA e corrija apenas
+         as seções afetadas." Depois, repita a verificação estrutural de
+         completude da ETAPA 2 e avance para a ETAPA 4.
 
 ⚠️ NUNCA emita PIPELINE_STAGE_1_COMPLETE enquanto has_blocks for true.
 ⚠️ O lote é indivisível — todas as HUs avançam juntas ou nenhuma avança.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 4 — VERIFICAÇÃO PRÉ-SEQUÊNCIA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Acione o Agente IO: "[pipeline_controller] Liste todos os arquivos disponíveis em design_dir."
-Confirme que existe arquivo com nome iniciando em analise_tecnica_.
-- Ausente: retorne ao design_architect solicitando que salve a análise.
-- Presente: acione o Agente IO para repetir a verificação estrutural de
-  completude neste ponto (o mesmo gate determinístico da ETAPA 2) — isto
-  confirma que nenhuma seção foi corrompida ou perdida entre a ETAPA 2 e o
-  retorno do parallel_branch.
-  - "complete": true  → avance para ETAPA 5.
-  - "complete": false → devolva ao design_architect informando "missing_sections"
-    e "empty_sections" retornados pela ferramenta, e aguarde a versão corrigida.
-    Repita a chamada após a correção. Não avance para ETAPA 5 sem "complete": true.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ETAPA 5 — ENCERRAMENTO OBRIGATÓRIO
+ETAPA 4 — ENCERRAMENTO OBRIGATÓRIO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Você é o porteiro do pipeline. Enquanto o design_architect trabalha (mesmo que demore minutos), você deve manter o foco na resposta dele.
-NÃO finalize sua execução e não responda ao orquestrador até que você tenha lido o conteúdo do arquivo gerado e confirmado que ele não está vazio.
+A verificação estrutural da ETAPA 2 ("complete": true) já confirma que o arquivo existe e não está vazio — NÃO releia o conteúdo da análise.
 Sua resposta final deve ser EXATAMENTE e NADA MAIS:
 "PIPELINE_STAGE_1_COMPLETE: A análise técnica foi gerada com sucesso. O controle de execução pode agora ser transferido para os especialistas."
 """
@@ -207,6 +213,21 @@ pipeline_controller = LlmAgent(
         AgentTool(agent=io_agent),
         AgentTool(agent=design_architect),
         LongRunningFunctionTool(aguardar_resolucao_doubt),
+        # Checagens determinísticas chamadas direto (antes: cada uma via
+        # AgentTool(io_agent), ~2 chamadas de LLM com ~14k tokens fixos cada).
+        # O binding usa a mesma pasta de design dos especialistas e esconde
+        # base_dir do schema exposto ao LLM.
+        *[
+            _bind_tool_to_workspace(
+                t, lazy_agent_workspace("io_agent"), lazy_workspace_root()
+            )
+            for t in (
+                clear_design_folder,
+                list_design_files,
+                validate_analysis_sections,
+                check_active_blocks,
+            )
+        ],
     ],
 )
 

@@ -1,4 +1,5 @@
 from shared.agent_factory import create_se_agent
+from shared.tools.design_hitl_tool import remover_clarificacao_generica
 from shared.tools.design_date import current_date
 from shared.tools.design_filesystem import (
     save_artifact,
@@ -48,5 +49,6 @@ agent = create_se_agent(
     ],
     agent_subdir="io_agent",
 )
+remover_clarificacao_generica(agent)
 
 root_agent = agent
