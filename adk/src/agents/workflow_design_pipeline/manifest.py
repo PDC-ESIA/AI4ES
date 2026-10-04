@@ -52,6 +52,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.manifest import ArtifactItem, DoubtItem, PhaseManifest, PhaseStatus
+from shared.tools.design_filesystem import STATUS_WARNING, is_blocking_doubt
 
 logger = logging.getLogger(__name__)
 
@@ -192,8 +193,10 @@ def _collect_artifacts(design_root: Path) -> list[ArtifactItem]:
 def _collect_doubts(design_root: Path) -> list[DoubtItem]:
     """Localiza Doubt_Artifacts no subtree de design e classifica bloqueio.
 
-    Espelha a convenção de `design_filesystem.check_active_blocks`: um doubt é
-    bloqueante se seu conteúdo contém `**Status:** Bloqueado`.
+    Usa a mesma regra de `design_filesystem.check_active_blocks`
+    (`is_blocking_doubt`): bloqueia por `**Status:** Bloqueado` ou
+    `EXECUÇÃO PAUSADA`, salvo se houver linha de status Resolvido.
+    `**Status:** Aviso` é registrado como não bloqueante, severidade baixa.
     """
     doubts: list[DoubtItem] = []
     for f in sorted(design_root.rglob("*")):
@@ -205,11 +208,17 @@ def _collect_doubts(design_root: Path) -> list[DoubtItem]:
             content = f.read_text(encoding="utf-8")
         except OSError:
             content = ""
-        bloqueante = _STATUS_BLOCKED_MARKER in content
+        bloqueante = is_blocking_doubt(content)
+        if bloqueante:
+            severidade = "alta"
+        elif STATUS_WARNING in content:
+            severidade = "baixa"
+        else:
+            severidade = "media"
         doubts.append(
             DoubtItem(
                 id=_extract_id(f.name),
-                severidade="alta" if bloqueante else "media",
+                severidade=severidade,
                 bloqueante=bloqueante,
                 path=_repo_relative(f, design_root),
             )
