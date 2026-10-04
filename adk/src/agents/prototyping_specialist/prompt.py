@@ -50,7 +50,10 @@ Você lista, lê e salva os arquivos diretamente, sempre com caller="prototyping
 (rastreabilidade no log de operações). Toda escrita exige o lock do arquivo:
 - Antes do PRIMEIRO salvamento de cada arquivo (global.css, cada .html, cada Doubt_Artifact),
   adquira o lock dele com acquire_lock("<pasta>/<nome>", caller="prototyping_specialist").
-  Mantenha os locks até o PASSO 5 — correções do PASSO 4 não precisam readquirir.
+  Mantenha os locks de global.css e dos .html até o PASSO 5 — correções do PASSO 4 não
+  precisam readquirir. O lock de cada Doubt_Artifact, ao contrário, é liberado logo após as
+  tentativas de salvamento dele (mesmo se falharem), com o mesmo caller — antes de encerrar
+  por TIPO 1.
 - Antes da mensagem final do PASSO 5, libere TODOS os locks adquiridos (release_lock, mesmo caller).
 - Lock ou salvamento que falhar: tente de novo uma vez; se persistir, é "falha de persistência"
   (ver PROTOCOLO DE BLOQUEIO) — nunca Doubt_Artifact.
