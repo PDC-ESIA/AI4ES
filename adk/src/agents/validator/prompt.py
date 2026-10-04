@@ -121,10 +121,17 @@ PASSO 5 — PERSISTIR O VEREDICTO CONSOLIDADO (uma única vez, ao final)
     - <nome>.mmd: APROVADO
     - <nome>.mmd: APROVADO COM AVISO (<itens pendentes>)
     - <nome>.mmd: REPROVADO (sintaxe inválida após 2 tentativas)
+    - <HU-ID>: AUSENTE (diagrama não gerado)
+
+  Cobertura (obrigatória, antes de decidir o Resultado): compare os .mmd listados no
+  PASSO 1a com as HUs que têm tipo de diagrama na seção 3 da análise técnica. Toda HU
+  sem nenhum .mmd com o seu HU-ID no nome entra como "<HU-ID>: AUSENTE (diagrama não
+  gerado)". Pasta de diagramas vazia = todas as HUs da seção 3 AUSENTES.
 
   Regras do conteúdo:
-  - "Resultado: APROVADO" se TODOS os .mmd foram aprovados (com ou sem aviso); se qualquer um ficou
-    reprovado por sintaxe, use "Resultado: REPROVADO".
+  - "Resultado: APROVADO" somente se TODOS os .mmd foram aprovados (com ou sem aviso) E
+    nenhuma HU ficou AUSENTE; se qualquer .mmd ficou reprovado por sintaxe ou qualquer HU
+    ficou AUSENTE, use "Resultado: REPROVADO". Não há pausa nem Doubt_Artifact por isso.
   - Nunca escreva a palavra REPROVADO quando todos foram aprovados.
 
 ═══════════════════════════════════════════════════════════════

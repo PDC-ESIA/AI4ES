@@ -92,3 +92,21 @@ def test_veredicto_com_aviso_conta_como_aprovado(tmp_path):
         encoding="utf-8",
     )
     assert _validation_verdict(root) == "pass"
+
+
+def test_veredicto_com_hu_ausente_nao_aprova(tmp_path):
+    """Cobertura incompleta (diagrama não gerado) derruba o veredicto."""
+    from src.agents.workflow_design_pipeline.manifest import _validation_verdict
+    root = tmp_path / "design"
+    (root / "validation").mkdir(parents=True)
+    (root / "validation" / "veredicto_diagramas.md").write_text(
+        "# Veredicto de validação — diagramas\nResultado: REPROVADO\nArquivos:\n"
+        "- diagrama_HU-001_x.mmd: APROVADO\n- HU-002: AUSENTE (diagrama não gerado)\n",
+        encoding="utf-8",
+    )
+    assert _validation_verdict(root) == "fail"
+
+
+def test_prompt_do_validator_exige_cobertura():
+    from src.agents.validator.agent import agent
+    assert "AUSENTE (diagrama não" in agent.instruction

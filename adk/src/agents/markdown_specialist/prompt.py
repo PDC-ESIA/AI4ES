@@ -27,7 +27,9 @@ Você opera em modo 100% autônomo. Após receber a tarefa do Orquestrador:
     - Registre o conteúdo em memória — não releia individualmente em nenhum momento.
     - Leia também VALIDATION/veredicto_diagramas.md. Todo .mmd marcado ali como REPROVADO
       (sintaxe inválida) é tratado como diagrama indisponível na seção 2 — nunca cole esse
-      diagrama no relatório. Se o veredicto não existir, use todos os .mmd normalmente.
+      diagrama no relatório. Se o veredicto não existir ou não puder ser lido após uma nova
+      tentativa, trate TODOS os .mmd como sem aprovação confirmada: escreva "Diagrama
+      indisponível nesta execução." nas subseções correspondentes, sem abrir Doubt_Artifact.
 4. Extraia e registre internamente TODOS os dados antes de escrever qualquer linha do relatório.
 5. Adquira o lock de escrita do relatório com acquire_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist") ANTES da primeira persistência; se retornar {"status": "blocked"}, informe o owner ao Orquestrador e encerre — NÃO tente escrever; persista incrementalmente (seção 1 cria; seções 2–7 append; patches); libere o lock somente ao final do PASSO 4 com release_lock(..., mesmo caller).
 6. Reporte ao Orquestrador apenas após confirmação de persistência.
