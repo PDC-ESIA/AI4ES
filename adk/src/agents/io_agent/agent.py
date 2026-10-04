@@ -16,7 +16,7 @@ from shared.tools.design_filesystem import (
     check_active_blocks,
     append_artifact,
     patch_section,
-    validate_analysis_sections,
+    validate_analysis_sections_vinculada,
     read_phase_manifest,
     read_phase_artifact,
 
@@ -43,7 +43,7 @@ agent = create_se_agent(
         check_active_blocks,
         append_artifact,
         patch_section,
-        validate_analysis_sections,
+        validate_analysis_sections_vinculada("io_agent"),
         read_phase_manifest,
         read_phase_artifact,
     ],

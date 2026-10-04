@@ -69,11 +69,11 @@ _RESOLVED_RE = re.compile(
 def is_blocking_doubt(content: str) -> bool:
     """True se o conteúdo de um Doubt_Artifact representa bloqueio ativo.
 
-    Uma linha de status "Resolvido" sempre vence: sem isso, um doubt gerado
-    pela clarificação genérica ("EXECUÇÃO PAUSADA" no cabeçalho) continuaria
-    bloqueando mesmo depois de resolvido.
+    Uma linha de status "Resolvido" ou "Aviso" sempre vence: sem isso, um
+    doubt gerado pela clarificação genérica ("EXECUÇÃO PAUSADA" no cabeçalho)
+    continuaria bloqueando mesmo depois de resolvido ou rebaixado a aviso.
     """
-    if _RESOLVED_RE.search(content):
+    if _RESOLVED_RE.search(content) or STATUS_WARNING in content:
         return False
     return any(marker in content for marker in BLOCK_MARKERS)
 _SECTION_SEPARATOR = "\n<<<FIM_SECAO>>>\n"
@@ -1792,3 +1792,23 @@ def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, 
 def list_versions(filepath: str) -> dict:
     """Mock: lista versões anteriores de um artefato."""
     return {"status": "ok", "versions": [], "filepath": filepath}
+
+
+def validate_analysis_sections_vinculada(agent_subdir: str):
+    """validate_analysis_sections presa à pasta de design da sessão corrente.
+
+    A tool não está na allowlist de binding de shared/agent_factory.py
+    (_FILESYSTEM_TOOL_NAMES), então create_se_agent a expõe com `base_dir`
+    visível no schema — o LLM poderia apontar outro workspace e passar o gate
+    de completude com a análise de outra sessão. Aqui o binding é feito no
+    próprio design, com o mesmo mecanismo da fábrica (closure que esconde
+    `base_dir`), sem alterar a fábrica.
+    """
+    from google.adk.tools import FunctionTool
+    from shared.agent_factory import _make_bound_closure, lazy_agent_workspace
+
+    return FunctionTool(
+        _make_bound_closure(
+            validate_analysis_sections, "base_dir", lazy_agent_workspace(agent_subdir)
+        )
+    )

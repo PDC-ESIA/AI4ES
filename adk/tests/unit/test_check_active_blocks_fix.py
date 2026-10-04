@@ -116,3 +116,8 @@ def test_is_blocking_doubt():
     assert not b("**Status:** Aviso")
     # convenção do doubt_handler (item de lista + emoji)
     assert not b("> EXECUÇÃO PAUSADA\n- **Status:** ✅ Resolvida\n")
+
+
+def test_aviso_vence_marcador_execucao_pausada():
+    from shared.tools.design_filesystem import is_blocking_doubt as b
+    assert not b("> EXECUÇÃO PAUSADA — X\n\n**Status:** Aviso\n")
