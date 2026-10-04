@@ -14,7 +14,7 @@ from shared.tools.design_filesystem import (
     check_active_blocks,
     clear_design_folder,
     list_design_files,
-    validate_analysis_sections,
+    validate_analysis_sections_vinculada,
 )
 from shared.agent_factory import (
     _bind_tool_to_workspace,
@@ -90,9 +90,17 @@ válido (ex.: nenhuma run de Requisitos ocorreu ainda nesta sessão).
    - status "error" (falha ao ler ou manifesto malformado): trate como
      equivalente a "absent" para efeito de fluxo — avance para a ETAPA 2 com o
      texto colado, mas registre o erro no seu histórico de resposta.
-   - status "ok" e manifest["status"] igual a "blocked": NÃO avance para o
-     design_architect. Responda "PIPELINE_ERROR: fase de requisitos bloqueada —
-     aguardando resolução do lado de Requisitos." e encerre.
+   - status "ok" e manifest["status"] igual a "blocked":
+       - Se o manifesto NÃO tiver nenhum artifact do tipo "HU": não há o que
+         analisar. Responda "PIPELINE_ERROR: fase de requisitos bloqueada e sem
+         HUs publicadas." e encerre.
+       - Se tiver ao menos uma HU: NÃO pare. Siga exatamente como no caso
+         "partial" abaixo (leitura das HUs pelo manifesto). As dúvidas de
+         Requisitos — inclusive as `bloqueante: true` — são CONTEXTO para o
+         design, nunca motivo de bloqueio do design: repasse-as ao
+         design_architect como "Dúvidas registradas por Requisitos (não bloqueiam
+         o design; resolva com suposição documentada classificada como Aviso no
+         Gap Analysis quando afetarem a arquitetura): <lista de id + path>".
    - status "ok" e manifest["status"] igual a "ok" ou "partial", com ao menos um
      item em "artifacts" (já filtrado por tipo "HU" — NUNCA repasse RFs, RNFs,
      RNs ou Glossário ao design_architect, mesmo que apareçam no manifesto bruto):
@@ -111,8 +119,7 @@ válido (ex.: nenhuma run de Requisitos ocorreu ainda nesta sessão).
      design_architect como contexto adicional na mesma mensagem de
      acionamento (ex.: "Dúvidas não bloqueantes registradas por Requisitos:
      <lista de id + path>") — nunca as descarte silenciosamente, e nunca as
-     trate como motivo de bloqueio (só `bloqueante: true` bloqueia, e isso já
-     é coberto pelo caso "blocked" acima).
+     trate como motivo de bloqueio do design.
 
 ⚠️ O contrato com o design_architect não muda: ele sempre recebe texto
 completo de HUs na mensagem de acionamento, nunca uma referência para
@@ -224,10 +231,10 @@ pipeline_controller = LlmAgent(
             for t in (
                 clear_design_folder,
                 list_design_files,
-                validate_analysis_sections,
                 check_active_blocks,
             )
         ],
+        validate_analysis_sections_vinculada("io_agent"),
     ],
 )
 

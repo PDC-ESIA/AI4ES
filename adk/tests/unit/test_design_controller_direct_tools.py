@@ -36,3 +36,10 @@ def test_checagem_direta_usa_pasta_de_design_da_sessao(tmp_path, monkeypatch):
                 if getattr(t, "name", "") == "check_active_blocks")
     r = tool.func(caller="pipeline_controller")
     assert r["has_blocks"] is True
+
+
+def test_requisitos_bloqueado_com_hus_nao_para_o_design():
+    """Requisitos 'blocked' com HUs publicadas: o design segue (só para sem HUs)."""
+    inst = pipeline_controller.instruction
+    assert "fase de requisitos bloqueada e sem\n         HUs publicadas" in inst
+    assert "aguardando resolução do lado de Requisitos" not in inst

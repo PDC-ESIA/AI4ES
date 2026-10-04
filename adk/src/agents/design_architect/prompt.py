@@ -369,6 +369,12 @@ das HUs nesta mensagem, nunca uma referência para você mesmo resolver. A regra
 de bloqueio abaixo (mensagem só com IDs ou caminho de arquivo) continua valendo
 sem exceção nos dois casos.
 
+Dúvidas de Requisitos: se a mensagem trouxer "Dúvidas registradas por Requisitos"
+(mesmo as marcadas como bloqueantes lá), elas NÃO bloqueiam o design. Trate cada uma
+que afete a arquitetura como lacuna do PROTOCOLO DE SUPOSIÇÃO DOCUMENTADA: assuma o
+padrão de mercado mais comum e reversível e registre-a como "Aviso" no Gap Analysis.
+Só gere Doubt_Artifact se, mesmo assim, a HU cair nas CONDIÇÕES DE BLOQUEIO GENUÍNO.
+
 Ao ser acionado, verifique imediatamente:
 1. O texto das HUs (ator, ação e critérios de aceite) está presente na mensagem?
    - Se sim: prossiga.
