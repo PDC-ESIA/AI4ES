@@ -105,3 +105,14 @@ def test_mesmo_arquivo_nao_e_contado_duas_vezes(design_root):
     result = df.check_active_blocks(caller="teste")
 
     assert len(result["blocks"]) == 1
+
+
+def test_is_blocking_doubt():
+    from shared.tools.design_filesystem import is_blocking_doubt as b
+    assert b("> EXECUÇÃO PAUSADA — X\n\nStatus: Pendente\n")
+    assert not b("> EXECUÇÃO PAUSADA — X\n\nStatus: Resolvido\n")
+    assert b("**Status:** Bloqueado")
+    assert not b("**Status:** Resolvido")
+    assert not b("**Status:** Aviso")
+    # convenção do doubt_handler (item de lista + emoji)
+    assert not b("> EXECUÇÃO PAUSADA\n- **Status:** ✅ Resolvida\n")
