@@ -44,7 +44,7 @@ base.
 - Os testes do gabarito foram escritos por desenvolvedores humanos, então
   servem de evidência **independente** do coder.
 
-Limitações assumidas (detalhes no README do benchmark e em [pontos de atenção](relatorio.md#5-pontos-de-atenção)): amostra de 30
+Limitações assumidas (detalhes no README do benchmark e em [pontos de atenção](swebench-relatorio.md#5-pontos-de-atenção)): amostra de 30
 instâncias, gabarito imperfeito (os testes oficiais só cobrem o que o PR
 testou), dataset só com projetos Python, possível contaminação dos modelos e
 aprovação do validador baseada na suíte que o próprio coder declara.
@@ -52,11 +52,11 @@ aprovação do validador baseada na suíte que o próprio coder declara.
 ## Linha de base
 
 Resultados completos, custo e ressalvas em
-[relatorio.md](relatorio.md#4-resultados-da-linha-de-base). Como o benchmark
+[swebench-relatorio.md](swebench-relatorio.md#4-resultados-da-linha-de-base). Como o benchmark
 funciona e como foi implementado: seções
-[2](relatorio.md#2-como-o-benchmark-funciona) e
-[3](relatorio.md#3-implementação). Como ler os números:
-[pontos de atenção](relatorio.md#5-pontos-de-atenção).
+[2](swebench-relatorio.md#2-como-o-benchmark-funciona) e
+[3](swebench-relatorio.md#3-implementação). Como ler os números:
+[pontos de atenção](swebench-relatorio.md#5-pontos-de-atenção).
 
 > **Cobre 26 das 30 instâncias sorteadas** (as outras 4 não foram refeitas após
 > uma correção do benchmark, por falta de créditos do LLM). Execução única, um
