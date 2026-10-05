@@ -96,6 +96,13 @@ python -m benchmarks.coding_review.slopcodebench.run --model github_copilot/gpt-
   com 0 testes passando. A trajetória de um problema só para se o coder falhar
   (erro na geração), como o runner oficial faz com erro do agente; os
   checkpoints restantes contam como não resolvidos.
+- **LLM indisponível não conta como falha do coder.** Cota esgotada, timeout,
+  limite de requisições ou falha de conexão com o provider descartam a tentativa
+  (nada é registrado) e o checkpoint é refeito do zero após uma espera (5 e
+  depois 10 min). Para conter o gasto de créditos há dois limites: 3 tentativas
+  por checkpoint e 5 novas tentativas no run inteiro. Esgotado qualquer um, o
+  run é interrompido e imprime o comando de retomada (`--resume-dir`).
+  `Ctrl+C` também interrompe sem registrar o checkpoint em andamento.
 
 ## Métricas
 
@@ -110,7 +117,8 @@ python -m benchmarks.coding_review.slopcodebench.run --model github_copilot/gpt-
 > O `docs/metrics-reference.md` do próprio harness ainda os chama de `pass_rate` e
 > `checkpoint_pass_rate`: a documentação está desatualizada em relação ao código.
 | `core_pass_rate` | Só os testes core do checkpoint. |
-| Regressão | `regression_passed / regression_total`: o agente quebrou o que já funcionava? |
+| Regressão | `regression_passed / regression_total`: taxa nos testes dos checkpoints anteriores (inclui os que já falhavam antes). |
+| Quebrou o que funcionava | Testes que **passavam** no checkpoint anterior e falharam na regressão, comparados teste a teste a partir do `evaluation.json` oficial. |
 
 Um checkpoint é "resolvido" quando a taxa é 1.0. Os solve rates usam como
 denominador **todos** os checkpoints previstos (como a Tabela 1 do paper).
@@ -139,6 +147,7 @@ results/run_<timestamp>_<modelo>_n<N>/
   report.json                # relatório completo
   report.md                  # resumo com as três métricas
   metadata.json              # parâmetros + proveniência (commits, hash do prompt do coder)
+                             # + "execucoes": timeout do LLM e commit de cada início/retomada
   progress.jsonl             # checkpoint incremental (retomada)
   checkpoint_results.jsonl   # linhas oficiais do harness, uma por checkpoint
   workspace/                 # workspace do coder + snapshots/avaliações — NÃO versionado
@@ -158,6 +167,9 @@ corpora públicos.
   escrito e depois reescrito"; o churn reportado é o oficial, por checkpoint.
 - **Custo.** O workflow não expõe preço por modelo: o custo em USD fica 0 e os
   tokens são registrados integralmente.
+- **Código com erro de sintaxe.** Se o arquivo do coder não é Python válido, a
+  análise estática oficial não o lê: o checkpoint fica sem verbosidade/erosão
+  (`—`) ou com valores só dos arquivos legíveis. Os testes continuam valendo.
 - **Comparabilidade com o paper.** O paper roda agentes nos harnesses nativos
   (Claude Code, Codex CLI); aqui o coder roda no ADK. Comparar com o paper é só
   indicativo.

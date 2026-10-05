@@ -23,9 +23,11 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import re
 import subprocess
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -47,6 +49,13 @@ _CODER_PROMPT = (
 )
 # Parâmetros que precisam coincidir para retomar um run (Resume Guard).
 _PARAMS_VALIDADOS = ("model", "limit", "seed", "problems", "checkpoint_timeout_s")
+# Quando o LLM fica indisponível (cota, timeout, conexão), o checkpoint é
+# refeito do zero após uma espera, sem registrar a tentativa que falhou. Dois
+# limites contêm o gasto de créditos: tentativas por checkpoint e novas
+# tentativas no run inteiro. Esgotado qualquer um, o run é interrompido.
+_TENTATIVAS_POR_CHECKPOINT = 3  # a original + 2 novas
+_NOVAS_TENTATIVAS_NO_RUN = 5
+_ESPERAS_ENTRE_TENTATIVAS_S = (5 * 60, 10 * 60)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -254,16 +263,26 @@ def _interrompe_trajetoria(detalhe: dict) -> bool:
     return bool(detalhe.get("coder_error")) or not detalhe.get("passed_policy")
 
 
+@dataclass
+class _OrcamentoDeTentativas:
+    """Novas tentativas ainda permitidas no run inteiro (LLM indisponível)."""
+
+    restantes: int = _NOVAS_TENTATIVAS_NO_RUN
+
+
 async def _executar_problema(
     problema,
     args: argparse.Namespace,
     scb_dir: Path,
     progress_path: Path,
     concluidos: dict[tuple[str, str], dict],
+    orcamento: _OrcamentoDeTentativas | None = None,
 ) -> list[dict]:
     """Percorre os checkpoints de um problema e devolve o detalhe de cada um."""
     from benchmarks.coding_review.slopcodebench import coder_runner, contract, grading
 
+    if orcamento is None:
+        orcamento = _OrcamentoDeTentativas()
     problem_dir = scb_dir / problema.name
     detalhes: list[dict] = []
 
@@ -281,15 +300,18 @@ async def _executar_problema(
                 break
             continue
 
-        if idx == 0:
-            coder_runner.iniciar_problema()
-        elif detalhes:
-            # Garante que o coder parte exatamente do snapshot anterior,
-            # inclusive após uma retomada.
+        if idx > 0:
             anterior = grading.checkpoint_output_dir(
                 problema, problem_dir, problema.checkpoints[idx - 1]
             )
-            coder_runner.restaurar_de_snapshot(anterior / grading.SNAPSHOT_DIR_NAME)
+
+        def _preparar_workspace() -> None:
+            # O coder parte exatamente do snapshot anterior (ou do zero no 1º
+            # checkpoint) — inclusive após uma retomada ou nova tentativa.
+            if idx == 0:
+                coder_runner.iniciar_problema()
+            else:
+                coder_runner.restaurar_de_snapshot(anterior / grading.SNAPSHOT_DIR_NAME)
 
         primeiro = idx == 0
         prompt, entry_file = grading.render_prompt(
@@ -301,15 +323,37 @@ async def _executar_problema(
         )
         mensagem = contract.build_coder_message(checkpoint, prompt, entry_file)
 
-        inicio = datetime.now()
-        t0 = time.time()
-        geracao = await coder_runner.run_coder(
-            mensagem,
-            contrato,
-            primeiro_checkpoint=primeiro,
-            model=args.model,
-            timeout_s=args.checkpoint_timeout,
-        )
+        tentativa = 1
+        while True:
+            _preparar_workspace()
+            inicio = datetime.now()
+            t0 = time.time()
+            try:
+                geracao = await coder_runner.run_coder(
+                    mensagem,
+                    contrato,
+                    primeiro_checkpoint=primeiro,
+                    model=args.model,
+                    timeout_s=args.checkpoint_timeout,
+                )
+                break
+            except coder_runner.LlmIndisponivel as exc:
+                # Nada desta tentativa é registrado. Nova tentativa do zero,
+                # dentro dos dois limites; esgotados, o run é interrompido
+                # (ver `main`) para ser retomado com --resume-dir.
+                if tentativa >= _TENTATIVAS_POR_CHECKPOINT or orcamento.restantes <= 0:
+                    raise
+                espera = _ESPERAS_ENTRE_TENTATIVAS_S[
+                    min(tentativa - 1, len(_ESPERAS_ENTRE_TENTATIVAS_S) - 1)
+                ]
+                orcamento.restantes -= 1
+                tentativa += 1
+                print(
+                    f"[run] {rotulo}: LLM indisponível ({exc}). Nova tentativa "
+                    f"{tentativa}/{_TENTATIVAS_POR_CHECKPOINT} em {espera // 60} min "
+                    f"({orcamento.restantes} restante(s) no run)."
+                )
+                await asyncio.sleep(espera)
         fim = datetime.now()
         duracao_coder = round(time.time() - t0, 2)
 
@@ -368,7 +412,10 @@ async def _executar_problema(
 async def _executar(args: argparse.Namespace, run_dir: Path, problemas: list) -> dict:
     """Executa o loop principal do benchmark e devolve o relatório consolidado."""
     from benchmarks.coding_review.slopcodebench import coder_runner, grading
-    from benchmarks.coding_review.slopcodebench.metrics import aggregate
+    from benchmarks.coding_review.slopcodebench.metrics import (
+        aggregate,
+        regression_breaks,
+    )
 
     scb_dir = run_dir / "workspace" / "scb"
     scb_dir.mkdir(parents=True, exist_ok=True)
@@ -382,11 +429,12 @@ async def _executar(args: argparse.Namespace, run_dir: Path, problemas: list) ->
     )
 
     detalhes: list[dict] = []
+    orcamento = _OrcamentoDeTentativas()  # compartilhado entre os problemas
     for idx, problema in enumerate(problemas, start=1):
         print(f"\n[run] ({idx}/{len(problemas)}) problema {problema.name}")
         try:
             detalhes += await _executar_problema(
-                problema, args, scb_dir, progress_path, concluidos
+                problema, args, scb_dir, progress_path, concluidos, orcamento
             )
         except coder_runner.LlmIndisponivel:
             raise  # interrompe o run inteiro; ver `main`
@@ -423,7 +471,12 @@ async def _executar(args: argparse.Namespace, run_dir: Path, problemas: list) ->
         "problems": [
             {"name": p.name, "checkpoints": p.num_checkpoints} for p in problemas
         ],
-        "metrics": aggregate(rows, problemas, grading.progress_bins),
+        "metrics": aggregate(
+            rows,
+            problemas,
+            grading.progress_bins,
+            regression_breaks(scb_dir, problemas),
+        ),
         "usage_metrics": usage,
         "checkpoints": detalhes,
     }
@@ -435,6 +488,13 @@ def _fmt(valor, sufixo: str = "") -> str:
     if isinstance(valor, float):
         return f"{valor:.4f}{sufixo}" if not sufixo else f"{valor:.2f}{sufixo}"
     return f"{valor}{sufixo}"
+
+
+def _fmt_quebra(checkpoint: dict) -> str:
+    """'quebrados/que passavam antes' do checkpoint, ou '—' sem regressão."""
+    if checkpoint.get("tests_previously_passing") is None:
+        return "—"
+    return f"{checkpoint['tests_broken']}/{checkpoint['tests_previously_passing']}"
 
 
 def _fmt_int(valor) -> str:
@@ -466,7 +526,10 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         ),
         f"- **Checkpoints rodados / previstos:** {corr['checkpoints_ran']}/"
         f"{corr['checkpoints_expected']}",
-        f"- **Tempo total:** {usage.get('total_duration_s', 0.0):.2f}s",
+        f"- **Tempo do coder (soma de todos os checkpoints):** "
+        f"{usage.get('coder_duration_s', 0.0) / 3600:.1f} h",
+        f"- **Duração desta execução:** {usage.get('total_duration_s', 0.0):.0f}s "
+        f"(o run pode ter sido retomado; ver `execucoes` no metadata.json)",
         f"- **Tokens (in/out):** {usage['prompt_tokens']}/{usage['completion_tokens']}",
         "",
         "## 1. Correção ao longo do horizonte",
@@ -484,9 +547,14 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         f"{corr['problems_partial']} / {corr['problems_solved']}",
         f"- **Quebrou o que funcionava:** "
         f"{corr['regression']['checkpoints_that_broke_prior_work']} de "
-        f"{corr['regression']['checkpoints_with_regression_tests']} checkpoints com "
-        f"testes de regressão (taxa média de regressão: "
-        f"{_fmt(corr['regression']['mean_regression_pass_rate'])})",
+        f"{corr['regression']['checkpoints_with_prior_passing_tests']} checkpoints "
+        f"quebraram testes que passavam no checkpoint anterior "
+        f"({corr['regression']['tests_broken']} de "
+        f"{corr['regression']['tests_previously_passing']} testes; comparação teste "
+        f"a teste da avaliação oficial)",
+        f"- **Taxa média nos testes de regressão:** "
+        f"{_fmt(corr['regression']['mean_regression_pass_rate'])} (inclui testes "
+        f"que já falhavam antes)",
         "",
         "## 2. Crescimento do diff",
         "",
@@ -532,6 +600,10 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         f"({subida['verbosity']['rising']}/{subida['verbosity']['trajectories']}); "
         f"paper: {ref['pct_trajectories_rising']['verbosity']}%",
         "",
+        "Checkpoints cujo código não é Python válido (erro de sintaxe) ficam sem "
+        "métricas estáticas (`—`) ou com valores só dos arquivos legíveis: é o "
+        "comportamento da ferramenta oficial.",
+        "",
         "Referência do paper (Tabela 2), só para contexto:",
         "",
         "| Referência | Verbosidade | Erosão |",
@@ -560,16 +632,16 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         "",
         "## Por checkpoint",
         "",
-        "| Problema | Checkpoint | Estado | Strict | Iso | Core | +linhas | −linhas | "
-        "Churn | Verbosidade | Erosão |",
+        "| Problema | Checkpoint | Estado | Strict | Iso | Core | Quebrou | +linhas | "
+        "−linhas | Churn | Verbosidade | Erosão |",
         "| -------- | ---------- | ------ | ------ | --- | ---- | ------- | ------- | "
-        "----- | ----------- | ------ |",
+        "------- | ----- | ----------- | ------ |",
     ]
     for c in m["by_checkpoint"]:
         linhas.append(
             f"| {c['problem']} | {c['checkpoint']} | {c['state']} | {_fmt(c['strict_pass_rate'])} | "
             f"{_fmt(c['isolated_pass_rate'])} | {_fmt(c['core_pass_rate'])} | "
-            f"{_fmt_int(c['lines_added'])} | {_fmt_int(c['lines_removed'])} | "
+            f"{_fmt_quebra(c)} | {_fmt_int(c['lines_added'])} | {_fmt_int(c['lines_removed'])} | "
             f"{_fmt(c['delta.churn_ratio'])} | {_fmt(c['verbosity'])} | {_fmt(c['erosion'])} |"
         )
 
@@ -633,6 +705,47 @@ def _validar_e_persistir_config(
     )
 
 
+def _registrar_execucao(run_dir: Path) -> None:
+    """Anexa ao metadata.json o que vale para ESTA execução (início ou retomada).
+
+    Um run pode atravessar várias execuções (`--resume-dir`); o timeout do LLM e
+    o estado do código podem mudar entre elas, e o baseline precisa registrar
+    isso. Chamado depois do bootstrap, para refletir o `AI4ES_LLM_TIMEOUT`
+    efetivo (variável de ambiente ou `adk/.env`).
+    """
+
+    def _git(*cmd: str) -> str | None:
+        try:
+            return subprocess.run(
+                ["git", *cmd],
+                cwd=bootstrap.repo_root(),
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        except OSError, subprocess.SubprocessError:
+            return None
+
+    pasta_benchmark = str(Path(__file__).resolve().parent)
+    alteracoes = _git("status", "--porcelain", "--", pasta_benchmark)
+    config_path = run_dir / "metadata.json"
+    metadata = json.loads(config_path.read_text(encoding="utf-8"))
+    metadata.setdefault("execucoes", []).append(
+        {
+            "iniciada_em": datetime.now(timezone.utc).isoformat(),
+            "llm_timeout_s": float(os.environ.get("AI4ES_LLM_TIMEOUT", "120")),
+            "repo_commit": _git("rev-parse", "HEAD"),
+            # Só arquivos de código: os resultados do próprio run mudam sempre.
+            "codigo_do_benchmark_alterado": any(
+                linha.endswith(".py") for linha in (alteracoes or "").splitlines()
+            ),
+        }
+    )
+    config_path.write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
 def _registrar_fim(run_dir: Path) -> None:
     config_path = run_dir / "metadata.json"
     metadata = json.loads(config_path.read_text(encoding="utf-8"))
@@ -689,6 +802,8 @@ def main(argv: list[str] | None = None) -> int:
 
     _testar_conexao_modelo(args.model)
     _testar_docker()
+
+    _registrar_execucao(run_dir)
 
     from benchmarks.coding_review.slopcodebench.coder_runner import LlmIndisponivel
 

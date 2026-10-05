@@ -6,7 +6,8 @@ se agrega (contagens, médias, medianas, fases de progresso).
 
 1. **Correção ao longo do horizonte** — ``strict_pass_rate`` (inclui regressão, "strict"),
    ``isolated_pass_rate`` (sem regressão, "isolated"), ``core_pass_rate`` e
-   ``regression_passed/regression_total``. Um checkpoint é "resolvido" quando a
+   ``regression_passed/regression_total``; "quebrou o que funcionava" compara
+   teste a teste (``regression_breaks``). Um checkpoint é "resolvido" quando a
    taxa correspondente é 1.0. Os solve rates usam como denominador TODOS os
    checkpoints previstos; os que não rodaram (early stop) contam como não
    resolvidos, como na Tabela 1 do paper.
@@ -22,8 +23,10 @@ As fases usam ``compute_progress_bins`` do próprio harness: progresso =
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Callable
+from pathlib import Path
 from statistics import mean, median
 
 from .dataset import ScbProblem
@@ -107,12 +110,52 @@ def _solved(row: dict | None, field: str) -> bool:
     return _ran(row) and get_field(row, field) == 1.0
 
 
-def _regressed(row: dict | None) -> bool | None:
-    """True se algum teste de checkpoint anterior falhou; None se não há regressão."""
-    total = get_field(row, "regression_total")
-    if not _ran(row) or not total:
-        return None
-    return (get_field(row, "regression_passed") or 0) < total
+def _testes(grupos: dict, situacao: str, *, so_regressao: bool = False) -> set:
+    """Testes de um `evaluation.json` como (checkpoint de origem, nome)."""
+    return {
+        (chave.split("-", 1)[0], nome)
+        for chave, grupo in grupos.items()
+        if not so_regressao or chave.endswith("-Regression")
+        for nome in grupo.get(situacao, [])
+    }
+
+
+def regression_breaks(
+    scb_run_dir: Path, problems: list[ScbProblem]
+) -> dict[tuple[str, str], dict[str, int]]:
+    """Testes que passavam no checkpoint anterior e falharam na regressão.
+
+    Responde "o agente quebrou o que já funcionava?" a partir do resultado
+    TESTE A TESTE da avaliação oficial (`evaluation.json`, campo `tests`), sem
+    métrica nova. As contagens agregadas (`regression_passed/total`) não servem
+    para isso: a regressão repete todos os testes anteriores, inclusive os que
+    nunca passaram.
+
+    Returns:
+        ``{(problema, checkpoint): {"passavam": n, "quebraram": m}}``, só para
+        checkpoints com testes de regressão e com o checkpoint anterior avaliado.
+    """
+    resultado: dict[tuple[str, str], dict[str, int]] = {}
+    for problem in problems:
+        passaram_antes: set | None = None
+        for checkpoint in problem.checkpoints:
+            arquivo = scb_run_dir / problem.name / checkpoint / "evaluation.json"
+            if not arquivo.is_file():
+                passaram_antes = None
+                continue
+            grupos = json.loads(arquivo.read_text(encoding="utf-8")).get("tests", {})
+            retestados = _testes(grupos, "passed", so_regressao=True) | _testes(
+                grupos, "failed", so_regressao=True
+            )
+            if passaram_antes is not None and retestados:
+                passavam = passaram_antes & retestados
+                quebraram = passavam & _testes(grupos, "failed", so_regressao=True)
+                resultado[(problem.name, checkpoint)] = {
+                    "passavam": len(passavam),
+                    "quebraram": len(quebraram),
+                }
+            passaram_antes = _testes(grupos, "passed")
+    return resultado
 
 
 def _per_phase(
@@ -176,15 +219,22 @@ def _pct_rising(
 
 
 def aggregate(
-    rows: list[dict], problems: list[ScbProblem], progress_bins: ProgressBins
+    rows: list[dict],
+    problems: list[ScbProblem],
+    progress_bins: ProgressBins,
+    breaks: dict[tuple[str, str], dict[str, int]] | None = None,
 ) -> dict:
-    """Agrega as linhas oficiais nas três seções do relatório."""
+    """Agrega as linhas oficiais nas três seções do relatório.
+
+    Args:
+        breaks: saída de `regression_breaks` (testes que passavam e quebraram).
+    """
     esperados = _expected(problems, rows)
     indice = _index_rows(rows)
     total = len(esperados)
     ran = [r for _, _, r in esperados if _ran(r)]
-
-    regressoes = [x for _, _, r in esperados if (x := _regressed(r)) is not None]
+    breaks = breaks or {}
+    com_base = [b for b in breaks.values() if b["passavam"]]
     por_problema = []
     for problem in problems:
         linhas = [indice.get((problem.name, c)) for c in problem.checkpoints]
@@ -215,8 +265,14 @@ def aggregate(
             p["strict_solved"] == p["checkpoints_expected"] for p in por_problema
         ),
         "regression": {
-            "checkpoints_with_regression_tests": len(regressoes),
-            "checkpoints_that_broke_prior_work": sum(regressoes),
+            "checkpoints_with_regression_tests": len(breaks),
+            # Checkpoints em que algum teste passava antes (há o que quebrar).
+            "checkpoints_with_prior_passing_tests": len(com_base),
+            "checkpoints_that_broke_prior_work": sum(
+                b["quebraram"] > 0 for b in com_base
+            ),
+            "tests_previously_passing": sum(b["passavam"] for b in com_base),
+            "tests_broken": sum(b["quebraram"] for b in com_base),
             "mean_regression_pass_rate": _stats(
                 [
                     get_field(r, "regression_passed") / get_field(r, "regression_total")
@@ -259,6 +315,12 @@ def aggregate(
                 "problem": problem.name,
                 "checkpoint": checkpoint,
                 "state": row.get("state") if row else "not_run",
+                "tests_previously_passing": breaks.get(
+                    (problem.name, checkpoint), {}
+                ).get("passavam"),
+                "tests_broken": breaks.get((problem.name, checkpoint), {}).get(
+                    "quebraram"
+                ),
                 **{
                     campo: get_field(row, campo)
                     for campo in (

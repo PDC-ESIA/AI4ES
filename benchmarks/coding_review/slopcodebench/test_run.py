@@ -193,7 +193,8 @@ def test_metrics_aggregate(tmp_path):
             "erosion": 0.6,
         },
     ]
-    m = aggregate(rows, problemas, _bins_falsos)
+    quebras = {("alpha", "checkpoint_2"): {"passavam": 2, "quebraram": 1}}
+    m = aggregate(rows, problemas, _bins_falsos, quebras)
     corr = m["correctness"]
     # checkpoint_3 não rodou: conta como não resolvido no denominador.
     assert corr["checkpoints_expected"] == 3
@@ -309,7 +310,10 @@ def test_llm_indisponivel_interrompe_sem_registrar_checkpoint(
         _catalogo(catalogo, nomes=("alpha",)), names=["alpha"]
     )
 
+    chamadas = []
+
     async def _coder_sem_cota(*_args, **_kwargs):
+        chamadas.append(1)
         raise coder_runner.LlmIndisponivel("RateLimitError: quota_exceeded")
 
     save_dir = tmp_path / "cp"
@@ -318,11 +322,26 @@ def test_llm_indisponivel_interrompe_sem_registrar_checkpoint(
     monkeypatch.setattr(grading, "render_prompt", lambda *a, **k: ("p", "main.py"))
     monkeypatch.setattr(coder_runner, "iniciar_problema", lambda: None)
     monkeypatch.setattr(coder_runner, "run_coder", _coder_sem_cota)
+    monkeypatch.setattr(run, "_ESPERAS_ENTRE_TENTATIVAS_S", (0,))
 
     progress = tmp_path / "progress.jsonl"
     args = argparse.Namespace(model="m", checkpoint_timeout=10)
+
+    # Limite por checkpoint: a tentativa original + 2 novas, depois interrompe.
     with pytest.raises(coder_runner.LlmIndisponivel):
         asyncio.run(run._executar_problema(problema, args, tmp_path, progress, {}))
+    assert len(chamadas) == run._TENTATIVAS_POR_CHECKPOINT
+    assert not progress.exists()
+
+    # Limite do run inteiro: com 1 nova tentativa restante, só 2 chamadas.
+    chamadas.clear()
+    orcamento = run._OrcamentoDeTentativas(restantes=1)
+    with pytest.raises(coder_runner.LlmIndisponivel):
+        asyncio.run(
+            run._executar_problema(problema, args, tmp_path, progress, {}, orcamento)
+        )
+    assert len(chamadas) == 2
+    assert orcamento.restantes == 0
     assert not progress.exists()
 
 
@@ -370,3 +389,53 @@ def test_ctrl_c_na_avaliacao_interrompe_sem_registrar(monkeypatch, tmp_path):
     )
     with pytest.raises(KeyboardInterrupt):
         grading.check_harness()
+
+
+def test_registrar_execucao_guarda_timeout_de_cada_execucao(monkeypatch, tmp_path):
+    """Cada início/retomada ganha uma entrada com o timeout do LLM em vigor."""
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"model": "m"}), encoding="utf-8"
+    )
+
+    monkeypatch.setenv("AI4ES_LLM_TIMEOUT", "120")
+    run._registrar_execucao(tmp_path)
+    monkeypatch.setenv("AI4ES_LLM_TIMEOUT", "600")
+    run._registrar_execucao(tmp_path)
+
+    salvo = json.loads((tmp_path / "metadata.json").read_text(encoding="utf-8"))
+    assert salvo["model"] == "m"
+    assert [e["llm_timeout_s"] for e in salvo["execucoes"]] == [120.0, 600.0]
+    assert {"iniciada_em", "repo_commit", "codigo_do_benchmark_alterado"} <= set(
+        salvo["execucoes"][0]
+    )
+
+
+def test_regression_breaks_compara_teste_a_teste(tmp_path):
+    """Só conta como quebra o teste que PASSAVA antes e falhou na regressão."""
+    from benchmarks.coding_review.slopcodebench.metrics import regression_breaks
+
+    catalogo = tmp_path / "catalogo"
+    catalogo.mkdir()
+    (problema,) = dataset.load_problems(
+        _catalogo(catalogo, nomes=("alpha",), n_cp=2), names=["alpha"]
+    )
+    avaliacoes = {
+        "checkpoint_1": {
+            "checkpoint_1-Core": {"passed": ["t_ok", "t_quebra"], "failed": ["t_nunca"]}
+        },
+        "checkpoint_2": {
+            "checkpoint_1-Regression": {
+                "passed": ["t_ok"],
+                "failed": ["t_quebra", "t_nunca"],
+            },
+            "checkpoint_2-Core": {"passed": [], "failed": ["t_novo"]},
+        },
+    }
+    for checkpoint, grupos in avaliacoes.items():
+        pasta = tmp_path / "scb" / "alpha" / checkpoint
+        pasta.mkdir(parents=True)
+        (pasta / "evaluation.json").write_text(json.dumps({"tests": grupos}))
+
+    quebras = regression_breaks(tmp_path / "scb", [problema])
+    # t_nunca já falhava no checkpoint 1: não é quebra.
+    assert quebras == {("alpha", "checkpoint_2"): {"passavam": 2, "quebraram": 1}}
