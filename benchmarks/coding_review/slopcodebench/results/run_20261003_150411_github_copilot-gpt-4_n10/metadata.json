@@ -26,5 +26,38 @@
   },
   "scb_problems_commit": "38d627ecf668a88f88f8d260f8df8df6116e9b03",
   "scb_check_version": "0.1.3",
-  "started_at": "2026-10-03T18:04:11.869828+00:00"
+  "started_at": "2026-10-03T18:04:11.869828+00:00",
+  "execucoes": [
+    {
+      "iniciada_em": "2026-10-04T12:52:27.543200+00:00",
+      "llm_timeout_s": 600.0,
+      "repo_commit": "3dfd3dc7fc4b0139be1dd242d9705b5f0ce496a1",
+      "codigo_do_benchmark_alterado": true
+    },
+    {
+      "iniciada_em": "2026-10-04T17:24:23.334341+00:00",
+      "llm_timeout_s": 600.0,
+      "repo_commit": "3dfd3dc7fc4b0139be1dd242d9705b5f0ce496a1",
+      "codigo_do_benchmark_alterado": true
+    },
+    {
+      "iniciada_em": "2026-10-04T20:21:42.073757+00:00",
+      "llm_timeout_s": 600.0,
+      "repo_commit": "3dfd3dc7fc4b0139be1dd242d9705b5f0ce496a1",
+      "codigo_do_benchmark_alterado": true
+    },
+    {
+      "iniciada_em": "2026-10-04T23:23:51.017038+00:00",
+      "llm_timeout_s": 600.0,
+      "repo_commit": "3dfd3dc7fc4b0139be1dd242d9705b5f0ce496a1",
+      "codigo_do_benchmark_alterado": true
+    },
+    {
+      "iniciada_em": "2026-10-05T00:26:09.140174+00:00",
+      "llm_timeout_s": 600.0,
+      "repo_commit": "3dfd3dc7fc4b0139be1dd242d9705b5f0ce496a1",
+      "codigo_do_benchmark_alterado": true
+    }
+  ],
+  "finished_at": "2026-10-05T00:28:07.151659+00:00"
 }
