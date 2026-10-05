@@ -1,0 +1,35 @@
+diff --git a/django/db/migrations/serializer.py b/django/db/migrations/serializer.py
+index 7d226955d590d75ae6ffa1bfce8f734f6121d1db..ead81c398a6d99f10b6e620e95ffc56cc6b318cb 100755
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -269,7 +269,7 @@ class TypeSerializer(BaseSerializer):
+             if module == builtins.__name__:
+                 return self.value.__name__, set()
+             else:
+-                return "%s.%s" % (module, self.value.__name__), {"import %s" % module}
++                return "%s.%s" % (module, self.value.__qualname__), {"import %s" % module}
+ 
+ 
+ class UUIDSerializer(BaseSerializer):
+diff --git a/django/utils/deconstruct.py b/django/utils/deconstruct.py
+index aa952f6b739824b718d128f9c9e5331922341865..97d060c7a04e860c23f030688c053217fc62d42c 100755
+--- a/django/utils/deconstruct.py
++++ b/django/utils/deconstruct.py
+@@ -27,10 +27,15 @@ def deconstructible(*args, path=None):
+                 module_name, _, name = path.rpartition('.')
+             else:
+                 module_name = obj.__module__
+-                name = obj.__class__.__name__
++                name = obj.__class__.__qualname__
+             # Make sure it's actually there and not an inner class
+             module = import_module(module_name)
+-            if not hasattr(module, name):
++            try:
++                # Walk down the qualname path if inner class (e.g. Outer.Inner)
++                curr = module
++                for part in name.split('.'):
++                    curr = getattr(curr, part)
++            except AttributeError:
+                 raise ValueError(
+                     "Could not find object %s in %s.\n"
+                     "Please note that you cannot serialize things like inner "

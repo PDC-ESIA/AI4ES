@@ -1,0 +1,15 @@
+diff --git a/lib/matplotlib/cm.py b/lib/matplotlib/cm.py
+index 38158db9564a0766dd62f25ec0914f14e23396a8..9c8e102dddd4bc3f1839530c3868a3b2083aca06 100644
+--- a/lib/matplotlib/cm.py
++++ b/lib/matplotlib/cm.py
+@@ -145,7 +145,9 @@ class ColormapRegistry(Mapping):
+             _api.warn_external(f"Overwriting the cmap {name!r} "
+                                "that was already in the registry.")
+ 
+-        self._cmaps[name] = cmap.copy()
++        _cmap = cmap.copy()
++        _cmap.name = name
++        self._cmaps[name] = _cmap
+ 
+     def unregister(self, name):
+         """

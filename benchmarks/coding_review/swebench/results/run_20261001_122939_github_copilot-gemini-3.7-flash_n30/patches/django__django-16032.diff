@@ -1,0 +1,41 @@
+diff --git a/django/db/models/fields/related_lookups.py b/django/db/models/fields/related_lookups.py
+index 1a845a1f7f1f88e321dcde6360bbb45a141dcbc0..205063223f4da08bf626c1768b6a75a651b973f6 100644
+--- a/django/db/models/fields/related_lookups.py
++++ b/django/db/models/fields/related_lookups.py
+@@ -90,8 +90,9 @@ class RelatedIn(In):
+                         -1
+                     ]
+                     self.rhs = [target_field.get_prep_value(v) for v in self.rhs]
+-            elif not getattr(self.rhs, "has_select_fields", True) and not getattr(
+-                self.lhs.field.target_field, "primary_key", False
++            elif not getattr(self.rhs, "has_select_fields", True) and (
++                not getattr(self.lhs.field.target_field, "primary_key", False)
++                or self.rhs.values_select
+             ):
+                 self.rhs.clear_select_clause()
+                 if (
+@@ -106,6 +107,9 @@ class RelatedIn(In):
+                 else:
+                     target_field = self.lhs.field.target_field.name
+                 self.rhs.add_fields([target_field], True)
++            elif not getattr(self.rhs, "has_select_fields", True):
++                self.rhs.clear_select_clause()
++                self.rhs.add_fields(["pk"])
+         return super().get_prep_lookup()
+ 
+     def as_sql(self, compiler, connection):
+diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py
+index 8419dc0d5436cadf45c6eea2e01f342fccc1be01..ec3ab706c14aaac4d7801054e8321480353a5a14 100644
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -266,7 +266,9 @@ class Query(BaseExpression):
+     @property
+     def has_select_fields(self):
+         return bool(
+-            self.select or self.annotation_select_mask or self.extra_select_mask
++            self.select
++            or self.annotation_select_mask
++            or self.extra_select_mask
+         )
+ 
+     @cached_property

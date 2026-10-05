@@ -44,26 +44,34 @@ base.
 - Os testes do gabarito foram escritos por desenvolvedores humanos, então
   servem de evidência **independente** do coder.
 
-Limitações assumidas (detalhes no README do benchmark): amostra de 30
+Limitações assumidas (detalhes no README do benchmark e em [pontos de atenção](relatorio.md#5-pontos-de-atenção)): amostra de 30
 instâncias, gabarito imperfeito (os testes oficiais só cobrem o que o PR
 testou), dataset só com projetos Python, possível contaminação dos modelos e
 aprovação do validador baseada na suíte que o próprio coder declara.
 
 ## Linha de base
 
-> **A preencher após o primeiro run completo** (critério de aceite da #417):
-> `python -m benchmarks.coding_review.swebench.run --model <m> --limit 30`
+Resultados completos, custo e ressalvas em
+[relatorio.md](relatorio.md#4-resultados-da-linha-de-base). Como o benchmark
+funciona e como foi implementado: seções
+[2](relatorio.md#2-como-o-benchmark-funciona) e
+[3](relatorio.md#3-implementação). Como ler os números:
+[pontos de atenção](relatorio.md#5-pontos-de-atenção).
+
+> **Cobre 26 das 30 instâncias sorteadas** (as outras 4 não foram refeitas após
+> uma correção do benchmark, por falta de créditos do LLM). Execução única, um
+> modelo. A taxa de resolução tende a estar inflada.
 
 | Campo | Valor |
 | ----- | ----- |
-| Data do run | — |
-| Modelo | — |
-| Instâncias / seed / revisão do dataset | 30 / 42 / `78f471bf655a3137b2e8a75af1501690ec009ec3` |
+| Data do run | 01/10/2026 a 05/10/2026 |
+| Modelo | `github_copilot/gemini-3.7-flash` |
+| Instâncias / seed / revisão do dataset | 30 sorteadas (26 com resultado válido) / 42 / `78f471bf655a3137b2e8a75af1501690ec009ec3` |
 | Instâncias excluídas pelo `--gold-sanity` | Nenhuma: 30/30 resolvidas com o patch oficial (2026-09-29) |
 | Harness do executor com a solução oficial (`--executor-sanity`) | 26/30 com sucesso (2026-09-29). As 4 restantes (`matplotlib__matplotlib-25479`, `mwaskom__seaborn-3069`, `pydata__xarray-4687`, `pylint-dev__pylint-7080`) têm testes que falham também na avaliação oficial, fora das listas `FAIL_TO_PASS`/`PASS_TO_PASS`: o SWE-bench os ignora, mas o executor julga pelo código de saída do comando inteiro e reprova |
-| **Métrica 1** — resolvidas (IC 95%) | — |
-| **Métrica 1** — resolvidas sem as exclusões do gold (IC 95%) | — |
-| **Métrica 2** — rodadas: média / mediana | — |
-| **Métrica 2** — paradas: aprovação / política / `max_iterations` / outro | — |
-| **Métrica 3** — falsos positivos / aprovações (IC 95%) | — |
-| Diretório do run | `benchmarks/coding_review/swebench/results/run_20260929_122944_github_copilot-gpt-4_n30/` (sorteio e sanidades prontos; loop pendente de cota de LLM) |
+| **Métrica 1** — resolvidas (IC 95%) | 19/26 (73,1%), IC 53,9% a 86,3%. No primeiro passe, antes da correção do teto: 20/30 (66,7%), IC 48,8% a 80,8% (não comparável) |
+| **Métrica 1** — resolvidas sem as exclusões do gold (IC 95%) | Igual à linha acima: o gold não excluiu nenhuma instância |
+| **Métrica 2** — rodadas: média / mediana | 1,65 / 1 (mín. 1, máx. 4) |
+| **Métrica 2** — paradas: aprovação / política / `max_iterations` / outro | 24 / 2 / 0 / 0 |
+| **Métrica 3** — falsos positivos / aprovações (IC 95%) | 5/24 (20,8%), IC 9,2% a 40,5%. Precisão 19/24, recall 19/19 |
+| Diretório do run | `benchmarks/coding_review/swebench/results/run_20261001_122939_github_copilot-gemini-3.7-flash_n30/` (o primeiro passe fica em `v1_timeout_contava_o_ritmo/`) |

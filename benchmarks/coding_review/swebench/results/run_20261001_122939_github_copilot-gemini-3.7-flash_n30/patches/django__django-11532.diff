@@ -1,0 +1,18 @@
+diff --git a/django/core/mail/utils.py b/django/core/mail/utils.py
+index d18dfe46672bec4ec8a013efd71bed313c4cab76..a4d37f8f5a139240a08d0a56b6571e4f1c93df0d 100644
+--- a/django/core/mail/utils.py
++++ b/django/core/mail/utils.py
+@@ -16,5 +16,13 @@ class CachedDnsName:
+             self._fqdn = socket.getfqdn()
+         return self._fqdn
+ 
++    def __setattr__(self, name, value):
++        if name == '_fqdn':
++            try:
++                value = value.encode('ascii').decode('ascii')
++            except UnicodeEncodeError:
++                value = value.encode('idna').decode('ascii')
++        super().__setattr__(name, value)
++
+ 
+ DNS_NAME = CachedDnsName()

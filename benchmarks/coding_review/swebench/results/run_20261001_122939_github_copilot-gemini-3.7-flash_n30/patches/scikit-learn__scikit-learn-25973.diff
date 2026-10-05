@@ -1,0 +1,47 @@
+diff --git a/sklearn/feature_selection/_sequential.py b/sklearn/feature_selection/_sequential.py
+index e983c55de7d25af76cd2621c14c6f1bc2cea2f51..19422e78657ba214d8bdc27d82c0e602e469f913 100644
+--- a/sklearn/feature_selection/_sequential.py
++++ b/sklearn/feature_selection/_sequential.py
+@@ -1,6 +1,7 @@
+ """
+ Sequential feature selection
+ """
++from collections.abc import Iterable
+ from numbers import Integral, Real
+ 
+ import numpy as np
+@@ -271,11 +272,15 @@ class SequentialFeatureSelector(SelectorMixin, MetaEstimatorMixin, BaseEstimator
+             else n_features - self.n_features_to_select_
+         )
+ 
++        # In case cv is an iterable/generator of splits, materialize it into a list
++        # so it can be reused across multiple feature evaluations and iterations.
++        cv = list(self.cv) if isinstance(self.cv, Iterable) else self.cv
++
+         old_score = -np.inf
+         is_auto_select = self.tol is not None and self.n_features_to_select == "auto"
+         for _ in range(n_iterations):
+             new_feature_idx, new_score = self._get_best_new_feature_score(
+-                cloned_estimator, X, y, current_mask
++                cloned_estimator, X, y, cv, current_mask
+             )
+             if is_auto_select and ((new_score - old_score) < self.tol):
+                 break
+@@ -291,7 +296,7 @@ class SequentialFeatureSelector(SelectorMixin, MetaEstimatorMixin, BaseEstimator
+ 
+         return self
+ 
+-    def _get_best_new_feature_score(self, estimator, X, y, current_mask):
++    def _get_best_new_feature_score(self, estimator, X, y, cv, current_mask):
+         # Return the best new feature and its score to add to the current_mask,
+         # i.e. return the best new feature and its score to add (resp. remove)
+         # when doing forward selection (resp. backward selection).
+@@ -309,7 +314,7 @@ class SequentialFeatureSelector(SelectorMixin, MetaEstimatorMixin, BaseEstimator
+                 estimator,
+                 X_new,
+                 y,
+-                cv=self.cv,
++                cv=cv,
+                 scoring=self.scoring,
+                 n_jobs=self.n_jobs,
+             ).mean()

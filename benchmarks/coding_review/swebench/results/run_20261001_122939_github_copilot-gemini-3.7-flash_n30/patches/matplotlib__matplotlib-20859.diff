@@ -1,0 +1,58 @@
+diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py
+index 44ab0246981f9c115f978093509df8010f897395..91f5ccb5f94c8380545df26da4029b26386fc4e2 100644
+--- a/lib/matplotlib/legend.py
++++ b/lib/matplotlib/legend.py
+@@ -332,7 +332,7 @@ class Legend(Artist):
+         """
+         Parameters
+         ----------
+-        parent : `~matplotlib.axes.Axes` or `.Figure`
++        parent : `~matplotlib.axes.Axes` or `.Figure` or `.SubFigure`
+             The artist that contains the legend.
+ 
+         handles : list of `.Artist`
+@@ -360,7 +360,7 @@ class Legend(Artist):
+         """
+         # local import only to avoid circularity
+         from matplotlib.axes import Axes
+-        from matplotlib.figure import Figure
++        from matplotlib.figure import FigureBase
+ 
+         super().__init__()
+ 
+@@ -434,11 +434,11 @@ class Legend(Artist):
+             self.isaxes = True
+             self.axes = parent
+             self.set_figure(parent.figure)
+-        elif isinstance(parent, Figure):
++        elif isinstance(parent, FigureBase):
+             self.isaxes = False
+             self.set_figure(parent)
+         else:
+-            raise TypeError("Legend needs either Axes or Figure as parent")
++            raise TypeError("Legend needs either Axes or FigureBase as parent")
+         self.parent = parent
+ 
+         self._loc_used_default = loc is None
+diff --git a/lib/matplotlib/tests/test_figure.py b/lib/matplotlib/tests/test_figure.py
+index ad2fdf7fecc9e2f37a4bd413ed67e9d055b9846d..00c1d1f5d7771c8cbbb41e1e071a696e4da82d0e 100644
+--- a/lib/matplotlib/tests/test_figure.py
++++ b/lib/matplotlib/tests/test_figure.py
+@@ -942,6 +942,17 @@ def test_subfigure_tightbbox():
+             fig.get_tightbbox(fig.canvas.get_renderer()).width, 0.1)
+ 
+ 
++def test_subfigure_legend():
++    fig = plt.figure()
++    subfig = fig.subfigures()
++    ax = subfig.subplots()
++    ax.plot([0, 1, 2], [0, 1, 2], label="test")
++    leg = subfig.legend()
++    assert leg.parent == subfig
++    assert len(subfig.legends) == 1
++    assert subfig.legends[0] == leg
++
++
+ @image_comparison(['test_subfigure_ss.png'], style='mpl20',
+                   savefig_kwarg={'facecolor': 'teal'},
+                   remove_text=False)

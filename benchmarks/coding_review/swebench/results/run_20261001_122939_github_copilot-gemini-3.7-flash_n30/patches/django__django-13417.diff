@@ -1,0 +1,38 @@
+diff --git a/django/db/models/query.py b/django/db/models/query.py
+index 85cd8311a7d2158a10ffd639b600621716b50d84..02bf73517a9d33ca1a90696cad3d680e33216f4c 100644
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1224,7 +1224,7 @@ class QuerySet:
+             return True
+         if self.query.extra_order_by or self.query.order_by:
+             return True
+-        elif self.query.default_ordering and self.query.get_meta().ordering:
++        elif self.query.default_ordering and self.query.get_meta().ordering and self.query.group_by is None:
+             return True
+         else:
+             return False
+diff --git a/tests/ordering/tests.py b/tests/ordering/tests.py
+index fe319b3859d0349b5e7d2977a57d875d4e253d2a..3b28a7a2f97a7baa8e8b113db5fbe44686e11e06 100644
+--- a/tests/ordering/tests.py
++++ b/tests/ordering/tests.py
+@@ -2,7 +2,7 @@ from datetime import datetime
+ from operator import attrgetter
+ 
+ from django.db.models import (
+-    CharField, DateTimeField, F, Max, OuterRef, Subquery, Value,
++    CharField, Count, DateTimeField, F, Max, OuterRef, Subquery, Value,
+ )
+ from django.db.models.functions import Upper
+ from django.test import TestCase
+@@ -41,6 +41,11 @@ class OrderingTests(TestCase):
+         # Getting a single item should work too:
+         self.assertEqual(Article.objects.all()[0], self.a4)
+ 
++    def test_orders_group_by_meta_ordering(self):
++        self.assertTrue(Article.objects.all().ordered)
++        self.assertFalse(Article.objects.annotate(Count("headline")).ordered)
++        self.assertTrue(Article.objects.annotate(Count("headline")).order_by("headline").ordered)
++
+     def test_default_ordering_override(self):
+         """
+         Override ordering with order_by, which is in the same format as the

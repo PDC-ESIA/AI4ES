@@ -1,0 +1,46 @@
+diff --git a/django/contrib/admin/filters.py b/django/contrib/admin/filters.py
+index d65e01d5e2feb8e71ce64ef7480ebec2d24d6c2a..07261929f024c20a625ba6b8464029d3405421ef 100644
+--- a/django/contrib/admin/filters.py
++++ b/django/contrib/admin/filters.py
+@@ -419,4 +419,8 @@ FieldListFilter.register(lambda f: True, AllValuesFieldListFilter)
+ class RelatedOnlyFieldListFilter(RelatedFieldListFilter):
+     def field_choices(self, field, request, model_admin):
+         pk_qs = model_admin.get_queryset(request).distinct().values_list('%s__pk' % self.field_path, flat=True)
+-        return field.get_choices(include_blank=False, limit_choices_to={'pk__in': pk_qs})
++        ordering = ()
++        related_admin = model_admin.admin_site._registry.get(field.remote_field.model)
++        if related_admin is not None:
++            ordering = related_admin.get_ordering(request)
++        return field.get_choices(include_blank=False, limit_choices_to={'pk__in': pk_qs}, ordering=ordering)
+diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py
+index 194514c9000867c5ea15aae3d009644ba4b2a8dd..1aad845470f493d6453397bf764a443f70930007 100644
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -825,9 +825,11 @@ class Field(RegisterLookupMixin):
+             if hasattr(self.remote_field, 'get_related_field')
+             else 'pk'
+         )
++        qs = rel_model._default_manager.complex_filter(limit_choices_to)
++        if ordering:
++            qs = qs.order_by(*ordering)
+         return (blank_choice if include_blank else []) + [
+-            (choice_func(x), str(x))
+-            for x in rel_model._default_manager.complex_filter(limit_choices_to).order_by(*ordering)
++            (choice_func(x), str(x)) for x in qs
+         ]
+ 
+     def value_to_string(self, obj):
+diff --git a/tests/admin_filters/models.py b/tests/admin_filters/models.py
+index ae78282d34579d2babc428eefa478958a26cda92..7338c35b785f8e84f509c5c9182fffcd0012c773 100644
+--- a/tests/admin_filters/models.py
++++ b/tests/admin_filters/models.py
+@@ -42,6 +42,9 @@ class Department(models.Model):
+     code = models.CharField(max_length=4, unique=True)
+     description = models.CharField(max_length=50, blank=True, null=True)
+ 
++    class Meta:
++        ordering = ('description',)
++
+     def __str__(self):
+         return self.description
+ 
