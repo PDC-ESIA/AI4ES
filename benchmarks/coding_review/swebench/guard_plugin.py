@@ -102,6 +102,9 @@ class BenchmarkGuardPlugin(BasePlugin):
         self.occurrences: list[dict[str, Any]] = []
         self.usage_by_agent: dict[str, dict[str, int]] = {}
         self.rate_limit_waits: list[float] = []
+        # Tempo efetivamente dormido (ritmo + rate limit) e início da pausa em curso.
+        self._pausado_concluido = 0.0
+        self._pausa_desde: float | None = None
 
     def start_instance(self, image: str) -> None:
         """Zera os contadores para uma nova instância."""
@@ -112,6 +115,26 @@ class BenchmarkGuardPlugin(BasePlugin):
         self.usage_by_agent = {}
         self.rate_limit_waits = []
         self.throttle_waits = []
+        self._pausado_concluido = 0.0
+        self._pausa_desde = None
+
+    def tempo_pausado_s(self) -> float:
+        """Segundos que a instância passou DORMINDO por ritmo ou rate limit.
+
+        Inclui a pausa em curso. O teto por instância desconta esse tempo: ele
+        mede o trabalho do loop, não a espera imposta pelo controle de ritmo.
+        """
+        em_curso = 0.0 if self._pausa_desde is None else self._clock() - self._pausa_desde
+        return self._pausado_concluido + em_curso
+
+    async def _dormir(self, segundos: float) -> None:
+        inicio = self._clock()
+        self._pausa_desde = inicio
+        try:
+            await self._sleep(segundos)
+        finally:
+            self._pausado_concluido += self._clock() - inicio
+            self._pausa_desde = None
 
     async def after_model_callback(self, *, callback_context, llm_response):
         try:
@@ -150,7 +173,7 @@ class BenchmarkGuardPlugin(BasePlugin):
                 print(f"[guarda] ritmo: aguardando {espera:.0f}s para respeitar "
                       f"{self._tpm} tokens/min", flush=True)
             self.throttle_waits.append(espera)
-            await self._sleep(espera)
+            await self._dormir(espera)
         return None
 
     async def on_model_error_callback(self, *, callback_context, llm_request, error):
@@ -172,7 +195,7 @@ class BenchmarkGuardPlugin(BasePlugin):
             print(f"[guarda] rate limit do provedor: pausa de {espera / 60:.0f} min "
                   "antes de repetir a chamada", flush=True)
             self.rate_limit_waits.append(espera)
-            await self._sleep(espera)
+            await self._dormir(espera)
             acumulado += espera
             try:
                 resposta = None

@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -189,6 +190,35 @@ def _ler_report(caminho: Any) -> dict[str, Any] | None:
         return None
 
 
+_INTERVALO_TETO_S = 15.0
+
+
+async def aguardar_com_teto(
+    tarefa: "asyncio.Future[Any]",
+    *,
+    timeout_s: float,
+    pausado_s: Callable[[], float],
+    clock: Callable[[], float] = time.monotonic,
+    intervalo_s: float = _INTERVALO_TETO_S,
+) -> None:
+    """Espera a tarefa terminar; cancela e levanta `TimeoutError` se estourar o teto.
+
+    O teto conta o tempo DE TRABALHO: o relógio corrido menos o que `pausado_s()`
+    informa de pausas (controle de ritmo, rate limit). Sem esse desconto, um
+    controle de ritmo estrito consome o teto dormindo e corta a instância
+    no meio do trabalho.
+    """
+    inicio = clock()
+    while not tarefa.done():
+        restante = timeout_s - ((clock() - inicio) - pausado_s())
+        if restante <= 0:
+            tarefa.cancel()
+            await asyncio.gather(tarefa, return_exceptions=True)
+            raise TimeoutError
+        await asyncio.wait({tarefa}, timeout=min(restante, intervalo_s))
+    tarefa.result()  # repropaga a exceção da tarefa, se houver
+
+
 async def run_loop(
     instance: SWEInstance,
     *,
@@ -196,7 +226,9 @@ async def run_loop(
     timeout_s: float,
     user_id: str = "swebench-bench",
 ) -> LoopRun:
-    """Roda o loop até ele parar sozinho (ou estourar `timeout_s`).
+    """Roda o loop até ele parar sozinho (ou estourar `timeout_s` de trabalho).
+
+    O teto desconta as pausas do controle de ritmo e do rate limit.
 
     O teto é APROXIMADO: as tools síncronas (o harness) rodam na thread do
     event loop, então o cancelamento só acontece quando a chamada em curso
@@ -242,7 +274,10 @@ async def run_loop(
     timed_out = False
     t0 = time.monotonic()
     try:
-        await asyncio.wait_for(_consumir(), timeout=timeout_s)
+        await aguardar_com_teto(
+            asyncio.ensure_future(_consumir()),
+            timeout_s=timeout_s, pausado_s=plugin.tempo_pausado_s,
+        )
     except TimeoutError:
         timed_out = True
         erro = f"Instância excedeu o teto de {timeout_s:.0f}s."

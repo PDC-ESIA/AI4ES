@@ -410,3 +410,31 @@ def test_ritmo_funciona_com_um_llmagent_real_do_adk(tmp_path: Path):
     asyncio.run(_rodar())
     assert esperas == [60.0]  # a 2ª chamada esperou o consumo da 1ª caber no teto
     assert plugin.usage_totals()["prompt_tokens"] == 200_000
+
+
+def test_tempo_pausado_soma_ritmo_e_rate_limit_e_zera_na_nova_instancia(tmp_path: Path):
+    plugin, relogio, _ = _plugin_com_ritmo(tmp_path, tpm=50_000)
+    assert plugin.tempo_pausado_s() == 0.0
+    _consumir(plugin, prompt=100_000)
+    _antes_da_chamada(plugin)  # dorme 60 s de ritmo
+    assert plugin.tempo_pausado_s() == 60.0
+    plugin.start_instance(IMAGEM)
+    assert plugin.tempo_pausado_s() == 0.0
+
+
+def test_tempo_pausado_inclui_a_pausa_em_curso(tmp_path: Path):
+    relogio = _Relogio()
+    medidas = []
+
+    async def _dormir(segundos):
+        relogio.agora += 30.0
+        medidas.append(plugin.tempo_pausado_s())  # no meio da pausa
+        relogio.agora += segundos - 30.0
+
+    plugin = BenchmarkGuardPlugin(tmp_path, max_tokens_per_minute=50_000,
+                                  sleep=_dormir, clock=relogio)
+    plugin.start_instance(IMAGEM)
+    _consumir(plugin, prompt=100_000)
+    _antes_da_chamada(plugin)
+    assert medidas == [30.0]
+    assert plugin.tempo_pausado_s() == 60.0

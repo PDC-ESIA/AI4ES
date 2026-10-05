@@ -116,8 +116,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="Diretório-base dos runs.")
     p.add_argument("--resume-dir", type=Path, default=None,
                    help="Retoma um run existente (pula instâncias já concluídas).")
+    p.add_argument("--only-ids", nargs="*", default=None,
+                   help=("Nesta execução, roda só estas instâncias; as demais pendentes "
+                         "ficam para outra retomada (não altera o sorteio nem o run)."))
     p.add_argument("--instance-timeout", type=int, default=3600,
-                   help=("Teto (s) de wall-clock do loop por instância (default: 3600). "
+                   help=("Teto (s) de TRABALHO do loop por instância (default: 3600): "
+                         "desconta as pausas do controle de ritmo e do rate limit. "
                          "Aproximado: só é checado quando o harness devolve o controle."))
     p.add_argument("--max-tokens-per-minute", type=int, default=50_000,
                    help=("Teto de tokens (entrada+saída) por minuto enviados ao LLM; o "
@@ -585,6 +589,10 @@ async def _executar_loop(args: argparse.Namespace, run_dir: Path,
     for idx, inst in enumerate(instancias, start=1):
         prefixo = f"[run] ({idx}/{len(instancias)}) {inst.instance_id}"
         anterior = concluidos.get(inst.instance_id)
+        so_estas = getattr(args, "only_ids", None)
+        if so_estas and inst.instance_id not in so_estas and not _concluida(anterior):
+            print(f"{prefixo}: ADIADA (fora de --only-ids)")
+            continue
         if _concluida(anterior):
             print(f"{prefixo}: CACHE")
             continue

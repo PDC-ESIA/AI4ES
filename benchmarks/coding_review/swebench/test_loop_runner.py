@@ -91,3 +91,106 @@ def test_estouro_de_contexto_tem_rotulo_proprio():
     assert loop_runner.motivo_do_erro(copilot, timed_out=False) == "estouro_de_contexto"
     assert loop_runner.motivo_do_erro("ValueError: x", timed_out=False) == "erro_operacional"
     assert loop_runner.motivo_do_erro(copilot, timed_out=True) == "timeout_da_instancia"
+
+
+# --- teto por instância: conta o trabalho, não a espera do controle de ritmo ----
+
+
+def _tarefa_que_termina_em(clock, fim: float, retorno=None, erro: Exception | None = None):
+    """Tarefa de verdade, cujo "fim" depende do relógio simulado."""
+    import asyncio
+
+    async def _corpo():
+        while clock.agora < fim:
+            await asyncio.sleep(0)
+        if erro is not None:
+            raise erro
+        return retorno
+
+    return asyncio.ensure_future(_corpo())
+
+
+class _RelogioSimulado:
+    """Cada `wait` do helper avança o tempo, sem dormir de verdade."""
+
+    def __init__(self):
+        self.agora = 0.0
+
+    def __call__(self):
+        return self.agora
+
+
+def test_teto_estoura_quando_o_trabalho_passa_do_limite():
+    import asyncio
+
+    clock = _RelogioSimulado()
+    tarefa = None
+
+    async def _main():
+        nonlocal tarefa
+        tarefa = _tarefa_que_termina_em(clock, fim=10_000)
+        original_wait = asyncio.wait
+
+        async def _wait(fs, timeout=None):
+            clock.agora += timeout or 0
+            return await original_wait(fs, timeout=0)
+
+        asyncio.wait = _wait
+        try:
+            await loop_runner.aguardar_com_teto(
+                tarefa, timeout_s=100, pausado_s=lambda: 0.0, clock=clock, intervalo_s=10.0
+            )
+        finally:
+            asyncio.wait = original_wait
+
+    import pytest
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(_main())
+    assert tarefa.cancelled()
+    assert 100 <= clock.agora <= 110
+
+
+def test_pausas_nao_contam_para_o_teto():
+    import asyncio
+
+    clock = _RelogioSimulado()
+
+    async def _main():
+        # Trabalho de 60 s + 400 s dormindo: 460 s de relógio, mas só 60 s de trabalho.
+        tarefa = _tarefa_que_termina_em(clock, fim=460, retorno="ok")
+        original_wait = asyncio.wait
+
+        async def _wait(fs, timeout=None):
+            clock.agora += timeout or 0
+            return await original_wait(fs, timeout=0)
+
+        asyncio.wait = _wait
+        try:
+            await loop_runner.aguardar_com_teto(
+                tarefa, timeout_s=100,
+                pausado_s=lambda: min(400.0, clock.agora), clock=clock, intervalo_s=10.0,
+            )
+        finally:
+            asyncio.wait = original_wait
+        return tarefa.result()
+
+    assert asyncio.run(_main()) == "ok"
+    assert clock.agora >= 460
+
+
+def test_erro_da_tarefa_e_repropagado():
+    import asyncio
+
+    import pytest
+
+    clock = _RelogioSimulado()
+
+    async def _main():
+        tarefa = _tarefa_que_termina_em(clock, fim=0, erro=ValueError("falhou"))
+        await loop_runner.aguardar_com_teto(
+            tarefa, timeout_s=100, pausado_s=lambda: 0.0, clock=clock, intervalo_s=10.0
+        )
+
+    with pytest.raises(ValueError, match="falhou"):
+        asyncio.run(_main())

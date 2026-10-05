@@ -456,3 +456,16 @@ def test_registro_antigo_de_estouro_e_reclassificado_no_relatorio():
     assert m["operacional"]["estouros_de_contexto"] == ["a__a-1"]
     assert m["operacional"]["erros_operacionais"] == []
     assert "Estouros de contexto do modelo:** 1" in run.render_markdown(relatorio)
+
+
+def test_only_ids_adia_as_outras_pendentes_sem_apagar_nada(tmp_path, monkeypatch):
+    import asyncio
+
+    run_dir, args, preparacoes, _ = _preparar_laco(tmp_path, monkeypatch, [None])
+    a, b = _instancias()[:2]
+    args.only_ids = [b.instance_id]
+    asyncio.run(run._executar_loop(args, run_dir, [a, b]))
+
+    assert len(preparacoes) == 1  # só a `b` foi preparada e rodada
+    feitos = run._carregar_progresso(run_dir / run.PROGRESS_FILE)
+    assert set(feitos) == {b.instance_id}  # a `a` segue pendente, sem registro

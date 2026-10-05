@@ -102,8 +102,10 @@ de 30 instâncias bate nesse limite várias vezes. Se o bloqueio persistir depoi
 das tentativas, o run **para** com o aviso de como retomar, e a instância fica
 marcada como `falha_provedor`, a ser refeita na retomada. Nada disso conta como
 falha do loop. Estouro de contexto **não** entra nessa regra: ele é resultado do
-próprio loop. Com o `gpt-4` (32k de contexto) ele foi sistemático; por isso a
-linha de base usa o `gpt-4.1` (128k).
+próprio loop. O `gpt-4` (32k de contexto) falhou já na 1ª instância com um
+"Bad Request" genérico, atribuído ao limite de contexto; o `gpt-4.1` (128k) ainda
+estourou no 1º turno de uma instância do astropy. A linha de base usa o
+`gemini-3.7-flash` (200k de contexto), sem estouros.
 
 ## Decisões de desenho
 
@@ -181,7 +183,8 @@ diretório antes do commit: ele não é ignorado pelo git.
 | `--instance-ids` | — | Usa estas instâncias em vez do sorteio |
 | `--dataset-revision` | `78f471bf…` | Revisão do dataset no Hugging Face |
 | `--max-tokens-per-minute` | 50000 | Teto de tokens por minuto enviados ao LLM (controle de ritmo; `0` desliga) |
-| `--instance-timeout` | 3600 | Teto (s) do loop por instância — aproximado: só é checado quando o harness devolve o controle, então pode passar pelo tempo de um build ou de uma bateria de testes |
+| `--only-ids` | — | Roda, nesta execução, só estas instâncias; as demais pendentes ficam para outra retomada (o relatório cobre só as que têm registro) |
+| `--instance-timeout` | 3600 | Teto (s) de TRABALHO do loop por instância: desconta as pausas do controle de ritmo e do rate limit. Aproximado: só é checado quando o harness devolve o controle, então pode passar pelo tempo de um build ou de uma bateria de testes |
 | `--swebench-python` | `.venv-swebench/bin/python` | Python do harness oficial |
 | `--grading-workers` | 2 | Workers do harness oficial |
 | `--grading-timeout` | 1800 | Timeout (s) por instância na correção |
@@ -218,7 +221,7 @@ Cada run cria `results/run_<timestamp>_<modelo>_n<N>/`:
    workspace e o comando de teste oficial no `run.json`, o harness do executor
    deveria dar sucesso. Onde não dá (timeout de 120 s, falta de memória, teste
    que já falha naquele arquivo), a causa é o ambiente do executor, não o LLM:
-   é o teto de aprovações corretas que o validador consegue dar. O resumo entra
+   é um teto aproximado das aprovações confiáveis do validador. O resumo entra
    no `report.md`.
 4. Uma instância de ponta a ponta: confirme no `report.md` que houve rodadas,
    que a guarda não precisou intervir o tempo todo e que o patch não saiu vazio.
@@ -246,9 +249,9 @@ das oficiais; o passo 3 confirma o mesmo numa imagem oficial.
   ajudam a separar, mas não resolvem sozinhos.
 - **A métrica 1 depende mais do coder do que do executor.** O coder não tem
   ferramenta de busca e lê arquivos inteiros; em repositórios grandes, ele
-  estoura o contexto do modelo. Medido: com o `gpt-4` (32k) já na 2ª rodada, e
-  com o `gpt-4.1` (128k) até no 1º turno de uma instância do astropy (169 mil
-  tokens). Esses casos saem com o motivo `estouro_de_contexto` (categoria
+  estoura o contexto do modelo. Medido: o `gpt-4` (32k) falhou já na 1ª
+  instância com um "Bad Request" genérico, atribuído ao contexto, e o `gpt-4.1`
+  (128k) estourou no 1º turno de uma instância do astropy (169 mil tokens). Esses casos saem com o motivo `estouro_de_contexto` (categoria
   "outro" na métrica 2). Os tokens ficam registrados por instância e por
   agente, incluindo o `implementation_validator` (contado pelo plugin, porque
   ele roda num Runner interno do `AgentTool`).
