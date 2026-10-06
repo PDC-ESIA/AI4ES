@@ -1,4 +1,5 @@
 from shared.agent_factory import create_se_agent
+from shared.tools.design_hitl_tool import remover_clarificacao_generica
 from shared.tools.design_date import current_date
 from shared.tools.design_filesystem import (
     save_artifact,
@@ -15,7 +16,7 @@ from shared.tools.design_filesystem import (
     check_active_blocks,
     append_artifact,
     patch_section,
-    validate_analysis_sections,
+    validate_analysis_sections_vinculada,
     read_phase_manifest,
     read_phase_artifact,
 
@@ -42,11 +43,12 @@ agent = create_se_agent(
         check_active_blocks,
         append_artifact,
         patch_section,
-        validate_analysis_sections,
+        validate_analysis_sections_vinculada("io_agent"),
         read_phase_manifest,
         read_phase_artifact,
     ],
     agent_subdir="io_agent",
 )
+remover_clarificacao_generica(agent)
 
 root_agent = agent

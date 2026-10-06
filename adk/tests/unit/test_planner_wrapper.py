@@ -7,6 +7,8 @@ import pytest
 
 from src.agents.workflow_qa.tools.planner_wrapper import (
     _is_empty,
+    _needs_retry,
+    _plano_rapido,
     _FALLBACK_BLOCKED_JSON,
 )
 
@@ -86,9 +88,39 @@ async def test_invoke_once_exception_retorna_marker_de_erro():
         result = await planner_wrapper._invoke_once("request body")
 
     assert result.startswith("ERROR:")
-    # Documenta que 'ERROR: ...' tem mais de 8 chars úteis, então não é
-    # considerado empty pelo _is_empty — quem decide o retry é invocar_planejamento_qa
     assert planner_wrapper._is_empty(result) is False
+    assert planner_wrapper._needs_retry(result) is True
+
+
+def test_needs_retry_nao_rejeita_json_com_campo_erro():
+    resposta = '{"erro":"requisito ambiguo","lifecycle":{"status":"bloqueado"}}'
+    assert _needs_retry(resposta) is False
+
+
+@pytest.mark.parametrize(
+    ("entrada", "tool"),
+    [
+        (
+            "Execute somente testes unitários. Não execute integração nem E2E.",
+            "unit_test_generator",
+        ),
+        (
+            "Execute apenas testes de integração. Não execute unitários nem E2E.",
+            "integration_tests_agent",
+        ),
+        ("Execute exclusivamente E2E com Playwright.", "e2e_test_generator"),
+    ],
+)
+def test_plano_rapido_seleciona_so_escopo_positivo(entrada, tool):
+    plano = _plano_rapido(entrada)
+    assert plano is not None
+    payload = json.loads(plano)
+    assert payload["tools"] == [tool]
+    assert payload["lifecycle"]["execution_allowed"] is True
+
+
+def test_plano_rapido_recusa_pedido_sem_escopo_explicito():
+    assert _plano_rapido("Gere testes para o projeto") is None
 
 
 @pytest.mark.asyncio
@@ -98,11 +130,27 @@ async def test_invocar_retorna_first_quando_valido():
 
     valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
 
-    with patch.object(planner_wrapper, "_invoke_once", AsyncMock(return_value=valid_json)) as mock_invoke:
+    with patch.object(
+        planner_wrapper, "_invoke_once", AsyncMock(return_value=valid_json)
+    ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
 
     assert result == valid_json
     assert mock_invoke.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_invocar_pula_llm_quando_escopo_unitario_e_explicito():
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    with patch.object(planner_wrapper, "_invoke_once", AsyncMock()) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa(
+            "Execute somente testes unitários para o código persistido. "
+            "Não execute integração nem E2E."
+        )
+
+    assert json.loads(result)["tools"] == ["unit_test_generator"]
+    mock_invoke.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -113,7 +161,8 @@ async def test_invocar_tenta_segunda_quando_first_empty():
     valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
 
     with patch.object(
-        planner_wrapper, "_invoke_once",
+        planner_wrapper,
+        "_invoke_once",
         AsyncMock(side_effect=["", valid_json]),
     ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
@@ -123,12 +172,51 @@ async def test_invocar_tenta_segunda_quando_first_empty():
 
 
 @pytest.mark.asyncio
+async def test_invocar_tenta_segunda_quando_first_timeout():
+    """Timeout operacional não pode ser confundido com plano válido."""
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    valid_json = '{"tipo_entrada":"requisito","lifecycle":{"status":"ok"}}'
+    with patch.object(
+        planner_wrapper,
+        "_invoke_once",
+        AsyncMock(
+            side_effect=[
+                "ERROR: APITimeoutError: Request timed out",
+                valid_json,
+            ]
+        ),
+    ) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert result == valid_json
+    assert mock_invoke.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_invocar_fallback_quando_ambas_timeout():
+    from src.agents.workflow_qa.tools import planner_wrapper
+
+    erro = "ERROR: APITimeoutError: Request timed out"
+    with patch.object(
+        planner_wrapper,
+        "_invoke_once",
+        AsyncMock(side_effect=[erro, erro]),
+    ) as mock_invoke:
+        result = await planner_wrapper.invocar_planejamento_qa("req")
+
+    assert result == planner_wrapper._FALLBACK_BLOCKED_JSON
+    assert mock_invoke.await_count == 2
+
+
+@pytest.mark.asyncio
 async def test_invocar_fallback_quando_ambas_empty():
     """Ambas as calls empty → devolve _FALLBACK_BLOCKED_JSON."""
     from src.agents.workflow_qa.tools import planner_wrapper
 
     with patch.object(
-        planner_wrapper, "_invoke_once",
+        planner_wrapper,
+        "_invoke_once",
         AsyncMock(side_effect=["", "   "]),
     ) as mock_invoke:
         result = await planner_wrapper.invocar_planejamento_qa("req")
@@ -179,6 +267,7 @@ def test_workflow_qa_usa_function_tool_e_nao_agent_tool_para_planner():
 def test_workflow_qa_instruction_menciona_invocar_planejamento_qa():
     """_INSTRUCTION foi atualizado pra referenciar a nova tool."""
     from src.agents.workflow_qa.agent import agent as qa_pipeline
+
     assert "invocar_planejamento_qa" in qa_pipeline.instruction
     # E NÃO menciona mais "Encaminhe a entrada ao action_planner_agent"
     # (pode mencionar action_planner_agent como conceito histórico em outro lugar)

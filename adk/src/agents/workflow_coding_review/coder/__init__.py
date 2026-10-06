@@ -1,3 +1,3 @@
-from .agent import agent
+from .agent import agent, render_instruction
 
-__all__ = ["agent"]
+__all__ = ["agent", "render_instruction"]

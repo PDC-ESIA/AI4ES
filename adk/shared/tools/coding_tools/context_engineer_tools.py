@@ -212,17 +212,21 @@ def tool_ler_artefatos(
         artefatos = []
         erros = []
  
+        # Paths de manifesto são relativos à raiz do workspace da sessão;
+        # tolera prefixos legados ("workspace_output/" ou o nome da pasta da
+        # sessão, emitido por uma versão intermediária do manifesto de design).
+        prefixos_legados = ("workspace_output/", workspace_root.name + "/")
         for item in paths_list:
             if isinstance(item, dict):
                 path_rel = str(item.get("path", "")).replace("\\", "/")
-                if path_rel.startswith("workspace_output/"):
-                    path_rel = path_rel[len("workspace_output/"):]
                 tipo_manifesto = item.get("tipo", "")
             else:
                 path_rel = str(item).replace("\\", "/")
-                if path_rel.startswith("workspace_output/"):
-                    path_rel = path_rel[len("workspace_output/"):]
                 tipo_manifesto = ""
+            for prefixo in prefixos_legados:
+                if path_rel.startswith(prefixo):
+                    path_rel = path_rel[len(prefixo):]
+                    break
  
             rel_path = Path(path_rel)
             if rel_path.is_absolute() or ".." in rel_path.parts:
