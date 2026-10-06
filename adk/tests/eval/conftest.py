@@ -62,17 +62,17 @@ def dependencias_ausentes() -> list[str]:
 
 _AUSENTES = dependencias_ausentes()
 _METRICAS_REGISTRADAS: list[str] = []
-_ERRO_DE_SETUP: str | None = None
 
 
 def _preparar_ambiente() -> None:
     """Prepara o ambiente da avaliação. Chamado só quando LIGADO."""
-    global _METRICAS_REGISTRADAS, _ERRO_DE_SETUP
+    global _METRICAS_REGISTRADAS
 
-    # (1) Antes de qualquer import de agente: tools resolvem o workspace no import.
+    # (1) Antes do .env: o `load_dotenv` de `app.main` não sobrescreve o ambiente, e as
+    # tools leem esta variável a cada chamada.
     os.environ["WORKSPACE_OUTPUT_DIR"] = str(WORKSPACE)
     WORKSPACE.mkdir(parents=True, exist_ok=True)
-    # O marker é o que autoriza `init_workspace()` a limpar este diretório.
+    # O marker é o que autoriza `workspace_semeado` a limpar este diretório.
     (WORKSPACE / ".ai4se_workspace").write_text(
         "Workspace da PoC de avaliacao (tests/eval). Recriado a cada caso.\n",
         encoding="utf-8",
@@ -84,24 +84,7 @@ def _preparar_ambiente() -> None:
     # (3) Registra as métricas próprias no ADK.
     _METRICAS_REGISTRADAS = metrics.registrar_metricas_ai4es()
 
-    # (4) Guarda: reviewer e coder congelam o workspace no import; conferir onde caiu.
-    congelados = {
-        "cr_review_analyzer": "shared.tools.coding_tools.review_tools",
-        "cr_coder_agent": "src.agents.workflow_coding_review.coder.agent",
-    }
-    for agente, modulo in congelados.items():
-        coder_ws = Path(importlib.import_module(modulo)._CODER_WS).resolve()
-        if coder_ws != WORKSPACE and WORKSPACE not in coder_ws.parents:
-            _ERRO_DE_SETUP = (
-                f"O binding do {agente} aponta para fora do workspace da avaliação."
-                f"\n  esperado dentro de: {WORKSPACE}\n  obtido: {coder_ws}\n\n"
-                f"Causa: {modulo} resolve _CODER_WS em tempo de IMPORT, então algum "
-                "outro módulo o importou antes deste conftest rodar. Rode a "
-                "avaliação sozinha (`pytest tests/eval`), não junto de tests/unit."
-            )
-            break
-
-    # (5) Contador de custo: o AgentEvaluator não reporta chamadas, tokens nem tempo.
+    # (4) Contador de custo: o AgentEvaluator não reporta chamadas, tokens nem tempo.
     _instalar_contador_de_custo()
 
 
@@ -216,13 +199,6 @@ def pytest_collection_modifyitems(config, items):
         )
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _validar_setup():
-    """Falha alto e cedo se a guarda de coerência do import pegou algo."""
-    if _ERRO_DE_SETUP:
-        pytest.fail(_ERRO_DE_SETUP, pytrace=False)
-
-
 def pytest_terminal_summary(terminalreporter):
     """Resumo de custo da rodada (chamadas, tokens, tempo), que o ADK não reporta."""
     if not LIGADO or not CHAMADAS_LLM:
@@ -252,13 +228,16 @@ def pytest_terminal_summary(terminalreporter):
 
 @pytest.fixture
 def workspace_semeado():
-    """Recria o workspace da avaliação com `init_workspace()` e copia uma fixture."""
+    """Apaga o workspace da avaliação, recria com `init_workspace()`, que não limpa, e copia uma fixture."""
     from shared.workspace import init_workspace
 
     def _semear(nome_fixture: str) -> Path:
         origem = _AQUI / "fixtures" / nome_fixture
         if not origem.is_dir():
             raise FileNotFoundError(f"fixture inexistente: {origem}")
+        if not (WORKSPACE / ".ai4se_workspace").is_file():
+            raise RuntimeError(f"recusa em limpar {WORKSPACE}: falta o marker")
+        shutil.rmtree(WORKSPACE)
         raiz = init_workspace()
         shutil.copytree(origem, raiz, dirs_exist_ok=True)
         return raiz

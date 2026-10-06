@@ -1,5 +1,4 @@
-"""Avaliação do `cr_review_analyzer`, endereçado como sub-agente do pipeline de codificação.
-Só é avaliável porque o conftest fixa o workspace antes de o reviewer ser importado."""
+"""Avaliação do `cr_review_analyzer`, endereçado como sub-agente do pipeline de codificação."""
 
 import pytest
 
