@@ -39,5 +39,23 @@
     ],
     "instance_timeout": 3600,
     "grading_timeout": 1800
+  },
+  "ambiente": {
+    "git_commit": "08dcd5e4b14b9ba07e988de4983c2c019436d7e6",
+    "git_dirty": true,
+    "python": "3.14.5",
+    "plataforma": "Linux-7.0.0-31-generic-x86_64-with-glibc2.39",
+    "max_loop_iterations": 20,
+    "swebench_version": "5.0.2",
+    "adk_llm_model": "github_copilot/gpt-4",
+    "variaveis_ai4es": {
+      "AI4ES_LLM_NUM_RETRIES": "1",
+      "AI4ES_LLM_TIMEOUT": "600",
+      "AI4ES_LOOP_MAX_ITERATIONS": "300",
+      "AI4ES_LOOP_PATIENCE": "3",
+      "AI4ES_MEMORY_ENABLED": "false",
+      "AI4ES_PREFLIGHT_RENEW_ATTEMPTS": "2",
+      "AI4ES_PREFLIGHT_TIMEOUT": "10"
+    }
   }
 }

@@ -29,6 +29,7 @@ Este relatório reúne, num só lugar, o que o benchmark mede e por quê, como f
   - [4.3 Custo e tempo](#43-custo-e-tempo)
   - [4.4 Como se chegou a esse resultado](#44-como-se-chegou-a-esse-resultado)
   - [4.5 Ressalvas para a leitura](#45-ressalvas-para-a-leitura)
+  - [4.6 Por que o `gemini-3.7-flash` foi o modelo da linha de base](#46-por-que-o-gemini-37-flash-foi-o-modelo-da-linha-de-base)
 - [5. Pontos de atenção](#5-pontos-de-atenção)
   - [5.1 Limites da medição (previsíveis)](#51-limites-da-medição-previsíveis)
   - [5.2 O que apareceu ao executar](#52-o-que-apareceu-ao-executar)
@@ -59,6 +60,8 @@ O que os números sustentam, com essas ressalvas:
 - Quando o validador aprovou, errou uma vez em cada cinco. Ele aprovou 24 das 26 instâncias e só deixou de aprovar 2 das 7 não resolvidas, então o recall de 100% quase não discrimina.
 - A política de progresso foi acionada em 2 casos (ambos em Django, ambos não resolvidos). Nenhuma instância chegou ao teto de 20 rodadas.
 - O ambiente do executor reprova até a solução oficial em 4 das 30 instâncias, o que limita o teto de aprovações confiáveis a cerca de 26 em 30.
+
+**Modelo:** o `gemini-3.7-flash` foi escolhido por restrição de contexto e custo, depois que o `gpt-4` (32k) e o `gpt-4.1` (128k, bloqueado pelo rate limit do Copilot) não serviram; não é um ranking de modelos (ver [4.6](#46-por-que-o-gemini-37-flash-foi-o-modelo-da-linha-de-base)).
 
 **Custo:** ~4.340 créditos do Copilot (~US$ 43) tirados do caixa da organização, bem acima do esperado, porque o coder reenvia a conversa inteira a cada chamada. **Duas lições operacionais** pesam mais que os números: o controle de ritmo do próprio benchmark distorceu o teto de tempo por instância (corrigido), e o rate limit do Copilot é de vazão, independente dos créditos.
 
@@ -723,7 +726,8 @@ antes de repetir (ver [pontos de atenção](#5-pontos-de-atenção), B6).
 Medição de referência para escolha de modelo (5 chamadas encadeadas sobre ~35
 mil tokens de código real; amostra pequena, valores aproximados): `gpt-5-mini`
 ~13,5 créditos por milhão de tokens de entrada, `gemini-3.7-flash` ~27 e
-`claude-sonnet-5` ~104, já com o cache de prompt aplicado.
+`claude-sonnet-5` ~104, já com o cache de prompt aplicado (a escolha do modelo está
+em [4.6](#46-por-que-o-gemini-37-flash-foi-o-modelo-da-linha-de-base)).
 
 ### 4.4 Como se chegou a esse resultado
 
@@ -769,6 +773,57 @@ falsos positivos são os mesmos nos dois.
    runs só valem se os intervalos de confiança não se sobrepõem.
 5. **O que o benchmark não cobre.** Mede o ramo "projeto existente" do
    workflow (não a criação de projeto do zero) e só projetos Python.
+
+### 4.6 Por que o `gemini-3.7-flash` foi o modelo da linha de base
+
+A escolha foi **pragmática**, por restrição de contexto e de custo, e não por
+ranking de qualidade: nenhum outro modelo rodou o benchmark inteiro, então não
+há base para dizer que o `gemini-3.7-flash` seja o melhor para este loop.
+
+**Por que os dois primeiros modelos não serviram:**
+
+| Modelo | Contexto | Problema |
+| ------ | -------- | -------- |
+| `gpt-4` | 32k | A 1ª instância falhou com "Bad Request" genérico, atribuído ao contexto (ver B2) |
+| `gpt-4.1` | 128k | `astropy-14539` estourou no 1º turno (169.117 tokens contra 128.000). Além disso, o Copilot bloqueou o modelo por "rate limit for utility models", um limite de vazão por usuário, sem relação com o saldo de créditos, com `retry-after` de 14.053 s (~3 h 54 min) na época. Liberar de novo e rodar tudo levaria dias (ver B3) |
+
+**Alternativas testadas.** Como o limite era específico dos modelos "utility",
+a hipótese foi que os modelos cobrados em créditos entrassem em outra
+contabilidade. Em 01/10/2026, uma chamada de teste de ~60 mil tokens foi aceita
+pelo `gpt-5-mini` e pelo `gemini-3.7-flash`, uma de ~168 mil tokens pelo
+`claude-sonnet-5`, e recusada com 429 pelo `gpt-4.1`; o `gpt-5.4` recusou a
+chamada de teste com HTTP 400 (não investigado). O custo foi medido com 5
+chamadas encadeadas sobre ~35 mil tokens de código real do repositório, já com o
+cache de prompt aplicado:
+
+| Modelo | Contexto (lista do Copilot) | Créditos por milhão de tokens de entrada | Estimativa para 30 instâncias |
+| ------ | --------------------------- | ---------------------------------------- | ----------------------------- |
+| `gpt-5-mini` | 128k | ~13,5 | ~300 a 800 |
+| `gemini-3.7-flash` | 200k | ~27 | ~600 a 1.600 |
+| `claude-sonnet-5` | 200k | ~104 | ~3.000 a 8.800 |
+
+A estimativa para as 30 instâncias supunha de 0,5 a 2 milhões de tokens de
+entrada por instância, extrapolado de apenas duas instâncias medidas (~0,7
+milhão cada, uma com o `gpt-4` e outra com o `gpt-4.1`).
+O saldo do usuário na época era de ~4.590 créditos. O Claude, além de ~4 vezes
+mais caro por token, contava ~40% mais tokens para o mesmo texto (50,6 mil contra
+35,6 mil).
+
+**Decisão.** O `claude-sonnet-5` não cabia no saldo. O `gpt-5-mini` era o mais
+barato, mas tem o mesmo contexto de 128k do `gpt-4.1`, que já tinha estourado, e
+é um modelo de raciocínio, o que tende a acrescentar tokens e latência. O
+`gemini-3.7-flash` cabia no saldo e tinha 200k de contexto, o que reduzia o
+risco de estouro. A escolha foi do responsável pelo run, a partir dessas
+medições.
+
+**O que a estimativa errou.** O custo real foi de ~4.340 créditos, cerca de 2,7
+vezes o limite superior estimado (1.600). A estimativa não previu que o primeiro
+passe consumiria ~3 milhões de tokens por instância (92,4 milhões nas 30), nem o
+custo das tentativas descartadas e do refazimento (ver 4.3 e B6). Em compensação,
+o modelo não encontrou o rate limit do Copilot (0 s de pausa por rate limit no
+run) e não houve estouro de contexto. Se o benchmark for repetido, estime o custo
+com a média de ~3 milhões de tokens por instância e reserve margem para
+refazimento.
 
 ## 5. Pontos de atenção
 
@@ -1076,7 +1131,7 @@ Recomenda-se commitar a correção e citar o hash.
 | Código medido (não alterado) | `adk/src/agents/workflow_coding_review/` (executor, validador, `loop_policy`, `task_iterator`) |
 | Run de referência | `benchmarks/coding_review/swebench/results/run_20261001_122939_github_copilot-gemini-3.7-flash_n30/` |
 | Primeiro passe, antes da correção do teto | `.../run_20261001_122939_.../v1_timeout_contava_o_ritmo/` |
-| Runs abandonados (não comparáveis; fora deste commit) | `results/run_20260929_..._gpt-4_n30/` (só o sorteio e as sanidades estão versionados) e `results/run_20261001_104340_..._gpt-4.1_n30/` (local) |
+| Runs abandonados (não comparáveis; versionados como histórico) | `results/run_20260929_..._gpt-4_n30/` e `results/run_20261001_104340_..._gpt-4.1_n30/`, sem relatório, porque não foram concluídos |
 | Testes do benchmark | `adk/.venv/bin/python -m pytest benchmarks/coding_review/swebench -q` (146 testes) |
 
 Dentro do run de referência: `report.md` (resumo das três métricas), `report.json` (registro por instância), `progress.jsonl` (checkpoint), `patches/`, `predictions.jsonl`, `grading.json`, `metadata.json`, `sanidade_gold.json`, `sanidade_executor.json` e `run.log`. O `run.log`, o `workspace/`, o `dry_run/` e os logs brutos do harness são locais e **não são versionados** (`.gitignore`); as referências ao `run.log` neste relatório não podem ser conferidas só pelo repositório.
