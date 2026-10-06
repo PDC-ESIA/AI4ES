@@ -88,5 +88,5 @@
 
 | # | Lacuna | Categoria | Impacto Arquitetural | Ação Recomendada |
 |---|--------|-----------|----------------------|------------------|
-| 1 | <descrição objetiva do que está ausente> | Funcional \| Arquitetural | <decisão que fica em aberto ou componente que não pode ser definido> | Doubt_Artifact \| Assumir padrão \| Escalar para Time 1 |
+| 1 | <descrição objetiva do que está ausente> | Funcional \| Arquitetural | <decisão que fica em aberto ou componente que não pode ser definido> | Aviso \| Doubt_Artifact |
 | 2 | <descrição objetiva do que está ausente> | Funcional \| Arquitetural | <impacto> | <ação> |
