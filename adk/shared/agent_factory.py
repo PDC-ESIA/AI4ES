@@ -9,7 +9,7 @@ Adiciona binding opcional ao workspace centralizado (porte Time 4):
 
 import inspect
 import os
-from typing import Any
+from typing import Any, Callable, Union
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
@@ -75,12 +75,24 @@ _GIT_TOOL_NAMES = {
 }
 
 
-def _make_bound_closure(fn: Any, param_name: str, bound_value: str) -> Any:
+# Valor injetado: string fixa ou callable resolvido a cada chamada da tool.
+# Caminhos de workspace usam callable — a raiz depende da sessão corrente
+# (ContextVar em shared.workspace), então não pode ser congelada na criação
+# do agente.
+BoundValue = Union[str, Callable[[], str]]
+
+
+def _resolve_bound(value: BoundValue) -> str:
+    return value() if callable(value) else value
+
+
+def _make_bound_closure(fn: Any, param_name: str, bound_value: BoundValue) -> Any:
     """Cria closure que injeta param_name=bound_value sem expor ao LLM.
 
     Ao contrário de functools.partial, a closure resultante NÃO inclui o
     parâmetro injetado na signature/schema — o LLM nunca vê o param e
-    não pode sobrescrevê-lo com null.
+    não pode sobrescrevê-lo com null. Se ``bound_value`` for callable, é
+    avaliado a cada chamada.
     """
     sig = inspect.signature(fn)
     visible_params = [p for p in sig.parameters.values() if p.name != param_name]
@@ -99,7 +111,7 @@ def _make_bound_closure(fn: Any, param_name: str, bound_value: str) -> Any:
         for i, val in enumerate(args):
             if i < len(visible_names):
                 kwargs[visible_names[i]] = val
-        kwargs[param_name] = bound_value
+        kwargs[param_name] = _resolve_bound(bound_value)
         return fn(**kwargs)
 
     wrapper.__name__ = fn.__name__
@@ -109,10 +121,39 @@ def _make_bound_closure(fn: Any, param_name: str, bound_value: str) -> Any:
     return wrapper
 
 
+def lazy_workspace_root() -> Callable[[], str]:
+    """Callable que devolve a raiz do workspace da sessão corrente."""
+    return lambda: str(get_workspace_root())
+
+
+def lazy_agent_workspace(agent_subdir: str) -> Callable[[], str]:
+    """Callable que devolve (e cria) a subpasta do agente na sessão corrente.
+
+    ``agent_subdir`` pode ser nome em AGENT_DIRS ou caminho relativo direto.
+    """
+    if agent_subdir in AGENT_DIRS:
+        return lambda: str(get_agent_workspace(agent_subdir))
+    return lambda: str(get_workspace_root() / agent_subdir)
+
+
+def session_instruction(build: Callable[[], str]) -> Callable[..., Any]:
+    """InstructionProvider para instruções que embutem caminhos do workspace.
+
+    ``build`` é chamado a cada invocação (caminhos da sessão corrente); a
+    injeção de ``{chave}`` do state é aplicada como numa instrução string.
+    """
+    from google.adk.utils.instructions_utils import inject_session_state
+
+    async def provider(readonly_context: Any) -> str:
+        return await inject_session_state(build(), readonly_context)
+
+    return provider
+
+
 def _bind_tool_to_workspace(
     tool: Any,
-    agent_workspace: str,
-    workspace_root: str,
+    agent_workspace: BoundValue,
+    workspace_root: BoundValue,
 ) -> Any:
     """Cria nova FunctionTool com closure que injeta base_dir ou cwd.
 
@@ -188,13 +229,9 @@ def create_se_agent(
 
     # Workspace binding (opt-in)
     if agent_subdir is not None:
-        workspace_root = str(get_workspace_root())
-        # Resolve agent_subdir: nome em AGENT_DIRS OU caminho relativo direto
-        if agent_subdir in AGENT_DIRS:
-            agent_workspace = str(get_agent_workspace(agent_subdir))
-        else:
-            from pathlib import Path
-            agent_workspace = str(Path(workspace_root) / agent_subdir)
+        # Resolvidos a cada chamada da tool (workspace depende da sessão).
+        workspace_root = lazy_workspace_root()
+        agent_workspace = lazy_agent_workspace(agent_subdir)
 
         base_tools = [
             _bind_tool_to_workspace(t, agent_workspace, workspace_root)

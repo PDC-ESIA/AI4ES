@@ -39,9 +39,9 @@ de credencial/capacidade feita por um lado afeta o outro sem aviso). Cada
 feature com seu próprio banco, cada uma com seu ciclo de vida.
 
 O caminho local, quando usado, fica fora de `WORKSPACE_OUTPUT_DIR` porque
-`init_workspace()` apaga esse diretório a cada prompt novo (ver
-`shared/workspace.py`); a memória precisa sobreviver a isso independente do
-backend.
+lá cada sessão tem sua própria pasta, removível a pedido do usuário (ver
+`shared/workspace.py`); a memória é compartilhada entre sessões e precisa
+sobreviver a isso independente do backend.
 
 Nota sobre Chroma em vez de Qdrant (o default do mem0 e já dependência do
 projeto) no caminho local: o provider Qdrant do mem0 (v3, busca híbrida BM25)
@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Precisa rodar ANTES do `from mem0 import ...` — a env var é lida uma única
 # vez, no import do módulo de telemetria do mem0. Desabilitado por padrão
@@ -62,7 +63,13 @@ from pathlib import Path
 # Mem0 por padrão.
 os.environ.setdefault("MEM0_TELEMETRY", "False")
 
-from mem0 import AsyncMemory  # noqa: E402  (import após o setdefault acima, de propósito)
+# `mem0` só é importado de fato dentro de `get_memory()`: ele puxa numpy e
+# outras dependências pesadas, e este módulo é importado pelo
+# `workflow_coding_review` (logo, pelo orchestrator) mesmo com a memória
+# desligada. Com import no topo, qualquer falha do mem0/numpy no ambiente
+# (ex.: CPU sem x86-64-v2) derrubava o carregamento do orchestrator inteiro.
+if TYPE_CHECKING:
+    from mem0 import AsyncMemory
 
 _LLM_MODEL = "gemini-2.5-flash"
 _EMBEDDER_MODEL = "gemini-embedding-001"
@@ -156,6 +163,8 @@ def get_memory() -> AsyncMemory:
     """
     global _memory
     if _memory is None:
+        from mem0 import AsyncMemory
+
         _memory = AsyncMemory.from_config(
             {
                 "llm": {
@@ -169,4 +178,8 @@ def get_memory() -> AsyncMemory:
                 "vector_store": _vector_store_config(),
             }
         )
+        # O mem0 chama o Gemini fora do ADK — contabiliza no workflow corrente.
+        from shared.token_usage import instrument_genai_client
+
+        instrument_genai_client(getattr(_memory.llm, "client", None))
     return _memory
