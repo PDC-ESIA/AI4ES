@@ -1,7 +1,7 @@
 {
   "eval_set_id": "ai4es_ce_protocolo_bloqueio",
   "name": "context-engineer-protocolo-de-bloqueio",
-  "description": "O CASO CENTRAL DA PoC. O manifesto de requirements chega com status=blocked. O Passo 0 do prompt manda executar TRES tools em sequencia: tool_gerar_doubt_artifact -> tool_emitir_manifesto_bloqueado -> aguardar_resolucao_bloqueio (esta ultima e o LongRunningFunctionTool que PAUSA o pipeline para o humano). Como o ADK nao aceita tools em paralelo, sao tres oportunidades de abandonar o protocolo no meio — e um bloqueio parcial (doubt escrito, manifesto nao emitido) nao pausa nada. Nenhum teste do repositorio verifica isso hoje. Os argumentos sao texto livre do LLM, por isso a metrica e ai4es_tool_sequence_in_order (so nomes) e nao tool_trajectory_avg_score (que exige igualdade exata de args).",
+  "description": "O CASO CENTRAL DA PoC. O manifesto de requirements chega com status=blocked. O Passo 0 do prompt manda executar TRES tools em sequencia: tool_gerar_doubt_artifact -> tool_emitir_manifesto_bloqueado -> aguardar_resolucao_bloqueio (esta ultima e o LongRunningFunctionTool que PAUSA o pipeline para o humano). Como o ADK nao aceita tools em paralelo, sao tres oportunidades de abandonar o protocolo no meio — e um bloqueio parcial (doubt escrito, manifesto nao emitido) nao pausa nada. Nenhum teste do repositorio verifica isso hoje. Os argumentos sao texto livre do LLM, por isso a metrica e ai4es_tool_sequence_in_order (so nomes) e nao tool_trajectory_avg_score (que exige igualdade exata de args). Depois de cada execucao, o teste confere que coder/manifest.json saiu com status blocked e lista o doubt do agente, o que so acontece se o doubt foi gravado antes do manifesto.",
   "eval_cases": [
     {
       "eval_id": "emite_as_tres_tools_do_protocolo_na_ordem",
@@ -20,7 +20,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "(nao avaliado neste eval set) Quando o protocolo se completa, a invocacao termina com a CHAMADA pendente de aguardar_resolucao_bloqueio — nao ha texto de modelo. Os criterios deste eval set olham so a sequencia de tools."
+                "text": "(nao avaliado neste eval set) Quando o protocolo se completa, a invocacao termina com a CHAMADA pendente de aguardar_resolucao_bloqueio — nao ha texto de modelo. Os criterios deste eval set olham a sequencia de tools e as tools oferecidas, e o teste confere o disco."
               }
             ]
           },

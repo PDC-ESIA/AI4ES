@@ -26,9 +26,9 @@ LLM, tokens e tempo.
 | `implementation_validator` | `test_aprova_report_verde_com_state_semeado` | Com execução verde, lê o report pelo caminho do state e aprova com a resposta exata |
 | `implementation_validator` | `test_reprova_quando_a_execucao_falhou` | Com a execução falha, reprova, qualquer que seja o julgamento do LLM |
 | `implementation_validator` | `test_juiz_llm_aprova_o_veredito_correto` | Um juiz LLM considera a resposta do caminho feliz equivalente à referência (opt-in) |
-| `cr_context_engineer` | `test_protocolo_de_bloqueio_emite_as_tres_tools` | Com requisitos bloqueados, chama as três tools do protocolo na ordem, até a que pausa o pipeline |
-| `cr_context_engineer` | `test_nao_bloqueia_por_nome_de_arquivo_do_design` | Não bloqueia só porque a análise técnica tem nome fora da convenção |
-| `cr_context_engineer` | `test_caminho_feliz_age_em_vez_de_narrar` | Com requisitos e design completos, lê as duas fases e persiste, em vez de só anunciar |
+| `cr_context_engineer` | `test_protocolo_de_bloqueio_emite_as_tres_tools` | Com requisitos bloqueados, chama as três tools do protocolo na ordem, até a que pausa o pipeline, e o `coder/manifest.json` sai `blocked`, listando o doubt do agente |
+| `cr_context_engineer` | `test_nao_bloqueia_por_nome_de_arquivo_do_design` | Não bloqueia só porque a análise técnica tem nome fora da convenção: persiste contexto macro e tasks válidos contra os schemas |
+| `cr_context_engineer` | `test_caminho_feliz_age_em_vez_de_narrar` | Com requisitos e design completos, lê as duas fases e persiste contexto macro e tasks válidos contra os schemas, em vez de só anunciar |
 | `cr_coder_agent` | `test_coder_entrega_projeto_que_o_executor_aceita` | Lê o contrato da task em disco e deixa em `coder/src` um projeto que o gate do executor aceita, com `README.md` e a `surface` certa no `run.json` |
 | `cr_review_analyzer` | `test_gate_de_cobertura_sobrepoe_o_veredito_do_llm` | Lê o código, sem erro na leitura, antes de opinar e, sem cobertura comprovada, o status sai BLOQUEADO |
 
