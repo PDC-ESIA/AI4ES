@@ -17,10 +17,11 @@ from typing import Optional, Sequence
 from google.adk.evaluation.eval_case import (
     ConversationScenario,
     Invocation,
-    get_all_tool_calls,
+    get_all_tool_calls_with_responses,
 )
 from google.adk.evaluation.eval_metrics import EvalMetric, EvalStatus
 from google.adk.evaluation.evaluator import EvaluationResult, PerInvocationResult
+from google.genai import types as genai_types
 
 _LOG = logging.getLogger(__name__)
 
@@ -42,23 +43,46 @@ CAMINHOS_DAS_FUNCOES = {
 # ---------------------------------------------------------------------------
 
 
-def nomes_das_tools(invocation: Optional[Invocation]) -> list[str]:
-    """Sequência de nomes de tool de uma invocação, na ordem em que ocorreram.
+def _falhou(resposta: Optional[genai_types.FunctionResponse]) -> bool:
+    """O retorno da tool sinaliza erro: `sucesso: False`, ou texto que começa com "Erro".
+
+    O ADK embrulha retorno que não é dict em `{"result": ...}`. Chamada sem retorno
+    registrado não conta como erro.
+    """
+    conteudo = getattr(resposta, "response", None)
+    if not isinstance(conteudo, dict):
+        return False
+    if conteudo.get("sucesso") is False:
+        return True
+    texto = conteudo.get("result")
+    return isinstance(texto, str) and texto.startswith("Erro")
+
+
+def _chamadas(invocation: Optional[Invocation]) -> list[tuple[str, bool]]:
+    """(nome, falhou) de cada chamada de tool de uma invocação, na ordem em que ocorreram.
 
     Lê também o `final_response`, onde o ADK deixa a chamada de um
-    `LongRunningFunctionTool` (ver o ADR 0001).
+    `LongRunningFunctionTool` (ver o ADR 0001); essa chamada não tem retorno.
     """
     if invocation is None:
         return []
 
-    nomes = [
-        chamada.name for chamada in get_all_tool_calls(invocation.intermediate_data)
+    chamadas = [
+        (chamada.name, _falhou(resposta))
+        for chamada, resposta in get_all_tool_calls_with_responses(
+            invocation.intermediate_data
+        )
     ]
     for parte in getattr(invocation.final_response, "parts", None) or []:
         chamada = getattr(parte, "function_call", None)
         if chamada is not None and getattr(chamada, "name", None):
-            nomes.append(chamada.name)
-    return nomes
+            chamadas.append((chamada.name, False))
+    return chamadas
+
+
+def nomes_das_tools(invocation: Optional[Invocation]) -> list[str]:
+    """Nomes das chamadas de tool que não devolveram erro, na ordem em que ocorreram."""
+    return [nome for nome, falhou in _chamadas(invocation) if not falhou]
 
 
 def nomes_das_tools_declaradas(
@@ -145,7 +169,7 @@ def tool_sequence_in_order(
     expected_invocations: Optional[list[Invocation]] = None,
     conversation_scenario: Optional[ConversationScenario] = None,
 ) -> EvaluationResult:
-    """As tools esperadas ocorrem, nesta ordem, tolerando chamadas extras.
+    """As tools esperadas ocorrem, nesta ordem e sem devolver erro, tolerando chamadas extras.
 
     Compara só nomes: a métrica nativa exige argumentos idênticos, e os argumentos dos
     agentes do pipeline são texto livre do LLM.
@@ -171,7 +195,10 @@ def tool_sequence_in_order(
                 "  esperado: %s\n"
                 "  obtido  : %s",
                 nomes_esperados,
-                nomes_obtidos,
+                [
+                    f"{nome} (erro)" if falhou else nome
+                    for nome, falhou in _chamadas(obtida)
+                ],
             )
         resultados.append(_por_invocacao(obtida, esperada, 1.0 if conforme else 0.0))
 
@@ -267,8 +294,9 @@ def registrar_metricas_ai4es() -> list[str]:
 
     descricoes = {
         METRICA_SEQUENCIA_EM_ORDEM: (
-            "Tools esperadas ocorrem na ordem esperada, ignorando argumentos e "
-            "tolerando chamadas extras. 1.0 quando conforme, 0.0 caso contrário."
+            "Tools esperadas ocorrem na ordem esperada e sem erro no retorno, "
+            "ignorando argumentos e tolerando chamadas extras. 1.0 quando conforme, "
+            "0.0 caso contrário."
         ),
         METRICA_CONTRATO_DE_TOOLS: (
             "As tools declaradas ao modelo são exatamente as esperadas, por agente. "

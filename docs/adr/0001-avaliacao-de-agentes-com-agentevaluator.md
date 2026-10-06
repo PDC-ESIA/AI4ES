@@ -28,7 +28,8 @@ a aba Eval da Dev UI, métricas nativas e um ponto de extensão para métricas p
    o agente deixou em disco, conferido pelo próprio teste.
 4. **Métricas próprias onde a nativa não serve**, registradas pelo ponto de extensão oficial:
    `ai4es_tool_sequence_in_order` (nomes de tool em ordem, tolerando extras, porque a nativa
-   exige igualdade exata de argumentos, e os argumentos aqui são texto livre do LLM),
+   exige igualdade exata de argumentos, e os argumentos aqui são texto livre do LLM; chamada
+   que devolveu erro não conta),
    `ai4es_contrato_de_tools` (as tools oferecidas ao modelo) e `ai4es_resposta_contem`.
 5. **As dependências do pacote de avaliação ficam num grupo `eval`** do `pyproject.toml`, fora
    do grupo padrão: `uv run --group eval`.

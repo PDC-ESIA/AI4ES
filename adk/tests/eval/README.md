@@ -30,7 +30,7 @@ LLM, tokens e tempo.
 | `cr_context_engineer` | `test_nao_bloqueia_por_nome_de_arquivo_do_design` | Não bloqueia só porque a análise técnica tem nome fora da convenção |
 | `cr_context_engineer` | `test_caminho_feliz_age_em_vez_de_narrar` | Com requisitos e design completos, lê as duas fases e persiste, em vez de só anunciar |
 | `cr_coder_agent` | `test_coder_entrega_projeto_que_o_executor_aceita` | Lê o contrato da task em disco e deixa em `coder/src` um projeto que o gate do executor aceita, com `README.md` e a `surface` certa no `run.json` |
-| `cr_review_analyzer` | `test_gate_de_cobertura_sobrepoe_o_veredito_do_llm` | Lê o código antes de opinar e, sem cobertura comprovada, o status sai BLOQUEADO |
+| `cr_review_analyzer` | `test_gate_de_cobertura_sobrepoe_o_veredito_do_llm` | Lê o código, sem erro na leitura, antes de opinar e, sem cobertura comprovada, o status sai BLOQUEADO |
 
 O caminho feliz do validador, o protocolo de bloqueio, o coder e o reviewer conferem também
 as tools oferecidas ao modelo: tool removida, renomeada ou acrescentada reprova o caso.
@@ -50,7 +50,7 @@ as tools oferecidas ao modelo: tool removida, renomeada ou acrescentada reprova 
 
 | Métrica | O que mede |
 |---|---|
-| `ai4es_tool_sequence_in_order` | As tools esperadas ocorrem na ordem, tolerando extras; compara só nomes |
+| `ai4es_tool_sequence_in_order` | As tools esperadas ocorrem na ordem, tolerando extras; compara só nomes, e chamada que devolveu erro não conta |
 | `ai4es_contrato_de_tools` | As tools oferecidas ao modelo são exatamente as esperadas |
 | `ai4es_resposta_contem` | Cada linha da resposta esperada aparece na obtida, para respostas só em parte determinísticas |
 

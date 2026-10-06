@@ -9,7 +9,7 @@
       "code_config": {
         "name": "tests.eval.metrics.tool_sequence_in_order"
       },
-      "description": "O reviewer leu ao menos um arquivo do coder antes de opinar."
+      "description": "O reviewer leu ao menos um arquivo do coder, sem erro no retorno, antes de opinar."
     },
     "ai4es_resposta_contem": {
       "code_config": {
