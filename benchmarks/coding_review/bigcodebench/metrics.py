@@ -70,7 +70,10 @@ def load_baseline(path: Path) -> dict | None:
         path = path / "report.json"
     if not path.is_file():
         return None
-    rel = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        rel = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
     p1 = (rel.get("pass_at_k") or {}).get("pass@1")
     if p1 is None:
         return None
