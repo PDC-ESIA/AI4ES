@@ -134,7 +134,11 @@ def _run_once(
         client_timeout=timeout + 120,  # a API só responde ao fim do exec
     )
     try:
-        sandbox.setup(source_dir)
+        from shutil import copytree
+
+        with tempfile.TemporaryDirectory(prefix="ai4se-bcb-source-") as vazio:
+            sandbox.setup(Path(vazio))
+        copytree(source_dir, sandbox.root, dirs_exist_ok=True)
         (sandbox.root / _GRADE_SCRIPT).write_text(programa, encoding="utf-8")
         res = sandbox.exec(f"python {_GRADE_SCRIPT}", timeout=timeout, env=_SANDBOX_ENV)
 
