@@ -49,6 +49,11 @@ DEFAULT_DATASET_URL = (
     "master/mbpp/sanitized-mbpp.json"
 )
 
+# Splits do MBPP definidos no paper original (Austin et al., 2021) por faixa de
+# task_id. "test" (11–510) é o split reportado na literatura: 257 dos 427
+# problemas da versão sanitized.
+SPLITS: dict[str, tuple[int, int] | None] = {"all": None, "test": (11, 510)}
+
 
 @dataclass(frozen=True)
 class MbppProblem:
@@ -152,6 +157,7 @@ def load_problems(
     url: str = DEFAULT_DATASET_URL,
     limit: int | None = None,
     task_ids: list[str] | None = None,
+    split: str = "all",
 ) -> list[MbppProblem]:
     """Carrega os problemas do MBPP a partir do `.json` (baixa se preciso).
 
@@ -159,6 +165,7 @@ def load_problems(
         dataset_path: caminho local do dataset.
         url: origem do download (quando ausente localmente).
         limit: se informado, retorna no máximo os `limit` primeiros problemas.
+        split: chave de `SPLITS`; aplicado antes de `task_ids` e `limit`.
         task_ids: se informado, filtra apenas os `task_id` desta lista
             (aceita ``"Mbpp/2"``, o slug ``"Mbpp_2"`` ou o id bruto ``"2"``).
 
@@ -166,6 +173,10 @@ def load_problems(
         Lista de `MbppProblem` na ordem do dataset. Problemas cujo
         entry_point não pôde ser derivado são omitidos (com aviso).
     """
+    if split not in SPLITS:
+        raise ValueError(f"Split desconhecido: {split!r} (use um de {list(SPLITS)}).")
+    faixa = SPLITS[split]
+
     ensure_dataset(dataset_path, url=url)
 
     raw = json.loads(dataset_path.read_text(encoding="utf-8"))
@@ -173,6 +184,8 @@ def load_problems(
     problemas: list[MbppProblem] = []
     for item in raw:
         raw_id = item["task_id"]
+        if faixa and not faixa[0] <= raw_id <= faixa[1]:
+            continue
         code = item.get("code", "")
         test_list = item.get("test_list", [])
 

@@ -109,6 +109,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "problemas já concluídos (lidos de progress.jsonl) e completa o resto."
         ),
     )
+    p.add_argument(
+        "--lean",
+        action="store_true",
+        help=(
+            "Modo enxuto: o coder grava só o solution.py, sem PLAN.md, README.md "
+            "e run.json (menos turnos e tokens; difere do fluxo real do coder)."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -164,7 +172,7 @@ def _sanitizar_componente(valor: str) -> str:
 def _construir_nome_run(args: argparse.Namespace, timestamp: str) -> str:
     """Monta um nome de diretório descritivo a partir dos parâmetros do run.
 
-    Formato: ``run_<timestamp>_<modelo>_n<samples>_k<k>[_lim<limit>]``.
+    Formato: ``run_<timestamp>_<modelo>_n<samples>_k<k>[_lim<limit>][_lean]``.
     O modelo é sanitizado para remover barras e caracteres inseguros.
     """
     modelo = _sanitizar_componente(args.model)
@@ -177,6 +185,8 @@ def _construir_nome_run(args: argparse.Namespace, timestamp: str) -> str:
     ]
     if args.limit is not None:
         partes.append(f"lim{args.limit}")
+    if args.lean:
+        partes.append("lean")
     return "_".join(partes)
 
 
@@ -206,6 +216,38 @@ def _append_progresso(progress_path: Path, detalhe: dict) -> None:
     with progress_path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(detalhe, ensure_ascii=False) + "\n")
         fh.flush()
+
+
+_CAMPOS_USO = (
+    "llm_interactions",
+    "prompt_tokens",
+    "completion_tokens",
+    "cached_tokens",
+    "reasoning_tokens",
+)
+
+
+def _agregar_uso(detalhes: list[dict]) -> dict:
+    """Soma a telemetria de uso do LLM de todas as amostras de todos os problemas.
+
+    Inclui amostras reaproveitadas do checkpoint; as gravadas antes da coleta de
+    `cached_tokens`/`reasoning_tokens` contam como 0 nesses campos.
+    """
+    total = dict.fromkeys(_CAMPOS_USO, 0)
+    for p in detalhes:
+        for s in p.get("samples", []):
+            for campo in _CAMPOS_USO:
+                total[campo] += s.get(campo, 0) or 0
+    prompt = total["prompt_tokens"]
+    return {
+        "total_llm_interactions": total["llm_interactions"],
+        "total_prompt_tokens": prompt,
+        "total_completion_tokens": total["completion_tokens"],
+        "total_tokens": prompt + total["completion_tokens"],
+        "total_cached_tokens": total["cached_tokens"],
+        "total_reasoning_tokens": total["reasoning_tokens"],
+        "cache_hit_ratio": round(total["cached_tokens"] / prompt, 4) if prompt else 0.0,
+    }
 
 
 async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict:
@@ -253,14 +295,12 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
         amostras_info: list[dict] = []
         for amostra in range(args.samples):
             t0 = time.time()
-            geracao = await coder_runner.run_coder(problema, model=model)
+            geracao = await coder_runner.run_coder(
+                problema, model=model, lean=args.lean
+            )
 
             # Telemetria de uso do LLM, coletada em qualquer desfecho da geração.
-            telemetria = {
-                "llm_interactions": geracao.llm_interactions,
-                "prompt_tokens": geracao.prompt_tokens,
-                "completion_tokens": geracao.completion_tokens,
-            }
+            telemetria = {campo: getattr(geracao, campo) for campo in _CAMPOS_USO}
 
             if geracao.error:
                 resultado = {
@@ -328,31 +368,14 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
 
     metricas = aggregate_pass_at_k(per_problem, args.k)
 
-    # Agrega telemetria de uso do LLM sobre todas as amostras de todos os
-    # problemas (inclui resultados reaproveitados do checkpoint, se presentes).
-    total_prompt_tokens = 0
-    total_completion_tokens = 0
-    total_llm_interactions = 0
-    for p in detalhes:
-        for s in p.get("samples", []):
-            total_prompt_tokens += s.get("prompt_tokens", 0) or 0
-            total_completion_tokens += s.get("completion_tokens", 0) or 0
-            total_llm_interactions += s.get("llm_interactions", 0) or 0
-
-    usage_metrics = {
-        "total_llm_interactions": total_llm_interactions,
-        "total_prompt_tokens": total_prompt_tokens,
-        "total_completion_tokens": total_completion_tokens,
-        "total_tokens": total_prompt_tokens + total_completion_tokens,
-    }
-
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model": model,
         "num_problems": len(problemas),
         "samples_per_problem": args.samples,
+        "lean": args.lean,
         "pass_at_k": {f"pass@{k}": round(v, 4) for k, v in metricas.items()},
-        "usage_metrics": usage_metrics,
+        "usage_metrics": _agregar_uso(detalhes),
         "problems": detalhes,
     }
 
@@ -372,6 +395,7 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         f"- **Modelo:** {relatorio['model']}",
         f"- **Problemas:** {relatorio['num_problems']}",
         f"- **Amostras/problema:** {relatorio['samples_per_problem']}",
+        f"- **Modo:** {'enxuto (só solution.py)' if relatorio.get('lean') else 'completo'}",
         "",
         "## Métricas",
         "",
@@ -391,7 +415,10 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
             f"- **Tempo total de execução:** {usage.get('total_duration_s', 0.0):.2f}s",
             f"- **Total de interações com LLM:** {usage.get('total_llm_interactions', 0)}",
             f"- **Total de tokens de entrada (prompt):** {usage.get('total_prompt_tokens', 0)}",
+            f"- **Tokens de entrada servidos do cache:** {usage.get('total_cached_tokens', 0)} "
+            f"({usage.get('cache_hit_ratio', 0.0) * 100:.1f}% da entrada)",
             f"- **Total de tokens de saída (completion):** {usage.get('total_completion_tokens', 0)}",
+            f"- **Tokens de raciocínio (contidos na saída):** {usage.get('total_reasoning_tokens', 0)}",
             f"- **Total de tokens:** {usage.get('total_tokens', 0)}",
         ]
 
@@ -422,6 +449,7 @@ def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace) -> None
         "samples": args.samples,
         "k": sorted(args.k) if args.k else [1],
         "timeout": args.timeout,
+        "lean": args.lean,
     }
 
     if config_path.is_file():
@@ -452,6 +480,12 @@ def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace) -> None
             raise ValueError(
                 f"Erro: O parâmetro '--timeout' ({params_atuais['timeout']}) difere do "
                 f"timeout original ({params_salvos.get('timeout')})."
+            )
+        # Runs anteriores ao modo enxuto não gravavam a chave: eram completos.
+        if params_salvos.get("lean", False) != params_atuais["lean"]:
+            raise ValueError(
+                f"Erro: O parâmetro '--lean' ({params_atuais['lean']}) difere do "
+                f"modo original ({params_salvos.get('lean', False)})."
             )
     else:
         # Backward compatibility / Migração retroativa: tenta validar lendo progress.jsonl ou report.json
@@ -508,6 +542,12 @@ def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace) -> None
                             f"métricas pass@k originais ({k_salvo}) encontradas em report.json."
                         )
 
+        if (progress_path.is_file() or report_path.is_file()) and params_atuais["lean"]:
+            raise ValueError(
+                "Erro: runs sem metadata.json são anteriores a '--lean' e só podem "
+                "ser retomados no modo completo."
+            )
+
         # Se passou na validação retroativa ou se é uma pasta nova, persiste o metadata.json
         run_dir.mkdir(parents=True, exist_ok=True)
         config_path.write_text(
@@ -562,7 +602,8 @@ def main(argv: list[str] | None = None) -> int:
             f"Tempo total: {usage.get('total_duration_s', 0.0):.2f}s | "
             f"Interações LLM: {usage.get('total_llm_interactions', 0)} | "
             f"Tokens (in/out/total): {usage.get('total_prompt_tokens', 0)}/"
-            f"{usage.get('total_completion_tokens', 0)}/{usage.get('total_tokens', 0)}"
+            f"{usage.get('total_completion_tokens', 0)}/{usage.get('total_tokens', 0)} | "
+            f"Cache: {usage.get('cache_hit_ratio', 0.0) * 100:.1f}% da entrada"
         )
     print(f"Relatório JSON: {json_path}")
     print(f"Resumo Markdown: {md_path}")

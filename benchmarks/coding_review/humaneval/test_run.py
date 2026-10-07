@@ -31,6 +31,7 @@ def test_validar_e_persistir_config_new_run(tmp_path):
         samples=3,
         k=[1, 2],
         timeout=45,
+        lean=False,
     )
     run._validar_e_persistir_config(tmp_path, args)
 
@@ -60,6 +61,7 @@ def test_validar_e_persistir_config_resume_valid(tmp_path):
         samples=3,
         k=[1, 2],
         timeout=45,
+        lean=False,
     )
     # Should not raise any exception
     run._validar_e_persistir_config(tmp_path, args)
@@ -96,6 +98,7 @@ def test_validar_e_persistir_config_resume_mismatch(
         samples=3,
         k=[1, 2],
         timeout=45,
+        lean=False,
     )
     setattr(args, param_name, new_val)
 
@@ -113,6 +116,7 @@ def test_validar_e_persistir_config_mangled_metadata_json(tmp_path):
         samples=3,
         k=[1],
         timeout=45,
+        lean=False,
     )
     with pytest.raises(ValueError, match="Erro ao ler metadata.json"):
         run._validar_e_persistir_config(tmp_path, args)
@@ -128,6 +132,7 @@ def test_validar_e_persistir_config_retro_migration_progress_mismatch(tmp_path):
         samples=3,
         k=[1],
         timeout=45,
+        lean=False,
     )
     with pytest.raises(
         ValueError,
@@ -148,6 +153,7 @@ def test_validar_e_persistir_config_retro_migration_report_model_mismatch(tmp_pa
         samples=1,
         k=[1],
         timeout=45,
+        lean=False,
     )
     with pytest.raises(
         ValueError, match="modelo original \\(gpt-4\\) encontrado em report.json"
@@ -168,6 +174,7 @@ def test_validar_e_persistir_config_retro_migration_report_k_mismatch(tmp_path):
         samples=1,
         k=[1],
         timeout=45,
+        lean=False,
     )
     with pytest.raises(
         ValueError,
@@ -192,6 +199,7 @@ def test_validar_e_persistir_config_retro_migration_success(tmp_path):
         samples=3,
         k=[1, 2],
         timeout=45,
+        lean=False,
     )
     run._validar_e_persistir_config(tmp_path, args)
 
@@ -228,6 +236,7 @@ def test_construir_nome_run_basico():
         samples=3,
         k=[2, 1],
         limit=None,
+        lean=False,
     )
     nome = run._construir_nome_run(args, "20260822_120000")
     assert nome == "run_20260822_120000_github_copilot-gpt-4_n3_k1-2"
@@ -240,6 +249,7 @@ def test_construir_nome_run_com_limit():
         samples=1,
         k=[1],
         limit=5,
+        lean=False,
     )
     nome = run._construir_nome_run(args, "20260822_120000")
     assert nome == "run_20260822_120000_gpt-4_n1_k1_lim5"
@@ -252,6 +262,7 @@ def test_construir_nome_run_k_vazio():
         samples=2,
         k=[],
         limit=None,
+        lean=False,
     )
     nome = run._construir_nome_run(args, "20260822_120000")
     assert nome == "run_20260822_120000_gpt-4_n2_k1"
@@ -295,3 +306,72 @@ def test_main_happy_path(
     mock_preflight.assert_called_once_with("gpt-4")
     mock_executar.assert_called_once()
     mock_persistir.assert_called_once()
+
+
+def _ns(**kw):
+    base = dict(model="gpt-4", samples=1, k=[1], timeout=45, limit=None, lean=False)
+    base.update(kw)
+    return argparse.Namespace(**base)
+
+
+def test_parse_args_lean_flag():
+    assert run._parse_args(["--model", "m"]).lean is False
+    assert run._parse_args(["--model", "m", "--lean"]).lean is True
+
+
+def test_construir_nome_run_lean():
+    nome = run._construir_nome_run(_ns(lean=True, limit=5), "20261007_120000")
+    assert nome == "run_20261007_120000_gpt-4_n1_k1_lim5_lean"
+
+
+def test_resume_lean_mismatch_raises(tmp_path):
+    run._validar_e_persistir_config(tmp_path, _ns(lean=True))
+    with pytest.raises(ValueError, match="'--lean' \\(False\\) difere do modo original \\(True\\)"):
+        run._validar_e_persistir_config(tmp_path, _ns(lean=False))
+
+
+def test_resume_old_metadata_without_lean_is_complete_mode(tmp_path):
+    """metadata.json gravado antes do --lean equivale ao modo completo."""
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"model": "gpt-4", "samples": 1, "k": [1], "timeout": 45}),
+        encoding="utf-8",
+    )
+    run._validar_e_persistir_config(tmp_path, _ns())
+    with pytest.raises(ValueError, match="'--lean'"):
+        run._validar_e_persistir_config(tmp_path, _ns(lean=True))
+
+
+def test_retro_migration_rejects_lean(tmp_path):
+    (tmp_path / "progress.jsonl").write_text(json.dumps({"n": 1}) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="sem metadata.json"):
+        run._validar_e_persistir_config(tmp_path, _ns(lean=True))
+    assert not (tmp_path / "metadata.json").exists()
+
+
+def test_agregar_uso_soma_cache_e_raciocinio():
+    detalhes = [
+        {"samples": [
+            {"llm_interactions": 2, "prompt_tokens": 1000, "completion_tokens": 100,
+             "cached_tokens": 800, "reasoning_tokens": 40},
+            # Amostra gravada antes da coleta de cache/raciocínio.
+            {"llm_interactions": 1, "prompt_tokens": 1000, "completion_tokens": 50},
+        ]},
+        {"samples": [
+            {"llm_interactions": 3, "prompt_tokens": 2000, "completion_tokens": 150,
+             "cached_tokens": 1600, "reasoning_tokens": 0},
+        ]},
+    ]
+    uso = run._agregar_uso(detalhes)
+    assert uso == {
+        "total_llm_interactions": 6,
+        "total_prompt_tokens": 4000,
+        "total_completion_tokens": 300,
+        "total_tokens": 4300,
+        "total_cached_tokens": 2400,
+        "total_reasoning_tokens": 40,
+        "cache_hit_ratio": 0.6,
+    }
+
+
+def test_agregar_uso_vazio():
+    assert run._agregar_uso([])["cache_hit_ratio"] == 0.0

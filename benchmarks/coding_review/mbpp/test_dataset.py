@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from benchmarks.coding_review.mbpp.dataset import (
     MbppProblem,
     _derive_entry_point,
@@ -105,3 +107,41 @@ def test_load_problems_filters_by_task_ids(tmp_path):
 
     problemas = load_problems(dataset_path, task_ids=["Mbpp/2"])
     assert [p.task_id for p in problemas] == ["Mbpp/2"]
+
+
+def _fixture_ids(tmp_path, ids):
+    fixture = [
+        {
+            "task_id": i,
+            "prompt": f"p{i}",
+            "code": f"def f{i}():\n    return 1\n",
+            "test_imports": [],
+            "test_list": [f"assert f{i}() == 1"],
+        }
+        for i in ids
+    ]
+    path = tmp_path / "sanitized-mbpp.json"
+    path.write_text(json.dumps(fixture), encoding="utf-8")
+    return path
+
+
+def test_load_problems_split_test_usa_faixa_do_paper(tmp_path):
+    """O split 'test' é task_id 11–510, inclusivo nas duas pontas."""
+    path = _fixture_ids(tmp_path, [2, 10, 11, 300, 510, 511, 700])
+    assert [p.task_id for p in load_problems(path, split="test")] == [
+        "Mbpp/11", "Mbpp/300", "Mbpp/510",
+    ]
+    assert len(load_problems(path)) == 7
+
+
+def test_load_problems_split_antes_de_limit(tmp_path):
+    path = _fixture_ids(tmp_path, [2, 3, 11, 12, 13])
+    assert [p.task_id for p in load_problems(path, split="test", limit=2)] == [
+        "Mbpp/11", "Mbpp/12",
+    ]
+
+
+def test_load_problems_split_desconhecido(tmp_path):
+    path = _fixture_ids(tmp_path, [11])
+    with pytest.raises(ValueError, match="Split desconhecido"):
+        load_problems(path, split="train")
