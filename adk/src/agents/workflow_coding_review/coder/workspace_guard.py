@@ -308,3 +308,108 @@ def auditar_remocao(tool, args, tool_context, tool_response) -> None:
             tool_context.state[CHAVE_ARQUIVOS_HERDADOS] = restante
 
     return None
+
+# ---------------------------------------------------------------------------
+# Escopo da task (modo contexto enxuto)
+# ---------------------------------------------------------------------------
+NOME_TOOL_CRIACAO = "tool_criar_arquivo"
+CHAVE_TASK_ATUAL = "current_task"
+CODIGO_FORA_DO_ESCOPO = "FORA_DO_ESCOPO_DA_TASK"
+
+# Arquivos de suporte que qualquer task pode precisar criar sem estarem nos
+# `contract.outputs`: testes, manifestos de build/execução e pacotes.
+_NOMES_DE_SUPORTE = frozenset(
+    {
+        "run.json",
+        "README.md",
+        "PLAN.md",
+        "requirements.txt",
+        "requirements-dev.txt",
+        "pyproject.toml",
+        "package.json",
+        "go.mod",
+        "pom.xml",
+        "build.gradle",
+        "conftest.py",
+        "__init__.py",
+        ".gitignore",
+    }
+)
+_PASTAS_DE_SUPORTE = frozenset({"tests", "test", "__tests__"})
+
+
+def _outputs_da_task_atual(state: Any) -> list[str] | None:
+    """`contract.outputs` da task corrente, ou None fora do modo enxuto."""
+    import json
+
+    bruto = state.get(CHAVE_TASK_ATUAL) if state is not None else None
+    if not isinstance(bruto, str) or not bruto.strip():
+        return None
+    try:
+        dados = json.loads(bruto)
+    except ValueError:
+        return None
+    contrato = ((dados or {}).get("task") or {}).get("contract") or {}
+    outputs = contrato.get("outputs")
+    if not isinstance(outputs, list):
+        return None
+    normalizados = []
+    for item in outputs:
+        caminho = _normalizar_caminho(item)
+        if caminho is None:
+            continue
+        # O contexto engineer às vezes cita o caminho a partir do workspace
+        # compartilhado (`coder/src/app/x.py`); o coder escreve relativo a src.
+        if caminho.startswith("coder/src/"):
+            caminho = caminho[len("coder/src/"):]
+        normalizados.append(caminho.rstrip("/"))
+    return normalizados
+
+
+def _e_suporte(caminho: str) -> bool:
+    partes = PurePosixPath(caminho).parts
+    nome = partes[-1]
+    return (
+        nome in _NOMES_DE_SUPORTE
+        or nome.startswith("test_")
+        or nome.endswith("_test.py")
+        or any(p in _PASTAS_DE_SUPORTE for p in partes[:-1])
+    )
+
+
+def _no_contrato(caminho: str, outputs: list[str]) -> bool:
+    """Arquivo listado, ou dentro de uma pasta listada como output."""
+    return any(caminho == o or caminho.startswith(o + "/") for o in outputs)
+
+
+def avisar_fora_do_escopo(tool, args, tool_context, tool_response):
+    """Anexa um aviso quando o coder cria arquivo fora do contrato da task.
+
+    Não bloqueia: o contrato pode ter esquecido um arquivo legítimo. O aviso
+    usa o mesmo canal de `anunciar_arquivos_herdados` — a resposta da tool —,
+    ao qual o coder reage de forma confiável. Só atua com `current_task` no
+    state (TaskIterator em modo contexto enxuto).
+    """
+    if getattr(tool, "name", None) != NOME_TOOL_CRIACAO:
+        return None
+    if not isinstance(tool_response, dict) or tool_response.get("sucesso") is not True:
+        return None
+    outputs = _outputs_da_task_atual(tool_context.state)
+    if not outputs:
+        return None
+    caminho = _normalizar_caminho(args.get("caminho") if isinstance(args, dict) else None)
+    if caminho is None or _e_suporte(caminho) or _no_contrato(caminho, outputs):
+        return None
+
+    task_id = tool_context.state.get("task_id") or "sem_task"
+    logger.warning("[CODER][%s] arquivo fora do contrato da task: '%s'", task_id, caminho)
+    return {
+        **tool_response,
+        "aviso": CODIGO_FORA_DO_ESCOPO,
+        "mensagem_aviso": (
+            f"'{caminho}' não está nos contract.outputs da {task_id} "
+            f"({', '.join(outputs)}). Se ele implementa funcionalidade de OUTRA "
+            "task, pare: ela terá a sua vez. Se é suporte indispensável a esta "
+            "task, siga."
+        ),
+    }

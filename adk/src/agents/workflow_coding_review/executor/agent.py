@@ -45,6 +45,7 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
+from shared.pipeline_flags import coder_contexto_enxuto
 from shared.execution.verificador_executabilidade import verificar_executabilidade
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
 from shared.workspace import get_agent_workspace
@@ -565,6 +566,10 @@ agent = LlmAgent(
     description=executor_prompt.description,
     instruction=executor_prompt.instruction,
     output_key="execution_result",
+    # Contexto enxuto: o executor não depende de histórico (task_id vem do
+    # state, a decisão de parada é dos callbacks); vê só a última mensagem do
+    # coder e as próprias chamadas desta rodada.
+    include_contents="none" if coder_contexto_enxuto() else "default",
     generate_content_config=types.GenerateContentConfig(
         max_output_tokens=8192,
     ),

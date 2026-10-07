@@ -236,3 +236,58 @@ def test_saida_gemini_soma_raciocinio_separado():
     bind_stage(usage, "design_pipeline")
     _call(plugin, _resp(1000, 100, thoughts=200, total=1300))
     assert usage.stages["design"] == {"input": 1000, "output": 300}
+
+
+def _resp_cache(prompt, cand, cached):
+    meta = SimpleNamespace(
+        prompt_token_count=prompt,
+        candidates_token_count=cand,
+        thoughts_token_count=None,
+        total_token_count=prompt + cand,
+        cached_content_token_count=cached,
+    )
+    return SimpleNamespace(usage_metadata=meta, partial=False)
+
+
+def test_plugin_conta_entrada_em_cache_por_workflow_e_agente():
+    usage, plugin = TokenUsage(), TokenUsagePlugin()
+    bind_stage(usage, "coding_review_pipeline")
+    ctx = SimpleNamespace(agent_name="cr_coder_agent")
+    for resp in (_resp_cache(1000, 10, 800), _resp_cache(500, 5, 0)):
+        asyncio.run(plugin.after_model_callback(callback_context=ctx, llm_response=resp))
+    assert usage.stages["coder_reviewer"] == {"input": 1500, "output": 15, "cached": 800}
+    assert usage.agents["coder_reviewer"]["cr_coder_agent"]["cached"] == 800
+    assert usage.snapshot()["current_run"]["total"] == {
+        "input": 1500,
+        "output": 15,
+        "cached": 800,
+    }
+
+
+def test_sem_cache_o_formato_serializado_nao_muda():
+    usage = TokenUsage()
+    usage.add("qa", 10, 1, agent="qa_agent")
+    assert usage.to_dict() == {"qa": {"input": 10, "output": 1}}
+    assert usage.agents_dict() == {"qa": {"qa_agent": {"input": 10, "output": 1, "calls": 1}}}
+    assert usage.snapshot()["current_run"]["total"] == {"input": 10, "output": 1}
+
+
+def test_cache_sobrevive_ao_roundtrip_e_ao_merge():
+    a = TokenUsage()
+    a.add("design", 100, 1, agent="x", cached_tokens=60)
+    b = TokenUsage.from_dict(a.to_dict(), a.agents_dict())
+    b.merge(a)
+    assert b.stages["design"]["cached"] == 120
+    assert b.agents["design"]["x"]["cached"] == 120
+
+
+def test_record_litellm_response_le_cached_tokens():
+    from shared.token_usage import record_litellm_response
+
+    usage = TokenUsage()
+    bind_stage(usage, "qa_pipeline")
+    record_litellm_response(
+        {"usage": {"prompt_tokens": 40, "completion_tokens": 2,
+                   "prompt_tokens_details": {"cached_tokens": 32}}}
+    )
+    assert usage.stages["qa"] == {"input": 40, "output": 2, "cached": 32}

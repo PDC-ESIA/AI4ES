@@ -16,7 +16,9 @@ Chamadas LLM que não passam pelo ADK precisam registrar explicitamente:
 devem propagar o contexto (``contextvars.copy_context().run``).
 
 Além do total por workflow, o acumulador guarda o consumo por agente
-(entrada/saída/chamadas). Opcionalmente (``persist_path``) grava um snapshot
+(entrada/saída/chamadas). A entrada servida do cache do provider (``cached``)
+é um subconjunto da entrada, contada à parte porque custa uma fração do preço;
+só aparece na serialização quando há cache, para não mudar o formato antigo. Opcionalmente (``persist_path``) grava um snapshot
 JSON a cada chamada — ver ``shared.pipeline_flags``.
 """
 
@@ -53,6 +55,19 @@ def _empty() -> dict[str, int]:
     return {"input": 0, "output": 0}
 
 
+def _add_cached(bucket: dict[str, int], cached_tokens: int) -> None:
+    if cached_tokens:
+        bucket["cached"] = bucket.get("cached", 0) + cached_tokens
+
+
+def _with_cached(bucket: dict[str, int]) -> dict[str, int]:
+    """Cópia serializável: ``cached`` só entra quando houve cache."""
+    out = dict(bucket)
+    if not out.get("cached"):
+        out.pop("cached", None)
+    return out
+
+
 class TokenUsage:
     """Acumulador de tokens de entrada/saída por workflow e por agente."""
 
@@ -62,16 +77,25 @@ class TokenUsage:
         agents: Optional[dict[str, dict[str, dict[str, int]]]] = None,
     ):
         self.stages: dict[str, dict[str, int]] = {
-            k: {"input": int(v.get("input", 0)), "output": int(v.get("output", 0))}
+            k: _with_cached(
+                {
+                    "input": int(v.get("input", 0)),
+                    "output": int(v.get("output", 0)),
+                    "cached": int(v.get("cached", 0)),
+                }
+            )
             for k, v in (stages or {}).items()
         }
         self.agents: dict[str, dict[str, dict[str, int]]] = {
             stage: {
-                name: {
-                    "input": int(v.get("input", 0)),
-                    "output": int(v.get("output", 0)),
-                    "calls": int(v.get("calls", 0)),
-                }
+                name: _with_cached(
+                    {
+                        "input": int(v.get("input", 0)),
+                        "output": int(v.get("output", 0)),
+                        "calls": int(v.get("calls", 0)),
+                        "cached": int(v.get("cached", 0)),
+                    }
+                )
                 for name, v in by_agent.items()
             }
             for stage, by_agent in (agents or {}).items()
@@ -87,11 +111,13 @@ class TokenUsage:
         input_tokens: int,
         output_tokens: int,
         agent: Optional[str] = None,
+        cached_tokens: int = 0,
     ) -> None:
         with self._lock:
             bucket = self.stages.setdefault(stage, _empty())
             bucket["input"] += input_tokens
             bucket["output"] += output_tokens
+            _add_cached(bucket, cached_tokens)
             if agent:
                 a = self.agents.setdefault(stage, {}).setdefault(
                     agent, {"input": 0, "output": 0, "calls": 0}
@@ -99,6 +125,7 @@ class TokenUsage:
                 a["input"] += input_tokens
                 a["output"] += output_tokens
                 a["calls"] += 1
+                _add_cached(a, cached_tokens)
         if self.persist_path is not None:
             self.write_snapshot()
 
@@ -108,6 +135,7 @@ class TokenUsage:
             b = self.stages.setdefault(stage, _empty())
             b["input"] += v["input"]
             b["output"] += v["output"]
+            _add_cached(b, v.get("cached", 0))
         for stage, by_agent in other.agents.items():
             for name, v in by_agent.items():
                 a = self.agents.setdefault(stage, {}).setdefault(
@@ -115,6 +143,7 @@ class TokenUsage:
                 )
                 for k in ("input", "output", "calls"):
                     a[k] += v[k]
+                _add_cached(a, v.get("cached", 0))
         return self
 
     @property
@@ -125,11 +154,18 @@ class TokenUsage:
     def total_output(self) -> int:
         return sum(s["output"] for s in self.stages.values())
 
+    @property
+    def total_cached(self) -> int:
+        return sum(s.get("cached", 0) for s in self.stages.values())
+
     def to_dict(self) -> dict[str, dict[str, int]]:
-        return {k: dict(v) for k, v in self.stages.items()}
+        return {k: _with_cached(v) for k, v in self.stages.items()}
 
     def agents_dict(self) -> dict[str, dict[str, dict[str, int]]]:
-        return {s: {n: dict(v) for n, v in a.items()} for s, a in self.agents.items()}
+        return {
+            s: {n: _with_cached(v) for n, v in a.items()}
+            for s, a in self.agents.items()
+        }
 
     @classmethod
     def from_dict(
@@ -146,7 +182,13 @@ class TokenUsage:
             "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             **self.persist_meta,
             "current_run": {
-                "total": {"input": self.total_input, "output": self.total_output},
+                "total": _with_cached(
+                    {
+                        "input": self.total_input,
+                        "output": self.total_output,
+                        "cached": self.total_cached,
+                    }
+                ),
                 "workflows": self.to_dict(),
                 "agents": self.agents_dict(),
             },
@@ -280,14 +322,23 @@ def _output_tokens(meta: Any) -> int:
 
 
 def record_usage(
-    input_tokens: int, output_tokens: int, agent: Optional[str] = None
+    input_tokens: int,
+    output_tokens: int,
+    agent: Optional[str] = None,
+    cached_tokens: int = 0,
 ) -> None:
     """Soma tokens no workflow corrente; no-op fora de uma execução do orchestrator."""
     bound = _current.get()
     if bound is None:
         return
     usage, stage = bound
-    usage.add(stage, input_tokens or 0, output_tokens or 0, agent=agent)
+    usage.add(
+        stage,
+        input_tokens or 0,
+        output_tokens or 0,
+        agent=agent,
+        cached_tokens=cached_tokens or 0,
+    )
 
 
 def record_litellm_response(response: Any, agent: str = AGENT_LITELLM) -> None:
@@ -298,7 +349,17 @@ def record_litellm_response(response: Any, agent: str = AGENT_LITELLM) -> None:
     if usage is None:
         return
     get = usage.get if isinstance(usage, dict) else (lambda k: getattr(usage, k, 0))
-    record_usage(get("prompt_tokens") or 0, get("completion_tokens") or 0, agent=agent)
+    details = get("prompt_tokens_details")
+    if isinstance(details, dict):
+        cached = details.get("cached_tokens") or 0
+    else:
+        cached = getattr(details, "cached_tokens", 0) or 0
+    record_usage(
+        get("prompt_tokens") or 0,
+        get("completion_tokens") or 0,
+        agent=agent,
+        cached_tokens=cached if isinstance(cached, int) else 0,
+    )
 
 
 def instrument_genai_client(client: Any, agent: str = AGENT_MEM0) -> None:
@@ -317,7 +378,12 @@ def instrument_genai_client(client: Any, agent: str = AGENT_MEM0) -> None:
         response = original(*args, **kwargs)
         meta = getattr(response, "usage_metadata", None)
         if meta is not None:
-            record_usage(meta.prompt_token_count or 0, _output_tokens(meta), agent=agent)
+            record_usage(
+                meta.prompt_token_count or 0,
+                _output_tokens(meta),
+                agent=agent,
+                cached_tokens=getattr(meta, "cached_content_token_count", 0) or 0,
+            )
         return response
 
     generate_content._token_usage_wrapped = True
@@ -339,6 +405,7 @@ class TokenUsagePlugin(BasePlugin):
             meta.prompt_token_count or 0,
             _output_tokens(meta),
             agent=getattr(callback_context, "agent_name", None),
+            cached_tokens=getattr(meta, "cached_content_token_count", 0) or 0,
         )
         return None
 

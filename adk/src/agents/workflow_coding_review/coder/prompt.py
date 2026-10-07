@@ -606,13 +606,93 @@ você tem permissão de fazer, e prevalece sobre qualquer outra seção.
 """
 
 
-def build_instruction(coder_ws: str) -> str:
-    """Compõe a instrução final do coder para o workspace informado."""
-    return (
+# ---------------------------------------------------------------------------
+# Modo contexto enxuto (`AI4ES_CODER_CONTEXTO_ENXUTO`), usado só quando o
+# TaskIterator publica `current_task`. O coder deixa de receber o histórico do
+# branch (include_contents='none') e, com ele, a resposta do context_engineer:
+# stack, produto e contrato chegam pela seção TASK ATUAL. E o escopo muda de
+# "o projeto COMPLETO" para "a task atual" — na run do fotógrafo a TASK-001
+# criou 27 arquivos de todas as funcionalidades, e as demais viraram remendos.
+#
+# NÃO passa por `.format()`: `{current_task?}` chega literal ao templating de
+# state do ADK.
+# ---------------------------------------------------------------------------
+_SECAO_TASK_ATUAL = """# TASK ATUAL — A ÚNICA QUE VOCÊ IMPLEMENTA AGORA
+
+```json
+{current_task?}
+```
+
+- `macro_context` traz a `tech_stack`, o `product_type` e as `global_rules` do
+  projeto inteiro; `task` traz o contrato desta task (critérios de aceite,
+  `contract.outputs`, `contract.interfaces`).
+- Escreva os `contract.outputs` desta task e o que eles exigem para rodar.
+  Arquivos fora de `contract.outputs` só como SUPORTE: testes, `run.json`,
+  manifesto de dependências, `README.md`, `PLAN.md`, `__init__`/`conftest`.
+- NÃO implemente funcionalidades de outras tasks: cada uma terá a sua vez, com
+  os próprios critérios de aceite.
+
+"""
+
+# (trecho do texto histórico, substituto no modo enxuto) — cada âncora precisa
+# existir: `build_instruction` falha alto se o texto base mudar sem este mapa.
+_SUBSTITUICOES_ENXUTO = (
+    (
+        "Sua primeira ação é criar o `PLAN.md` e, em seguida, implementar o projeto.",
+        "Sua primeira ação é criar o `PLAN.md` e, em seguida, implementar a TASK ATUAL.",
+    ),
+    (
+        "DEPOIS implemente o projeto COMPLETO seguindo esse plano e as regras abaixo.",
+        "DEPOIS implemente a TASK ATUAL seguindo esse plano e as regras abaixo — "
+        "não as outras tasks.",
+    ),
+    (
+        "PRIMEIRO e só depois a implementação completa.",
+        "PRIMEIRO e só depois a implementação da TASK ATUAL.",
+    ),
+    (
+        "contrato que você recebeu no histórico desta sessão (a saída do agente de\n"
+        "   contexto, logo antes de você).",
+        "`macro_context` da seção TASK ATUAL.",
+    ),
+    (
+        "2. CONTRATOS POR TASK: leia-os do disco —\n"
+        "   `tool_listar_workspace(\"coder/tasks\")` e depois\n"
+        "   `tool_ler_workspace(\"coder/tasks/TASK-XXX.json\")` para cada task.\n"
+        "   Se a listagem falhar OU os arquivos divergirem das tasks que você viu no\n"
+        "   histórico, use as tasks do histórico (é a fonte que sempre existe).",
+        "2. CONTRATOS POR TASK: a task que você implementa agora é a da seção TASK\n"
+        "   ATUAL. Para o PLAN.md (visão do projeto inteiro) você pode listar as\n"
+        "   demais com `tool_listar_workspace(\"coder/tasks\")` e lê-las com\n"
+        "   `tool_ler_workspace`, mas NÃO as implemente agora.",
+    ),
+    (
+        "Você DEVE implementar o projeto COMPLETO em uma única sessão. Isso inclui:",
+        "Você DEVE implementar a TASK ATUAL COMPLETA em uma única sessão — todos os\n"
+        "`contract.outputs` e `contract.interfaces` dela, e nada das outras tasks.\n"
+        "Isso inclui, no escopo da TASK ATUAL:",
+    ),
+)
+
+
+def build_instruction(coder_ws: str, *, enxuto: bool = False) -> str:
+    """Compõe a instrução final do coder para o workspace informado.
+
+    ``enxuto`` (só com `current_task` no state) acrescenta a seção TASK ATUAL e
+    restringe o escopo à task corrente; sem ele, o texto é o histórico.
+    """
+    instrucao = (
         _GATE_ABERTURA
         + _INSTRUCTION_BASE
         + _WORKSPACE_SECTION.format(coder_ws=coder_ws)
     )
+    if not enxuto:
+        return instrucao
+    for antigo, novo in _SUBSTITUICOES_ENXUTO:
+        if antigo not in instrucao:
+            raise ValueError(f"âncora do modo enxuto ausente no prompt: {antigo[:60]!r}")
+        instrucao = instrucao.replace(antigo, novo)
+    return _SECAO_TASK_ATUAL + instrucao
 
 
 instruction = build_instruction("SEU WORKSPACE")

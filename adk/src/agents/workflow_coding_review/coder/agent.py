@@ -15,8 +15,8 @@ from shared.agent_factory import (
     _bind_tool_to_workspace,
     lazy_agent_workspace,
     lazy_workspace_root,
-    session_instruction,
 )
+from shared.pipeline_flags import coder_contexto_enxuto
 from shared.workspace import get_agent_workspace
 from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
@@ -33,6 +33,7 @@ from . import prompt as coder_prompt
 from .workspace_guard import (
     anunciar_arquivos_herdados,
     auditar_remocao,
+    avisar_fora_do_escopo,
     bloquear_sobrescrita_herdada,
 )
 
@@ -46,12 +47,28 @@ def _bind(tool):
     )
 
 
-def render_instruction() -> str:
+def render_instruction(*, enxuto: bool = False) -> str:
     """Instrução (template, sem injeção de state) para o workspace da sessão."""
-    return coder_prompt.build_instruction(str(get_agent_workspace("cr_coder")))
+    return coder_prompt.build_instruction(
+        str(get_agent_workspace("cr_coder")), enxuto=enxuto
+    )
 
 
-_INSTRUCTION = session_instruction(render_instruction)
+async def _INSTRUCTION(readonly_context) -> str:
+    """InstructionProvider: modo enxuto só com a flag E a task no state.
+
+    Sem `current_task` (benchmarks e TACO chamam o coder direto, fora do
+    TaskIterator) a instrução é a histórica, mesmo com a flag ligada.
+    """
+    from google.adk.utils.instructions_utils import inject_session_state
+
+    enxuto = coder_contexto_enxuto() and bool(
+        readonly_context.state.get("current_task")
+    )
+    return await inject_session_state(
+        render_instruction(enxuto=enxuto), readonly_context
+    )
+
 
 agent = LlmAgent(
     model=_model,
@@ -59,6 +76,10 @@ agent = LlmAgent(
     description="Implementa código funcional a partir de requisitos, sem git.",
     instruction=_INSTRUCTION,
     output_key="implementation",
+    # Contexto enxuto: só o turno corrente (aberto pelo TaskIterator ou pelo
+    # executor); a task vem do state. Com uma única mensagem de usuário
+    # (benchmarks, TACO) o conteúdo visto é o mesmo do 'default'.
+    include_contents="none" if coder_contexto_enxuto() else "default",
     generate_content_config=types.GenerateContentConfig(
         max_output_tokens=16384,
     ),
@@ -75,5 +96,10 @@ agent = LlmAgent(
     # `bloquear_` recusa a sobrescrita se o aviso não bastar; `auditar_`
     # registra remoções e libera o caminho removido da baseline.
     before_tool_callback=bloquear_sobrescrita_herdada,
-    after_tool_callback=[anunciar_arquivos_herdados, auditar_remocao],
+    # `avisar_fora_do_escopo` só atua no modo contexto enxuto (current_task).
+    after_tool_callback=[
+        anunciar_arquivos_herdados,
+        auditar_remocao,
+        avisar_fora_do_escopo,
+    ],
 )

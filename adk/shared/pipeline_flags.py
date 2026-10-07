@@ -12,6 +12,13 @@ Contagem de tokens:
     AI4ES_TOKEN_REPORT_DETAIL       acrescenta o consumo por agente à tabela.
     AI4ES_TOKEN_SESSION_TOTAL       acumula as execuções da sessão e mostra o
                                     total da sessão junto da execução atual.
+
+Coder/reviewer:
+    AI4ES_CODER_CONTEXTO_ENXUTO     o coder recebe só a task atual (no state) e
+                                    implementa só ela; coder e executor deixam
+                                    de reenviar o histórico acumulado do branch.
+                                    Lida também no import dos agentes
+                                    (``include_contents``): exige reiniciar.
 """
 
 from __future__ import annotations
@@ -39,3 +46,7 @@ def token_report_detail() -> bool:
 
 def token_session_total() -> bool:
     return flag("AI4ES_TOKEN_SESSION_TOTAL")
+
+
+def coder_contexto_enxuto() -> bool:
+    return flag("AI4ES_CODER_CONTEXTO_ENXUTO")

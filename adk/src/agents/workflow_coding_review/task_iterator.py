@@ -20,6 +20,7 @@ foi comprovada.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any, AsyncGenerator, Optional
@@ -28,6 +29,9 @@ from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
+from google.genai import types
+
+from shared.pipeline_flags import coder_contexto_enxuto
 
 from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
 from src.agents.implementation_validator.agent import _report_path_valido
@@ -88,6 +92,31 @@ def marcador_nova_task(task_id: str) -> str:
         f"{_MARCADOR_NOVA_TASK} validação da task {task_id} — projeto já "
         "implementado por uma task anterior nesta mesma execução. Ainda não "
         "há erro registrado para esta task específica."
+    )
+
+
+# Chave de state com a task corrente, lida pelo prompt do coder no modo
+# contexto enxuto (`AI4ES_CODER_CONTEXTO_ENXUTO`). Ausente fora desse modo — e
+# fora do TaskIterator (benchmarks chamam o coder direto) —, o que mantém a
+# instrução histórica.
+CHAVE_TASK_ATUAL = "current_task"
+
+
+def montar_task_atual(task: dict, macro_context: Optional[dict]) -> str:
+    """Texto da task corrente para o coder: stack/produto + o contrato da task.
+
+    Com `include_contents='none'` o coder não vê mais a resposta do
+    context_engineer no histórico; a stack e as regras globais precisam vir
+    junto da task.
+    """
+    macro = macro_context if isinstance(macro_context, dict) else {}
+    contexto = {
+        chave: macro[chave]
+        for chave in ("summary", "product_type", "tech_stack", "global_rules")
+        if chave in macro
+    }
+    return json.dumps(
+        {"macro_context": contexto, "task": task}, ensure_ascii=False, indent=2
     )
 
 
@@ -612,6 +641,11 @@ class TaskIterator(BaseAgent):
                 update={"branch": branch_da_task(ctx.branch, indice, task_id)}
             )
 
+            if coder_contexto_enxuto():
+                yield self._evento_inicio_task(
+                    task_ctx, state, task, total=len(expected_task_ids), indice=indice
+                )
+
             logger.info(
                 "[TASK_ITERATOR] Iniciando task %s (%d/%d).",
                 task_id,
@@ -677,10 +711,49 @@ class TaskIterator(BaseAgent):
         """
         for chave in _CHAVES_CICLO_REMOVIDAS:
             state.pop(chave, None)
+        state.pop(CHAVE_TASK_ATUAL, None)
         if primeira:
             state.pop("execution_result", None)
         else:
             state["execution_result"] = marcador_nova_task(task_id)
+
+    def _evento_inicio_task(
+        self,
+        task_ctx: InvocationContext,
+        state: dict,
+        task: dict,
+        *,
+        total: int,
+        indice: int,
+    ) -> Event:
+        """Publica a task corrente e abre o turno dela no branch da task.
+
+        Com `include_contents='none'`, o ADK monta o contexto a partir do evento
+        mais recente do usuário ou de OUTRO agente no branch. Sem este evento,
+        na 1ª rodada de cada task esse evento seria a resposta do
+        context_engineer (JSON com TODAS as tasks, visível em todo branch).
+        """
+        macro = (state.get("tasks") or {}).get("macro_context")
+        texto = montar_task_atual(task, macro)
+        state[CHAVE_TASK_ATUAL] = texto
+        return Event(
+            invocation_id=task_ctx.invocation_id,
+            author=self.name,
+            branch=task_ctx.branch,
+            content=types.Content(
+                role="model",
+                parts=[
+                    types.Part(
+                        text=(
+                            f"Inicie a {task['id']} ({indice + 1}/{total}). "
+                            "O contrato completo está na seção TASK ATUAL da "
+                            "sua instrução."
+                        )
+                    )
+                ],
+            ),
+            actions=EventActions(state_delta={CHAVE_TASK_ATUAL: texto}),
+        )
 
     def _evento_summary(
         self,
