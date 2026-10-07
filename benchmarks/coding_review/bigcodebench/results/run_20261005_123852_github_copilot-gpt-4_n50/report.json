@@ -1,0 +1,1289 @@
+{
+  "generated_at": "2026-10-05T15:52:58.301483+00:00",
+  "benchmark": "bigcodebench",
+  "split": "complete",
+  "dataset_version": "v0.1.4",
+  "model": "github_copilot/gpt-4",
+  "seed": 42,
+  "num_problems": 50,
+  "pass_at_k": {
+    "pass@1": 0.68
+  },
+  "failures": {
+    "total_failures": 16,
+    "by_category": {
+      "api_misuse": 2,
+      "logic": 11,
+      "runtime_error": 3
+    },
+    "by_group": {
+      "library": 2,
+      "logic": 14,
+      "other": 0
+    }
+  },
+  "usage_metrics": {
+    "total_llm_interactions": 195,
+    "total_prompt_tokens": 2187927,
+    "total_completion_tokens": 48037,
+    "total_tokens": 2235964,
+    "total_duration_s": 837.98
+  },
+  "sandbox": {
+    "kind": "docker",
+    "image": "ai4se-bigcodebench-sandbox:v0.1.4",
+    "network": "none"
+  },
+  "problems": [
+    {
+      "task_id": "BigCodeBench/13",
+      "entry_point": "task_func",
+      "libs": [
+        "subprocess",
+        "ftplib",
+        "os"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 18.37,
+      "llm_interactions": 4,
+      "prompt_tokens": 45865,
+      "completion_tokens": 1207,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.067s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/51",
+      "entry_point": "task_func",
+      "libs": [
+        "matplotlib",
+        "sklearn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 20.54,
+      "llm_interactions": 4,
+      "prompt_tokens": 46298,
+      "completion_tokens": 1220,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.067s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/54",
+      "entry_point": "task_func",
+      "libs": [
+        "regex",
+        "pandas",
+        "sklearn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 14.14,
+      "llm_interactions": 4,
+      "prompt_tokens": 44543,
+      "completion_tokens": 855,
+      "passed": false,
+      "category": "runtime_error",
+      "reason": "Reprovado (runtime_error, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": " words\n\n======================================================================\nERROR: test_case_3 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 71, in test_case_3\n    dtm = task_func(text)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 39, in task_func\n    X = vectorizer.fit_transform(sentences)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/base.py\", line 1152, in wrapper\n    return fit_method(estimator, *args, **kwargs)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/feature_extraction/text.py\", line 1389, in fit_transform\n    vocabulary, X = self._count_vocab(raw_documents, self.fixed_vocabulary_)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/feature_extraction/text.py\", line 1295, in _count_vocab\n    raise ValueError(\nValueError: empty vocabulary; perhaps the documents only contain stop words\n\n======================================================================\nERROR: test_case_4 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 80, in test_case_4\n    dtm = task_func(text)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 39, in task_func\n    X = vectorizer.fit_transform(sentences)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/base.py\", line 1152, in wrapper\n    return fit_method(estimator, *args, **kwargs)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/feature_extraction/text.py\", line 1389, in fit_transform\n    vocabulary, X = self._count_vocab(raw_documents, self.fixed_vocabulary_)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/feature_extraction/text.py\", line 1295, in _count_vocab\n    raise ValueError(\nValueError: empty vocabulary; perhaps the documents only contain stop words\n\n======================================================================\nERROR: test_case_5 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 89, in test_case_5\n    dtm = task_func(text)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 39, in task_func\n    X = vectorizer.fit_transform(sentences)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/base.py\", line 1152, in wrapper\n    return fit_method(estimator, *args, **kwargs)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/feature_extraction/text.py\", line 1389, in fit_transform\n    vocabulary, X = self._count_vocab(raw_documents, self.fixed_vocabulary_)\n  File \"/usr/local/lib/python3.10/site-packages/sklearn/feature_extraction/text.py\", line 1295, in _count_vocab\n    raise ValueError(\nValueError: empty vocabulary; perhaps the documents only contain stop words\n\n----------------------------------------------------------------------\nRan 5 tests in 0.013s\n\nFAILED (errors=5)\n"
+    },
+    {
+      "task_id": "BigCodeBench/61",
+      "entry_point": "task_func",
+      "libs": [
+        "datetime",
+        "numpy",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 14.61,
+      "llm_interactions": 4,
+      "prompt_tokens": 45421,
+      "completion_tokens": 1047,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.065s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/65",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 27.1,
+      "llm_interactions": 3,
+      "prompt_tokens": 35069,
+      "completion_tokens": 1623,
+      "passed": false,
+      "category": "runtime_error",
+      "reason": "Reprovado (runtime_error, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "=group_cols, y=last_col, kind='line', marker='o')\n  File \"/usr/local/lib/python3.10/site-packages/pandas/plotting/_core.py\", line 941, in __call__\n    raise ValueError(\"x must be a label or position\")\nValueError: x must be a label or position\n\n======================================================================\nERROR: test_case_2 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 104, in test_case_2\n    analyzed_df, ax = task_func(data)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 74, in task_func\n    ax = analyzed_df.plot(x=group_cols, y=last_col, kind='line', marker='o')\n  File \"/usr/local/lib/python3.10/site-packages/pandas/plotting/_core.py\", line 941, in __call__\n    raise ValueError(\"x must be a label or position\")\nValueError: x must be a label or position\n\n======================================================================\nERROR: test_case_3 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 122, in test_case_3\n    analyzed_df, ax = task_func(data)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 74, in task_func\n    ax = analyzed_df.plot(x=group_cols, y=last_col, kind='line', marker='o')\n  File \"/usr/local/lib/python3.10/site-packages/pandas/plotting/_core.py\", line 941, in __call__\n    raise ValueError(\"x must be a label or position\")\nValueError: x must be a label or position\n\n======================================================================\nERROR: test_case_4 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 140, in test_case_4\n    analyzed_df, ax = task_func(data)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 74, in task_func\n    ax = analyzed_df.plot(x=group_cols, y=last_col, kind='line', marker='o')\n  File \"/usr/local/lib/python3.10/site-packages/pandas/plotting/_core.py\", line 941, in __call__\n    raise ValueError(\"x must be a label or position\")\nValueError: x must be a label or position\n\n======================================================================\nERROR: test_case_5 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 160, in test_case_5\n    analyzed_df, ax = task_func(data)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 74, in task_func\n    ax = analyzed_df.plot(x=group_cols, y=last_col, kind='line', marker='o')\n  File \"/usr/local/lib/python3.10/site-packages/pandas/plotting/_core.py\", line 941, in __call__\n    raise ValueError(\"x must be a label or position\")\nValueError: x must be a label or position\n\n----------------------------------------------------------------------\nRan 5 tests in 0.043s\n\nFAILED (errors=5)\n"
+    },
+    {
+      "task_id": "BigCodeBench/88",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "datetime",
+        "numpy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 17.23,
+      "llm_interactions": 4,
+      "prompt_tokens": 45450,
+      "completion_tokens": 1105,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "....F\n======================================================================\nFAIL: test_values (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 92, in test_values\n    self.assertEqual(df_list, expect, \"DataFrame contents should match the expected output\")\nAssertionError: Lists differ: ['2021-01-01 00:00:00,44', '2021-01-02 00:00:00,387', '2021-01-[199 chars],47'] != ['2021-01-01 00:00:00,102', '2021-01-02 00:00:00,435', '2021-01[200 chars]121']\n\nFirst differing element 0:\n'2021-01-01 00:00:00,44'\n'2021-01-01 00:00:00,102'\n\nDiff is 1167 characters long. Set self.maxDiff to None to see it. : DataFrame contents should match the expected output\n\n----------------------------------------------------------------------\nRan 5 tests in 0.154s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/93",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy",
+        "matplotlib",
+        "sklearn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.62,
+      "llm_interactions": 4,
+      "prompt_tokens": 44892,
+      "completion_tokens": 1052,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "....F\n======================================================================\nFAIL: test_values (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 99, in test_values\n    self.assertAlmostEqual(actual[0], expected[0], places=7, msg=\"DataFrame contents should match the expected output\")\nAssertionError: 0.19422013610684752 != -0.36270132751314693 within 7 places (0.5569214636199944 difference) : DataFrame contents should match the expected output\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 102, in test_values\n    self.assertAlmostEqual(actual[0], -expected[0], places=7, msg=\"DataFrame contents should match the expected output\")\nAssertionError: 0.19422013610684752 != 0.36270132751314693 within 7 places (0.1684811914062994 difference) : DataFrame contents should match the expected output\n\n----------------------------------------------------------------------\nRan 5 tests in 0.039s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/142",
+      "entry_point": "task_func",
+      "libs": [
+        "numpy",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 19.22,
+      "llm_interactions": 4,
+      "prompt_tokens": 44289,
+      "completion_tokens": 833,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.078s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/161",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "datetime",
+        "re"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 14.54,
+      "llm_interactions": 3,
+      "prompt_tokens": 33318,
+      "completion_tokens": 972,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": ".F...\n======================================================================\nFAIL: test_log_to_csv_content (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 87, in test_log_to_csv_content\n    pd.testing.assert_frame_equal(expected_df, generated_df)\n  File \"/usr/local/lib/python3.10/site-packages/pandas/_testing/asserters.py\", line 1185, in assert_frame_equal\n    assert_index_equal(\n  File \"/usr/local/lib/python3.10/site-packages/pandas/_testing/asserters.py\", line 322, in assert_index_equal\n    _testing.assert_almost_equal(\n  File \"pandas/_libs/testing.pyx\", line 52, in pandas._libs.testing.assert_almost_equal\n  File \"pandas/_libs/testing.pyx\", line 172, in pandas._libs.testing.assert_almost_equal\n  File \"/usr/local/lib/python3.10/site-packages/pandas/_testing/asserters.py\", line 599, in raise_assert_detail\n    raise AssertionError(msg)\nAssertionError: DataFrame.columns are different\n\nDataFrame.columns values are different (100.0 %)\n[left]:  Index(['Type', 'Timestamp', 'Message'], dtype='object')\n[right]: Index(['type', 'timestamp', 'message'], dtype='object')\nAt positional index 0, first diff: Type != type\n\n----------------------------------------------------------------------\nRan 5 tests in 0.126s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/163",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 11.78,
+      "llm_interactions": 4,
+      "prompt_tokens": 44297,
+      "completion_tokens": 853,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.288s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/178",
+      "entry_point": "task_func",
+      "libs": [
+        "re",
+        "json"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 8.75,
+      "llm_interactions": 4,
+      "prompt_tokens": 43858,
+      "completion_tokens": 697,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.000s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/189",
+      "entry_point": "task_func",
+      "libs": [
+        "re",
+        "requests",
+        "json"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.7,
+      "llm_interactions": 4,
+      "prompt_tokens": 44435,
+      "completion_tokens": 806,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.002s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/191",
+      "entry_point": "task_func",
+      "libs": [
+        "random",
+        "scipy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 20.67,
+      "llm_interactions": 4,
+      "prompt_tokens": 44734,
+      "completion_tokens": 1029,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "ster': 0} != {'Dog': 0, 'Cat': 0, 'Bird': 0, 'Fish': 0, 'Hamster': 0}\n- {'Bird': 0, 'Cat': 1, 'Dog': 0, 'Fish': 0, 'Hamster': 0}\n?                    ^\n\n+ {'Bird': 0, 'Cat': 0, 'Dog': 0, 'Fish': 0, 'Hamster': 0}\n?                    ^\n\n\n======================================================================\nFAIL: test_random_animal_selection (__main__.TestCases)\nTest random selection of animals.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 1379, in patched\n    return func(*newargs, **newkeywargs)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 95, in test_random_animal_selection\n    self.assertEqual(result, expected)\nAssertionError: {'Dog': 1, 'Cat': 0, 'Bird': 0, 'Fish': 0, 'Hamster': 0} != {'Dog': 1, 'Cat': 1, 'Bird': 1, 'Fish': 1, 'Hamster': 1}\n- {'Bird': 0, 'Cat': 0, 'Dog': 1, 'Fish': 0, 'Hamster': 0}\n?          ^         ^                    ^             ^\n\n+ {'Bird': 1, 'Cat': 1, 'Dog': 1, 'Fish': 1, 'Hamster': 1}\n?          ^         ^                    ^             ^\n\n\n======================================================================\nFAIL: test_sales_content (__main__.TestCases)\nTest the content of the sales dictionary matches the expected distribution of one each.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 1379, in patched\n    return func(*newargs, **newkeywargs)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 115, in test_sales_content\n    self.assertEqual(result, {'Dog': 1, 'Cat': 1, 'Bird': 1, 'Fish': 1, 'Hamster': 1})\nAssertionError: {'Dog': 1, 'Cat': 0, 'Bird': 0, 'Fish': 0, 'Hamster': 0} != {'Dog': 1, 'Cat': 1, 'Bird': 1, 'Fish': 1, 'Hamster': 1}\n- {'Bird': 0, 'Cat': 0, 'Dog': 1, 'Fish': 0, 'Hamster': 0}\n?          ^         ^                    ^             ^\n\n+ {'Bird': 1, 'Cat': 1, 'Dog': 1, 'Fish': 1, 'Hamster': 1}\n?          ^         ^                    ^             ^\n\n\n======================================================================\nFAIL: test_typical_case (__main__.TestCases)\nTest typical case with mock number of customers and sales.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 1379, in patched\n    return func(*newargs, **newkeywargs)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 69, in test_typical_case\n    self.assertEqual(result, expected)\nAssertionError: {'Dog': 1, 'Cat': 0, 'Bird': 0, 'Fish': 0, 'Hamster': 0} != {'Dog': 100, 'Cat': 0, 'Bird': 0, 'Fish': 0, 'Hamster': 0}\n- {'Bird': 0, 'Cat': 0, 'Dog': 1, 'Fish': 0, 'Hamster': 0}\n+ {'Bird': 0, 'Cat': 0, 'Dog': 100, 'Fish': 0, 'Hamster': 0}\n?                               ++\n\n\n----------------------------------------------------------------------\nRan 9 tests in 0.021s\n\nFAILED (failures=5, errors=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/198",
+      "entry_point": "task_func",
+      "libs": [
+        "statistics",
+        "bisect",
+        "numpy",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.84,
+      "llm_interactions": 4,
+      "prompt_tokens": 45103,
+      "completion_tokens": 1036,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "...F...\n======================================================================\nFAIL: test_plotting_mocked (__main__.TestCases)\nEnsure the function triggers a plot display.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 1379, in patched\n    return func(*newargs, **newkeywargs)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 104, in test_plotting_mocked\n    mock_show.assert_called_once()\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 908, in assert_called_once\n    raise AssertionError(msg)\nAssertionError: Expected 'show' to have been called once. Called 0 times.\n\n----------------------------------------------------------------------\nRan 7 tests in 0.068s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/209",
+      "entry_point": "task_func",
+      "libs": [
+        "operator",
+        "numpy",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.27,
+      "llm_interactions": 4,
+      "prompt_tokens": 44311,
+      "completion_tokens": 906,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.052s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/228",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.51,
+      "llm_interactions": 4,
+      "prompt_tokens": 45576,
+      "completion_tokens": 1051,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.006s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/255",
+      "entry_point": "task_func",
+      "libs": [
+        "numpy",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 17.87,
+      "llm_interactions": 4,
+      "prompt_tokens": 45047,
+      "completion_tokens": 1055,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "....F.\n======================================================================\nFAIL: test_sine_function (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 71, in test_sine_function\n    np.testing.assert_allclose(y_actual, y_expected, atol=1e-5)\n  File \"/usr/local/lib/python3.10/site-packages/numpy/testing/_private/utils.py\", line 1530, in assert_allclose\n    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),\n  File \"/usr/local/lib/python3.10/site-packages/numpy/testing/_private/utils.py\", line 763, in assert_array_compare\n    raise AssertionError(msg)\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-05\n\n(shapes (360,), (1000,) mismatch)\n x: array([ 0.000000e+00,  1.750102e-02,  3.499667e-02,  5.248161e-02,\n        6.995046e-02,  8.739790e-02,  1.048186e-01,  1.222071e-01,\n        1.395582e-01,  1.568666e-01,  1.741269e-01,  1.913339e-01,...\n y: array([ 0.000000e+00,  6.289433e-03,  1.257862e-02,  1.886730e-02,\n        2.515525e-02,  3.144219e-02,  3.772789e-02,  4.401210e-02,\n        5.029457e-02,  5.657505e-02,  6.285329e-02,  6.912904e-02,...\n\n----------------------------------------------------------------------\nRan 6 tests in 0.123s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/285",
+      "entry_point": "task_func",
+      "libs": [
+        "mechanize",
+        "bs4"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.73,
+      "llm_interactions": 4,
+      "prompt_tokens": 44390,
+      "completion_tokens": 892,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.020s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/318",
+      "entry_point": "task_func",
+      "libs": [
+        "math",
+        "random",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.19,
+      "llm_interactions": 4,
+      "prompt_tokens": 44479,
+      "completion_tokens": 869,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.057s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/326",
+      "entry_point": "task_func",
+      "libs": [
+        "glob",
+        "subprocess",
+        "os",
+        "sys"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 11.73,
+      "llm_interactions": 4,
+      "prompt_tokens": 43837,
+      "completion_tokens": 766,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": ".F.FF\n======================================================================\nFAIL: test_multiple_bat_files_mixed_results (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 1379, in patched\n    return func(*newargs, **newkeywargs)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 84, in test_multiple_bat_files_mixed_results\n    self.assertEqual(result, [(\"file1.bat\", 0), (\"file2.bat\", 1), (\"file3.bat\", None)])\nAssertionError: Lists differ: [('file1.bat', None), ('file2.bat', None), ('file3.bat', None)] != [('file1.bat', 0), ('file2.bat', 1), ('file3.bat', None)]\n\nFirst differing element 0:\n('file1.bat', None)\n('file1.bat', 0)\n\n- [('file1.bat', None), ('file2.bat', None), ('file3.bat', None)]\n?                ^^^^                 ^^^^\n\n+ [('file1.bat', 0), ('file2.bat', 1), ('file3.bat', None)]\n?                ^                 ^\n\n\n======================================================================\nFAIL: test_single_bat_file_failure (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 1379, in patched\n    return func(*newargs, **newkeywargs)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 71, in test_single_bat_file_failure\n    self.assertEqual(result, [(\"file1.bat\", 1)])\nAssertionError: Lists differ: [('file1.bat', None)] != [('file1.bat', 1)]\n\nFirst differing element 0:\n('file1.bat', None)\n('file1.bat', 1)\n\n- [('file1.bat', None)]\n?                ^^^^\n\n+ [('file1.bat', 1)]\n?                ^\n\n\n======================================================================\nFAIL: test_single_bat_file_success (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.10/unittest/mock.py\", line 1379, in patched\n    return func(*newargs, **newkeywargs)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 62, in test_single_bat_file_success\n    self.assertEqual(result, [(\"file1.bat\", 0)])\nAssertionError: Lists differ: [('file1.bat', None)] != [('file1.bat', 0)]\n\nFirst differing element 0:\n('file1.bat', None)\n('file1.bat', 0)\n\n- [('file1.bat', None)]\n?                ^^^^\n\n+ [('file1.bat', 0)]\n?                ^\n\n\n----------------------------------------------------------------------\nRan 5 tests in 0.040s\n\nFAILED (failures=3)\n"
+    },
+    {
+      "task_id": "BigCodeBench/393",
+      "entry_point": "task_func",
+      "libs": [
+        "numpy",
+        "matplotlib",
+        "scipy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.75,
+      "llm_interactions": 4,
+      "prompt_tokens": 44540,
+      "completion_tokens": 882,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.710s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/407",
+      "entry_point": "task_func",
+      "libs": [
+        "csv",
+        "openpyxl",
+        "os"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.13,
+      "llm_interactions": 4,
+      "prompt_tokens": 45221,
+      "completion_tokens": 1015,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.034s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/440",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy",
+        "sklearn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 17.72,
+      "llm_interactions": 4,
+      "prompt_tokens": 47225,
+      "completion_tokens": 1408,
+      "passed": false,
+      "category": "runtime_error",
+      "reason": "Reprovado (runtime_error, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "---------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 112, in test_case_3\n    result = task_func(P, T)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 56, in task_func\n    result_i = np.matmul(P, T[i])   # shape (P.shape[0], T.shape[1])\nValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 6 is different from 4)\n\n======================================================================\nERROR: test_case_4 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 124, in test_case_4\n    result = task_func(P, T)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 56, in task_func\n    result_i = np.matmul(P, T[i])   # shape (P.shape[0], T.shape[1])\nValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 7 is different from 5)\n\n======================================================================\nERROR: test_case_5 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 136, in test_case_5\n    result = task_func(P, T)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 56, in task_func\n    result_i = np.matmul(P, T[i])   # shape (P.shape[0], T.shape[1])\nValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 8 is different from 6)\n\n======================================================================\nERROR: test_case_8 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 160, in test_case_8\n    result = task_func(P, T)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 56, in task_func\n    result_i = np.matmul(P, T[i])   # shape (P.shape[0], T.shape[1])\nValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 3 is different from 5)\n\n======================================================================\nERROR: test_case_9 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 166, in test_case_9\n    result = task_func(P, T)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 56, in task_func\n    result_i = np.matmul(P, T[i])   # shape (P.shape[0], T.shape[1])\nValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 4 is different from 3)\n\n----------------------------------------------------------------------\nRan 10 tests in 0.009s\n\nFAILED (errors=7)\n"
+    },
+    {
+      "task_id": "BigCodeBench/447",
+      "entry_point": "task_func",
+      "libs": [
+        "numpy",
+        "matplotlib",
+        "sklearn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 14.36,
+      "llm_interactions": 4,
+      "prompt_tokens": 45555,
+      "completion_tokens": 1089,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.051s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/451",
+      "entry_point": "task_func",
+      "libs": [
+        "sklearn",
+        "numpy",
+        "matplotlib",
+        "seaborn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 17.52,
+      "llm_interactions": 4,
+      "prompt_tokens": 45095,
+      "completion_tokens": 1044,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".......\n----------------------------------------------------------------------\nRan 7 tests in 3.398s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/457",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 20.1,
+      "llm_interactions": 4,
+      "prompt_tokens": 45382,
+      "completion_tokens": 1012,
+      "passed": false,
+      "category": "api_misuse",
+      "reason": "Reprovado (api_misuse, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "bj.generate()\n  File \"/usr/local/lib/python3.10/site-packages/pandas/plotting/_matplotlib/core.py\", line 448, in generate\n    self._make_plot()\n  File \"/usr/local/lib/python3.10/site-packages/pandas/plotting/_matplotlib/hist.py\", line 173, in _make_plot\n    self._append_legend_handles_labels(artists[0], label)\nIndexError: tuple index out of range\n\n======================================================================\nFAIL: test_case_1 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 58, in test_case_1\n    self.assertEqual(len(ax.get_xticklabels()), 8)\nAssertionError: 9 != 8\n\n======================================================================\nFAIL: test_case_10 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 113, in test_case_10\n    self.assertEqual(len(ax.get_xticklabels()), 9)\nAssertionError: 11 != 9\n\n======================================================================\nFAIL: test_case_2 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 64, in test_case_2\n    self.assertEqual(len(ax.get_xticklabels()), 8)\nAssertionError: 9 != 8\n\n======================================================================\nFAIL: test_case_3 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 70, in test_case_3\n    self.assertEqual(len(ax.get_xticklabels()), 11)\nAssertionError: 9 != 11\n\n======================================================================\nFAIL: test_case_4 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 76, in test_case_4\n    self.assertEqual(len(ax.get_xticklabels()), 11)\nAssertionError: 9 != 11\n\n======================================================================\nFAIL: test_case_5 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 82, in test_case_5\n    self.assertEqual(len(ax.get_xticklabels()), 11)\nAssertionError: 9 != 11\n\n======================================================================\nFAIL: test_case_7 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 95, in test_case_7\n    self.assertEqual(len(ax.get_xticklabels()), 11)\nAssertionError: 9 != 11\n\n----------------------------------------------------------------------\nRan 13 tests in 7.446s\n\nFAILED (failures=7, errors=2)\n"
+    },
+    {
+      "task_id": "BigCodeBench/466",
+      "entry_point": "task_func",
+      "libs": [
+        "enum",
+        "json"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 9.59,
+      "llm_interactions": 4,
+      "prompt_tokens": 43863,
+      "completion_tokens": 697,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.001s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/476",
+      "entry_point": "task_func",
+      "libs": [
+        "matplotlib",
+        "scipy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 14.81,
+      "llm_interactions": 3,
+      "prompt_tokens": 33512,
+      "completion_tokens": 1009,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "..../usr/local/lib/python3.10/site-packages/scipy/optimize/minpack.py:833: OptimizeWarning: Covariance of the parameters could not be estimated\n  warnings.warn('Covariance of the parameters could not be estimated',\nF.\n======================================================================\nFAIL: test_case_5 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 139, in test_case_5\n    with self.assertRaises(TypeError):\nAssertionError: TypeError not raised\n\n----------------------------------------------------------------------\nRan 6 tests in 0.070s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/501",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "xlwt",
+        "os"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.79,
+      "llm_interactions": 4,
+      "prompt_tokens": 45477,
+      "completion_tokens": 1179,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.058s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/541",
+      "entry_point": "task_func",
+      "libs": [
+        "importlib",
+        "pkgutil",
+        "os",
+        "sys"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 14.0,
+      "llm_interactions": 4,
+      "prompt_tokens": 45099,
+      "completion_tokens": 1038,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": ".FF..\n======================================================================\nFAIL: test_module_path_in_sys_path (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 109, in test_module_path_in_sys_path\n    self.assertTrue(any(module in path for path in sys.path))\nAssertionError: False is not true\n\n======================================================================\nFAIL: test_no_duplicates_in_sys_path (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 114, in test_no_duplicates_in_sys_path\n    self.assertEqual(sum(module in path for path in sys.path), 1)\nAssertionError: 0 != 1\n\n----------------------------------------------------------------------\nRan 5 tests in 0.299s\n\nFAILED (failures=2)\n"
+    },
+    {
+      "task_id": "BigCodeBench/563",
+      "entry_point": "task_func",
+      "libs": [
+        "glob",
+        "ctypes",
+        "shutil",
+        "os"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 10.3,
+      "llm_interactions": 4,
+      "prompt_tokens": 44753,
+      "completion_tokens": 952,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.017s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/569",
+      "entry_point": "task_func",
+      "libs": [
+        "types",
+        "math",
+        "inspect"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.88,
+      "llm_interactions": 4,
+      "prompt_tokens": 44633,
+      "completion_tokens": 962,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".........\n----------------------------------------------------------------------\nRan 9 tests in 0.001s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/592",
+      "entry_point": "task_func",
+      "libs": [
+        "csv",
+        "datetime",
+        "random",
+        "os"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 16.45,
+      "llm_interactions": 4,
+      "prompt_tokens": 44958,
+      "completion_tokens": 980,
+      "passed": false,
+      "category": "api_misuse",
+      "reason": "Reprovado (api_misuse, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "nt call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 80, in test_csv_file_creation\n    task_func(1)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 53, in task_func\n    current_time = start_time.replace(minute=0, second=0, microsecond=0) + (hour * datetime.timedelta(hours=1) if hour != 0 else datetime.timedelta())\nAttributeError: type object 'datetime.datetime' has no attribute 'timedelta'\n\n======================================================================\nERROR: test_csv_file_header (__main__.TestCases)\nTest if the CSV file header matches the expected sensors.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 89, in test_csv_file_header\n    task_func(0)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 39, in task_func\n    raise ValueError(\"Parameter 'hours' must be a positive integer.\")\nValueError: Parameter 'hours' must be a positive integer.\n\n======================================================================\nERROR: test_csv_file_rows (__main__.TestCases)\nTest if the CSV file contains the correct number of rows for 24 hours.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 84, in test_csv_file_rows\n    task_func(24)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 53, in task_func\n    current_time = start_time.replace(minute=0, second=0, microsecond=0) + (hour * datetime.timedelta(hours=1) if hour != 0 else datetime.timedelta())\nAttributeError: type object 'datetime.datetime' has no attribute 'timedelta'\n\n======================================================================\nERROR: test_file_path_return (__main__.TestCases)\nTest if the correct file path is returned.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 96, in test_file_path_return\n    file_path = task_func(1)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 53, in task_func\n    current_time = start_time.replace(minute=0, second=0, microsecond=0) + (hour * datetime.timedelta(hours=1) if hour != 0 else datetime.timedelta())\nAttributeError: type object 'datetime.datetime' has no attribute 'timedelta'\n\n======================================================================\nERROR: test_no_hours_data (__main__.TestCases)\nTest sensor data generation with 0 hours.\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 100, in test_no_hours_data\n    task_func(0)\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 39, in task_func\n    raise ValueError(\"Parameter 'hours' must be a positive integer.\")\nValueError: Parameter 'hours' must be a positive integer.\n\n----------------------------------------------------------------------\nRan 5 tests in 0.080s\n\nFAILED (errors=5)\n"
+    },
+    {
+      "task_id": "BigCodeBench/600",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.78,
+      "llm_interactions": 4,
+      "prompt_tokens": 44425,
+      "completion_tokens": 848,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.019s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/689",
+      "entry_point": "task_func",
+      "libs": [
+        "numpy",
+        "scipy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 10.62,
+      "llm_interactions": 3,
+      "prompt_tokens": 32844,
+      "completion_tokens": 755,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/696",
+      "entry_point": "task_func",
+      "libs": [
+        "math",
+        "numpy",
+        "random"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 11.05,
+      "llm_interactions": 4,
+      "prompt_tokens": 43931,
+      "completion_tokens": 718,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.001s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/704",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "itertools"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.14,
+      "llm_interactions": 3,
+      "prompt_tokens": 33514,
+      "completion_tokens": 1079,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/735",
+      "entry_point": "task_func",
+      "libs": [
+        "numpy",
+        "itertools"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 9.81,
+      "llm_interactions": 4,
+      "prompt_tokens": 43311,
+      "completion_tokens": 590,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.003s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/740",
+      "entry_point": "task_func",
+      "libs": [
+        "collections",
+        "heapq"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.04,
+      "llm_interactions": 4,
+      "prompt_tokens": 43950,
+      "completion_tokens": 737,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.000s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/775",
+      "entry_point": "task_func",
+      "libs": [
+        "collections",
+        "string",
+        "re"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.31,
+      "llm_interactions": 4,
+      "prompt_tokens": 44691,
+      "completion_tokens": 755,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.000s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/778",
+      "entry_point": "task_func",
+      "libs": [
+        "operator",
+        "collections",
+        "itertools"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.51,
+      "llm_interactions": 4,
+      "prompt_tokens": 47434,
+      "completion_tokens": 1286,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.008s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/859",
+      "entry_point": "task_func",
+      "libs": [
+        "warnings",
+        "sklearn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 10.81,
+      "llm_interactions": 4,
+      "prompt_tokens": 44158,
+      "completion_tokens": 839,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.012s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/864",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 14.92,
+      "llm_interactions": 4,
+      "prompt_tokens": 45462,
+      "completion_tokens": 1049,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": "......\n----------------------------------------------------------------------\nRan 6 tests in 0.018s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/865",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy",
+        "scipy",
+        "sklearn"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 15.53,
+      "llm_interactions": 4,
+      "prompt_tokens": 46615,
+      "completion_tokens": 1158,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.059s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/919",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "matplotlib"
+      ],
+      "files": [
+        "README.md",
+        "requirements.txt",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 13.81,
+      "llm_interactions": 5,
+      "prompt_tokens": 56759,
+      "completion_tokens": 1006,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.118s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/940",
+      "entry_point": "task_func",
+      "libs": [
+        "nltk",
+        "collections",
+        "re"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 10.4,
+      "llm_interactions": 3,
+      "prompt_tokens": 32654,
+      "completion_tokens": 730,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.007s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/1034",
+      "entry_point": "task_func",
+      "libs": [
+        "pandas",
+        "numpy"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 16.47,
+      "llm_interactions": 4,
+      "prompt_tokens": 45290,
+      "completion_tokens": 1033,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.058s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/1098",
+      "entry_point": "task_func",
+      "libs": [
+        "collections",
+        "re"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 9.27,
+      "llm_interactions": 4,
+      "prompt_tokens": 43690,
+      "completion_tokens": 674,
+      "passed": true,
+      "category": "passed",
+      "reason": "",
+      "solution_file": "solution.py",
+      "exit_code": 0,
+      "timed_out": false,
+      "stderr_tail": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.001s\n\nOK\n"
+    },
+    {
+      "task_id": "BigCodeBench/1116",
+      "entry_point": "task_func",
+      "libs": [
+        "statistics",
+        "random"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 12.17,
+      "llm_interactions": 4,
+      "prompt_tokens": 44493,
+      "completion_tokens": 822,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "..F..\n======================================================================\nFAIL: test_case_3 (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 81, in test_case_3\n    self.assertEqual(mean_age, 0)\nAssertionError: None != 0\n\n----------------------------------------------------------------------\nRan 5 tests in 0.006s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "task_id": "BigCodeBench/1130",
+      "entry_point": "task_func",
+      "libs": [
+        "hashlib",
+        "pathlib",
+        "os",
+        "json"
+      ],
+      "files": [
+        "README.md",
+        "run.json",
+        "solution.py"
+      ],
+      "duration_s": 18.01,
+      "llm_interactions": 4,
+      "prompt_tokens": 44181,
+      "completion_tokens": 817,
+      "passed": false,
+      "category": "logic",
+      "reason": "Reprovado (logic, exit=1).",
+      "solution_file": "solution.py",
+      "exit_code": 1,
+      "timed_out": false,
+      "stderr_tail": "E.FFF\n======================================================================\nERROR: test_correct_hash (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 119, in test_correct_hash\n    self.assertEqual(data[filepath], expected_hash)\nKeyError: '/tmp/tmpcig2spuj/file5.txt'\n\n======================================================================\nFAIL: test_multiple_files (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 94, in test_multiple_files\n    self.assertIn(filepath, data.keys())\nAssertionError: '/tmp/tmp693pe5fn/file2.txt' not found in dict_keys(['file3.txt', 'file2.txt'])\n\n======================================================================\nFAIL: test_nested_directories (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 106, in test_nested_directories\n    self.assertIn(filepath, data.keys())\nAssertionError: '/tmp/tmpj9938t4y/sub_dir/file4.txt' not found in dict_keys(['sub_dir/file4.txt'])\n\n======================================================================\nFAIL: test_single_file (__main__.TestCases)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/app/_ai4se_bigcodebench_grade.py\", line 79, in test_single_file\n    self.assertIn(filepath, data.keys())\nAssertionError: '/tmp/tmp_oox7ey5/file1.txt' not found in dict_keys(['file1.txt'])\n\n----------------------------------------------------------------------\nRan 5 tests in 0.019s\n\nFAILED (failures=3, errors=1)\n"
+    }
+  ],
+  "canonical_check": {
+    "checked": 50,
+    "failed": {}
+  },
+  "baseline_comparison": {
+    "humaneval_pass_at_1": 0.94,
+    "bigcodebench_pass_at_1": 0.68,
+    "delta_pp": -26.0,
+    "relative_drop_pct": 27.7,
+    "humaneval_model": "github_copilot/gpt-4",
+    "humaneval_num_problems": 50,
+    "humaneval_source": "benchmarks\\coding_review\\humaneval\\results\\run_20261005_122558_github_copilot-gpt-4_n1_k1_lim50\\report.json"
+  }
+}

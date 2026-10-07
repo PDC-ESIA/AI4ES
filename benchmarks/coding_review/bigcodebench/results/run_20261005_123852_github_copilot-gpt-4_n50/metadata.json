@@ -1,0 +1,9 @@
+{
+  "model": "github_copilot/gpt-4",
+  "limit": 50,
+  "seed": 42,
+  "task_ids": null,
+  "timeout": 120,
+  "dataset_version": "v0.1.4",
+  "allow_network": false
+}

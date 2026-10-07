@@ -1,0 +1,8 @@
+{
+  "model": "github_copilot/gpt-4",
+  "samples": 1,
+  "k": [
+    1
+  ],
+  "timeout": 30
+}
