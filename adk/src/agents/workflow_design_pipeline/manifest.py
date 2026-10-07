@@ -52,6 +52,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.manifest import ArtifactItem, DoubtItem, PhaseManifest, PhaseStatus
+from shared.tools.design_filesystem import STATUS_WARNING, is_blocking_doubt
 
 logger = logging.getLogger(__name__)
 
@@ -100,15 +101,21 @@ def _design_root() -> Path:
 
 
 def _repo_relative(path: Path, root: Path) -> str:
-    """Caminho relativo à raiz do repo (o pai de `workspace_output/`).
+    """Caminho relativo à raiz do workspace ativo (o pai de `design/`).
 
-    Ex.: `<repo>/adk/workspace_output/design/diagrams/HU-001.mmd`
-         → `workspace_output/design/diagrams/HU-001.mmd`.
-    Fallback: caminho absoluto, se a relativização não for possível.
+    Mesma convenção dos manifestos de requisitos e de codificação, e a que os
+    leitores (design `read_phase_artifact`, coder `tool_ler_artefatos`, QA)
+    resolvem a partir de `get_workspace_root()`:
+
+    `<WORKSPACE_OUTPUT_DIR>/<yyyyMMdd-HHmm>-<sessão>/design/diagrams/HU-001.mmd`
+        → `design/diagrams/HU-001.mmd`.
+
+    Relativizar a um nível acima (`design/../..`) vazava o nome da pasta da
+    sessão para o path (`<yyyyMMdd-HHmm>-<sessão>/design/...`), que o coder não
+    consegue resolver. Fallback: caminho absoluto.
     """
     try:
-        base = root.parent.parent  # design/ → workspace_output/ → base
-        return os.path.relpath(path, base)
+        return Path(os.path.relpath(path, root.parent)).as_posix()
     except (ValueError, OSError):
         return str(path)
 
@@ -186,8 +193,10 @@ def _collect_artifacts(design_root: Path) -> list[ArtifactItem]:
 def _collect_doubts(design_root: Path) -> list[DoubtItem]:
     """Localiza Doubt_Artifacts no subtree de design e classifica bloqueio.
 
-    Espelha a convenção de `design_filesystem.check_active_blocks`: um doubt é
-    bloqueante se seu conteúdo contém `**Status:** Bloqueado`.
+    Usa a mesma regra de `design_filesystem.check_active_blocks`
+    (`is_blocking_doubt`): bloqueia por `**Status:** Bloqueado` ou
+    `EXECUÇÃO PAUSADA`, salvo se houver linha de status Resolvido.
+    `**Status:** Aviso` é registrado como não bloqueante, severidade baixa.
     """
     doubts: list[DoubtItem] = []
     for f in sorted(design_root.rglob("*")):
@@ -199,11 +208,17 @@ def _collect_doubts(design_root: Path) -> list[DoubtItem]:
             content = f.read_text(encoding="utf-8")
         except OSError:
             content = ""
-        bloqueante = _STATUS_BLOCKED_MARKER in content
+        bloqueante = is_blocking_doubt(content)
+        if bloqueante:
+            severidade = "alta"
+        elif STATUS_WARNING in content:
+            severidade = "baixa"
+        else:
+            severidade = "media"
         doubts.append(
             DoubtItem(
                 id=_extract_id(f.name),
-                severidade="alta" if bloqueante else "media",
+                severidade=severidade,
                 bloqueante=bloqueante,
                 path=_repo_relative(f, design_root),
             )

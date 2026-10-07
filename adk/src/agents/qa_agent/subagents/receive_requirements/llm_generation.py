@@ -9,6 +9,7 @@ import litellm
 from litellm import completion
 
 from shared.llm import copilot_completion_kwargs
+from shared.token_usage import record_litellm_response
 
 # Garante compatibilidade com providers que não suportam response_format
 # (ex.: github_copilot). Precisa estar antes de qualquer chamada a completion().
@@ -99,6 +100,7 @@ Texto bruto:
         temperature=0,
         **llm_kwargs,
     )
+    record_litellm_response(response)
 
     conteudo = response.choices[0].message.content.strip()
     # Limpa possíveis formatações markdown do retorno do LLM
@@ -225,6 +227,7 @@ DIRETRIZ DE GERAÇÃO CONDICIONAL:
         temperature=0,
         **llm_kwargs,
     )
+    record_litellm_response(response)
 
     codigo = ""
     choices = getattr(response, "choices", None)

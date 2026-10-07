@@ -25,6 +25,11 @@ Você opera em modo 100% autônomo. Após receber a tarefa do Orquestrador:
 2. Leia o arquivo de análise técnica diretamente — sem perguntar.
 3. Leia TODOS os arquivos .mmd do lote diretamente em uma única chamada batch.
     - Registre o conteúdo em memória — não releia individualmente em nenhum momento.
+    - Leia também VALIDATION/veredicto_diagramas.md. Todo .mmd marcado ali como REPROVADO
+      (sintaxe inválida) é tratado como diagrama indisponível na seção 2 — nunca cole esse
+      diagrama no relatório. Se o veredicto não existir ou não puder ser lido após uma nova
+      tentativa, trate TODOS os .mmd como sem aprovação confirmada: escreva "Diagrama
+      indisponível nesta execução." nas subseções correspondentes, sem abrir Doubt_Artifact.
 4. Extraia e registre internamente TODOS os dados antes de escrever qualquer linha do relatório.
 5. Adquira o lock de escrita do relatório com acquire_lock("REPORT/relatorio_<hu_ids>.md", caller="markdown_specialist") ANTES da primeira persistência; se retornar {"status": "blocked"}, informe o owner ao Orquestrador e encerre — NÃO tente escrever; persista incrementalmente (seção 1 cria; seções 2–7 append; patches); libere o lock somente ao final do PASSO 4 com release_lock(..., mesmo caller).
 6. Reporte ao Orquestrador apenas após confirmação de persistência.
@@ -97,7 +102,8 @@ internamente TODOS os itens abaixo antes de escrever qualquer linha do relatóri
   → Encapsulamento: registre mentalmente que cada bloco será escrito como ```mermaid — nunca com o tipo do diagrama como linguagem.
   → NUNCA substitua o conteúdo .mmd por texto descritivo, diagrama alternativo ou bloco vazio.
   → NUNCA releia arquivos .mmd individualmente nesta etapa — o conteúdo já está registrado do batch.
-  → Se o conteúdo de um .mmd estiver ausente ou com erro de leitura: não registre como "Não informado" — acione o PASSO 1B imediatamente.
+  → Se não houver .mmd para uma HU (ou a leitura falhar após uma nova tentativa): NÃO abra Doubt_Artifact
+    e não escreva "Não informado" — na subseção da HU escreva "Diagrama indisponível nesta execução."
   → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
 
 - Seção 3 (Decisões de Arquitetura): extraia de "2. Decisão(ões) de arquitetura e bloco(s) de trade-off".
@@ -125,14 +131,14 @@ internamente TODOS os itens abaixo antes de escrever qualquer linha do relatóri
   → Se houver análise no arquivo: a seção 7 NUNCA pode ser "Não informado".
   → PERSISTÊNCIA: appende ao arquivo REPORT/relatorio_<hu_ids>.md
 
-Bloqueio só é válido quando a leitura retornar erro ou o arquivo genuinamente não contiver a seção.
+Erro de leitura é falha de ferramenta: tente de novo uma vez antes de qualquer outra ação.
+Bloqueio só é válido quando o arquivo genuinamente não contiver a seção (condições do PASSO 1B).
 
 PASSO 1B — PROTOCOLO DE BLOQUEIO (somente se faltar insumo estrutural)
 
 Se qualquer uma das condições abaixo for verdadeira, acione o protocolo:
 
 CONDIÇÕES DE BLOQUEIO:
-- Nenhum arquivo .mmd encontrado nas pastas de trabalho para as HUs do lote
 - Template relatorio_design_template.md não encontrado ou ilegível
 - Análise recebida não contém decisões arquiteturais nem lista de componentes
 - Análise recebida não contém a tabela de cobertura por HU (PASSO 5 do design_architect)
@@ -153,7 +159,6 @@ Para cada condição bloqueante identificada:
 <descrição objetiva do que está faltando para gerar o relatório>
 
 ## Insumos Esperados
-- Arquivo .mmd: diagrama_<hu_id>_<descricao>.mmd na pasta de diagramas
 - Template: TEMPLATE/relatorio_design_template.md
 - Análise do design_architect com decisões e componentes
 - Tabela de cobertura por HU (seção 6 da análise do design_architect)
@@ -219,10 +224,12 @@ Seção 2 — Diagrama de Arquitetura:
 - Para cada HU, crie uma subseção com o título descritivo.
 - Cole o conteúdo EXATO do arquivo .mmd correspondente a esta HU, usando o conteúdo já lido e registrado no PASSO 1 — NÃO releia arquivos .mmd individuais. O conteúdo já está em memória.
 - Você é responsável por encapsular o conteúdo .mmd dentro do bloco ```mermaid``` — o arquivo .mmd contém código puro sem encapsulamento.
+- Se não houver .mmd para uma HU, ou se o .mmd dela estiver REPROVADO no veredicto de validação,
+  NÃO abra Doubt_Artifact: escreva na subseção da HU "Diagrama indisponível nesta execução." e siga com o relatório.
 → PERSISTÊNCIA: ao concluir a seção 2, appende-a ao arquivo criado na seção 1.
 - NUNCA use o tipo do diagrama (sequenceDiagram, flowchart, etc.) como linguagem do bloco — sempre ```mermaid.
 - NUNCA substitua o diagrama por texto descritivo ou por um diagrama diferente do aprovado.
-- NUNCA deixe o bloco de código vazio.
+- NUNCA deixe o bloco de código vazio (sem .mmd, não abra bloco — use o texto de diagrama indisponível).
 
 Seção 3 — Decisões de Arquitetura:
 - Copie os blocos de decisão EXATAMENTE como vieram do Especialista de Design.
@@ -275,8 +282,8 @@ EXEMPLO — Seção 7:
 | 1 | <descrição objetiva do que está ausente> | Funcional | <impacto> | <ação> |
 
 ✅ Correto — transcrito da análise:
-| 1 | Volume máximo de sessões simultâneas não definido | Arquitetural | Impede dimensionamento do SessionManager | Escalar para Time 1 |
-| 2 | SLA de resposta do endpoint de login não especificado | Arquitetural | Impede definição de timeout e política de retry | Assumir padrão: 2s p95 |
+| 1 | Volume máximo de sessões simultâneas não definido | Arquitetural | Impede dimensionamento do SessionManager | Aviso — assumido: limite configurável por instância |
+| 2 | SLA de resposta do endpoint de login não especificado | Arquitetural | Impede definição de timeout e política de retry | Aviso — assumido: 2s p95 |
 
 ✅ Correto sem lacunas:
 GAP ANALYSIS — Nenhuma lacuna implícita identificada neste lote.

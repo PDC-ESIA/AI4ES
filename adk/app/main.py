@@ -75,5 +75,29 @@ app = get_fast_api_app(
     # Plugins nativos de observabilidade (console/file), controlados por
     # ADK_LOG_PLUGIN. Registrados no nível do app, cascateiam para os Runners
     # internos dos 4 sub-pipelines via ctx.plugin_manager.plugins.
-    extra_plugins=resolved_plugins(),
+    # session_workspace_plugin: cada sessão escreve em
+    # <WORKSPACE_OUTPUT_DIR>/<yyyyMMdd-HHmm>-<session_id>/ (ver shared/workspace.py).
+    extra_plugins=[
+        *resolved_plugins(),
+        "shared.workspace_plugin.session_workspace_plugin",
+    ],
 )
+
+
+@app.delete("/workspaces/{session_id}")
+def delete_workspace(session_id: str) -> dict:
+    """Apaga o workspace de uma sessão. Único caminho de remoção: nada é
+    apagado automaticamente entre execuções."""
+    from fastapi import HTTPException
+
+    from shared.workspace import delete_session_workspace
+
+    try:
+        removed = delete_session_workspace(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if not removed:
+        raise HTTPException(status_code=404, detail="Workspace não encontrado.")
+    return {"session_id": session_id, "deleted": True}
