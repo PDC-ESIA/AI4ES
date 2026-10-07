@@ -54,12 +54,26 @@ def build_task_contract(problem: HumanEvalProblem) -> dict:
     }
 
 
-def build_coder_message(problem: HumanEvalProblem) -> str:
+_REGRA_ENTREGA_PADRAO = """4. NÃO escreva a suíte de testes do enunciado: a avaliação usa testes próprios.
+   Você ainda deve entregar `run.json` e `README.md` conforme suas regras padrão
+   (use `surface: none`), mas eles não afetam a avaliação do benchmark."""
+
+# Modo enxuto: elimina os turnos que só gravam artefatos não avaliados
+# (PLAN.md, README.md, run.json), que dominam o custo de tokens de entrada.
+_REGRA_ENTREGA_ENXUTA = f"""4. MODO ENXUTO: esta execução é avaliada SOMENTE pelo `{SOLUTION_FILENAME}`. Esta
+   regra substitui a ETAPA 0 e a regra do manifesto do seu prompt de sistema:
+   NÃO crie `PLAN.md`, `README.md`, `run.json`, `requirements.txt` nem testes.
+   Grave `{SOLUTION_FILENAME}` com uma única chamada a `tool_criar_arquivo` e encerre."""
+
+
+def build_coder_message(problem: HumanEvalProblem, *, lean: bool = False) -> str:
     """Monta a mensagem de entrada do coder (o "contrato" da sessão).
 
     Emula a saída do context_engineer: fixa a stack/produto e injeta as regras
-    específicas do benchmark que garantem um artefato avaliável.
+    específicas do benchmark que garantem um artefato avaliável. Com `lean`,
+    dispensa os artefatos que não entram na nota (ver `_REGRA_ENTREGA_ENXUTA`).
     """
+    regra_entrega = _REGRA_ENTREGA_ENXUTA if lean else _REGRA_ENTREGA_PADRAO
     return f"""# CONTRATO DE EXECUÇÃO (benchmark HumanEval)
 
 ## Stack e produto
@@ -82,9 +96,7 @@ a docstring (contrato de comportamento):
 3. Funções auxiliares e imports (apenas biblioteca padrão) podem existir no mesmo
    arquivo, desde que `{problem.entry_point}` continue importável via
    `from solution import {problem.entry_point}`.
-4. NÃO escreva a suíte de testes do enunciado: a avaliação usa testes próprios.
-   Você ainda deve entregar `run.json` e `README.md` conforme suas regras padrão
-   (use `surface: none`), mas eles não afetam a avaliação do benchmark.
+{regra_entrega}
 
 Entregue o código agora, persistindo os arquivos via `tool_criar_arquivo`.
 """

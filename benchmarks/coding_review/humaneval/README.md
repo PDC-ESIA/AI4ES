@@ -57,6 +57,7 @@ python -m benchmarks.coding_review.humaneval.run \
 | `--timeout` | 30 | Teto (s) por avaliação no sandbox. |
 | `--output-dir` | `results/` | Base dos relatórios. |
 | `--resume-dir` | — | Retoma um run existente e completa os problemas restantes. |
+| `--lean` | desligado | Modo enxuto: o coder grava só o `solution.py` (ver [Custo](#custo)). |
 
 ## Saídas
 
@@ -64,7 +65,7 @@ Cada execução cria um diretório em `results/` com nome **descritivo**, formad
 pelo timestamp e pelos parâmetros que caracterizam o run:
 
 ```
-run_<timestamp>_<modelo>_n<samples>_k<k>[_lim<limit>]
+run_<timestamp>_<modelo>_n<samples>_k<k>[_lim<limit>][_lean]
 ```
 
 Exemplos:
@@ -77,7 +78,7 @@ um nome de diretório válido. Cada diretório contém:
 
 - `report.json` — relatório completo (métricas + por problema + por amostra).
 - `report.md` — resumo legível.
-- `metadata.json` — parâmetros da execução (`model`, `samples`, `k`, `timeout`).
+- `metadata.json` — parâmetros da execução (`model`, `samples`, `k`, `timeout`, `lean`).
 - `progress.jsonl` — checkpoint incremental (um problema concluído por linha).
 - `workspace/` — workspace do coder usado na execução (para inspeção).
 
@@ -85,11 +86,34 @@ um nome de diretório válido. Cada diretório contém:
 
 Ao usar `--resume-dir`, o benchmark lê o `progress.jsonl` e **pula** os problemas
 já concluídos, completando apenas os restantes. Antes de retomar, um _guard_
-valida que os parâmetros atuais (`model`, `samples`, `k`, `timeout`) coincidem
-com os originais persistidos no `metadata.json` — abortando com erro em caso de
-divergência, para evitar misturar resultados de configurações diferentes. Runs
-antigos sem `metadata.json` são validados retroativamente a partir do
-`progress.jsonl`/`report.json` e migrados automaticamente.
+valida que os parâmetros atuais (`model`, `samples`, `k`, `timeout`, `lean`)
+coincidem com os originais persistidos no `metadata.json` — abortando com erro
+em caso de divergência, para evitar misturar resultados de configurações
+diferentes. Um `metadata.json` anterior ao `--lean` vale como modo completo.
+Runs antigos sem `metadata.json` são validados retroativamente a partir do
+`progress.jsonl`/`report.json` e migrados automaticamente (e só podem ser
+retomados no modo completo).
+
+## Custo
+
+Quase todo o custo vem de tokens de **entrada**: o prompt de sistema do coder
+(~8 mil tokens) e as tools são reenviados a cada turno, e cada amostra leva
+vários turnos. O relatório registra `cached_tokens` (entrada servida do cache
+do provider, cobrada mais barato) e `reasoning_tokens` por amostra, e
+`cache_hit_ratio` no total — use-os para estimar o custo real em vez de
+multiplicar `prompt_tokens` pelo preço cheio.
+
+- **Cache de prompt** — automático na OpenAI (prefixos ≥ 1024 tokens) e
+  implícito no Gemini. O Claude (Anthropic) só faz cache com marcação
+  explícita, que o ADK/LiteLLM não fazem por padrão.
+- **`--lean`** — o coder deixa de gravar `PLAN.md`, `README.md` e `run.json`,
+  que não entram na nota (de ~5 para ~2 turnos por amostra). Mede o modelo de
+  forma menos fiel ao fluxo real do coder, por isso fica registrado em
+  `metadata.json`/`report.json`, no nome do diretório e no resume guard. Sem
+  `--lean`, a mensagem enviada ao coder é a mesma de antes desta opção.
+
+Medições e custo por amostra: ver a seção Custo do
+[README do MBPP](../mbpp/README.md#custo).
 
 ## Sandbox
 

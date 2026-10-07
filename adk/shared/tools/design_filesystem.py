@@ -56,6 +56,26 @@ STATUS_BLOCKED = "**Status:** Bloqueado"
 #: conta como bloqueio.
 BLOCK_MARKERS = (STATUS_BLOCKED, "EXECUÇÃO PAUSADA")
 BACKUP_PREFIX = "_backup_"
+#: Doubt de qualidade, não bloqueante (ex.: defeito que sobrou após autocorreção).
+STATUS_WARNING = "**Status:** Aviso"
+#: Linha de status marcando resolução, em qualquer das convenções vigentes:
+#: "**Status:** Resolvido", "Status: Resolvido", "- **Status:** ✅ Resolvida".
+_RESOLVED_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?\**Status:\**\s*(?:✅\s*)?Resolvid[oa]\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def is_blocking_doubt(content: str) -> bool:
+    """True se o conteúdo de um Doubt_Artifact representa bloqueio ativo.
+
+    Uma linha de status "Resolvido" ou "Aviso" sempre vence: sem isso, um
+    doubt gerado pela clarificação genérica ("EXECUÇÃO PAUSADA" no cabeçalho)
+    continuaria bloqueando mesmo depois de resolvido ou rebaixado a aviso.
+    """
+    if _RESOLVED_RE.search(content) or STATUS_WARNING in content:
+        return False
+    return any(marker in content for marker in BLOCK_MARKERS)
 _SECTION_SEPARATOR = "\n<<<FIM_SECAO>>>\n"
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -127,6 +147,18 @@ def _is_safe_path(path: Path, root: Path) -> bool:
         return resolved_path.is_relative_to(TEMPLATE_DIR.resolve())
     except (ValueError, RuntimeError):
         return False
+
+
+_MD_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})[^\n]*$", re.MULTILINE)
+
+
+def _sanitize_mermaid(content: str) -> str:
+    """Remove cercas de código Markdown (```mermaid ... ```) de um .mmd.
+
+    LLMs costumam embrulhar o diagrama em cercas; o gatekeeper trata a
+    primeira linha "```mermaid" como tipo de diagrama inválido e reprova.
+    """
+    return _MD_FENCE_RE.sub("", content).strip("\n") + "\n"
 
 
 def _next_version(path: Path) -> Path:
@@ -707,6 +739,8 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown", b
             shutil.move(str(destination), str(backup_path))
             versioned_backup = str(backup_path)
 
+        if destination.suffix == ".mmd":
+            content = _sanitize_mermaid(content)
         destination.write_text(content, encoding="utf-8")
         timestamp = datetime.now().isoformat()
 
@@ -897,7 +931,8 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
         equivalente a "**Status:** Bloqueado" — cobre Doubt_Artifacts que
         usam outra convenção de status (ex.: "Status: Pendente") mas que
         já se autodeclaram como pausa de execução.
-    Isso é aditivo: nenhum caso que já era detectado deixa de ser.
+    Uma linha de status Resolvido sempre libera o arquivo (mesmo com o
+    cabeçalho "EXECUÇÃO PAUSADA"); "**Status:** Aviso" nunca bloqueia.
 
     Args:
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
@@ -933,7 +968,7 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
                     continue
                 seen_paths.add(resolved)
                 content = f.read_text(encoding="utf-8")
-                if any(marker in content for marker in BLOCK_MARKERS):
+                if is_blocking_doubt(content):
                     parts = f.stem.split("_")
                     hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
                     rel_folder = f.parent.relative_to(root)
@@ -1757,3 +1792,23 @@ def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, 
 def list_versions(filepath: str) -> dict:
     """Mock: lista versões anteriores de um artefato."""
     return {"status": "ok", "versions": [], "filepath": filepath}
+
+
+def validate_analysis_sections_vinculada(agent_subdir: str):
+    """validate_analysis_sections presa à pasta de design da sessão corrente.
+
+    A tool não está na allowlist de binding de shared/agent_factory.py
+    (_FILESYSTEM_TOOL_NAMES), então create_se_agent a expõe com `base_dir`
+    visível no schema — o LLM poderia apontar outro workspace e passar o gate
+    de completude com a análise de outra sessão. Aqui o binding é feito no
+    próprio design, com o mesmo mecanismo da fábrica (closure que esconde
+    `base_dir`), sem alterar a fábrica.
+    """
+    from google.adk.tools import FunctionTool
+    from shared.agent_factory import _make_bound_closure, lazy_agent_workspace
+
+    return FunctionTool(
+        _make_bound_closure(
+            validate_analysis_sections, "base_dir", lazy_agent_workspace(agent_subdir)
+        )
+    )
