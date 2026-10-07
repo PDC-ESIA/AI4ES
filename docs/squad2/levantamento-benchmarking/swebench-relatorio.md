@@ -694,10 +694,16 @@ resolvidas (especificidade de 2/7). Ambas as paradas foram da política de
 progresso, não do validador. O recall de 100% tem, por isso, pouco poder de
 discriminação aqui.
 
-**Não foi feita a revisão manual** dos testes e dos patches dessas 5 instâncias,
-então não se sabe quanto do falso positivo vem de teste fraco do coder, de
-validador permissivo ou do gabarito (ver
-[pontos de atenção](#5-pontos-de-atenção), A2 e A3).
+Os testes e os patches dessas 5 instâncias foram **revisados à mão** e
+documentados em [swebench-revisao-falsos-positivos.md](swebench-revisao-falsos-positivos.md).
+Em resumo: um dos cinco (`matplotlib-20859`) provavelmente **não é um falso positivo
+real** (o patch é equivalente ao oficial e passou em 5 de 5 reavaliações; a reprovação
+veio de um teste que depende do relógio); os outros quatro são soluções realmente
+erradas que o loop aprovou (duas correções incompletas, uma que contradiz o contrato do
+projeto e uma sem efeito sobre o defeito), com testes do coder que não exercitavam o
+defeito. Os números acima foram **mantidos como o harness os produziu**; com o rótulo
+da `20859` corrigido, seriam 20/26 resolvidas (76,9%) e 4/24 falsos positivos (16,7%,
+IC 95% 6,7% a 35,9%). Ver também [pontos de atenção](#5-pontos-de-atenção), A2 e A3.
 
 ### 4.3 Custo e tempo
 
@@ -1110,8 +1116,10 @@ Recomenda-se commitar a correção e citar o hash.
 
 **Próximos passos sugeridos:**
 
-1. **Revisar à mão os 5 falsos positivos** (testes que o coder escreveu e patch
-   gerado), para separar teste fraco, validador permissivo e erro do gabarito.
+1. **Reavaliar os rótulos oficiais várias vezes**: a revisão dos falsos positivos
+   (ver [swebench-revisao-falsos-positivos.md](swebench-revisao-falsos-positivos.md))
+   mostrou um rótulo instável, então a variância da correção oficial deve ser medida
+   para as demais instâncias (a revisão só reavaliou uma).
 2. **Completar as 4 instâncias** (ou ao menos as 3 mais baratas) quando o teto de
    créditos do usuário for ampliado, e refazer o relatório com n = 30.
 3. **Repetir um subconjunto** para estimar a variância entre execuções.
