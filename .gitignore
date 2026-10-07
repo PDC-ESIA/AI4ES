@@ -10,6 +10,15 @@ benchmarks/coding_review/humaneval/datasets/
 benchmarks/coding_review/humaneval/results/
 benchmarks/coding_review/mbpp/datasets/
 benchmarks/coding_review/mbpp/results/
+# SWE-bench (#417): o resultado do run É versionado (report/metadata/predições/
+# patches); ficam fora só o dataset, o venv do harness oficial, o workspace
+# (cópia do repositório avaliado) e os logs brutos da correção.
+benchmarks/coding_review/swebench/datasets/
+benchmarks/coding_review/swebench/.venv-swebench/
+benchmarks/coding_review/swebench/results/*/workspace/
+benchmarks/coding_review/swebench/results/*/dry_run/
+benchmarks/coding_review/swebench/results/*/grading/logs/
+benchmarks/coding_review/swebench/results/*/grading_gold/
 benchmarks/construcao/resultados/
 
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)

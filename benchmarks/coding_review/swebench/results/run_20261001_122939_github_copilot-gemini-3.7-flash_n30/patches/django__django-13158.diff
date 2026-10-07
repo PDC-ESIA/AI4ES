@@ -1,0 +1,13 @@
+diff --git a/django/db/models/sql/compiler.py b/django/db/models/sql/compiler.py
+index 686e75c979d0f04bc60ec46336e9230463bf91e6..5a931f4a3941c399c62804a93dae29a2f9ac3b6c 100755
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -501,6 +501,8 @@ class SQLCompiler:
+             with_limit_offset = with_limits and (self.query.high_mark is not None or self.query.low_mark)
+             combinator = self.query.combinator
+             features = self.connection.features
++            if self.query.is_empty():
++                raise EmptyResultSet
+             if combinator:
+                 if not getattr(features, 'supports_select_{}'.format(combinator)):
+                     raise NotSupportedError('{} is not supported on this database backend.'.format(combinator))

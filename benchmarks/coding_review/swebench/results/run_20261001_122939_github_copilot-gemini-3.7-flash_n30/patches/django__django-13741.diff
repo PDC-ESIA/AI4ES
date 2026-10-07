@@ -1,0 +1,39 @@
+diff --git a/django/contrib/auth/forms.py b/django/contrib/auth/forms.py
+index b9eb33329f31509f12048c78ded2a87d0be71445..738be7b8e2e37d66ce9dd11f48cf0c51db906dcd 100644
+--- a/django/contrib/auth/forms.py
++++ b/django/contrib/auth/forms.py
+@@ -56,16 +56,9 @@ class ReadOnlyPasswordHashField(forms.Field):
+ 
+     def __init__(self, *args, **kwargs):
+         kwargs.setdefault("required", False)
++        kwargs.setdefault("disabled", True)
+         super().__init__(*args, **kwargs)
+ 
+-    def bound_data(self, data, initial):
+-        # Always return initial because the widget doesn't
+-        # render an input field.
+-        return initial
+-
+-    def has_changed(self, initial, data):
+-        return False
+-
+ 
+ class UsernameField(forms.CharField):
+     def to_python(self, value):
+diff --git a/docs/topics/auth/customizing.txt b/docs/topics/auth/customizing.txt
+index 6ab83054688271848ba6808277c4b770dc7b752b..6e513d75db056d04fb6e9b4ce613cf614f4ef616 100644
+--- a/docs/topics/auth/customizing.txt
++++ b/docs/topics/auth/customizing.txt
+@@ -1137,12 +1137,6 @@ code would be required in the app's ``admin.py`` file::
+             model = MyUser
+             fields = ('email', 'password', 'date_of_birth', 'is_active', 'is_admin')
+ 
+-        def clean_password(self):
+-            # Regardless of what the user provides, return the initial value.
+-            # This is done here, rather than on the field, because the
+-            # field does not have access to the initial value
+-            return self.initial["password"]
+-
+ 
+     class UserAdmin(BaseUserAdmin):
+         # The forms to add and change user instances

@@ -1,0 +1,52 @@
+diff --git a/src/_pytest/mark/structures.py b/src/_pytest/mark/structures.py
+index 800a25c9243e0bc000862eacaae6e758ef58e0c7..613828bbfdaada40b849314d12989187f9dfc24d 100644
+--- a/src/_pytest/mark/structures.py
++++ b/src/_pytest/mark/structures.py
+@@ -363,6 +363,19 @@ def get_unpacked_marks(obj: object) -> Iterable[Mark]:
+     return normalize_mark_list(mark_list)
+ 
+ 
++def _iter_unpacked_marks(obj: object) -> Iterable[Mark]:
++    """Obtain the unpacked marks that are stored on an object, taking MRO into account for classes."""
++    if isinstance(obj, type):
++        seen: Set[Mark] = set()
++        for base in obj.__mro__:
++            for mark in get_unpacked_marks(base):
++                if mark not in seen:
++                    seen.add(mark)
++                    yield mark
++    else:
++        yield from get_unpacked_marks(obj)
++
++
+ def normalize_mark_list(
+     mark_list: Iterable[Union[Mark, MarkDecorator]]
+ ) -> Iterable[Mark]:
+diff --git a/src/_pytest/python.py b/src/_pytest/python.py
+index 3db8775061b8fa9361a2a84b21a8b629b61f7ff0..0ca79c65d40720f4f6de580a6e1620f5c4552261 100644
+--- a/src/_pytest/python.py
++++ b/src/_pytest/python.py
+@@ -805,6 +805,23 @@ class Class(PyCollector):
+         """The public constructor."""
+         return super().from_parent(name=name, parent=parent, **kw)
+ 
++    def iter_markers_with_node(
++        self, name: Optional[str] = None
++    ) -> Iterator[Tuple[nodes.Node, Mark]]:
++        for node, mark in super().iter_markers_with_node(name=name):
++            yield node, mark
++        if isinstance(self.obj, type):
++            seen: Set[Mark] = set(self.own_markers)
++            for base in self.obj.__mro__[1:]:
++                raw_marks = base.__dict__.get("pytestmark", [])
++                if not isinstance(raw_marks, list):
++                    raw_marks = [raw_marks]
++                for mark in normalize_mark_list(raw_marks):
++                    if mark not in seen:
++                        seen.add(mark)
++                        if name is None or getattr(mark, "name", None) == name:
++                            yield self, mark
++
+     def newinstance(self):
+         return self.obj()
+ 

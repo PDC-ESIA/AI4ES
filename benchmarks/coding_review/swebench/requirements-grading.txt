@@ -1,0 +1,4 @@
+# Harness OFICIAL do SWE-bench, instalado num venv SEPARADO do adk/ (ver README).
+# Versão validada contra grading.py (formato do report.json por instância e
+# suporte a --dataset_name apontando para um .parquet local).
+swebench==5.0.2

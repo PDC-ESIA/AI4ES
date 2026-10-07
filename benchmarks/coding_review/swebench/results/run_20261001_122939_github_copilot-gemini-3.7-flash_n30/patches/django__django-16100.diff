@@ -1,0 +1,76 @@
+diff --git a/django/contrib/admin/options.py b/django/contrib/admin/options.py
+index 5f07a4208a805efc2bae60bf58e0529017b04e0e..088fec9f4d64f1d9ee43c0ff4e5d07080fbb6a1c 100644
+--- a/django/contrib/admin/options.py
++++ b/django/contrib/admin/options.py
+@@ -2011,14 +2011,15 @@ class ModelAdmin(BaseModelAdmin):
+             )
+             if formset.is_valid():
+                 changecount = 0
+-                for form in formset.forms:
+-                    if form.has_changed():
+-                        obj = self.save_form(request, form, change=True)
+-                        self.save_model(request, obj, form, change=True)
+-                        self.save_related(request, form, formsets=[], change=True)
+-                        change_msg = self.construct_change_message(request, form, None)
+-                        self.log_change(request, obj, change_msg)
+-                        changecount += 1
++                with transaction.atomic(using=router.db_for_write(self.model)):
++                    for form in formset.forms:
++                        if form.has_changed():
++                            obj = self.save_form(request, form, change=True)
++                            self.save_model(request, obj, form, change=True)
++                            self.save_related(request, form, formsets=[], change=True)
++                            change_msg = self.construct_change_message(request, form, None)
++                            self.log_change(request, obj, change_msg)
++                            changecount += 1
+ 
+                 if changecount:
+                     msg = ngettext(
+diff --git a/tests/admin_views/tests.py b/tests/admin_views/tests.py
+index cd5b8ed83655e5219954497a1c4664fe585ea390..7a5088a31c23e821c649218c422130b7261eaa7b 100644
+--- a/tests/admin_views/tests.py
++++ b/tests/admin_views/tests.py
+@@ -48,7 +48,7 @@ from django.utils.html import escape
+ from django.utils.http import urlencode
+ 
+ from . import customadmin
+-from .admin import CityAdmin, site, site2
++from .admin import CategoryAdmin, CityAdmin, site, site2
+ from .models import (
+     Actor,
+     AdminOrderedAdminMethod,
+@@ -7639,6 +7639,34 @@ class AdminCustomSaveRelatedTests(TestCase):
+         self.assertEqual("Josh Stone", Parent.objects.latest("id").name)
+         self.assertEqual(["Catherine Stone", "Paul Stone"], children_names)
+ 
++    def test_list_editable_transaction(self):
++        collector = Collector.objects.create(name="Collector 1")
++        category1 = Category.objects.create(collector=collector, order=1)
++        category2 = Category.objects.create(collector=collector, order=2)
++        post_data = {
++            "form-TOTAL_FORMS": "2",
++            "form-INITIAL_FORMS": "2",
++            "form-MAX_NUM_FORMS": "0",
++            "form-0-id": category1.pk,
++            "form-0-order": "10",
++            "form-0-collector": collector.pk,
++            "form-1-id": category2.pk,
++            "form-1-order": "20",
++            "form-1-collector": collector.pk,
++            "_save": "Save",
++        }
++        with mock.patch.object(
++            CategoryAdmin, "save_related", side_effect=ValueError("Boom")
++        ):
++            with self.assertRaises(ValueError):
++                self.client.post(
++                    reverse("admin:admin_views_category_changelist"), post_data
++                )
++        category1.refresh_from_db()
++        category2.refresh_from_db()
++        self.assertEqual(category1.order, 1)
++        self.assertEqual(category2.order, 2)
++
+ 
+ @override_settings(ROOT_URLCONF="admin_views.urls")
+ class AdminViewLogoutTests(TestCase):
