@@ -45,7 +45,8 @@ from google.adk.tools import FunctionTool, exit_loop
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
-from shared.pipeline_flags import coder_contexto_enxuto
+from shared.execution.verificacao_rapida import ResultadoVerificacao, verificar_rapido
+from shared.pipeline_flags import coder_contexto_enxuto, verificacao_rapida
 from shared.execution.verificador_executabilidade import verificar_executabilidade
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
 from shared.workspace import get_agent_workspace
@@ -145,6 +146,57 @@ def _mensagem_de_recusa(bloqueios, arquivos) -> str:
     )
 
 
+_CABECALHO_VERIFICACAO = (
+    "VERIFICAÇÃO RÁPIDA FALHOU — o harness NÃO foi executado"
+)
+
+# Nota de progresso de uma rodada barrada pela verificação rápida: o degrau
+# `MINIMO_PARA_RODAR` (peso 0.05) foi vencido — há manifesto e código —, mas
+# nada a jusante chegou a ser tentado.
+_NOTA_VERIFICACAO_RAPIDA = 0.05
+
+
+def _mensagem_de_verificacao(resultado: ResultadoVerificacao) -> str:
+    """Erros da verificação rápida, devolvidos ao coder no lugar do ErrorReport."""
+    origem = (
+        "checagens determinísticas no ambiente da trilha"
+        if resultado.modo == "trilha"
+        else "revisão automática do código"
+    )
+    falhas = "\n\n".join(f.como_texto() for f in resultado.falhas)
+    return (
+        f"{_CABECALHO_VERIFICACAO} ({origem}).\n\n"
+        "O artefato não passaria nem da importação/inicialização. Corrija a causa "
+        "raiz abaixo — NÃO refaça a ETAPA 0 nem recrie o projeto; leia só os "
+        "arquivos citados e corrija com `tool_substituir_trecho`.\n\n"
+        f"{falhas}"
+    )
+
+
+def _verificacao_rapida_reprovou(state) -> Optional[str]:
+    """Mensagem da verificação rápida quando ela barra a rodada, senão None."""
+    if not verificacao_rapida():
+        return None
+    macro = (state.get("tasks") or {}).get("macro_context") or {}
+    stack = ", ".join(str(t) for t in macro.get("tech_stack") or [])
+    try:
+        resultado = verificar_rapido(
+            get_agent_workspace("cr_coder"), state.get("trilha"), stack=stack
+        )
+    except Exception:  # noqa: BLE001 — a verificação nunca derruba a task
+        logger.warning("[VERIFICACAO_RAPIDA] falhou ao executar", exc_info=True)
+        return None
+    if resultado.ok:
+        return None
+    logger.warning(
+        "[VERIFICACAO_RAPIDA] Rodada barrada para %s (%s): %s",
+        state.get("task_id"),
+        resultado.modo,
+        "; ".join(f.etapa for f in resultado.falhas),
+    )
+    return _mensagem_de_verificacao(resultado)
+
+
 def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
     """`before_agent_callback` do `cr_executor_agent` — gate estrutural.
 
@@ -179,13 +231,20 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
     state = callback_context.state
     resultado = verificar_executabilidade(get_agent_workspace("cr_coder"))
     if resultado.executavel:
-        return None
-
-    logger.warning(
-        "[EXECUTABILIDADE] Execução recusada para %s: %s",
-        state.get("task_id"),
-        "; ".join(resultado.bloqueios),
-    )
+        # Com `AI4ES_VERIFICACAO_RAPIDA`, o artefato completo ainda passa por
+        # sintaxe/import/coleta antes de gastar executor, validador e harness.
+        mensagem = _verificacao_rapida_reprovou(state)
+        if mensagem is None:
+            return None
+        nota = _NOTA_VERIFICACAO_RAPIDA
+    else:
+        logger.warning(
+            "[EXECUTABILIDADE] Execução recusada para %s: %s",
+            state.get("task_id"),
+            "; ".join(resultado.bloqueios),
+        )
+        mensagem = _mensagem_de_recusa(resultado.bloqueios, resultado.arquivos)
+        nota = 0.0
 
     # A rodada recusada TAMBÉM entra na política de progresso (issue #394).
     # Quando este callback devolve Content, o ADK marca `end_invocation` e nenhum
@@ -194,17 +253,17 @@ def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
     # ou código) não geraria rodada nenhuma no histórico, nenhum gatilho o
     # enxergaria, e ele só pararia no teto de segurança.
     #
-    # Nota 0.0 sem detalhamento: o degrau `MINIMO_PARA_RODAR` não foi vencido e
-    # nada a jusante chegou a ser tentado. Sem ExecutionReport não há assinatura
-    # de erro, então o gatilho de erro repetido não se aplica a este caminho.
+    # Nota 0.0 (recusa: `MINIMO_PARA_RODAR` não vencido) ou 0.05 (verificação
+    # rápida: só o mínimo vencido), sem detalhamento: nada a jusante chegou a
+    # ser tentado. Sem ExecutionReport não há assinatura de erro, então o
+    # gatilho de erro repetido não se aplica a este caminho — o platô sim.
     decisao = registrar_e_avaliar(
         state,
-        nota_total=0.0,
+        nota_total=nota,
         nota_detalhe=None,
         arquivos_mudaram=fingerprint_mudou(state),
     )
 
-    mensagem = _mensagem_de_recusa(resultado.bloqueios, resultado.arquivos)
     state["execution_result"] = mensagem
 
     if decisao.parar:

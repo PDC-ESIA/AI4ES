@@ -40,6 +40,7 @@ from google.adk.tools import ToolContext
 from shared.execution.manifest import ManifestError, RunManifest, load_manifest
 from shared.execution.profile import ExecutionProfile, select_profile
 from shared.execution.sandbox import Sandbox, create_sandbox
+from shared.execution.trilhas import ambiente_da_trilha
 from shared.tools.coding_tools import harness_docker as hd
 from shared.tools.coding_tools.criterios_aceite import (
     AcceptanceCriterion,
@@ -104,6 +105,9 @@ class _HarnessContext:
         self.manifest: Optional[RunManifest] = None
         self.profile: Optional[ExecutionProfile] = None
         self.sandbox: Optional[Sandbox] = None
+        # Trilha de execução (shared/execution/trilhas.py), vinda do state.
+        self.trilha: Optional[dict] = None
+        self.trilha_env: dict[str, str] = {}
         self.build_logs: str = ""
         self.runtime_logs: str = ""
         self.base_url: str = ""
@@ -132,10 +136,14 @@ def _pulado(stage: StageName, motivo: str) -> StageResult:
 
 
 def _cmd_env(ctx: _HarnessContext) -> Optional[dict[str, str]]:
-    """Env adicional dos comandos, a partir do manifesto (None quando vazio)."""
+    """Env adicional dos comandos: trilha + manifesto (None quando vazio).
+
+    O manifesto vem por último: um `env` declarado pelo coder prevalece.
+    """
+    env = dict(ctx.trilha_env)
     if ctx.manifest and ctx.manifest.env:
-        return dict(ctx.manifest.env)
-    return None
+        env.update(ctx.manifest.env)
+    return env or None
 
 
 # ===========================================================================
@@ -228,6 +236,9 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
             workdir_subpath=ctx.manifest.workdir,
         )
         ctx.sandbox.setup(ctx.coder_dir)
+        # Trilha só no sandbox direto: os atalhos apontam para o host.
+        if ctx.trilha and ctx.manifest.sandbox == "direct":
+            ctx.trilha_env = ambiente_da_trilha(ctx.trilha, ctx.sandbox.root)
     except Exception as e:
         return StageResult(
             stage=StageName.PREPARACAO_AMBIENTE,
@@ -287,6 +298,7 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
             "acceptance_tests_escopo_valido": ctx.mapa_de_testes.escopo_valido,
             "surface": ctx.manifest.surface,
             "profile": ctx.profile.name,
+            "trilha": (ctx.trilha or {}).get("id") if ctx.trilha_env else None,
             "sandbox": ctx.manifest.sandbox,
             "product_type": ctx.product_type,
             "build_commands": list(ctx.manifest.build),
@@ -1093,6 +1105,7 @@ def executar_harness_validacao(
     execution_base_dir=None,
     tasks_base_dir=None,
     tool_context: ToolContext | None = None,
+    trilha: Optional[dict] = None,
 ) -> dict:
     """Executa o harness de validação (9 estágios) sobre o artefato do coder.
 
@@ -1108,6 +1121,9 @@ def executar_harness_validacao(
         coder_base_dir: Sobrescreve o diretório do código do coder (injeção em testes).
         execution_base_dir: Sobrescreve o diretório de saída da execução.
         tasks_base_dir: Sobrescreve o diretório onde ficam as Tasks em JSON.
+        trilha: Trilha de execução (shared/execution/trilhas.py). Ausente, é
+            lida de `tool_context.state["trilha"]`; sem trilha, o ambiente é o
+            do host (histórico).
         tool_context: Injetado pela FunctionTool do ADK quando o parâmetro é
             declarado. Opcional — chamadas diretas (testes, PoC) não o passam.
             Quando presente, grava o caminho absoluto do report gravado em
@@ -1125,6 +1141,9 @@ def executar_harness_validacao(
     tasks_dir = Path(tasks_base_dir) if tasks_base_dir else get_agent_workspace("cr_context_engineer")
 
     ctx = _HarnessContext(task_id, coder_dir, exec_dir, tasks_dir)
+    if trilha is None and tool_context is not None:
+        trilha = tool_context.state.get("trilha")
+    ctx.trilha = trilha if isinstance(trilha, dict) else None
 
     stages: list[StageResult] = []
     criteria_evidence: list[CriterionEvidence] = []

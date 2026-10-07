@@ -31,7 +31,8 @@ from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
 from google.genai import types
 
-from shared.pipeline_flags import coder_contexto_enxuto
+from shared.execution.trilhas import selecionar_trilha
+from shared.pipeline_flags import coder_contexto_enxuto, trilhas
 
 from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
 from src.agents.implementation_validator.agent import _report_path_valido
@@ -100,6 +101,10 @@ def marcador_nova_task(task_id: str) -> str:
 # fora do TaskIterator (benchmarks chamam o coder direto) —, o que mantém a
 # instrução histórica.
 CHAVE_TASK_ATUAL = "current_task"
+
+# Trilha de execução da stack (`AI4ES_TRILHAS`), lida pelo prompt do coder, pelo
+# harness e pela verificação rápida. Ausente = ambiente livre (histórico).
+CHAVE_TRILHA = "trilha"
 
 
 def montar_task_atual(task: dict, macro_context: Optional[dict]) -> str:
@@ -631,6 +636,11 @@ class TaskIterator(BaseAgent):
         )
         yield self._evento_summary(ctx, state, _summary())
 
+        if trilhas():
+            evento = self._evento_trilha(ctx, state)
+            if evento is not None:
+                yield evento
+
         for indice, task in enumerate(tasks):
             task_id = task["id"]
             self._resetar_ciclo(state, primeira=(indice == 0), task_id=task_id)
@@ -716,6 +726,28 @@ class TaskIterator(BaseAgent):
             state.pop("execution_result", None)
         else:
             state["execution_result"] = marcador_nova_task(task_id)
+
+    def _evento_trilha(self, ctx: InvocationContext, state: dict) -> Optional[Event]:
+        """Escolhe a trilha pela `tech_stack` e a publica no state (sem conteúdo)."""
+        macro = (state.get("tasks") or {}).get("macro_context") or {}
+        trilha = selecionar_trilha(macro.get("tech_stack"))
+        if trilha is None:
+            logger.info("[TASK_ITERATOR] Stack fora das trilhas conhecidas: ambiente livre.")
+            state.pop(CHAVE_TRILHA, None)
+            return None
+        logger.info(
+            "[TASK_ITERATOR] Trilha %s (Python %s em %s).",
+            trilha["id"],
+            trilha["python"],
+            trilha["interpretador"],
+        )
+        state[CHAVE_TRILHA] = trilha
+        return Event(
+            invocation_id=ctx.invocation_id,
+            author=self.name,
+            branch=ctx.branch,
+            actions=EventActions(state_delta={CHAVE_TRILHA: trilha}),
+        )
 
     def _evento_inicio_task(
         self,

@@ -16,6 +16,7 @@ from shared.agent_factory import (
     lazy_agent_workspace,
     lazy_workspace_root,
 )
+from shared.execution.trilhas import secao_prompt
 from shared.pipeline_flags import coder_contexto_enxuto
 from shared.workspace import get_agent_workspace
 from shared.tools.coding_tools.filesystem_coding import (
@@ -62,12 +63,12 @@ async def _INSTRUCTION(readonly_context) -> str:
     """
     from google.adk.utils.instructions_utils import inject_session_state
 
-    enxuto = coder_contexto_enxuto() and bool(
-        readonly_context.state.get("current_task")
-    )
-    return await inject_session_state(
-        render_instruction(enxuto=enxuto), readonly_context
-    )
+    state = readonly_context.state
+    enxuto = coder_contexto_enxuto() and bool(state.get("current_task"))
+    # A trilha só existe no state quando o TaskIterator a escolheu
+    # (`AI4ES_TRILHAS`); fora dele a seção é vazia.
+    instrucao = secao_prompt(state.get("trilha")) + render_instruction(enxuto=enxuto)
+    return await inject_session_state(instrucao, readonly_context)
 
 
 agent = LlmAgent(

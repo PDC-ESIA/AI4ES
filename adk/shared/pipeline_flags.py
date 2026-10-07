@@ -19,6 +19,12 @@ Coder/reviewer:
                                     de reenviar o histórico acumulado do branch.
                                     Lida também no import dos agentes
                                     (``include_contents``): exige reiniciar.
+    AI4ES_TRILHAS                   stack conhecida (ex.: python-web) roda com
+                                    interpretador e versões fixados
+                                    (shared/execution/trilhas.py).
+    AI4ES_VERIFICACAO_RAPIDA        antes do harness, checa sintaxe/import/
+                                    coleta (com trilha) ou faz revisão por LLM
+                                    (sem trilha); falha volta direto ao coder.
 """
 
 from __future__ import annotations
@@ -50,3 +56,11 @@ def token_session_total() -> bool:
 
 def coder_contexto_enxuto() -> bool:
     return flag("AI4ES_CODER_CONTEXTO_ENXUTO")
+
+
+def trilhas() -> bool:
+    return flag("AI4ES_TRILHAS")
+
+
+def verificacao_rapida() -> bool:
+    return flag("AI4ES_VERIFICACAO_RAPIDA")
