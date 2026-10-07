@@ -25,15 +25,18 @@ catálogo no `38d627e`, `scb-check` 0.1.3. Run de 03 a 05/10/2026.
 | **Diff** por checkpoint (média) | +154 / −21 linhas; `churn_ratio` 0,29 |
 | **Slop** — verbosidade (média) | **0,37**, de 0,21 no início a 0,46 no fim |
 | **Slop** — erosão (média) | **0,68**, de 0,56 no início a 0,74 no fim |
-| Trajetórias com erosão / verbosidade subindo | 67% / 78% |
+| Trajetórias com erosão / verbosidade subindo | 75% / 87,5% (do 1º ao último checkpoint; 8 dos 10 problemas, os outros 2 não têm a métrica numa das pontas) |
 | Custo | ~12 M tokens de entrada, ~2,3 mil créditos do Copilot (uso total do ciclo), 2,7 h de coder |
 
 Para contexto, o paper reporta verbosidade/erosão de **0,19 / 0,34** em código humano e
 **0,44 / 0,68** na média dos agentes avaliados.
 
-> **Timeout do LLM:** o run usou `AI4ES_LLM_TIMEOUT=600` (o padrão do projeto é 120 s).
-> Com 120 s, o GPT-4 estoura o tempo ao reescrever arquivos grandes; os checkpoints
-> afetados foram refeitos. As execuções ficam registradas em `execucoes` no `metadata.json`.
+> **Timeout do LLM:** com o padrão do projeto (120 s), o GPT-4 estoura o tempo ao
+> reescrever arquivos grandes, então o run passou a usar `AI4ES_LLM_TIMEOUT=600`. Os
+> checkpoints que estouraram foram refeitos com 600 s. Os 13 que já tinham concluído com
+> 120 s foram mantidos: o timeout só afeta chamadas que passam do limite, e nenhuma
+> passou. As execuções ficam registradas no `metadata.json` (`execucoes` e
+> `execucoes_registradas_manualmente`).
 
 Resultado completo (por checkpoint e por fase):
 [`report.md`](../../../benchmarks/coding_review/slopcodebench/results/run_20261003_150411_github_copilot-gpt-4_n10/report.md) ·
