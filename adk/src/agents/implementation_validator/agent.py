@@ -27,7 +27,7 @@ from google.adk.tools import FunctionTool
 from google.genai import types
 
 from shared.agent_factory import create_se_agent
-from shared.pipeline_flags import aceite_independente
+from shared.pipeline_flags import aceite_independente, jornada
 from shared.tools.coding_tools.filesystem_coding import tool_ler_arquivo
 from shared.workspace import get_agent_workspace
 
@@ -150,7 +150,7 @@ def _criterios_decididos(report: dict) -> dict[str, CriterionVerdict]:
     comportamento histórico — preservar o veredito do LLM — continua valendo.
     """
     decididos: dict[str, CriterionVerdict] = {}
-    if not aceite_independente():
+    if not (aceite_independente() or jornada()):
         return decididos
     for evidencia in report.get("criteria_evidence") or []:
         if not isinstance(evidencia, dict):

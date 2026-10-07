@@ -17,7 +17,7 @@ from shared.agent_factory import (
     lazy_workspace_root,
 )
 from shared.execution.trilhas import secao_prompt
-from shared.pipeline_flags import aceite_independente, coder_contexto_enxuto
+from shared.pipeline_flags import aceite_independente, coder_contexto_enxuto, jornada
 from shared.workspace import get_agent_workspace
 from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
@@ -101,7 +101,7 @@ agent = LlmAgent(
     # tests/acceptance/ ficam protegidos de escrita pelo coder.
     before_tool_callback=(
         [bloquear_sobrescrita_herdada, proteger_testes_de_aceite]
-        if aceite_independente()
+        if aceite_independente() or jornada()
         else bloquear_sobrescrita_herdada
     ),
     # `avisar_fora_do_escopo` só atua no modo contexto enxuto (current_task).

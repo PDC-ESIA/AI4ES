@@ -31,6 +31,10 @@ Coder/reviewer:
                                     veredito. Lida também no import do loop.
     AI4ES_ACEITE_COBERTURA_MIN      cobertura mínima de critérios para aceitar
                                     task com ressalvas (padrão 0.6).
+    AI4ES_JORNADA                   depois da última task, um agente escreve o
+                                    teste de jornada do produto (a partir das
+                                    HUs); falha vira task de integração.
+                                    Lida também no import do pipeline.
 """
 
 from __future__ import annotations
@@ -81,3 +85,7 @@ def aceite_cobertura_minima() -> float:
         return float(os.environ.get("AI4ES_ACEITE_COBERTURA_MIN", "") or 0.6)
     except ValueError:
         return 0.6
+
+
+def jornada() -> bool:
+    return flag("AI4ES_JORNADA")

@@ -431,20 +431,24 @@ def proteger_testes_de_aceite(tool, args, tool_context) -> dict | None:
     fotógrafo o coder afrouxou o próprio teste para aceitar 303 onde o critério
     pedia 201. Ler continua permitido.
     """
-    from shared.pipeline_flags import aceite_independente
+    from shared.pipeline_flags import aceite_independente, jornada
     from shared.tools.coding_tools.aceite_independente import e_caminho_protegido
+    from shared.tools.coding_tools.jornada import PASTA_JORNADA
 
-    if getattr(tool, "name", None) not in _TOOLS_DE_ESCRITA or not aceite_independente():
+    if getattr(tool, "name", None) not in _TOOLS_DE_ESCRITA:
         return None
     caminho = args.get("caminho") if isinstance(args, dict) else None
-    if not e_caminho_protegido(caminho):
+    protegido = (aceite_independente() and e_caminho_protegido(caminho)) or (
+        jornada() and e_caminho_protegido(caminho, PASTA_JORNADA)
+    )
+    if not protegido:
         return None
     return {
         "sucesso": False,
         "codigo": "TESTE_DE_ACEITE_PROTEGIDO",
         "erro": (
-            f"'{caminho}' é um teste de aceite independente: ele decide se o "
-            "critério foi atendido e não pode ser alterado por você. Leia-o com "
+            f"'{caminho}' é um teste de aceite/jornada independente: ele decide "
+            "se o critério foi atendido e não pode ser alterado por você. Leia-o com "
             "tool_ler_arquivo para entender o comportamento exigido e corrija o "
             "CÓDIGO do projeto. Se o teste estiver errado, explique isso no seu "
             "texto final."

@@ -28,12 +28,13 @@ este arquivo slim e facilitar manutenção independente.
 
 from google.adk.agents import LoopAgent, SequentialAgent
 
-from shared.pipeline_flags import aceite_independente
+from shared.pipeline_flags import aceite_independente, jornada
 
 from .context_engineer import agent as _context_engineer
 from .memory_feedforward import agent as _memory_feedforward
 from .acceptance.agent import gate as _acceptance_gate
 from .coder import agent as _coder
+from .journey.agent import author as _journey_author
 from .executor.agent import agent as _executor
 from .executor.loop_policy import config_inteiro
 from .reviewer.agent import agent as _reviewer
@@ -101,7 +102,11 @@ _task_iterator = TaskIterator(
         "escopando task_id por código e invocando o loop de codificação uma "
         "vez por task; agrega cobertura em task_iteration_summary."
     ),
-    sub_agents=[_code_execute_loop],
+    # Com `AI4ES_JORNADA` (lida no import), o autor do teste de jornada é o
+    # segundo sub-agente: roda uma vez, depois da última task.
+    sub_agents=(
+        [_code_execute_loop, _journey_author] if jornada() else [_code_execute_loop]
+    ),
 )
 
 # ---------------------------------------------------------------------------

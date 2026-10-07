@@ -32,17 +32,30 @@ from google.adk.events.event_actions import EventActions
 from google.genai import types
 
 from shared.execution.trilhas import selecionar_trilha
+from shared.execution.verificador_executabilidade import verificar_executabilidade
 from shared.pipeline_flags import (
     aceite_cobertura_minima,
     aceite_independente,
     coder_contexto_enxuto,
+    jornada,
     trilhas,
 )
+from shared.tools.coding_tools.aceite_independente import gravar_mapa
+from shared.tools.coding_tools.jornada import (
+    ARQUIVO_JORNADA,
+    FALHOU,
+    NAO_EXECUTADA,
+    executar_jornada,
+    montar_task_integracao,
+)
+from shared.workspace import get_agent_workspace
 
 from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
 from src.agents.implementation_validator.agent import _report_path_valido
 
 from .coder.workspace_guard import preparar_arquivos_herdados
+from .journey.agent import CHAVE_CONTEXTO as CHAVE_CONTEXTO_JORNADA
+from .journey.agent import montar_contexto_jornada
 from .executor.acceptance_score import CHAVE_ACEITE
 from .executor.acceptance_score import CHAVES_DE_CICLO as CHAVES_DE_CICLO_ACEITE
 from .executor.acceptance_score import nota_unificada
@@ -52,6 +65,7 @@ from .executor.loop_policy import (
     CHAVE_MOTIVO_PARADA,
     CHAVES_DE_CICLO,
     MOTIVOS_PARADA,
+    config_inteiro,
 )
 
 logger = logging.getLogger(__name__)
@@ -591,13 +605,88 @@ class TaskIterator(BaseAgent):
 
     @property
     def _sub_loop(self) -> BaseAgent:
-        """O `code_execute_loop` — único sub-agente deste iterator."""
-        if len(self.sub_agents) != 1:
+        """O `code_execute_loop` — primeiro (e, sem jornada, único) sub-agente."""
+        if len(self.sub_agents) not in (1, 2):
             raise RuntimeError(
-                "TaskIterator exige exatamente um sub_agent (code_execute_loop); "
-                f"recebeu {len(self.sub_agents)}."
+                "TaskIterator exige o code_execute_loop e, opcionalmente, o autor "
+                f"da jornada; recebeu {len(self.sub_agents)} sub_agents."
             )
         return self.sub_agents[0]
+
+    @property
+    def _autor_jornada(self) -> Optional[BaseAgent]:
+        """Autor do teste de jornada (`AI4ES_JORNADA`), quando configurado."""
+        return self.sub_agents[1] if len(self.sub_agents) == 2 else None
+
+    async def _fase_jornada(
+        self,
+        ctx: InvocationContext,
+        state: dict,
+        tasks: list[dict],
+        processar,
+        extra: dict,
+    ) -> AsyncGenerator[Event, None]:
+        """Escreve e roda a jornada do produto; falha vira task de integração.
+
+        Até `AI4ES_JORNADA_MAX_RODADAS` tasks de integração (`TASK-901`, ...)
+        passam pelo mesmo loop coder ↔ executor. O critério delas é a jornada
+        passar, decidido pelos próprios testes da jornada (mapa de aceite).
+        """
+        coder_dir = get_agent_workspace("cr_coder")
+        tasks_dir = get_agent_workspace("cr_context_engineer")
+        if not verificar_executabilidade(coder_dir).executavel:
+            extra["jornada"] = {"status": NAO_EXECUTADA, "motivo": "produto não executável", "rodadas": 0}
+            return
+
+        contexto = montar_contexto_jornada(state, tasks)
+        state[CHAVE_CONTEXTO_JORNADA] = contexto
+        yield Event(
+            invocation_id=ctx.invocation_id,
+            author=self.name,
+            branch=ctx.branch,
+            actions=EventActions(state_delta={CHAVE_CONTEXTO_JORNADA: contexto}),
+        )
+        logger.info("[JORNADA] Invocando o autor do teste de jornada.")
+        jornada_ctx = ctx.model_copy(update={"branch": f"{ctx.branch or self.name}.jornada"})
+        try:
+            async for event in self._autor_jornada.run_async(jornada_ctx):
+                yield event
+        except Exception:  # noqa: BLE001 — a jornada nunca derruba o pipeline
+            logger.exception("[JORNADA] Autor da jornada falhou.")
+
+        resultado = executar_jornada(coder_dir, state.get("trilha"))
+        rodadas = 0
+        while resultado.status == FALHOU and rodadas < config_inteiro(
+            "AI4ES_JORNADA_MAX_RODADAS", 1, minimo=0
+        ):
+            rodadas += 1
+            task_id = f"TASK-{900 + rodadas}"
+            task_int = montar_task_integracao(resultado, task_id, rodadas)
+            (tasks_dir / f"{task_id}.json").write_text(
+                json.dumps(task_int, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            gravar_mapa(
+                tasks_dir,
+                task_id,
+                ARQUIVO_JORNADA,
+                {"CA-01": [t["nodeid"] for t in resultado.testes] or [ARQUIVO_JORNADA]},
+            )
+            envelope = state.get("tasks")
+            if isinstance(envelope, dict) and isinstance(envelope.get("tasks"), list):
+                envelope["tasks"].append(task_int)
+            logger.info("[JORNADA] Jornada falhou; rodada de integração %s.", task_id)
+            async for event in processar(len(tasks) + rodadas - 1, task_int, len(tasks) + rodadas):
+                yield event
+            resultado = executar_jornada(coder_dir, state.get("trilha"))
+
+        logger.info("[JORNADA] Resultado final: %s (%s).", resultado.status, resultado.motivo)
+        extra["jornada"] = {
+            "status": resultado.status,
+            "motivo": resultado.motivo,
+            "falhas": resultado.falhas,
+            "testes": len(resultado.testes),
+            "rodadas": rodadas,
+        }
 
     async def _run_async_impl(
         self, ctx: InvocationContext
@@ -633,16 +722,22 @@ class TaskIterator(BaseAgent):
         accepted_task_ids: list[str] = []
         task_results: dict[str, dict] = {}
 
+        # Blocos opcionais do summary (ex.: `jornada`), ausentes no histórico.
+        extra: dict[str, Any] = {}
+
         def _summary() -> dict:
-            return montar_summary(
-                input_valid=True,
-                input_errors=[],
-                expected_task_ids=expected_task_ids,
-                processed_task_ids=processed_task_ids,
-                approved_task_ids=approved_task_ids,
-                accepted_task_ids=accepted_task_ids,
-                task_results=task_results,
-            )
+            return {
+                **montar_summary(
+                    input_valid=True,
+                    input_errors=[],
+                    expected_task_ids=expected_task_ids,
+                    processed_task_ids=processed_task_ids,
+                    approved_task_ids=approved_task_ids,
+                    accepted_task_ids=accepted_task_ids,
+                    task_results=task_results,
+                ),
+                **extra,
+            }
 
         # Summary inicial: o conjunto esperado passa a ser observável antes da
         # primeira task, para que uma interrupção no meio dela não deixe o
@@ -659,7 +754,8 @@ class TaskIterator(BaseAgent):
             if evento is not None:
                 yield evento
 
-        for indice, task in enumerate(tasks):
+        async def _processar(indice: int, task: dict, total: int):
+            """Uma task pelo loop coder ↔ executor (também a de integração)."""
             task_id = task["id"]
             self._resetar_ciclo(state, primeira=(indice == 0), task_id=task_id)
             preparar_arquivos_herdados(state, primeira=(indice == 0))
@@ -671,14 +767,14 @@ class TaskIterator(BaseAgent):
 
             if coder_contexto_enxuto():
                 yield self._evento_inicio_task(
-                    task_ctx, state, task, total=len(expected_task_ids), indice=indice
+                    task_ctx, state, task, total=total, indice=indice
                 )
 
             logger.info(
                 "[TASK_ITERATOR] Iniciando task %s (%d/%d).",
                 task_id,
                 indice + 1,
-                len(expected_task_ids),
+                total,
             )
 
             try:
@@ -727,6 +823,15 @@ class TaskIterator(BaseAgent):
                 resultado["motivo_terminacao"],
             )
             yield self._evento_summary(ctx, state, _summary(), task_id=task_id)
+
+        for indice, task in enumerate(tasks):
+            async for event in _processar(indice, task, len(expected_task_ids)):
+                yield event
+
+        if jornada() and self._autor_jornada is not None:
+            async for event in self._fase_jornada(ctx, state, tasks, _processar, extra):
+                yield event
+            yield self._evento_summary(ctx, state, _summary())
 
     @staticmethod
     def _resetar_ciclo(state: dict, *, primeira: bool, task_id: str) -> None:

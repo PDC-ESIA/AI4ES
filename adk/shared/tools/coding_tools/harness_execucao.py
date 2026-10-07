@@ -41,7 +41,7 @@ from shared.execution.manifest import ManifestError, RunManifest, load_manifest
 from shared.execution.profile import ExecutionProfile, select_profile
 from shared.execution.sandbox import Sandbox, create_sandbox
 from shared.execution.trilhas import ambiente_da_trilha
-from shared.pipeline_flags import aceite_independente
+from shared.pipeline_flags import aceite_independente, jornada
 from shared.tools.coding_tools.aceite_independente import comando_de_aceite, ler_mapa
 from shared.tools.coding_tools import harness_docker as hd
 from shared.tools.coding_tools.criterios_aceite import (
@@ -185,7 +185,9 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     # JSON cru), então aqui chegam tanto o formato novo quanto a lista de
     # strings das tasks antigas — `normalizar_criterios` absorve os dois.
     ctx.acceptance_criteria = normalizar_criterios(task.get("acceptance_criteria"))
-    if aceite_independente():
+    # A task de integração da jornada (`AI4ES_JORNADA`) também tem mapa: o
+    # critério dela é a própria jornada passar.
+    if aceite_independente() or jornada():
         ctx.mapa_independente = ler_mapa(ctx.tasks_dir, ctx.task_id)
     ctx.contract = task.get("contract", {}) or {}
 

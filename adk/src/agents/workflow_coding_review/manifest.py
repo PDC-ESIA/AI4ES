@@ -390,12 +390,18 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
         criterio_reprovado = aceite_independente() and bool(
             aceite.get("criterios_nao_atendidos")
         )
+        # Jornada do produto (AI4ES_JORNADA): só existe quando rodou; produto
+        # que não passa na própria jornada não sai `ok`.
+        jornada = task_summary.get("jornada") if isinstance(task_summary, dict) else None
+        jornada_falhou = isinstance(jornada, dict) and jornada.get("status") != "passou"
 
         status = _derive_status(
             artifacts,
             doubts,
             validation,
-            has_accepted_with_caveats=bool(accepted_ids) or criterio_reprovado,
+            has_accepted_with_caveats=(
+                bool(accepted_ids) or criterio_reprovado or jornada_falhou
+            ),
         )
 
         manifest: dict = {
@@ -404,6 +410,7 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             "artifacts":  artifacts,
             "doubts":     doubts,
             "aceite":     aceite,
+            **({"jornada": jornada} if isinstance(jornada, dict) else {}),
             "summary": _build_summary(
                 artifacts,
                 doubts,

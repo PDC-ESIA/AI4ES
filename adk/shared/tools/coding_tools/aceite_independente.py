@@ -44,12 +44,12 @@ def caminho_mapa(tasks_dir: Path, task_id: str) -> Path:
     return Path(tasks_dir) / f"{task_id}.acceptance.json"
 
 
-def e_caminho_protegido(caminho: Optional[str]) -> bool:
-    """Diz se um caminho relativo cai na pasta de testes de aceite."""
+def e_caminho_protegido(caminho: Optional[str], pasta: str = PASTA_ACEITE) -> bool:
+    """Diz se um caminho relativo cai na `pasta` (padrão: testes de aceite)."""
     if not isinstance(caminho, str) or not caminho.strip():
         return False
     partes = PurePosixPath(caminho.strip().replace("\\", "/")).parts
-    alvo = PurePosixPath(PASTA_ACEITE).parts
+    alvo = PurePosixPath(pasta).parts
     return any(
         tuple(partes[i : i + len(alvo)]) == alvo for i in range(len(partes) - len(alvo) + 1)
     )

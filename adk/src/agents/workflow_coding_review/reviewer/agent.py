@@ -168,6 +168,16 @@ def _render_task_outcomes(state) -> str:
         "Tasks aceitas com ressalvas: "
         + (", ".join(str(item) for item in accepted) if isinstance(accepted, list) and accepted else "nenhuma"),
     ]
+    jornada = summary.get("jornada")
+    if isinstance(jornada, Mapping):
+        # Só existe com AI4ES_JORNADA: o teste de ponta a ponta do produto.
+        falhas = jornada.get("falhas")
+        lines.append(
+            f"Jornada do produto (teste de ponta a ponta): {jornada.get('status')}"
+            + (f" — {jornada.get('motivo')}" if jornada.get("motivo") else "")
+            + (f"; falhas: {', '.join(map(str, falhas))}" if isinstance(falhas, list) and falhas else "")
+            + f"; rodadas de integração: {jornada.get('rodadas', 0)}"
+        )
     if not isinstance(expected, list) or not isinstance(results, Mapping):
         return "\n".join(lines)
 
