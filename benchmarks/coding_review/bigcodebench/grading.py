@@ -104,7 +104,7 @@ def build_grade_program(problem: BigCodeBenchProblem, solution_source: str) -> s
         "# ---- runner ----\n"
         "import sys as _sys\n"
         "import unittest as _unittest\n"
-        "_suite = _unittest.defaultTestLoader.loadTestsFromModule(_sys.modules[__name__])\n"
+        "_suite = _unittest.defaultTestLoader.loadTestsFromTestCase(TestCases)\n"
         "_res = _unittest.TextTestRunner(stream=_sys.stderr, verbosity=1).run(_suite)\n"
         "if _res.wasSuccessful() and _res.testsRun > 0:\n"
         f'    print("{_PASS_MARKER}")\n'
