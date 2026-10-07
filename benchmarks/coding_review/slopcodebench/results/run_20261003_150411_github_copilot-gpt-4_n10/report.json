@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T00:28:06.483350+00:00",
+  "generated_at": "2026-10-07T00:27:50.059351+00:00",
   "model": "github_copilot/gpt-4",
   "seed": 42,
   "problems": [
@@ -44,6 +44,7 @@
       "checkpoints": 5
     }
   ],
+  "incomplete": [],
   "metrics": {
     "correctness": {
       "checkpoints_expected": 50,
@@ -127,14 +128,16 @@
       },
       "pct_trajectories_rising": {
         "erosion": {
-          "trajectories": 9,
+          "trajectories": 8,
           "rising": 6,
-          "pct": 66.67
+          "excluded": 2,
+          "pct": 75.0
         },
         "verbosity": {
-          "trajectories": 9,
+          "trajectories": 8,
           "rising": 7,
-          "pct": 77.78
+          "excluded": 2,
+          "pct": 87.5
         }
       },
       "paper_reference": {
@@ -1547,7 +1550,7 @@
     "cached_tokens": 10560384,
     "reasoning_tokens": 0,
     "coder_duration_s": 9879.1,
-    "total_duration_s": 118.0
+    "total_duration_s": 112.04
   },
   "checkpoints": [
     {

@@ -57,7 +57,46 @@
       "llm_timeout_s": 600.0,
       "repo_commit": "3dfd3dc7fc4b0139be1dd242d9705b5f0ce496a1",
       "codigo_do_benchmark_alterado": true
+    },
+    {
+      "iniciada_em": "2026-10-07T00:25:58.016548+00:00",
+      "llm_timeout_s": 600.0,
+      "repo_commit": "a9f1ed405b135a90586d18cd3d24b5afb9386b51",
+      "codigo_do_benchmark_alterado": true
     }
   ],
-  "finished_at": "2026-10-05T00:28:07.151659+00:00"
+  "finished_at": "2026-10-07T00:27:50.060450+00:00",
+  "execucoes_registradas_manualmente": {
+    "observacao": "Execuções de 03/10/2026, anteriores ao campo `execucoes` (registro automático a partir de 04/10). Reconstituídas depois, a partir do histórico do run; horários aproximados (UTC). Todas com AI4ES_LLM_TIMEOUT=120 (padrão do projeto).",
+    "checkpoints_validos_com_timeout_120s": [
+      "dynamic_config_service_api/checkpoint_1..4",
+      "circuit_eval/checkpoint_1..5",
+      "file_query_tool/checkpoint_1..4"
+    ],
+    "por_que_o_timeout_nao_afeta_esses_checkpoints": "O timeout só interfere em chamadas ao LLM que ultrapassam o limite. Nesses 13 checkpoints todas as chamadas terminaram em menos de 120 s (do contrário o checkpoint não teria concluído); com 600 s elas seriam idênticas.",
+    "tentativas_descartadas_e_refeitas_com_600s": [
+      "circuit_eval/checkpoint_5 (timeout do LLM; refeito ainda com 120 s)",
+      "circuit_eval/checkpoint_6 (timeout do LLM; tentativa não registrada)",
+      "file_query_tool/checkpoint_5 (timeout do LLM)",
+      "file_backup/checkpoint_1 (interrompido com Ctrl+C)"
+    ],
+    "execucoes": [
+      {
+        "iniciada_em_aprox": "2026-10-03T18:04Z",
+        "llm_timeout_s": 120.0,
+        "repo_commit": "d604e9f"
+      },
+      {
+        "iniciada_em_aprox": "2026-10-03T18:30Z",
+        "llm_timeout_s": 120.0,
+        "repo_commit": "97b2128"
+      },
+      {
+        "iniciada_em_aprox": "2026-10-03T21:30Z",
+        "llm_timeout_s": 120.0,
+        "repo_commit": "3dfd3dc",
+        "codigo_do_benchmark_alterado": true
+      }
+    ]
+  }
 }

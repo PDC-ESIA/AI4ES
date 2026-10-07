@@ -1,12 +1,12 @@
 # Benchmark SlopCodeBench — Coder Agent
 
-- **Gerado em:** 2026-10-05T00:28:06.483350+00:00
+- **Gerado em:** 2026-10-07T00:27:50.059351+00:00
 - **Modelo:** github_copilot/gpt-4
 - **Seed:** 42
 - **Problemas:** dynamic_config_service_api (4 cp), circuit_eval (8 cp), file_query_tool (5 cp), file_backup (4 cp), execution_server (6 cp), database_migration (5 cp), metric_transform_lang (5 cp), dag_execution (3 cp), log_query (5 cp), rejector (5 cp)
 - **Checkpoints rodados / previstos:** 50/50
 - **Tempo do coder (soma de todos os checkpoints):** 2.7 h
-- **Duração desta execução:** 118s (o run pode ter sido retomado; ver `execucoes` no metadata.json)
+- **Duração desta execução:** 112s (o run pode ter sido retomado; ver `execucoes` no metadata.json)
 - **Tokens (in/out):** 11991475/286311
 
 ## 1. Correção ao longo do horizonte
@@ -41,8 +41,9 @@ Solve rates sobre TODOS os checkpoints previstos (os não rodados contam como n�
 | `verbosity_flagged_pct` | 42 | 0.3687 | 0.3383 |
 | `mass.high_cc_pct` | 50 | 0.5562 | 0.7079 |
 
-- **Trajetórias com erosão subindo:** 66.67% (6/9); paper: 77.0%
-- **Trajetórias com verbosidade subindo:** 77.78% (7/9); paper: 75.5%
+- **Trajetórias com erosão subindo:** 75.00% (6/8); paper: 77.0%
+- **Trajetórias com verbosidade subindo:** 87.50% (7/8); paper: 75.5%
+- Compara o 1º e o último checkpoint rodado de cada problema; 2 problema(s) ficaram fora por não terem a métrica em um desses dois checkpoints.
 
 Checkpoints cujo código não é Python válido (erro de sintaxe) ficam sem métricas estáticas (`—`) ou com valores só dos arquivos legíveis: é o comportamento da ferramenta oficial.
 
