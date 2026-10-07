@@ -49,6 +49,13 @@ _CODER_PROMPT = (
 )
 # Parâmetros que precisam coincidir para retomar um run (Resume Guard).
 _PARAMS_VALIDADOS = ("model", "limit", "seed", "problems", "checkpoint_timeout_s")
+# Proveniência que também precisa coincidir na retomada.
+_PROVENIENCIA_VALIDADA = (
+    "coder_prompt_sha256",
+    "slop_code_bench",
+    "scb_problems_commit",
+    "scb_check_version",
+)
 # Quando o LLM fica indisponível (cota, timeout, conexão), o checkpoint é
 # refeito do zero após uma espera, sem registrar a tentativa que falhou. Dois
 # limites contêm o gasto de créditos: tentativas por checkpoint e novas
@@ -206,19 +213,32 @@ def _construir_nome_run(args: argparse.Namespace, timestamp: str, n: int) -> str
 
 
 def _carregar_progresso(progress_path: Path) -> dict[tuple[str, str], dict]:
-    """Lê o checkpoint incremental e devolve {(problema, checkpoint): detalhe}."""
+    """Lê o checkpoint incremental e devolve {(problema, checkpoint): detalhe}.
+
+    Checkpoints cuja AVALIAÇÃO falhou (`grading_error`) não contam como
+    concluídos: a retomada os refaz, como o harness oficial faz com checkpoints
+    com erro (`resume.py`, `HAD_ERROR` → inválido → reexecuta).
+    """
     concluidos: dict[tuple[str, str], dict] = {}
     if not progress_path.is_file():
         return concluidos
+    refazer = 0
     for linha in progress_path.read_text(encoding="utf-8").splitlines():
         linha = linha.strip()
         if not linha:
             continue
         try:
             detalhe = json.loads(linha)
-            concluidos[(detalhe["problem"], detalhe["checkpoint"])] = detalhe
+            chave = (detalhe["problem"], detalhe["checkpoint"])
         except json.JSONDecodeError, KeyError:
             print(f"[run] Aviso: linha inválida em {progress_path.name}, ignorada.")
+            continue
+        if detalhe.get("grading_error"):
+            refazer += 1
+            continue
+        concluidos[chave] = detalhe
+    if refazer:
+        print(f"[run] {refazer} checkpoint(s) com falha de avaliação serão refeitos.")
     return concluidos
 
 
@@ -254,13 +274,14 @@ def _estados_dos_checkpoints(
 
 
 def _interrompe_trajetoria(detalhe: dict) -> bool:
-    """Early stop como no runner oficial: erro do coder ou pass policy reprovada.
+    """Early stop como no runner oficial: só o erro do coder para a trajetória.
 
-    Com a política padrão `any`, `passed_policy` é sempre verdadeiro (ver
-    `PassPolicy.check` no harness), então na prática só o erro do coder para a
-    trajetória.
+    `passed_policy` não entra: com a política padrão `any` ele só fica falso
+    quando a AVALIAÇÃO falha (ver `PassPolicy.check` no harness), e falha do
+    avaliador não é erro do agente — o checkpoint fica como `error`, o problema
+    segue, e a retomada o refaz (ver `_carregar_progresso`).
     """
-    return bool(detalhe.get("coder_error")) or not detalhe.get("passed_policy")
+    return bool(detalhe.get("coder_error"))
 
 
 @dataclass
@@ -399,8 +420,19 @@ async def _executar_problema(
 
         passou = sum(grade.pass_counts.values())
         total = sum(grade.total_counts.values())
-        status = "ERRO" if geracao.error or grade.error else f"{passou}/{total} testes"
+        if geracao.error:
+            status = "ERRO DO CODER"
+        elif grade.error:
+            status = "FALHA NA AVALIAÇÃO"
+        else:
+            status = f"{passou}/{total} testes"
         print(f"[run] {rotulo}: {status} (coder {duracao_coder}s)")
+        if grade.error:
+            print(
+                f"[run] {rotulo}: a avaliação falhou ({grade.error}). O checkpoint "
+                "fica como `error`, o problema segue, e a retomada (--resume-dir) "
+                "o refaz."
+            )
 
         if _interrompe_trajetoria(detalhe):
             print(f"[run] {problema.name}: trajetória interrompida (erro do coder).")
@@ -438,10 +470,15 @@ async def _executar(args: argparse.Namespace, run_dir: Path, problemas: list) ->
             )
         except coder_runner.LlmIndisponivel:
             raise  # interrompe o run inteiro; ver `main`
-        except Exception as exc:  # noqa: BLE001 — um problema não derruba o run
+        except Exception as exc:  # noqa: BLE001 — interrompe para retomada segura
+            # Seguir adiante publicaria um relatório incompleto como se fosse
+            # resultado: os checkpoints já feitos deste problema sumiriam de
+            # `detalhes` e virariam `skipped`. O progresso fica no
+            # progress.jsonl, e `--resume-dir` continua daqui.
             print(
                 f"[run] {problema.name}: falha inesperada ({type(exc).__name__}: {exc})"
             )
+            raise
 
     # Consolidação oficial: uma linha por checkpoint avaliado.
     rows = grading.build_checkpoint_results(
@@ -464,6 +501,12 @@ async def _executar(args: argparse.Namespace, run_dir: Path, problemas: list) ->
         )
     }
 
+    metrics = aggregate(
+        rows,
+        problemas,
+        grading.progress_bins,
+        regression_breaks(scb_dir, problemas),
+    )
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model": args.model,
@@ -471,15 +514,29 @@ async def _executar(args: argparse.Namespace, run_dir: Path, problemas: list) ->
         "problems": [
             {"name": p.name, "checkpoints": p.num_checkpoints} for p in problemas
         ],
-        "metrics": aggregate(
-            rows,
-            problemas,
-            grading.progress_bins,
-            regression_breaks(scb_dir, problemas),
-        ),
+        "incomplete": _pendencias(detalhes, metrics),
+        "metrics": metrics,
         "usage_metrics": usage,
         "checkpoints": detalhes,
     }
+
+
+def _pendencias(detalhes: list[dict], metrics: dict) -> list[str]:
+    """Motivos pelos quais o relatório NÃO é um resultado final (vazio = completo).
+
+    Checkpoints com falha de avaliação ainda serão refeitos na retomada, e um
+    run sem nenhum checkpoint rodado não diz nada sobre o modelo: publicar
+    qualquer um dos dois como resultado confundiria "avaliador falhou" com
+    "modelo ruim".
+    """
+    motivos = [
+        f"{d['problem']}/{d['checkpoint']}: falha na avaliação (refazer com --resume-dir)"
+        for d in detalhes
+        if d.get("grading_error")
+    ]
+    if not metrics["correctness"]["checkpoints_ran"]:
+        motivos.append("nenhum checkpoint foi avaliado")
+    return motivos
 
 
 def _fmt(valor, sufixo: str = "") -> str:
@@ -514,9 +571,21 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
     corr, diff, slop = m["correctness"], m["diff"], m["slop"]
     usage = relatorio["usage_metrics"]
 
+    pendencias = relatorio.get("incomplete") or []
+    aviso = (
+        [
+            "> **⚠️ RELATÓRIO INCOMPLETO — não é um resultado final.**",
+            ">",
+            *[f"> - {motivo}" for motivo in pendencias],
+            "",
+        ]
+        if pendencias
+        else []
+    )
     linhas = [
         "# Benchmark SlopCodeBench — Coder Agent",
         "",
+        *aviso,
         f"- **Gerado em:** {relatorio['generated_at']}",
         f"- **Modelo:** {relatorio['model']}",
         f"- **Seed:** {relatorio['seed']}",
@@ -599,6 +668,9 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         f"{_fmt(subida['verbosity']['pct'], '%')} "
         f"({subida['verbosity']['rising']}/{subida['verbosity']['trajectories']}); "
         f"paper: {ref['pct_trajectories_rising']['verbosity']}%",
+        f"- Compara o 1º e o último checkpoint rodado de cada problema; "
+        f"{subida['erosion'].get('excluded', 0)} problema(s) ficaram fora por não "
+        f"terem a métrica em um desses dois checkpoints.",
         "",
         "Checkpoints cujo código não é Python válido (erro de sintaxe) ficam sem "
         "métricas estáticas (`—`) ou com valores só dos arquivos legíveis: é o "
@@ -688,6 +760,15 @@ def _validar_e_persistir_config(
                 raise ValueError(
                     f"Erro: o parâmetro '{chave}' ({params[chave]}) difere do "
                     f"valor original da execução ({salvos.get(chave)})."
+                )
+        # Retomar com outro prompt do coder, outro harness ou outro catálogo
+        # misturaria versões no mesmo relatório. O commit do repositório fica de
+        # fora de propósito: ele muda a cada commit e vai para `execucoes`.
+        for chave in _PROVENIENCIA_VALIDADA:
+            if salvos.get(chave) != proveniencia.get(chave):
+                raise ValueError(
+                    f"Erro: a proveniência '{chave}' ({proveniencia.get(chave)}) "
+                    f"difere da execução original ({salvos.get(chave)})."
                 )
         return
 
@@ -832,6 +913,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"Relatório JSON: {json_path}")
     print(f"Resumo Markdown: {md_path}")
+    if relatorio["incomplete"]:
+        print("\n[run] ATENÇÃO: relatório INCOMPLETO, não é um resultado final:")
+        for motivo in relatorio["incomplete"]:
+            print(f"  - {motivo}")
+        print(f"Para completar: {_comando_de_retomada(args, run_dir)}")
+        return 1
     return 0
 
 

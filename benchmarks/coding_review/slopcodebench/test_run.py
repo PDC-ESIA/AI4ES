@@ -102,9 +102,46 @@ def test_estados_dos_checkpoints(tmp_path):
 
 
 def test_interrompe_trajetoria():
-    assert run._interrompe_trajetoria({"passed_policy": False})
+    """Só o erro do coder para a trajetória; falha de avaliação não."""
     assert run._interrompe_trajetoria({"passed_policy": True, "coder_error": "boom"})
     assert not run._interrompe_trajetoria({"passed_policy": True, "coder_error": None})
+    assert not run._interrompe_trajetoria(
+        {"passed_policy": False, "grading_error": "docker fora"}
+    )
+
+
+def test_validar_e_persistir_config_resume_proveniencia(tmp_path):
+    """Retomar com outro prompt do coder (ou harness/catálogo) é recusado."""
+    original = {"coder_prompt_sha256": "aaa", "scb_problems_commit": "38d627e"}
+    run._validar_e_persistir_config(tmp_path, _params(), original)
+    run._validar_e_persistir_config(tmp_path, _params(), original)  # igual: aceita
+    with pytest.raises(ValueError, match="'coder_prompt_sha256'"):
+        run._validar_e_persistir_config(
+            tmp_path, _params(), {**original, "coder_prompt_sha256": "bbb"}
+        )
+
+
+def test_carregar_progresso_ignora_falha_de_avaliacao(tmp_path):
+    """Checkpoint com falha de avaliação não é cache: a retomada o refaz."""
+    progresso = tmp_path / "progress.jsonl"
+    linhas = [
+        {"problem": "alpha", "checkpoint": "checkpoint_1", "grading_error": None},
+        {"problem": "alpha", "checkpoint": "checkpoint_2", "grading_error": "docker"},
+    ]
+    progresso.write_text("".join(json.dumps(x) + "\n" for x in linhas))
+    assert set(run._carregar_progresso(progresso)) == {("alpha", "checkpoint_1")}
+
+
+def test_pendencias_marcam_relatorio_incompleto():
+    metricas = {"correctness": {"checkpoints_ran": 3}}
+    assert run._pendencias([{"problem": "a", "checkpoint": "c1"}], metricas) == []
+    pend = run._pendencias(
+        [{"problem": "a", "checkpoint": "c1", "grading_error": "docker"}], metricas
+    )
+    assert pend and "a/c1" in pend[0]
+    assert run._pendencias([], {"correctness": {"checkpoints_ran": 0}}) == [
+        "nenhum checkpoint foi avaliado"
+    ]
 
 
 def test_dataset_sorteio_deterministico(tmp_path):
@@ -439,3 +476,135 @@ def test_regression_breaks_compara_teste_a_teste(tmp_path):
     quebras = regression_breaks(tmp_path / "scb", [problema])
     # t_nunca já falhava no checkpoint 1: não é quebra.
     assert quebras == {("alpha", "checkpoint_2"): {"passavam": 2, "quebraram": 1}}
+
+
+def _simular_problema(monkeypatch, tmp_path, coder_runner, avaliacao_falha_em=()):
+    """Liga `_executar_problema` a um coder e um avaliador falsos (sem LLM/Docker).
+
+    Devolve (problema, checkpoints em que o coder rodou).
+    """
+    from benchmarks.coding_review.slopcodebench import grading
+
+    catalogo = tmp_path / "catalogo"
+    catalogo.mkdir(parents=True)
+    (problema,) = dataset.load_problems(
+        _catalogo(catalogo, nomes=("alpha",), n_cp=3), names=["alpha"]
+    )
+    rodou = []
+
+    async def _coder(mensagem, contrato, **_kwargs):
+        rodou.append(contrato["contract"]["checkpoint"])
+        return coder_runner.CoderGeneration(task_id=contrato["id"], files=[])
+
+    def _pasta(_problema, pasta_problema, checkpoint):
+        pasta = pasta_problema / checkpoint
+        pasta.mkdir(parents=True, exist_ok=True)
+        return pasta
+
+    def _avaliar(_problema, checkpoint, _save_dir):
+        if checkpoint in avaliacao_falha_em:
+            return grading.GradeResult(passed_policy=False, error="docker fora")
+        return grading.GradeResult(
+            passed_policy=True, pass_counts={"core": 1}, total_counts={"core": 1}
+        )
+
+    monkeypatch.setattr(grading, "checkpoint_output_dir", _pasta)
+    monkeypatch.setattr(grading, "render_prompt", lambda *a, **k: ("p", "main.py"))
+    monkeypatch.setattr(grading, "write_inference_result", lambda *a, **k: None)
+    monkeypatch.setattr(grading, "grade_checkpoint", _avaliar)
+    monkeypatch.setattr(coder_runner, "iniciar_problema", lambda: None)
+    monkeypatch.setattr(coder_runner, "restaurar_de_snapshot", lambda *a: None)
+    monkeypatch.setattr(coder_runner, "salvar_snapshot", lambda *a: None)
+    monkeypatch.setattr(coder_runner, "run_coder", _coder)
+    return problema, rodou
+
+
+def test_falha_de_avaliacao_nao_interrompe_e_e_refeita(
+    monkeypatch, tmp_path, coder_runner
+):
+    """Cenário da revisão: avaliação falha no checkpoint 1 de um problema de 3.
+
+    No run, o problema segue até o checkpoint 3. Na retomada, o checkpoint 1 é
+    refeito (não vira CACHE) e os seguintes não ficam presos atrás dele.
+    """
+    import asyncio
+
+    problema, rodou = _simular_problema(
+        monkeypatch, tmp_path, coder_runner, avaliacao_falha_em=("checkpoint_1",)
+    )
+    progresso = tmp_path / "progress.jsonl"
+    args = argparse.Namespace(model="m", checkpoint_timeout=10)
+
+    detalhes = asyncio.run(
+        run._executar_problema(problema, args, tmp_path / "scb", progresso, {})
+    )
+    assert rodou == ["checkpoint_1", "checkpoint_2", "checkpoint_3"]
+    assert detalhes[0]["grading_error"] == "docker fora"
+    assert run._estados_dos_checkpoints([problema], detalhes)["alpha"] == {
+        "checkpoint_1": "error",
+        "checkpoint_2": "ran",
+        "checkpoint_3": "ran",
+    }
+
+    # Retomada com o progress.jsonl que ficou: só o checkpoint 1 roda de novo.
+    problema, rodou = _simular_problema(monkeypatch, tmp_path / "r", coder_runner)
+    concluidos = run._carregar_progresso(progresso)
+    asyncio.run(
+        run._executar_problema(problema, args, tmp_path / "scb", progresso, concluidos)
+    )
+    assert rodou == ["checkpoint_1"]
+
+
+def test_retomada_de_progresso_antigo_parado_na_falha_de_avaliacao(
+    monkeypatch, tmp_path, coder_runner
+):
+    """progress.jsonl antigo, parado no checkpoint 1 por falha de avaliação."""
+    import asyncio
+
+    progresso = tmp_path / "progress.jsonl"
+    progresso.write_text(
+        json.dumps(
+            {
+                "problem": "alpha",
+                "checkpoint": "checkpoint_1",
+                "passed_policy": False,
+                "grading_error": "docker fora",
+            }
+        )
+        + "\n"
+    )
+    problema, rodou = _simular_problema(monkeypatch, tmp_path, coder_runner)
+    args = argparse.Namespace(model="m", checkpoint_timeout=10)
+    asyncio.run(
+        run._executar_problema(
+            problema,
+            args,
+            tmp_path / "scb",
+            progresso,
+            run._carregar_progresso(progresso),
+        )
+    )
+    # Antes: só CACHE do checkpoint 1 e parada. Agora: segue até o fim.
+    assert rodou == ["checkpoint_1", "checkpoint_2", "checkpoint_3"]
+
+
+def test_trajetorias_exigem_metrica_no_primeiro_e_no_ultimo(tmp_path):
+    """Sem métrica no 1º checkpoint, a trajetória fica fora da conta."""
+    from benchmarks.coding_review.slopcodebench.metrics import aggregate
+
+    (problema,) = dataset.load_problems(
+        _catalogo(tmp_path, nomes=("alpha",), n_cp=3), names=["alpha"]
+    )
+    rows = [
+        {"problem": "alpha", "checkpoint": f"checkpoint_{i}", "state": "ran", **v}
+        for i, v in ((1, {}), (2, {"erosion": 0.3}), (3, {"erosion": 0.5}))
+    ]
+    subida = aggregate(rows, [problema], _bins_falsos)["slop"][
+        "pct_trajectories_rising"
+    ]
+    assert subida["erosion"] == {
+        "trajectories": 0,
+        "rising": 0,
+        "excluded": 1,
+        "pct": None,
+    }

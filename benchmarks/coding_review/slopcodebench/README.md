@@ -103,6 +103,16 @@ python -m benchmarks.coding_review.slopcodebench.run --model github_copilot/gpt-
   por checkpoint e 5 novas tentativas no run inteiro. Esgotado qualquer um, o
   run é interrompido e imprime o comando de retomada (`--resume-dir`).
   `Ctrl+C` também interrompe sem registrar o checkpoint em andamento.
+- **Falha na avaliação não conta como falha do coder.** Se o avaliador não chega
+  a um veredito (Docker fora, imagem não construída, timeout do container), o
+  checkpoint fica como `error`, o problema segue para o próximo checkpoint e a
+  retomada (`--resume-dir`) o refaz — como o harness oficial faz com checkpoints
+  com erro. Enquanto houver checkpoint pendente, o `report.md` traz o aviso
+  "RELATÓRIO INCOMPLETO" e o run sai com código 1.
+- **Retomada segura.** O `--resume-dir` só aceita continuar se modelo, seed,
+  problemas, timeout, hash do prompt do coder, commits do harness e do catálogo e
+  versão do `scb-check` forem os mesmos do início. Uma falha inesperada num
+  problema interrompe o run (em vez de publicar um relatório incompleto).
 
 ## Métricas
 
@@ -112,13 +122,13 @@ python -m benchmarks.coding_review.slopcodebench.run --model github_copilot/gpt-
 | ------- | ------------------- |
 | `strict_pass_rate` (strict) | Testes passando / total, **incluindo** a regressão (todos os testes dos checkpoints anteriores). |
 | `isolated_pass_rate` (isolated) | Mesma conta **sem** a regressão. |
+| `core_pass_rate` | Só os testes core do checkpoint. |
+| Regressão | `regression_passed / regression_total`: taxa nos testes dos checkpoints anteriores (inclui os que já falhavam antes). |
+| Quebrou o que funcionava | Testes que **passavam** no checkpoint anterior e falharam na regressão, comparados teste a teste a partir do `evaluation.json` oficial. |
 
 > Os nomes são os que o harness fixado (`31ceea3`) grava no `checkpoint_results.jsonl`.
 > O `docs/metrics-reference.md` do próprio harness ainda os chama de `pass_rate` e
 > `checkpoint_pass_rate`: a documentação está desatualizada em relação ao código.
-| `core_pass_rate` | Só os testes core do checkpoint. |
-| Regressão | `regression_passed / regression_total`: taxa nos testes dos checkpoints anteriores (inclui os que já falhavam antes). |
-| Quebrou o que funcionava | Testes que **passavam** no checkpoint anterior e falharam na regressão, comparados teste a teste a partir do `evaluation.json` oficial. |
 
 Um checkpoint é "resolvido" quando a taxa é 1.0. Os solve rates usam como
 denominador **todos** os checkpoints previstos (como a Tabela 1 do paper).
@@ -136,7 +146,8 @@ a partir do 2º checkpoint.
 
 Ambas vêm do `scb-check` chamado pelo harness. Checkpoints sem workspace avaliado
 são excluídos, não imputados. O relatório inclui a fração de trajetórias em que
-cada métrica sobe do 1º ao último checkpoint (no paper: 77% erosão, 75,5% verbosidade).
+cada métrica sobe do 1º ao último checkpoint rodado (no paper: 77% erosão, 75,5%
+verbosidade); problemas sem a métrica em um desses dois checkpoints ficam fora da conta.
 
 As fases de progresso usam `compute_progress_bins` do harness (5 faixas, 20%…100%).
 

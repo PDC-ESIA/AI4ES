@@ -198,22 +198,33 @@ def _per_phase(
 def _pct_rising(
     problems: list[ScbProblem], indice: dict[tuple[str, str], dict], campo: str
 ) -> dict:
-    """Fração de trajetórias em que `campo` sobe do 1º ao último checkpoint rodado."""
-    subiu = elegiveis = 0
+    """Fração de trajetórias em que `campo` sobe do 1º ao último checkpoint rodado.
+
+    Compara exatamente o primeiro e o último checkpoint RODADO do problema. Se
+    algum dos dois não tem a métrica (ex.: código com erro de sintaxe, que a
+    análise estática oficial não lê), a trajetória fica fora da conta — e é
+    contada em `excluded` — em vez de ser comparada com outros checkpoints.
+    """
+    subiu = elegiveis = excluidas = 0
     for problem in problems:
-        valores = [
-            v
+        rodadas = [
+            row
             for c in problem.checkpoints
             if _ran(row := indice.get((problem.name, c)))
-            and (v := get_field(row, campo)) is not None
         ]
-        if len(valores) < 2:
+        if len(rodadas) < 2:
+            continue
+        inicio = get_field(rodadas[0], campo)
+        fim = get_field(rodadas[-1], campo)
+        if inicio is None or fim is None:
+            excluidas += 1
             continue
         elegiveis += 1
-        subiu += valores[-1] > valores[0]
+        subiu += fim > inicio
     return {
         "trajectories": elegiveis,
         "rising": subiu,
+        "excluded": excluidas,
         "pct": round(100 * subiu / elegiveis, 2) if elegiveis else None,
     }
 
