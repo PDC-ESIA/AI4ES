@@ -41,6 +41,8 @@ from shared.execution.manifest import ManifestError, RunManifest, load_manifest
 from shared.execution.profile import ExecutionProfile, select_profile
 from shared.execution.sandbox import Sandbox, create_sandbox
 from shared.execution.trilhas import ambiente_da_trilha
+from shared.pipeline_flags import aceite_independente
+from shared.tools.coding_tools.aceite_independente import comando_de_aceite, ler_mapa
 from shared.tools.coding_tools import harness_docker as hd
 from shared.tools.coding_tools.criterios_aceite import (
     AcceptanceCriterion,
@@ -108,6 +110,9 @@ class _HarnessContext:
         # Trilha de execução (shared/execution/trilhas.py), vinda do state.
         self.trilha: Optional[dict] = None
         self.trilha_env: dict[str, str] = {}
+        # Mapa critério→teste dos testes de aceite INDEPENDENTES
+        # (`AI4ES_ACEITE_INDEPENDENTE`): o único vínculo que decide critério.
+        self.mapa_independente: Optional[dict] = None
         self.build_logs: str = ""
         self.runtime_logs: str = ""
         self.base_url: str = ""
@@ -180,6 +185,8 @@ def _estagio_preparacao(ctx: _HarnessContext) -> StageResult:
     # JSON cru), então aqui chegam tanto o formato novo quanto a lista de
     # strings das tasks antigas — `normalizar_criterios` absorve os dois.
     ctx.acceptance_criteria = normalizar_criterios(task.get("acceptance_criteria"))
+    if aceite_independente():
+        ctx.mapa_independente = ler_mapa(ctx.tasks_dir, ctx.task_id)
     ctx.contract = task.get("contract", {}) or {}
 
     # ---- Manifesto de execução (run.json) — contrato coder→harness ----
@@ -791,6 +798,35 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
         elif res.exit_code not in (0, None):
             any_fail = True
 
+    # Testes de aceite independentes que a suíte do coder não coletou (comando
+    # de teste restrito a arquivos dele) rodam num comando à parte, no mesmo
+    # ambiente: sem desfecho observado, o critério não seria decidido.
+    if ctx.mapa_independente:
+        observados = _consolidar_testes(resultados)
+        esperados = {
+            t for testes in ctx.mapa_independente["por_criterio"].values() for t in testes
+        }
+        comando = comando_de_aceite(ctx.manifest.test, ctx.mapa_independente["arquivo"])
+        if comando and esperados - set(observados):
+            res = ctx.sandbox.exec(comando, timeout=_TESTS_TIMEOUT, env=env)
+            saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
+            linhas.append(f"$ {comando}\n{saida}")
+            resultados.append(
+                {
+                    "comando": comando,
+                    "exit_code": res.exit_code,
+                    "timed_out": res.timed_out,
+                    "resumo": _resumo_saida_testes(saida),
+                    "testes": _testes_da_saida(saida),
+                    "saida_tail": saida[-2000:],
+                    "aceite_independente": True,
+                }
+            )
+            if res.timed_out:
+                any_timeout = True
+            elif res.exit_code not in (0, None):
+                any_fail = True
+
     if any_timeout:
         status, error_code = StageStatus.FALHA, "TESTES_TIMEOUT"
     elif any_fail:
@@ -923,6 +959,46 @@ def _evidencia_tecnica_dos_testes(
     )
 
 
+def _evidencia_aceite_independente(
+    criterio: AcceptanceCriterion,
+    testes: list[str],
+    desfechos: dict[str, TestOutcome],
+) -> CriterionEvidence:
+    """Decide o critério pelos testes de aceite independentes do coder.
+
+    Todos passaram → `atendido`; algum falhou/deu erro → `nao_atendido`; sem
+    desfecho observado (ou só pulados) → `teste_nao_executado`. Ao contrário dos
+    testes do `run.json`, estes não foram escritos nem podem ser editados pelo
+    agente que implementou a funcionalidade.
+    """
+    observados = {t: desfechos[t] for t in testes if t in desfechos}
+    falhos = [t for t, d in observados.items() if d in (TestOutcome.FALHOU, TestOutcome.ERRO)]
+    passaram = [t for t, d in observados.items() if d == TestOutcome.PASSOU]
+    if falhos:
+        outcome = CriterionOutcome.NAO_ATENDIDO
+    elif passaram and len(passaram) == len(testes):
+        outcome = CriterionOutcome.ATENDIDO
+    else:
+        outcome = CriterionOutcome.TESTE_NAO_EXECUTADO
+    detalhe = "; ".join(f"{t} → {d.value}" for t, d in sorted(observados.items()))
+    ausentes = [t for t in testes if t not in observados]
+    if ausentes:
+        detalhe = "; ".join(filter(None, [detalhe, f"sem resultado: {', '.join(ausentes)}"]))
+    return CriterionEvidence(
+        criterion=criterio.description,
+        criterion_id=criterio.id,
+        automatable=criterio.automatable,
+        outcome=outcome,
+        linked_tests=list(testes),
+        check_performed=(
+            "Testes de aceite independentes (escritos a partir do critério, "
+            f"fora do alcance do coder): {', '.join(testes)}."
+        ),
+        observed=detalhe or "Nenhum resultado observado.",
+        checkable=True,
+    )
+
+
 def _estagio_validacoes_work_item(
     ctx: _HarnessContext,
 ) -> tuple[StageResult, list[CriterionEvidence]]:
@@ -932,6 +1008,10 @@ def _estagio_validacoes_work_item(
     técnica, mas nenhuma dessas fontes classifica o critério. Todo critério sai
     como `nao_avaliado`, eliminando por construção a possibilidade de um teste
     escrito pelo coder produzir um falso `atendido`.
+
+    Exceção (`AI4ES_ACEITE_INDEPENDENTE`): critérios cobertos pelos testes de
+    aceite independentes — escritos por outro agente, protegidos do coder — são
+    decididos por eles (`_evidencia_aceite_independente`).
     """
     if not ctx.deploy_ok or ctx.profile is None:
         return (
@@ -952,8 +1032,16 @@ def _estagio_validacoes_work_item(
     else:
         motivo = ""
 
+    independentes = (ctx.mapa_independente or {}).get("por_criterio") or {}
+
     evidencias: list[CriterionEvidence] = []
     for c in ctx.acceptance_criteria:
+        if independentes.get(c.id):
+            evidencias.append(
+                _evidencia_aceite_independente(c, independentes[c.id], ctx.desfecho_dos_testes)
+            )
+            continue
+
         vinculados = ctx.mapa_de_testes.por_criterio.get(c.id, [])
 
         if vinculados:
@@ -1002,8 +1090,13 @@ def _estagio_validacoes_work_item(
         duration_seconds=round(time.time() - t0, 3),
         summary=(
             f"Evidência coletada para {len(evidencias)} critérios "
-            f"({decididos} avaliados). Testes automatizados não são usados "
-            "para inferir atendimento."
+            f"({decididos} avaliados). "
+            + (
+                "Só os testes de aceite independentes decidem critério; os do "
+                "coder seguem como evidência técnica."
+                if independentes
+                else "Testes automatizados não são usados para inferir atendimento."
+            )
         ),
         evidence={
             "total_criterios": len(evidencias),

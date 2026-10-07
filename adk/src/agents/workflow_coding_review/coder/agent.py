@@ -17,7 +17,7 @@ from shared.agent_factory import (
     lazy_workspace_root,
 )
 from shared.execution.trilhas import secao_prompt
-from shared.pipeline_flags import coder_contexto_enxuto
+from shared.pipeline_flags import aceite_independente, coder_contexto_enxuto
 from shared.workspace import get_agent_workspace
 from shared.tools.coding_tools.filesystem_coding import (
     tool_criar_arquivo,
@@ -36,6 +36,7 @@ from .workspace_guard import (
     auditar_remocao,
     avisar_fora_do_escopo,
     bloquear_sobrescrita_herdada,
+    proteger_testes_de_aceite,
 )
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
@@ -96,7 +97,13 @@ agent = LlmAgent(
     # avisa que o projeto já existe antes da primeira escrita da task;
     # `bloquear_` recusa a sobrescrita se o aviso não bastar; `auditar_`
     # registra remoções e libera o caminho removido da baseline.
-    before_tool_callback=bloquear_sobrescrita_herdada,
+    # Com AI4ES_ACEITE_INDEPENDENTE (lida no import), os testes de aceite em
+    # tests/acceptance/ ficam protegidos de escrita pelo coder.
+    before_tool_callback=(
+        [bloquear_sobrescrita_herdada, proteger_testes_de_aceite]
+        if aceite_independente()
+        else bloquear_sobrescrita_herdada
+    ),
     # `avisar_fora_do_escopo` só atua no modo contexto enxuto (current_task).
     after_tool_callback=[
         anunciar_arquivos_herdados,

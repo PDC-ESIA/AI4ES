@@ -24,6 +24,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from shared.pipeline_flags import aceite_independente
 from shared.workspace import get_agent_workspace, get_workspace_root
 
 if TYPE_CHECKING:
@@ -381,17 +382,21 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             )
             doubts = _scan_doubts(coder_ws, ws_root)
 
+        # Dimensão de aceite: publicada como MEDIDA — ver `resumo_de_aceite`.
+        # Exceção (`AI4ES_ACEITE_INDEPENDENTE`): critério reprovado por teste de
+        # aceite independente É defeito do artefato, não limite do fluxo, e a
+        # fase não pode sair `ok` com ele.
+        aceite = resumo_de_aceite(task_summary)
+        criterio_reprovado = aceite_independente() and bool(
+            aceite.get("criterios_nao_atendidos")
+        )
+
         status = _derive_status(
             artifacts,
             doubts,
             validation,
-            has_accepted_with_caveats=bool(accepted_ids),
+            has_accepted_with_caveats=bool(accepted_ids) or criterio_reprovado,
         )
-
-
-        # Dimensão de aceite: publicada como MEDIDA, fora da derivação de
-        # status — ver `resumo_de_aceite`.
-        aceite = resumo_de_aceite(task_summary)
 
         manifest: dict = {
             "phase":      PHASE_NAME,

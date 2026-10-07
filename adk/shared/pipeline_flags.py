@@ -25,6 +25,12 @@ Coder/reviewer:
     AI4ES_VERIFICACAO_RAPIDA        antes do harness, checa sintaxe/import/
                                     coleta (com trilha) ou faz revisão por LLM
                                     (sem trilha); falha volta direto ao coder.
+    AI4ES_ACEITE_INDEPENDENTE       um agente separado escreve os testes de
+                                    aceite de cada task (o coder não os edita),
+                                    e eles decidem os critérios no harness e no
+                                    veredito. Lida também no import do loop.
+    AI4ES_ACEITE_COBERTURA_MIN      cobertura mínima de critérios para aceitar
+                                    task com ressalvas (padrão 0.6).
 """
 
 from __future__ import annotations
@@ -64,3 +70,14 @@ def trilhas() -> bool:
 
 def verificacao_rapida() -> bool:
     return flag("AI4ES_VERIFICACAO_RAPIDA")
+
+
+def aceite_independente() -> bool:
+    return flag("AI4ES_ACEITE_INDEPENDENTE")
+
+
+def aceite_cobertura_minima() -> float:
+    try:
+        return float(os.environ.get("AI4ES_ACEITE_COBERTURA_MIN", "") or 0.6)
+    except ValueError:
+        return 0.6

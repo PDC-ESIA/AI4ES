@@ -27,6 +27,7 @@ from google.adk.tools import FunctionTool
 from google.genai import types
 
 from shared.agent_factory import create_se_agent
+from shared.pipeline_flags import aceite_independente
 from shared.tools.coding_tools.filesystem_coding import tool_ler_arquivo
 from shared.workspace import get_agent_workspace
 
@@ -131,6 +132,55 @@ def _neutralizar_criterios_nao_avaliados(
     ]
 
 
+# Outcomes do harness que DECIDEM o critério — hoje só emitidos a partir dos
+# testes de aceite independentes (`AI4ES_ACEITE_INDEPENDENTE`), escritos fora do
+# alcance do coder. Para eles o veredito do critério é o do harness, nunca o do
+# LLM.
+_STATUS_DECIDIDO = {
+    "atendido": CriterionStatus.ATENDIDO,
+    "nao_atendido": CriterionStatus.NAO_ATENDIDO,
+}
+
+
+def _criterios_decididos(report: dict) -> dict[str, CriterionVerdict]:
+    """Vereditos determinísticos dos critérios decididos pelo harness.
+
+    Só com `AI4ES_ACEITE_INDEPENDENTE`: reports antigos também trazem
+    `atendido`/`nao_atendido` (vínculos do coder, pré-#394), e para eles o
+    comportamento histórico — preservar o veredito do LLM — continua valendo.
+    """
+    decididos: dict[str, CriterionVerdict] = {}
+    if not aceite_independente():
+        return decididos
+    for evidencia in report.get("criteria_evidence") or []:
+        if not isinstance(evidencia, dict):
+            continue
+        status = _STATUS_DECIDIDO.get(evidencia.get("outcome"))
+        criterio = evidencia.get("criterion")
+        if status is None or not isinstance(criterio, str):
+            continue
+        rotulo = evidencia.get("criterion_id") or criterio
+        decididos[criterio] = CriterionVerdict(
+            criterion=criterio,
+            status=status,
+            reasoning=(
+                f"{rotulo}: decidido pelos testes de aceite independentes — "
+                f"{evidencia.get('observed') or 'sem detalhe'}"
+            ),
+            evidence_ref=", ".join(evidencia.get("linked_tests") or []) or None,
+        )
+    return decididos
+
+
+def _aplicar_decididos(
+    verdicts: list[CriterionVerdict], decididos: dict[str, CriterionVerdict]
+) -> list[CriterionVerdict]:
+    vistos = {v.criterion for v in verdicts}
+    return [decididos.get(v.criterion, v) for v in verdicts] + [
+        v for c, v in decididos.items() if c not in vistos
+    ]
+
+
 def montar_veredito(
     report: dict,
     criteria_verdicts: list[CriterionVerdict] | None = None,
@@ -165,6 +215,7 @@ def montar_veredito(
     """
     work_item_id = report.get("work_item_id", "")
     overall = report.get("overall_status")
+    decididos = _criterios_decididos(report)
 
     # ---- Execução não bem-sucedida: reprova ----
     # A segunda condição é defesa contra um report internamente contraditório:
@@ -199,12 +250,28 @@ def montar_veredito(
         return ValidationVerdict(
             work_item_id=work_item_id,
             status=VerdictStatus.REPROVADO,
-            criteria_verdicts=verdicts,
+            criteria_verdicts=_aplicar_decididos(verdicts, decididos),
             blocking_reason=(
                 f"Execução do harness terminou com status '{overall}'."
-                f"{detalhe_estagio}"
+                f"{detalhe_estagio}{_resumo_nao_atendidos(decididos)}"
             ),
             summary="Reprovado: a execução do sistema gerado não foi bem-sucedida.",
+        )
+
+    # ---- Execução bem-sucedida, mas critério reprovado por teste de aceite ----
+    # Só acontece quando os testes de aceite rodam fora da suíte do coder e o
+    # report não marcou a falha no estágio de testes; a defesa é a mesma.
+    nao_atendidos = [v for v in decididos.values() if v.status == CriterionStatus.NAO_ATENDIDO]
+    if nao_atendidos:
+        return ValidationVerdict(
+            work_item_id=work_item_id,
+            status=VerdictStatus.REPROVADO,
+            criteria_verdicts=_aplicar_decididos(
+                _neutralizar_criterios_nao_avaliados(report, criteria_verdicts or []),
+                decididos,
+            ),
+            blocking_reason=_resumo_nao_atendidos(decididos).strip(),
+            summary="Reprovado: critério(s) de aceite não atendido(s).",
         )
 
     # ---- Execução bem-sucedida: aprova ----
@@ -215,14 +282,27 @@ def montar_veredito(
     return ValidationVerdict(
         work_item_id=work_item_id,
         status=VerdictStatus.APROVADO,
-        criteria_verdicts=_neutralizar_criterios_nao_avaliados(
-            report, criteria_verdicts or []
+        criteria_verdicts=_aplicar_decididos(
+            _neutralizar_criterios_nao_avaliados(report, criteria_verdicts or []),
+            decididos,
         ),
         blocking_reason=None,
         summary=(
             "Aprovado: o sistema gerado foi construído, iniciou e passou nos "
             "próprios testes."
         ),
+    )
+
+
+def _resumo_nao_atendidos(decididos: dict[str, CriterionVerdict]) -> str:
+    falhos = [v for v in decididos.values() if v.status == CriterionStatus.NAO_ATENDIDO]
+    if not falhos:
+        return ""
+    itens = "; ".join(v.reasoning.split(":", 1)[0] for v in falhos)
+    return (
+        f" Critérios de aceite NÃO atendidos pelos testes de aceite independentes "
+        f"(tests/acceptance/, que você não pode editar): {itens}. Corrija o código "
+        "para que o comportamento descrito no critério aconteça."
     )
 
 

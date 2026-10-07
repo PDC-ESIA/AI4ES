@@ -28,8 +28,11 @@ este arquivo slim e facilitar manutenção independente.
 
 from google.adk.agents import LoopAgent, SequentialAgent
 
+from shared.pipeline_flags import aceite_independente
+
 from .context_engineer import agent as _context_engineer
 from .memory_feedforward import agent as _memory_feedforward
+from .acceptance.agent import gate as _acceptance_gate
 from .coder import agent as _coder
 from .executor.agent import agent as _executor
 from .executor.loop_policy import config_inteiro
@@ -76,7 +79,14 @@ _code_execute_loop = LoopAgent(
     max_iterations=config_inteiro(
         "AI4ES_MAX_LOOP_ITERATIONS", _TETO_SEGURANCA, minimo=1
     ),
-    sub_agents=[_coder, _executor],
+    # Com `AI4ES_ACEITE_INDEPENDENTE` (lida no import), o autor de testes de
+    # aceite entra entre o coder e o executor; ele próprio decide se roda na
+    # rodada (uma vez por task). Desligada, o loop é o histórico.
+    sub_agents=(
+        [_coder, _acceptance_gate, _executor]
+        if aceite_independente()
+        else [_coder, _executor]
+    ),
 )
 
 # ---------------------------------------------------------------------------

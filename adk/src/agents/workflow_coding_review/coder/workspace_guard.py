@@ -413,3 +413,41 @@ def avisar_fora_do_escopo(tool, args, tool_context, tool_response):
             "task, siga."
         ),
     }
+
+
+# ---------------------------------------------------------------------------
+# Testes de aceite independentes (`AI4ES_ACEITE_INDEPENDENTE`)
+# ---------------------------------------------------------------------------
+_TOOLS_DE_ESCRITA = frozenset(
+    {"tool_criar_arquivo", "tool_substituir_trecho", NOME_TOOL_REMOCAO}
+)
+
+
+def proteger_testes_de_aceite(tool, args, tool_context) -> dict | None:
+    """Recusa qualquer escrita do coder em `tests/acceptance/`.
+
+    Esses testes decidem os critérios de aceite e foram escritos por outro
+    agente justamente para não serem ajustados por quem implementa — na run do
+    fotógrafo o coder afrouxou o próprio teste para aceitar 303 onde o critério
+    pedia 201. Ler continua permitido.
+    """
+    from shared.pipeline_flags import aceite_independente
+    from shared.tools.coding_tools.aceite_independente import e_caminho_protegido
+
+    if getattr(tool, "name", None) not in _TOOLS_DE_ESCRITA or not aceite_independente():
+        return None
+    caminho = args.get("caminho") if isinstance(args, dict) else None
+    if not e_caminho_protegido(caminho):
+        return None
+    return {
+        "sucesso": False,
+        "codigo": "TESTE_DE_ACEITE_PROTEGIDO",
+        "erro": (
+            f"'{caminho}' é um teste de aceite independente: ele decide se o "
+            "critério foi atendido e não pode ser alterado por você. Leia-o com "
+            "tool_ler_arquivo para entender o comportamento exigido e corrija o "
+            "CÓDIGO do projeto. Se o teste estiver errado, explique isso no seu "
+            "texto final."
+        ),
+        "caminho": caminho,
+    }

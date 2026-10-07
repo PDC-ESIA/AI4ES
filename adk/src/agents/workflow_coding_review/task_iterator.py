@@ -32,7 +32,12 @@ from google.adk.events.event_actions import EventActions
 from google.genai import types
 
 from shared.execution.trilhas import selecionar_trilha
-from shared.pipeline_flags import coder_contexto_enxuto, trilhas
+from shared.pipeline_flags import (
+    aceite_cobertura_minima,
+    aceite_independente,
+    coder_contexto_enxuto,
+    trilhas,
+)
 
 from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
 from src.agents.implementation_validator.agent import _report_path_valido
@@ -394,11 +399,24 @@ def _base_executavel_comprovada(progresso: dict) -> bool:
 
 
 def _aceitavel_com_ressalvas(progresso: dict, report_path: Optional[str]) -> bool:
-    """Aceitação parcial exige nota B/A, report válido e base executável."""
+    """Aceitação parcial exige nota B/A, report válido e base executável.
+
+    Com `AI4ES_ACEITE_INDEPENDENTE`, exige também cobertura de critérios de
+    pelo menos `AI4ES_ACEITE_COBERTURA_MIN`: uma task travada que roda mas não
+    comprova os critérios não é "aceita com ressalvas".
+    """
+    cobertura_ok = True
+    if aceite_independente():
+        cobertura = progresso.get("cobertura_criterios")
+        cobertura_ok = (
+            isinstance(cobertura, (int, float))
+            and cobertura >= aceite_cobertura_minima()
+        )
     return (
         report_path is not None
         and progresso.get("conceito") in ("A", "B")
         and _base_executavel_comprovada(progresso)
+        and cobertura_ok
     )
 
 
