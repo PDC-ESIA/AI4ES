@@ -1,0 +1,3020 @@
+{
+  "generated_at": "2026-10-06T15:42:45.619782+00:00",
+  "complete": true,
+  "total_duration_s": 465.39,
+  "metadata": {
+    "config": {
+      "model": "github_copilot/gpt-4",
+      "split": "claude_3.7_sonnet",
+      "seed": 42,
+      "max_per_question": 1,
+      "include_explanation": true,
+      "max_retries": 1
+    },
+    "created_at": "2026-10-06T15:35:00.214642+00:00",
+    "limit": 50,
+    "pair_ids": [
+      "claude_3.7_sonnet/262",
+      "claude_3.7_sonnet/110",
+      "claude_3.7_sonnet/760",
+      "claude_3.7_sonnet/579",
+      "claude_3.7_sonnet/717",
+      "claude_3.7_sonnet/49",
+      "claude_3.7_sonnet/325",
+      "claude_3.7_sonnet/88",
+      "claude_3.7_sonnet/461",
+      "claude_3.7_sonnet/418",
+      "claude_3.7_sonnet/678",
+      "claude_3.7_sonnet/728",
+      "claude_3.7_sonnet/483",
+      "claude_3.7_sonnet/796",
+      "claude_3.7_sonnet/430",
+      "claude_3.7_sonnet/544",
+      "claude_3.7_sonnet/241",
+      "claude_3.7_sonnet/150",
+      "claude_3.7_sonnet/600",
+      "claude_3.7_sonnet/689",
+      "claude_3.7_sonnet/221",
+      "claude_3.7_sonnet/495",
+      "claude_3.7_sonnet/202",
+      "claude_3.7_sonnet/36",
+      "claude_3.7_sonnet/442",
+      "claude_3.7_sonnet/333",
+      "claude_3.7_sonnet/751",
+      "claude_3.7_sonnet/744",
+      "claude_3.7_sonnet/398",
+      "claude_3.7_sonnet/670",
+      "claude_3.7_sonnet/528",
+      "claude_3.7_sonnet/304",
+      "claude_3.7_sonnet/391",
+      "claude_3.7_sonnet/439",
+      "claude_3.7_sonnet/152",
+      "claude_3.7_sonnet/653",
+      "claude_3.7_sonnet/572",
+      "claude_3.7_sonnet/375",
+      "claude_3.7_sonnet/822",
+      "claude_3.7_sonnet/320",
+      "claude_3.7_sonnet/577",
+      "claude_3.7_sonnet/345",
+      "claude_3.7_sonnet/683",
+      "claude_3.7_sonnet/593",
+      "claude_3.7_sonnet/354",
+      "claude_3.7_sonnet/737",
+      "claude_3.7_sonnet/856",
+      "claude_3.7_sonnet/28",
+      "claude_3.7_sonnet/92",
+      "claude_3.7_sonnet/783"
+    ],
+    "dataset": {
+      "dataset": "mattymchen/codejudgebench",
+      "config": "coderepair",
+      "split": "claude_3.7_sonnet",
+      "revision": "dd766c8a8e8d0088619362e21932d8e478a4c722",
+      "num_rows": 878,
+      "fetched_at": "2026-09-27T21:15:53.337686+00:00"
+    },
+    "mode": "pointwise",
+    "reviewer_static_analysis": true,
+    "memory_enabled": false,
+    "environment": {
+      "python": "3.14.3",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "google_adk": "1.33.0",
+      "litellm": "1.85.0"
+    }
+  },
+  "metrics": {
+    "pairs": {
+      "total": 50,
+      "evaluable": 50,
+      "outcomes": {
+        "correct": 6,
+        "tie_approve": 44
+      }
+    },
+    "judgment": {
+      "accuracy": {
+        "value": 0.12,
+        "k": 6,
+        "n": 50,
+        "ci95": [
+          0.0562,
+          0.238
+        ]
+      },
+      "accuracy_ties_half": 0.56,
+      "decisiveness": {
+        "value": 0.12,
+        "k": 6,
+        "n": 50,
+        "ci95": [
+          0.0562,
+          0.238
+        ]
+      },
+      "accuracy_when_decided": {
+        "value": 1.0,
+        "k": 6,
+        "n": 6,
+        "ci95": [
+          0.6097,
+          1.0
+        ]
+      },
+      "positional_bias": null,
+      "positional_bias_note": "Não aplicável ao modo pontual: cada revisão vê uma única resposta, então não existe ordem A/B a inverter."
+    },
+    "decision": {
+      "false_approve_rate": {
+        "value": 0.88,
+        "k": 44,
+        "n": 50,
+        "ci95": [
+          0.762,
+          0.9438
+        ]
+      },
+      "false_block_rate": {
+        "value": 0.0,
+        "k": 0,
+        "n": 50,
+        "ci95": [
+          0.0,
+          0.0713
+        ]
+      },
+      "critical_issue_layers_on_false_blocks": {}
+    },
+    "format": {
+      "invalid_first_attempt_rate": {
+        "value": 0.0,
+        "k": 0,
+        "n": 100,
+        "ci95": [
+          0.0,
+          0.037
+        ]
+      },
+      "invalid_final_rate": {
+        "value": 0.0,
+        "k": 0,
+        "n": 100,
+        "ci95": [
+          0.0,
+          0.037
+        ]
+      },
+      "responses_with_retry": 0,
+      "format_only_failures": 0,
+      "gate_applied": 0
+    },
+    "operational": {
+      "responses_with_operational_error": 0,
+      "responses_without_code": 0
+    },
+    "by_difficulty": {
+      "easy": {
+        "value": 0.2174,
+        "k": 5,
+        "n": 23,
+        "ci95": [
+          0.0966,
+          0.419
+        ]
+      },
+      "hard": {
+        "value": 0.0,
+        "k": 0,
+        "n": 11,
+        "ci95": [
+          0.0,
+          0.2588
+        ]
+      },
+      "medium": {
+        "value": 0.0625,
+        "k": 1,
+        "n": 16,
+        "ci95": [
+          0.0111,
+          0.2833
+        ]
+      }
+    },
+    "usage": {
+      "reviews": 100,
+      "llm_interactions": 200,
+      "prompt_tokens": 756426,
+      "completion_tokens": 24305,
+      "review_duration_s": 459.95
+    }
+  },
+  "pairs": [
+    {
+      "pair_id": "claude_3.7_sonnet/262",
+      "question_id": "2828",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.71,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7075,
+            "completion_tokens": 181
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.93,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7047,
+            "completion_tokens": 459
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 18.0
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/110",
+      "question_id": "3682",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.37,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6972,
+            "completion_tokens": 157
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.35,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6957,
+            "completion_tokens": 203
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.74
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/760",
+      "question_id": "abc376_e",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.13,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7559,
+            "completion_tokens": 279
+          }
+        ],
+        "issues": [
+          {
+            "severity": "unknown",
+            "description": "solution.py / arquitetura: [ruff/E402] Module level import not at top of file — o import de `heapq` está dentro do arquivo porém a stack já faz esse import no ambiente pré-carregado. Não impacta funcionamento, mas poderia ser removido.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "unknown",
+            "description": "solution.py / arquitetura: [ruff/F811] Redefinition of unused `heapq` from line 25: `heapq` redefined here — redundância no import de `heapq`, pois já está no ambiente e importado acima. Não afeta resultado.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.09,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7388,
+            "completion_tokens": 380
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**[solution.py / arquitetura]** Uso desnecessário do import local `import bisect` dentro do loop da função `min_expression_value`, visto que `bisect` já está disponível globalmente pelo ambiente da plataforma (identificado também por análise estática, ruff/F811: redefinição de `bisect`).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**[solution.py / arquitetura]** Leve sobra de complexidade: manter a lista `b_values` ordenada por inserção (`bisect.insort`) pode ser subótimo para grandes volumes de N, já que a complexidade de inserção é O(N); um heap/min-heap permitiria extração dos K menores de forma mais eficiente, mas a abordagem atende ao limite do problema dado o N máximo limitado.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 10.24
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/579",
+      "question_id": "abc311_e",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.68,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7904,
+            "completion_tokens": 200
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.59,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7941,
+            "completion_tokens": 200
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.29
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/717",
+      "question_id": "abc358_d",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.37,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7009,
+            "completion_tokens": 213
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.51,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7053,
+            "completion_tokens": 198
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 6.9
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/49",
+      "question_id": "3292",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.51,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8247,
+            "completion_tokens": 185
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.52,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8312,
+            "completion_tokens": 187
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.04
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/325",
+      "question_id": "3184",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.01,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7441,
+            "completion_tokens": 219
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.56,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7438,
+            "completion_tokens": 178
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.58
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/88",
+      "question_id": "3548",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.14,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 9111,
+            "completion_tokens": 321
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py",
+            "file": "solution.py",
+            "layer": "unknown"
+          },
+          {
+            "severity": "warning",
+            "description": "**Camada:** arquitetura",
+            "file": null,
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**Descrição:** Variável local `remainders` é atribuída mas nunca usada na função `can_form_k_palindrome`.",
+            "file": null,
+            "layer": "unknown"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.63,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8630,
+            "completion_tokens": 217
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 9.78
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/461",
+      "question_id": "3535",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.98,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6990,
+            "completion_tokens": 176
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.0,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7099,
+            "completion_tokens": 172
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.0
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/418",
+      "question_id": "3413",
+      "difficulty": "hard",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.05,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7449,
+            "completion_tokens": 198
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.14,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7632,
+            "completion_tokens": 412
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** Importação dentro do corpo do arquivo (`from collections import deque`) abaixo do bloco de ambiente, mas sem causar erro funcional ou estrutural devido à redundância com o ambiente já importado (apenas duplicação menor, não bloqueante).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** Presença de lógica de detecção/corte de ciclos que é geralmente desnecessária neste problema: para qualquer k ≥ n, o vencedor será o jogador com maior skill, pois ele inevitavelmente vence todas as disputas subsequentes sem perder. A estratégia do código (salvar estados completos da fila) pode ser custosa em espaço para instâncias de fila moderadamente longa, mesmo que funcionalmente correta.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "**Arquivo:** solution.py **Camada:** completude **Descrição:** Não foram entregues arquivos de teste nem docstring explicativa na classe ou método, mas o enunciado não os exigia explicitamente e há correspondência com a interface requisitada.",
+            "file": "solution.py",
+            "layer": "completude"
+          }
+        ]
+      },
+      "duration_s": 10.2
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/678",
+      "question_id": "abc341_f",
+      "difficulty": "hard",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.98,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8563,
+            "completion_tokens": 208
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.31,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8655,
+            "completion_tokens": 283
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "[solution.py / arquitetura] (E402) Módulo import não no topo do arquivo (detected by Ruff): O import de `sys` aparece novamente após o bloco do ambiente, quando já foi pré-carregado. Não causa bug, mas fere convenção.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 8.31
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/728",
+      "question_id": "abc360_c",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 2.94,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8489,
+            "completion_tokens": 180
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.02,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8898,
+            "completion_tokens": 213
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.98
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/483",
+      "question_id": "3607",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.36,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6837,
+            "completion_tokens": 160
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.28,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6857,
+            "completion_tokens": 173
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 6.65
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/796",
+      "question_id": "abc385_e",
+      "difficulty": "medium",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.16,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7858,
+            "completion_tokens": 238
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.79,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7693,
+            "completion_tokens": 256
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.95
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/430",
+      "question_id": "3442",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "correct",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.49,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 5946,
+            "completion_tokens": 184
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "fail",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "fail",
+            "lenient_status": "BLOQUEADO",
+            "gate_applied": false,
+            "duration_s": 11.42,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 5875,
+            "completion_tokens": 328
+          }
+        ],
+        "issues": [
+          {
+            "severity": "critical",
+            "description": "**critical** | `solution.py` | camada: corretude | A solução entregue é idêntica à implementação anterior, mas o enunciado explicitamente diz que esta abordagem (simples ordenação crescente) leva a uma resposta errada para certos casos (por exemplo, `[1, 6, 4, 3, 2]`). Não houve de fato uma correção do erro apontado — a função retorna o mesmo resultado falho da solução passada. O algoritmo permanece guloso monotônico (seleciona o menor disponível > total), o que não resolve o problema original.",
+            "file": "solution.py",
+            "layer": "corretude"
+          },
+          {
+            "severity": "warning",
+            "description": "**warning** | `solution.py` | camada: completude | Não há teste, docstring, nem instrução adicional para validar a cobertura ou a explicação do raciocínio aplicado.",
+            "file": "solution.py",
+            "layer": "completude"
+          }
+        ]
+      },
+      "duration_s": 14.93
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/544",
+      "question_id": "3751",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.43,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7033,
+            "completion_tokens": 222
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.09,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7109,
+            "completion_tokens": 205
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.54
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/241",
+      "question_id": "1883_C",
+      "difficulty": "easy",
+      "platform": "codeforces",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.24,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 9325,
+            "completion_tokens": 218
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.12,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8713,
+            "completion_tokens": 189
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.38
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/150",
+      "question_id": "abc330_d",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 2.96,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6990,
+            "completion_tokens": 157
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.51,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7124,
+            "completion_tokens": 207
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.48
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/600",
+      "question_id": "abc321_e",
+      "difficulty": "hard",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.16,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8027,
+            "completion_tokens": 224
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.4,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8035,
+            "completion_tokens": 206
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.6
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/689",
+      "question_id": "abc343_c",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 2.8,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6263,
+            "completion_tokens": 179
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.09,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6250,
+            "completion_tokens": 200
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 5.91
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/221",
+      "question_id": "abc397_f",
+      "difficulty": "hard",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.64,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7196,
+            "completion_tokens": 159
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.87,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7111,
+            "completion_tokens": 174
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.53
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/495",
+      "question_id": "3637",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.75,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8305,
+            "completion_tokens": 312
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "solution.py / completude / Não há arquivo de teste entregue junto à implementação. Embora típico em soluções de competição, para código de biblioteca em ambiente profissional espera-se ao menos um bloco de testes automatizados.",
+            "file": "solution.py",
+            "layer": "completude"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / arquitetura / A solução está toda contida em um único método, o que é aceitável para desafios competitivos, porém modularização incrementa manutenibilidade.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / corretude / A variável `velunexorai` atende ao requisito do enunciado mas não é usada — não há impacto funcional, mas pode confundir revisores.",
+            "file": "solution.py",
+            "layer": "corretude"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.4,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8068,
+            "completion_tokens": 290
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "solution.py / completude: Não há arquivos de teste incluídos nesta entrega.",
+            "file": "solution.py",
+            "layer": "completude"
+          },
+          {
+            "severity": "warning",
+            "description": "solution.py / arquitetura: A variável `velunexorai` é atribuída mas não é utilizada, em cumprimento ao enunciado. (Ver também o warning `ruff/F841` do linter.)",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / corretude: O código aproveita funções eficientes (Counter, comb) e usa DP com memoização para evitar TLE em entradas grandes, resolvendo o problema citado na entrega anterior.",
+            "file": "solution.py",
+            "layer": "corretude"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / arquitetura: O código segue SRP (a lógica está bem separada e concentrada em uma função recursiva DP).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / testes: Não há como aferir cobertura pois nenhum caso de teste foi incluído nesta entrega.",
+            "file": "solution.py",
+            "layer": "testes"
+          }
+        ]
+      },
+      "duration_s": 10.17
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/202",
+      "question_id": "abc379_c",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "correct",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.68,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7103,
+            "completion_tokens": 205
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "fail",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "fail",
+            "lenient_status": "BLOQUEADO",
+            "gate_applied": false,
+            "duration_s": 8.53,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7159,
+            "completion_tokens": 614
+          }
+        ],
+        "issues": [
+          {
+            "severity": "critical",
+            "description": "**Arquivo**: solution.py",
+            "file": "solution.py",
+            "layer": "unknown"
+          },
+          {
+            "severity": "critical",
+            "description": "**Camada**: corretude",
+            "file": null,
+            "layer": "corretude"
+          },
+          {
+            "severity": "critical",
+            "description": "**Descrição**: O código implementado contém várias falhas de lógica e não resolve corretamente o problema para casos gerais. Ao verificar, há um erro na contabilidade do número de transferências necessárias e na mecânica de como o excesso de pedras é propagado para a direita. Por exemplo, o código tenta usar uma abordagem baseada em movimentos incrementais entre posições e um \"stones_left\" global, mas a lógica não reflete corretamente as operações mínimas do problema: para cada célula, só pode receber pedras da célula imediatamente à esquerda, e a operação é sempre entre pares consecutivos, não pode pular células nem fazer transferências em bloco. Isso leva a resultados incorretos, incluindo para os próprios casos fornecidos no enunciado.",
+            "file": null,
+            "layer": "unknown"
+          },
+          {
+            "severity": "critical",
+            "description": "**Arquivo**: solution.py",
+            "file": "solution.py",
+            "layer": "unknown"
+          },
+          {
+            "severity": "critical",
+            "description": "**Camada**: corretude",
+            "file": null,
+            "layer": "corretude"
+          },
+          {
+            "severity": "critical",
+            "description": "**Descrição**: O código implementa um loop que tenta calcular o custo de propagação de pedras após a última posição ocupada, mas sua lógica (\"for i in range(current_pos + 1, N + 1): operations += (i - current_pos)\") resulta em um custo cumulativo incorreto e não reflete as regras do enunciado.",
+            "file": null,
+            "layer": "unknown"
+          },
+          {
+            "severity": "critical",
+            "description": "**Arquivo**: solution.py",
+            "file": "solution.py",
+            "layer": "unknown"
+          },
+          {
+            "severity": "critical",
+            "description": "**Camada**: corretude",
+            "file": null,
+            "layer": "corretude"
+          },
+          {
+            "severity": "critical",
+            "description": "**Descrição**: O código pode apresentar problemas de desempenho com grandes valores de N (valor máximo de 2*10^9), devido ao uso de laços que percorrem o intervalo de posições explicitamente — principalmente na última parte, onde há iteração até N, o que é proibitivo para entradas reais do problema competitivo.",
+            "file": null,
+            "layer": "unknown"
+          },
+          {
+            "severity": "info",
+            "description": "**Arquivo**: solution.py",
+            "file": "solution.py",
+            "layer": "unknown"
+          },
+          {
+            "severity": "info",
+            "description": "**Camada**: completude",
+            "file": null,
+            "layer": "completude"
+          },
+          {
+            "severity": "info",
+            "description": "**Descrição**: Não existem arquivos de teste ou função de teste explícita entregues, mas essa ausência não bloqueia a entrega neste contexto (por ser um problema competitivo típico e não ter critério explícito de teste automatizado).",
+            "file": null,
+            "layer": "unknown"
+          }
+        ]
+      },
+      "duration_s": 12.24
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/36",
+      "question_id": "3203",
+      "difficulty": "hard",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.96,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8710,
+            "completion_tokens": 360
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "solution.py / completude: Não há testes unitários entregues neste workspace. (Como a task exige apenas correção de `solution.py`, este ponto não bloqueia, mas a ausência de testes sempre é destaque relevante em uma correção de bug.)",
+            "file": "solution.py",
+            "layer": "completude"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / arquitetura: Pequena redundância nos comentários e variáveis temporárias, mas nada prejudicial à clareza ou separação de responsabilidades.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / corretude: A solução agora garante que, após o ajuste dos pares fixos, os multisets de caracteres rearranjáveis são idênticos — cobrindo o edge case explicitado (exemplo \"cu\", [0,0,1,1]), e atende ao critério CA-02.",
+            "file": "solution.py",
+            "layer": "corretude"
+          },
+          {
+            "severity": "info",
+            "description": "solution.py / correção de estilo: Uso de import em linha após código já presente no arquivo (ruff/E402). Este é um detalhe cosmético e já era reportado pelo analisador estático.",
+            "file": "solution.py",
+            "layer": "unknown"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.19,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8640,
+            "completion_tokens": 240
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "`solution.py` / arquitetura [ruff/E402] Module level import not at top of file (linha 40). (Obs.: Isto não afeta a execução visto o ambiente controlado; apenas um detalhe de ordem de imports Python.)",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 10.17
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/442",
+      "question_id": "3494",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "correct",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.77,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7063,
+            "completion_tokens": 194
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "fail",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "fail",
+            "lenient_status": "BLOQUEADO",
+            "gate_applied": false,
+            "duration_s": 5.91,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6980,
+            "completion_tokens": 418
+          }
+        ],
+        "issues": [
+          {
+            "severity": "critical",
+            "description": "**Arquivo:** solution.py **Camada:** Corretude **Descrição:** A solução implementada ordena os arrays de cortes em ordem crescente antes de somar os custos em cada direção, o que está conceitualmente incorreto para o problema proposto. Para minimizar o custo, é necessário cortar primeiro os pedaços de maior custo, pois cada corte divide o tabuleiro em mais peças e, para os próximos cortes, aplica multiplicadores maiores. A abordagem correta é um algoritmo guloso que corta SEMPRE o maior custo disponível, independentemente da direção, incrementando o multiplicador da direção oposta após cada corte. Assim, a soma atual não produz o menor custo pedido no enunciado e a solução ainda apresenta a mesma falha conceitual da versão anterior.",
+            "file": "solution.py",
+            "layer": "corretude"
+          },
+          {
+            "severity": "info",
+            "description": "**Arquivo:** solution.py **Camada:** Completude **Descrição:** Apenas o arquivo `solution.py` foi entregue. Não há arquivos de teste presentes, nem são exigidos explicitamente pelo enunciado, devido ao contexto de programação competitiva (Leetcode, solução de biblioteca).",
+            "file": "solution.py",
+            "layer": "completude"
+          }
+        ]
+      },
+      "duration_s": 9.7
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/333",
+      "question_id": "3196",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.91,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7181,
+            "completion_tokens": 217
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.94,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7072,
+            "completion_tokens": 192
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.87
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/751",
+      "question_id": "abc370_e",
+      "difficulty": "medium",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.12,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7733,
+            "completion_tokens": 167
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.31,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7957,
+            "completion_tokens": 188
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.44
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/744",
+      "question_id": "abc368_c",
+      "difficulty": "hard",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.82,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6671,
+            "completion_tokens": 322
+          }
+        ],
+        "issues": [
+          {
+            "severity": "info",
+            "description": "[info] solution.py / completude — O arquivo esperado (`solution.py`) foi entregue, implementando a função principal (`solve`) conforme a especificação.",
+            "file": "solution.py",
+            "layer": "completude"
+          },
+          {
+            "severity": "info",
+            "description": "[info] solution.py / arquitetura — O código está segmentado corretamente, evitando loops ineficientes como no código original. Não há mistura de responsabilidades.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "[warning] solution.py / corretude — O linter detectou uma variável não utilizada na linha 41 (`N`), mas seu uso não é obrigatório fora da leitura do input neste contexto competitivo (sem relevância funcional).",
+            "file": "solution.py",
+            "layer": "corretude"
+          },
+          {
+            "severity": "info",
+            "description": "[info] solution.py / testes — Não há arquivos de teste explícitos, mas para problemas competitivos do tipo \"CLI\", testa-se pela execução direta; a função lê de `input()` e imprime no stdout seguindo o padrão do domínio.",
+            "file": "solution.py",
+            "layer": "testes"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.82,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6750,
+            "completion_tokens": 213
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "Arquivo: solution.py / Camada: arquitetura - [Ruff/F841] Variável local `N` é atribuída mas nunca utilizada. Pode ser removida para maior clareza.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 9.66
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/398",
+      "question_id": "3387",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.4,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6885,
+            "completion_tokens": 193
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.4,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7091,
+            "completion_tokens": 211
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.82
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/670",
+      "question_id": "abc335_c",
+      "difficulty": "hard",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.48,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7853,
+            "completion_tokens": 269
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "solution.py / arquitetura: - [ruff/E402] Module level import not at top of file — Importação de módulo (collections.deque) após comentários e bloco ambiente, não afeta funcionamento mas pode ser considerado desvio de estilo.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "solution.py / arquitetura: - Pequena duplicidade: o import de deque é feito explicitamente mesmo já disponível via bloco ambiente, mas não gera impacto funcional ou de desempenho.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.6,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7694,
+            "completion_tokens": 237
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "solution.py / arquitetura: [ruff/E402] Importação fora do topo do arquivo (\"Module level import not at top of file\"). O import de deque deveria estar logo após o bloco de ambiente, mas não compromete execução.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 10.12
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/528",
+      "question_id": "3714",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.31,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6819,
+            "completion_tokens": 197
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.46,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6880,
+            "completion_tokens": 175
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.79
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/304",
+      "question_id": "3033",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.65,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7152,
+            "completion_tokens": 166
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.31,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7246,
+            "completion_tokens": 179
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.99
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/391",
+      "question_id": "3376",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 7.01,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8200,
+            "completion_tokens": 214
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.64,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8233,
+            "completion_tokens": 208
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 11.66
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/439",
+      "question_id": "3490",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.36,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7260,
+            "completion_tokens": 192
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.42,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7121,
+            "completion_tokens": 184
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.79
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/152",
+      "question_id": "abc331_e",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "correct",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.9,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7634,
+            "completion_tokens": 225
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "fail",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "fail",
+            "lenient_status": "BLOQUEADO",
+            "gate_applied": false,
+            "duration_s": 7.49,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7614,
+            "completion_tokens": 403
+          }
+        ],
+        "issues": [
+          {
+            "severity": "critical",
+            "description": "**Arquivo: solution.py | Camada: arquitetura/corretude** Embora a representação dos pares proibidos em um set seja correta e o acesso seja O(1), a solução continua realizando uma dupla iteração aninhada O(N*M), avaliando para cada prato principal todos os acompanhamentos, o que é inviável para os limites máximos do problema (N, M próximos de 10^5), resultando em TLE (Time Limit Exceeded) em instâncias grandes. O algoritmo precisa considerar estratégias de busca eficientes, por exemplo: - Encontrar os pratos principal e acompanhamento de maior custo e, se a combinação for proibida, tentar combinações subótimas próximas (usando heaps/ordenação) sem varrer todas as combinações possíveis. Mantendo a abordagem atual, a entrega continua NÃO atendendo ao critério CA-02 (\"Eliminar a falha observada na solução anterior\").",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "**Arquivo: solution.py | Camada: arquitetura** O código está limpo, de fácil leitura e corrige a estrutura para forbidden_pairs, o que otimiza o lookup de pares proibidos em relação à versão anterior.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 11.41
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/653",
+      "question_id": "abc333_d",
+      "difficulty": "medium",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.21,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7610,
+            "completion_tokens": 263
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "[solution.py / arquitetura] `Module level import not at top of file`: Importação após código não relacionado aos imports (\"from collections import defaultdict\" após o bloco de ambiente). (rufff/E402)",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "critical",
+            "description": "[solution.py / arquitetura] A função `main` não está encapsulada nem há proteção `if __name__ == \"__main__\":`, o que não é crítico para submissão em juiz online, mas é uma questão de arquitetura.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.24,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7591,
+            "completion_tokens": 239
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**[solution.py / arquitetura]** - [E402] Import localizado fora do topo do arquivo: `from collections import defaultdict` ocorre após o bloco de ambiente pré-carregado. (não é crítico nessa stack, pois os imports do ambiente cobrem o necessário, mas o warning do linter foi apontado)",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 8.47
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/572",
+      "question_id": "abc309_d",
+      "difficulty": "medium",
+      "platform": "atcoder",
+      "outcome": "correct",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.86,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8272,
+            "completion_tokens": 257
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Layer:** arquitetura **Descrição:** Ordem dos imports (import não no topo do arquivo) detectado pela análise estática (ruff/E402). Este é um detalhe de estilo, mas não afeta a execução devido ao contexto de avaliação dado no enunciado.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "fail",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "fail",
+            "lenient_status": "BLOQUEADO",
+            "gate_applied": false,
+            "duration_s": 9.66,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8372,
+            "completion_tokens": 626
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** Apesar das melhorias estruturais (uso de conjunto para verificar arestas existentes), grande parte do código ainda reproduz o duplo loop sobre todos os pares possíveis entre os nós dos dois blocos de vértices. Dada a escala dos dados, essa abordagem é limítrofe para tempos exatos e arriscada para os limites superiores dos constraints, devendo ser considerada aceitável apenas para aprovação com ressalvas (não bloqueante).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "critical",
+            "description": "**Arquivo:** solution.py **Camada:** corretude **Descrição:** O código ainda executa um laço aninhado sobre todos os pares possíveis de (u ∈ [1, N1], v ∈ [N1+1, N1+N2]), o que resulta em O(N1*N2) iterações no pior caso. Isto atinge até 22,5 bilhões de pares, tornando o algoritmo inviável para o limite superior dos constraints (Timeout — TLE). Em essência, a solução NÃO elimina o erro central registrado na task (CA-02), que é justamente a complexidade quadrática. Uma abordagem ótima envolve computar apenas o par de vértices mais distantes dentro de cada grupo (máximos dos BFS) e calcular distâncias máximas em O(N1+N2) sem o duplo loop.",
+            "file": "solution.py",
+            "layer": "corretude"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** completude **Descrição:** Não há testes inclusos; para este tipo de solução competitiva, normalmente são aceitos apenas scripts, mas a ausência de testes não é bloqueante aqui.",
+            "file": "solution.py",
+            "layer": "completude"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Descrição:** Imports de módulos padrão feitos dentro do ambiente da plataforma podem ser removidos do corpo da solução pois já estão disponíveis.",
+            "file": "solution.py",
+            "layer": "unknown"
+          }
+        ]
+      },
+      "duration_s": 16.54
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/375",
+      "question_id": "3313",
+      "difficulty": "hard",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.82,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7754,
+            "completion_tokens": 196
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.46,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7817,
+            "completion_tokens": 176
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.29
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/822",
+      "question_id": "abc390_d",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.18,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7378,
+            "completion_tokens": 178
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.77,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7424,
+            "completion_tokens": 177
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 6.98
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/320",
+      "question_id": "3104",
+      "difficulty": "medium",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.95,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6488,
+            "completion_tokens": 179
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.11,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6534,
+            "completion_tokens": 197
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 8.08
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/577",
+      "question_id": "abc310_d",
+      "difficulty": "hard",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 7.61,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7632,
+            "completion_tokens": 464
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.94,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7793,
+            "completion_tokens": 231
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 11.57
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/345",
+      "question_id": "3213",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.32,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6368,
+            "completion_tokens": 180
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.75,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6255,
+            "completion_tokens": 178
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 10.08
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/683",
+      "question_id": "abc342_e",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.79,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 10002,
+            "completion_tokens": 323
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Layer:** arquitetura/corretude **Descrição:** Uso de nomes de variável ambíguos detectado pelo linter (`l`), especialmente em contextos de leitura e cálculo de índices em laços. Exemplo: as variáveis `l` e `i` podem ser mais descritivas para melhorar a legibilidade e manutenção, conforme alerta do Ruff (E741).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "**Arquivo:** solution.py **Layer:** arquitetura **Descrição:** O algoritmo segue o padrão de propagação reversa de informações (simulando Bellman-Ford) adequadamente para problemas desse tipo, mas não há uso explícito de classes ou funções auxiliares para modularidade, o que seria benéfico em situações de código mais complexo.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.85,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 10052,
+            "completion_tokens": 295
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "`solution.py` (corretude, arquitetura): - [ruff/E741] Uso de nomes de variável ambíguos (`l`) detectados nas linhas onde há parsing dos parâmetros dos trens (linhas 44 e 61 do arquivo). Apesar disso não causar erro de execução, dificulta a leitura e manutenção do código.",
+            "file": "solution.py",
+            "layer": "corretude"
+          }
+        ]
+      },
+      "duration_s": 10.65
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/593",
+      "question_id": "abc320_e",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.84,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8273,
+            "completion_tokens": 294
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "solution.py | arquitetura | [WARNING] `ruff/E402`: \"Module level import not at top of file\" (ocorre porque há um `import heapq` após importações anteriores, porém não afeta a execução nem a qualidade do core logic).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "solution.py | arquitetura | [WARNING] `ruff/F811`: \"Redefinition of unused `heapq` from line 25: `heapq` redefined here\". O ambiente já importa e injeta o heapq, mas a linha `import heapq` do candidato apenas sobrescreve o nome no escopo — não gera bug.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.1,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8318,
+            "completion_tokens": 347
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** Imports do módulo heapq encontram-se duplicados (um na seção do ambiente, outro localmente) e abaixo do topo do arquivo, violando boas práticas de posicionamento de imports.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** O algoritmo segue sendo O(N*M) no pior caso (laço linear para encontrar o primeiro presente), mas isso não é bloqueante pois, para problemas de programação competitiva, pode ser suficiente para casos restritos e é o padrão de solução simples para o problema; porém, não é o mais eficiente possível para grandes valores de N e M. ---",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "duration_s": 9.95
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/354",
+      "question_id": "3233",
+      "difficulty": "hard",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.17,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7791,
+            "completion_tokens": 199
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.6,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7745,
+            "completion_tokens": 223
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 6.79
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/737",
+      "question_id": "abc363_c",
+      "difficulty": "medium",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.21,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6708,
+            "completion_tokens": 417
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** Imports no meio do arquivo (linhas 40-42), violando PEP8 (E402).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** O código faz deduplicação de permutações manualmente usando `seen = set()` ao invés de usar `itertools.permutations` diretamente com conjuntos, o que pode ser otimizado para eficiência e clareza.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** corretude **Descrição:** A verificação `if k == 2 and all(count == 1 for count in char_count.values()): return factorial(n)` supõe corretamente que não há substrings de tamanho 2 repetidas para caracteres distintos, mas generaliza apenas para esse caso específico e não para outros possíveis atalhos.",
+            "file": "solution.py",
+            "layer": "corretude"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** completude **Descrição:** Não há arquivo de teste fornecido; a task não exige explicitamente, mas é recomendável para este tipo de solução. ---",
+            "file": "solution.py",
+            "layer": "completude"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.85,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6584,
+            "completion_tokens": 383
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** Imports do módulo no meio do arquivo, após o bloco de ambiente da plataforma, violando a convenção de manter todos os imports no topo do módulo. Detalhado pelo lint (ruff/E402).",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** arquitetura **Descrição:** O uso de brute-force com itertools.permutations pode ser excessivamente custoso para N=10, mas está correto para o espaço de busca reduzido, dadas as restrições do problema e a exigência apenas de eliminar TLE (\"Time Limit Exceeded\").",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py **Camada:** completude **Descrição:** Não há entrega de testes automatizados junto à implementação, embora o problema permita (mas não exija explicitamente) a presença de um arquivo de teste ou função main independente.",
+            "file": "solution.py",
+            "layer": "completude"
+          }
+        ]
+      },
+      "duration_s": 12.07
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/856",
+      "question_id": "arc182_a",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "correct",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.38,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 9259,
+            "completion_tokens": 165
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "fail",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "fail",
+            "lenient_status": "BLOQUEADO",
+            "gate_applied": false,
+            "duration_s": 5.18,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 8803,
+            "completion_tokens": 394
+          }
+        ],
+        "issues": [
+          {
+            "severity": "critical",
+            "description": "**Arquivo:** solution.py **Camada:** corretude **Descrição:** A solução continua com um algoritmo de busca por profundidade (DFS) com estado de vetor completo (`S`) em cada chamada, para N e Q até 5000. O estado é memorizado com a tupla do array resultando em 5000-dimensionalidade, tornando o espaço de busca e armazenamento inviável para entradas desse tamanho (aproximadamente impossível de terminar em tempo viável). Não houve mudança substantiva em relação ao problema reportado de TLE (\"Time Limit Exceeded\"): o algoritmo ainda é de complexidade exponencial em Q, e a memória ainda cresce no número de configurações possíveis de S. **Impacto:** A implementação não elimina a falha (CA-02) e não é capaz de produzir resposta dentro do tempo limite para os inputs dos limites do problema, descumprindo o critério de aceite CA-01.",
+            "file": "solution.py",
+            "layer": "corretude"
+          }
+        ]
+      },
+      "duration_s": 8.57
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/28",
+      "question_id": "3091",
+      "difficulty": "hard",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 5.28,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7853,
+            "completion_tokens": 285
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "[warning] Arquitetura (`solution.py`): Ambiguous variable name `l` — O nome da variável `l` é curto e pode ser confundido com o número 1, prejudicando a leitura do código (conforme identificado pelo linter Ruff/E741). Recomenda-se usar nomes mais descritivos, especialmente para variáveis associadas a limites.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "info",
+            "description": "[info] Completude (`solution.py`): Não há arquivo de testes anexado à entrega (apenas a implementação foi revisada). Como a entrega solicitava apenas a correção do algoritmo, este ponto não bloqueia a aprovação, mas um teste específico agregaria valor.",
+            "file": "solution.py",
+            "layer": "completude"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 6.4,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7789,
+            "completion_tokens": 368
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "[solution.py/completude] Não há arquivos de teste entregues no workspace. O workspace contém apenas a implementação (`solution.py`). (layer=\"completude\")",
+            "file": "solution.py",
+            "layer": "completude"
+          },
+          {
+            "severity": "warning",
+            "description": "[solution.py/arquitertura] A lógica de DP está completamente dentro de `countSubMultisets`, sem qualquer decomposição, o que pode dificultar manutenção em código de biblioteca, já que não há separação clara entre lógica e possíveis utilidades auxiliares. (layer=\"arquitetura\")",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          },
+          {
+            "severity": "warning",
+            "description": "[solution.py/corretude] Uso de nome de parâmetro `l` (letra L minúscula) pode ser confuso/ambíguo, conforme identificado também pelo linter ruff/E741, pois pode ser confundido visualmente com o número 1. Recomenda-se nomes mais claros ao usar variáveis em código extenso. (layer=\"corretude\")",
+            "file": "solution.py",
+            "layer": "corretude"
+          }
+        ]
+      },
+      "duration_s": 11.69
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/92",
+      "question_id": "3594",
+      "difficulty": "easy",
+      "platform": "leetcode",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.76,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6717,
+            "completion_tokens": 216
+          }
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "description": "**Arquivo:** solution.py — **Camada:** arquitetura - [E402] Importação não no topo do arquivo (`Module level import not at top of file`, ver análise estática/ruff). Observação: devido à inclusão automática de imports pelo ambiente, esse warning não impacta funcionalidade e pode ser ignorado neste contexto.",
+            "file": "solution.py",
+            "layer": "arquitetura"
+          }
+        ]
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 4.17,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 6683,
+            "completion_tokens": 179
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.96
+    },
+    {
+      "pair_id": "claude_3.7_sonnet/783",
+      "question_id": "abc384_d",
+      "difficulty": "easy",
+      "platform": "atcoder",
+      "outcome": "tie_approve",
+      "pos": {
+        "which": "pos",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.71,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7666,
+            "completion_tokens": 189
+          }
+        ],
+        "issues": []
+      },
+      "neg": {
+        "which": "neg",
+        "verdict": "pass",
+        "outcome_kind": "ok",
+        "code_found": true,
+        "attempts": [
+          {
+            "verdict": "pass",
+            "lenient_status": "APROVADO",
+            "gate_applied": false,
+            "duration_s": 3.91,
+            "error": null,
+            "llm_interactions": 2,
+            "prompt_tokens": 7720,
+            "completion_tokens": 204
+          }
+        ],
+        "issues": []
+      },
+      "duration_s": 7.63
+    }
+  ],
+  "regraded_at": "2026-10-08T23:01:02.451710+00:00"
+}

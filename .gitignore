@@ -15,6 +15,11 @@ benchmarks/coding_review/mbpp/results/
 benchmarks/coding_review/bigcodebench/datasets/
 benchmarks/coding_review/bigcodebench/results/*/workspace/
 benchmarks/coding_review/bigcodebench/results/*/progress.jsonl
+# CodeJudgeBench: dataset baixado dinamicamente; report/metadata/reviews versionados,
+# mas não o workspace do reviewer nem o checkpoint de cada run.
+benchmarks/coding_review/codejudgebench/datasets/
+benchmarks/coding_review/codejudgebench/results/*/workspace/
+benchmarks/coding_review/codejudgebench/results/*/progress.jsonl
 benchmarks/construcao/resultados/
 
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
