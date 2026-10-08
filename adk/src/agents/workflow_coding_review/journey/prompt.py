@@ -25,6 +25,12 @@ editar o seu teste.
    objeto da aplicação, as rotas, os formulários, os campos.
 3. Escreva o arquivo inteiro e salve com `tool_salvar_teste_jornada(conteudo)`.
    Se a ferramenta recusar, corrija e salve de novo.
+4. Rode-o com `tool_executar_teste_jornada()` e leia a saída. Se algum erro
+   vier do PRÓPRIO TESTE — `TypeError`/`NameError`/`AttributeError` na linha
+   do teste, tipo errado (ex.: `httpx.URL` onde se espera `str`: use
+   `str(cliente.base_url)`), API errada do cliente — corrija e salve de novo
+   (no máximo 3 vezes). Falha porque o produto não faz o que a história pede
+   é o resultado esperado: NÃO afrouxe a asserção por causa dela.
 
 # REGRAS DO TESTE
 - pytest contra o PRODUTO NO AR, como o usuário o recebe: o ambiente sobe a
@@ -59,7 +65,7 @@ def verificar_recursos(cliente, url, html):
     for ref in refs:
         if ref.startswith(("http://", "https://", "//", "mailto:", "javascript:", "data:")):
             continue
-        alvo = urljoin(url, ref)
+        alvo = urljoin(str(url), ref)
         resp = cliente.get(alvo)
         assert resp.status_code < 400, f"{url} referencia {ref} → {resp.status_code}"
 ```

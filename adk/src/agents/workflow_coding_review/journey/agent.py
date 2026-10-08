@@ -81,6 +81,23 @@ def tool_salvar_teste_jornada(conteudo: str, tool_context: ToolContext) -> dict:
     return {"sucesso": True, "caminho": ARQUIVO_JORNADA, "jornadas": jornadas}
 
 
+def tool_executar_teste_jornada(tool_context: ToolContext) -> dict:
+    """Roda a jornada já salva contra o produto no ar (build + run do run.json).
+
+    Use DEPOIS de `tool_salvar_teste_jornada`, para conferir que o TESTE está
+    certo. Falhas porque o produto não faz o que a história pede são o
+    resultado esperado; erros vindos do próprio teste (tipo errado, API do
+    cliente, nome inexistente) devem ser corrigidos e o arquivo salvo de novo.
+
+    Returns:
+        dict com `status` (passou | falhou | nao_executada), `motivo` e `saida`.
+    """
+    from shared.tools.coding_tools.jornada import executar_jornada
+
+    resultado = executar_jornada(get_agent_workspace("cr_coder"), tool_context.state.get("trilha"))
+    return {"status": resultado.status, "motivo": resultado.motivo, "saida": resultado.saida[-3500:]}
+
+
 def _bind(tool):
     return _bind_tool_to_workspace(
         tool, lazy_agent_workspace("cr_coder"), lazy_workspace_root()
@@ -110,6 +127,7 @@ author = LlmAgent(
         _bind(FunctionTool(tool_listar_workspace)),
         _bind(FunctionTool(tool_ler_workspace)),
         FunctionTool(tool_salvar_teste_jornada),
+        FunctionTool(tool_executar_teste_jornada),
     ],
 )
 

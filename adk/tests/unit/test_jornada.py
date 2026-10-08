@@ -396,3 +396,20 @@ def test_instrucao_do_coder_com_trilha_renderiza_no_template_do_adk(tmp_path, mo
 
     texto = asyncio.run(_render())
     assert "TRILHA DE EXECUÇÃO: python-web" in texto
+
+
+def test_autor_da_jornada_roda_o_proprio_teste(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from src.agents.workflow_coding_review.journey import agent as journey
+
+    vistos = {}
+
+    def _executar(coder_dir, trilha):
+        vistos["trilha"] = trilha
+        return ResultadoJornada(FALHOU, motivo="m", saida="E   TypeError: Cannot mix str")
+
+    monkeypatch.setattr(jornada_mod, "executar_jornada", _executar)
+    resposta = journey.tool_executar_teste_jornada(SimpleNamespace(state={"trilha": {"id": "t"}}))
+    assert resposta == {"status": FALHOU, "motivo": "m", "saida": "E   TypeError: Cannot mix str"}
+    assert vistos == {"trilha": {"id": "t"}}
+    assert "tool_executar_teste_jornada" in [t.name for t in journey.author.tools]
