@@ -260,3 +260,36 @@ def test_coder_nao_edita_a_jornada(monkeypatch):
     assert proteger_testes_de_aceite(criar, {"caminho": "tests/acceptance/x.py"}, ctx) is None
     monkeypatch.delenv(_FLAG)
     assert proteger_testes_de_aceite(criar, {"caminho": ARQUIVO_JORNADA}, ctx) is None
+
+
+def test_instrucao_dos_autores_nao_interpreta_chaves_do_prompt():
+    """O prompt da jornada traz f-strings (`{url}`); só o marcador é trocado."""
+    from src.agents.workflow_coding_review.acceptance.agent import _instrucao as aceite
+    from src.agents.workflow_coding_review.journey.agent import _instrucao as jornada
+
+    texto = jornada(SimpleNamespace(state={"jornada_contexto": "CONTEXTO"}))
+    assert "CONTEXTO" in texto and "{url}" in texto and "{jornada_contexto?}" not in texto
+    assert "{jornada_contexto?}" not in jornada(SimpleNamespace(state={}))
+    assert "TASK-X" in aceite(SimpleNamespace(state={"aceite_task": "TASK-X"}))
+
+
+def test_revisor_sem_historico_no_modo_enxuto(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    codigo = (
+        "from src.agents.workflow_coding_review.reviewer.agent import _analyzer as a;"
+        "print(a.include_contents)"
+    )
+
+    def _modo(valor):
+        env = {**os.environ, "AI4ES_CODER_CONTEXTO_ENXUTO": valor, "WORKSPACE_OUTPUT_DIR": str(tmp_path)}
+        saida = subprocess.run(
+            [sys.executable, "-c", codigo], env=env, capture_output=True, text=True,
+            cwd=str(Path(__file__).resolve().parents[2]), timeout=120,
+        )
+        return saida.stdout.strip().splitlines()[-1]
+
+    assert _modo("true") == "none"
+    assert _modo("") == "default"

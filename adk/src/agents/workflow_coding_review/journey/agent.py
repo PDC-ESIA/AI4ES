@@ -87,10 +87,15 @@ def _bind(tool):
     )
 
 
-async def _instrucao(readonly_context) -> str:
-    from google.adk.utils.instructions_utils import inject_session_state
+def _instrucao(readonly_context) -> str:
+    """Substitui só `{jornada_contexto?}`.
 
-    return await inject_session_state(journey_prompt.instruction, readonly_context)
+    Sem o templating do ADK de propósito: o prompt traz código Python com
+    f-strings (`{url}`, `{ref}`), que o ADK tentaria resolver como variáveis de
+    state — na validação isso derrubou o autor com `KeyError: url`.
+    """
+    contexto = readonly_context.state.get(CHAVE_CONTEXTO) or ""
+    return journey_prompt.instruction.replace("{jornada_contexto?}", str(contexto))
 
 
 author = LlmAgent(

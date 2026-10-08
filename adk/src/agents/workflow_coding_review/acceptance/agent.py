@@ -137,10 +137,11 @@ def _bind(tool):
     )
 
 
-async def _instrucao(readonly_context) -> str:
-    from google.adk.utils.instructions_utils import inject_session_state
-
-    return await inject_session_state(acceptance_prompt.instruction, readonly_context)
+def _instrucao(readonly_context) -> str:
+    """Substitui só `{aceite_task?}` (sem o templating do ADK: chaves no texto
+    do prompt, como em exemplos de código, não podem virar variável)."""
+    contexto = readonly_context.state.get(CHAVE_ACEITE_TASK) or ""
+    return acceptance_prompt.instruction.replace("{aceite_task?}", str(contexto))
 
 
 author = LlmAgent(

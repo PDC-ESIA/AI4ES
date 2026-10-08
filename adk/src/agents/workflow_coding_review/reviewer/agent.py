@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
+from shared.pipeline_flags import coder_contexto_enxuto
 from shared.coding_review_lesson_memory.config import get_memory, memoria_habilitada
 from shared.coding_review_lesson_memory.error_log import (
     limite_lote,
@@ -249,6 +250,13 @@ _analyzer = LlmAgent(
     description="Revisão de código: lê arquivos do coder, produz análise markdown e persiste via callback.",
     instruction=_analyzer_instruction_provider,
     output_key="review_analysis",
+    # Contexto enxuto (`AI4ES_CODER_CONTEXTO_ENXUTO`, lida no import): o
+    # reviewer roda sem branch e, com 'default', recebia os eventos de TODAS as
+    # tasks — 218 mil tokens numa chamada na run de referência e 399 mil (acima
+    # do limite do modelo) na validação. A instrução já traz o desfecho das
+    # tasks, os findings estáticos e a lista de arquivos; ele lê o código pela
+    # tool. Chamado direto com uma mensagem (TACO), o conteúdo visto é o mesmo.
+    include_contents="none" if coder_contexto_enxuto() else "default",
     tools=[
         _bind(FunctionTool(tool_ler_arquivo), "cr_coder"),
     ],
