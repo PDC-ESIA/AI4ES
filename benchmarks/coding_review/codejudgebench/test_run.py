@@ -131,6 +131,22 @@ def test_config_persistida_e_validada_na_retomada(tmp_path):
         run._validar_e_persistir_config(tmp_path, _args(tmp_path, seed=7), {})
 
 
+def test_retomada_com_outros_pares_e_recusada(tmp_path):
+    contexto = {"pair_ids": ["s/1", "s/2"], "dataset": {"revision": "abc"}}
+    run._validar_e_persistir_config(tmp_path, _args(tmp_path), contexto)
+
+    with pytest.raises(ValueError, match="pares selecionados diferem"):
+        run._validar_e_persistir_config(tmp_path, _args(tmp_path), {**contexto, "pair_ids": ["s/1", "s/2", "s/3"]})
+
+
+def test_retomada_com_outra_revisao_do_dataset_e_recusada(tmp_path):
+    contexto = {"pair_ids": ["s/1"], "dataset": {"revision": "abc"}}
+    run._validar_e_persistir_config(tmp_path, _args(tmp_path), contexto)
+
+    with pytest.raises(ValueError, match="revisão do dataset"):
+        run._validar_e_persistir_config(tmp_path, _args(tmp_path), {**contexto, "dataset": {"revision": "xyz"}})
+
+
 def test_retomada_com_mesma_config_devolve_metadata_original(tmp_path):
     run._validar_e_persistir_config(tmp_path, _args(tmp_path), {"created_at": "ontem"})
     assert run._validar_e_persistir_config(tmp_path, _args(tmp_path), {"created_at": "hoje"})["created_at"] == "ontem"
@@ -195,5 +211,5 @@ def test_relatorio_markdown_tem_as_tres_metricas(tmp_path, reviewer_falso):
     }
     _, md = run._persistir_relatorio(relatorio, tmp_path)
     texto = md.read_text(encoding="utf-8")
-    for trecho in ("Acurácia do julgamento", "Viés posicional", "Resposta inválida (1ª tentativa)", "100.0%"):
+    for trecho in ("Acurácia do julgamento", "Viés posicional", "Resposta inválida — status não reconhecido pelo manifesto (1ª tentativa)", "100.0%"):
         assert trecho in texto
