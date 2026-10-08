@@ -200,6 +200,44 @@ def _verificar_com_trilha(coder_dir: Path, manifest: RunManifest, trilha: dict) 
     return resultado
 
 
+def executar_arquivo_de_teste(
+    coder_dir: Path, trilha: Optional[dict], arquivo_rel: str
+) -> tuple[Optional[int], str]:
+    """Roda UM arquivo pytest contra o código atual, no venv em cache da trilha.
+
+    Usado pelo autor de testes de aceite para conferir o próprio teste antes
+    de entregá-lo: na validação, um teste com `allow_redirects` (API do
+    requests, não do httpx) reprovou os 3 critérios de uma task sem que o
+    código chegasse a ser avaliado. Devolve (exit_code, saída); exit_code None
+    quando não há como rodar (sem trilha, sem manifesto, sem pytest).
+    """
+    if not (isinstance(trilha, dict) and trilha.get("interpretador")):
+        return None, "Execução indisponível: a stack não está numa trilha conhecida."
+    try:
+        manifest = load_manifest(coder_dir / "run.json")
+    except ManifestError as exc:
+        return None, f"Execução indisponível: run.json inválido ({exc})."
+    workdir = (coder_dir / manifest.workdir).resolve()
+    python, falha = _venv_em_cache(trilha, workdir)
+    if falha is not None:
+        return None, f"Execução indisponível: {falha.como_texto()}"
+    sandbox = DirectSandbox(workdir_subpath=manifest.workdir)
+    try:
+        sandbox.setup(coder_dir)
+        env = {**ambiente_da_trilha(trilha, sandbox.root), **(manifest.env or {})}
+        if not _tem_modulo(sandbox, str(python), "pytest", env):
+            return None, "Execução indisponível: pytest não está nas dependências do projeto."
+        res = sandbox.exec(
+            f"{python} -m pytest -v -p no:cacheprovider -p no:warnings --tb=short -rfE {arquivo_rel}",
+            timeout=120,
+            env=env,
+        )
+    finally:
+        sandbox.cleanup()
+    saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
+    return (None if res.timed_out else res.exit_code), _cauda(saida, 3500)
+
+
 # ── Revisão por LLM (sem trilha) ──────────────────────────────────────────
 
 _PROMPT_REVISAO = """Você é um revisor de build. Abaixo está um projeto gerado por \

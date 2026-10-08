@@ -128,6 +128,31 @@ def tool_salvar_teste_aceite(conteudo: str, tool_context: ToolContext) -> dict:
     }
 
 
+def tool_executar_teste_aceite(tool_context: ToolContext) -> dict:
+    """Roda o arquivo de testes de aceite já salvo contra o código atual.
+
+    Use DEPOIS de `tool_salvar_teste_aceite`, para conferir que o TESTE está
+    certo. Falhas porque o app ainda não cumpre o critério são esperadas;
+    erros vindos do próprio teste (API errada, nome inexistente, fixture
+    ausente) devem ser corrigidos e o arquivo salvo de novo.
+
+    Returns:
+        dict com `exit_code` (None quando não há como executar) e `saida`.
+    """
+    from shared.execution.verificacao_rapida import executar_arquivo_de_teste
+
+    task_id = tool_context.state.get("task_id")
+    if not isinstance(task_id, str):
+        return {"exit_code": None, "saida": "Task atual não encontrada no state."}
+    coder_dir = get_agent_workspace("cr_coder")
+    if not (coder_dir / _workdir(coder_dir) / caminho_relativo(task_id)).is_file():
+        return {"exit_code": None, "saida": "Salve o arquivo com tool_salvar_teste_aceite antes."}
+    exit_code, saida = executar_arquivo_de_teste(
+        coder_dir, tool_context.state.get("trilha"), caminho_relativo(task_id)
+    )
+    return {"exit_code": exit_code, "saida": saida}
+
+
 # ── Agente autor ───────────────────────────────────────────────────────────
 
 
@@ -156,6 +181,7 @@ author = LlmAgent(
         _bind(FunctionTool(tool_listar_workspace)),
         _bind(FunctionTool(tool_ler_workspace)),
         FunctionTool(tool_salvar_teste_aceite),
+        FunctionTool(tool_executar_teste_aceite),
     ],
 )
 

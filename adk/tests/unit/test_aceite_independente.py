@@ -635,3 +635,23 @@ def test_suite_do_coder_ganha_saida_legivel_so_com_as_flags():
     # Não duplica opção que o coder já pôs.
     assert ajustar("pytest --tb=long -q", [], legivel=True) == "pytest -p no:warnings -rfE --tb=long -q"
     assert ajustar("npm test", ["tests/acceptance"], legivel=True) == "npm test"
+
+
+def test_autor_roda_o_proprio_teste_so_depois_de_salvar(ws, monkeypatch):
+    import shared.execution.verificacao_rapida as vr
+
+    ctx = SimpleNamespace(state={"task_id": "TASK-001", "tasks": _TASKS, "trilha": {"id": "t"}})
+    assert "Salve o arquivo" in ws.modulo.tool_executar_teste_aceite(ctx)["saida"]
+
+    ws.modulo.tool_salvar_teste_aceite("def test_CA_01_cria():\n    assert 1\n", ctx)
+    chamado = {}
+
+    def _executar(coder_dir, trilha, arquivo):
+        chamado.update(trilha=trilha, arquivo=arquivo)
+        return 1, "E   TypeError: allow_redirects"
+
+    monkeypatch.setattr(vr, "executar_arquivo_de_teste", _executar)
+    resposta = ws.modulo.tool_executar_teste_aceite(ctx)
+    assert resposta == {"exit_code": 1, "saida": "E   TypeError: allow_redirects"}
+    assert chamado == {"trilha": {"id": "t"}, "arquivo": _ARQ}
+    assert "tool_executar_teste_aceite" in [t.name for t in ws.modulo.author.tools]

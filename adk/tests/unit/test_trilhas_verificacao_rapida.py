@@ -387,3 +387,32 @@ def test_harness_sem_trilha_mantem_o_env_do_manifesto(tmp_path, monkeypatch):
     )
     assert envs and all(e is None for e in envs)
     assert relatorio["stages"][0]["evidence"]["trilha"] is None
+
+
+# ── Execução de um arquivo de teste pelo autor de aceite ───────────────────
+
+
+def _projeto_com_pytest(raiz: Path, teste: str) -> Path:
+    projeto = _projeto(raiz, "X = 1\n")
+    (projeto / "tests").mkdir()
+    (projeto / "tests" / "test_x.py").write_text(teste)
+    return projeto
+
+
+def test_executar_arquivo_sem_trilha_fica_indisponivel(tmp_path):
+    exit_code, saida = vr.executar_arquivo_de_teste(tmp_path, None, "tests/test_x.py")
+    assert exit_code is None and "indisponível" in saida
+
+
+def test_executar_arquivo_mostra_erro_do_proprio_teste(trilha_local, tmp_path, monkeypatch):
+    projeto = _projeto_com_pytest(
+        tmp_path / "p",
+        "def test_CA_01():\n    import httpx\n    httpx.Client().post('http://x', allow_redirects=False)\n",
+    )
+    # Usa o interpretador dos testes (já tem pytest e httpx) no lugar do venv
+    # da trilha, para não depender de rede.
+    monkeypatch.setattr(vr, "_tem_modulo", lambda *a, **k: True)
+    monkeypatch.setattr(vr, "_venv_em_cache", lambda t, w: (Path(sys.executable), None))
+    exit_code, saida = vr.executar_arquivo_de_teste(projeto, trilha_local, "tests/test_x.py")
+    assert exit_code not in (0, None)
+    assert "allow_redirects" in saida and "TypeError" in saida

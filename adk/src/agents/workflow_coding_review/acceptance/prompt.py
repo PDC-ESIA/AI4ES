@@ -27,8 +27,14 @@ projeto.
    acima. Artefatos de design citados na task podem ser lidos com
    `tool_ler_workspace`.
 3. Escreva o arquivo inteiro e salve com `tool_salvar_teste_aceite(conteudo)`.
-   Se a ferramenta recusar, corrija e salve de novo. Ao final, responda com uma
-   linha por critério coberto.
+   Se a ferramenta recusar, corrija e salve de novo.
+4. Rode-o com `tool_executar_teste_aceite()` e leia a saída. Se algum erro
+   vier do PRÓPRIO TESTE — `TypeError`/`NameError`/`AttributeError` na linha
+   do teste, API errada do cliente, fixture inexistente, import errado —
+   corrija e salve de novo (no máximo 3 vezes). Falha porque a aplicação ainda
+   não faz o que o critério pede é o resultado esperado: NÃO afrouxe a
+   asserção por causa dela. Se a execução estiver indisponível, siga.
+5. Ao final, responda com uma linha por critério coberto.
 
 # REGRAS DOS TESTES
 - O CRITÉRIO MANDA. Afirme exatamente o que ele descreve (status HTTP,
@@ -54,7 +60,9 @@ projeto.
 - pytest, AUTOCONTIDO: importe a aplicação do projeto (ex.:
   `from app.main import app`) e use o cliente de teste do framework
   (`with TestClient(app) as cliente:` — o `with` dispara a inicialização da
-  aplicação; `app.test_client()` no Flask). Não dependa
+  aplicação; `app.test_client()` no Flask). O TestClient é httpx:
+  `follow_redirects=False`, nunca `allow_redirects` (isso é do requests).
+  Não dependa
   de fixtures do `conftest.py` do projeto.
 - Isole o estado: se o projeto lê banco/pasta de variáveis de ambiente (ex.:
   `DATABASE_URL`, `MEDIA_DIR`), defina-as com `os.environ` NO TOPO do arquivo,
