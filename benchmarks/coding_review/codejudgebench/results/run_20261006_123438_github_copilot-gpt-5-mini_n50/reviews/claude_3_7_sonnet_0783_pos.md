@@ -1,0 +1,16 @@
+## Status: BLOQUEADO
+
+## Issues
+
+- critical — solution.py — camada=corretude  
+  Descrição: A lógica que tenta detectar somas S que envolvem múltiplos inteiros do período (segunda fase, com `remainder_to_earliest_prefix`) é incorreta e pode falhar com falsos negativos. O código armazena apenas a "earliest" (primeira) prefix sum para cada resto modulo `total_sum`. Para um dado prefix[j] fixo, o segmento candidato é prefix[j] - prefix[i]; para minimizar esse valor (e assim aumentar chance de caber em S) deveríamos usar o prefix[i] mais próximo de j (i.e., o mais recente prefix com o resto desejado), não o mais cedo. Ao guardar apenas o mais cedo, o algoritmo pode escolher um prefix[i] muito pequeno, fazendo segment_sum > S mesmo quando existe outro prefix[i'](com o mesmo resto) que produz segment_sum <= S e satisfaz (S - segment_sum) % total_sum == 0. Isso leva a respostas incorretas (falsos negativos). Exemplo teórico: há casos com um segmento-base dentro de 2N cujo valor + k * total_sum = S, mas o mapa com primeiros prefixos impede que esse segmento-base seja reconhecido.
+
+- warning — solution.py — camada=completude  
+  Descrição: Não foram incluídos testes automatizados (arquivos de teste) para validar cenários críticos (happy paths e edge cases da especificação). Pelo fluxo esperado, apenas o arquivo `solution.py` foi entregue; não há testes que demonstrem a correção da solução nem que evitem regressões futuras (critério CA-02 pede eliminar a falha observada).
+
+- info — solution.py — camada=arquitetura  
+  Descrição: A solução mistura duas técnicas (detecção direta em 2N com um set de prefix sums e posteriormente uma verificação modular com um mapa de restos). A primeira fase é suficiente para casos em que uma subarray com soma exatamente S aparece dentro de 2N; a segunda fase é necessária para somas maiores que qualquer subarray em 2N (quando total_sum>0), mas a implementação atual da segunda fase possui a falha descrita. A separação de responsabilidades está razoável, mas a implementação da segunda fase precisa ser revista para garantir cobertura exaustiva das possibilidades base (segmentos dentro de 2N).
+
+## Resumo
+
+O arquivo `solution.py` entrega um caminho eficiente (O(N) amortizado) que evita o TLE da versão anterior, mas contém um defeito lógico na segunda fase (verificação usando restos modulo `total_sum`) que pode produzir falsos negativos. Isto viola o critério principal (CA-01) — a saída correta para todas as entradas válidas — e, portanto, a entrega está bloqueada até corrigir essa falha. Recomendações de correção: usar um método determinístico para enumerar todos os segmentos-base dentro de 2N (por exemplo sliding window / two pointers sobre o array duplicado) e para cada segmento-base verificar (quando total_sum>0) se S >= base_sum e (S - base_sum) % total_sum == 0; alternativamente, na abordagem modular, mantenha para cada resto o prefix_sum mais recente (ou de índice mais alto) visto até j para minimizar segment_sum = prefix[j] - prefix[i]. Também inclua testes que cubram: (1) casos encontrados na enunciação, (2) casos em que a soma é alcançada por base dentro de 2N, e (3) casos em que é necessário adicionar múltiplos integrais de total_sum para atingir S.
