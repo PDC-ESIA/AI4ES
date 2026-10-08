@@ -1,6 +1,7 @@
 """Métricas do benchmark BigCodeBench: Pass@1, falhas por categoria e baseline.
 
-Pass@1 reutiliza o estimador do HumanEval (com n=1 equivale à taxa de acerto).
+Com 1 amostra por tarefa, pass@1 é a taxa de tarefas aprovadas. A comparação com
+o HumanEval é opcional e só lê o `report.json` de um run dele (dado, não código).
 """
 
 from __future__ import annotations
@@ -8,8 +9,6 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
-
-from benchmarks.coding_review.humaneval.metrics import aggregate_pass_at_k, pass_at_k
 
 from .categories import (
     LIBRARY_FAILURES,
@@ -19,11 +18,9 @@ from .categories import (
 
 __all__ = [
     "aggregate_failures",
-    "aggregate_pass_at_k",
     "compare_with_baseline",
     "load_baseline",
     "pass_at_1",
-    "pass_at_k",
 ]
 
 _GROUPS = {

@@ -37,6 +37,7 @@ from benchmarks.coding_review.bigcodebench import bootstrap
 from benchmarks.coding_review.bigcodebench.categories import (
     GENERATION_ERROR,
     IMPORT_ERROR,
+    PENDING_CATEGORIES,
     MISSING_DEPENDENCY,
     NO_SOLUTION,
     PASSED,
@@ -54,6 +55,37 @@ _DEFAULT_DATASET = (
     / f"bigcodebench_{DEFAULT_HF_VERSION}.parquet"
 )
 _DEFAULT_TIMEOUT = 120
+
+
+def _parse_shard(valor: str) -> tuple[int, int]:
+    """Converte ``"I/N"`` em ``(I, N)``, com ``0 <= I < N``."""
+    try:
+        indice, total = (int(x) for x in valor.split("/"))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"shard inválido: {valor!r} (formato esperado: I/N, ex.: 0/8)."
+        ) from None
+    if total < 1 or not 0 <= indice < total:
+        raise argparse.ArgumentTypeError(
+            f"shard inválido: {valor!r} (exige 0 <= I < N)."
+        )
+    return indice, total
+
+
+def _aplicar_shard(problemas: list, shard: tuple[int, int] | None) -> list:
+    """Fatia intercalada das tarefas (``I, I+N, I+2N, …``) para runs paralelos.
+
+    Intercalar (em vez de blocos contíguos) equilibra a dificuldade entre os
+    shards; a união dos N shards é exatamente a lista original.
+    """
+    if shard is None:
+        return problemas
+    indice, total = shard
+    return problemas[indice::total]
+
+
+def _shard_str(shard: tuple[int, int] | None) -> str | None:
+    return f"{shard[0]}/{shard[1]}" if shard else None
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -124,6 +156,24 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Retoma um run existente (pula tarefas já concluídas em progress.jsonl).",
     )
+    p.add_argument(
+        "--lean",
+        action="store_true",
+        help=(
+            "Modo enxuto: o coder grava só o solution.py, sem PLAN.md, README.md "
+            "e run.json (menos turnos e tokens; difere do fluxo real do coder)."
+        ),
+    )
+    p.add_argument(
+        "--shard",
+        type=_parse_shard,
+        default=None,
+        metavar="I/N",
+        help=(
+            "Executa só a fatia I de N das tarefas selecionadas (ex.: 0/8), para "
+            "rodar N processos em paralelo; junte depois com o módulo `merge`."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -158,9 +208,21 @@ def _sanitizar_componente(valor: str) -> str:
     return limpo or "na"
 
 
-def _construir_nome_run(model: str, n: int, timestamp: str) -> str:
-    """Nome do diretório do run: ``run_<timestamp>_<modelo>_n<N>``."""
-    return f"run_{timestamp}_{_sanitizar_componente(model)}_n{n}"
+def _construir_nome_run(
+    model: str,
+    n: int,
+    timestamp: str,
+    *,
+    lean: bool = False,
+    shard: tuple[int, int] | None = None,
+) -> str:
+    """Nome do diretório: ``run_<timestamp>_<modelo>_n<N>[_lean][_shard<I>of<N>]``."""
+    nome = f"run_{timestamp}_{_sanitizar_componente(model)}_n{n}"
+    if lean:
+        nome += "_lean"
+    if shard:
+        nome += f"_shard{shard[0]}of{shard[1]}"
+    return nome
 
 
 def _carregar_progresso(progress_path: Path) -> dict[str, dict]:
@@ -224,16 +286,45 @@ def _resultado_base(problema, t0: float, geracao) -> dict:
         "libs": list(problema.libs),
         "files": geracao.files,
         "duration_s": round(time.time() - t0, 2),
-        "llm_interactions": geracao.llm_interactions,
-        "prompt_tokens": geracao.prompt_tokens,
-        "completion_tokens": geracao.completion_tokens,
+        **{campo: getattr(geracao, campo) for campo in _CAMPOS_USO},
+    }
+
+
+_CAMPOS_USO = (
+    "llm_interactions",
+    "prompt_tokens",
+    "completion_tokens",
+    "cached_tokens",
+    "reasoning_tokens",
+)
+
+
+def _agregar_uso(resultados: list[dict]) -> dict:
+    """Soma a telemetria de uso do LLM de todas as tarefas.
+
+    Inclui tarefas reaproveitadas do checkpoint; as gravadas antes da coleta de
+    `cached_tokens`/`reasoning_tokens` contam como 0 nesses campos.
+    """
+    total = dict.fromkeys(_CAMPOS_USO, 0)
+    for r in resultados:
+        for campo in _CAMPOS_USO:
+            total[campo] += r.get(campo, 0) or 0
+    prompt = total["prompt_tokens"]
+    return {
+        "total_llm_interactions": total["llm_interactions"],
+        "total_prompt_tokens": prompt,
+        "total_completion_tokens": total["completion_tokens"],
+        "total_tokens": prompt + total["completion_tokens"],
+        "total_cached_tokens": total["cached_tokens"],
+        "total_reasoning_tokens": total["reasoning_tokens"],
+        "cache_hit_ratio": round(total["cached_tokens"] / prompt, 4) if prompt else 0.0,
     }
 
 
 async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict:
     """Loop principal do benchmark; devolve o relatório consolidado."""
     # Imports tardios: só após o bootstrap ter fixado o ambiente.
-    from benchmarks.coding_review.bigcodebench import coder_runner, grading, metrics
+    from benchmarks.coding_review.bigcodebench import coder_runner, grading
     from benchmarks.coding_review.bigcodebench.dataset import load_problems
     from benchmarks.coding_review.bigcodebench.sandbox_image import (
         IMAGE_TAG,
@@ -247,6 +338,7 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
         seed=args.seed,
         task_ids=args.task_ids,
     )
+    problemas = _aplicar_shard(problemas, args.shard)
     image = ensure_image(args.image or IMAGE_TAG, rebuild=args.rebuild_image)
     network_mode = None if args.allow_network else "none"
 
@@ -258,7 +350,12 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
         )
 
     progress_path = run_dir / "progress.jsonl"
-    concluidos = _carregar_progresso(progress_path)
+    # Falhas de infraestrutura gravadas por versões antigas são refeitas.
+    concluidos = {
+        t: d
+        for t, d in _carregar_progresso(progress_path).items()
+        if d.get("category") not in PENDING_CATEGORIES
+    }
     if concluidos:
         print(f"[run] Retomando: {len(concluidos)} tarefa(s) já concluída(s).")
     print(f"[run] {len(problemas)} tarefa(s) a executar (seed={args.seed}).")
@@ -271,7 +368,7 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
             continue
 
         t0 = time.time()
-        geracao = await coder_runner.run_coder(problema, model=model)
+        geracao = await coder_runner.run_coder(problema, model=model, lean=args.lean)
         resultado = _resultado_base(problema, t0, geracao)
 
         if geracao.error:
@@ -311,49 +408,86 @@ async def _executar(args: argparse.Namespace, run_dir: Path, model: str) -> dict
             )
         resultado["duration_s"] = round(time.time() - t0, 2)
         resultados.append(resultado)
-        _append_progresso(progress_path, resultado)
-        status = "PASS" if resultado["passed"] else f"FAIL[{resultado['category']}]"
+        if resultado["category"] in PENDING_CATEGORIES:
+            status = f"PENDENTE[{resultado['category']}]"  # refeita ao retomar
+        else:
+            _append_progresso(progress_path, resultado)
+            status = "PASS" if resultado["passed"] else f"FAIL[{resultado['category']}]"
         print(
             f"[run] ({idx}/{len(problemas)}) {problema.task_id}: {status} "
             f"({resultado['duration_s']}s)"
         )
 
-    pass1 = metrics.pass_at_1(resultados)
+    return montar_relatorio(
+        resultados,
+        num_problems=len(problemas),
+        model=model,
+        seed=args.seed,
+        lean=args.lean,
+        image=image,
+        allow_network=args.allow_network,
+        canonical_check=canonical_check,
+        baseline_path=args.baseline,
+        shard=_shard_str(args.shard),
+    )
+
+
+def montar_relatorio(
+    resultados: list[dict],
+    *,
+    num_problems: int,
+    model: str,
+    seed: int,
+    lean: bool,
+    image: str,
+    allow_network: bool,
+    canonical_check: dict | None = None,
+    baseline_path: Path | None = None,
+    shard: str | None = None,
+) -> dict:
+    """Consolida os resultados por tarefa no relatório (usado também pelo `merge`).
+
+    Tarefas com falha de infraestrutura, ou ausentes de `resultados`, ficam em
+    `pending`: não entram no pass@1 nem nas falhas, e o run deve ser retomado.
+    """
+    from benchmarks.coding_review.bigcodebench import metrics
+
+    avaliadas = [r for r in resultados if r.get("category") not in PENDING_CATEGORIES]
+    pendentes = [
+        {"task_id": r["task_id"], "category": r["category"], "reason": r.get("reason")}
+        for r in resultados
+        if r.get("category") in PENDING_CATEGORIES
+    ]
+    pass1 = metrics.pass_at_1(avaliadas)
     relatorio = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "benchmark": "bigcodebench",
         "split": "complete",
         "dataset_version": DEFAULT_HF_VERSION,
         "model": model,
-        "seed": args.seed,
-        "num_problems": len(problemas),
+        "seed": seed,
+        "shard": shard,
+        "num_problems": num_problems,
+        "num_graded": len(avaliadas),
+        "pending": pendentes,
         "pass_at_k": {"pass@1": round(pass1, 4)},
-        "failures": metrics.aggregate_failures(resultados),
-        "usage_metrics": {
-            "total_llm_interactions": sum(
-                r.get("llm_interactions", 0) for r in resultados
-            ),
-            "total_prompt_tokens": sum(r.get("prompt_tokens", 0) for r in resultados),
-            "total_completion_tokens": sum(
-                r.get("completion_tokens", 0) for r in resultados
-            ),
-        },
+        "failures": metrics.aggregate_failures(avaliadas),
+        "lean": bool(lean),
+        "usage_metrics": _agregar_uso(resultados),
         "sandbox": {
             "kind": "docker",
             "image": image,
-            "network": "enabled" if args.allow_network else "none",
+            "network": "enabled" if allow_network else "none",
         },
-        "problems": resultados,
+        "problems": avaliadas,
     }
-    u = relatorio["usage_metrics"]
-    u["total_tokens"] = u["total_prompt_tokens"] + u["total_completion_tokens"]
     if canonical_check is not None:
         relatorio["canonical_check"] = canonical_check
 
-    if args.baseline is not None:
-        baseline = metrics.load_baseline(args.baseline)
+    if baseline_path is not None:
+        baseline = metrics.load_baseline(baseline_path)
         if baseline is None:
-            print(f"[run] Aviso: baseline não encontrado/inválido em {args.baseline}.")
+            print(f"[run] Aviso: baseline não encontrado/inválido em {baseline_path}.")
         else:
             relatorio["baseline_comparison"] = metrics.compare_with_baseline(
                 pass1, baseline
@@ -369,7 +503,9 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         json.dumps(relatorio, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    n = relatorio["num_problems"]
+    n_total = relatorio["num_problems"]
+    n = relatorio.get("num_graded", n_total)
+    pendentes = relatorio.get("pending", [])
     p1 = relatorio["pass_at_k"]["pass@1"]
     falhas = relatorio["failures"]
     linhas = [
@@ -378,10 +514,23 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         f"- **Gerado em:** {relatorio['generated_at']}",
         f"- **Modelo:** {relatorio['model']}",
         f"- **Dataset:** bigcode/bigcodebench {relatorio['dataset_version']} (split complete)",
-        f"- **Tarefas:** {n} (seed {relatorio['seed']})",
+        f"- **Tarefas:** {n_total} (seed {relatorio['seed']})"
+        + (f", shard {relatorio['shard']}" if relatorio.get("shard") else ""),
         f"- **Sandbox:** Docker `{relatorio['sandbox']['image']}` "
         f"(rede: {relatorio['sandbox']['network']})",
+        f"- **Modo:** {'enxuto (só solution.py)' if relatorio.get('lean') else 'completo'}",
         "",
+    ]
+    if pendentes:
+        linhas += [
+            f"> ⚠️ **Resultado parcial:** {len(pendentes)} tarefa(s) pendente(s) por falha "
+            "de infraestrutura (LLM/Docker) ou não executada(s), fora do pass@1. "
+            "Retome o run com `--resume-dir` para completá-las: "
+            + ", ".join(p["task_id"] for p in pendentes[:20])
+            + (" …" if len(pendentes) > 20 else ""),
+            "",
+        ]
+    linhas += [
         "## 1. Pass@1",
         "",
         f"- **pass@1:** {p1:.4f} ({p1 * 100:.1f}%) — "
@@ -440,6 +589,10 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
         f"- **Interações com LLM:** {usage['total_llm_interactions']}",
         f"- **Tokens (entrada/saída/total):** {usage['total_prompt_tokens']}/"
         f"{usage['total_completion_tokens']}/{usage['total_tokens']}",
+        f"- **Tokens de entrada servidos do cache:** {usage.get('total_cached_tokens', 0)} "
+        f"({usage.get('cache_hit_ratio', 0.0) * 100:.1f}% da entrada)",
+        f"- **Tokens de raciocínio (contidos na saída):** "
+        f"{usage.get('total_reasoning_tokens', 0)}",
     ]
     cc = relatorio.get("canonical_check")
     if cc is not None:
@@ -477,6 +630,8 @@ def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace) -> None
         "timeout": args.timeout,
         "dataset_version": DEFAULT_HF_VERSION,
         "allow_network": bool(args.allow_network),
+        "lean": bool(args.lean),
+        "shard": _shard_str(args.shard),
     }
 
     if config_path.is_file():
@@ -484,6 +639,9 @@ def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace) -> None
             salvos = json.loads(config_path.read_text(encoding="utf-8"))
         except Exception as exc:
             raise ValueError(f"Erro ao ler metadata.json em {run_dir}: {exc}")
+        # Runs anteriores ao modo enxuto não gravavam `lean`: eram completos.
+        salvos.setdefault("lean", False)
+        salvos.setdefault("shard", None)
         for chave, atual in params_atuais.items():
             if salvos.get(chave) != atual:
                 raise ValueError(
@@ -516,7 +674,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         n = len(args.task_ids) if args.task_ids else args.limit
-        run_dir = args.output_dir / _construir_nome_run(args.model, n, timestamp)
+        run_dir = args.output_dir / _construir_nome_run(
+            args.model, n, timestamp, lean=args.lean, shard=args.shard
+        )
 
     _validar_e_persistir_config(run_dir, args)
 
@@ -531,6 +691,14 @@ def main(argv: list[str] | None = None) -> int:
     print("\n=== RESULTADO ===")
     print(f"pass@1: {relatorio['pass_at_k']['pass@1'] * 100:.1f}%")
     print(f"Falhas: {relatorio['failures']['by_group']}")
+    if relatorio["pending"]:
+        print(
+            f"⚠️ {len(relatorio['pending'])} tarefa(s) pendente(s) por falha de "
+            f"infraestrutura — retome com --resume-dir {run_dir}"
+        )
+    print(
+        f"Cache: {relatorio['usage_metrics']['cache_hit_ratio'] * 100:.1f}% da entrada"
+    )
     comp = relatorio.get("baseline_comparison")
     if comp:
         print(f"Δ vs HumanEval: {comp['delta_pp']:+.1f} p.p.")

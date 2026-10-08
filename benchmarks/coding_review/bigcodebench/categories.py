@@ -19,3 +19,8 @@ SANDBOX_ERROR = "sandbox_error"  # falha de infraestrutura (Docker), não do mod
 LIBRARY_FAILURES = (MISSING_DEPENDENCY, IMPORT_ERROR, API_MISUSE)
 LOGIC_FAILURES = (LOGIC, RUNTIME_ERROR)
 OTHER_FAILURES = (SYNTAX, TIMEOUT, NO_SOLUTION, GENERATION_ERROR, SANDBOX_ERROR)
+NOT_RUN = "not_run"  # tarefa sem resultado (ex.: shard interrompido antes dela)
+
+# Desfechos que não são do modelo (LLM/Docker) ou ainda inexistentes: não entram
+# no checkpoint nem no pass@1 — ficam pendentes e são refeitos ao retomar o run.
+PENDING_CATEGORIES = (GENERATION_ERROR, SANDBOX_ERROR, NOT_RUN)
