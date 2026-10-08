@@ -173,5 +173,12 @@ def comando_de_aceite(comandos_de_teste: Iterable[str], arquivo_rel: str) -> Opt
     for comando in comandos_de_teste:
         posicao = comando.find("pytest")
         if posicao >= 0:
-            return f"{comando[: posicao + len('pytest')]} -v -p no:cacheprovider {arquivo_rel}"
+            # Sem warnings e com traceback curto + resumo por falha: o motivo de
+            # cada falha precisa caber no trecho de saída que chega ao coder.
+            # Na validação, warnings de depreciação ocupavam o trecho inteiro e
+            # o coder só via "FAILED", sem a asserção.
+            return (
+                f"{comando[: posicao + len('pytest')]} -v -p no:cacheprovider "
+                f"-p no:warnings --tb=short -rfE {arquivo_rel}"
+            )
     return None

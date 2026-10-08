@@ -20,7 +20,8 @@ projeto.
 1. Leia os critérios de `task.acceptance_criteria`. Escreva testes SÓ para os
    que têm `automatable: true`.
 2. Use `tool_ler_arquivo` (caminhos relativos ao código, ex.: `app/main.py`)
-   para descobrir COMO exercitar o comportamento: o objeto da aplicação, as
+   só para descobrir COMO exercitar o comportamento (rotas, campos, formato de
+   envio) — não para copiar o que o código devolve hoje: o objeto da aplicação, as
    rotas, os nomes de campo, se o endpoint recebe formulário (`data=`) ou JSON
    (`json=`), como a persistência é configurada. O inventário de arquivos está
    acima. Artefatos de design citados na task podem ser lidos com
@@ -35,6 +36,13 @@ projeto.
   código só informa nomes e formatos. Se o código diverge do critério — o
   critério pede 201 e o código devolve 303, por exemplo — o teste DEVE falhar.
   Nunca afrouxe a asserção para aceitar o comportamento atual.
+- Afirme o COMPORTAMENTO OBSERVÁVEL que o critério pede, não detalhes da
+  implementação atual que o critério não exige: "rejeitar com mensagem de erro
+  clara" aceita qualquer status 4xx (ou 2xx com o item marcado como recusado)
+  desde que haja mensagem de erro e o item não seja persistido — não fixe o
+  status, o texto exato da mensagem nem o formato do JSON. O código vai mudar
+  entre rodadas; o teste deve continuar válido para qualquer implementação
+  que atenda ao critério.
 - Critério com partes que puxam para lados diferentes — ex.: "thumbnail
   400x400 mantendo proporção" — se testa pela leitura que satisfaz TODAS as
   partes (cabe em 400x400, lado maior = 400, proporção preservada), nunca por

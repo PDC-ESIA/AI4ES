@@ -67,9 +67,8 @@ def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> Resultad
     comando = comando_de_aceite(manifest.test, ARQUIVO_JORNADA)
     if comando is None:
         return ResultadoJornada(NAO_EXECUTADA, motivo="o run.json não usa pytest")
-    # Traceback curto + resumo por falha: a mensagem de cada jornada quebrada
-    # precisa caber na saída devolvida ao coder.
-    comando += " --tb=short -rfE"
+    # `comando_de_aceite` já pede traceback curto, resumo por falha e sem
+    # warnings: a mensagem de cada jornada quebrada cabe na saída ao coder.
 
     sandbox = create_sandbox("direct", workdir_subpath=manifest.workdir)
     try:

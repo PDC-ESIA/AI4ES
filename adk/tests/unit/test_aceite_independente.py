@@ -101,7 +101,7 @@ def test_caminho_protegido(caminho, protegido):
 
 def test_comando_de_aceite_reaproveita_o_prefixo_do_pytest():
     assert ai.comando_de_aceite(["venv/bin/python -m pytest -v tests"], _ARQ) == (
-        f"venv/bin/python -m pytest -v -p no:cacheprovider {_ARQ}"
+        f"venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings --tb=short -rfE {_ARQ}"
     )
     assert ai.comando_de_aceite(["npm test"], _ARQ) is None
 
@@ -172,7 +172,7 @@ def test_harness_isola_os_protegidos_da_suite_do_coder(ligada, tmp_path):
     assert suite == [
         "venv/bin/python -m pytest --ignore=tests/acceptance -v tests/test_meu.py"
     ]
-    assert aceite == [f"venv/bin/python -m pytest -v -p no:cacheprovider {_ARQ}"]
+    assert aceite == [f"venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings --tb=short -rfE {_ARQ}"]
 
 
 def test_harness_roda_aceite_de_tasks_anteriores_como_regressao(ligada, tmp_path):
