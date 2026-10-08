@@ -26,6 +26,7 @@ Verificado contra o código do `swebench` 5.0.2 (`harness/run_evaluation.py`,
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,6 +43,7 @@ SWEBENCH_VERSION = "5.0.2"
 _LOG_DIR = Path("logs") / "run_evaluation"
 _REPORT_FILE = "report.json"
 _INSTANCE_LOG = "run_instance.log"
+_PATCH_FILE = "patch.diff"
 GRADING_LOG = "run_evaluation.log"
 
 # Quando o patch não aplica ou os testes estouram o timeout, o harness levanta
@@ -166,6 +168,41 @@ def instance_report_path(
     """Onde o harness grava o `report.json` de uma instância."""
     modelo = model_name_or_path.replace("/", "__")
     return grading_dir / _LOG_DIR / run_id / modelo / instance_id / _REPORT_FILE
+
+
+def invalidate_stale_reports(
+    grading_dir: Path,
+    *,
+    run_id: str,
+    model_name_or_path: str,
+    patches: Iterable[tuple[str, str]],
+) -> list[str]:
+    """Apaga o resultado de instâncias avaliadas com um patch DIFERENTE do atual.
+
+    O harness pula toda instância que já tem `report.json` no diretório do
+    `run_id`, sem conferir se o patch mudou. Numa retomada em que uma instância é
+    refeita (patch novo), o resultado antigo seria reaproveitado em silêncio. O
+    harness grava o patch avaliado em `patch.diff` na pasta da instância; aqui ele
+    é comparado ao patch atual, e a pasta é apagada quando difere ou quando não há
+    como conferir (existe a pasta, mas não o `patch.diff`). Devolve as instâncias
+    invalidadas.
+    """
+    modelo = model_name_or_path.replace("/", "__")
+    invalidadas: list[str] = []
+    for instance_id, patch in patches:
+        pasta = grading_dir / _LOG_DIR / run_id / modelo / instance_id
+        if not pasta.is_dir():
+            continue
+        # Compara BYTES: a leitura em texto converteria "\r\n" em "\n" (descartando
+        # sempre um patch com CRLF) e falharia num `patch.diff` fora de UTF-8.
+        try:
+            avaliado = (pasta / _PATCH_FILE).read_bytes()
+        except OSError:
+            avaliado = None
+        if avaliado != patch.encode("utf-8", errors="replace"):
+            shutil.rmtree(pasta)
+            invalidadas.append(instance_id)
+    return invalidadas
 
 
 def _outcome_sem_report(log_path: Path) -> GradeOutcome:

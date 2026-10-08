@@ -107,3 +107,89 @@ def test_sem_report_o_log_diz_se_o_patch_falhou_ou_se_foi_erro(tmp_path: Path):
     assert resultados["lento__l-1"].cause == "timeout_dos_testes"
     assert resultados["infra__i-1"].status == GRADE_ERROR
     assert resultados["infra__i-1"].as_dict()["causa"] == "erro_de_avaliacao"
+
+
+# --- cache do harness: não reaproveitar resultado de outro patch ----------------
+
+
+def _avaliada(tmp_path: Path, instance_id: str, patch: str | None, run_id="r1", modelo="m/x"):
+    """Simula a pasta que o harness deixa para uma instância já avaliada."""
+    pasta = tmp_path / "logs" / "run_evaluation" / run_id / modelo.replace("/", "__") / instance_id
+    pasta.mkdir(parents=True)
+    (pasta / "report.json").write_text("{}", encoding="utf-8")
+    if patch is not None:
+        (pasta / "patch.diff").write_text(patch, encoding="utf-8")
+    return pasta
+
+
+def test_resultado_com_o_mesmo_patch_e_mantido(tmp_path: Path):
+    pasta = _avaliada(tmp_path, "a__a-1", "diff igual\n")
+    invalidadas = grading.invalidate_stale_reports(
+        tmp_path, run_id="r1", model_name_or_path="m/x", patches=[("a__a-1", "diff igual\n")]
+    )
+    assert invalidadas == []
+    assert (pasta / "report.json").is_file()
+
+
+def test_resultado_de_outro_patch_e_descartado(tmp_path: Path):
+    pasta = _avaliada(tmp_path, "a__a-1", "patch antigo\n")
+    invalidadas = grading.invalidate_stale_reports(
+        tmp_path, run_id="r1", model_name_or_path="m/x", patches=[("a__a-1", "patch novo\n")]
+    )
+    assert invalidadas == ["a__a-1"]
+    assert not pasta.exists()
+
+
+def test_pasta_sem_patch_diff_nao_pode_ser_conferida_e_e_descartada(tmp_path: Path):
+    pasta = _avaliada(tmp_path, "a__a-1", None)
+    invalidadas = grading.invalidate_stale_reports(
+        tmp_path, run_id="r1", model_name_or_path="m/x", patches=[("a__a-1", "qualquer\n")]
+    )
+    assert invalidadas == ["a__a-1"]
+    assert not pasta.exists()
+
+
+def test_so_a_instancia_alterada_e_invalidada(tmp_path: Path):
+    igual = _avaliada(tmp_path, "a__a-1", "p1\n")
+    mudou = _avaliada(tmp_path, "a__a-2", "p2 velho\n")
+    invalidadas = grading.invalidate_stale_reports(
+        tmp_path, run_id="r1", model_name_or_path="m/x",
+        patches=[("a__a-1", "p1\n"), ("a__a-2", "p2 novo\n"), ("a__a-3", "p3\n")],
+    )
+    assert invalidadas == ["a__a-2"]  # a-3 nunca foi avaliada: nada a apagar
+    assert igual.exists() and not mudou.exists()
+
+
+def test_diretorio_de_grading_inexistente_nao_quebra(tmp_path: Path):
+    assert grading.invalidate_stale_reports(
+        tmp_path / "nao_existe", run_id="r1", model_name_or_path="m/x",
+        patches=[("a__a-1", "x\n")],
+    ) == []
+
+
+def test_patch_com_crlf_igual_e_mantido(tmp_path: Path):
+    """Regressão: a leitura em texto trocava \\r\\n por \\n e descartava sempre."""
+    patch = "diff --git a/x b/x\r\n+linha\r\n"
+    pasta = _avaliada(tmp_path, "a__a-1", None)
+    (pasta / "patch.diff").write_bytes(patch.encode("utf-8"))
+    assert grading.invalidate_stale_reports(
+        tmp_path, run_id="r1", model_name_or_path="m/x", patches=[("a__a-1", patch)]
+    ) == []
+    assert pasta.exists()
+
+
+def test_patch_diff_fora_de_utf8_e_descartado_sem_excecao(tmp_path: Path):
+    pasta = _avaliada(tmp_path, "a__a-1", None)
+    (pasta / "patch.diff").write_bytes(b"diff \xff\xfe nao utf8\n")
+    assert grading.invalidate_stale_reports(
+        tmp_path, run_id="r1", model_name_or_path="m/x", patches=[("a__a-1", "diff novo\n")]
+    ) == ["a__a-1"]
+    assert not pasta.exists()
+
+
+def test_patch_vazio_com_resultado_antigo_de_patch_nao_vazio_e_descartado(tmp_path: Path):
+    pasta = _avaliada(tmp_path, "a__a-1", "patch antigo\n")
+    assert grading.invalidate_stale_reports(
+        tmp_path, run_id="r1", model_name_or_path="m/x", patches=[("a__a-1", "")]
+    ) == ["a__a-1"]
+    assert not pasta.exists()

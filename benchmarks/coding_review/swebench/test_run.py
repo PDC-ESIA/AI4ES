@@ -212,6 +212,37 @@ def test_fase_de_correcao_com_harness_falso(tmp_path, monkeypatch):
     assert m3["aprovacoes_qualificadas"] == {"patch_vazio": 1, "testes_nao_identificados": 2}
 
 
+def test_correcao_nao_reaproveita_resultado_de_outro_patch(tmp_path, monkeypatch):
+    """Regressão: o harness pula instância com report.json; o patch refeito não pode herdá-lo."""
+    run_dir = tmp_path / "run_x"
+    (run_dir / run.PATCHES_DIR).mkdir(parents=True)
+    (run_dir / "patches" / "a__a-1.diff").write_text("patch NOVO\n")
+    args = argparse.Namespace(model="github_copilot/gpt-5", swebench_python="/venv/bin/python",
+                              grading_workers=2, grading_timeout=1800)
+    modelo = run.model_name_for_predictions(args.model)
+    # Resultado que o harness deixou numa avaliação anterior, com o patch ANTIGO.
+    antigo = grading.instance_report_path(run_dir / run.GRADING_DIR, run_dir.name, modelo, "a__a-1")
+    antigo.parent.mkdir(parents=True)
+    antigo.write_text(json.dumps({"a__a-1": {"resolved": False, "patch_successfully_applied": False}}))
+    (antigo.parent / "patch.diff").write_text("patch ANTIGO\n")
+    existia_na_chamada = []
+
+    def _harness_falso(comando, *, grading_dir):
+        existia_na_chamada.append(antigo.exists())  # o harness só vê o que sobrou no disco
+        antigo.parent.mkdir(parents=True, exist_ok=True)
+        antigo.write_text(json.dumps({"a__a-1": {"resolved": True,
+                                                 "patch_successfully_applied": True}}))
+        return 0
+
+    monkeypatch.setattr(grading, "run_official_grading", _harness_falso)
+    resultados, _ = run._fase_grading(
+        args, run_dir, [_registro("a__a-1", "patches/a__a-1.diff")],
+        tmp_path / "t.parquet", "5.0.2",
+    )
+    assert existia_na_chamada == [False]  # o resultado antigo foi descartado antes do harness
+    assert resultados["a__a-1"]["status"] == "resolved"
+
+
 def test_sanidade_gold_lista_quem_nao_resolve_nem_com_o_gabarito(tmp_path, monkeypatch):
     run_dir = tmp_path / "run_x"
     run_dir.mkdir()

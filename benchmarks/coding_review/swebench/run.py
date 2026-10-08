@@ -718,6 +718,12 @@ def _fase_grading(
                             "returncode": None, "duracao_s": 0.0, "comando": None}
     if patches:
         instance_ids = [iid for iid, _ in patches]
+        invalidadas = grading.invalidate_stale_reports(
+            run_dir / GRADING_DIR, run_id=run_id, model_name_or_path=modelo, patches=patches
+        )
+        if invalidadas:
+            print("[grading] Resultado antigo descartado (o patch mudou desde a última "
+                  "correção): " + ", ".join(invalidadas))
         comando = grading.build_command(
             args.swebench_python,
             dataset_path=dataset_path.resolve(),
