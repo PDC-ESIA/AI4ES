@@ -33,42 +33,55 @@ editar o seu teste.
    é o resultado esperado: NÃO afrouxe a asserção por causa dela.
 
 # REGRAS DO TESTE
-- pytest contra o PRODUTO NO AR, como o usuário o recebe: o ambiente sobe a
-  aplicação com o comando `run` do `run.json`, SEM nenhuma configuração extra,
-  e passa a URL dela em `os.environ["AI4ES_JORNADA_URL"]`. Use
-  `httpx.Client(base_url=URL, follow_redirects=True)`. NÃO importe a
-  aplicação, NÃO use TestClient e NÃO defina variáveis de ambiente do projeto
-  (`DATABASE_URL`, `MEDIA_DIR`...): a jornada existe justamente para pegar o
-  que só quebra na configuração real. Se `AI4ES_JORNADA_URL` não existir
-  (produto sem servidor), aí sim use o cliente de teste do framework.
-- O banco começa vazio e é compartilhado pelas funções do arquivo: cada
-  jornada cria os próprios dados com nomes únicos e não depende das outras.
-  Gere arquivos de teste em memória (ex.: JPEG com Pillow).
-- Uma função por jornada: `test_jornada_<NN>_<resumo>`.
-- Siga a jornada PELA INTERFACE quando o produto tiver interface: carregue a
-  página, extraia do HTML os formulários e links que o usuário usaria e envie
-  o que ELES enviam (formulário HTML = `data=`/`files=`, não `json=`; com
-  htmx, a URL está em `hx-post`/`hx-get` e o conteúdo pode vir de um
-  fragmento carregado por `hx-get` — busque esse fragmento). Se nenhuma página
-  oferece o caminho que a história exige (ex.: não há tela para criar o
-  álbum), o teste deve FALHAR dizendo isso.
-- Em TODA página HTML visitada, verifique os recursos que ela referencia com
-  o helper abaixo — imagem quebrada ou CSS ausente é defeito do produto:
+Use o `modo` indicado no contexto acima.
+
+## Modo `navegador` (produto web) — Playwright, pela interface
+O ambiente sobe a aplicação com o `run` do `run.json`, sem configuração extra,
+e um `conftest.py` protegido já define a URL base. Escreva funções pytest que
+recebem a fixture `page` do Playwright e percorrem o produto COMO O USUÁRIO:
 
 ```python
-import re
-from urllib.parse import urljoin
+from playwright.sync_api import Page, expect
 
-def verificar_recursos(cliente, url, html):
-    # cliente: o httpx.Client com base_url; url: o caminho da página visitada
-    refs = re.findall(r'(?:src|href)="([^"#]+)"', html)
-    for ref in refs:
-        if ref.startswith(("http://", "https://", "//", "mailto:", "javascript:", "data:")):
-            continue
-        alvo = urljoin(str(url), ref)
-        resp = cliente.get(alvo)
-        assert resp.status_code < 400, f"{url} referencia {ref} → {resp.status_code}"
+def test_jornada_01_cria_ensaio_e_envia_fotos(page: Page):
+    page.goto("/")                                   # único goto permitido
+    page.get_by_label("Título").fill("Casamento Ana")   # ou locator("input[name=titulo]")
+    page.get_by_role("button", name="Criar").click()
+    page.get_by_role("link", name="Casamento Ana").click()
+    page.locator("input[type=file]").set_input_files([
+        {"name": "a.jpg", "mimeType": "image/jpeg", "buffer": JPEG_BYTES},
+    ])
+    page.get_by_role("button", name="Enviar").click()
+    expect(page.locator("img")).to_have_count(1)     # espera o htmx/atualização
 ```
+
+- `page.goto("/")` é o ÚNICO endereço digitado. Todo o resto se alcança
+  clicando em links e botões e preenchendo formulários que a página mostra.
+  Se a história exige algo que a interface não oferece (não há botão de
+  upload, de selecionar, de criar álbum), o teste DEVE falhar ali — é
+  justamente o que a jornada existe para mostrar.
+- NÃO use `httpx`, `requests`, `page.request`, TestClient nem importe a
+  aplicação: a ferramenta de salvar recusa.
+- Prefira localizadores do que o usuário vê (`get_by_role`, `get_by_label`,
+  `get_by_text`); use `locator("css")` quando não houver rótulo. Para esperar
+  o resultado de ações assíncronas (htmx), use `expect(...)`, nunca `sleep`.
+- O `conftest` reprova o teste se QUALQUER resposta do produto vier com 4xx/5xx
+  (imagem quebrada, CSS ausente, fragmento com erro) ou houver erro de
+  JavaScript. Se um passo da história espera um erro do produto (ex.: envio
+  inválido rejeitado com 422), marque o teste com
+  `@pytest.mark.permite_status(422)`.
+- Gere imagens de teste em memória (Pillow → bytes). Nomes únicos por jornada.
+
+## Modo `http` (API ou produto sem interface web)
+O ambiente sobe a aplicação com o `run` do `run.json`, sem configuração extra,
+e passa a URL em `os.environ["AI4ES_JORNADA_URL"]`. Use
+`httpx.Client(base_url=URL, follow_redirects=True)`. NÃO importe a aplicação
+nem defina variáveis do projeto. Afirme status e corpo que a história promete.
+
+## Nos dois modos
+- Uma função por jornada: `test_jornada_<NN>_<resumo>`. O banco começa vazio
+  e é compartilhado pelas funções do arquivo: cada jornada cria os próprios
+  dados com nomes únicos e não depende das outras.
 - Afirme o que a história promete ao usuário (o item criado aparece, a foto
   é exibida, o álbum mostra as fotos escolhidas na ordem). Nada de
   `assert True` nem de `pytest.skip` para contornar um fluxo que não existe.

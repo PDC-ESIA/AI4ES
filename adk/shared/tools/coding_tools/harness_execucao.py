@@ -49,7 +49,14 @@ from shared.tools.coding_tools.aceite_independente import (
     ler_mapa,
 )
 from shared.tools.coding_tools import harness_docker as hd
-from shared.tools.coding_tools.jornada import PASTA_JORNADA, VAR_URL, preparar_cliente_http
+from shared.tools.coding_tools.jornada import (
+    PASTA_JORNADA,
+    VAR_URL,
+    instalar_conftest,
+    limites_do_navegador,
+    preparar_cliente_http,
+    usa_navegador,
+)
 from shared.tools.coding_tools.criterios_aceite import (
     AcceptanceCriterion,
     MapaDeTestes,
@@ -806,12 +813,23 @@ def _arquivos_protegidos(ctx: _HarnessContext) -> list[str]:
 _ARTEFATOS_DE_BUILD = ("venv", ".venv", "node_modules")
 
 
-def _rodar_isolado(ctx: _HarnessContext, comando: str, env: Optional[dict[str, str]]):
-    """Roda `comando` numa cópia limpa do artefato, com o build reaproveitado."""
+def _rodar_isolado(
+    ctx: _HarnessContext,
+    comando: str,
+    env: Optional[dict[str, str]],
+    *,
+    antes=None,
+    **limites,
+):
+    """Roda `comando` numa cópia limpa do artefato, com o build reaproveitado.
+
+    `antes(sandbox)` prepara a cópia antes do comando; `limites` vão para o
+    sandbox (ex.: os do navegador, na jornada).
+    """
     assert ctx.manifest is not None and ctx.sandbox is not None
     if ctx.manifest.sandbox != "direct":
         return ctx.sandbox.exec(comando, timeout=_TESTS_TIMEOUT, env=env)
-    isolado = create_sandbox("direct", workdir_subpath=ctx.manifest.workdir)
+    isolado = create_sandbox("direct", workdir_subpath=ctx.manifest.workdir, **limites)
     try:
         isolado.setup(ctx.coder_dir)
         construido = getattr(ctx.sandbox, "workdir", None)
@@ -821,6 +839,8 @@ def _rodar_isolado(ctx: _HarnessContext, comando: str, env: Optional[dict[str, s
                 origem = construido / nome
                 if origem.exists() and not (destino / nome).exists():
                     (destino / nome).symlink_to(origem, target_is_directory=True)
+        if antes is not None:
+            antes(isolado)
         return isolado.exec(comando, timeout=_TESTS_TIMEOUT, env=env)
     finally:
         isolado.cleanup()
@@ -900,9 +920,24 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
         if arquivo.startswith(PASTA_JORNADA) and ctx.app_ok and ctx.base_url:
             # Jornada (task de integração): percorre o serviço que o estágio 2
             # subiu com o run.json, sem as variáveis de isolamento dos aceites.
-            preparar_cliente_http(ctx.sandbox, comando, env)
-            res = ctx.sandbox.exec(
-                comando, timeout=_TESTS_TIMEOUT, env={**(env or {}), VAR_URL: ctx.base_url}
+            jornada_cod = (ctx.coder_dir / ctx.manifest.workdir / arquivo).read_text(
+                encoding="utf-8", errors="replace"
+            )
+            navegador = usa_navegador(jornada_cod)
+
+            def _preparar(sandbox, navegador=navegador):
+                if navegador and isinstance(getattr(sandbox, "workdir", None), Path):
+                    instalar_conftest(sandbox.workdir)
+                preparar_cliente_http(sandbox, comando, env, navegador=navegador)
+
+            # Cópia isolada (com os limites do navegador, se for o caso) que
+            # percorre o serviço que o estágio 2 subiu.
+            res = _rodar_isolado(
+                ctx,
+                comando,
+                {**(env or {}), VAR_URL: ctx.base_url},
+                antes=_preparar,
+                **(limites_do_navegador() if navegador else {}),
             )
         else:
             res = _rodar_isolado(ctx, comando, env)

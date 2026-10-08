@@ -27,6 +27,94 @@ logger = logging.getLogger(__name__)
 
 PASTA_JORNADA = "tests/journey"
 ARQUIVO_JORNADA = f"{PASTA_JORNADA}/test_jornada.py"
+ARQUIVO_CONFTEST = f"{PASTA_JORNADA}/conftest.py"
+
+# conftest da jornada de produtos web (Playwright). Gravado pelo pipeline na
+# pasta protegida: o coder não o edita, e ele vale para todo teste da jornada.
+#   - `base_url` vem de AI4ES_JORNADA_URL (o produto subido pelo run.json), e
+#     `page.goto("/")` resolve contra ela;
+#   - toda resposta do PRÓPRIO produto com 4xx/5xx e todo erro de JavaScript
+#     na página reprovam a jornada — imagem quebrada, CSS ausente, fragmento
+#     htmx com 500. Status esperados num teste: @pytest.mark.permite_status(422).
+CONFTEST_JORNADA = '''"""Gerado pelo pipeline (protegido): fixtures da jornada de produtos web."""
+import os
+from urllib.parse import urlparse
+
+import pytest
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "permite_status(*codigos): status HTTP do produto esperados neste teste"
+    )
+
+
+@pytest.fixture(scope="session")
+def base_url():
+    url = os.environ.get("AI4ES_JORNADA_URL")
+    if not url:
+        pytest.skip("AI4ES_JORNADA_URL ausente: a jornada roda contra o produto no ar.")
+    return url
+
+
+@pytest.fixture(autouse=True)
+def _recursos_do_produto(request, base_url):
+    if "page" not in request.fixturenames:
+        yield
+        return
+    page = request.getfixturevalue("page")
+    host = urlparse(base_url).netloc
+    marcador = request.node.get_closest_marker("permite_status")
+    permitidos = set(marcador.args) if marcador else set()
+    falhas = []
+
+    def _resposta(resposta):
+        if urlparse(resposta.url).netloc == host and resposta.status >= 400:
+            if resposta.status not in permitidos:
+                falhas.append(
+                    f"{resposta.request.method} {urlparse(resposta.url).path} -> {resposta.status}"
+                )
+
+    def _erro_js(erro):
+        falhas.append(f"erro de JavaScript na página: {erro}")
+
+    page.on("response", _resposta)
+    page.on("pageerror", _erro_js)
+    yield
+    if falhas:
+        pytest.fail(
+            "O produto respondeu com erro durante a jornada:\\n" + "\\n".join(falhas),
+            pytrace=False,
+        )
+'''
+
+
+def limites_do_navegador() -> dict:
+    """Limites do sandbox para rodar o Chromium.
+
+    O DirectSandbox limita o espaço de endereçamento VIRTUAL a 2 GiB, pensado
+    para os comandos do coder; um navegador reserva bem mais que isso só para
+    subir e aborta na inicialização ("Target page, context or browser has been
+    closed"). Wall-clock e CPU continuam limitados.
+    """
+    try:
+        import resource
+
+        sem_limite = resource.RLIM_INFINITY
+    except ImportError:  # pragma: no cover — sem `resource`, não há limite a afrouxar
+        return {}
+    return {"mem_bytes": sem_limite, "cpu_seconds": 600}
+
+
+def usa_navegador(codigo: str) -> bool:
+    """A jornada usa o Playwright (produto web navegado pela interface)?"""
+    return "playwright" in codigo
+
+
+def instalar_conftest(workdir: Path) -> None:
+    destino = workdir / ARQUIVO_CONFTEST
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(CONFTEST_JORNADA, encoding="utf-8")
 
 _TIMEOUT_BUILD = 300
 _TIMEOUT_JORNADA = 180
@@ -58,16 +146,24 @@ VAR_URL = "AI4ES_JORNADA_URL"
 _TIMEOUT_SUBIDA = 30
 
 
-def preparar_cliente_http(sandbox, comando_pytest: str, env: Optional[dict]) -> None:
-    """Garante `httpx` no ambiente do pytest da jornada (best-effort).
+def preparar_cliente_http(
+    sandbox, comando_pytest: str, env: Optional[dict], *, navegador: bool = False
+) -> None:
+    """Garante as dependências da jornada no ambiente do pytest (best-effort).
 
-    A jornada fala HTTP com o servidor real; o projeto não precisa declarar
-    `httpx`. O pip do mesmo interpretador do comando pytest é usado
-    (`venv/bin/python -m pytest` → `venv/bin/python -m pip`).
+    O projeto não precisa declará-las: `httpx` (modo HTTP) e, para produtos
+    web, `pytest-playwright` + Chromium (o navegador fica no cache do usuário,
+    `~/.cache/ms-playwright`, e só é baixado na primeira vez). Usa o pip do
+    mesmo interpretador do comando pytest (`venv/bin/python -m pytest` →
+    `venv/bin/python -m pip`), com as restrições da trilha.
     """
     prefixo = comando_pytest.split(" -m pytest")[0] if " -m pytest" in comando_pytest else ""
-    if prefixo:
-        sandbox.exec(f"{prefixo} -m pip install -q httpx", timeout=_TIMEOUT_BUILD, env=env)
+    if not prefixo:
+        return
+    pacotes = "httpx pytest-playwright" if navegador else "httpx"
+    sandbox.exec(f"{prefixo} -m pip install -q {pacotes}", timeout=_TIMEOUT_BUILD, env=env)
+    if navegador:
+        sandbox.exec(f"{prefixo} -m playwright install chromium", timeout=600, env=env)
 
 
 def esperar_servico(url: str, timeout: float = _TIMEOUT_SUBIDA) -> Optional[str]:
@@ -115,7 +211,14 @@ def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> Resultad
     if comando is None:
         return ResultadoJornada(NAO_EXECUTADA, motivo="o run.json não usa pytest")
 
-    sandbox = create_sandbox("direct", workdir_subpath=manifest.workdir)
+    navegador = usa_navegador(
+        (workdir / ARQUIVO_JORNADA).read_text(encoding="utf-8", errors="replace")
+    )
+    sandbox = create_sandbox(
+        "direct",
+        workdir_subpath=manifest.workdir,
+        **(limites_do_navegador() if navegador else {}),
+    )
     try:
         sandbox.setup(coder_dir)
         env = {**ambiente_da_trilha(trilha, sandbox.root), **(manifest.env or {})}
@@ -138,7 +241,10 @@ def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> Resultad
                     saida=_cauda(sandbox.logs()),
                 )
             env_teste[VAR_URL] = url
-            preparar_cliente_http(sandbox, comando, env or None)
+            if navegador:
+                # Conftest sempre fresco na cópia: é ele que reprova recurso quebrado.
+                instalar_conftest(Path(sandbox.workdir))
+            preparar_cliente_http(sandbox, comando, env or None, navegador=navegador)
         res = sandbox.exec(comando, timeout=_TIMEOUT_JORNADA, env=env_teste or None)
         logs_servico = sandbox.logs()
     finally:

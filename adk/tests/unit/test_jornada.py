@@ -113,7 +113,9 @@ def test_ferramenta_grava_a_jornada(tmp_path, monkeypatch):
     assert tool_salvar_teste_jornada("def f(:\n", ctx)["sucesso"] is False
     assert tool_salvar_teste_jornada("def helper():\n    pass\n", ctx)["sucesso"] is False
     resposta = tool_salvar_teste_jornada("def test_jornada_01_x():\n    assert 1\n", ctx)
-    assert resposta == {"sucesso": True, "caminho": ARQUIVO_JORNADA, "jornadas": ["test_jornada_01_x"]}
+    assert resposta == {
+        "sucesso": True, "caminho": ARQUIVO_JORNADA, "modo": "http", "jornadas": ["test_jornada_01_x"]
+    }
     assert (get_agent_workspace("cr_coder") / ARQUIVO_JORNADA).is_file()
 
 
@@ -265,12 +267,12 @@ def test_coder_nao_edita_a_jornada(monkeypatch):
 
 
 def test_instrucao_dos_autores_nao_interpreta_chaves_do_prompt():
-    """O prompt da jornada traz f-strings (`{url}`); só o marcador é trocado."""
+    """O prompt da jornada traz dicionários de exemplo (`{"name": ...}`); só o marcador é trocado."""
     from src.agents.workflow_coding_review.acceptance.agent import _instrucao as aceite
     from src.agents.workflow_coding_review.journey.agent import _instrucao as jornada
 
     texto = jornada(SimpleNamespace(state={"jornada_contexto": "CONTEXTO"}))
-    assert "CONTEXTO" in texto and "{url}" in texto and "{jornada_contexto?}" not in texto
+    assert "CONTEXTO" in texto and '{"name":' in texto and "{jornada_contexto?}" not in texto
     assert "{jornada_contexto?}" not in jornada(SimpleNamespace(state={}))
     assert "TASK-X" in aceite(SimpleNamespace(state={"aceite_task": "TASK-X"}))
 
@@ -437,3 +439,93 @@ def test_revisor_recebe_o_ambiente_da_trilha_so_quando_ha_trilha(monkeypatch):
     secao = _secao_ambiente({"trilha": trilhas.selecionar_trilha(["python", "fastapi"])})
     assert "AMBIENTE DE EXECUÇÃO" in secao and "TemplateResponse(request" in secao
     assert "critical" in secao
+
+
+# ── Modo navegador (Playwright) para produtos web ──────────────────────────
+
+
+_JORNADA_WEB_OK = '''
+from playwright.sync_api import Page, expect
+
+def test_jornada_01_cria(page: Page):
+    page.goto("/")
+    page.get_by_role("button", name="Criar").click()
+    expect(page.get_by_text("ok")).to_be_visible()
+'''
+
+
+@pytest.mark.parametrize(
+    "codigo, trecho",
+    [
+        ("import httpx\ndef test_j(page):\n    page.goto('/')\n", "import de `httpx`"),
+        ("from app.main import app\ndef test_j(page):\n    page.goto('/')\n", "import de `app.main`"),
+        ("def test_j(page):\n    page.request.post('/ensaios/1/upload')\n", "`page.request`"),
+        ("def test_j(page):\n    page.goto('/ensaios/1/upload')\n", "só pode abrir a página inicial"),
+        ("def test_j(page, base_url):\n    page.goto(base_url + '/x')\n", "só pode abrir a página inicial"),
+        ("import httpx\ndef test_j():\n    httpx.get('x')\n", "fixture `page`"),
+    ],
+)
+def test_modo_navegador_recusa_atalhos_que_pulam_a_interface(codigo, trecho):
+    import ast
+
+    from src.agents.workflow_coding_review.journey.agent import violacoes_do_modo_navegador
+
+    assert any(trecho in v for v in violacoes_do_modo_navegador(ast.parse(codigo)))
+
+
+def test_modo_navegador_aceita_jornada_pela_interface():
+    import ast
+
+    from src.agents.workflow_coding_review.journey.agent import violacoes_do_modo_navegador
+
+    assert violacoes_do_modo_navegador(ast.parse(_JORNADA_WEB_OK)) == []
+
+
+def test_modo_vem_do_tipo_de_produto():
+    from src.agents.workflow_coding_review.journey.agent import modo_da_jornada
+
+    assert modo_da_jornada("web_app") == "navegador"
+    assert modo_da_jornada("api_service") == "http"
+    assert modo_da_jornada(None) == "http"
+
+
+def test_salvar_jornada_web_valida_e_grava_o_conftest(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import get_agent_workspace
+    from src.agents.workflow_coding_review.journey.agent import tool_salvar_teste_jornada
+
+    ctx = SimpleNamespace(state={"jornada_contexto": json.dumps({"modo": "navegador"})})
+    recusada = tool_salvar_teste_jornada("import httpx\ndef test_jornada_01(page):\n    page.goto('/')\n", ctx)
+    assert recusada["sucesso"] is False and "INTERFACE" in recusada["erro"]
+
+    aceita = tool_salvar_teste_jornada(_JORNADA_WEB_OK, ctx)
+    assert aceita["sucesso"] is True and aceita["modo"] == "navegador"
+    conftest = get_agent_workspace("cr_coder") / jornada_mod.ARQUIVO_CONFTEST
+    assert conftest.read_text() == jornada_mod.CONFTEST_JORNADA
+
+
+def test_salvar_jornada_http_nao_exige_navegador(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from src.agents.workflow_coding_review.journey.agent import tool_salvar_teste_jornada
+
+    ctx = SimpleNamespace(state={"jornada_contexto": json.dumps({"modo": "http"})})
+    assert tool_salvar_teste_jornada(_JORNADA_HTTP, ctx)["sucesso"] is True
+
+
+def test_conftest_da_jornada_compila_e_reprova_recurso_quebrado():
+    import ast
+
+    arvore = ast.parse(jornada_mod.CONFTEST_JORNADA)
+    nomes = {n.name for n in ast.walk(arvore) if isinstance(n, ast.FunctionDef)}
+    assert {"base_url", "_recursos_do_produto", "pytest_configure"} <= nomes
+    assert "permite_status" in jornada_mod.CONFTEST_JORNADA
+    assert jornada_mod.usa_navegador(_JORNADA_WEB_OK) and not jornada_mod.usa_navegador(_JORNADA_HTTP)
+
+
+def test_coder_nao_edita_o_conftest_da_jornada(monkeypatch):
+    from src.agents.workflow_coding_review.coder.workspace_guard import proteger_testes_de_aceite
+
+    monkeypatch.setenv(_FLAG, "true")
+    criar = SimpleNamespace(name="tool_criar_arquivo")
+    resposta = proteger_testes_de_aceite(criar, {"caminho": jornada_mod.ARQUIVO_CONFTEST}, SimpleNamespace(state={}))
+    assert resposta["sucesso"] is False

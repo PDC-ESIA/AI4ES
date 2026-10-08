@@ -27,7 +27,7 @@ from shared.tools.coding_tools.filesystem_coding import (
     DIRETORIOS_PROIBIDOS,
     tool_ler_arquivo,
 )
-from shared.tools.coding_tools.jornada import ARQUIVO_JORNADA
+from shared.tools.coding_tools.jornada import ARQUIVO_JORNADA, instalar_conftest
 from shared.tools.filesystem import tool_ler_workspace, tool_listar_workspace
 from shared.workspace import get_agent_workspace, get_workspace_root
 
@@ -47,6 +47,70 @@ def _workdir(coder_dir: Path) -> str:
         return load_manifest(coder_dir / "run.json").workdir or "."
     except ManifestError:
         return "."
+
+
+# Modos da jornada. Produto web é navegado pelo Playwright, só pela interface;
+# os demais (API, CLI...) falam HTTP direto com o produto no ar.
+MODO_NAVEGADOR = "navegador"
+MODO_HTTP = "http"
+_PRODUTOS_WEB = frozenset({"web_app"})
+
+# No modo navegador, nada de atalhos que pulam a interface.
+_MODULOS_PROIBIDOS = ("httpx", "requests", "urllib", "aiohttp", "fastapi", "starlette", "flask", "app")
+
+
+def modo_da_jornada(product_type: Any) -> str:
+    return MODO_NAVEGADOR if str(product_type or "").strip().lower() in _PRODUTOS_WEB else MODO_HTTP
+
+
+def _modo_do_state(state: Any) -> str:
+    try:
+        return json.loads(state.get(CHAVE_CONTEXTO) or "{}").get("modo") or MODO_HTTP
+    except (ValueError, AttributeError):
+        return MODO_HTTP
+
+
+def violacoes_do_modo_navegador(arvore: ast.AST) -> list[str]:
+    """O que, num teste de jornada web, pula a interface do produto.
+
+    Na sétima validação a jornada chamou os endpoints direto e passou, com um
+    produto sem tela de upload, sem botão de seleção e sem tela de álbum.
+    """
+    erros: list[str] = []
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Import):
+            nomes = [a.name for a in no.names]
+        elif isinstance(no, ast.ImportFrom):
+            nomes = [no.module or ""]
+        else:
+            nomes = []
+        for nome in nomes:
+            if nome.split(".")[0] in _MODULOS_PROIBIDOS:
+                erros.append(f"import de `{nome}`: a jornada web usa só o navegador (`page`).")
+        if isinstance(no, ast.Attribute) and no.attr == "request" and isinstance(no.value, ast.Name):
+            erros.append(
+                f"`{no.value.id}.request` faz HTTP direto, sem passar pela interface."
+            )
+        if (
+            isinstance(no, ast.Call)
+            and isinstance(no.func, ast.Attribute)
+            and no.func.attr == "goto"
+        ):
+            alvo = no.args[0] if no.args else None
+            if not (isinstance(alvo, ast.Constant) and alvo.value == "/"):
+                erros.append(
+                    "`page.goto(...)` só pode abrir a página inicial `\"/\"`; o resto se "
+                    "alcança clicando em links e botões, como o usuário faria."
+                )
+    usa_page = any(
+        isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and no.name.startswith("test_")
+        and any(a.arg == "page" for a in no.args.args)
+        for no in ast.walk(arvore)
+    )
+    if not usa_page:
+        erros.append("Nenhum teste recebe a fixture `page` do Playwright.")
+    return sorted(set(erros))
 
 
 def tool_salvar_teste_jornada(conteudo: str, tool_context: ToolContext) -> dict:
@@ -70,6 +134,15 @@ def tool_salvar_teste_jornada(conteudo: str, tool_context: ToolContext) -> dict:
     ]
     if not jornadas:
         return {"sucesso": False, "erro": "Nenhuma função de teste (`test_jornada_...`) no arquivo."}
+    modo = _modo_do_state(tool_context.state)
+    if modo == MODO_NAVEGADOR:
+        violacoes = violacoes_do_modo_navegador(arvore)
+        if violacoes:
+            return {
+                "sucesso": False,
+                "erro": "Jornada de produto web precisa percorrer a INTERFACE: "
+                + " ".join(violacoes),
+            }
 
     coder_dir = get_agent_workspace("cr_coder")
     destino = (coder_dir / _workdir(coder_dir) / ARQUIVO_JORNADA).resolve()
@@ -77,8 +150,10 @@ def tool_salvar_teste_jornada(conteudo: str, tool_context: ToolContext) -> dict:
         return {"sucesso": False, "erro": "workdir do run.json fora do workspace."}
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(conteudo, encoding="utf-8")
-    logger.info("[JORNADA] teste de jornada gravado: %s", jornadas)
-    return {"sucesso": True, "caminho": ARQUIVO_JORNADA, "jornadas": jornadas}
+    if modo == MODO_NAVEGADOR:
+        instalar_conftest(coder_dir / _workdir(coder_dir))
+    logger.info("[JORNADA] teste de jornada gravado (%s): %s", modo, jornadas)
+    return {"sucesso": True, "caminho": ARQUIVO_JORNADA, "modo": modo, "jornadas": jornadas}
 
 
 def tool_executar_teste_jornada(tool_context: ToolContext) -> dict:
@@ -171,6 +246,7 @@ def montar_contexto_jornada(state: Any, tasks: list[dict]) -> str:
             ],
             "arquivos_de_requisitos": requisitos,
             "arquivo_de_teste": ARQUIVO_JORNADA,
+            "modo": modo_da_jornada(macro.get("product_type")),
             "workdir": _workdir(coder_dir),
             "arquivos_do_projeto": _listar(coder_dir),
         },
