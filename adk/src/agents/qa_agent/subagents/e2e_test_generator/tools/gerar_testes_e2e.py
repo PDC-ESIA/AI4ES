@@ -1205,13 +1205,9 @@ def gerar_testes_e2e(
     resultado_execucao = None
     runtime_alvo = None
 
-    base_url_descoberta = any(
-        item.startswith("base_url:") for item in descobertas_aplicadas
-    )
     if (
         validacao.pode_gerar_codigo
         and validacao.pode_executar
-        and base_url_descoberta
     ):
         runtime_alvo = iniciar_runtime_alvo(
             normalizada,
@@ -1251,14 +1247,20 @@ def gerar_testes_e2e(
                 arquivos_gerados = [resultado_geracao.arquivo]
                 geracao = resultado_geracao.model_dump(mode="json")
             except Exception as exc:  # fronteira da tool: sempre retornar estruturado
+                # ValueError aqui é sempre uma rejeição deliberada com
+                # mensagem clara (varredura de segurança ou path fora do
+                # workspace) — vale repassar ao chamador. Outras exceções
+                # ficam só com o tipo, para não vazar traceback interno.
+                mensagem = (
+                    f"Não foi possível gerar o spec Playwright: {exc}"
+                    if isinstance(exc, ValueError)
+                    else f"Não foi possível gerar o spec Playwright ({type(exc).__name__})."
+                )
                 bloqueios.append(
                     BloqueioE2E(
                         codigo="ERRO_GERACAO_PLAYWRIGHT",
                         categoria=CategoriaBloqueio.GERACAO_CODIGO,
-                        mensagem=(
-                            "Não foi possível gerar o spec Playwright "
-                            f"({type(exc).__name__})."
-                        ),
+                        mensagem=mensagem,
                         campos_ausentes=[],
                     )
                 )
@@ -1272,6 +1274,7 @@ def gerar_testes_e2e(
                 resultado_execucao = executar_playwright(
                     normalizada,
                     arquivos_gerados[0],
+                    runtime_alvo=runtime_alvo,
                 )
             except Exception as exc:  # fronteira da tool: não vazar exceção ao agente
                 resultado_execucao = ResultadoExecucaoE2E(
