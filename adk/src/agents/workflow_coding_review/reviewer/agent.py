@@ -228,6 +228,33 @@ def _linha_de_aceite(result: Mapping) -> str:
     )
 
 
+def _secao_ambiente(state) -> str:
+    """Versões e evidência de execução, só quando há trilha (`AI4ES_TRILHAS`).
+
+    Na validação, o reviewer marcou como CRITICAL o uso de
+    `TemplateResponse(request, nome, ctx)` — a API correta do Starlette ≥ 1.0
+    que a trilha fixa — por conhecer só a assinatura antiga, e bloqueou a fase
+    com testes e jornada passando. Sem trilha (TACO, stacks livres), nada muda.
+    """
+    from shared.execution.trilhas import secao_prompt
+
+    trilha = state.get("trilha") if isinstance(state, Mapping) else None
+    secao = secao_prompt(trilha)
+    if not secao:
+        return ""
+    return (
+        "\n\n# AMBIENTE DE EXECUÇÃO (fixado pela trilha)\n"
+        + secao
+        + "O código foi construído, executado e testado NESTE ambiente (testes de "
+        "aceite e jornada no bloco de resultado acima). Antes de apontar uma API "
+        "como incorreta, considere a versão da trilha — não a que você conhece. "
+        "Severidade `critical` de corretude exige um defeito demonstrável (teste "
+        "ou jornada falhando, ou bug com entrada concreta), não divergência de "
+        "estilo ou de versão de API num caminho que os testes exercitam com "
+        "sucesso.\n"
+    )
+
+
 def _analyzer_instruction_provider(ctx) -> str:
     """InstructionProvider: injeta findings estáticos e lista de arquivos em runtime."""
     static_block = ""
@@ -241,7 +268,7 @@ def _analyzer_instruction_provider(ctx) -> str:
         .replace("__STATIC_FINDINGS__", static_block or "Análise estática não disponível.")
         .replace("__CODER_WS__", _coder_ws())
         .replace("__FILES__", _discover_coder_files())
-    )
+    ) + _secao_ambiente(state)
 
 
 _analyzer = LlmAgent(

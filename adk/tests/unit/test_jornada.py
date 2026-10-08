@@ -186,6 +186,7 @@ async def test_jornada_falha_vira_task_de_integracao(monkeypatch, tmp_path):
     summary = state["task_iteration_summary"]
     assert summary["jornada"]["status"] == PASSOU and summary["jornada"]["rodadas"] == 1
     assert summary["task_results"]["TASK-901"]["status"] == "aprovado"
+    assert summary["processed_task_ids"] == ["TASK-001"]
     # O critério da integração é decidido pelos testes da jornada.
     from shared.workspace import get_agent_workspace
 
@@ -413,3 +414,26 @@ def test_autor_da_jornada_roda_o_proprio_teste(tmp_path, monkeypatch):
     assert resposta == {"status": FALHOU, "motivo": "m", "saida": "E   TypeError: Cannot mix str"}
     assert vistos == {"trilha": {"id": "t"}}
     assert "tool_executar_teste_jornada" in [t.name for t in journey.author.tools]
+
+
+@pytest.mark.asyncio
+async def test_task_de_integracao_nao_quebra_a_cobertura(monkeypatch, tmp_path):
+    monkeypatch.setenv(_FLAG, "true")
+    _, _, state = await _rodar(
+        monkeypatch, tmp_path, [_FALHA, ResultadoJornada(PASSOU, testes=_FALHA.testes)]
+    )
+    summary = state["task_iteration_summary"]
+    assert summary["processed_task_ids"] == ["TASK-001"]
+    assert summary["cobertura_completa"] is True
+    assert "TASK-901" in summary["task_results"]
+
+
+def test_revisor_recebe_o_ambiente_da_trilha_so_quando_ha_trilha(monkeypatch):
+    from shared.execution import trilhas
+    from src.agents.workflow_coding_review.reviewer.agent import _secao_ambiente
+
+    monkeypatch.setattr(trilhas, "resolver_interpretador", lambda _v: sys.executable)
+    assert _secao_ambiente({}) == ""
+    secao = _secao_ambiente({"trilha": trilhas.selecionar_trilha(["python", "fastapi"])})
+    assert "AMBIENTE DE EXECUÇÃO" in secao and "TemplateResponse(request" in secao
+    assert "critical" in secao

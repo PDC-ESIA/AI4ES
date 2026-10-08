@@ -847,11 +847,16 @@ class TaskIterator(BaseAgent):
             )
 
             task_results[task_id] = resultado
-            processed_task_ids.append(task_id)
-            if resultado["status"] == "aprovado":
-                approved_task_ids.append(task_id)
-            elif resultado["status"] == "aceito_com_ressalvas":
-                accepted_task_ids.append(task_id)
+            # Task de integração da jornada (`AI4ES_JORNADA`) fica só em
+            # task_results: não é uma das tasks esperadas do context_engineer,
+            # e entrar nas listas quebraria o gate de cobertura (processed !=
+            # expected) — na validação o reviewer bloqueou a fase por isso.
+            if task.get("type") != "integration":
+                processed_task_ids.append(task_id)
+                if resultado["status"] == "aprovado":
+                    approved_task_ids.append(task_id)
+                elif resultado["status"] == "aceito_com_ressalvas":
+                    accepted_task_ids.append(task_id)
 
             logger.info(
                 "[TASK_ITERATOR] Task %s encerrada: status=%s motivo=%s",
