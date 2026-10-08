@@ -41,7 +41,7 @@ from shared.execution.manifest import ManifestError, RunManifest, load_manifest
 from shared.execution.profile import ExecutionProfile, select_profile
 from shared.execution.sandbox import Sandbox, create_sandbox
 from shared.execution.trilhas import ambiente_da_trilha
-from shared.pipeline_flags import aceite_independente, jornada
+from shared.pipeline_flags import aceite_independente, coder_contexto_enxuto, jornada
 from shared.tools.coding_tools.aceite_independente import (
     PASTA_ACEITE,
     comando_de_aceite,
@@ -760,14 +760,28 @@ def _pastas_protegidas(ctx: _HarnessContext) -> list[str]:
     return [p for p in (PASTA_ACEITE, PASTA_JORNADA) if (workdir / p).is_dir()]
 
 
-def _sem_pastas_protegidas(comando: str, pastas: list[str]) -> str:
-    """Tira os testes protegidos da suíte do coder (`--ignore`); só em pytest."""
+# Opções que mantêm o motivo de cada falha dentro do trecho de saída que chega
+# ao coder: na validação, warnings de depreciação ocupavam o trecho inteiro e
+# ele via só "FAILED ... OperationalEr..." — sem a asserção nem o erro.
+_OPCOES_PYTEST_LEGIVEL = ("-p no:warnings", "--tb=short", "-rfE")
+
+
+def _sem_pastas_protegidas(comando: str, pastas: list[str], *, legivel: bool = False) -> str:
+    """Ajusta um comando pytest da suíte do coder.
+
+    Tira os testes protegidos (`--ignore`) e, com `legivel`, acrescenta as
+    opções de saída curta que ainda não estiverem no comando.
+    """
     posicao = comando.find("pytest")
-    if not pastas or posicao < 0:
+    if posicao < 0:
+        return comando
+    extras = [f"--ignore={p}" for p in pastas]
+    if legivel:
+        extras += [o for o in _OPCOES_PYTEST_LEGIVEL if o.split()[-1].split("=")[0] not in comando]
+    if not extras:
         return comando
     fim = posicao + len("pytest")
-    ignores = "".join(f" --ignore={p}" for p in pastas)
-    return f"{comando[:fim]}{ignores}{comando[fim:]}"
+    return f"{comando[:fim]} {' '.join(extras)}{comando[fim:]}"
 
 
 def _arquivos_protegidos(ctx: _HarnessContext) -> list[str]:
@@ -844,8 +858,9 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
     linhas: list[str] = []
 
     ignorar = _pastas_protegidas(ctx)
+    legivel = aceite_independente() or jornada() or coder_contexto_enxuto()
     for cmd in ctx.manifest.test:
-        cmd = _sem_pastas_protegidas(cmd, ignorar)
+        cmd = _sem_pastas_protegidas(cmd, ignorar, legivel=legivel)
         res = ctx.sandbox.exec(cmd, timeout=_TESTS_TIMEOUT, env=env)
         saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
         linhas.append(f"$ {cmd}\n{saida}")

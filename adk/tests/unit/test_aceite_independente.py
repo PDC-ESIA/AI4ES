@@ -170,7 +170,8 @@ def test_harness_isola_os_protegidos_da_suite_do_coder(ligada, tmp_path):
     suite = [c for c in sandbox.exec_calls if "tests/test_meu.py" in c]
     aceite = [c for c in sandbox.exec_calls if c.endswith(_ARQ)]
     assert suite == [
-        "venv/bin/python -m pytest --ignore=tests/acceptance -v tests/test_meu.py"
+        "venv/bin/python -m pytest --ignore=tests/acceptance -p no:warnings "
+        "--tb=short -rfE -v tests/test_meu.py"
     ]
     assert aceite == [f"venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings --tb=short -rfE {_ARQ}"]
 
@@ -622,3 +623,15 @@ def test_fechar_linha_de_base_registra_falhas_do_relatorio(tmp_path, monkeypatch
 
     fechar_linha_de_base("TASK-002", None)  # sem relatório: nada é linha de base de sucesso
     assert set(ai.ler_mapa(tasks, "TASK-002")["falhas_aceitas"]) == {f"{arq}::a", f"{arq}::b"}
+
+
+def test_suite_do_coder_ganha_saida_legivel_so_com_as_flags():
+    from shared.tools.coding_tools.harness_execucao import _sem_pastas_protegidas as ajustar
+
+    assert ajustar("venv/bin/python -m pytest -v", [], legivel=False) == "venv/bin/python -m pytest -v"
+    assert ajustar("venv/bin/python -m pytest -v", [], legivel=True) == (
+        "venv/bin/python -m pytest -p no:warnings --tb=short -rfE -v"
+    )
+    # Não duplica opção que o coder já pôs.
+    assert ajustar("pytest --tb=long -q", [], legivel=True) == "pytest -p no:warnings -rfE --tb=long -q"
+    assert ajustar("npm test", ["tests/acceptance"], legivel=True) == "npm test"

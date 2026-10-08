@@ -55,7 +55,9 @@ _NOTAS_PYTHON = """- O harness executa os comandos do `run.json` com `python3` =
 _NOTAS_PYTHON_WEB = (
     _NOTAS_PYTHON
     + """
-- `fastapi.testclient.TestClient` exige o pacote `httpx` (não `httpx2`).
+- `fastapi.testclient.TestClient` exige o pacote `httpx` (não `httpx2`). Use
+  `with TestClient(app) as client:` — sem o `with`, o startup/lifespan não
+  roda e as tabelas não existem (`OperationalError: no such table`).
 - `TemplateResponse(request, "nome.html", {{...}})` — request como 1º argumento.
 - Formulário HTML (`<form method="post">`) envia `application/x-www-form-urlencoded`:
   o endpoint que o recebe usa `Form(...)`, não um modelo Pydantic no corpo.
