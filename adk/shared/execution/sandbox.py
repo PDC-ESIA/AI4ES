@@ -273,8 +273,12 @@ class DockerSandbox:
         mem_limit: str = _DOCKER_MEM_LIMIT,
         cpu_quota: int = _DOCKER_CPU_QUOTA,
         container_workdir: str = _DOCKER_WORKDIR,
+        network_mode: Optional[str] = None,
+        client_timeout: Optional[int] = None,
     ) -> None:
         self._port = port
+        self._client_timeout = client_timeout  # read timeout (s) da API do Docker
+        self._network_mode = network_mode  # ex.: "none" para isolar a rede
         self._workdir_subpath = workdir_subpath
         self._base_image = base_image
         self._mem_limit = mem_limit
@@ -310,7 +314,11 @@ class DockerSandbox:
         """Copia o artefato, constrói/seleciona a imagem e sobe o container."""
         self._root = Path(tempfile.mkdtemp(prefix="ai4se-docker-"))
         shutil.copytree(source_dir, self._root, dirs_exist_ok=True)
-        self._client = docker.from_env()
+        self._client = (
+            docker.from_env(timeout=self._client_timeout)
+            if self._client_timeout
+            else docker.from_env()
+        )
 
         image = self._base_image
         volumes = None
@@ -338,6 +346,7 @@ class DockerSandbox:
             ports=ports,
             mem_limit=self._mem_limit,
             cpu_quota=self._cpu_quota,
+            network_mode=self._network_mode,
             environment={},
         )
 
