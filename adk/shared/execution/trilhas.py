@@ -72,10 +72,11 @@ _NOTAS_PYTHON_WEB = (
   aceite e de jornada, que você não edita, rodam em processo próprio e apontam
   essas variáveis para pastas temporárias.
 - Caminhos citados nos requisitos e critérios (ex.:
-  `/storage/ensaio/<id>/originals`) são RELATIVOS à pasta de arquivos
-  configurada (`MEDIA_DIR`, com padrão local como `./media`): nunca grave na
-  raiz do sistema. Os arquivos gravados precisam ser servidos (StaticFiles)
-  pela mesma pasta.
+  `/storage/ensaio/<id>/originals`): o primeiro segmento (`/storage`) é a
+  pasta de arquivos configurada — `MEDIA_DIR`, com padrão local como
+  `./media` — e o resto é a estrutura dentro dela:
+  `<MEDIA_DIR>/ensaio/<id>/originals`. Nunca grave na raiz do sistema. Os
+  arquivos gravados precisam ser servidos (StaticFiles) pela mesma pasta.
 - Sem configuração nenhuma, o produto tem de funcionar: o teste de jornada
   sobe a aplicação pelo `run` do `run.json` e a usa como o usuário."""
 )

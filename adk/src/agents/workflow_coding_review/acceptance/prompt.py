@@ -49,6 +49,10 @@ projeto.
   status, o texto exato da mensagem nem o formato do JSON. O código vai mudar
   entre rodadas; o teste deve continuar válido para qualquer implementação
   que atenda ao critério.
+- Caminho de arquivo citado no critério (ex.: `/storage/ensaio/<id>/originals`)
+  é estrutura, não endereço absoluto: verifique que o arquivo existe sob a
+  pasta configurada (`MEDIA_DIR`) com o SUFIXO `ensaio/<id>/originals/...`,
+  sem fixar o prefixo (`storage/` ou não).
 - Critério com partes que puxam para lados diferentes — ex.: "thumbnail
   400x400 mantendo proporção" — se testa pela leitura que satisfaz TODAS as
   partes (cabe em 400x400, lado maior = 400, proporção preservada), nunca por
