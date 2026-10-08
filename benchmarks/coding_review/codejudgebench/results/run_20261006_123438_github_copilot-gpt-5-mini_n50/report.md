@@ -13,10 +13,12 @@
 | --- | --- | --- | --- |
 | Acurácia do julgamento (empate = erro) | 58.0% | 44.2% – 70.6% | 29/50 |
 | Viés posicional | n/a | — | — |
-| Resposta inválida (1ª tentativa) | 0.0% | 0.0% – 3.7% | 0/100 |
-| Resposta inválida (após retries) | 0.0% | 0.0% – 3.7% | 0/100 |
+| Resposta inválida — status não reconhecido pelo manifesto (1ª tentativa) | 0.0% | 0.0% – 3.7% | 0/100 |
+| Resposta inválida — status não reconhecido pelo manifesto (após retries) | 0.0% | 0.0% – 3.7% | 0/100 |
 
 > Viés posicional: Não aplicável ao modo pontual: cada revisão vê uma única resposta, então não existe ordem A/B a inverter.
+>
+> Resposta inválida mede se o pipeline consegue ler o veredito (a linha `Status:` que o manifesto procura). O reviewer produz markdown, não JSON: não há aderência ao `ReviewOutput` a medir — o harness converte o markdown nesse schema depois.
 
 ## Decisão por resposta
 
