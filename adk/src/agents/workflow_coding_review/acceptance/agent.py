@@ -415,6 +415,7 @@ def montar_aceite_task(state: Any, task: dict, coder_dir) -> str:
             "arquivo_de_testes": caminho_relativo(task["id"]),
             "workdir": _workdir(coder_dir),
             "arquivos_do_projeto": _inventario(coder_dir),
+            **({"quadro_do_produto": state["quadro_produto"]} if state.get("quadro_produto") else {}),
             **extra,
         },
         ensure_ascii=False,

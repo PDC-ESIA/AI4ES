@@ -39,8 +39,10 @@ from shared.pipeline_flags import (
     aceite_independente,
     coder_contexto_enxuto,
     jornada,
+    quadro_produto,
     trilhas,
 )
+from shared.tools.coding_tools.quadro import montar_quadro
 from shared.tools.coding_tools.aceite_independente import (
     gravar_mapa,
     ler_mapa,
@@ -129,6 +131,8 @@ CHAVE_TASK_ATUAL = "current_task"
 # Trilha de execução da stack (`AI4ES_TRILHAS`), lida pelo prompt do coder, pelo
 # harness e pela verificação rápida. Ausente = ambiente livre (histórico).
 CHAVE_TRILHA = "trilha"
+# Quadro do produto (`AI4ES_QUADRO_PRODUTO`): ver shared/tools/coding_tools/quadro.py.
+CHAVE_QUADRO = "quadro_produto"
 
 
 def montar_task_atual(task: dict, macro_context: Optional[dict]) -> str:
@@ -802,9 +806,19 @@ class TaskIterator(BaseAgent):
                 update={"branch": branch_da_task(ctx.branch, indice, task_id)}
             )
 
+            if quadro_produto():
+                self._atualizar_quadro(state, tasks, task_results)
+
             if coder_contexto_enxuto():
                 yield self._evento_inicio_task(
                     task_ctx, state, task, total=total, indice=indice
+                )
+            elif quadro_produto():
+                yield Event(
+                    invocation_id=task_ctx.invocation_id,
+                    author=self.name,
+                    branch=task_ctx.branch,
+                    actions=EventActions(state_delta={CHAVE_QUADRO: state.get(CHAVE_QUADRO, "")}),
                 )
 
             logger.info(
@@ -896,6 +910,30 @@ class TaskIterator(BaseAgent):
         else:
             state["execution_result"] = marcador_nova_task(task_id)
 
+    @staticmethod
+    def _atualizar_quadro(state: dict, tasks: list[dict], task_results: dict) -> None:
+        """Remonta o quadro do produto com o que as tasks fechadas entregaram."""
+        from shared.execution.manifest import ManifestError, load_manifest
+
+        coder_dir = get_agent_workspace("cr_coder")
+        try:
+            workdir = coder_dir / (load_manifest(coder_dir / "run.json").workdir or ".")
+        except ManifestError:
+            workdir = coder_dir
+        macro = (state.get("tasks") or {}).get("macro_context") or {}
+        try:
+            state[CHAVE_QUADRO] = montar_quadro(
+                workdir=workdir,
+                tasks_dir=get_agent_workspace("cr_context_engineer"),
+                tasks=tasks,
+                task_results=task_results,
+                trilha=state.get(CHAVE_TRILHA),
+                product_type=macro.get("product_type"),
+            )
+        except Exception:  # noqa: BLE001 — o quadro é auxílio, nunca derruba a task
+            logger.exception("[TASK_ITERATOR] Falha ao montar o quadro do produto.")
+            state.pop(CHAVE_QUADRO, None)
+
     def _evento_trilha(self, ctx: InvocationContext, state: dict) -> Optional[Event]:
         """Escolhe a trilha pela `tech_stack` e a publica no state (sem conteúdo)."""
         macro = (state.get("tasks") or {}).get("macro_context") or {}
@@ -937,6 +975,9 @@ class TaskIterator(BaseAgent):
         macro = (state.get("tasks") or {}).get("macro_context")
         texto = montar_task_atual(task, macro)
         state[CHAVE_TASK_ATUAL] = texto
+        delta = {CHAVE_TASK_ATUAL: texto}
+        if CHAVE_QUADRO in state:
+            delta[CHAVE_QUADRO] = state[CHAVE_QUADRO]
         return Event(
             invocation_id=task_ctx.invocation_id,
             author=self.name,
@@ -953,7 +994,7 @@ class TaskIterator(BaseAgent):
                     )
                 ],
             ),
-            actions=EventActions(state_delta={CHAVE_TASK_ATUAL: texto}),
+            actions=EventActions(state_delta=delta),
         )
 
     def _evento_summary(

@@ -118,6 +118,9 @@ aplicação no ar:
   (httpx, requests, `page.request`), importar a aplicação e executar ou
   injetar JavaScript (`evaluate`, `add_script_tag`, `route`,
   `dispatch_event`...). A ferramenta recusa o arquivo nesses casos.
+- `quadro_do_produto`, quando presente, resume o que as tasks anteriores já
+  entregaram (telas, rotas, testes de regressão). Para chegar à funcionalidade
+  desta task, percorra as telas que já existem.
 - `interface.identificadores_existentes` lista os `data-testid` que as telas
   e os testes de tasks anteriores já usam. Elemento que JÁ EXISTE (a galeria,
   o item de ensaio, o formulário de criação) se localiza pelo identificador

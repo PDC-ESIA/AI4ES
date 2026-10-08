@@ -95,6 +95,10 @@ def jornada() -> bool:
     return flag("AI4ES_JORNADA")
 
 
+def quadro_produto() -> bool:
+    return flag("AI4ES_QUADRO_PRODUTO")
+
+
 def max_llm_calls() -> int:
     """Teto de chamadas de LLM por execução de pipeline (ADK `RunConfig`).
 

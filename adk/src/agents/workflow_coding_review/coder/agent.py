@@ -76,7 +76,13 @@ async def _INSTRUCTION(readonly_context) -> str:
         + coder_prompt.secao_produto_web(produto)
         + render_instruction(enxuto=enxuto)
     )
-    return await inject_session_state(instrucao, readonly_context)
+    # O quadro entra DEPOIS do templating: tem chaves de rota (`{ensaio_id}`)
+    # que o `inject_session_state` tentaria resolver como variáveis.
+    from shared.tools.coding_tools.quadro import secao_prompt as secao_quadro
+
+    return secao_quadro(state.get("quadro_produto")) + await inject_session_state(
+        instrucao, readonly_context
+    )
 
 
 agent = LlmAgent(
