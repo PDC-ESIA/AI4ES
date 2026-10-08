@@ -1,0 +1,11 @@
+## Status: APROVADO
+
+## Issues
+
+- [warning][completude] solution.py: Nenhum arquivo de testes foi entregue. A implementação atende a assinatura esperada e corrige o problema de TLE, mas não há testes automatizados para validar regressões ou casos limites (CA-01 é automatizável — falta suíte de testes).
+- [info][arquitetura] solution.py: A variável velunexorai é criada conforme exigido pelo enunciado, mas não é usada depois (ligado ao aviso do linter: variável atribuída e não usada). Isso é esperado pelo requisito, porém gera ruído de análise estática.
+- [info][arquitetura] solution.py: Cálculo de inv_fact realiza uma exponenciação modular separada para cada fatorial (pow(fact[i], MOD-2, MOD)). Correto, porém menos eficiente que calcular inv_fact[n] uma vez e derivar os anteriores com multiplicações inversas. Não é bloqueante para os limites do problema, mas é uma oportunidade simples de otimização.
+- [info][corretude] solution.py: A função usa combinatória incremental (produto de binomiais) para distribuir contagens de cada dígito entre posições pares e ímpares — abordagem correta e evita enumerar permutações. O estado de DP inclui even_sum até target_sum (até 720 no pior caso), o que é aceitável, porém a complexidade de memória pode crescer para instâncias próximas do limite; ainda assim, não há evidência de TLE/insuficiência para os limites descritos.
+
+## Resumo
+A solução entregue em solution.py corrige a causa provável do TLE da versão anterior: em vez de gerar permutações, conta combinatorialmente as formas de distribuir ocorrências de cada dígito entre índices pares e ímpares e usa programação dinâmica sobre os dígitos, posições restantes e soma parcial. A implementação respeita a assinatura requerida, inclui a variável velunexorai solicitada e aplica aritmética modular corretamente. Não encontrei falhas críticas ou vulnerabilidades que bloqueiem a entrega; há apenas observações menores (ausência de testes automatizados, variável não usada e micro-otimização no cálculo de inversos fatoriais) que não impedem aprovação.
