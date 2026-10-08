@@ -1091,7 +1091,7 @@ O `metadata.json` registra o commit `0af110a` com árvore suja nas três retomad
 | ----- | ------ | ------ |
 | Loop das 24 instâncias do primeiro passe | `0af110a` mais alterações locais (o teto de tempo antigo, sem o desconto do ritmo) | não commitado como tal |
 | Loop das 2 instâncias refeitas | Teto de tempo corrigido (B4) | conteúdo commitado depois em `25ac3e5` (que também traz o `--only-ids`, acrescentado depois do refazimento e sem efeito nos resultados) |
-| Correção oficial dos resultados commitados | Com a invalidação do cache do harness (B11) | `59bd066` (correção em `28f72f9`) |
+| Correção oficial dos resultados commitados | Com a invalidação do cache do harness (B11, código em `28f72f9`) | Regerada em `cbb5e5b` (rodada com o código de `59bd066`) e de novo em `3dc60d6` (IC com 6 casas, tudo em cache) |
 
 As 24 instâncias do primeiro passe que foram retidas terminaram todas abaixo do teto,
 com no máximo 1.770 s de relógio, então a mudança do teto não as afetaria. A distinção
@@ -1144,6 +1144,7 @@ a revisão dos falsos positivos só olhou instâncias que o validador **aprovou*
 - **Limite:** a invalidação olha o patch. Se o `--grading-timeout`, o dataset ou a
   versão do `swebench` mudarem, um `report.json` antigo ainda seria reaproveitado;
   hoje o dataset e a versão são fixos.
+- **Atenção ao `duracao_s`:** no `grading.json`, ele é a duração da **última** chamada ao harness. Com o `--grade-only` em cache, ele não reflete o tempo da avaliação real (a reavaliação da `django-12125` levou a execução de ~89 s registrada em `cbb5e5b`; a de `3dc60d6`, toda em cache, registra ~59 s).
 - **O que fazer:** ao refazer qualquer instância, rodar a correção com este código (ou
   apagar o `grading/` do run) e conferir `patch.diff` contra `predictions.jsonl`.
 
