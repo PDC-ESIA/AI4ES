@@ -188,6 +188,22 @@ def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace, context
                     f"({salvo.get('config', {}).get(chave)!r}). Uma retomada precisa "
                     "usar exatamente o mesmo experimento."
                 )
+        # A config igual não basta: outro --limit ou outros --pair-ids mudam a
+        # amostra, e a retomada misturaria checkpoints de amostras diferentes.
+        if salvo.get("pair_ids") != contexto.get("pair_ids"):
+            raise ValueError(
+                "Erro: os pares selecionados diferem do run original "
+                f"({len(contexto.get('pair_ids') or [])} agora, "
+                f"{len(salvo.get('pair_ids') or [])} no original). Retome com o mesmo "
+                "--limit / --pair-ids, ou inicie um run novo."
+            )
+        revisao_salva = (salvo.get("dataset") or {}).get("revision")
+        revisao_atual = (contexto.get("dataset") or {}).get("revision")
+        if revisao_salva != revisao_atual:
+            raise ValueError(
+                f"Erro: a revisão do dataset ({revisao_atual!r}) difere do run "
+                f"original ({revisao_salva!r})."
+            )
         return salvo
 
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -342,10 +358,14 @@ def _render_markdown(relatorio: dict) -> str:
         "| --- | --- | --- | --- |",
         _linha_proporcao("Acurácia do julgamento (empate = erro)", j["accuracy"]),
         "| Viés posicional | n/a | — | — |",
-        _linha_proporcao("Resposta inválida (1ª tentativa)", f["invalid_first_attempt_rate"]),
-        _linha_proporcao("Resposta inválida (após retries)", f["invalid_final_rate"]),
+        _linha_proporcao("Resposta inválida — status não reconhecido pelo manifesto (1ª tentativa)", f["invalid_first_attempt_rate"]),
+        _linha_proporcao("Resposta inválida — status não reconhecido pelo manifesto (após retries)", f["invalid_final_rate"]),
         "",
         f"> Viés posicional: {j['positional_bias_note']}",
+        ">",
+        "> Resposta inválida mede se o pipeline consegue ler o veredito (a linha `Status:` que o "
+        "manifesto procura). O reviewer produz markdown, não JSON: não há aderência ao `ReviewOutput` "
+        "a medir — o harness converte o markdown nesse schema depois.",
         "",
         "## Decisão por resposta",
         "",
