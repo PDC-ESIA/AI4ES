@@ -204,6 +204,34 @@ def _verificacao_rapida_reprovou(state) -> Optional[str]:
     return _mensagem_de_verificacao(resultado)
 
 
+def recusar_exit_loop_sem_aprovacao(tool, args, tool_context) -> Optional[dict]:
+    """`before_tool_callback`: `exit_loop` só encerra o loop com veredito aprovado.
+
+    O prompt já manda nunca encerrar numa reprovação, mas na validação o LLM
+    chamou `exit_loop` logo após um veredito "reprovado" (3 critérios não
+    atendidos) e a task fechou na 1ª rodada, sem o coder poder corrigir. A
+    aprovação já encerra o loop deterministicamente
+    (`aplicar_politica_de_progresso`); aqui só se impede o encerramento
+    indevido.
+    """
+    if getattr(tool, "name", None) != "exit_loop":
+        return None
+    validation = tool_context.state.get("validation")
+    if isinstance(validation, dict) and validation.get("status") == "aprovado":
+        return None
+    logger.warning(
+        "[EXECUTOR] exit_loop recusado para %s: veredito não é 'aprovado'.",
+        tool_context.state.get("task_id"),
+    )
+    return {
+        "recusado": True,
+        "motivo": (
+            "O veredito desta rodada não é 'aprovado': o loop NÃO pode ser "
+            "encerrado. Responda com o resultado reprovado para o coder corrigir."
+        ),
+    }
+
+
 def recusar_execucao_incompleta(callback_context) -> Optional[types.Content]:
     """`before_agent_callback` do `cr_executor_agent` — gate estrutural.
 
@@ -649,6 +677,7 @@ agent = LlmAgent(
     ],
 )
 agent.before_agent_callback = recusar_execucao_incompleta
+agent.before_tool_callback = recusar_exit_loop_sem_aprovacao
 # A ORDEM é carga estrutural: o ADK executa os callbacks em sequência e PARA no
 # primeiro que devolver `Content` não-vazio. `montar_error_report` devolve
 # `Content` em toda rodada reprovada — o caso comum —, então a política precisa

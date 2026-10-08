@@ -711,3 +711,24 @@ def test_nota_de_aceite_e_publicada_a_cada_rodada(executor_com_report):
     assert aceite["nota"] == 0.5
     assert aceite["total"] == 3
     assert aceite["cobertura"] == pytest.approx(2 / 3)
+
+
+# ===========================================================================
+# exit_loop só encerra com veredito aprovado
+# ===========================================================================
+
+
+def test_exit_loop_recusado_sem_aprovacao(executor_module):
+    from types import SimpleNamespace
+
+    sair = SimpleNamespace(name="exit_loop")
+    for validation in (None, {"status": "reprovado"}, "aprovado"):
+        ctx = SimpleNamespace(state={"task_id": "TASK-006", "validation": validation})
+        resposta = executor_module.recusar_exit_loop_sem_aprovacao(sair, {}, ctx)
+        assert resposta["recusado"] is True
+
+    aprovado = SimpleNamespace(state={"validation": {"status": "aprovado"}})
+    assert executor_module.recusar_exit_loop_sem_aprovacao(sair, {}, aprovado) is None
+    harness = SimpleNamespace(name="executar_harness_tool")
+    assert executor_module.recusar_exit_loop_sem_aprovacao(harness, {}, SimpleNamespace(state={})) is None
+    assert executor_module.agent.before_tool_callback is executor_module.recusar_exit_loop_sem_aprovacao
