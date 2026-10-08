@@ -69,9 +69,9 @@ funciona e como foi implementado: seções
 | Instâncias / seed / revisão do dataset | 30 sorteadas (26 com resultado válido) / 42 / `78f471bf655a3137b2e8a75af1501690ec009ec3` |
 | Instâncias excluídas pelo `--gold-sanity` | Nenhuma: 30/30 resolvidas com o patch oficial (2026-09-29) |
 | Harness do executor com a solução oficial (`--executor-sanity`) | 26/30 com sucesso (2026-09-29). As 4 restantes (`matplotlib__matplotlib-25479`, `mwaskom__seaborn-3069`, `pydata__xarray-4687`, `pylint-dev__pylint-7080`) têm testes que falham também na avaliação oficial, fora das listas `FAIL_TO_PASS`/`PASS_TO_PASS`: o SWE-bench os ignora, mas o executor julga pelo código de saída do comando inteiro e reprova |
-| **Métrica 1** — resolvidas (IC 95%) | 19/26 (73,1%), IC 53,9% a 86,3%. No primeiro passe, antes da correção do teto: 20/30 (66,7%), IC 48,8% a 80,8% (não comparável) |
+| **Métrica 1** — resolvidas (IC 95%) | 20/26 (76,9%), IC 57,9% a 89,0%. No primeiro passe, antes da correção do teto: 20/30 (66,7%), IC 48,8% a 80,8% (não comparável) |
 | **Métrica 1** — resolvidas sem as exclusões do gold (IC 95%) | Igual à linha acima: o gold não excluiu nenhuma instância |
 | **Métrica 2** — rodadas: média / mediana | 1,65 / 1 (mín. 1, máx. 4) |
 | **Métrica 2** — paradas: aprovação / política / `max_iterations` / outro | 24 / 2 / 0 / 0 |
-| **Métrica 3** — falsos positivos / aprovações (IC 95%) | 5/24 (20,8%), IC 9,2% a 40,5%. Precisão 19/24, recall 19/19 |
+| **Métrica 3** — falsos positivos / aprovações (IC 95%) | 5/24 (20,8%), IC 9,2% a 40,5%. Precisão 19/24, recall 19/20 (um falso negativo, `django-12125`) |
 | Diretório do run | `benchmarks/coding_review/swebench/results/run_20261001_122939_github_copilot-gemini-3.7-flash_n30/` (o primeiro passe fica em `v1_timeout_contava_o_ritmo/`) |

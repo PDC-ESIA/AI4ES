@@ -48,22 +48,22 @@ O `workflow_coding_review` implementa código num laço com três papéis: o `cr
 
 | Métrica | Valor |
 | ------- | ----- |
-| 1. Taxa de resolução | **19/26 (73,1%)**, IC 95%: 53,9% a 86,3% |
+| 1. Taxa de resolução | **20/26 (76,9%)**, IC 95%: 57,9% a 89,0% |
 | 2. Rodadas e parada | Média 1,65 rodadas (mediana 1). 24 paradas por aprovação do validador, 2 por política de progresso, 0 por `max_iterations` |
-| 3. Falsos positivos do validador | **5/24 aprovações (20,8%)**, IC 95%: 9,2% a 40,5%. Precisão 79,2%, recall 100% |
+| 3. Falsos positivos do validador | **5/24 aprovações (20,8%)**, IC 95%: 9,2% a 40,5%. Precisão 79,2%, recall 95% (19/20) |
 
 > **Leia antes de citar qualquer número.** A linha de base cobre **26 das 30 instâncias sorteadas**: as outras 4 não foram refeitas após uma correção do benchmark, por falta de créditos do LLM. É **uma execução de um único modelo**, com amostra pequena. A taxa de resolução tende a estar **inflada**, porque saíram da amostra instâncias que o loop resolvia pior; o efeito sobre a precisão do validador é incerto. No primeiro passe, com as 30 instâncias e antes da correção do teto, o resultado era 20/30 (66,7%). Os dois números não são comparáveis.
 
 O que os números sustentam, com essas ressalvas:
 
 - O loop resolveu cerca de três em cada quatro instâncias, na maioria das vezes na primeira rodada.
-- Quando o validador aprovou, errou uma vez em cada cinco. Ele aprovou 24 das 26 instâncias e só deixou de aprovar 2 das 7 não resolvidas, então o recall de 100% quase não discrimina.
-- A política de progresso foi acionada em 2 casos (ambos em Django, ambos não resolvidos). Nenhuma instância chegou ao teto de 20 rodadas.
+- Quando o validador aprovou, errou uma vez em cada cinco. Ele aprovou 24 das 26 instâncias e deixou de aprovar só 2: uma não resolvida e a `django-12125`, que o harness oficial resolve (ver 4.2), então o recall (95%) discrimina pouco.
+- A política de progresso foi acionada em 2 casos, ambos em Django: um não resolvido (`django-16032`) e a `django-12125`, que o harness oficial resolve (o coder acertou o código, mas não atualizou um teste existente que a correção torna obsoleto; ver 4.2). Nenhuma instância chegou ao teto de 20 rodadas.
 - O ambiente do executor reprova até a solução oficial em 4 das 30 instâncias, o que limita o teto de aprovações confiáveis a cerca de 26 em 30.
 
 **Modelo:** o `gemini-3.7-flash` foi escolhido por restrição de contexto e custo, depois que o `gpt-4` (32k) e o `gpt-4.1` (128k, bloqueado pelo rate limit do Copilot) não serviram; não é um ranking de modelos (ver [4.6](#46-por-que-o-gemini-37-flash-foi-o-modelo-da-linha-de-base)).
 
-**Custo:** ~4.340 créditos do Copilot (~US$ 43) tirados do caixa da organização, bem acima do esperado, porque o coder reenvia a conversa inteira a cada chamada. **Duas lições operacionais** pesam mais que os números: o controle de ritmo do próprio benchmark distorceu o teto de tempo por instância (corrigido), e o rate limit do Copilot é de vazão, independente dos créditos.
+**Custo:** ~4.340 créditos do Copilot (~US$ 43) tirados do caixa da organização, bem acima do esperado, porque o coder reenvia a conversa inteira a cada chamada. **Três lições operacionais** pesam mais que os números: o controle de ritmo do próprio benchmark distorceu o teto de tempo por instância (corrigido); o rate limit do Copilot é de vazão, independente dos créditos; e o harness oficial reaproveitava o resultado de um patch antigo ao refazer uma instância, o que afetou a `django-12125` (apontado na revisão do PR, corrigido e regerado; ver B11).
 
 ## 1. Contexto e escolha do benchmark
 
@@ -600,15 +600,15 @@ validador neste ambiente: 26 de 30**.
 
 | | Valor |
 | - | ----- |
-| Resolvidas | **19/26 (73,1%)** |
-| IC 95% (Wilson) | 53,9% a 86,3% |
-| Não resolvidas | 7 |
+| Resolvidas | **20/26 (76,9%)** |
+| IC 95% (Wilson) | 57,9% a 89,0% |
+| Não resolvidas | 6 |
 
 Resolvidas por repositório (instâncias do run):
 
 | Repositório | Instâncias | Resolvidas | Aprovadas pelo validador |
 | ----------- | ---------- | ---------- | ------------------------ |
-| django/django | 13 | 8 | 11 |
+| django/django | 13 | 9 | 11 |
 | astropy/astropy | 4 | 4 | 4 |
 | scikit-learn/scikit-learn | 4 | 4 | 4 |
 | matplotlib/matplotlib | 1 | 0 | 1 |
@@ -617,7 +617,7 @@ Resolvidas por repositório (instâncias do run):
 | pytest-dev/pytest | 1 | 1 | 1 |
 | sympy/sympy | 1 | 1 | 1 |
 
-O resultado mais fraco está em Django (8 de 13). Os repositórios com poucas
+O resultado mais fraco está em Django (9 de 13). Os repositórios com poucas
 instâncias (1 cada) não permitem conclusão por repositório.
 
 #### Resultado da métrica 2: rodadas e motivo de parada
@@ -638,12 +638,12 @@ Média **1,65**, mediana 1, mínimo 1, máximo 4.
 | `max_iterations` | 0 |
 | Outro (erro, timeout, estouro de contexto) | 0 |
 
-As duas paradas pela política de progresso, ambas em Django e ambas **não
-resolvidas** (o validador reprovou):
+As duas paradas pela política de progresso, ambas em Django, com o validador
+reprovando. **Só uma é não resolvida**; a outra o harness oficial resolve:
 
 | Instância | Rodadas | Sub-motivo | Observação |
 | --------- | ------- | ---------- | ---------- |
-| `django__django-12125` | 4 | `bloqueado_sem_alteracao_arquivos` | A nota ficou em 0,47 nas 4 rodadas, sem melhora |
+| `django__django-12125` | 4 | `bloqueado_sem_alteracao_arquivos` | A nota ficou em 0,47 nas 4 rodadas, sem melhora. **O patch final resolve a instância no harness oficial** (ver abaixo) |
 | `django__django-16032` | 3 | `bloqueado_erro_repetido` | Parou por repetir o mesmo erro |
 
 Nenhuma instância chegou ao teto de 20 rodadas: nenhuma parou por
@@ -657,13 +657,13 @@ mais fraco ou instâncias mais difíceis.
 | | Resolvida | Não resolvida |
 | --- | --- | --- |
 | **Validador aprovou** | 19 | **5** (falso positivo) |
-| **Validador não aprovou** | 0 (falso negativo) | 2 |
+| **Validador não aprovou** | **1** (falso negativo: `django-12125`) | 1 |
 
 | Indicador | Valor | IC 95% |
 | --------- | ----- | ------ |
 | Falsos positivos entre as aprovações | **5/24 (20,8%)** | 9,2% a 40,5% |
 | Precisão do validador | 19/24 (79,2%) | 59,5% a 90,8% |
-| Recall do validador | 19/19 (100%) | 83,2% a 100% |
+| Recall do validador | 19/20 (95%) | 76,4% a 99,1% |
 
 As 5 instâncias com falso positivo, ou seja, o loop parou com "aprovado" e o
 problema continuava lá: `django__django-11400`, `django__django-11734`,
@@ -689,10 +689,24 @@ do executor reprova até a solução oficial rodando o comando oficial; parte de
 falso positivo pode ser artefato do ambiente (o coder rodou poucos testes, e a
 checagem roda o arquivo todo).
 
-O validador aprovou 24 das 26 instâncias e deixou de aprovar apenas 2 das 7 não
-resolvidas (especificidade de 2/7). Ambas as paradas foram da política de
-progresso, não do validador. O recall de 100% tem, por isso, pouco poder de
-discriminação aqui.
+O validador aprovou 24 das 26 instâncias e deixou de aprovar apenas 2: uma das 6
+não resolvidas (`django-16032`) e a `django-12125`, que estava **resolvida**. Ele
+aprovou 5 das 6 não resolvidas (especificidade de 1/6), então o recall (95%) tem pouco
+poder de discriminação: o validador aprova quase tudo.
+
+**O único falso negativo (`django-12125`).** O coder acertou o código (o patch final
+aplica e resolve a instância, com 0 falhas em `FAIL_TO_PASS` e `PASS_TO_PASS`,
+confirmado em 4 avaliações oficiais: 3 do autor, contando a regeração do run, e 1 do revisor), mas o comando de teste dele, o módulo
+`migrations` inteiro, ficou **vermelho nas 4 rodadas**. A causa é um teste existente,
+`test_deconstruct_class_arguments`, que falha com a correção certa: o patch oficial
+também o quebra, e o `test_patch` oficial o **altera** (move a classe do teste para o
+nível do módulo). O coder não atualizou esse teste, a suíte dele nunca ficou verde, o
+validador reprovou e a política de progresso encerrou o loop ao não haver mais
+alteração de arquivos. Ou seja, o "falso negativo" mede uma divergência de rótulo (o
+harness oficial substitui o arquivo de testes pelo seu, o que torna a entrega
+resolvida), e não necessariamente um erro de julgamento do validador diante de uma
+suíte vermelha. Detalhes e limites em
+[swebench-revisao-falsos-positivos.md](swebench-revisao-falsos-positivos.md), seção 9.
 
 Os testes e os patches dessas 5 instâncias foram **revisados à mão** e
 documentados em [swebench-revisao-falsos-positivos.md](swebench-revisao-falsos-positivos.md).
@@ -701,9 +715,10 @@ real** (o patch é equivalente ao oficial e passou em 5 de 5 reavaliações; a r
 veio de um teste que depende do relógio); os outros quatro são soluções realmente
 erradas que o loop aprovou (duas correções incompletas, uma que contradiz o contrato do
 projeto e uma sem efeito sobre o defeito), com testes do coder que não exercitavam o
-defeito. Os números acima foram **mantidos como o harness os produziu**; com o rótulo
-da `20859` corrigido, seriam 20/26 resolvidas (76,9%) e 4/24 falsos positivos (16,7%,
-IC 95% 6,7% a 35,9%). Ver também [pontos de atenção](#5-pontos-de-atenção), A2 e A3.
+defeito. Os números acima foram **mantidos como o harness os produziu** (na regeração
+de 08/10/2026, ver B11); com o rótulo da `20859` corrigido, seriam 21/26 resolvidas
+(80,8%, IC 95% 62,1% a 91,5%), 4/24 falsos positivos (16,7%, IC 95% 6,7% a 35,9%) e
+recall de 20/21 (95,2%). Ver também [pontos de atenção](#5-pontos-de-atenção), A2 e A3.
 
 ### 4.3 Custo e tempo
 
@@ -744,8 +759,8 @@ em [4.6](#46-por-que-o-gemini-37-flash-foi-o-modelo-da-linha-de-base)).
 | `gemini-3.7-flash`, 1º passe (30 instâncias) | 20/30 resolvidas (66,7%). **6 instâncias "estouraram" o teto de 1 hora** (`django-12125`, `django-16032`, `matplotlib-25479`, `seaborn-3069`, `xarray-4687`, `pytest-10356`) |
 | Diagnóstico | Nessas 6, de 76% a 91% do tempo foi **espera do controle de ritmo**; o modelo trabalhou só de 337 s a 882 s. O teto contava o relógio corrido |
 | Correção do benchmark | O teto passou a descontar as pausas (`aguardar_com_teto`, 5 testes novos; 146 no total). Nada no executor foi alterado |
-| Refazimento | Das 6, só `django-12125` e `django-16032` foram refeitas (as duas pararam pela política de progresso). A `matplotlib-25479` foi interrompida por créditos depois de ~930 consumidos. O lote seguinte (`seaborn-3069`, `xarray-4687`, `pytest-10356`) foi iniciado e interrompido sem gravar resultado, então essas três também não foram refeitas |
-| Fechamento | `--grade-only` sobre as 26 instâncias com resultado válido |
+| Refazimento | Das 6, só `django-12125` e `django-16032` foram refeitas (as duas pararam pela política de progresso; a `django-12125` o harness oficial resolve). A `matplotlib-25479` foi interrompida por créditos depois de ~930 consumidos. O lote seguinte (`seaborn-3069`, `xarray-4687`, `pytest-10356`) foi iniciado e interrompido sem gravar resultado, então essas três também não foram refeitas |
+| Fechamento | `--grade-only` sobre as 26 instâncias com resultado válido. Depois da revisão do PR, regerado com a correção do cache do harness (a `django-12125` tinha sido avaliada com um patch antigo; ver B11) |
 
 O primeiro passe está guardado em
 `results/run_20261001_122939_.../v1_timeout_contava_o_ritmo/` (relatório e
@@ -755,13 +770,15 @@ checkpoint antigos), para comparação.
 
 | | 1º passe (n = 30) | Final (n = 26) |
 | - | ----------------- | -------------- |
-| Resolvidas | 20/30 (66,7%), IC 48,8% a 80,8% | 19/26 (73,1%), IC 53,9% a 86,3% |
+| Resolvidas | 20/30 (66,7%), IC 48,8% a 80,8% | 20/26 (76,9%), IC 57,9% a 89,0% |
 | Paradas | 24 aprovação + 6 timeout | 24 aprovação + 2 política de progresso |
 | Falsos positivos | 5/24 (20,8%) | 5/24 (20,8%) |
-| Recall do validador | 19/20 (95%) | 19/19 (100%) |
+| Recall do validador | 19/20 (95%) | 19/20 (95%) |
 
 Os dois números de resolução **não são comparáveis**: a amostra mudou. Os 5
-falsos positivos são os mesmos nos dois.
+falsos positivos são os mesmos nos dois. No primeiro passe, a `django-12125` era um
+timeout com patch que não aplicava; no final, é um falso negativo que o harness oficial
+resolve.
 
 ### 4.5 Ressalvas para a leitura
 
@@ -770,8 +787,9 @@ falsos positivos são os mesmos nos dois.
    `--executor-sanity`. Tirá-las tende a inflar a taxa de resolução. Na versão com
    as 30, a taxa era 66,7%. Detalhes em [B8](#b8-a-amostra-final-pode-ficar-enviesada-se-instâncias-forem-descartadas).
 2. **Dois estados do código do benchmark.** As 24 instâncias do primeiro passe e
-   as 2 refeitas rodaram com versões que diferem só na contagem do teto. Detalhes
-   em [B9](#b9-o-resultado-mistura-dois-estados-do-código-do-benchmark).
+   as 2 refeitas rodaram com versões que diferem só na contagem do teto; a correção
+   oficial foi regerada depois, com a correção do cache. Detalhes em
+   [B9](#b9-o-resultado-mistura-estados-do-código-do-benchmark) e B11.
 3. **Uma instância refeita por travamento** (`pylint-7080`): vale o resultado da
    segunda tentativa. Detalhes em [B5](#b5-o-corte-por-timeout-só-acontece-quando-a-chamada-em-curso-devolve-o-controle).
 4. **Execução única, um modelo, 26 instâncias.** Cada instância vale 3,8 pontos
@@ -833,7 +851,7 @@ refazimento.
 
 ## 5. Pontos de atenção
 
-Esta seção reúne o que pode distorcer a leitura dos números ou atrapalhar a execução. Os pontos estão em dois grupos: os **previsíveis** antes do primeiro run (A1 a A10, viraram limitações documentadas no README) e os que só apareceram **ao executar** (B1 a B10, viraram correções no código ou ressalvas nos resultados). Para cada ponto: o que é, que efeito tem e o que fazer.
+Esta seção reúne o que pode distorcer a leitura dos números ou atrapalhar a execução. Os pontos estão em dois grupos: os **previsíveis** antes do primeiro run (A1 a A10, viraram limitações documentadas no README) e os que só apareceram **ao executar** (B1 a B11, viraram correções no código ou ressalvas nos resultados). Para cada ponto: o que é, que efeito tem e o que fazer.
 
 ### 5.1 Limites da medição (previsíveis)
 
@@ -986,9 +1004,10 @@ controle de ritmo do próprio benchmark.
 - **Efeito:** a taxa de resolução e os motivos de parada ficavam distorcidos.
 - **Correção:** o teto passou a descontar as pausas do ritmo e do rate limit
   (`aguardar_com_teto`, com testes). Duas das seis foram refeitas e terminaram
-  pela política de progresso, ambas **não resolvidas**: `django-12125`
-  (`bloqueado_sem_alteracao_arquivos`; 787 s ativos em 3.651 s de relógio) e
-  `django-16032` (`bloqueado_erro_repetido`; 365 s ativos em 2.419 s). O relógio
+  pela política de progresso: `django-12125` (`bloqueado_sem_alteracao_arquivos`;
+  787 s ativos em 3.651 s de relógio), que o harness oficial resolve (ver 4.2 e B11),
+  e `django-16032` (`bloqueado_erro_repetido`; 365 s ativos em 2.419 s), não
+  resolvida. O relógio
   da primeira passa de 3.600 s sem contradição, porque só o tempo ativo conta.
 - **O que fazer:** nunca tratar timeout de instância como incapacidade do
   modelo sem checar `duracao_ativa_s` versus `pausa_ritmo_s` no `progress.jsonl`.
@@ -1052,22 +1071,28 @@ teto; só a `matplotlib-25479` destoa (882 s, 4 rodadas). Tirar essas instância
 deixa o n=26 com menos casos em que o loop teve mais dificuldade, o que tende a
 **inflar a taxa de resolução**. O efeito sobre a precisão do validador é
 incerto, porque ela só considera as instâncias que ele aprovou. Os dois números
-lado a lado: 20/30 (66,7%) no primeiro passe, 19/26 (73,1%) no final.
+lado a lado: 20/30 (66,7%) no primeiro passe, 20/26 (76,9%) no final.
 
 - **O que fazer:** nunca comparar o n=26 com um run de n=30; sempre citar qual
   subconjunto foi usado e por quê.
 
-#### B9. O resultado mistura dois estados do código do benchmark
+#### B9. O resultado mistura estados do código do benchmark
 
-As 24 instâncias do primeiro passe rodaram com o código do commit `0af110a`
-(mais alterações locais). As 2 refeitas rodaram com a correção do teto (B4),
-ainda não commitada na época. A diferença entre os dois estados é só a contagem
-do teto. O `metadata.json` **não distingue** os dois estados: registra 3
-retomadas, todas com o mesmo commit `0af110a` e árvore com alterações locais. A
-distinção só aparece nos marcadores `===` do `run.log` e na pasta
-`v1_timeout_contava_o_ritmo/`. As 24 instâncias do primeiro passe que foram retidas terminaram todas abaixo do
-teto, com no máximo 1.770 s de relógio, então a mudança do teto não as afetaria.
-Recomenda-se commitar a correção e citar o hash.
+O `metadata.json` registra o commit `0af110a` com árvore suja nas três retomadas e
+**não distingue** os estados do código. A reconstrução é esta:
+
+| O que | Código | Commit |
+| ----- | ------ | ------ |
+| Loop das 24 instâncias do primeiro passe | `0af110a` mais alterações locais (o teto de tempo antigo, sem o desconto do ritmo) | não commitado como tal |
+| Loop das 2 instâncias refeitas | Teto de tempo corrigido (B4) | conteúdo commitado depois em `25ac3e5` (que também traz o `--only-ids`, acrescentado depois do refazimento e sem efeito nos resultados) |
+| Correção oficial dos resultados commitados | Com a invalidação do cache do harness (B11) | `59bd066` (correção em `28f72f9`) |
+
+As 24 instâncias do primeiro passe que foram retidas terminaram todas abaixo do teto,
+com no máximo 1.770 s de relógio, então a mudança do teto não as afetaria. A distinção
+entre os estados só aparece nos marcadores `===` do `run.log` (local, não versionado) e
+na pasta `v1_timeout_contava_o_ritmo/`. O run **não** é reproduzível a partir de um único
+commit limpo: reproduzi-lo exigiria rerodar o loop de ponta a ponta a partir de
+`25ac3e5` ou posterior.
 
 #### B10. Detalhes de infraestrutura
 
@@ -1089,6 +1114,33 @@ Recomenda-se commitar a correção e citar o hash.
   isso o patch é calculado contra uma fotografia git do estado inicial, e não
   contra o `base_commit`.
 
+#### B11. O harness oficial reaproveitava o resultado de um patch antigo (corrigido)
+
+O harness oficial pula toda instância que já tem `report.json` no diretório do
+`run_id`, **sem conferir se o patch mudou**. Ao refazer uma instância, o resultado do
+patch antigo era reaproveitado em silêncio. Foi o que aconteceu com a `django-12125`:
+a correção oficial a avaliou com o patch do **primeiro passe** (3.676 bytes, que não
+aplicava), e não com o final do coder (1.769 bytes). Só ela divergia das 26 (conferido
+byte a byte, patch avaliado contra `predictions.jsonl`). A `django-16032` escapou
+porque o patch antigo estava vazio, e o harness não gera relatório para patch vazio.
+Foi apontado pelo Copilot na revisão do PR, e não tinha sido percebido antes porque
+a revisão dos falsos positivos só olhou instâncias que o validador **aprovou**.
+
+- **Efeito:** a `django-12125` passou de "não resolvida" para **resolvida** (aplica,
+  0 falhas em `FAIL_TO_PASS` e `PASS_TO_PASS`; reavaliada 3 vezes pelo autor e
+  uma pelo revisor). As resolvidas foram de 19/26 para 20/26 (73,1% para 76,9%) e o
+  recall do validador, de 19/19 para 19/20, porque ela é um falso negativo. Falsos
+  positivos, rodadas e motivos de parada não mudaram.
+- **Correção:** `grading.invalidate_stale_reports` compara o `patch.diff` que o
+  harness grava com o patch atual (bytes) e apaga o resultado quando difere ou não há
+  como conferir, antes de chamar o harness. Cobre o fluxo normal e o `--grade-only`.
+  Há testes, e um deles falha sem a chamada. Os artefatos do run foram regerados.
+- **Limite:** a invalidação olha o patch. Se o `--grading-timeout`, o dataset ou a
+  versão do `swebench` mudarem, um `report.json` antigo ainda seria reaproveitado;
+  hoje o dataset e a versão são fixos.
+- **O que fazer:** ao refazer qualquer instância, rodar a correção com este código (ou
+  apagar o `grading/` do run) e conferir `patch.diff` contra `predictions.jsonl`.
+
 ### 5.3 Checklist: antes de citar um número deste benchmark
 
 1. Diga qual run e quantas instâncias (n) entraram.
@@ -1102,17 +1154,20 @@ Recomenda-se commitar a correção e citar o hash.
 
 **O que os números sustentam, com as ressalvas acima:**
 
-- O loop completo resolveu **19 de 26** (73,1%) das instâncias, com mediana de
-  uma rodada (IC 95%: 53,9% a 86,3%). O executor-sanity indica um teto
+- O loop completo resolveu **20 de 26** (76,9%) das instâncias, com mediana de
+  uma rodada (IC 95%: 57,9% a 89,0%). O executor-sanity indica um teto
   aproximado de aprovações confiáveis de 26 em 30 (25 dentro das 26 retidas).
 - Quando o validador **aprovou**, errou em cerca de **uma de cada cinco vezes**
   (5 de 24; IC 95%: 9,2% a 40,5%). Ele aprovou 24 das 26 instâncias e só deixou de
-  aprovar 2 das 7 não resolvidas, então o recall de 100% quase não discrimina.
+  aprovar 2 (uma não resolvida e uma que o harness oficial resolve), então o recall
+  (95%) discrimina pouco.
   Não há evidência nos dados para atribuir os falsos positivos a Django ou à
   falta de testes identificados: as taxas são parecidas entre os grupos, e as
   amostras são pequenas.
-- A política de progresso foi acionada em 2 casos, e em ambos o loop não
-  resolvia o problema. Não houve caso de `max_iterations`.
+- A política de progresso foi acionada em 2 casos: em um o loop não resolvia o
+  problema (`django-16032`); no outro (`django-12125`) o código estava certo e a suíte
+  do coder ficou vermelha por um teste existente que ele não atualizou. Não houve caso
+  de `max_iterations`.
 
 **Próximos passos sugeridos:**
 
@@ -1120,12 +1175,16 @@ Recomenda-se commitar a correção e citar o hash.
    (ver [swebench-revisao-falsos-positivos.md](swebench-revisao-falsos-positivos.md))
    mostrou um rótulo instável, então a variância da correção oficial deve ser medida
    para as demais instâncias (a revisão só reavaliou uma).
-2. **Completar as 4 instâncias** (ou ao menos as 3 mais baratas) quando o teto de
+2. **Investigar o caso `django-12125`**: a suíte do coder fica vermelha por um teste
+   existente que a correção certa torna obsoleto. Vale checar se o loop consegue (ou
+   deveria) detectar que um teste falhando é consequência esperada da correção, em vez
+   de encerrar por falta de progresso. É uma hipótese; a #417 só mede.
+3. **Completar as 4 instâncias** (ou ao menos as 3 mais baratas) quando o teto de
    créditos do usuário for ampliado, e refazer o relatório com n = 30.
-3. **Repetir um subconjunto** para estimar a variância entre execuções.
-4. **Avaliar outros modelos** com o mesmo sorteio e o mesmo código, para
+4. **Repetir um subconjunto** para estimar a variância entre execuções.
+5. **Avaliar outros modelos** com o mesmo sorteio e o mesmo código, para
    comparação por intervalo de confiança.
-5. Os demais benchmarks levantados (CodeJudgeBench, SlopCodeBench, CUDABeaver e
+6. Os demais benchmarks levantados (CodeJudgeBench, SlopCodeBench, CUDABeaver e
    outros) só entram em issue separada, depois desta linha de base, como pede a
    #417.
 

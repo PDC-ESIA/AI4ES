@@ -783,15 +783,17 @@ falhar nem com dois contêineres em paralelo nem com a CPU limitada a 0,5 núcle
 - **Evitável pelo validador? Não se aplica**, se a aprovação estava correta.
 - **Efeito na métrica 3, se o rótulo fosse corrigido:**
 
-| | Como medido no run | Se esta instância contasse como resolvida |
-| - | ------------------ | ----------------------------------------- |
-| Métrica 1: resolvidas | 19/26 (73,1%), IC 95% 53,9% a 86,3% | 20/26 (76,9%), IC 95% 57,9% a 89,0% |
+| | Como medido (regeração de 08/10/2026) | Se esta instância contasse como resolvida |
+| - | ------------------------------------- | ----------------------------------------- |
+| Métrica 1: resolvidas | 20/26 (76,9%), IC 95% 57,9% a 89,0% | 21/26 (80,8%), IC 95% 62,1% a 91,5% |
 | Métrica 3: falsos positivos | 5/24 (20,8%), IC 95% 9,2% a 40,5% | 4/24 (16,7%), IC 95% 6,7% a 35,9% |
 | Precisão do validador | 19/24 (79,2%) | 20/24 (83,3%), IC 95% 64,1% a 93,3% |
-| Recall do validador | 19/19 (100%) | 20/20 (100%) |
+| Recall do validador | 19/20 (95%), IC 95% 76,4% a 99,1% | 20/21 (95,2%), IC 95% 77,3% a 99,2% |
 
-Os números do relatório principal foram **mantidos como o harness os produziu no
-run**; esta tabela só mostra o efeito do rótulo instável.
+Os números do relatório principal foram **mantidos como o harness os produziu**; esta
+tabela só mostra o efeito do rótulo instável. Eles já incluem a correção da
+`django-12125` (seção 9), cujo resultado oficial tinha sido reaproveitado de um patch
+antigo.
 
 ### 7.9 Limites desta análise
 
@@ -986,3 +988,64 @@ O que ele apontou e o que mudou:
 | Linha dos 5 testes com o `test_patch` imprecisa (seleciona 6) | Confirmado | Tabela 8.6 |
 | O `hints_text` traz a causa completa (`./src/gen`, `normpath`) | Confirmado | 8.2 |
 | Falta a subseção de revisão | Procede | 8.10 |
+
+## 9. `django__django-12125`: o único falso negativo (nota de registro)
+
+Esta instância **não** é uma das cinco aprovações erradas, e não passou pela mesma
+revisão com um revisor independente por instância. Ela entra aqui porque a regeração
+da correção oficial (ver B11 no relatório principal) a transformou no **primeiro falso
+negativo** do run: o validador reprovou, e o harness oficial resolve.
+
+### 9.1 Os fatos verificados
+
+- **Issue:** `makemigrations produces incorrect path for inner classes`. O patch
+  oficial altera só `django/db/migrations/serializer.py`; os testes que devem passar
+  são `test_serialize_nested_class` e `test_serialize_numbers`
+  (`migrations.test_writer.WriterTests`), com 45 em `PASS_TO_PASS`.
+- **O que o harness oficial diz do patch final do coder:** aplica e **resolve**
+  (0 falhas em `FAIL_TO_PASS` e `PASS_TO_PASS`), em 4 avaliações oficiais (3 do autor,
+  contando a regeração do run, e 1 do revisor da regeração). Antes da regeração, o
+  resultado armazenado era o do patch do primeiro passe (que não aplicava).
+- **O que o loop viu:** 4 rodadas, nota 0,47 em todas (só `testes_passaram` = 0,0);
+  o comando de teste do coder foi `python tests/runtests.py ... migrations` (o módulo
+  inteiro); o harness do executor terminou com `TESTES_FALHARAM` em todas as rodadas.
+  O validador reprovou, e a política encerrou por `sem_alteracao_arquivos`.
+
+### 9.2 Por que a suíte do coder ficou vermelha
+
+Rodando o módulo `migrations` (521 testes) na imagem oficial, **sem** o `test_patch`:
+
+| Versão | Resultado |
+| ------ | --------- |
+| Base | 521 testes, OK |
+| Patch do coder | 1 falha: `test_deconstruct_class_arguments` |
+| Patch **oficial** | 1 falha: o mesmo `test_deconstruct_class_arguments` |
+
+Ou seja, a correção certa quebra um teste existente: ele define uma classe **dentro do
+próprio teste**, e a correção passa a serializar o nome qualificado
+(`...WriterTests.test_deconstruct_class_arguments.<locals>...`). O `test_patch` oficial
+**altera esse teste** (move a classe para o nível do módulo), e por isso o harness
+oficial o vê verde. O coder não atualizou o teste, então a suíte dele ficou vermelha nas
+4 rodadas. A edição do coder em `test_writer.py` (se houve) não pôde ser vista: o arquivo
+colide com o `test_patch` e é excluído do patch.
+
+### 9.3 Como ler isso
+
+- É o **inverso da `django-11400`** (seção 5): lá o coder alterou a expectativa de um
+  teste existente para a suíte ficar verde; aqui, a correção certa exigia alterar um
+  teste existente, o coder não o fez, e o loop ficou preso.
+- O "falso negativo" mede, em parte, uma **divergência de rótulo**: o harness oficial
+  substitui o arquivo de testes pelo seu. Diante de uma suíte vermelha por um teste
+  que a correção torna obsoleto, reprovar é coerente com o que o validador via. Não é
+  possível afirmar que o validador "errou".
+- Fica uma **pergunta aberta** para quem mantém o loop (fora do escopo da #417, que só
+  mede): o loop consegue distinguir "o teste falha porque a correção quebrou algo" de
+  "o teste falha porque a correção torna a expectativa antiga obsoleta"?
+
+### 9.4 Limites
+
+- Não foi analisado o que o coder tentou nas 4 rodadas, nem o porquê de não editar o
+  teste: a transcrição não foi preservada.
+- A verificação do módulo `migrations` foi feita à mão na imagem oficial e não está
+  versionada.
+- É um caso. Não permite estimar a frequência desse padrão.
