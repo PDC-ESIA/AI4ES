@@ -94,20 +94,42 @@ aplicação no ar:
 - Cada teste recebe a fixture `page`, começa com `page.goto("/")` e chega à
   funcionalidade clicando em links e botões — `goto` para outra URL é
   recusado. O `base_url` vem do pipeline; não defina fixtures próprias.
-- Só interações de usuário: `get_by_role`, `get_by_label`, `get_by_text`,
+- Só interações de usuário: `get_by_test_id`, `get_by_role`, `get_by_label`, `get_by_text`,
   `get_by_placeholder`, `locator(...)`, `.click()`, `.fill()`,
   `.set_input_files(...)` (num campo de arquivo QUE A PÁGINA TEM),
   `.select_option()`, `.check()` e `expect(...)`. Proibido: HTTP direto
   (httpx, requests, `page.request`), importar a aplicação e executar ou
   injetar JavaScript (`evaluate`, `add_script_tag`, `route`,
   `dispatch_event`...). A ferramenta recusa o arquivo nesses casos.
-- A tela pode ainda não existir: o teste é a especificação dela. Localize os
-  elementos de forma tolerante, pelo papel e por texto em expressão regular
-  sem diferenciar maiúsculas (`get_by_role("button", name=re.compile("enviar",
-  re.I))`), e pelo que o critério descreve — não por id/classe CSS que só o
-  código atual conhece.
-- Afirme o que o usuário VÊ: `expect(page.get_by_text("Casamento Joana"))
-  .to_be_visible()`, `expect(page.locator("img")).to_have_count(3)`. Imagem,
+- A tela pode ainda não existir: o teste é a especificação dela. Localize
+  por IDENTIFICADOR ÚNICO: `page.get_by_test_id("<nome>")`, que corresponde ao
+  atributo `data-testid` — o coder lê este arquivo e põe nas telas exatamente
+  os identificadores que você usar. Nomes em kebab-case, descritivos e
+  ESPECÍFICOS da funcionalidade (`form-novo-ensaio`, `btn-criar-ensaio`,
+  `campo-titulo-ensaio`), nunca genéricos (`btn-enviar`, `form`): tasks
+  seguintes vão acrescentar formulários e botões à MESMA página, e o teste
+  precisa continuar apontando para um único elemento.
+  Na regressão, um localizador ambíguo como `get_by_role("button",
+  name=re.compile("criar|salvar|enviar"))` passou a casar 7 botões quando a
+  task seguinte pôs um botão "Enviar" em cada ensaio — e reprovou uma task
+  sem defeito no produto. Nunca use alternativas em regex para achar UM
+  elemento.
+- LISTAS (vários itens iguais — ensaios, fotos, álbuns): o item tem um
+  identificador de tipo, repetido em cada item (`item-ensaio`), e é
+  distinguido pelo SEU conteúdo — os dados únicos que o teste criou:
+  `page.get_by_test_id("item-ensaio").filter(has_text=titulo)`. Aja DENTRO do
+  item: `item.get_by_test_id("btn-enviar-fotos").click()`. Nunca escolha
+  item por posição (`.first`, `.nth(i)`) para fugir de ambiguidade.
+- ORDEM: só afirme ordem quando o critério pedir ("na ordem definida",
+  "mais recentes primeiro"). Aí compare a sequência inteira de uma vez:
+  `expect(lista.get_by_test_id("item-foto")).to_have_text([a, b, c])` (ou
+  `to_have_attribute`/`to_have_count` por item). Sem esse pedido no critério,
+  não dependa de ordem — o servidor é compartilhado e outros testes também
+  criam itens.
+- Afirme o que o usuário VÊ, dentro do contêiner do teste:
+  `expect(item).to_be_visible()`,
+  `expect(galeria.get_by_test_id("item-foto")).to_have_count(3)` — com a
+  galeria do ensaio que o PRÓPRIO teste criou. Imagem,
   CSS ou fragmento que a página pede e volta com erro reprovam o teste
   automaticamente (o pipeline vigia as respostas); um status de erro esperado
   se declara com `@pytest.mark.permite_status(422)`.
@@ -118,7 +140,6 @@ aplicação no ar:
 
 Exemplo:
 ```python
-import re
 import uuid
 
 from playwright.sync_api import Page, expect
@@ -127,9 +148,18 @@ from playwright.sync_api import Page, expect
 def test_CA_02_cria_ensaio_pela_interface(page: Page):
     titulo = f"Ensaio {uuid.uuid4().hex[:6]}"
     page.goto("/")
-    page.get_by_role("link", name=re.compile("novo ensaio", re.I)).click()
-    page.get_by_label(re.compile("t[íi]tulo", re.I)).fill(titulo)
-    page.get_by_role("button", name=re.compile("criar|salvar", re.I)).click()
-    expect(page.get_by_text(titulo)).to_be_visible()
+    page.get_by_test_id("link-novo-ensaio").click()
+    formulario = page.get_by_test_id("form-novo-ensaio")
+    formulario.get_by_test_id("campo-titulo-ensaio").fill(titulo)
+    formulario.get_by_test_id("btn-criar-ensaio").click()
+    item = page.get_by_test_id("item-ensaio").filter(has_text=titulo)
+    expect(item).to_have_count(1)
+    expect(item).to_be_visible()
+
+
+def test_CA_03_album_mostra_fotos_na_ordem_definida(page: Page):
+    # ... cria o álbum pela interface com as fotos a.png, b.png, c.png ...
+    fotos = page.get_by_test_id("grid-album").get_by_test_id("item-foto-album")
+    expect(fotos).to_have_text(["a.png", "b.png", "c.png"])  # o critério pede ordem
 ```
 """

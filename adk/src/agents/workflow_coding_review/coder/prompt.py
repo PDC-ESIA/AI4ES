@@ -692,10 +692,16 @@ Este produto é uma aplicação web: o usuário só usa o que a INTERFACE oferec
   404), na configuração padrão do `run.json`.
 - Critério de aceite é homologação: todo critério não técnico é verificado
   por um navegador real (Playwright) contra a aplicação no ar — ele abre
-  "/", clica, preenche e lê o que a página mostra. Use rótulos (`<label for>`), textos de botão e
-  títulos claros — é por eles que o teste encontra os elementos. Os testes
-  ficam em `tests/acceptance/test_interface_<TASK>.py` (só leitura): leia-os
-  para saber que links, rótulos e botões a tela precisa ter.
+  "/", clica, preenche e lê o que a página mostra.
+- Os testes ficam em `tests/acceptance/test_interface_<TASK>.py` (só
+  leitura) e localizam os elementos por `data-testid`: LEIA-OS e ponha nas
+  telas exatamente os identificadores que eles usam
+  (`get_by_test_id("btn-criar-ensaio")` exige `data-testid="btn-criar-ensaio"`).
+  Elemento único tem identificador único na página; item de lista repete o
+  identificador do tipo em cada item (`data-testid="item-ensaio"`) e mostra
+  os dados que o distinguem. Não renomeie nem reutilize identificadores de
+  tasks anteriores — os testes delas continuam rodando. Use também rótulos
+  (`<label for>`) e textos de botão claros.
 
 """
 

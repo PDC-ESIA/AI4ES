@@ -433,3 +433,13 @@ def test_fora_de_web_app_ou_sem_macro_nao_ha_trava(ce, macro):
     if macro:
         ce.tool_salvar_macro_context_cr(json.dumps(macro))
     assert ce.tool_salvar_task_cr("TASK-002", _task(_SO_TECNICO))["sucesso"] is True
+
+
+def test_prompts_exigem_identificador_unico_listas_e_ordem():
+    from src.agents.workflow_coding_review.acceptance.prompt import instruction
+    from src.agents.workflow_coding_review.coder.prompt import SECAO_PRODUTO_WEB
+
+    assert "get_by_test_id" in instruction and "IDENTIFICADOR ÚNICO" in instruction
+    assert "filter(has_text=" in instruction and "`.nth(i)`" in instruction
+    assert "só afirme ordem quando o critério pedir" in instruction
+    assert 'data-testid="item-ensaio"' in SECAO_PRODUTO_WEB
