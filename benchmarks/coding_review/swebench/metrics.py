@@ -76,8 +76,10 @@ def rate(sucessos: int, n: int) -> dict[str, Any]:
     return {
         "k": sucessos,
         "n": n,
-        "taxa": round(sucessos / n, 4) if n else None,
-        "ic95": [round(intervalo[0], 4), round(intervalo[1], 4)] if intervalo else None,
+        # 6 casas: o relatório arredonda de novo ao exibir (1 casa em %). Com 4 casas
+        # aqui, o arredondamento duplo trocava 57,948% por 58,0%.
+        "taxa": round(sucessos / n, 6) if n else None,
+        "ic95": [round(intervalo[0], 6), round(intervalo[1], 6)] if intervalo else None,
     }
 
 

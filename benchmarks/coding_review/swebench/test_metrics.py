@@ -14,6 +14,7 @@ from benchmarks.coding_review.swebench.metrics import (
     classificar_parada,
     confusion_matrix,
     iteration_stats,
+    rate,
     wilson_interval,
 )
 
@@ -163,3 +164,13 @@ def test_causas_exclusoes_e_uso_por_agente():
     assert m3["falsos_positivos"] == 0
     uso = m["operacional"]["uso_llm"]
     assert uso["por_agente"]["implementation_validator"]["prompt_tokens"] == 4
+
+
+def test_intervalo_nao_sofre_arredondamento_duplo_ao_exibir():
+    """Regressão: 20/26 tem IC inferior 57,948%; com 4 casas guardadas, virava 58,0%."""
+    from benchmarks.coding_review.swebench import report
+
+    bloco = rate(20, 26)
+    assert report._pct(bloco["ic95"][0]) == "57.9%"
+    assert report._pct(bloco["ic95"][1]) == "89.0%"
+    assert report._pct(bloco["taxa"]) == "76.9%"

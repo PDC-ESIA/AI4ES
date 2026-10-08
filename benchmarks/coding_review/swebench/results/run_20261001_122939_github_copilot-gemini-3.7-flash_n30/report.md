@@ -1,6 +1,6 @@
 # Benchmark SWE-bench Verified — loop coder → executor
 
-- **Gerado em:** 2026-10-08T22:22:48.709522+00:00
+- **Gerado em:** 2026-10-08T22:36:07.083053+00:00
 - **Modelo:** `github_copilot/gemini-3.7-flash`
 - **Instâncias:** 26 (seed 42, limit 30)
 - **Dataset:** `SWE-bench/SWE-bench_Verified` @ `78f471bf655a`
@@ -13,7 +13,7 @@
 
 ## Métrica 1 — Taxa de resolução (harness oficial)
 
-- **Resolvidas:** 20/26 (76.9%) — IC 95%: [58.0%, 89.0%]
+- **Resolvidas:** 20/26 (76.9%) — IC 95%: [57.9%, 89.0%]
 
 | Status no SWE-bench | Instâncias |
 | ------------------- | ---------- |
