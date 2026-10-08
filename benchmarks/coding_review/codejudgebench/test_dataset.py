@@ -153,6 +153,19 @@ def test_cache_existente_nao_baixa_de_novo(tmp_path, monkeypatch):
     assert len(chamadas) == antes
 
 
+def test_cache_sem_meta_e_baixado_de_novo(tmp_path, monkeypatch):
+    falsa, chamadas = _api_falsa(total=5)
+    monkeypatch.setattr(dataset, "_get_json", falsa)
+    dataset.load_all(tmp_path, "claude_3.7_sonnet")
+    dataset.meta_path(tmp_path, "claude_3.7_sonnet").unlink()  # simula interrupção antes do meta
+    antes = len(chamadas)
+
+    dataset.load_all(tmp_path, "claude_3.7_sonnet")
+
+    assert len(chamadas) > antes
+    assert dataset.dataset_metadata(tmp_path, "claude_3.7_sonnet")["revision"] == "abc123"
+
+
 def test_celula_truncada_aborta_sem_deixar_cache(tmp_path, monkeypatch):
     falsa, _ = _api_falsa(total=150, truncar=120)
     monkeypatch.setattr(dataset, "_get_json", falsa)
