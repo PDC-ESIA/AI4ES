@@ -20,6 +20,7 @@ from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.genai import types
 from pydantic import PrivateAttr
 
+from shared.tools.coding_tools import jornada as jornada_mod
 from shared.tools.coding_tools.aceite_independente import ler_mapa
 from shared.tools.coding_tools.jornada import (
     ARQUIVO_JORNADA,
@@ -293,3 +294,105 @@ def test_revisor_sem_historico_no_modo_enxuto(tmp_path):
 
     assert _modo("true") == "none"
     assert _modo("") == "default"
+
+
+def _porta_livre() -> int:
+    import socket
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def _servico(raiz: Path, jornada_codigo: str, *, main: str) -> Path:
+    (raiz / "app").mkdir(parents=True)
+    (raiz / "app" / "__init__.py").write_text("")
+    (raiz / "app" / "main.py").write_text(main)
+    (raiz / "tests" / "journey").mkdir(parents=True)
+    (raiz / ARQUIVO_JORNADA).write_text(jornada_codigo)
+    porta = _porta_livre()
+    (raiz / "run.json").write_text(json.dumps({
+        "surface": "service", "build": [],
+        "run": f"{sys.executable} -m uvicorn app.main:app --port {porta}",
+        "port": porta, "healthcheck": "/",
+        "test": [f"{sys.executable} -m pytest -v"],
+    }))
+    return raiz
+
+
+_APP = (
+    "import os\n"
+    "from fastapi import FastAPI\n"
+    "app = FastAPI()\n"
+    "@app.get('/')\n"
+    "def raiz():\n"
+    "    return {'ok': True}\n"
+    "@app.post('/upload')\n"
+    "def upload():\n"
+    "    destino = os.environ.get('MEDIA_DIR', '/storage')  # padrão quebrado\n"
+    "    os.makedirs(os.path.join(destino, 'x'), exist_ok=True)\n"
+    "    return {'ok': True}\n"
+)
+
+_JORNADA_HTTP = (
+    "import os, httpx\n"
+    "def test_jornada_01_upload():\n"
+    "    c = httpx.Client(base_url=os.environ['AI4ES_JORNADA_URL'])\n"
+    "    assert c.get('/').status_code == 200\n"
+    "    r = c.post('/upload')\n"
+    "    assert r.status_code < 400, f'upload -> {r.status_code}'\n"
+)
+
+
+def test_jornada_usa_o_servidor_do_run_json_sem_configuracao_extra(tmp_path, monkeypatch):
+    """O defeito que os aceites isolados esconderam: padrão gravando em /storage."""
+    monkeypatch.setattr(jornada_mod, "preparar_cliente_http", lambda *a, **k: None)
+    monkeypatch.delenv("MEDIA_DIR", raising=False)
+    resultado = executar_jornada(_servico(tmp_path / "svc", _JORNADA_HTTP, main=_APP))
+    assert resultado.status == FALHOU, resultado.saida
+    assert resultado.falhas == [f"{ARQUIVO_JORNADA}::test_jornada_01_upload"]
+    assert "upload -> 500" in resultado.saida
+    assert "log do servidor" in resultado.saida  # o traceback do 500 vai junto
+
+
+def test_jornada_passa_quando_o_padrao_funciona(tmp_path, monkeypatch):
+    monkeypatch.setattr(jornada_mod, "preparar_cliente_http", lambda *a, **k: None)
+    app_ok = _APP.replace("'/storage'", "'media'")
+    resultado = executar_jornada(_servico(tmp_path / "ok", _JORNADA_HTTP, main=app_ok))
+    assert resultado.status == PASSOU, resultado.saida
+
+
+def test_aplicacao_que_nao_sobe_reprova_a_jornada(tmp_path, monkeypatch):
+    monkeypatch.setattr(jornada_mod, "preparar_cliente_http", lambda *a, **k: None)
+    monkeypatch.setattr(jornada_mod, "_TIMEOUT_SUBIDA", 3)
+    monkeypatch.setattr(jornada_mod, "esperar_servico", lambda url, timeout=3: "sem resposta")
+    resultado = executar_jornada(_servico(tmp_path / "quebra", _JORNADA_HTTP, main="raise SystemExit(1)\n"))
+    assert resultado.status == FALHOU and "não subiu" in resultado.motivo
+
+
+def test_instrucao_do_coder_com_trilha_renderiza_no_template_do_adk(tmp_path, monkeypatch):
+    """As notas da trilha passam pelo templating do ADK: nada de `{var}` nelas."""
+    import asyncio
+    import importlib
+
+    from google.adk.agents.invocation_context import InvocationContext
+    from google.adk.agents.readonly_context import ReadonlyContext
+    from google.adk.sessions.in_memory_session_service import InMemorySessionService
+
+    from shared.execution import trilhas
+
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path))
+    monkeypatch.setattr(trilhas, "resolver_interpretador", lambda _v: sys.executable)
+    coder = importlib.import_module("src.agents.workflow_coding_review.coder.agent")
+
+    async def _render():
+        svc = InMemorySessionService()
+        sess = await svc.create_session(
+            app_name="a", user_id="u",
+            state={"trilha": trilhas.selecionar_trilha(["python", "fastapi"])},
+        )
+        ic = InvocationContext(session_service=svc, invocation_id="i", agent=coder.agent, session=sess)
+        return await coder._INSTRUCTION(ReadonlyContext(ic))
+
+    texto = asyncio.run(_render())
+    assert "TRILHA DE EXECUÇÃO: python-web" in texto

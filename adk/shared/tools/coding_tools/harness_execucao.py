@@ -49,7 +49,7 @@ from shared.tools.coding_tools.aceite_independente import (
     ler_mapa,
 )
 from shared.tools.coding_tools import harness_docker as hd
-from shared.tools.coding_tools.jornada import PASTA_JORNADA
+from shared.tools.coding_tools.jornada import PASTA_JORNADA, VAR_URL, preparar_cliente_http
 from shared.tools.coding_tools.criterios_aceite import (
     AcceptanceCriterion,
     MapaDeTestes,
@@ -882,7 +882,15 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
         comando = comando_de_aceite(ctx.manifest.test, arquivo)
         if comando is None:
             continue
-        res = _rodar_isolado(ctx, comando, env)
+        if arquivo.startswith(PASTA_JORNADA) and ctx.app_ok and ctx.base_url:
+            # Jornada (task de integração): percorre o serviço que o estágio 2
+            # subiu com o run.json, sem as variáveis de isolamento dos aceites.
+            preparar_cliente_http(ctx.sandbox, comando, env)
+            res = ctx.sandbox.exec(
+                comando, timeout=_TESTS_TIMEOUT, env={**(env or {}), VAR_URL: ctx.base_url}
+            )
+        else:
+            res = _rodar_isolado(ctx, comando, env)
         saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
         linhas.append(f"$ {comando}\n{saida}")
         testes = _testes_da_saida(saida)

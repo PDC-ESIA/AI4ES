@@ -68,7 +68,14 @@ _NOTAS_PYTHON_WEB = (
   caminho fixo no código. Crie as tabelas na inicialização da aplicação
   (lifespan) e não recrie engine/sessão em tempo de execução. Testes de
   aceite e de jornada, que você não edita, rodam em processo próprio e apontam
-  essas variáveis para pastas temporárias."""
+  essas variáveis para pastas temporárias.
+- Caminhos citados nos requisitos e critérios (ex.:
+  `/storage/ensaio/<id>/originals`) são RELATIVOS à pasta de arquivos
+  configurada (`MEDIA_DIR`, com padrão local como `./media`): nunca grave na
+  raiz do sistema. Os arquivos gravados precisam ser servidos (StaticFiles)
+  pela mesma pasta.
+- Sem configuração nenhuma, o produto tem de funcionar: o teste de jornada
+  sobe a aplicação pelo `run` do `run.json` e a usa como o usuário."""
 )
 
 TRILHAS: tuple[Trilha, ...] = (

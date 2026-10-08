@@ -53,8 +53,55 @@ def _cauda(texto: str, limite: int = 6000) -> str:
     return texto if len(texto) <= limite else "…" + texto[-limite:]
 
 
+# Variável com a URL do servidor real que o teste de jornada percorre.
+VAR_URL = "AI4ES_JORNADA_URL"
+_TIMEOUT_SUBIDA = 30
+
+
+def preparar_cliente_http(sandbox, comando_pytest: str, env: Optional[dict]) -> None:
+    """Garante `httpx` no ambiente do pytest da jornada (best-effort).
+
+    A jornada fala HTTP com o servidor real; o projeto não precisa declarar
+    `httpx`. O pip do mesmo interpretador do comando pytest é usado
+    (`venv/bin/python -m pytest` → `venv/bin/python -m pip`).
+    """
+    prefixo = comando_pytest.split(" -m pytest")[0] if " -m pytest" in comando_pytest else ""
+    if prefixo:
+        sandbox.exec(f"{prefixo} -m pip install -q httpx", timeout=_TIMEOUT_BUILD, env=env)
+
+
+def esperar_servico(url: str, timeout: float = _TIMEOUT_SUBIDA) -> Optional[str]:
+    """None quando o servidor responde (< 500); senão o último erro."""
+    import time
+    import urllib.error
+    import urllib.request
+
+    fim = time.time() + timeout
+    erro = "sem resposta"
+    while time.time() < fim:
+        try:
+            with urllib.request.urlopen(url, timeout=3) as resp:
+                if resp.status < 500:
+                    return None
+                erro = f"HTTP {resp.status}"
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500:
+                return None
+            erro = f"HTTP {exc.code}"
+        except OSError as exc:
+            erro = str(exc)
+        time.sleep(1)
+    return erro
+
+
 def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> ResultadoJornada:
-    """Constrói o artefato como o harness e roda só o arquivo da jornada."""
+    """Constrói o artefato, sobe o serviço COMO O `run.json` MANDA e percorre a jornada.
+
+    Sem variáveis de ambiente extras de propósito: os testes de aceite isolam
+    banco e pastas, e na validação isso escondeu um app que, na configuração
+    padrão, gravava uploads em `/storage` (raiz do sistema) e quebrava com 500.
+    A jornada é o único teste que usa o produto como o usuário o recebe.
+    """
     from shared.tools.coding_tools.harness_execucao import _testes_da_saida
 
     try:
@@ -67,27 +114,42 @@ def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> Resultad
     comando = comando_de_aceite(manifest.test, ARQUIVO_JORNADA)
     if comando is None:
         return ResultadoJornada(NAO_EXECUTADA, motivo="o run.json não usa pytest")
-    # `comando_de_aceite` já pede traceback curto, resumo por falha e sem
-    # warnings: a mensagem de cada jornada quebrada cabe na saída ao coder.
 
     sandbox = create_sandbox("direct", workdir_subpath=manifest.workdir)
     try:
         sandbox.setup(coder_dir)
-        env = {**ambiente_da_trilha(trilha, sandbox.root), **(manifest.env or {})} or None
+        env = {**ambiente_da_trilha(trilha, sandbox.root), **(manifest.env or {})}
         for build in manifest.build:
-            res = sandbox.exec(build, timeout=_TIMEOUT_BUILD, env=env)
+            res = sandbox.exec(build, timeout=_TIMEOUT_BUILD, env=env or None)
             if res.timed_out or res.exit_code != 0:
                 saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
                 return ResultadoJornada(
                     FALHOU, motivo=f"build falhou: {build}", saida=_cauda(saida)
                 )
-        res = sandbox.exec(comando, timeout=_TIMEOUT_JORNADA, env=env)
+        env_teste = dict(env)
+        if manifest.surface == "service" and manifest.run and manifest.port:
+            url = f"http://localhost:{manifest.port}"
+            sandbox.start_service(manifest.run, env=env or None)
+            erro = esperar_servico(url + (manifest.healthcheck or "/"))
+            if erro is not None:
+                return ResultadoJornada(
+                    FALHOU,
+                    motivo=f"a aplicação não subiu com o run.json ({erro})",
+                    saida=_cauda(sandbox.logs()),
+                )
+            env_teste[VAR_URL] = url
+            preparar_cliente_http(sandbox, comando, env or None)
+        res = sandbox.exec(comando, timeout=_TIMEOUT_JORNADA, env=env_teste or None)
+        logs_servico = sandbox.logs()
     finally:
         sandbox.cleanup()
 
     saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
     testes = _testes_da_saida(saida)
     falhas = [t["nodeid"] for t in testes if t["outcome"] in ("falhou", "erro")]
+    if falhas and logs_servico:
+        # O traceback do servidor (ex.: 500 no upload) é o que explica a falha.
+        saida = f"{saida}\n\n--- log do servidor (final) ---\n{logs_servico[-2500:]}"
     if res.timed_out:
         return ResultadoJornada(FALHOU, motivo="tempo limite", testes=testes, falhas=falhas, saida=_cauda(saida))
     if res.exit_code == 0 and testes and not falhas:
