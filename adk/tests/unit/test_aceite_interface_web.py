@@ -526,7 +526,8 @@ def _relatorio_de_reparo(tmp_path, saida, *, iteracao=2, task="TASK-001"):
     caminho.write_text(json.dumps({
         "work_item_id": task, "iteration": iteracao,
         "stages": [{"stage": "testes_automatizados", "evidence": {"resultados": [
-            {"comando": f"venv/bin/python -m pytest -v {_ARQ_UI}", "exit_code": 1, "saida_tail": saida},
+            {"comando": f"venv/bin/python -m pytest -v {_ARQ_UI}", "exit_code": 1, "saida_tail": saida,
+             "aceite_independente": True},
         ]}}],
     }))
     return str(caminho)
@@ -702,3 +703,29 @@ def test_coder_e_instruido_a_nao_corrigir_notas_tecnicas():
     from src.agents.workflow_coding_review.coder.prompt import instruction
 
     assert "`notas_tecnicas`" in instruction and "NÃO gaste a rodada com elas" in instruction
+
+
+def test_reparo_ignora_o_arquivo_rodado_pela_suite_do_coder(ws, tmp_path):
+    caminho = tmp_path / "r.json"
+    caminho.write_text(json.dumps({
+        "work_item_id": "TASK-001", "iteration": 1,
+        "stages": [{"stage": "testes_automatizados", "evidence": {"resultados": [
+            {"comando": f"pytest --ignore=tests/acceptance {_ARQ_UI}", "exit_code": 1, "nao_bloqueante": True,
+             "saida_tail": "E       fixture 'page' not found"},
+        ]}}],
+    }))
+    assert ws.modulo.gate._reparo_pendente({"report_path": str(caminho)}, "TASK-001", {"arquivos": [_ARQ_UI]}) is None
+
+
+def test_rodada_com_erro_do_proprio_teste_nao_conta_para_o_teto(ws, ligada, tmp_path, monkeypatch):
+    from src.agents.workflow_coding_review.executor import agent as executor
+
+    ai.gravar_mapa(ws.tasks, "TASK-001", _ARQ_UI, {"CA-02": [f"{_ARQ_UI}::b"]})
+    erro = "E   AttributeError: 'PosixPath' object has no attribute 'split'"
+    state = {"task_id": "TASK-001", "report_path": _relatorio_de_reparo(tmp_path, erro)}
+    assert executor._teste_a_reparar(state) is True
+
+    produto = {"task_id": "TASK-001", "report_path": _relatorio_de_reparo(tmp_path, "E   TimeoutError: x")}
+    assert executor._teste_a_reparar(produto) is False
+    esgotado = {**state, "aceite_reparos": {"TASK-001": [7, 8]}}
+    assert executor._teste_a_reparar(esgotado) is False

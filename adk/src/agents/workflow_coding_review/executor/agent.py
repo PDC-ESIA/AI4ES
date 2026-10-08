@@ -100,6 +100,21 @@ def _como_content(report: ErrorReport) -> types.Content:
     )
 
 
+def _teste_a_reparar(state) -> bool:
+    """O teste protegido da task falhou por erro dele mesmo, com reparo disponível?"""
+    if not aceite_independente():
+        return False
+    from shared.tools.coding_tools.aceite_independente import ler_mapa
+
+    from ..acceptance.agent import AceiteIndependenteGate
+
+    task_id = state.get("task_id")
+    if not isinstance(task_id, str):
+        return False
+    mapa = ler_mapa(get_agent_workspace("cr_context_engineer"), task_id)
+    return AceiteIndependenteGate._reparo_pendente(state, task_id, mapa) is not None
+
+
 def _so_o_que_bloqueia(estagio: dict, notas: list[str]) -> dict:
     """Evidência do estágio sem o que é técnico (anotado, não bloqueia).
 
@@ -599,7 +614,14 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
     )
     motivo = decisao.motivo if decisao.parar else None
     if motivo is None and (aceite_independente() or jornada()):
-        motivo = registrar_protegidos(state, protegidos_falharam(exec_report))
+        if _teste_a_reparar(state):
+            # Falha do PRÓPRIO teste protegido: o coder não pode consertá-la e o
+            # autor a repara na próxima rodada (gate de aceite). Na 14ª
+            # validação o erro do teste só apareceu na 3ª rodada — quando a tela
+            # passou a existir — e o teto fechou a task antes do reparo.
+            logger.info("[EXECUTOR] teste protegido com erro próprio: rodada fora do teto.")
+        else:
+            motivo = registrar_protegidos(state, protegidos_falharam(exec_report))
     if motivo is None:
         return None
 

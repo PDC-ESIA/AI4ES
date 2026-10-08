@@ -462,6 +462,10 @@ class AceiteIndependenteGate(BaseAgent):
                 saida = str(resultado.get("saida_tail") or "")
                 if (
                     arquivo
+                    # Só a execução protegida: o coder às vezes põe o arquivo no
+                    # próprio `run.json`, onde roda sem navegador ("fixture
+                    # 'page' not found") — isso não é erro do teste.
+                    and resultado.get("aceite_independente")
                     and resultado.get("exit_code") not in (0, None)
                     and erro_do_proprio_teste(saida)
                 ):
