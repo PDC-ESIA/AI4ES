@@ -1,6 +1,6 @@
 # Benchmark SWE-bench Verified — loop coder → executor
 
-- **Gerado em:** 2026-10-05T19:32:25.518699+00:00
+- **Gerado em:** 2026-10-08T22:22:48.709522+00:00
 - **Modelo:** `github_copilot/gemini-3.7-flash`
 - **Instâncias:** 26 (seed 42, limit 30)
 - **Dataset:** `SWE-bench/SWE-bench_Verified` @ `78f471bf655a`
@@ -13,12 +13,12 @@
 
 ## Métrica 1 — Taxa de resolução (harness oficial)
 
-- **Resolvidas:** 19/26 (73.1%) — IC 95%: [53.9%, 86.3%]
+- **Resolvidas:** 20/26 (76.9%) — IC 95%: [58.0%, 89.0%]
 
 | Status no SWE-bench | Instâncias |
 | ------------------- | ---------- |
-| resolved | 19 |
-| unresolved | 7 |
+| resolved | 20 |
+| unresolved | 6 |
 
 ## Métrica 2 — Rodadas do loop e motivo de parada
 
@@ -43,11 +43,11 @@ Instâncias com gabarito conhecido: 26 (fora da matriz: 0, das quais 0 excluída
 | | Resolvida (SWE-bench) | Não resolvida |
 | --- | --- | --- |
 | **Validador aprovou** | 19 | 5 (falso positivo) |
-| **Validador não aprovou** | 0 (falso negativo) | 2 |
+| **Validador não aprovou** | 1 (falso negativo) | 1 |
 
 - **Falsos positivos entre as aprovações:** 5/24 (20.8%) — IC 95%: [9.2%, 40.5%]
 - **Precisão do validador:** 19/24 (79.2%) — IC 95%: [59.5%, 90.8%]
-- **Recall do validador:** 19/19 (100.0%) — IC 95%: [83.2%, 100.0%]
+- **Recall do validador:** 19/20 (95.0%) — IC 95%: [76.4%, 99.1%]
 - **Instâncias com falso positivo:** django__django-11400, django__django-11734, django__django-14034, matplotlib__matplotlib-20859, pylint-dev__pylint-7080
 - **Aceitas com ressalvas pelo sistema** (validador reprovou, política aceitou): 0, das quais 0 resolvidas
 
@@ -72,7 +72,7 @@ Com o patch e os testes oficiais aplicados, o harness do executor deu sucesso em
 
 | Repositório | Instâncias | Resolvidas | Aprovadas pelo validador |
 | ----------- | ---------- | ---------- | ------------------------ |
-| django/django | 13 | 8 | 11 |
+| django/django | 13 | 9 | 11 |
 | astropy/astropy | 4 | 4 | 4 |
 | scikit-learn/scikit-learn | 4 | 4 | 4 |
 | matplotlib/matplotlib | 1 | 0 | 1 |
@@ -107,7 +107,7 @@ Com o patch e os testes oficiais aplicados, o harness do executor deu sucesso em
 | django__django-11400 | 3 | aprovacao_do_validador (aprovado) | aprovado | unresolved | 3 |
 | django__django-11532 | 2 | aprovacao_do_validador (aprovado) | aprovado | resolved | 1 |
 | django__django-11734 | 2 | aprovacao_do_validador (aprovado) | aprovado | unresolved | 1 |
-| django__django-12125 | 4 | politica_de_progresso (bloqueado_sem_alteracao_arquivos) | reprovado | unresolved | 2 |
+| django__django-12125 | 4 | politica_de_progresso (bloqueado_sem_alteracao_arquivos) | reprovado | resolved | 2 |
 | django__django-13158 | 1 | aprovacao_do_validador (aprovado) | aprovado | resolved | 1 |
 | django__django-13401 | 1 | aprovacao_do_validador (aprovado) | aprovado | resolved | 1 |
 | django__django-13417 | 1 | aprovacao_do_validador (aprovado) | aprovado | resolved | 2 |
@@ -128,7 +128,7 @@ Com o patch e os testes oficiais aplicados, o harness do executor deu sucesso em
 
 ## Como ler estes números
 
-- **Amostra pequena:** com 30 instâncias, cada uma vale 3,3 pontos percentuais; compare runs pelo intervalo de confiança, não pela taxa pontual.
+- **Amostra pequena:** com 26 instâncias, cada uma vale 3,8 pontos percentuais; compare runs pelo intervalo de confiança, não pela taxa pontual.
 - **Métrica 1 mede o loop inteiro:** depende mais do coder (sem ferramenta de busca, lendo arquivos inteiros) do que do executor.
 - **Métrica 3 mede o sinal de parada:** um falso positivo significa que a suíte do coder passou e o bug continuou — testes fracos ou ausentes, ou um validador permissivo. Os qualificadores ajudam a separar os casos.
 - **O gabarito também erra:** os testes oficiais só cobrem o que o PR original testou. Revise à mão as discordâncias da métrica 3.

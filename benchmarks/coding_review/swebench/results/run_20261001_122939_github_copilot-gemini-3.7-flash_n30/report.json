@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T19:32:25.518699+00:00",
+  "generated_at": "2026-10-08T22:22:48.709522+00:00",
   "dataset": {
     "repo_id": "SWE-bench/SWE-bench_Verified",
     "revision": "78f471bf655a3137b2e8a75af1501690ec009ec3"
@@ -68,7 +68,7 @@
     "swebench_version": "5.0.2",
     "run_id": "run_20261001_122939_github_copilot-gemini-3.7-flash_n30",
     "returncode": 0,
-    "duracao_s": 41.82,
+    "duracao_s": 88.88,
     "comando": [
       "/home/walisson/AI4ES/benchmarks/coding_review/swebench/.venv-swebench/bin/python",
       "-m",
@@ -131,26 +131,26 @@
   "metricas": {
     "n_instancias": 26,
     "metrica_1_resolucao": {
-      "k": 19,
+      "k": 20,
       "n": 26,
-      "taxa": 0.7308,
+      "taxa": 0.7692,
       "ic95": [
-        0.5392,
-        0.863
+        0.5795,
+        0.8897
       ],
       "por_status": {
-        "resolved": 19,
-        "unresolved": 7
+        "resolved": 20,
+        "unresolved": 6
       },
       "causas_nao_resolvidas": {},
       "excluidas_gold": [],
       "sem_exclusoes_gold": {
-        "k": 19,
+        "k": 20,
         "n": 26,
-        "taxa": 0.7308,
+        "taxa": 0.7692,
         "ic95": [
-          0.5392,
-          0.863
+          0.5795,
+          0.8897
         ]
       }
     },
@@ -188,8 +188,8 @@
       "matriz": {
         "vp": 19,
         "fp": 5,
-        "fn": 0,
-        "vn": 2
+        "fn": 1,
+        "vn": 1
       },
       "com_gabarito": 26,
       "sem_gabarito": 0,
@@ -223,11 +223,11 @@
       },
       "recall": {
         "k": 19,
-        "n": 19,
-        "taxa": 1.0,
+        "n": 20,
+        "taxa": 0.95,
         "ic95": [
-          0.8318,
-          1.0
+          0.7639,
+          0.9911
         ]
       },
       "aprovacoes_qualificadas": {
@@ -244,7 +244,7 @@
     "por_repositorio": {
       "django/django": {
         "n": 13,
-        "resolvidas": 8,
+        "resolvidas": 9,
         "aprovadas": 11
       },
       "astropy/astropy": {
@@ -1556,9 +1556,9 @@
         ]
       },
       "grading": {
-        "status": "unresolved",
-        "resolvido": false,
-        "patch_aplicado": false,
+        "status": "resolved",
+        "resolvido": true,
+        "patch_aplicado": true,
         "detalhe": "",
         "causa": null
       },
