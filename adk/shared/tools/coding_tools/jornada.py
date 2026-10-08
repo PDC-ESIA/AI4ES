@@ -44,9 +44,63 @@ ARQUIVO_CONFTEST = f"{PASTA_JORNADA}/conftest.py"
 #     htmx com 500. Status esperados num teste: @pytest.mark.permite_status(422).
 CONFTEST_JORNADA = '''"""Gerado pelo pipeline (protegido): fixtures da jornada de produtos web."""
 import os
+import struct
+import uuid
+import zlib
 from urllib.parse import urlparse
 
 import pytest
+
+
+# ── Helpers determinísticos (use-os em vez de reescrever) ────────────────
+
+
+@pytest.fixture
+def nome_unico():
+    """`nome_unico("Ensaio")` -> "Ensaio 1a2b3c4d": dado único por teste (o
+    servidor é compartilhado entre testes e tasks)."""
+
+    def _gerar(prefixo="teste"):
+        return f"{prefixo} {uuid.uuid4().hex[:8]}"
+
+    return _gerar
+
+
+def _png(largura, altura, cor):
+    linha = b"\\x00" + bytes(cor) * largura
+    bruto = zlib.compress(linha * altura)
+
+    def bloco(tipo, dados):
+        return struct.pack(">I", len(dados)) + tipo + dados + struct.pack(
+            ">I", zlib.crc32(tipo + dados) & 0xFFFFFFFF
+        )
+
+    cabecalho = struct.pack(">IIBBBBB", largura, altura, 8, 2, 0, 0, 0)
+    return b"\\x89PNG\\r\\n\\x1a\\n" + bloco(b"IHDR", cabecalho) + bloco(b"IDAT", bruto) + bloco(b"IEND", b"")
+
+
+@pytest.fixture
+def imagens(tmp_path):
+    """`imagens(3, "jpeg", (1200, 800))` -> lista de caminhos de imagens válidas
+    e distintas, prontas para `set_input_files` ou para upload no TestClient.
+    JPEG exige Pillow; PNG funciona sem dependência nenhuma."""
+
+    def _gerar(n=1, formato="jpeg", tamanho=(64, 48)):
+        formato = formato.lower().replace("jpg", "jpeg")
+        caminhos = []
+        for i in range(n):
+            cor = ((40 * i) % 256, (90 + 30 * i) % 256, (160 + 50 * i) % 256)
+            destino = tmp_path / f"foto_{i + 1:03d}.{'jpg' if formato == 'jpeg' else formato}"
+            if formato == "png":
+                destino.write_bytes(_png(tamanho[0], tamanho[1], cor))
+            else:
+                from PIL import Image
+
+                Image.new("RGB", tamanho, cor).save(destino, formato.upper())
+            caminhos.append(destino)
+        return caminhos
+
+    return _gerar
 
 
 def pytest_configure(config):

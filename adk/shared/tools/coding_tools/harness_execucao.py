@@ -880,6 +880,11 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
 
     ignorar = _pastas_protegidas(ctx)
     legivel = aceite_independente() or jornada() or coder_contexto_enxuto()
+    # Com aceite independente e o mapa da task, quem decide é a homologação: a
+    # suíte do coder é verificação técnica e nunca reprova — vira nota. Na 12ª
+    # validação um teste de desempenho do próprio coder (50 miniaturas num
+    # prazo) travou uma task com os critérios todos atendidos.
+    suite_tecnica = aceite_independente() and bool((ctx.mapa_independente or {}).get("por_criterio"))
     for cmd in ctx.manifest.test:
         cmd = _sem_pastas_protegidas(cmd, ignorar, legivel=legivel)
         res = ctx.sandbox.exec(cmd, timeout=_TESTS_TIMEOUT, env=env)
@@ -897,8 +902,11 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
                 # critérios de aceite.
                 "testes": _testes_da_saida(saida),
                 "saida_tail": saida[-2000:],
+                **({"nao_bloqueante": True} if suite_tecnica else {}),
             }
         )
+        if suite_tecnica:
+            continue
         if res.timed_out:
             any_timeout = True
         elif res.exit_code not in (0, None):

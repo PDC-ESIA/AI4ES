@@ -573,3 +573,86 @@ async def test_gate_invoca_o_autor_em_modo_reparo_mesmo_com_mapa_completo(ws, li
     # A mesma rodada não dispara outro reparo.
     chamadas, _ = await _rodar_gate(ws.modulo, {**estado, "aceite_reparos": {"TASK-001": [2]}})
     assert chamadas == []
+
+
+# ── Helpers determinísticos, convenção de id, suíte do coder (12ª validação) ─
+
+
+def test_helpers_do_conftest_geram_dados_unicos_e_imagens_validas(tmp_path):
+    jn.instalar_conftest(tmp_path, ai.PASTA_ACEITE)
+    (tmp_path / ai.PASTA_ACEITE / "test_h.py").write_text(
+        "def test_helpers(nome_unico, imagens):\n"
+        "    a, b = nome_unico('Ensaio'), nome_unico('Ensaio')\n"
+        "    assert a != b and a.startswith('Ensaio ')\n"
+        "    pngs = imagens(3, 'png', (10, 8))\n"
+        "    assert len(pngs) == 3 and len({p.read_bytes() for p in pngs}) == 3\n"
+        "    assert all(p.read_bytes().startswith(b'\\x89PNG') for p in pngs)\n"
+    )
+    res = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", ai.PASTA_ACEITE],
+        cwd=tmp_path, capture_output=True, text=True, env={"PATH": "/usr/bin:/bin"},
+    )
+    assert "1 passed" in res.stdout, res.stdout + res.stderr
+
+
+def test_png_do_helper_abre_no_pillow(tmp_path):
+    pil = pytest.importorskip("PIL.Image")
+    ns: dict = {}
+    codigo = jn.CONFTEST_JORNADA
+    exec(compile(codigo, "conftest", "exec"), ns)  # noqa: S102 — texto do próprio pipeline
+    (tmp_path / "x.png").write_bytes(ns["_png"](12, 7, (1, 2, 3)))
+    with pil.open(tmp_path / "x.png") as img:
+        assert img.size == (12, 7) and img.getpixel((0, 0)) == (1, 2, 3)
+
+
+def test_salvar_o_arquivo_principal_instala_os_helpers(ws):
+    ws.modulo.tool_salvar_teste_aceite("def test_CA_01_x():\n    assert 1\n", _ctx("api_service"))
+    assert (ws.coder / ai.PASTA_ACEITE / "conftest.py").read_text() == jn.CONFTEST_JORNADA
+
+
+def test_trilha_web_fixa_o_helper_de_identificador():
+    from shared.execution.trilhas import TRILHAS
+
+    web = next(t for t in TRILHAS if t.id == "python-web")
+    notas = web.notas.format(python=web.python)
+    assert "app/ids.py" in notas and "str(uuid.uuid4())" in notas
+
+
+def test_prompt_proibe_exigir_formato_nao_pedido():
+    from src.agents.workflow_coding_review.acceptance.prompt import instruction
+
+    assert "Não exija FORMATO que o critério não especifica" in instruction
+    assert "nome_unico" in instruction and "imagens(" in instruction
+
+
+def _cenario_suite(tmp_path, *, com_mapa: bool):
+    coder, execution, tasks = th._dirs(tmp_path)
+    th._write_task(tasks, criteria=[{"id": "CA-01", "description": "pela tela", "automatable": True}])
+    th._write_manifest(coder, th._manifest_command(test=["venv/bin/python -m pytest -v tests/t.py"]))
+    (coder / ai.PASTA_ACEITE).mkdir(parents=True)
+    (coder / _ARQ).write_text("def test_CA_01_a():\n    pass\n")
+    if com_mapa:
+        ai.gravar_mapa(tasks, "TASK-001", _ARQ, {"CA-01": [f"{_ARQ}::test_CA_01_a"]})
+    sandbox = th.FakeSandbox(exec_results={
+        _ARQ: CommandResult(exit_code=0, stdout=f"{_ARQ}::test_CA_01_a PASSED\n1 passed", stderr=""),
+        "tests/t.py": CommandResult(exit_code=1, stdout="tests/t.py::test_prazo FAILED\n1 failed", stderr=""),
+    })
+    return th._run("TASK-001", coder, execution, tasks, sandbox)
+
+
+def test_suite_do_coder_vira_nota_com_homologacao_decidida(ligada, tmp_path):
+    from src.agents.implementation_validator.agent import montar_veredito
+    from src.agents.implementation_validator.schemas import VerdictStatus
+
+    relatorio = _cenario_suite(tmp_path, com_mapa=True)
+    testes = next(s for s in relatorio["stages"] if s["stage"] == "testes_automatizados")
+    assert testes["status"] == "sucesso"
+    veredito = montar_veredito(relatorio)
+    assert veredito.status == VerdictStatus.APROVADO
+    assert "suíte do coder com falha (1 falharam" in veredito.summary
+
+
+def test_sem_mapa_a_suite_do_coder_continua_reprovando(ligada, tmp_path):
+    relatorio = _cenario_suite(tmp_path, com_mapa=False)
+    testes = next(s for s in relatorio["stages"] if s["stage"] == "testes_automatizados")
+    assert testes["status"] == "falha"

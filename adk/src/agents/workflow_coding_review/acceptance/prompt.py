@@ -88,10 +88,20 @@ arquivo correspondente e rode de novo. Não reescreva os outros arquivos.
   estado como está — o arquivo roda sozinho, numa cópia limpa do projeto — e
   NÃO apague arquivos do projeto (banco, pastas) nos testes. Não use
   `importlib.reload` nem remova módulos de `sys.modules`. Gere dados de teste
-  no próprio teste (ex.: imagem com Pillow em memória).
+  com os helpers `nome_unico` e `imagens` (abaixo).
 - Cada teste com asserção real sobre o comportamento. Nada de `assert True`,
   teste que só importa o módulo, ou `pytest.skip` para fugir do critério.
 - Não teste o que o critério não pede, nem critérios de outras tasks.
+- Não exija FORMATO que o critério não especifica: "identificador único"
+  não é "UUID com hífens"; "data" não é "dd/mm/aaaa". Na regressão, um teste
+  que exigia hífens no UUID reprovou a task seguinte quando a exibição mudou
+  — sem defeito no que o critério pedia. Afirme a propriedade pedida (único,
+  presente, consultável), não a forma.
+- Helpers prontos (fixtures do conftest do pipeline — não os reescreva):
+  `nome_unico("Ensaio")` devolve um texto único por teste;
+  `imagens(3, "jpeg", (1200, 800))` devolve caminhos de imagens válidas
+  (`"png"` dispensa Pillow). Peça-os como parâmetro do teste:
+  `def test_CA_01_x(page, nome_unico, imagens):`.
 
 # CRITÉRIOS DE INTERFACE (produto web) — SEMPRE PELO NAVEGADOR
 Em aplicação web, o usuário só usa o que a interface oferece; endpoint
@@ -152,19 +162,16 @@ aplicação no ar:
   automaticamente (o pipeline vigia as respostas); um status de erro esperado
   se declara com `@pytest.mark.permite_status(422)`.
 - O servidor é compartilhado entre testes e tasks: crie seus próprios dados
-  com nomes únicos (`uuid.uuid4().hex[:6]`) e não presuma listas vazias.
-- Arquivos para upload: gere no teste (Pillow em `tmp_path`) e envie com
-  `set_input_files`.
+  com `nome_unico(...)` e não presuma listas vazias.
+- Arquivos para upload: `imagens(n, formato)` e `set_input_files(...)`.
 
 Exemplo:
 ```python
-import uuid
-
 from playwright.sync_api import Page, expect
 
 
-def test_CA_02_cria_ensaio_pela_interface(page: Page):
-    titulo = f"Ensaio {uuid.uuid4().hex[:6]}"
+def test_CA_02_cria_ensaio_pela_interface(page: Page, nome_unico):
+    titulo = nome_unico("Ensaio")
     page.goto("/")
     page.get_by_test_id("link-novo-ensaio").click()
     formulario = page.get_by_test_id("form-novo-ensaio")

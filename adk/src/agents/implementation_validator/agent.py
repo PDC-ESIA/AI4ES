@@ -304,6 +304,21 @@ def _notas_tecnicas(report: dict) -> str:
         for e in report.get("criteria_evidence") or []
         if isinstance(e, dict) and e.get("tecnico") and e.get("outcome") != "atendido"
     ]
+    for estagio in report.get("stages") or []:
+        if not isinstance(estagio, dict) or estagio.get("stage") != "testes_automatizados":
+            continue
+        for resultado in (estagio.get("evidence") or {}).get("resultados") or []:
+            if (
+                isinstance(resultado, dict)
+                and resultado.get("nao_bloqueante")
+                and (resultado.get("timed_out") or resultado.get("exit_code") not in (0, None))
+            ):
+                resumo = resultado.get("resumo") or {}
+                notas.append(
+                    "suíte do coder com falha "
+                    f"({resumo.get('falharam', 0)} falharam, {resumo.get('erros', 0)} erros"
+                    f"{', tempo esgotado' if resultado.get('timed_out') else ''})"
+                )
     return f" Notas técnicas (não bloqueiam): {'; '.join(notas)}." if notas else ""
 
 

@@ -78,7 +78,11 @@ _NOTAS_PYTHON_WEB = (
   `<MEDIA_DIR>/ensaio/<id>/originals`. Nunca grave na raiz do sistema. Os
   arquivos gravados precisam ser servidos (StaticFiles) pela mesma pasta.
 - Sem configuração nenhuma, o produto tem de funcionar: o teste de jornada
-  sobe a aplicação pelo `run` do `run.json` e a usa como o usuário."""
+  sobe a aplicação pelo `run` do `run.json` e a usa como o usuário.
+- Identificadores: um helper só, `app/ids.py` com `def novo_id() -> str:
+  return str(uuid.uuid4())` (UUID com hífens), usado por TODO modelo e rota.
+  Nunca gere id de outro jeito (`.hex`, inteiro aleatório) nem mude o formato
+  entre tasks: telas e testes de tasks anteriores dependem dele."""
 )
 
 TRILHAS: tuple[Trilha, ...] = (

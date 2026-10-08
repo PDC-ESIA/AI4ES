@@ -190,6 +190,8 @@ def tool_salvar_teste_aceite(conteudo: str, tool_context: ToolContext) -> dict:
         return {"sucesso": False, "erro": "workdir do run.json fora do workspace."}
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(conteudo, encoding="utf-8")
+    # Fixtures do pipeline (`nome_unico`, `imagens`) também para este arquivo.
+    instalar_conftest(coder_dir / _workdir(coder_dir), PASTA_ACEITE)
     gravar_mapa(
         get_agent_workspace("cr_context_engineer"),
         task_id,
