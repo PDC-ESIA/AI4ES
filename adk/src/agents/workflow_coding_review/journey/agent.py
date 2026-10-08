@@ -58,6 +58,30 @@ _PRODUTOS_WEB = frozenset({"web_app"})
 # No modo navegador, nada de atalhos que pulam a interface.
 _MODULOS_PROIBIDOS = ("httpx", "requests", "urllib", "aiohttp", "fastapi", "starlette", "flask", "app")
 
+# Métodos do Playwright que executam ou injetam código na página, ou desviam
+# requisições. Na oitava validação o autor, impedido de usar httpx, injetou um
+# <input type=file> que a interface não tinha (`page.evaluate`) e fez o upload
+# por `fetch` — o mesmo atalho, por dentro do navegador. O usuário não roda
+# JavaScript no console para usar o produto.
+_METODOS_PROIBIDOS = frozenset(
+    {
+        "evaluate",
+        "evaluate_handle",
+        "eval_on_selector",
+        "eval_on_selector_all",
+        "evaluate_all",
+        "add_script_tag",
+        "add_init_script",
+        "wait_for_function",
+        "set_content",
+        "route",
+        "route_from_har",
+        "expose_function",
+        "expose_binding",
+        "dispatch_event",
+    }
+)
+
 
 def modo_da_jornada(product_type: Any) -> str:
     return MODO_NAVEGADOR if str(product_type or "").strip().lower() in _PRODUTOS_WEB else MODO_HTTP
@@ -90,6 +114,15 @@ def violacoes_do_modo_navegador(arvore: ast.AST) -> list[str]:
         if isinstance(no, ast.Attribute) and no.attr == "request" and isinstance(no.value, ast.Name):
             erros.append(
                 f"`{no.value.id}.request` faz HTTP direto, sem passar pela interface."
+            )
+        if (
+            isinstance(no, ast.Call)
+            and isinstance(no.func, ast.Attribute)
+            and no.func.attr in _METODOS_PROIBIDOS
+        ):
+            erros.append(
+                f"`.{no.func.attr}(...)` executa ou injeta código na página; a jornada "
+                "só clica, preenche e lê o que a interface mostra."
             )
         if (
             isinstance(no, ast.Call)

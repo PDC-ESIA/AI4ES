@@ -463,6 +463,18 @@ def test_jornada_01_cria(page: Page):
         ("def test_j(page):\n    page.goto('/ensaios/1/upload')\n", "só pode abrir a página inicial"),
         ("def test_j(page, base_url):\n    page.goto(base_url + '/x')\n", "só pode abrir a página inicial"),
         ("import httpx\ndef test_j():\n    httpx.get('x')\n", "fixture `page`"),
+        (
+            "def test_j(page):\n    page.goto('/')\n"
+            "    page.evaluate(\"() => document.body.appendChild(document.createElement('input'))\")\n",
+            "`.evaluate(...)`",
+        ),
+        (
+            "def test_j(page):\n    page.goto('/')\n"
+            "    page.locator('#x').evaluate('e => e.click()')\n",
+            "`.evaluate(...)`",
+        ),
+        ("def test_j(page):\n    page.goto('/')\n    page.route('**/x', lambda r: r.abort())\n", "`.route(...)`"),
+        ("def test_j(page):\n    page.goto('/')\n    page.wait_for_function('1')\n", "`.wait_for_function(...)`"),
     ],
 )
 def test_modo_navegador_recusa_atalhos_que_pulam_a_interface(codigo, trecho):

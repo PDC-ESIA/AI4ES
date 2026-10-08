@@ -61,7 +61,11 @@ def test_jornada_01_cria_ensaio_e_envia_fotos(page: Page):
   upload, de selecionar, de criar álbum), o teste DEVE falhar ali — é
   justamente o que a jornada existe para mostrar.
 - NÃO use `httpx`, `requests`, `page.request`, TestClient nem importe a
-  aplicação: a ferramenta de salvar recusa.
+  aplicação, e NÃO execute JavaScript na página (`evaluate`, `route`,
+  `add_script_tag`, `wait_for_function`...): nada de criar elementos que a
+  interface não tem nem de chamar endpoints por `fetch`. A ferramenta de
+  salvar recusa. Para ler dados, use o que a página MOSTRA
+  (`get_by_text`, `locator(...).inner_text()`, `expect(...)`).
 - Prefira localizadores do que o usuário vê (`get_by_role`, `get_by_label`,
   `get_by_text`); use `locator("css")` quando não houver rótulo. Para esperar
   o resultado de ações assíncronas (htmx), use `expect(...)`, nunca `sleep`.
