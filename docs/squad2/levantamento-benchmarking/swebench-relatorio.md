@@ -54,11 +54,13 @@ O `workflow_coding_review` implementa código num laço com três papéis: o `cr
 
 > **Leia antes de citar qualquer número.** A linha de base cobre **26 das 30 instâncias sorteadas**: as outras 4 não foram refeitas após uma correção do benchmark, por falta de créditos do LLM. É **uma execução de um único modelo**, com amostra pequena. A taxa de resolução tende a estar **inflada**, porque saíram da amostra instâncias que o loop resolvia pior; o efeito sobre a precisão do validador é incerto. No primeiro passe, com as 30 instâncias e antes da correção do teto, o resultado era 20/30 (66,7%). Os dois números não são comparáveis.
 
+> **Pendências frente à #417.** A issue pede "um run completo com **30 instâncias**" e uma linha de base **reproduzível**. Este baseline cobre 26 de 30 e não é reproduzível a partir de um único commit limpo (ver B9). Por isso o critério de aceite "run completo com 30 instâncias" **não está atendido** até as 4 instâncias restantes serem rodadas, idealmente num run único a partir de um commit limpo (ver próximos passos).
+
 O que os números sustentam, com essas ressalvas:
 
 - O loop resolveu cerca de três em cada quatro instâncias, na maioria das vezes na primeira rodada.
 - Quando o validador aprovou, errou uma vez em cada cinco. Ele aprovou 24 das 26 instâncias e deixou de aprovar só 2: uma não resolvida e a `django-12125`, que o harness oficial resolve (ver 4.2), então o recall (95%) discrimina pouco.
-- A política de progresso foi acionada em 2 casos, ambos em Django: um não resolvido (`django-16032`) e a `django-12125`, que o harness oficial resolve (o coder acertou o código, mas não atualizou um teste existente que a correção torna obsoleto; ver 4.2). Nenhuma instância chegou ao teto de 20 rodadas.
+- A política de progresso foi acionada em 2 casos, ambos em Django: um não resolvido (`django-16032`) e a `django-12125`, que o harness oficial resolve (o coder acertou o código, mas a suíte dele ficou vermelha, provavelmente por um teste existente que a correção torna obsoleto; ver 4.2). Nenhuma instância chegou ao teto de 20 rodadas.
 - O ambiente do executor reprova até a solução oficial em 4 das 30 instâncias, o que limita o teto de aprovações confiáveis a cerca de 26 em 30.
 
 **Modelo:** o `gemini-3.7-flash` foi escolhido por restrição de contexto e custo, depois que o `gpt-4` (32k) e o `gpt-4.1` (128k, bloqueado pelo rate limit do Copilot) não serviram; não é um ranking de modelos (ver [4.6](#46-por-que-o-gemini-37-flash-foi-o-modelo-da-linha-de-base)).
@@ -696,16 +698,19 @@ poder de discriminação: o validador aprova quase tudo.
 
 **O único falso negativo (`django-12125`).** O coder acertou o código (o patch final
 aplica e resolve a instância, com 0 falhas em `FAIL_TO_PASS` e `PASS_TO_PASS`,
-confirmado em 4 avaliações oficiais: 3 do autor, contando a regeração do run, e 1 do revisor), mas o comando de teste dele, o módulo
-`migrations` inteiro, ficou **vermelho nas 4 rodadas**. A causa é um teste existente,
-`test_deconstruct_class_arguments`, que falha com a correção certa: o patch oficial
-também o quebra, e o `test_patch` oficial o **altera** (move a classe do teste para o
-nível do módulo). O coder não atualizou esse teste, a suíte dele nunca ficou verde, o
-validador reprovou e a política de progresso encerrou o loop ao não haver mais
-alteração de arquivos. Ou seja, o "falso negativo" mede uma divergência de rótulo (o
-harness oficial substitui o arquivo de testes pelo seu, o que torna a entrega
-resolvida), e não necessariamente um erro de julgamento do validador diante de uma
-suíte vermelha. Detalhes e limites em
+confirmado em 4 avaliações oficiais: 3 do autor, contando a regeração do run, e 1 do
+revisor; só o último log do harness fica no disco), mas o comando de teste dele, o
+módulo `migrations` inteiro, ficou **vermelho nas 4 rodadas**. A causa **provável** é um
+teste existente, `test_deconstruct_class_arguments`: reproduzido na imagem oficial, sem
+as edições de teste do coder, ele falha com o patch do coder e **também com o oficial**,
+e o `test_patch` oficial o **altera** (move a classe do teste para o nível do módulo).
+O registro mostra que o coder alterou `tests/migrations/test_writer.py` (arquivo
+excluído do patch por colidir com o `test_patch`), mas **não se sabe o que ele mudou**,
+nem se o vermelho vinha só desse teste. O validador reprovou, e a política de progresso
+encerrou o loop ao não haver mais alteração de arquivos. Ou seja, o "falso negativo"
+provavelmente mede uma divergência de rótulo (o harness oficial substitui o arquivo de
+testes pelo seu, o que torna a entrega resolvida), e não necessariamente um erro de
+julgamento do validador diante de uma suíte vermelha. Detalhes e limites em
 [swebench-revisao-falsos-positivos.md](swebench-revisao-falsos-positivos.md), seção 9.
 
 Os testes e os patches dessas 5 instâncias foram **revisados à mão** e
@@ -795,7 +800,8 @@ resolve.
 4. **Execução única, um modelo, 26 instâncias.** Cada instância vale 3,8 pontos
    percentuais. Não há medida de variância entre execuções. Diferenças entre
    runs só valem se os intervalos de confiança não se sobrepõem.
-5. **O que o benchmark não cobre.** Mede o ramo "projeto existente" do
+5. **Pendências frente à #417.** O critério "run completo com 30 instâncias" **não está atendido** (o baseline cobre 26) e o run não é reproduzível de um único commit limpo (B9). Ver o aviso no Resumo executivo.
+6. **O que o benchmark não cobre.** Mede o ramo "projeto existente" do
    workflow (não a criação de projeto do zero) e só projetos Python.
 
 ### 4.6 Por que o `gemini-3.7-flash` foi o modelo da linha de base
@@ -1128,7 +1134,7 @@ a revisão dos falsos positivos só olhou instâncias que o validador **aprovou*
 
 - **Efeito:** a `django-12125` passou de "não resolvida" para **resolvida** (aplica,
   0 falhas em `FAIL_TO_PASS` e `PASS_TO_PASS`; reavaliada 3 vezes pelo autor e
-  uma pelo revisor). As resolvidas foram de 19/26 para 20/26 (73,1% para 76,9%) e o
+  uma pelo revisor; só o último log do harness fica no disco). As resolvidas foram de 19/26 para 20/26 (73,1% para 76,9%) e o
   recall do validador, de 19/19 para 19/20, porque ela é um falso negativo. Falsos
   positivos, rodadas e motivos de parada não mudaram.
 - **Correção:** `grading.invalidate_stale_reports` compara o `patch.diff` que o
@@ -1166,7 +1172,8 @@ a revisão dos falsos positivos só olhou instâncias que o validador **aprovou*
   amostras são pequenas.
 - A política de progresso foi acionada em 2 casos: em um o loop não resolvia o
   problema (`django-16032`); no outro (`django-12125`) o código estava certo e a suíte
-  do coder ficou vermelha por um teste existente que ele não atualizou. Não houve caso
+  do coder ficou vermelha, provavelmente por um teste existente que a correção torna
+  obsoleto. Não houve caso
   de `max_iterations`.
 
 **Próximos passos sugeridos:**
@@ -1175,8 +1182,8 @@ a revisão dos falsos positivos só olhou instâncias que o validador **aprovou*
    (ver [swebench-revisao-falsos-positivos.md](swebench-revisao-falsos-positivos.md))
    mostrou um rótulo instável, então a variância da correção oficial deve ser medida
    para as demais instâncias (a revisão só reavaliou uma).
-2. **Investigar o caso `django-12125`**: a suíte do coder fica vermelha por um teste
-   existente que a correção certa torna obsoleto. Vale checar se o loop consegue (ou
+2. **Investigar o caso `django-12125`**: a suíte do coder fica vermelha, provavelmente por
+   um teste existente que a correção certa torna obsoleto. Vale checar se o loop consegue (ou
    deveria) detectar que um teste falhando é consequência esperada da correção, em vez
    de encerrar por falta de progresso. É uma hipótese; a #417 só mede.
 3. **Completar as 4 instâncias** (ou ao menos as 3 mais baratas) quando o teto de

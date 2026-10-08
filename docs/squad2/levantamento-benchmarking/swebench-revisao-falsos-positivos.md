@@ -135,7 +135,7 @@ diferentes**: um provável rótulo instável (`20859`, que levaria a 4/24 = 16,7
 6,7% a 35,9%, se fosse corrigido) e soluções realmente erradas. O que os registros mostram é que a
 **evidência apresentada pelo coder era fraca ou mal direcionada**. Não é possível
 separar isso de um validador permissivo, porque a entrada que o validador recebeu não
-foi guardada (ver 4.5, 5.9, 6.9 e 8.9). A pergunta útil passa a ser não só "o validador
+foi guardada (ver 4.5, 5.9, 6.9 e 8.9). Há ainda um sexto caso fora dessas cinco: a `django-12125`, o único falso negativo do run (seção 9). A pergunta útil passa a ser não só "o validador
 erra?", mas "**o que o loop exige do coder como prova**?".
 
 ### 3.4 Hipóteses para trabalho futuro (fora do escopo da #417)
@@ -1025,16 +1025,22 @@ Ou seja, a correção certa quebra um teste existente: ele define uma classe **d
 próprio teste**, e a correção passa a serializar o nome qualificado
 (`...WriterTests.test_deconstruct_class_arguments.<locals>...`). O `test_patch` oficial
 **altera esse teste** (move a classe para o nível do módulo), e por isso o harness
-oficial o vê verde. O coder não atualizou o teste, então a suíte dele ficou vermelha nas
-4 rodadas. A edição do coder em `test_writer.py` (se houve) não pôde ser vista: o arquivo
-colide com o `test_patch` e é excluído do patch.
+oficial o vê verde.
+
+Esta reprodução usa o `test_writer.py` **original** da imagem, sem as edições do coder.
+O registro mostra que o coder **alterou** `tests/migrations/test_writer.py` (o arquivo
+colide com o `test_patch` e é excluído do patch), mas **o conteúdo da edição é
+desconhecido**: não se sabe se ele tentou atualizar esse teste, nem se o vermelho do
+loop vinha só dele. A explicação acima é, portanto, a **causa provável**, e não uma
+observação do loop.
 
 ### 9.3 Como ler isso
 
-- É o **inverso da `django-11400`** (seção 5): lá o coder alterou a expectativa de um
-  teste existente para a suíte ficar verde; aqui, a correção certa exigia alterar um
-  teste existente, o coder não o fez, e o loop ficou preso.
-- O "falso negativo" mede, em parte, uma **divergência de rótulo**: o harness oficial
+- Contraste possível com a `django-11400` (seção 5), como **hipótese**: lá o coder
+  alterou a expectativa de um teste existente e a suíte ficou verde; aqui, a correção
+  certa exigia alterar um teste existente e a suíte do coder ficou vermelha. Não dá
+  para afirmar que o coder deixou de fazer essa alteração (ver 9.2).
+- O "falso negativo" provavelmente mede, em parte, uma **divergência de rótulo**: o harness oficial
   substitui o arquivo de testes pelo seu. Diante de uma suíte vermelha por um teste
   que a correção torna obsoleto, reprovar é coerente com o que o validador via. Não é
   possível afirmar que o validador "errou".
