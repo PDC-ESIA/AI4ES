@@ -170,7 +170,10 @@ def fechar_linha_de_base(task_id: str, report_path: Optional[str]) -> None:
             continue
         for resultado in (estagio.get("evidence") or {}).get("resultados") or []:
             for teste in resultado.get("testes") or []:
-                if teste.get("nodeid") in proprios and teste.get("outcome") in ("falhou", "erro"):
+                nodeid = teste.get("nodeid")
+                # `test_x[chromium]` (pytest-playwright) é o `test_x` do mapa.
+                base = nodeid.split("[", 1)[0] if isinstance(nodeid, str) else nodeid
+                if base in proprios and teste.get("outcome") in ("falhou", "erro"):
                     falhos.add(teste["nodeid"])
     if not relatorio:
         # Sem relatório confiável, nada do arquivo é linha de base de sucesso.

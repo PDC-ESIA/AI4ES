@@ -13,6 +13,7 @@ páginas referenciam — e este módulo o executa no mesmo ambiente do harness
 
 from __future__ import annotations
 
+import ast
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -21,7 +22,10 @@ from typing import Optional
 from shared.execution.manifest import ManifestError, load_manifest
 from shared.execution.sandbox import create_sandbox
 from shared.execution.trilhas import ambiente_da_trilha
-from shared.tools.coding_tools.aceite_independente import comando_de_aceite
+from shared.tools.coding_tools.aceite_independente import (
+    comando_de_aceite,
+    e_arquivo_de_interface,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +33,9 @@ PASTA_JORNADA = "tests/journey"
 ARQUIVO_JORNADA = f"{PASTA_JORNADA}/test_jornada.py"
 ARQUIVO_CONFTEST = f"{PASTA_JORNADA}/conftest.py"
 
-# conftest da jornada de produtos web (Playwright). Gravado pelo pipeline na
-# pasta protegida: o coder não o edita, e ele vale para todo teste da jornada.
+# conftest dos testes de produto web pelo navegador (Playwright): a jornada e
+# os critérios de interface. Gravado pelo pipeline nas pastas protegidas: o
+# coder não o edita. Testes sem `page` (TestClient) não são afetados.
 #   - `base_url` vem de AI4ES_JORNADA_URL (o produto subido pelo run.json), e
 #     `page.goto("/")` resolve contra ela;
 #   - toda resposta do PRÓPRIO produto com 4xx/5xx e todo erro de JavaScript
@@ -58,12 +63,12 @@ def base_url():
 
 
 @pytest.fixture(autouse=True)
-def _recursos_do_produto(request, base_url):
+def _recursos_do_produto(request):
     if "page" not in request.fixturenames:
         yield
         return
     page = request.getfixturevalue("page")
-    host = urlparse(base_url).netloc
+    host = urlparse(request.getfixturevalue("base_url")).netloc
     marcador = request.node.get_closest_marker("permite_status")
     permitidos = set(marcador.args) if marcador else set()
     falhas = []
@@ -106,15 +111,100 @@ def limites_do_navegador() -> dict:
     return {"mem_bytes": sem_limite, "cpu_seconds": 600}
 
 
-def usa_navegador(codigo: str) -> bool:
-    """A jornada usa o Playwright (produto web navegado pela interface)?"""
-    return "playwright" in codigo
+def usa_navegador(codigo: str, arquivo_rel: str = "") -> bool:
+    """O arquivo navega pelo produto (Playwright)?
+
+    Os testes de interface do aceite são sempre de navegador, mesmo sem citar
+    o Playwright (usam só a fixture `page`).
+    """
+    return "playwright" in codigo or (bool(arquivo_rel) and e_arquivo_de_interface(arquivo_rel))
 
 
-def instalar_conftest(workdir: Path) -> None:
-    destino = workdir / ARQUIVO_CONFTEST
+def instalar_conftest(workdir: Path, pasta: str = PASTA_JORNADA) -> None:
+    destino = workdir / pasta / "conftest.py"
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(CONFTEST_JORNADA, encoding="utf-8")
+
+
+# No modo navegador, nada de atalhos que pulam a interface.
+_MODULOS_PROIBIDOS = ("httpx", "requests", "urllib", "aiohttp", "fastapi", "starlette", "flask", "app")
+
+# Métodos do Playwright que executam ou injetam código na página, ou desviam
+# requisições. Na oitava validação o autor, impedido de usar httpx, injetou um
+# <input type=file> que a interface não tinha (`page.evaluate`) e fez o upload
+# por `fetch` — o mesmo atalho, por dentro do navegador. O usuário não roda
+# JavaScript no console para usar o produto.
+_METODOS_PROIBIDOS = frozenset(
+    {
+        "evaluate",
+        "evaluate_handle",
+        "eval_on_selector",
+        "eval_on_selector_all",
+        "evaluate_all",
+        "add_script_tag",
+        "add_init_script",
+        "wait_for_function",
+        "set_content",
+        "route",
+        "route_from_har",
+        "expose_function",
+        "expose_binding",
+        "dispatch_event",
+    }
+)
+
+
+def violacoes_do_modo_navegador(arvore: ast.AST) -> list[str]:
+    """O que, num teste de produto web pelo navegador (jornada ou critério de
+    interface), pula a interface do produto.
+
+    Na sétima validação a jornada chamou os endpoints direto e passou, com um
+    produto sem tela de upload, sem botão de seleção e sem tela de álbum.
+    """
+    erros: list[str] = []
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Import):
+            nomes = [a.name for a in no.names]
+        elif isinstance(no, ast.ImportFrom):
+            nomes = [no.module or ""]
+        else:
+            nomes = []
+        for nome in nomes:
+            if nome.split(".")[0] in _MODULOS_PROIBIDOS:
+                erros.append(f"import de `{nome}`: teste de produto web usa só o navegador (`page`).")
+        if isinstance(no, ast.Attribute) and no.attr == "request" and isinstance(no.value, ast.Name):
+            erros.append(
+                f"`{no.value.id}.request` faz HTTP direto, sem passar pela interface."
+            )
+        if (
+            isinstance(no, ast.Call)
+            and isinstance(no.func, ast.Attribute)
+            and no.func.attr in _METODOS_PROIBIDOS
+        ):
+            erros.append(
+                f"`.{no.func.attr}(...)` executa ou injeta código na página; o teste "
+                "só clica, preenche e lê o que a interface mostra."
+            )
+        if (
+            isinstance(no, ast.Call)
+            and isinstance(no.func, ast.Attribute)
+            and no.func.attr == "goto"
+        ):
+            alvo = no.args[0] if no.args else None
+            if not (isinstance(alvo, ast.Constant) and alvo.value == "/"):
+                erros.append(
+                    "`page.goto(...)` só pode abrir a página inicial `\"/\"`; o resto se "
+                    "alcança clicando em links e botões, como o usuário faria."
+                )
+    usa_page = any(
+        isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and no.name.startswith("test_")
+        and any(a.arg == "page" for a in no.args.args)
+        for no in ast.walk(arvore)
+    )
+    if not usa_page:
+        erros.append("Nenhum teste recebe a fixture `page` do Playwright.")
+    return sorted(set(erros))
 
 _TIMEOUT_BUILD = 300
 _TIMEOUT_JORNADA = 180
@@ -190,13 +280,18 @@ def esperar_servico(url: str, timeout: float = _TIMEOUT_SUBIDA) -> Optional[str]
     return erro
 
 
-def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> ResultadoJornada:
+def executar_jornada(
+    coder_dir: Path, trilha: Optional[dict] = None, arquivo: str = ARQUIVO_JORNADA
+) -> ResultadoJornada:
     """Constrói o artefato, sobe o serviço COMO O `run.json` MANDA e percorre a jornada.
 
     Sem variáveis de ambiente extras de propósito: os testes de aceite isolam
     banco e pastas, e na validação isso escondeu um app que, na configuração
     padrão, gravava uploads em `/storage` (raiz do sistema) e quebrava com 500.
     A jornada é o único teste que usa o produto como o usuário o recebe.
+
+    `arquivo` permite rodar do mesmo jeito os critérios de interface de uma
+    task (produto web), que também percorrem o produto no ar.
     """
     from shared.tools.coding_tools.harness_execucao import _testes_da_saida
 
@@ -205,14 +300,14 @@ def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> Resultad
     except ManifestError as exc:
         return ResultadoJornada(NAO_EXECUTADA, motivo=f"run.json inválido: {exc}")
     workdir = (coder_dir / manifest.workdir).resolve()
-    if not (workdir / ARQUIVO_JORNADA).is_file():
-        return ResultadoJornada(NAO_EXECUTADA, motivo="teste de jornada não foi escrito")
-    comando = comando_de_aceite(manifest.test, ARQUIVO_JORNADA)
+    if not (workdir / arquivo).is_file():
+        return ResultadoJornada(NAO_EXECUTADA, motivo=f"{arquivo} não foi escrito")
+    comando = comando_de_aceite(manifest.test, arquivo)
     if comando is None:
         return ResultadoJornada(NAO_EXECUTADA, motivo="o run.json não usa pytest")
 
     navegador = usa_navegador(
-        (workdir / ARQUIVO_JORNADA).read_text(encoding="utf-8", errors="replace")
+        (workdir / arquivo).read_text(encoding="utf-8", errors="replace"), arquivo
     )
     sandbox = create_sandbox(
         "direct",
@@ -243,7 +338,7 @@ def executar_jornada(coder_dir: Path, trilha: Optional[dict] = None) -> Resultad
             env_teste[VAR_URL] = url
             if navegador:
                 # Conftest sempre fresco na cópia: é ele que reprova recurso quebrado.
-                instalar_conftest(Path(sandbox.workdir))
+                instalar_conftest(Path(sandbox.workdir), str(Path(arquivo).parent))
             preparar_cliente_http(sandbox, comando, env or None, navegador=navegador)
         res = sandbox.exec(comando, timeout=_TIMEOUT_JORNADA, env=env_teste or None)
         logs_servico = sandbox.logs()

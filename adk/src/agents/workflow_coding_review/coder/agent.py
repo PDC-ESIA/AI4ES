@@ -68,7 +68,14 @@ async def _INSTRUCTION(readonly_context) -> str:
     enxuto = coder_contexto_enxuto() and bool(state.get("current_task"))
     # A trilha só existe no state quando o TaskIterator a escolheu
     # (`AI4ES_TRILHAS`); fora dele a seção é vazia.
-    instrucao = secao_prompt(state.get("trilha")) + render_instruction(enxuto=enxuto)
+    # Produto web: SEMPRE que o macro_context disser web_app (independe de flag).
+    macro = (state.get("tasks") or {}).get("macro_context") if isinstance(state.get("tasks"), dict) else None
+    produto = (macro or {}).get("product_type") if isinstance(macro, dict) else None
+    instrucao = (
+        secao_prompt(state.get("trilha"))
+        + coder_prompt.secao_produto_web(produto)
+        + render_instruction(enxuto=enxuto)
+    )
     return await inject_session_state(instrucao, readonly_context)
 
 

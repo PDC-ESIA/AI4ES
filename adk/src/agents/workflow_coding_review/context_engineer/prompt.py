@@ -240,7 +240,7 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
     - Formato: verbo no infinitivo + condição + resultado esperado.
     - NÃO presuma HTTP/status code se o produto não for um serviço web.
 
-    Cada critério é um OBJETO com três campos, nunca uma string solta:
+    Cada critério é um OBJETO, nunca uma string solta:
     - **id**: "CA-01", "CA-02", ... sequencial DENTRO da task (recomeça em CA-01 a cada task).
       Este id é a chave que liga o critério ao teste que o comprova — não repita ids na mesma task.
     - **description**: o texto do critério, no formato descrito acima.
@@ -255,11 +255,22 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
         é exibida', 'O visual é minimalista e não compete com as fotos'
       - Na dúvida entre os dois, marque `true`: um critério cobrado à toa custa pouco,
         um critério automatizável marcado como `false` nunca ganha teste e some da medição.
+      - Exceção — produto web (`product_type` = web_app): critérios de interface
+        SÃO automatizáveis (há navegador automatizado); veja a seção PRODUTO WEB.
+    - **interface** (só em web_app; omita nos demais produtos): `true` quando o
+      critério descreve o que o usuário faz PELA INTERFACE, partindo da página
+      inicial. Ele será comprovado por um navegador real que só clica, preenche e
+      lê a página — nunca chamando o endpoint direto.
 
-    Exemplo do campo completo:
+    Exemplo do campo completo (produto que NÃO é web):
     "acceptance_criteria": [
       {"id": "CA-01", "description": "Retornar status 401 quando credenciais forem inválidas", "automatable": true},
-      {"id": "CA-02", "description": "Consigo criar um Ensaio pela interface web", "automatable": false}
+      {"id": "CA-02", "description": "O visual é minimalista e não compete com as fotos", "automatable": false}
+    ]
+    Exemplo em web_app:
+    "acceptance_criteria": [
+      {"id": "CA-01", "description": "Persistir o ensaio com título, data e cliente ao criar", "automatable": true},
+      {"id": "CA-02", "description": "A partir da página inicial, criar um ensaio pelo formulário e vê-lo listado", "automatable": true, "interface": true}
     ]
 
 - **contract**: defina as fronteiras com base nos artefatos de design:
@@ -280,6 +291,25 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
 
 - **design_refs**: paths dos artefatos de design relevantes para este RF.
   - Inclua análises técnicas, diagramas e protótipos relevantes. Não referencie por referenciar — apenas inclua o que de fato foi usado.
+
+## PRODUTO WEB (product_type = web_app) — REGRA FIXA, VALE SEMPRE
+Em aplicação web o usuário só usa o que a INTERFACE oferece. Endpoint sem tela
+não é funcionalidade entregue. Por isso, SEMPRE que o product_type for web_app:
+- Toda task que entrega algo que o usuário faz ou vê (criar, enviar arquivo,
+  listar, selecionar, filtrar, visualizar...) tem AO MENOS UM critério com
+  `"interface": true` e `"automatable": true`, no formato "A partir da página
+  inicial, <ação do usuário pela interface> e <o que a página mostra>".
+  Ex.: "A partir da página inicial, abrir um ensaio, enviar 3 fotos pelo
+  formulário de upload e ver as 3 miniaturas na galeria".
+- O caminho até a funcionalidade faz parte do critério: a página precisa ser
+  alcançável por links e botões desde "/" — sem digitar URL.
+- A description da task cita a(s) tela(s) e o(s) elemento(s) de interface que
+  a task entrega (página, formulário, botão, link no menu), e `contract.outputs`
+  inclui os templates/páginas correspondentes.
+- Tasks puramente internas (modelo de dados, configuração, infraestrutura) não
+  precisam de critério de interface.
+- Critérios de API/persistência continuam valendo junto: o critério de interface
+  não substitui os demais, ele garante que a funcionalidade chegou ao usuário.
 
 ## Passo 5 — Persistir no Workspace
 Após gerar todas as tasks, chame tool_salvar_task_cr para cada uma individualmente.

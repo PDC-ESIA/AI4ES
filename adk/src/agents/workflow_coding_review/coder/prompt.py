@@ -675,6 +675,36 @@ _SUBSTITUICOES_ENXUTO = (
 )
 
 
+# Produto web: vale SEMPRE que o product_type do macro_context for web_app,
+# com ou sem flags. Na validação, tasks orientadas a endpoint entregaram uma API
+# completa e nenhuma tela de upload, seleção ou álbum — o usuário não tinha como
+# usar o que foi construído.
+SECAO_PRODUTO_WEB = """# PRODUTO WEB — REGRA FIXA DESTE PROJETO
+Este produto é uma aplicação web: o usuário só usa o que a INTERFACE oferece.
+- Toda funcionalidade desta task que o usuário faz ou vê precisa existir na
+  interface: página, formulário, botão, link. Endpoint sem tela não conta
+  como entregue.
+- Tudo é alcançável a partir da página inicial "/" por links e botões, sem
+  digitar URL. Formulários HTML enviam `application/x-www-form-urlencoded`
+  ou `multipart/form-data` (upload) — o endpoint que recebe o formulário
+  precisa aceitar esse formato.
+- Imagens, CSS e scripts referenciados pelas páginas precisam responder (sem
+  404), na configuração padrão do `run.json`.
+- Critérios com `"interface": true` são verificados por um navegador real
+  (Playwright) contra a aplicação no ar: ele abre "/", clica, preenche e lê
+  o que a página mostra. Use rótulos (`<label for>`), textos de botão e
+  títulos claros — é por eles que o teste encontra os elementos. Os testes
+  ficam em `tests/acceptance/test_interface_<TASK>.py` (só leitura): leia-os
+  para saber que links, rótulos e botões a tela precisa ter.
+
+"""
+
+
+def secao_produto_web(product_type) -> str:
+    """Seção do prompt para produto web; vazia para os demais produtos."""
+    return SECAO_PRODUTO_WEB if str(product_type or "").strip().lower() == "web_app" else ""
+
+
 def build_instruction(coder_ws: str, *, enxuto: bool = False) -> str:
     """Compõe a instrução final do coder para o workspace informado.
 

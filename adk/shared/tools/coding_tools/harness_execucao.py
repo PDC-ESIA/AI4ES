@@ -802,9 +802,9 @@ def _arquivos_protegidos(ctx: _HarnessContext) -> list[str]:
         if aceite_independente()
         else []
     )
-    do_mapa = (ctx.mapa_independente or {}).get("arquivo")
-    if do_mapa and do_mapa not in arquivos and (workdir / do_mapa).is_file():
-        arquivos.append(do_mapa)
+    for do_mapa in (ctx.mapa_independente or {}).get("arquivos") or []:
+        if do_mapa not in arquivos and (workdir / do_mapa).is_file():
+            arquivos.append(do_mapa)
     return arquivos
 
 
@@ -912,22 +912,30 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
     # passava quando a task dele fechou: falhas já aceitas ficam registradas.
     protegidos = _arquivos_protegidos(ctx)
     aceitas = falhas_aceitas_por_arquivo(ctx.tasks_dir) if protegidos else {}
-    da_task = (ctx.mapa_independente or {}).get("arquivo")
+    da_task = set((ctx.mapa_independente or {}).get("arquivos") or [])
     for arquivo in protegidos:
         comando = comando_de_aceite(ctx.manifest.test, arquivo)
         if comando is None:
             continue
-        if arquivo.startswith(PASTA_JORNADA) and ctx.app_ok and ctx.base_url:
-            # Jornada (task de integração): percorre o serviço que o estágio 2
-            # subiu com o run.json, sem as variáveis de isolamento dos aceites.
-            jornada_cod = (ctx.coder_dir / ctx.manifest.workdir / arquivo).read_text(
-                encoding="utf-8", errors="replace"
-            )
-            navegador = usa_navegador(jornada_cod)
+        codigo = (ctx.coder_dir / ctx.manifest.workdir / arquivo).read_text(
+            encoding="utf-8", errors="replace"
+        )
+        navegador = usa_navegador(codigo, arquivo)
+        no_ar = ctx.app_ok and bool(ctx.base_url)
+        if navegador and not no_ar:
+            # Sem aplicação no ar não há o que navegar: os critérios ficam
+            # `teste_nao_executado` (a falha de inicialização já reprova).
+            linhas.append(f"$ {comando}\n(não executado: aplicação não subiu)")
+            continue
+        if (arquivo.startswith(PASTA_JORNADA) or navegador) and no_ar:
+            # Jornada e critérios de interface (produto web): percorrem o
+            # serviço que o estágio 2 subiu com o run.json, sem as variáveis
+            # de isolamento dos aceites.
+            pasta = str(Path(arquivo).parent)
 
-            def _preparar(sandbox, navegador=navegador):
+            def _preparar(sandbox, navegador=navegador, pasta=pasta):
                 if navegador and isinstance(getattr(sandbox, "workdir", None), Path):
-                    instalar_conftest(sandbox.workdir)
+                    instalar_conftest(sandbox.workdir, pasta)
                 preparar_cliente_http(sandbox, comando, env, navegador=navegador)
 
             # Cópia isolada (com os limites do navegador, se for o caso) que
@@ -947,7 +955,7 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
         falhos = {t["nodeid"] for t in testes if t["outcome"] in ("falhou", "erro")}
         toleradas = (
             sorted(falhos)
-            if arquivo != da_task and falhos and falhos <= aceitas.get(arquivo, set())
+            if arquivo not in da_task and falhos and falhos <= aceitas.get(arquivo, set())
             else []
         )
         resultado = {
@@ -1111,7 +1119,13 @@ def _evidencia_aceite_independente(
     testes do `run.json`, estes não foram escritos nem podem ser editados pelo
     agente que implementou a funcionalidade.
     """
-    observados = {t: desfechos[t] for t in testes if t in desfechos}
+    observados: dict[str, TestOutcome] = {}
+    for t in testes:
+        # pytest-playwright parametriza pelo navegador: `test_x` roda como
+        # `test_x[chromium]`. Vale o desfecho mais severo entre as variantes.
+        variantes = [d for n, d in desfechos.items() if n == t or n.startswith(t + "[")]
+        if variantes:
+            observados[t] = max(variantes, key=lambda d: _SEVERIDADE[d])
     falhos = [t for t, d in observados.items() if d in (TestOutcome.FALHOU, TestOutcome.ERRO)]
     passaram = [t for t, d in observados.items() if d == TestOutcome.PASSOU]
     if falhos:

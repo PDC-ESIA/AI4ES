@@ -34,6 +34,12 @@ move, e quem precisa ser atualizado é o PROMPT de quem escreve os critérios
 classificação da época; como elas são efêmeras (vivem no workspace de uma
 execução), não há migração a fazer.
 
+Foi o que aconteceu com o navegador: em produto web (`product_type` web_app),
+o fluxo passou a ter Playwright, e critérios de interface ("a partir da página
+inicial, o usuário cria um ensaio") passaram a ser automatizáveis. Eles vêm
+marcados com `interface=True`, e o autor de aceite os comprova SEMPRE pelo
+navegador, partindo da página inicial — nunca chamando o endpoint direto.
+
 NÃO confundir `automatable` com `CriterionEvidence.checkable` (ver
 `harness_schemas.py`). São perguntas diferentes:
 
@@ -100,6 +106,10 @@ _CHAVES_AUTOMATABLE = ("automatable", "automatizavel")
 # cobertura sem que ninguém perceba que ele PODERIA ter sido comprovado.
 _AUTOMATABLE_PADRAO = True
 
+# Chaves aceitas para a marca de critério de interface (mesmo motivo do alias
+# de `automatable`).
+_CHAVES_INTERFACE = ("interface", "via_interface")
+
 
 class AcceptanceCriterion(BaseModel):
     """Um critério de aceite identificado e classificado."""
@@ -118,6 +128,15 @@ class AcceptanceCriterion(BaseModel):
             "para critérios subjetivos ou de jornada de interface, que exigem "
             "instrumentação que o fluxo ainda não tem (ex.: 'visual "
             "minimalista', 'consigo ver a página final do álbum')."
+        ),
+    )
+    interface: bool = Field(
+        default=False,
+        description=(
+            "Critério comprovado PELA INTERFACE de um produto web: navegador "
+            "partindo da página inicial, só cliques, preenchimentos e o que a "
+            "página mostra. Em web_app, toda funcionalidade voltada ao usuário "
+            "tem ao menos um critério assim."
         ),
     )
 
@@ -174,27 +193,42 @@ def _automatable_do_dict(dados: dict) -> bool:
     return _AUTOMATABLE_PADRAO
 
 
-def _extrair(item: Any) -> Optional[tuple[Optional[str], str, bool]]:
-    """Reduz um item da lista a `(id_proposto, description, automatable)`.
+def _interface_do_dict(dados: dict) -> bool:
+    for chave in _CHAVES_INTERFACE:
+        valor = dados.get(chave)
+        if isinstance(valor, bool):
+            return valor
+        if isinstance(valor, str):
+            return valor.strip().casefold() == "true"
+    return False
+
+
+def _extrair(item: Any) -> Optional[tuple[Optional[str], str, bool, bool]]:
+    """Reduz um item da lista a `(id_proposto, description, automatable, interface)`.
 
     Returns:
         None quando o item não carrega critério aproveitável — o que inclui o
         formato antigo com string vazia e qualquer tipo inesperado.
     """
     if isinstance(item, AcceptanceCriterion):
-        return canonizar_id(item.id), item.description, item.automatable
+        return canonizar_id(item.id), item.description, item.automatable, item.interface
 
     # Formato antigo: lista de strings, sem id nem classificação.
     if isinstance(item, str):
         texto = item.strip()
-        return (None, texto, _AUTOMATABLE_PADRAO) if texto else None
+        return (None, texto, _AUTOMATABLE_PADRAO, False) if texto else None
 
     if isinstance(item, dict):
         texto = _texto_do_dict(item)
         if not texto:
             logger.warning("Critério de aceite sem texto foi descartado: %r", item)
             return None
-        return canonizar_id(item.get("id")), texto, _automatable_do_dict(item)
+        return (
+            canonizar_id(item.get("id")),
+            texto,
+            _automatable_do_dict(item),
+            _interface_do_dict(item),
+        )
 
     logger.warning(
         "Critério de aceite de tipo inesperado (%s) foi descartado.",
@@ -239,7 +273,7 @@ def normalizar_criterios(valor: Any) -> list[AcceptanceCriterion]:
     # inclusive as criadas pela canonização (`CA-1` e `CA-01` viram o mesmo id).
     reservados: set[str] = set()
     ids: list[Optional[str]] = []
-    for id_proposto, _, _ in brutos:
+    for id_proposto, *_ in brutos:
         if id_proposto is not None and id_proposto not in reservados:
             reservados.add(id_proposto)
             ids.append(id_proposto)
@@ -264,8 +298,9 @@ def normalizar_criterios(valor: Any) -> list[AcceptanceCriterion]:
             id=id_final,
             description=descricao,
             automatable=automatable,
+            interface=interface,
         )
-        for id_final, (_, descricao, automatable) in zip(ids, brutos)
+        for id_final, (_, descricao, automatable, interface) in zip(ids, brutos)
     ]
 
 

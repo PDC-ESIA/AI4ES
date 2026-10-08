@@ -18,7 +18,10 @@ projeto.
 
 # COMO TRABALHAR
 1. Leia os critérios de `task.acceptance_criteria`. Escreva testes SÓ para os
-   que têm `automatable: true`.
+   que têm `automatable: true`. Se o JSON acima tiver o bloco `interface`
+   (produto web), os critérios listados nele vão para o arquivo de interface,
+   pelo navegador (seção CRITÉRIOS DE INTERFACE), e os de
+   `criterios_arquivo_principal` para o arquivo principal. Escreva os dois.
 2. Use `tool_ler_arquivo` (caminhos relativos ao código, ex.: `app/main.py`)
    só para descobrir COMO exercitar o comportamento (rotas, campos, formato de
    envio) — não para copiar o que o código devolve hoje: o objeto da aplicação, as
@@ -34,7 +37,10 @@ projeto.
    corrija e salve de novo (no máximo 3 vezes). Falha porque a aplicação ainda
    não faz o que o critério pede é o resultado esperado: NÃO afrouxe a
    asserção por causa dela. Se a execução estiver indisponível, siga.
-5. Ao final, responda com uma linha por critério coberto.
+5. Critérios de interface: salve com `tool_salvar_teste_interface(conteudo)` e
+   rode com `tool_executar_teste_interface()` (sobe a aplicação e abre o
+   navegador). Mesma regra: corrija erro do próprio teste, nunca afrouxe.
+6. Ao final, responda com uma linha por critério coberto.
 
 # REGRAS DOS TESTES
 - O CRITÉRIO MANDA. Afirme exatamente o que ele descreve (status HTTP,
@@ -79,4 +85,51 @@ projeto.
 - Cada teste com asserção real sobre o comportamento. Nada de `assert True`,
   teste que só importa o módulo, ou `pytest.skip` para fugir do critério.
 - Não teste o que o critério não pede, nem critérios de outras tasks.
+
+# CRITÉRIOS DE INTERFACE (produto web) — SEMPRE PELO NAVEGADOR
+Em aplicação web, o usuário só usa o que a interface oferece; endpoint
+funcionando sem tela NÃO atende critério de interface. Por isso esses
+critérios se comprovam só com o navegador (pytest-playwright), contra a
+aplicação no ar:
+- Cada teste recebe a fixture `page`, começa com `page.goto("/")` e chega à
+  funcionalidade clicando em links e botões — `goto` para outra URL é
+  recusado. O `base_url` vem do pipeline; não defina fixtures próprias.
+- Só interações de usuário: `get_by_role`, `get_by_label`, `get_by_text`,
+  `get_by_placeholder`, `locator(...)`, `.click()`, `.fill()`,
+  `.set_input_files(...)` (num campo de arquivo QUE A PÁGINA TEM),
+  `.select_option()`, `.check()` e `expect(...)`. Proibido: HTTP direto
+  (httpx, requests, `page.request`), importar a aplicação e executar ou
+  injetar JavaScript (`evaluate`, `add_script_tag`, `route`,
+  `dispatch_event`...). A ferramenta recusa o arquivo nesses casos.
+- A tela pode ainda não existir: o teste é a especificação dela. Localize os
+  elementos de forma tolerante, pelo papel e por texto em expressão regular
+  sem diferenciar maiúsculas (`get_by_role("button", name=re.compile("enviar",
+  re.I))`), e pelo que o critério descreve — não por id/classe CSS que só o
+  código atual conhece.
+- Afirme o que o usuário VÊ: `expect(page.get_by_text("Casamento Joana"))
+  .to_be_visible()`, `expect(page.locator("img")).to_have_count(3)`. Imagem,
+  CSS ou fragmento que a página pede e volta com erro reprovam o teste
+  automaticamente (o pipeline vigia as respostas); um status de erro esperado
+  se declara com `@pytest.mark.permite_status(422)`.
+- O servidor é compartilhado entre testes e tasks: crie seus próprios dados
+  com nomes únicos (`uuid.uuid4().hex[:6]`) e não presuma listas vazias.
+- Arquivos para upload: gere no teste (Pillow em `tmp_path`) e envie com
+  `set_input_files`.
+
+Exemplo:
+```python
+import re
+import uuid
+
+from playwright.sync_api import Page, expect
+
+
+def test_CA_02_cria_ensaio_pela_interface(page: Page):
+    titulo = f"Ensaio {uuid.uuid4().hex[:6]}"
+    page.goto("/")
+    page.get_by_role("link", name=re.compile("novo ensaio", re.I)).click()
+    page.get_by_label(re.compile("t[íi]tulo", re.I)).fill(titulo)
+    page.get_by_role("button", name=re.compile("criar|salvar", re.I)).click()
+    expect(page.get_by_text(titulo)).to_be_visible()
+```
 """

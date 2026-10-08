@@ -39,6 +39,19 @@ def caminho_relativo(task_id: str) -> str:
     return f"{PASTA_ACEITE}/{nome_arquivo(task_id)}"
 
 
+def caminho_relativo_interface(task_id: str) -> str:
+    """Arquivo dos critérios de interface da task (produto web, Playwright).
+
+    Separado do arquivo principal porque roda de outro jeito: contra a
+    aplicação no ar, num navegador, e sem importar o código do projeto.
+    """
+    return f"{PASTA_ACEITE}/test_interface_{re.sub(r'[^A-Za-z0-9]', '_', task_id)}.py"
+
+
+def e_arquivo_de_interface(arquivo_rel: str) -> bool:
+    return PurePosixPath(arquivo_rel).name.startswith("test_interface_")
+
+
 def caminho_mapa(tasks_dir: Path, task_id: str) -> Path:
     """Mapa critério→teste, fora do workspace de código (o coder não o alcança)."""
     return Path(tasks_dir) / f"{task_id}.acceptance.json"
@@ -87,14 +100,46 @@ def extrair_mapa(
     return mapa
 
 
+def _arquivo_do_nodeid(nodeid: str) -> str:
+    return nodeid.split("::", 1)[0]
+
+
 def gravar_mapa(
-    tasks_dir: Path, task_id: str, arquivo_rel: str, por_criterio: dict[str, list[str]]
+    tasks_dir: Path,
+    task_id: str,
+    arquivo_rel: str,
+    por_criterio: dict[str, list[str]],
+    *,
+    mesclar: bool = False,
 ) -> Path:
+    """Grava o mapa da task. Com `mesclar`, soma ao mapa já gravado.
+
+    Em produto web a task tem dois arquivos (o principal e o de interface); cada
+    um é salvo por uma ferramenta própria e substitui só os próprios testes.
+    """
     destino = caminho_mapa(tasks_dir, task_id)
     destino.parent.mkdir(parents=True, exist_ok=True)
+    existente = ler_mapa(tasks_dir, task_id) if mesclar else None
+    if existente:
+        arquivos = [a for a in existente["arquivos"] if a != arquivo_rel] + [arquivo_rel]
+        mapa: dict[str, list[str]] = {}
+        for criterio, testes in existente["por_criterio"].items():
+            mantidos = [t for t in testes if _arquivo_do_nodeid(t) != arquivo_rel]
+            if mantidos:
+                mapa[criterio] = mantidos
+        for criterio, testes in por_criterio.items():
+            mapa.setdefault(criterio, []).extend(testes)
+        principal = existente["arquivo"]
+    else:
+        arquivos, mapa, principal = [arquivo_rel], dict(por_criterio), arquivo_rel
     destino.write_text(
         json.dumps(
-            {"task_id": task_id, "arquivo": arquivo_rel, "por_criterio": por_criterio},
+            {
+                "task_id": task_id,
+                "arquivo": principal,
+                "arquivos": arquivos,
+                "por_criterio": mapa,
+            },
             ensure_ascii=False,
             indent=2,
         ),
@@ -124,9 +169,11 @@ def ler_mapa(tasks_dir: Path, task_id: str) -> Optional[dict]:
         if isinstance(v, list)
     }
     aceitas = dados.get("falhas_aceitas")
+    arquivos = [a for a in dados.get("arquivos") or [] if isinstance(a, str)] or [arquivo]
     return {
         "task_id": task_id,
         "arquivo": arquivo,
+        "arquivos": arquivos,
         "por_criterio": limpo,
         "falhas_aceitas": [t for t in aceitas if isinstance(t, str)]
         if isinstance(aceitas, list)
@@ -159,8 +206,12 @@ def falhas_aceitas_por_arquivo(tasks_dir: Path) -> dict[str, set[str]]:
     for caminho in Path(tasks_dir).glob("*.acceptance.json"):
         task_id = caminho.name[: -len(".acceptance.json")]
         mapa = ler_mapa(tasks_dir, task_id)
-        if mapa:
-            aceitas[mapa["arquivo"]] = set(mapa["falhas_aceitas"])
+        if not mapa:
+            continue
+        for arquivo in mapa["arquivos"]:
+            aceitas.setdefault(arquivo, set())
+        for nodeid in mapa["falhas_aceitas"]:
+            aceitas.setdefault(_arquivo_do_nodeid(nodeid), set()).add(nodeid)
     return aceitas
 
 

@@ -27,7 +27,13 @@ from shared.tools.coding_tools.filesystem_coding import (
     DIRETORIOS_PROIBIDOS,
     tool_ler_arquivo,
 )
-from shared.tools.coding_tools.jornada import ARQUIVO_JORNADA, instalar_conftest
+from shared.tools.coding_tools.jornada import (  # noqa: F401 — reexportados
+    _METODOS_PROIBIDOS,
+    _MODULOS_PROIBIDOS,
+    ARQUIVO_JORNADA,
+    instalar_conftest,
+    violacoes_do_modo_navegador,
+)
 from shared.tools.filesystem import tool_ler_workspace, tool_listar_workspace
 from shared.workspace import get_agent_workspace, get_workspace_root
 
@@ -55,34 +61,6 @@ MODO_NAVEGADOR = "navegador"
 MODO_HTTP = "http"
 _PRODUTOS_WEB = frozenset({"web_app"})
 
-# No modo navegador, nada de atalhos que pulam a interface.
-_MODULOS_PROIBIDOS = ("httpx", "requests", "urllib", "aiohttp", "fastapi", "starlette", "flask", "app")
-
-# Métodos do Playwright que executam ou injetam código na página, ou desviam
-# requisições. Na oitava validação o autor, impedido de usar httpx, injetou um
-# <input type=file> que a interface não tinha (`page.evaluate`) e fez o upload
-# por `fetch` — o mesmo atalho, por dentro do navegador. O usuário não roda
-# JavaScript no console para usar o produto.
-_METODOS_PROIBIDOS = frozenset(
-    {
-        "evaluate",
-        "evaluate_handle",
-        "eval_on_selector",
-        "eval_on_selector_all",
-        "evaluate_all",
-        "add_script_tag",
-        "add_init_script",
-        "wait_for_function",
-        "set_content",
-        "route",
-        "route_from_har",
-        "expose_function",
-        "expose_binding",
-        "dispatch_event",
-    }
-)
-
-
 def modo_da_jornada(product_type: Any) -> str:
     return MODO_NAVEGADOR if str(product_type or "").strip().lower() in _PRODUTOS_WEB else MODO_HTTP
 
@@ -92,58 +70,6 @@ def _modo_do_state(state: Any) -> str:
         return json.loads(state.get(CHAVE_CONTEXTO) or "{}").get("modo") or MODO_HTTP
     except (ValueError, AttributeError):
         return MODO_HTTP
-
-
-def violacoes_do_modo_navegador(arvore: ast.AST) -> list[str]:
-    """O que, num teste de jornada web, pula a interface do produto.
-
-    Na sétima validação a jornada chamou os endpoints direto e passou, com um
-    produto sem tela de upload, sem botão de seleção e sem tela de álbum.
-    """
-    erros: list[str] = []
-    for no in ast.walk(arvore):
-        if isinstance(no, ast.Import):
-            nomes = [a.name for a in no.names]
-        elif isinstance(no, ast.ImportFrom):
-            nomes = [no.module or ""]
-        else:
-            nomes = []
-        for nome in nomes:
-            if nome.split(".")[0] in _MODULOS_PROIBIDOS:
-                erros.append(f"import de `{nome}`: a jornada web usa só o navegador (`page`).")
-        if isinstance(no, ast.Attribute) and no.attr == "request" and isinstance(no.value, ast.Name):
-            erros.append(
-                f"`{no.value.id}.request` faz HTTP direto, sem passar pela interface."
-            )
-        if (
-            isinstance(no, ast.Call)
-            and isinstance(no.func, ast.Attribute)
-            and no.func.attr in _METODOS_PROIBIDOS
-        ):
-            erros.append(
-                f"`.{no.func.attr}(...)` executa ou injeta código na página; a jornada "
-                "só clica, preenche e lê o que a interface mostra."
-            )
-        if (
-            isinstance(no, ast.Call)
-            and isinstance(no.func, ast.Attribute)
-            and no.func.attr == "goto"
-        ):
-            alvo = no.args[0] if no.args else None
-            if not (isinstance(alvo, ast.Constant) and alvo.value == "/"):
-                erros.append(
-                    "`page.goto(...)` só pode abrir a página inicial `\"/\"`; o resto se "
-                    "alcança clicando em links e botões, como o usuário faria."
-                )
-    usa_page = any(
-        isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and no.name.startswith("test_")
-        and any(a.arg == "page" for a in no.args.args)
-        for no in ast.walk(arvore)
-    )
-    if not usa_page:
-        erros.append("Nenhum teste recebe a fixture `page` do Playwright.")
-    return sorted(set(erros))
 
 
 def tool_salvar_teste_jornada(conteudo: str, tool_context: ToolContext) -> dict:

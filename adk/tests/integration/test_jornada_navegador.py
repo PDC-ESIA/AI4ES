@@ -101,3 +101,33 @@ def test_conftest_reprova_imagem_quebrada(tmp_path):
     resultado = executar_jornada(_produto(tmp_path / "quebrada", "/media/nao-existe.png"))
     assert resultado.status == FALHOU
     assert "GET /media/nao-existe.png -> 404" in resultado.saida
+
+
+_INTERFACE = '''
+import re
+
+def test_CA_02_envia_foto_pela_tela(page):
+    page.goto("/")
+    page.locator("input[type=file]").set_input_files(
+        [{"name": "b.png", "mimeType": "image/png", "buffer": b"x"}]
+    )
+    page.get_by_role("button", name=re.compile("enviar", re.I)).click()
+    assert page.locator("#galeria img").count() >= 1
+'''
+
+
+def test_criterio_de_interface_da_task_roda_pelo_navegador(tmp_path):
+    """Produto web: o arquivo de interface do aceite (só `page`, sem citar o
+    Playwright) roda contra o produto no ar, com o conftest na pasta de aceite."""
+    from shared.tools.coding_tools.aceite_independente import caminho_relativo_interface
+
+    raiz = _produto(tmp_path / "ui", "/media/ok.png")
+    arquivo = caminho_relativo_interface("TASK-001")
+    (raiz / arquivo).parent.mkdir(parents=True)
+    (raiz / arquivo).write_text(_INTERFACE)
+
+    resultado = executar_jornada(raiz, arquivo=arquivo)
+    assert resultado.status == PASSOU, resultado.saida
+    assert [t["nodeid"] for t in resultado.testes] == [
+        f"{arquivo}::test_CA_02_envia_foto_pela_tela[chromium]"
+    ]

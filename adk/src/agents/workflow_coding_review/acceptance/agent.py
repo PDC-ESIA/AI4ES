@@ -7,10 +7,17 @@ critério→teste sai do nome das funções (`aceite_independente.extrair_mapa`)
 gravado em `coder/tasks/`, fora do alcance do coder. O harness passa a decidir
 esses critérios pelos testes (atendido/não atendido), e o validador reprova a
 rodada quando algum não é atendido.
+
+Produto web (`product_type` web_app) — SEMPRE: os critérios marcados com
+`interface` vão para um segundo arquivo, `test_interface_<TASK>.py`, escrito
+para o navegador (Playwright) e executado contra a aplicação no ar, partindo
+da página inicial. Endpoint funcionando sem tela não atende critério de
+interface.
 """
 
 from __future__ import annotations
 
+import ast
 import json
 import logging
 import os
@@ -32,11 +39,17 @@ from shared.execution.manifest import ManifestError, load_manifest
 from shared.execution.verificador_executabilidade import verificar_executabilidade
 from shared.pipeline_flags import aceite_independente
 from shared.tools.coding_tools.aceite_independente import (
+    PASTA_ACEITE,
     caminho_relativo,
+    caminho_relativo_interface,
     comando_de_aceite,
     extrair_mapa,
     gravar_mapa,
     ler_mapa,
+)
+from shared.tools.coding_tools.jornada import (
+    instalar_conftest,
+    violacoes_do_modo_navegador,
 )
 from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
 from shared.tools.coding_tools.filesystem_coding import (
@@ -77,6 +90,42 @@ def _workdir(coder_dir) -> str:
         return "."
 
 
+def _produto_web(state: Any) -> bool:
+    macro = (state.get("tasks") or {}).get("macro_context") or {}
+    return str(macro.get("product_type") or "").strip().lower() == "web_app"
+
+
+def _sobe_servico(coder_dir) -> bool:
+    try:
+        manifest = load_manifest(coder_dir / "run.json")
+    except ManifestError:
+        return False
+    return manifest.surface == "service" and bool(manifest.run and manifest.port)
+
+
+def dividir_criterios(state: Any, task: dict, coder_dir) -> tuple[list[str], list[str]]:
+    """(critérios do arquivo principal, critérios de interface pelo navegador).
+
+    Em produto web que sobe como serviço, todo critério automatizável marcado
+    com `interface` é comprovado pelo navegador — sempre. Fora disso (não é
+    web, ou não há serviço para navegar) a lista de interface é vazia e todos
+    vão para o arquivo principal, como antes.
+    """
+    criterios = [c for c in normalizar_criterios(task.get("acceptance_criteria")) if c.automatable]
+    if _produto_web(state) and _sobe_servico(coder_dir):
+        interface = [c.id for c in criterios if c.interface]
+    else:
+        interface = []
+    return [c.id for c in criterios if c.id not in interface], interface
+
+
+def _destino(coder_dir, arquivo_rel: str):
+    destino = (coder_dir / _workdir(coder_dir) / arquivo_rel).resolve()
+    if not str(destino).startswith(str(coder_dir.resolve())):
+        return None
+    return destino
+
+
 def tool_salvar_teste_aceite(conteudo: str, tool_context: ToolContext) -> dict:
     """Salva o arquivo de testes de aceite da task atual.
 
@@ -94,8 +143,16 @@ def tool_salvar_teste_aceite(conteudo: str, tool_context: ToolContext) -> dict:
     if task is None:
         return {"sucesso": False, "erro": "Task atual não encontrada no state."}
 
-    criterios = normalizar_criterios(task.get("acceptance_criteria"))
-    automatizaveis = [c.id for c in criterios if c.automatable]
+    coder_dir = get_agent_workspace("cr_coder")
+    automatizaveis, de_interface = dividir_criterios(state, task, coder_dir)
+    if not automatizaveis:
+        return {
+            "sucesso": False,
+            "erro": (
+                "Todos os critérios automatizáveis desta task são de interface "
+                f"({', '.join(de_interface)}): use tool_salvar_teste_interface."
+            ),
+        }
     arquivo_rel = caminho_relativo(task_id)
     try:
         mapa = extrair_mapa(conteudo, automatizaveis, arquivo_rel)
@@ -110,13 +167,14 @@ def tool_salvar_teste_aceite(conteudo: str, tool_context: ToolContext) -> dict:
             ),
         }
 
-    coder_dir = get_agent_workspace("cr_coder")
-    destino = (coder_dir / _workdir(coder_dir) / arquivo_rel).resolve()
-    if not str(destino).startswith(str(coder_dir.resolve())):
+    destino = _destino(coder_dir, arquivo_rel)
+    if destino is None:
         return {"sucesso": False, "erro": "workdir do run.json fora do workspace."}
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(conteudo, encoding="utf-8")
-    gravar_mapa(get_agent_workspace("cr_context_engineer"), task_id, arquivo_rel, mapa)
+    gravar_mapa(
+        get_agent_workspace("cr_context_engineer"), task_id, arquivo_rel, mapa, mesclar=True
+    )
 
     faltando = sorted(set(automatizaveis) - set(mapa))
     logger.info("[ACEITE][%s] testes de aceite gravados: %s", task_id, sorted(mapa))
@@ -153,6 +211,92 @@ def tool_executar_teste_aceite(tool_context: ToolContext) -> dict:
     return {"exit_code": exit_code, "saida": saida}
 
 
+def tool_salvar_teste_interface(conteudo: str, tool_context: ToolContext) -> dict:
+    """Salva os testes dos critérios de INTERFACE da task (produto web).
+
+    Args:
+        conteudo: Código pytest completo, só com Playwright: cada teste recebe
+            a fixture `page`, abre `page.goto("/")` e chega à funcionalidade
+            clicando e preenchendo. Nomes `test_CA_<NN>_<resumo>`.
+
+    Returns:
+        dict com `sucesso`, o caminho e os critérios cobertos, ou o erro a
+        corrigir antes de salvar de novo.
+    """
+    state = tool_context.state
+    task_id = state.get("task_id")
+    task = _task_do_state(state, task_id) if isinstance(task_id, str) else None
+    if task is None:
+        return {"sucesso": False, "erro": "Task atual não encontrada no state."}
+    coder_dir = get_agent_workspace("cr_coder")
+    _, de_interface = dividir_criterios(state, task, coder_dir)
+    if not de_interface:
+        return {
+            "sucesso": False,
+            "erro": "Esta task não tem critério de interface: use tool_salvar_teste_aceite.",
+        }
+    try:
+        arvore = ast.parse(conteudo)
+    except SyntaxError as exc:
+        return {"sucesso": False, "erro": f"O arquivo não compila: {exc}"}
+    violacoes = violacoes_do_modo_navegador(arvore)
+    if violacoes:
+        return {
+            "sucesso": False,
+            "erro": "Critério de interface se comprova PELA INTERFACE: " + " ".join(violacoes),
+        }
+    arquivo_rel = caminho_relativo_interface(task_id)
+    mapa = extrair_mapa(conteudo, de_interface, arquivo_rel)
+    if not mapa:
+        return {
+            "sucesso": False,
+            "erro": (
+                "Nenhuma função `test_CA_<NN>_...` corresponde a um critério de "
+                f"interface desta task ({', '.join(de_interface)})."
+            ),
+        }
+    destino = _destino(coder_dir, arquivo_rel)
+    if destino is None:
+        return {"sucesso": False, "erro": "workdir do run.json fora do workspace."}
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(conteudo, encoding="utf-8")
+    instalar_conftest(coder_dir / _workdir(coder_dir), PASTA_ACEITE)
+    gravar_mapa(
+        get_agent_workspace("cr_context_engineer"), task_id, arquivo_rel, mapa, mesclar=True
+    )
+    logger.info("[ACEITE][%s] testes de interface gravados: %s", task_id, sorted(mapa))
+    return {
+        "sucesso": True,
+        "caminho": arquivo_rel,
+        "criterios_cobertos": sorted(mapa),
+        "criterios_sem_teste": sorted(set(de_interface) - set(mapa)),
+    }
+
+
+def tool_executar_teste_interface(tool_context: ToolContext) -> dict:
+    """Roda os testes de interface já salvos contra a aplicação no ar.
+
+    Constrói e sobe o produto como o `run.json` manda e abre o navegador. Use
+    DEPOIS de `tool_salvar_teste_interface`. Falha porque a tela ainda não
+    existe ou não faz o que o critério pede é esperada; erro do PRÓPRIO teste
+    (API do Playwright errada, sintaxe de seletor) deve ser corrigido.
+
+    Returns:
+        dict com `status` (passou | falhou | nao_executada), `motivo` e `saida`.
+    """
+    from shared.tools.coding_tools.jornada import executar_jornada
+
+    task_id = tool_context.state.get("task_id")
+    if not isinstance(task_id, str):
+        return {"status": "nao_executada", "motivo": "Task atual não encontrada no state."}
+    resultado = executar_jornada(
+        get_agent_workspace("cr_coder"),
+        tool_context.state.get("trilha"),
+        arquivo=caminho_relativo_interface(task_id),
+    )
+    return {"status": resultado.status, "motivo": resultado.motivo, "saida": resultado.saida[-3500:]}
+
+
 # ── Agente autor ───────────────────────────────────────────────────────────
 
 
@@ -182,6 +326,8 @@ author = LlmAgent(
         _bind(FunctionTool(tool_ler_workspace)),
         FunctionTool(tool_salvar_teste_aceite),
         FunctionTool(tool_executar_teste_aceite),
+        FunctionTool(tool_salvar_teste_interface),
+        FunctionTool(tool_executar_teste_interface),
     ],
 )
 
@@ -202,6 +348,19 @@ def _inventario(coder_dir) -> list[str]:
 
 def montar_aceite_task(state: Any, task: dict, coder_dir) -> str:
     macro = (state.get("tasks") or {}).get("macro_context") or {}
+    principal, de_interface = dividir_criterios(state, task, coder_dir)
+    extra = (
+        {
+            "criterios_arquivo_principal": principal,
+            "interface": {
+                "criterios": de_interface,
+                "arquivo": caminho_relativo_interface(task["id"]),
+                "modo": "navegador (Playwright), sempre — produto web",
+            },
+        }
+        if de_interface
+        else {}
+    )
     return json.dumps(
         {
             "task": {
@@ -214,6 +373,7 @@ def montar_aceite_task(state: Any, task: dict, coder_dir) -> str:
             "arquivo_de_testes": caminho_relativo(task["id"]),
             "workdir": _workdir(coder_dir),
             "arquivos_do_projeto": _inventario(coder_dir),
+            **extra,
         },
         ensure_ascii=False,
         indent=2,
@@ -223,11 +383,21 @@ def montar_aceite_task(state: Any, task: dict, coder_dir) -> str:
 class AceiteIndependenteGate(BaseAgent):
     """Invoca o autor uma vez por task, quando há o que testar e ainda não há mapa."""
 
+    @staticmethod
+    def _mapa_completo(state: Any, task_id: str, mapa: dict) -> bool:
+        """Em produto web, o mapa só está completo com o arquivo de interface."""
+        task = _task_do_state(state, task_id)
+        if task is None:
+            return True
+        _, de_interface = dividir_criterios(state, task, get_agent_workspace("cr_coder"))
+        return not de_interface or caminho_relativo_interface(task_id) in mapa["arquivos"]
+
     def _motivo_para_pular(self, state: Any) -> Optional[str]:
         task_id = state.get("task_id")
         if not aceite_independente() or not isinstance(task_id, str):
             return "desligado"
-        if ler_mapa(get_agent_workspace("cr_context_engineer"), task_id):
+        mapa = ler_mapa(get_agent_workspace("cr_context_engineer"), task_id)
+        if mapa and self._mapa_completo(state, task_id, mapa):
             return "mapa já existe"
         if (state.get(CHAVE_TENTATIVAS) or {}).get(task_id, 0) >= MAX_TENTATIVAS:
             return "tentativas esgotadas"
