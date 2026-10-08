@@ -89,7 +89,7 @@ um novo run.
 | --- | --- |
 | Acurácia do julgamento | Pares em que o reviewer aprovou a `pos` e bloqueou a `neg`. Empate conta como erro. Chute = 50% no melhor caso |
 | Viés posicional | **Não se aplica ao modo pontual** — ver "Desenho do experimento" |
-| Resposta inválida | Revisões sem status que o manifesto reconheça, na 1ª tentativa e após os retries |
+| Resposta inválida | Revisões sem status que o manifesto reconheça, na 1ª tentativa e após os retries. Mede se o pipeline consegue ler o veredito, não aderência ao `ReviewOutput`: o reviewer produz markdown, e o harness converte para o schema depois |
 
 **Decisão por resposta** — responde diretamente à pergunta da issue:
 
