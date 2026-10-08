@@ -41,12 +41,17 @@ projeto.
   permitidos.
 - pytest, AUTOCONTIDO: importe a aplicação do projeto (ex.:
   `from app.main import app`) e use o cliente de teste do framework
-  (`fastapi.testclient.TestClient`, `app.test_client()` no Flask). Não dependa
+  (`with TestClient(app) as cliente:` — o `with` dispara a inicialização da
+  aplicação; `app.test_client()` no Flask). Não dependa
   de fixtures do `conftest.py` do projeto.
 - Isole o estado: se o projeto lê banco/pasta de variáveis de ambiente (ex.:
-  `DATABASE_URL`, `STORAGE_DIR`), aponte-as para `tmp_path` com `monkeypatch`
-  ANTES de importar a aplicação (`importlib.reload` quando necessário). Gere
-  dados de teste no próprio teste (ex.: imagem com Pillow em memória).
+  `DATABASE_URL`, `MEDIA_DIR`), defina-as com `os.environ` NO TOPO do arquivo,
+  ANTES de importar a aplicação, apontando para um diretório temporário
+  (`tempfile.mkdtemp()`). Se o projeto não oferecer essas variáveis, use o
+  estado como está — o arquivo roda sozinho, numa cópia limpa do projeto — e
+  NÃO apague arquivos do projeto (banco, pastas) nos testes. Não use
+  `importlib.reload` nem remova módulos de `sys.modules`. Gere dados de teste
+  no próprio teste (ex.: imagem com Pillow em memória).
 - Cada teste com asserção real sobre o comportamento. Nada de `assert True`,
   teste que só importa o módulo, ou `pytest.skip` para fugir do critério.
 - Não teste o que o critério não pede, nem critérios de outras tasks.

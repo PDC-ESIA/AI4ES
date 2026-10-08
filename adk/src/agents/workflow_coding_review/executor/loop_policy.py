@@ -86,6 +86,8 @@ CHAVE_ASSINATURA = "progress_last_error_signature"
 CHAVE_HISTORICO_ASSINATURAS = "progress_error_signature_history"
 CHAVE_FINGERPRINT = "progress_last_fingerprint"
 CHAVE_MOTIVO_PARADA = "loop_stop_reason"
+# Rodadas reprovadas SEGUIDAS com teste protegido (aceite/jornada) falhando.
+CHAVE_PROTEGIDOS_REPROVADOS = "progress_protected_failures"
 
 # Exportadas para o `TaskIterator` limpar entre tasks. Ficam AQUI, e não
 # duplicadas lá, porque quem cria as chaves é este módulo: uma chave nova que
@@ -99,6 +101,7 @@ CHAVES_DE_CICLO: tuple[str, ...] = (
     CHAVE_HISTORICO_ASSINATURAS,
     CHAVE_FINGERPRINT,
     CHAVE_MOTIVO_PARADA,
+    CHAVE_PROTEGIDOS_REPROVADOS,
 )
 
 
@@ -249,14 +252,49 @@ MOTIVO_PLATO = "plato_nota"
 MOTIVO_SEM_ALTERACAO = "sem_alteracao_arquivos"
 MOTIVO_ERRO_REPETIDO = "erro_repetido"
 MOTIVO_ORCAMENTO_FALHAS = "orcamento_de_falhas_distintas"
+# Testes protegidos (aceite independente/jornada) falhando por várias rodadas
+# seguidas, ainda que com erros diferentes: na run de validação a assinatura
+# mudava a cada rodada e nenhum gatilho disparou em 8 rodadas.
+MOTIVO_PROTEGIDOS_TRAVADOS = "testes_protegidos_travados"
 MOTIVOS_PARADA = frozenset(
     {
         MOTIVO_PLATO,
         MOTIVO_SEM_ALTERACAO,
         MOTIVO_ERRO_REPETIDO,
         MOTIVO_ORCAMENTO_FALHAS,
+        MOTIVO_PROTEGIDOS_TRAVADOS,
     }
 )
+
+
+def protegidos_falharam(report: dict) -> bool:
+    """Algum comando de teste protegido (aceite/jornada) falhou no report."""
+    for estagio in report.get("stages") or []:
+        if not isinstance(estagio, dict) or estagio.get("stage") != "testes_automatizados":
+            continue
+        for resultado in (estagio.get("evidence") or {}).get("resultados") or []:
+            if (
+                isinstance(resultado, dict)
+                and resultado.get("aceite_independente")
+                and (resultado.get("timed_out") or resultado.get("exit_code") not in (0, None))
+            ):
+                return True
+    return False
+
+
+def registrar_protegidos(state, falharam: bool) -> Optional[str]:
+    """Conta rodadas seguidas com protegido falhando; devolve o motivo no teto.
+
+    Teto: `AI4ES_PROTEGIDOS_MAX_RODADAS` (padrão 3). Uma rodada sem falha nos
+    protegidos zera a contagem.
+    """
+    seguidas = (state.get(CHAVE_PROTEGIDOS_REPROVADOS) or 0) + 1 if falharam else 0
+    state[CHAVE_PROTEGIDOS_REPROVADOS] = seguidas
+    teto = config_inteiro("AI4ES_PROTEGIDOS_MAX_RODADAS", 3, minimo=1)
+    if seguidas >= teto:
+        state[CHAVE_MOTIVO_PARADA] = MOTIVO_PROTEGIDOS_TRAVADOS
+        return MOTIVO_PROTEGIDOS_TRAVADOS
+    return None
 
 
 @dataclass(frozen=True)

@@ -120,6 +120,8 @@ def _cenario_harness(tmp_path, saida_aceite: str, *, saida_suite: str = "1 passe
         ],
     )
     th._write_manifest(coder, th._manifest_command(test=["venv/bin/python -m pytest -v tests/test_meu.py"]))
+    (coder / ai.PASTA_ACEITE).mkdir(parents=True)
+    (coder / _ARQ).write_text("def test_CA_01_cria():\n    pass\n")
     ai.gravar_mapa(
         tasks,
         "TASK-001",
@@ -163,13 +165,51 @@ def test_harness_sem_resultado_do_teste_marca_nao_executado(ligada, tmp_path):
     assert por_id["CA-01"]["outcome"] == "teste_nao_executado"
 
 
-def test_harness_nao_reexecuta_quando_a_suite_ja_coletou(ligada, tmp_path):
-    suite = (
-        f"{_ARQ}::test_CA_01_cria PASSED\n{_ARQ}::test_CA_02_status PASSED\n2 passed in 0.1s"
+def test_harness_isola_os_protegidos_da_suite_do_coder(ligada, tmp_path):
+    relatorio, sandbox = _cenario_harness(tmp_path, _SAIDA_ACEITE)
+    suite = [c for c in sandbox.exec_calls if "tests/test_meu.py" in c]
+    aceite = [c for c in sandbox.exec_calls if c.endswith(_ARQ)]
+    assert suite == [
+        "venv/bin/python -m pytest --ignore=tests/acceptance -v tests/test_meu.py"
+    ]
+    assert aceite == [f"venv/bin/python -m pytest -v -p no:cacheprovider {_ARQ}"]
+
+
+def test_harness_roda_aceite_de_tasks_anteriores_como_regressao(ligada, tmp_path):
+    from shared.tools.coding_tools.harness_execucao import _arquivos_protegidos
+
+    coder, execution, tasks = th._dirs(tmp_path)
+    th._write_manifest(coder, th._manifest_command())
+    (coder / ai.PASTA_ACEITE).mkdir(parents=True)
+    for task in ("TASK-001", "TASK-002"):
+        (coder / ai.caminho_relativo(task)).write_text("def test_CA_01():\n    pass\n")
+    ctx = SimpleNamespace(
+        manifest=SimpleNamespace(workdir="."), coder_dir=coder, mapa_independente=None
     )
-    relatorio, sandbox = _cenario_harness(tmp_path, "", saida_suite=suite)
-    assert not any("no:cacheprovider" in c for c in sandbox.exec_calls)
-    assert {e["outcome"] for e in relatorio["criteria_evidence"][:2]} == {"atendido"}
+    assert _arquivos_protegidos(ctx) == [
+        ai.caminho_relativo("TASK-001"),
+        ai.caminho_relativo("TASK-002"),
+    ]
+
+
+def test_execucao_isolada_usa_copia_limpa_com_o_build_reaproveitado(tmp_path, monkeypatch):
+    from shared.execution.sandbox import DirectSandbox
+    from shared.tools.coding_tools.harness_execucao import _rodar_isolado
+
+    coder = tmp_path / "src"
+    coder.mkdir()
+    (coder / "app.db").write_text("original")
+    principal = DirectSandbox()
+    principal.setup(coder)
+    (principal.workdir / "venv").mkdir()
+    (principal.workdir / "venv" / "marca").write_text("build")
+    (principal.workdir / "app.db").write_text("sujo pelos testes do coder")
+    ctx = SimpleNamespace(manifest=SimpleNamespace(sandbox="direct", workdir="."), sandbox=principal, coder_dir=coder)
+    try:
+        res = _rodar_isolado(ctx, "cat app.db venv/marca", None)
+    finally:
+        principal.cleanup()
+    assert res.stdout == "originalbuild"
 
 
 def test_harness_sem_flag_ignora_o_mapa(desligada, tmp_path):
@@ -445,3 +485,82 @@ def test_manifesto_ok_quando_todos_atendidos(tmp_path, monkeypatch, ligada):
 
 def test_manifesto_sem_flag_nao_usa_criterios(tmp_path, monkeypatch, desligada):
     assert _emitir_manifesto(tmp_path, monkeypatch, nao_atendidos=1) == "ok"
+
+
+# ── Teto de rodadas com testes protegidos falhando ─────────────────────────
+
+
+def _report_protegido(falhou: bool) -> dict:
+    return {
+        "stages": [
+            {
+                "stage": "testes_automatizados",
+                "evidence": {
+                    "resultados": [
+                        {"comando": "pytest -v", "exit_code": 0},
+                        {"comando": f"pytest {_ARQ}", "exit_code": 1 if falhou else 0,
+                         "aceite_independente": True},
+                    ]
+                },
+            }
+        ]
+    }
+
+
+def test_detecta_falha_em_teste_protegido():
+    from src.agents.workflow_coding_review.executor.loop_policy import protegidos_falharam
+
+    assert protegidos_falharam(_report_protegido(True)) is True
+    assert protegidos_falharam(_report_protegido(False)) is False
+    assert protegidos_falharam({}) is False
+
+
+def test_teto_de_rodadas_seguidas_com_protegido_falhando(monkeypatch):
+    from src.agents.workflow_coding_review.executor.loop_policy import (
+        CHAVE_MOTIVO_PARADA,
+        CHAVES_DE_CICLO,
+        MOTIVO_PROTEGIDOS_TRAVADOS,
+        MOTIVOS_PARADA,
+        registrar_protegidos,
+    )
+
+    monkeypatch.delenv("AI4ES_PROTEGIDOS_MAX_RODADAS", raising=False)
+    state: dict = {}
+    assert registrar_protegidos(state, True) is None
+    assert registrar_protegidos(state, False) is None  # rodada limpa zera
+    assert registrar_protegidos(state, True) is None
+    assert registrar_protegidos(state, True) is None
+    assert registrar_protegidos(state, True) == MOTIVO_PROTEGIDOS_TRAVADOS
+    assert state[CHAVE_MOTIVO_PARADA] == MOTIVO_PROTEGIDOS_TRAVADOS
+    # Reconhecido pelo TaskIterator e limpo entre tasks.
+    assert MOTIVO_PROTEGIDOS_TRAVADOS in MOTIVOS_PARADA
+    assert "progress_protected_failures" in CHAVES_DE_CICLO
+
+
+def test_executor_encerra_a_task_no_teto(monkeypatch, tmp_path, ligada):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    monkeypatch.setenv("AI4ES_PROTEGIDOS_MAX_RODADAS", "2")
+    executor = importlib.import_module("src.agents.workflow_coding_review.executor.agent")
+    monkeypatch.setattr(executor, "_carregar_execution_report", lambda _c: _report_protegido(True))
+    monkeypatch.setattr(executor, "fingerprint_mudou", lambda _s: True)
+    # Notas sempre diferentes: nenhum gatilho histórico dispararia.
+    notas = iter([0.3, 0.5])
+    monkeypatch.setattr(
+        executor, "calcular_nota",
+        lambda _r: SimpleNamespace(total=next(notas), como_dict=lambda: {}),
+    )
+    state = {"task_id": "TASK-001", "validation": {"status": "reprovado"}}
+    ctx = SimpleNamespace(state=state, actions=SimpleNamespace(escalate=None))
+
+    assert executor.aplicar_politica_de_progresso(ctx) is None
+    parada = executor.aplicar_politica_de_progresso(ctx)
+    assert ctx.actions.escalate is True
+    assert "testes_protegidos_travados" in parada.parts[0].text
+
+
+def test_iteracao_vem_do_historico_da_task():
+    from shared.tools.coding_tools.harness_execucao import _resolver_iteracao
+
+    assert _resolver_iteracao(1, None) == 1
+    assert _resolver_iteracao(1, SimpleNamespace(state={})) == 1
+    assert _resolver_iteracao(1, SimpleNamespace(state={"progress_score_history": [0.2, 0.4]})) == 3

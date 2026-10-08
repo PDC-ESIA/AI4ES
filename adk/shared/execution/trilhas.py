@@ -62,7 +62,13 @@ _NOTAS_PYTHON_WEB = (
 - Arquivos enviados/gerados que a página exibe precisam de rota: monte
   `StaticFiles` no diretório e use URLs absolutas (`/media/...`) nos templates.
 - Para não haver import circular, crie `Jinja2Templates` num módulo próprio
-  (ex.: `app/templating.py`) e importe-o nas rotas — nunca de `app.main`."""
+  (ex.: `app/templating.py`) e importe-o nas rotas — nunca de `app.main`.
+- Testabilidade: leia o caminho do banco e das pastas de arquivos de variáveis
+  de ambiente (`DATABASE_URL`, `MEDIA_DIR`), com padrão local — nada de
+  caminho fixo no código. Crie as tabelas na inicialização da aplicação
+  (lifespan) e não recrie engine/sessão em tempo de execução. Testes de
+  aceite e de jornada, que você não edita, rodam em processo próprio e apontam
+  essas variáveis para pastas temporárias."""
 )
 
 TRILHAS: tuple[Trilha, ...] = (

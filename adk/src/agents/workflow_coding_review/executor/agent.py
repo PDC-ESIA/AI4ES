@@ -46,7 +46,12 @@ from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
 from shared.execution.verificacao_rapida import ResultadoVerificacao, verificar_rapido
-from shared.pipeline_flags import coder_contexto_enxuto, verificacao_rapida
+from shared.pipeline_flags import (
+    aceite_independente,
+    coder_contexto_enxuto,
+    jornada,
+    verificacao_rapida,
+)
 from shared.execution.verificador_executabilidade import verificar_executabilidade
 from shared.tools.coding_tools.harness_execucao import executar_harness_tool
 from shared.workspace import get_agent_workspace
@@ -64,7 +69,9 @@ from .loop_policy import (
     CHAVE_HISTORICO,
     assinatura_erro,
     fingerprint_mudou,
+    protegidos_falharam,
     registrar_e_avaliar,
+    registrar_protegidos,
     registrar_rodada,
 )
 from .progress_score import NotaProgresso, calcular_nota
@@ -530,11 +537,14 @@ def aplicar_politica_de_progresso(callback_context) -> Optional[types.Content]:
         arquivos_mudaram=fingerprint_mudou(state),
         assinatura_erro_atual=assinatura_erro(exec_report),
     )
-    if not decisao.parar:
+    motivo = decisao.motivo if decisao.parar else None
+    if motivo is None and (aceite_independente() or jornada()):
+        motivo = registrar_protegidos(state, protegidos_falharam(exec_report))
+    if motivo is None:
         return None
 
     callback_context.actions.escalate = True
-    resumo = _resumo_da_parada(decisao.motivo, nota)
+    resumo = _resumo_da_parada(motivo, nota)
     state["execution_result"] = resumo
     return types.Content(role="model", parts=[types.Part(text=resumo)])
 

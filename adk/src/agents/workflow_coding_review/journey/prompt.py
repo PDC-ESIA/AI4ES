@@ -28,9 +28,12 @@ editar o seu teste.
 
 # REGRAS DO TESTE
 - pytest, AUTOCONTIDO, com o cliente de teste do framework
-  (`fastapi.testclient.TestClient`, `app.test_client()` no Flask). Isole o
-  estado (banco, pastas de upload) com `tmp_path` + `monkeypatch` antes de
-  importar a aplicação. Gere arquivos de teste em memória (ex.: JPEG com
+  (`with TestClient(app) as cliente:` — o `with` dispara a inicialização da
+  aplicação; `app.test_client()` no Flask). Se o projeto lê banco/pastas de
+  variáveis de ambiente, defina-as com `os.environ` no topo do arquivo, antes
+  de importar a aplicação, apontando para `tempfile.mkdtemp()`. O arquivo roda
+  sozinho, numa cópia limpa do projeto: não apague arquivos do projeto, não
+  use `importlib.reload`. Gere arquivos de teste em memória (ex.: JPEG com
   Pillow).
 - Uma função por jornada: `test_jornada_<NN>_<resumo>`.
 - Siga a jornada PELA INTERFACE quando o produto tiver interface: carregue a

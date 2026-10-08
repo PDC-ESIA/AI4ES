@@ -42,8 +42,13 @@ from shared.execution.profile import ExecutionProfile, select_profile
 from shared.execution.sandbox import Sandbox, create_sandbox
 from shared.execution.trilhas import ambiente_da_trilha
 from shared.pipeline_flags import aceite_independente, jornada
-from shared.tools.coding_tools.aceite_independente import comando_de_aceite, ler_mapa
+from shared.tools.coding_tools.aceite_independente import (
+    PASTA_ACEITE,
+    comando_de_aceite,
+    ler_mapa,
+)
 from shared.tools.coding_tools import harness_docker as hd
+from shared.tools.coding_tools.jornada import PASTA_JORNADA
 from shared.tools.coding_tools.criterios_aceite import (
     AcceptanceCriterion,
     MapaDeTestes,
@@ -746,6 +751,66 @@ def _resumo_saida_testes(saida: str) -> dict:
     }
 
 
+def _pastas_protegidas(ctx: _HarnessContext) -> list[str]:
+    """Pastas de testes protegidos presentes no artefato (só com as flags)."""
+    if ctx.manifest is None or not (aceite_independente() or jornada()):
+        return []
+    workdir = ctx.coder_dir / ctx.manifest.workdir
+    return [p for p in (PASTA_ACEITE, PASTA_JORNADA) if (workdir / p).is_dir()]
+
+
+def _sem_pastas_protegidas(comando: str, pastas: list[str]) -> str:
+    """Tira os testes protegidos da suíte do coder (`--ignore`); só em pytest."""
+    posicao = comando.find("pytest")
+    if not pastas or posicao < 0:
+        return comando
+    fim = posicao + len("pytest")
+    ignores = "".join(f" --ignore={p}" for p in pastas)
+    return f"{comando[:fim]}{ignores}{comando[fim:]}"
+
+
+def _arquivos_protegidos(ctx: _HarnessContext) -> list[str]:
+    """Arquivos protegidos a rodar: todos os de aceite (regressão entre tasks)
+    e o arquivo do mapa da task (a jornada, na task de integração)."""
+    if ctx.manifest is None or not (aceite_independente() or jornada()):
+        return []
+    workdir = ctx.coder_dir / ctx.manifest.workdir
+    arquivos = (
+        sorted(p.relative_to(workdir).as_posix() for p in (workdir / PASTA_ACEITE).glob("test_*.py"))
+        if aceite_independente()
+        else []
+    )
+    do_mapa = (ctx.mapa_independente or {}).get("arquivo")
+    if do_mapa and do_mapa not in arquivos and (workdir / do_mapa).is_file():
+        arquivos.append(do_mapa)
+    return arquivos
+
+
+# Diretórios produzidos pelo build que a cópia isolada reaproveita por link, para
+# não reinstalar dependências a cada arquivo protegido.
+_ARTEFATOS_DE_BUILD = ("venv", ".venv", "node_modules")
+
+
+def _rodar_isolado(ctx: _HarnessContext, comando: str, env: Optional[dict[str, str]]):
+    """Roda `comando` numa cópia limpa do artefato, com o build reaproveitado."""
+    assert ctx.manifest is not None and ctx.sandbox is not None
+    if ctx.manifest.sandbox != "direct":
+        return ctx.sandbox.exec(comando, timeout=_TESTS_TIMEOUT, env=env)
+    isolado = create_sandbox("direct", workdir_subpath=ctx.manifest.workdir)
+    try:
+        isolado.setup(ctx.coder_dir)
+        construido = getattr(ctx.sandbox, "workdir", None)
+        destino = getattr(isolado, "workdir", None)
+        if isinstance(construido, Path) and isinstance(destino, Path):
+            for nome in _ARTEFATOS_DE_BUILD:
+                origem = construido / nome
+                if origem.exists() and not (destino / nome).exists():
+                    (destino / nome).symlink_to(origem, target_is_directory=True)
+        return isolado.exec(comando, timeout=_TESTS_TIMEOUT, env=env)
+    finally:
+        isolado.cleanup()
+
+
 def _estagio_testes(ctx: _HarnessContext) -> StageResult:
     """Estágio 6 — executa os comandos `test` do manifesto no sandbox.
 
@@ -777,7 +842,9 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
     any_fail = False
     linhas: list[str] = []
 
+    ignorar = _pastas_protegidas(ctx)
     for cmd in ctx.manifest.test:
+        cmd = _sem_pastas_protegidas(cmd, ignorar)
         res = ctx.sandbox.exec(cmd, timeout=_TESTS_TIMEOUT, env=env)
         saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
         linhas.append(f"$ {cmd}\n{saida}")
@@ -800,34 +867,33 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
         elif res.exit_code not in (0, None):
             any_fail = True
 
-    # Testes de aceite independentes que a suíte do coder não coletou (comando
-    # de teste restrito a arquivos dele) rodam num comando à parte, no mesmo
-    # ambiente: sem desfecho observado, o critério não seria decidido.
-    if ctx.mapa_independente:
-        observados = _consolidar_testes(resultados)
-        esperados = {
-            t for testes in ctx.mapa_independente["por_criterio"].values() for t in testes
-        }
-        comando = comando_de_aceite(ctx.manifest.test, ctx.mapa_independente["arquivo"])
-        if comando and esperados - set(observados):
-            res = ctx.sandbox.exec(comando, timeout=_TESTS_TIMEOUT, env=env)
-            saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
-            linhas.append(f"$ {comando}\n{saida}")
-            resultados.append(
-                {
-                    "comando": comando,
-                    "exit_code": res.exit_code,
-                    "timed_out": res.timed_out,
-                    "resumo": _resumo_saida_testes(saida),
-                    "testes": _testes_da_saida(saida),
-                    "saida_tail": saida[-2000:],
-                    "aceite_independente": True,
-                }
-            )
-            if res.timed_out:
-                any_timeout = True
-            elif res.exit_code not in (0, None):
-                any_fail = True
+    # Testes protegidos (aceite independente e jornada) rodam ISOLADOS: cada
+    # arquivo num processo próprio, sobre uma cópia limpa do artefato. Na run
+    # de validação, rodando na mesma suíte do coder, eles dividiam o arquivo de
+    # banco com os testes dele — que o apagavam — e o coder, sem poder editar
+    # os protegidos, deformou o código de produção tentando conviver com isso.
+    for arquivo in _arquivos_protegidos(ctx):
+        comando = comando_de_aceite(ctx.manifest.test, arquivo)
+        if comando is None:
+            continue
+        res = _rodar_isolado(ctx, comando, env)
+        saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
+        linhas.append(f"$ {comando}\n{saida}")
+        resultados.append(
+            {
+                "comando": comando,
+                "exit_code": res.exit_code,
+                "timed_out": res.timed_out,
+                "resumo": _resumo_saida_testes(saida),
+                "testes": _testes_da_saida(saida),
+                "saida_tail": saida[-2000:],
+                "aceite_independente": True,
+            }
+        )
+        if res.timed_out:
+            any_timeout = True
+        elif res.exit_code not in (0, None):
+            any_fail = True
 
     if any_timeout:
         status, error_code = StageStatus.FALHA, "TESTES_TIMEOUT"
@@ -1368,6 +1434,19 @@ def executar_harness_tool(
     """
     return executar_harness_validacao(
         _resolver_task_id(task_id, tool_context),
-        iteration,
+        _resolver_iteracao(iteration, tool_context),
         tool_context=tool_context,
     )
+
+
+def _resolver_iteracao(iteration: int, tool_context: ToolContext | None) -> int:
+    """Número da rodada pelo histórico da task no state, não pelo LLM.
+
+    Sem histórico de conversa (`include_contents='none'`), o executor não sabe
+    em que rodada está e passava sempre 1. O histórico de notas da política de
+    progresso (limpo a cada task) conta as rodadas já avaliadas.
+    """
+    if tool_context is None:
+        return iteration
+    historico = tool_context.state.get("progress_score_history")
+    return len(historico) + 1 if isinstance(historico, list) else iteration
