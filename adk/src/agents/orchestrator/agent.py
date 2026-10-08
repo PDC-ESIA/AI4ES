@@ -33,6 +33,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.agents.run_config import RunConfig
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.genai import types
@@ -245,6 +246,7 @@ class _PipelineOrchestrator(BaseAgent):
         last_text = ""
         new_pause = None
         async for event in runner.run_async(
+            run_config=RunConfig(max_llm_calls=flags.max_llm_calls()),
             user_id=ctx.user_id,
             session_id=inner_sid,
             new_message=function_response,
@@ -379,6 +381,7 @@ class _PipelineOrchestrator(BaseAgent):
             last_text = ""
             pending_pause = None
             async for event in runner.run_async(
+                run_config=RunConfig(max_llm_calls=flags.max_llm_calls()),
                 user_id=inner_session.user_id,
                 session_id=inner_session.id,
                 new_message=content,
@@ -402,6 +405,7 @@ class _PipelineOrchestrator(BaseAgent):
                 )
                 last_text = ""
                 async for event in runner.run_async(
+                    run_config=RunConfig(max_llm_calls=flags.max_llm_calls()),
                     user_id=inner_session.user_id,
                     session_id=inner_session.id,
                     new_message=retry_content,

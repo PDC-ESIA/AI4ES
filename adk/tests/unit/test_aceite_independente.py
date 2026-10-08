@@ -655,3 +655,15 @@ def test_autor_roda_o_proprio_teste_so_depois_de_salvar(ws, monkeypatch):
     assert resposta == {"exit_code": 1, "saida": "E   TypeError: allow_redirects"}
     assert chamado == {"trilha": {"id": "t"}, "arquivo": _ARQ}
     assert "tool_executar_teste_aceite" in [t.name for t in ws.modulo.author.tools]
+
+
+def test_teto_de_chamadas_de_llm_por_pipeline(monkeypatch):
+    from shared.pipeline_flags import max_llm_calls
+
+    for flag in ("AI4ES_CODER_CONTEXTO_ENXUTO", "AI4ES_ACEITE_INDEPENDENTE", "AI4ES_JORNADA", "AI4ES_MAX_LLM_CALLS"):
+        monkeypatch.delenv(flag, raising=False)
+    assert max_llm_calls() == 500  # padrão do ADK, comportamento histórico
+    monkeypatch.setenv("AI4ES_ACEITE_INDEPENDENTE", "true")
+    assert max_llm_calls() == 2000
+    monkeypatch.setenv("AI4ES_MAX_LLM_CALLS", "1200")
+    assert max_llm_calls() == 1200

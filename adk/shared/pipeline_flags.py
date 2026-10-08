@@ -31,6 +31,10 @@ Coder/reviewer:
                                     veredito. Lida também no import do loop.
     AI4ES_ACEITE_COBERTURA_MIN      cobertura mínima de critérios para aceitar
                                     task com ressalvas (padrão 0.6).
+    AI4ES_MAX_LLM_CALLS             teto de chamadas de LLM por pipeline
+                                    (RunConfig.max_llm_calls do ADK). Padrão:
+                                    500 (o do ADK); 2000 com as flags do
+                                    coder/reviewer, que fazem mais chamadas.
     AI4ES_JORNADA                   depois da última task, um agente escreve o
                                     teste de jornada do produto (a partir das
                                     HUs); falha vira task de integração.
@@ -89,3 +93,20 @@ def aceite_cobertura_minima() -> float:
 
 def jornada() -> bool:
     return flag("AI4ES_JORNADA")
+
+
+def max_llm_calls() -> int:
+    """Teto de chamadas de LLM por execução de pipeline (ADK `RunConfig`).
+
+    Na validação, o coder/reviewer com aceite independente, verificação rápida
+    e rodadas de correção passou das 500 chamadas (padrão do ADK) no meio da
+    5ª de 7 tasks e a execução abortou com LlmCallsLimitExceededError.
+    """
+    bruto = os.environ.get("AI4ES_MAX_LLM_CALLS", "").strip()
+    if bruto:
+        try:
+            return int(bruto)
+        except ValueError:
+            pass
+    novas = coder_contexto_enxuto() or aceite_independente() or jornada()
+    return 2000 if novas else 500
