@@ -656,3 +656,49 @@ def test_sem_mapa_a_suite_do_coder_continua_reprovando(ligada, tmp_path):
     relatorio = _cenario_suite(tmp_path, com_mapa=False)
     testes = next(s for s in relatorio["stages"] if s["stage"] == "testes_automatizados")
     assert testes["status"] == "falha"
+
+
+# ── Técnico é anotado: não chega ao coder como coisa a corrigir ────────────
+
+
+def test_error_report_tira_o_tecnico_do_que_o_coder_corrige(monkeypatch):
+    from src.agents.workflow_coding_review.executor import agent as executor
+
+    relatorio = {
+        "work_item_id": "TASK-002", "iteration": 3,
+        "criteria_evidence": [
+            {"criterion": "pela tela", "criterion_id": "CA-01", "outcome": "nao_atendido"},
+            {"criterion": "sqlite", "criterion_id": "CA-02", "outcome": "nao_atendido", "tecnico": True},
+        ],
+        "stages": [{"stage": "testes_automatizados", "status": "falha", "evidence": {"resultados": [
+            {"comando": "pytest tests/test_upload.py", "exit_code": 1, "nao_bloqueante": True,
+             "resumo": {"falharam": 1, "erros": 0}, "saida_tail": "test_upload_50_images FAILED"},
+            {"comando": f"pytest {_ARQ_UI}", "exit_code": 1, "resumo": {"falharam": 1, "erros": 0},
+             "saida_tail": "test_CA_01 FAILED: botão não encontrado"},
+            {"comando": f"pytest {_ARQ}", "exit_code": 0, "saida_tail": "1 passed"},
+        ], "saida_tail": "tudo"}}],
+    }
+    monkeypatch.setattr(executor, "_carregar_execution_report", lambda _c: relatorio)
+    estado = {
+        "validation": {
+            "status": "reprovado", "work_item_id": "TASK-002", "blocking_reason": "x",
+            "criteria_verdicts": [
+                {"criterion": "pela tela", "status": "nao_atendido"},
+                {"criterion": "sqlite", "status": "nao_atendido"},
+            ],
+        },
+    }
+    executor.montar_error_report(SimpleNamespace(state=estado))
+    relatorio_coder = estado["error_report"]
+    assert [c["criterion"] for c in relatorio_coder["failed_criteria"]] == ["pela tela"]
+    resultados = relatorio_coder["failed_stages"][0]["evidence"]["resultados"]
+    assert [r["comando"] for r in resultados] == [f"pytest {_ARQ_UI}"]
+    assert "test_upload_50_images" not in relatorio_coder["failed_stages"][0]["evidence"]["saida_tail"]
+    assert any("tests/test_upload.py" in n for n in relatorio_coder["notas_tecnicas"])
+    assert any("CA-02" in n for n in relatorio_coder["notas_tecnicas"])
+
+
+def test_coder_e_instruido_a_nao_corrigir_notas_tecnicas():
+    from src.agents.workflow_coding_review.coder.prompt import instruction
+
+    assert "`notas_tecnicas`" in instruction and "NÃO gaste a rodada com elas" in instruction

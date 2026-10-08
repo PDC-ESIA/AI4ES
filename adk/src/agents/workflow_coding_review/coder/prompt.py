@@ -155,6 +155,10 @@ a causa raiz nem quais arquivos mudar. O diagnóstico é SEU. Quando
 5. NÃO recrie o projeto: mexa somente no que é necessário para resolver o que o
    relatório aponta.
 6. Ao final, produza texto curto listando o que foi alterado e por quê.
+7. `notas_tecnicas`, quando houver, são verificações técnicas ANOTADAS no
+   relatório (critério técnico, testes da sua própria suíte): elas não
+   reprovam a task. NÃO gaste a rodada com elas — corrija só o que está em
+   `failed_criteria` e `failed_stages`.
 
 Se `execution_result` NÃO for esse JSON (texto livre — usado quando o veredito
 real não pôde ser confirmado), trate como antes:

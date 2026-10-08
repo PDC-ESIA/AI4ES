@@ -100,6 +100,38 @@ def _como_content(report: ErrorReport) -> types.Content:
     )
 
 
+def _so_o_que_bloqueia(estagio: dict, notas: list[str]) -> dict:
+    """Evidência do estágio sem o que é técnico (anotado, não bloqueia).
+
+    O homologar decide a task; retrabalho em verificação técnica só gasta
+    tokens. No estágio de testes, os comandos não bloqueantes (suíte do coder
+    com aceite independente) e os que só têm falhas toleradas (técnicas ou já
+    aceitas) saem da evidência que chega ao coder e viram nota.
+    """
+    evidencia = dict(estagio.get("evidence") or {})
+    if estagio.get("stage") != "testes_automatizados":
+        return evidencia
+    mantidos = []
+    for resultado in evidencia.get("resultados") or []:
+        if not isinstance(resultado, dict):
+            continue
+        falhou = resultado.get("timed_out") or resultado.get("exit_code") not in (0, None)
+        if falhou and (resultado.get("nao_bloqueante") or resultado.get("so_falhas_toleradas")):
+            resumo = resultado.get("resumo") or {}
+            notas.append(
+                f"{resultado.get('comando', '?')}: {resumo.get('falharam', 0)} falharam, "
+                f"{resumo.get('erros', 0)} erros (técnico, anotado)"
+            )
+            continue
+        if falhou:
+            mantidos.append(resultado)
+    evidencia["resultados"] = mantidos
+    evidencia["saida_tail"] = "\n".join(
+        f"$ {r.get('comando', '')}\n{r.get('saida_tail', '')}" for r in mantidos
+    )[-3000:]
+    return evidencia
+
+
 def _carregar_execution_report(callback_context) -> dict:
     """Lê o ExecutionReport do disco a partir do `report_path` do state.
 
@@ -603,6 +635,11 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
         return None
 
     exec_report = _carregar_execution_report(callback_context)
+    tecnicos = {
+        e.get("criterion")
+        for e in exec_report.get("criteria_evidence") or []
+        if isinstance(e, dict) and e.get("tecnico")
+    }
 
     criterios = [
         FailedCriterion(
@@ -612,19 +649,25 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
             evidence_ref=cv.get("evidence_ref"),
         )
         for cv in validation.get("criteria_verdicts", [])
-        if cv.get("status") != "atendido"
+        if cv.get("status") != "atendido" and cv.get("criterion") not in tecnicos
     ]
 
+    notas: list[str] = []
     estagios = [
         FailedStage(
             stage=s.get("stage", ""),
             status=s.get("status", ""),
             error_code=s.get("error_code"),
             summary=s.get("summary", ""),
-            evidence=s.get("evidence") or {},
+            evidence=_so_o_que_bloqueia(s, notas),
         )
         for s in exec_report.get("stages", [])
         if s.get("status") in _STATUS_COM_EVIDENCIA
+    ]
+    notas += [
+        f"critério técnico {e.get('criterion_id') or e.get('criterion')}: {e.get('outcome')}"
+        for e in exec_report.get("criteria_evidence") or []
+        if isinstance(e, dict) and e.get("tecnico") and e.get("outcome") != "atendido"
     ]
 
     try:
@@ -637,6 +680,7 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
             failed_criteria=criterios,
             failed_stages=estagios,
             report_path=callback_context.state.get("report_path"),
+            notas_tecnicas=notas,
         )
     except Exception:
         logger.exception("cr_executor: falha ao montar o ErrorReport")

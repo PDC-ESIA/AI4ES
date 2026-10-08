@@ -79,3 +79,12 @@ class ErrorReport(BaseModel):
     report_path: Optional[str] = Field(
         default=None, description="Caminho do ExecutionReport completo em disco"
     )
+    notas_tecnicas: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Verificações técnicas que falharam (critérios técnicos, suíte do "
+            "coder). Ficam ANOTADAS no relatório e NÃO bloqueiam: não gaste a "
+            "rodada corrigindo-as — corrija o que está em failed_criteria e "
+            "failed_stages."
+        ),
+    )
