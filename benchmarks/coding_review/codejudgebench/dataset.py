@@ -152,7 +152,10 @@ def ensure_dataset(cache_dir: Path, split: str = DEFAULT_SPLIT) -> Path:
     """
     _validar_split(split)
     destino = cache_path(cache_dir, split)
-    if destino.is_file() and destino.stat().st_size > 0:
+    # Cache completo = JSONL + .meta.json. O JSONL é promovido antes do meta;
+    # uma interrupção entre os dois deixaria um cache sem a revisão do dataset,
+    # reaproveitado por todos os runs seguintes. Nesse caso, baixa de novo.
+    if destino.is_file() and destino.stat().st_size > 0 and meta_path(cache_dir, split).is_file():
         return destino
 
     cache_dir.mkdir(parents=True, exist_ok=True)
