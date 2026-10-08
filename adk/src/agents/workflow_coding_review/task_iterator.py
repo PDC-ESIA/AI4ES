@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 import re
 from typing import Any, AsyncGenerator, Optional
 
@@ -40,7 +41,11 @@ from shared.pipeline_flags import (
     jornada,
     trilhas,
 )
-from shared.tools.coding_tools.aceite_independente import gravar_mapa
+from shared.tools.coding_tools.aceite_independente import (
+    gravar_mapa,
+    ler_mapa,
+    registrar_falhas_aceitas,
+)
 from shared.tools.coding_tools.jornada import (
     ARQUIVO_JORNADA,
     FALHOU,
@@ -142,6 +147,35 @@ def montar_task_atual(task: dict, macro_context: Optional[dict]) -> str:
     return json.dumps(
         {"macro_context": contexto, "task": task}, ensure_ascii=False, indent=2
     )
+
+
+def fechar_linha_de_base(task_id: str, report_path: Optional[str]) -> None:
+    """Registra quais testes de aceite DA TASK ainda falhavam quando ela fechou.
+
+    Nas tasks seguintes esses testes rodam como regressão, mas só reprovam se
+    um teste que PASSAVA voltar a falhar (ver `registrar_falhas_aceitas`).
+    """
+    tasks_dir = get_agent_workspace("cr_context_engineer")
+    mapa = ler_mapa(tasks_dir, task_id)
+    if mapa is None:
+        return
+    proprios = {t for testes in mapa["por_criterio"].values() for t in testes}
+    falhos: set[str] = set()
+    try:
+        relatorio = json.loads(Path(report_path).read_text(encoding="utf-8")) if report_path else {}
+    except (OSError, ValueError):
+        relatorio = {}
+    for estagio in relatorio.get("stages") or []:
+        if estagio.get("stage") != "testes_automatizados":
+            continue
+        for resultado in (estagio.get("evidence") or {}).get("resultados") or []:
+            for teste in resultado.get("testes") or []:
+                if teste.get("nodeid") in proprios and teste.get("outcome") in ("falhou", "erro"):
+                    falhos.add(teste["nodeid"])
+    if not relatorio:
+        # Sem relatório confiável, nada do arquivo é linha de base de sucesso.
+        falhos = proprios
+    registrar_falhas_aceitas(tasks_dir, task_id, falhos)
 
 
 def branch_da_task(branch_base: Optional[str], indice: int, task_id: str) -> str:
@@ -800,6 +834,9 @@ class TaskIterator(BaseAgent):
                 }
             else:
                 resultado = classificar_desfecho(state, task_id)
+
+            if aceite_independente() or jornada():
+                fechar_linha_de_base(task_id, resultado.get("report_path"))
 
             # O contrato no envelope é a fonte esperada da dimensão de aceite,
             # mesmo se o arquivo da task ou o report desaparecer durante a run.

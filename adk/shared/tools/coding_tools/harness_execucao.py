@@ -45,6 +45,7 @@ from shared.pipeline_flags import aceite_independente, jornada
 from shared.tools.coding_tools.aceite_independente import (
     PASTA_ACEITE,
     comando_de_aceite,
+    falhas_aceitas_por_arquivo,
     ler_mapa,
 )
 from shared.tools.coding_tools import harness_docker as hd
@@ -872,27 +873,40 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
     # de validação, rodando na mesma suíte do coder, eles dividiam o arquivo de
     # banco com os testes dele — que o apagavam — e o coder, sem poder editar
     # os protegidos, deformou o código de produção tentando conviver com isso.
-    for arquivo in _arquivos_protegidos(ctx):
+    # Nos arquivos de tasks ANTERIORES (regressão), só reprova o teste que
+    # passava quando a task dele fechou: falhas já aceitas ficam registradas.
+    protegidos = _arquivos_protegidos(ctx)
+    aceitas = falhas_aceitas_por_arquivo(ctx.tasks_dir) if protegidos else {}
+    da_task = (ctx.mapa_independente or {}).get("arquivo")
+    for arquivo in protegidos:
         comando = comando_de_aceite(ctx.manifest.test, arquivo)
         if comando is None:
             continue
         res = _rodar_isolado(ctx, comando, env)
         saida = "\n".join(p for p in (res.stdout, res.stderr) if p)
         linhas.append(f"$ {comando}\n{saida}")
-        resultados.append(
-            {
-                "comando": comando,
-                "exit_code": res.exit_code,
-                "timed_out": res.timed_out,
-                "resumo": _resumo_saida_testes(saida),
-                "testes": _testes_da_saida(saida),
-                "saida_tail": saida[-2000:],
-                "aceite_independente": True,
-            }
+        testes = _testes_da_saida(saida)
+        falhos = {t["nodeid"] for t in testes if t["outcome"] in ("falhou", "erro")}
+        toleradas = (
+            sorted(falhos)
+            if arquivo != da_task and falhos and falhos <= aceitas.get(arquivo, set())
+            else []
         )
+        resultado = {
+            "comando": comando,
+            "exit_code": res.exit_code,
+            "timed_out": res.timed_out,
+            "resumo": _resumo_saida_testes(saida),
+            "testes": testes,
+            "saida_tail": saida[-2000:],
+            "aceite_independente": True,
+        }
+        if toleradas:
+            resultado["falhas_ja_aceitas"] = toleradas
+        resultados.append(resultado)
         if res.timed_out:
             any_timeout = True
-        elif res.exit_code not in (0, None):
+        elif res.exit_code not in (0, None) and not toleradas:
             any_fail = True
 
     if any_timeout:

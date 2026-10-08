@@ -564,3 +564,61 @@ def test_iteracao_vem_do_historico_da_task():
     assert _resolver_iteracao(1, None) == 1
     assert _resolver_iteracao(1, SimpleNamespace(state={})) == 1
     assert _resolver_iteracao(1, SimpleNamespace(state={"progress_score_history": [0.2, 0.4]})) == 3
+
+
+# ── Linha de base: falhas já aceitas não reprovam tasks seguintes ──────────
+
+
+def test_regressao_tolera_falha_ja_aceita_e_reprova_a_nova(ligada, tmp_path):
+    coder, execution, tasks = th._dirs(tmp_path)
+    th._write_task(tasks, task_id="TASK-003", criteria=[{"id": "CA-01", "description": "x", "automatable": True}])
+    th._write_manifest(coder, th._manifest_command())
+    (coder / ai.PASTA_ACEITE).mkdir(parents=True)
+    arq2, arq3 = ai.caminho_relativo("TASK-002"), ai.caminho_relativo("TASK-003")
+    for arq in (arq2, arq3):
+        (coder / arq).write_text("def test_CA_01():\n    pass\n")
+    ai.gravar_mapa(tasks, "TASK-002", arq2, {"CA-01": [f"{arq2}::test_CA_01_a"], "CA-03": [f"{arq2}::test_CA_03_thumb"]})
+    ai.registrar_falhas_aceitas(tasks, "TASK-002", [f"{arq2}::test_CA_03_thumb"])
+    ai.gravar_mapa(tasks, "TASK-003", arq3, {"CA-01": [f"{arq3}::test_CA_01_b"]})
+
+    def _rodar(falhos_em_002):
+        saida2 = "\n".join(
+            f"{arq2}::{n} {'FAILED' if n in falhos_em_002 else 'PASSED'}"
+            for n in ("test_CA_01_a", "test_CA_03_thumb")
+        )
+        sandbox = th.FakeSandbox(exec_results={
+            arq2: CommandResult(exit_code=1, stdout=saida2, stderr=""),
+            arq3: CommandResult(exit_code=0, stdout=f"{arq3}::test_CA_01_b PASSED\n1 passed", stderr=""),
+            "pytest": CommandResult(exit_code=0, stdout="1 passed", stderr=""),
+        })
+        return th._run("TASK-003", coder, execution, tasks, sandbox)
+
+    so_conhecida = _rodar({"test_CA_03_thumb"})
+    testes = next(s for s in so_conhecida["stages"] if s["stage"] == "testes_automatizados")
+    assert testes["status"] == "sucesso"
+    from src.agents.workflow_coding_review.executor.loop_policy import protegidos_falharam
+    assert protegidos_falharam(so_conhecida) is False
+
+    regressao = _rodar({"test_CA_03_thumb", "test_CA_01_a"})
+    testes = next(s for s in regressao["stages"] if s["stage"] == "testes_automatizados")
+    assert testes["status"] == "falha"
+    assert protegidos_falharam(regressao) is True
+
+
+def test_fechar_linha_de_base_registra_falhas_do_relatorio(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.workspace import get_agent_workspace
+    from src.agents.workflow_coding_review.task_iterator import fechar_linha_de_base
+
+    tasks = get_agent_workspace("cr_context_engineer")
+    arq = ai.caminho_relativo("TASK-002")
+    ai.gravar_mapa(tasks, "TASK-002", arq, {"CA-01": [f"{arq}::a"], "CA-03": [f"{arq}::b"]})
+    relatorio = tmp_path / "r.json"
+    relatorio.write_text(json.dumps({"stages": [{"stage": "testes_automatizados", "evidence": {"resultados": [
+        {"testes": [{"nodeid": f"{arq}::a", "outcome": "passou"}, {"nodeid": f"{arq}::b", "outcome": "falhou"},
+                    {"nodeid": "tests/test_x.py::c", "outcome": "falhou"}]}]}}]}))
+    fechar_linha_de_base("TASK-002", str(relatorio))
+    assert ai.ler_mapa(tasks, "TASK-002")["falhas_aceitas"] == [f"{arq}::b"]
+
+    fechar_linha_de_base("TASK-002", None)  # sem relatório: nada é linha de base de sucesso
+    assert set(ai.ler_mapa(tasks, "TASK-002")["falhas_aceitas"]) == {f"{arq}::a", f"{arq}::b"}

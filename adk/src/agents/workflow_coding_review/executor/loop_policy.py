@@ -276,6 +276,7 @@ def protegidos_falharam(report: dict) -> bool:
             if (
                 isinstance(resultado, dict)
                 and resultado.get("aceite_independente")
+                and not resultado.get("falhas_ja_aceitas")
                 and (resultado.get("timed_out") or resultado.get("exit_code") not in (0, None))
             ):
                 return True

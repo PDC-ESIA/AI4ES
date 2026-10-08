@@ -123,7 +123,45 @@ def ler_mapa(tasks_dir: Path, task_id: str) -> Optional[dict]:
         for k, v in por_criterio.items()
         if isinstance(v, list)
     }
-    return {"task_id": task_id, "arquivo": arquivo, "por_criterio": limpo}
+    aceitas = dados.get("falhas_aceitas")
+    return {
+        "task_id": task_id,
+        "arquivo": arquivo,
+        "por_criterio": limpo,
+        "falhas_aceitas": [t for t in aceitas if isinstance(t, str)]
+        if isinstance(aceitas, list)
+        else [],
+    }
+
+
+def registrar_falhas_aceitas(tasks_dir: Path, task_id: str, nodeids: Iterable[str]) -> None:
+    """Fecha a linha de base da task: testes dela que já falhavam ao encerrar.
+
+    Uma task aceita com ressalvas deixa um teste de aceite falhando; sem esta
+    marca, ele reprovaria como "regressão" todas as tasks seguintes — na run
+    de validação, a TASK-003 passou nos próprios critérios e reprovou pelo
+    CA-03 da TASK-002.
+    """
+    caminho = caminho_mapa(tasks_dir, task_id)
+    try:
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(dados, dict):
+        return
+    dados["falhas_aceitas"] = sorted(set(nodeids))
+    caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def falhas_aceitas_por_arquivo(tasks_dir: Path) -> dict[str, set[str]]:
+    """`{arquivo de aceite: nodeids que já falhavam quando a task fechou}`."""
+    aceitas: dict[str, set[str]] = {}
+    for caminho in Path(tasks_dir).glob("*.acceptance.json"):
+        task_id = caminho.name[: -len(".acceptance.json")]
+        mapa = ler_mapa(tasks_dir, task_id)
+        if mapa:
+            aceitas[mapa["arquivo"]] = set(mapa["falhas_aceitas"])
+    return aceitas
 
 
 def comando_de_aceite(comandos_de_teste: Iterable[str], arquivo_rel: str) -> Optional[str]:

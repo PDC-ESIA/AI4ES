@@ -35,6 +35,10 @@ projeto.
   código só informa nomes e formatos. Se o código diverge do critério — o
   critério pede 201 e o código devolve 303, por exemplo — o teste DEVE falhar.
   Nunca afrouxe a asserção para aceitar o comportamento atual.
+- Critério com partes que puxam para lados diferentes — ex.: "thumbnail
+  400x400 mantendo proporção" — se testa pela leitura que satisfaz TODAS as
+  partes (cabe em 400x400, lado maior = 400, proporção preservada), nunca por
+  uma leitura estrita que contradiga outra parte do mesmo critério.
 - Nome de cada teste: `test_CA_<NN>_<resumo>` com o id do critério
   (`CA-01` → `test_CA_01_cria_ensaio`). É pelo nome que o teste é ligado ao
   critério: sem o prefixo, ele não conta. Vários testes por critério são
