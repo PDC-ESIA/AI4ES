@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from benchmarks.coding_review.swebench import grading, run
+from benchmarks.coding_review.swebench import grading, report, run
 from benchmarks.coding_review.swebench.dataset import SWEInstance
 
 
@@ -210,6 +210,26 @@ def test_fase_de_correcao_com_harness_falso(tmp_path, monkeypatch):
     m3 = relatorio["metricas"]["metrica_3_validador"]
     assert m3["falsos_positivos"] == 2
     assert m3["aprovacoes_qualificadas"] == {"patch_vazio": 1, "testes_nao_identificados": 2}
+
+
+def test_texto_de_leitura_acompanha_o_numero_de_instancias_do_run():
+    """Regressão: o texto dizia '30 instâncias, 3,3 p.p.' mesmo num run parcial (n=26)."""
+    def _leitura(n):
+        return "\n".join(report._secao_leitura(n))
+
+    assert "com 30 instâncias, cada uma vale 3,3 pontos" in _leitura(30)
+    assert "com 26 instâncias, cada uma vale 3,8 pontos" in _leitura(26)
+    assert "com 7 instâncias, cada uma vale 14,3 pontos" in _leitura(7)
+    assert "—" in _leitura(0)  # sem instâncias não há divisão por zero
+    assert "com 1 instância, cada uma vale 100,0 pontos" in _leitura(1)  # singular
+
+
+def test_relatorio_markdown_usa_o_n_real_no_texto_de_leitura():
+    metadata = {"parametros": _params(), "ambiente": {"max_loop_iterations": 20}}
+    registros = [_registro("a__a-1", "p/a.diff"), _registro("b__b-2", "p/b.diff")]
+    markdown = run.render_markdown(run._consolidar(metadata, registros, None))
+    assert "com 2 instâncias, cada uma vale 50,0 pontos" in markdown
+    assert "com 30 instâncias" not in markdown
 
 
 def test_correcao_nao_reaproveita_resultado_de_outro_patch(tmp_path, monkeypatch):

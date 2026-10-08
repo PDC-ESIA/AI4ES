@@ -235,12 +235,19 @@ def _secao_instancias(relatorio: dict[str, Any]) -> list[str]:
     return linhas + [""]
 
 
-def _secao_leitura() -> list[str]:
+def _peso_da_instancia(n: int) -> str:
+    """Quanto cada instância pesa na taxa (em p.p., vírgula decimal), para `n` instâncias."""
+    return f"{100 / n:.1f}".replace(".", ",") if n > 0 else "—"
+
+
+def _secao_leitura(n_instancias: int) -> list[str]:
     return [
         "## Como ler estes números",
         "",
-        "- **Amostra pequena:** com 30 instâncias, cada uma vale 3,3 pontos "
-        "percentuais; compare runs pelo intervalo de confiança, não pela taxa pontual.",
+        f"- **Amostra pequena:** com {n_instancias} "
+        f"{'instância' if n_instancias == 1 else 'instâncias'}, cada uma vale "
+        f"{_peso_da_instancia(n_instancias)} pontos percentuais; compare runs pelo "
+        "intervalo de confiança, não pela taxa pontual.",
         "- **Métrica 1 mede o loop inteiro:** depende mais do coder (sem ferramenta "
         "de busca, lendo arquivos inteiros) do que do executor.",
         "- **Métrica 3 mede o sinal de parada:** um falso positivo significa que a "
@@ -263,5 +270,5 @@ def render_markdown(relatorio: dict[str, Any]) -> str:
     linhas += _secao_por_repo(metricas["por_repositorio"])
     linhas += _secao_operacional(metricas["operacional"])
     linhas += _secao_instancias(relatorio)
-    linhas += _secao_leitura()
+    linhas += _secao_leitura(metricas["n_instancias"])
     return "\n".join(linhas)
