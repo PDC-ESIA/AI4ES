@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -152,6 +153,99 @@ _METODOS_PROIBIDOS = frozenset(
         "dispatch_event",
     }
 )
+
+
+# Seletor CSS por classe (`.btn-upload`, `button.btn-upload`): depende de um
+# detalhe que só o código atual conhece.
+_SELETOR_DE_CLASSE = re.compile(r"(^|[\s>+~,(])[\w-]*\.[A-Za-z_][\w-]*")
+_ASSERCOES = re.compile(r"^(to_|not_to_)")
+
+
+def violacoes_de_robustez(arvore: ast.AST) -> list[str]:
+    """Padrões que tornam um teste de interface frágil ou inválido.
+
+    Na 11ª validação os testes de interface do aceite traziam `to_have_count(
+    lambda c: ...)` (o Playwright recusa função: o teste quebra depois de a
+    tela funcionar), cascatas "tenta o data-testid, senão `.first`, senão
+    `button.btn-upload`" dentro de `try/except`, e escolha de item por
+    posição. Cada um custou uma task travada sem defeito no produto.
+    """
+    erros: list[str] = []
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Try):
+            erros.append(
+                "`try/except` no teste: não tente alternativas nem engula falhas; "
+                "localize por `data-testid` e deixe o teste falhar."
+            )
+        if isinstance(no, ast.Attribute) and no.attr in ("first", "last"):
+            erros.append(
+                f"`.{no.attr}`: não escolha elemento por posição; localize pelo "
+                "`data-testid` e, em listas, pelo conteúdo (`filter(has_text=...)`)."
+            )
+        if not (isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)):
+            continue
+        metodo = no.func.attr
+        if metodo == "nth":
+            erros.append("`.nth(...)`: não escolha elemento por posição.")
+        if _ASSERCOES.match(metodo) and any(
+            isinstance(a, ast.Lambda) for a in [*no.args, *(k.value for k in no.keywords)]
+        ):
+            erros.append(
+                f"`.{metodo}(lambda ...)`: as asserções do Playwright aceitam texto, "
+                "número ou regex — nunca função."
+            )
+        if metodo == "locator" and no.args:
+            alvo = no.args[0]
+            if isinstance(alvo, ast.Constant) and isinstance(alvo.value, str) and _SELETOR_DE_CLASSE.search(alvo.value):
+                erros.append(
+                    f"`locator({alvo.value!r})`: seletor por classe CSS; use `get_by_test_id`."
+                )
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.If) and any(
+            isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr in ("count", "is_visible")
+            for c in ast.walk(no.test)
+        ):
+            erros.append(
+                "`if ...count()/is_visible()`: não ramifique pela existência de "
+                "elementos; o teste especifica UMA interface."
+            )
+    return sorted(set(erros))
+
+
+def identificadores_existentes(workdir: Path, limite: int = 200) -> list[str]:
+    """`data-testid` já usados nas telas e nos testes de interface anteriores."""
+    encontrados: set[str] = set()
+    padroes = (
+        re.compile(r"""data-testid\s*=\s*["']([^"'{}<>]+)["']"""),
+        re.compile(r"""get_by_test_id\(\s*["']([^"']+)["']"""),
+    )
+    for caminho in sorted(workdir.rglob("*")):
+        if not caminho.is_file() or caminho.suffix not in (".html", ".jinja", ".jinja2", ".j2", ".py", ".js"):
+            continue
+        if any(p in ("venv", ".venv", "node_modules", "__pycache__") for p in caminho.parts):
+            continue
+        try:
+            texto = caminho.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for padrao in padroes:
+            encontrados.update(padrao.findall(texto))
+        if len(encontrados) >= limite:
+            break
+    return sorted(encontrados)[:limite]
+
+
+# Falha que vem do PRÓPRIO teste (não do produto): o coder não pode consertar —
+# o teste é protegido —, então ele volta ao autor.
+_ERRO_DO_TESTE = re.compile(
+    r"\b(TypeError|NameError|AttributeError|ImportError|ModuleNotFoundError|SyntaxError|"
+    r"UnboundLocalError|IndentationError)\b|fixture '[^']+' not found|"
+    r"_errors\.Error: (?!.*Timeout)(value must|Unsupported|expected)",
+)
+
+
+def erro_do_proprio_teste(saida: str) -> bool:
+    return bool(_ERRO_DO_TESTE.search(saida or ""))
 
 
 def violacoes_do_modo_navegador(arvore: ast.AST) -> list[str]:

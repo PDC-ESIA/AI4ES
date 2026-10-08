@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import ast
 import json
+from pathlib import Path
 import logging
 import os
 from typing import Any, AsyncGenerator, Optional
@@ -49,7 +50,10 @@ from shared.tools.coding_tools.aceite_independente import (
     ler_mapa,
 )
 from shared.tools.coding_tools.jornada import (
+    erro_do_proprio_teste,
+    identificadores_existentes,
     instalar_conftest,
+    violacoes_de_robustez,
     violacoes_do_modo_navegador,
 )
 from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
@@ -66,6 +70,11 @@ logger = logging.getLogger(__name__)
 
 CHAVE_ACEITE_TASK = "aceite_task"
 CHAVE_TENTATIVAS = "aceite_tentativas"
+CHAVE_REPAROS = "aceite_reparos"
+# Reparos por task: teste protegido da task que falha por erro DO PRÓPRIO TESTE
+# (TypeError, API do Playwright usada errado...) volta ao autor — o coder não
+# pode editá-lo. Na 11ª validação duas tasks travaram assim.
+MAX_REPAROS = 2
 # Tentativas do autor por task: se nem assim houver mapa, a task segue no modo
 # histórico (critérios `nao_avaliado`) em vez de travar o loop.
 MAX_TENTATIVAS = 2
@@ -112,12 +121,15 @@ def dividir_criterios(state: Any, task: dict, coder_dir) -> tuple[list[str], lis
     (não é web, ou não há serviço para navegar) a lista de interface é vazia e
     todos vão para o arquivo principal, como antes.
     """
-    criterios = [c for c in normalizar_criterios(task.get("acceptance_criteria")) if c.automatable]
+    todos = normalizar_criterios(task.get("acceptance_criteria"))
     if _produto_web(state) and _sobe_servico(coder_dir):
-        interface = [c.id for c in criterios if not c.tecnico]
-    else:
-        interface = []
-    return [c.id for c in criterios if c.id not in interface], interface
+        # Todo critério não técnico é homologação e vai ao navegador, MESMO
+        # marcado `automatable: false`: na 11ª validação o upload pela tela
+        # saiu assim e ficou sem teste. O autor só deixa de fora o puramente
+        # subjetivo ("visual minimalista").
+        interface = [c.id for c in todos if not c.tecnico]
+        return [c.id for c in todos if c.tecnico and c.automatable], interface
+    return [c.id for c in todos if c.automatable], []
 
 
 def _tecnicos(task: dict) -> list[str]:
@@ -258,7 +270,7 @@ def tool_salvar_teste_interface(conteudo: str, tool_context: ToolContext) -> dic
         arvore = ast.parse(conteudo)
     except SyntaxError as exc:
         return {"sucesso": False, "erro": f"O arquivo não compila: {exc}"}
-    violacoes = violacoes_do_modo_navegador(arvore)
+    violacoes = violacoes_do_modo_navegador(arvore) + violacoes_de_robustez(arvore)
     if violacoes:
         return {
             "sucesso": False,
@@ -380,6 +392,10 @@ def montar_aceite_task(state: Any, task: dict, coder_dir) -> str:
                 "criterios": de_interface,
                 "arquivo": caminho_relativo_interface(task["id"]),
                 "modo": "navegador (Playwright), sempre — produto web",
+                # Reuse os que já existem para elementos que já existem.
+                "identificadores_existentes": identificadores_existentes(
+                    coder_dir / _workdir(coder_dir)
+                ),
             },
         }
         if de_interface
@@ -416,6 +432,39 @@ class AceiteIndependenteGate(BaseAgent):
         _, de_interface = dividir_criterios(state, task, get_agent_workspace("cr_coder"))
         return not de_interface or caminho_relativo_interface(task_id) in mapa["arquivos"]
 
+    @staticmethod
+    def _reparo_pendente(state: Any, task_id: str, mapa: Optional[dict]) -> Optional[dict]:
+        """Falha da rodada anterior causada pelo próprio teste da task, se houver."""
+        if not mapa:
+            return None
+        reparos = (state.get(CHAVE_REPAROS) or {}).get(task_id) or []
+        if len(reparos) >= MAX_REPAROS:
+            return None
+        caminho = state.get("report_path")
+        try:
+            relatorio = json.loads(Path(caminho).read_text(encoding="utf-8")) if caminho else {}
+        except (OSError, ValueError, TypeError):
+            return None
+        if relatorio.get("work_item_id") != task_id:
+            return None
+        iteracao = relatorio.get("iteration")
+        if iteracao in reparos:
+            return None
+        for estagio in relatorio.get("stages") or []:
+            if estagio.get("stage") != "testes_automatizados":
+                continue
+            for resultado in (estagio.get("evidence") or {}).get("resultados") or []:
+                comando = str(resultado.get("comando") or "")
+                arquivo = next((a for a in mapa["arquivos"] if comando.endswith(a)), None)
+                saida = str(resultado.get("saida_tail") or "")
+                if (
+                    arquivo
+                    and resultado.get("exit_code") not in (0, None)
+                    and erro_do_proprio_teste(saida)
+                ):
+                    return {"arquivo": arquivo, "iteracao": iteracao, "saida": saida[-2000:]}
+        return None
+
     def _motivo_para_pular(self, state: Any) -> Optional[str]:
         task_id = state.get("task_id")
         if not aceite_independente() or not isinstance(task_id, str):
@@ -435,9 +484,7 @@ class AceiteIndependenteGate(BaseAgent):
         if comando_de_aceite(manifest.test, "x") is None:
             return "stack sem pytest"
         task = _task_do_state(state, task_id)
-        if task is None or not any(
-            c.automatable for c in normalizar_criterios(task.get("acceptance_criteria"))
-        ):
+        if task is None or not any(dividir_criterios(state, task, coder_dir)):
             return "sem critério automatizável"
         return None
 
@@ -445,28 +492,40 @@ class AceiteIndependenteGate(BaseAgent):
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
         state = ctx.session.state
-        motivo = self._motivo_para_pular(state)
+        task_id = state.get("task_id")
+        reparo = None
+        if aceite_independente() and isinstance(task_id, str):
+            reparo = self._reparo_pendente(
+                state, task_id, ler_mapa(get_agent_workspace("cr_context_engineer"), task_id)
+            )
+        motivo = None if reparo else self._motivo_para_pular(state)
         if motivo is not None:
             logger.debug("[ACEITE] autor não invocado: %s", motivo)
             return
 
-        task_id = state["task_id"]
         coder_dir = get_agent_workspace("cr_coder")
         texto = montar_aceite_task(state, _task_do_state(state, task_id), coder_dir)
-        tentativas = dict(state.get(CHAVE_TENTATIVAS) or {})
-        tentativas[task_id] = tentativas.get(task_id, 0) + 1
-        state[CHAVE_ACEITE_TASK] = texto
-        state[CHAVE_TENTATIVAS] = tentativas
+        delta: dict = {}
+        if reparo:
+            texto = json.dumps({**json.loads(texto), "reparo": reparo}, ensure_ascii=False, indent=2)
+            reparos = {k: list(v) for k, v in (state.get(CHAVE_REPAROS) or {}).items()}
+            reparos.setdefault(task_id, []).append(reparo["iteracao"])
+            delta[CHAVE_REPAROS] = reparos
+            logger.info("[ACEITE][%s] reparo do teste %s (erro do próprio teste).", task_id, reparo["arquivo"])
+        else:
+            tentativas = dict(state.get(CHAVE_TENTATIVAS) or {})
+            tentativas[task_id] = tentativas.get(task_id, 0) + 1
+            delta[CHAVE_TENTATIVAS] = tentativas
+            logger.info("[ACEITE][%s] invocando o autor (tentativa %d).", task_id, tentativas[task_id])
+        delta[CHAVE_ACEITE_TASK] = texto
+        state.update(delta)
         yield Event(
             invocation_id=ctx.invocation_id,
             author=self.name,
             branch=ctx.branch,
-            actions=EventActions(
-                state_delta={CHAVE_ACEITE_TASK: texto, CHAVE_TENTATIVAS: tentativas}
-            ),
+            actions=EventActions(state_delta=delta),
         )
 
-        logger.info("[ACEITE][%s] invocando o autor (tentativa %d).", task_id, tentativas[task_id])
         async for evento in self.sub_agents[0].run_async(ctx):
             yield evento
 

@@ -42,6 +42,13 @@ projeto.
    navegador). Mesma regra: corrija erro do próprio teste, nunca afrouxe.
 6. Ao final, responda com uma linha por critério coberto.
 
+# REPARO
+Se o JSON acima tiver o bloco `reparo`, o teste `reparo.arquivo` já existe e
+falhou por erro DO PRÓPRIO TESTE (veja `reparo.saida`: TypeError, API do
+Playwright usada errado, fixture inexistente...). Leia o arquivo, corrija SÓ
+esse erro mantendo o que cada critério afirma, salve com a ferramenta do
+arquivo correspondente e rode de novo. Não reescreva os outros arquivos.
+
 # REGRAS DOS TESTES
 - O CRITÉRIO MANDA. Afirme exatamente o que ele descreve (status HTTP,
   redirecionamento, conteúdo visível na página, persistência, validação). O
@@ -101,6 +108,14 @@ aplicação no ar:
   (httpx, requests, `page.request`), importar a aplicação e executar ou
   injetar JavaScript (`evaluate`, `add_script_tag`, `route`,
   `dispatch_event`...). A ferramenta recusa o arquivo nesses casos.
+- `interface.identificadores_existentes` lista os `data-testid` que as telas
+  e os testes de tasks anteriores já usam. Elemento que JÁ EXISTE (a galeria,
+  o item de ensaio, o formulário de criação) se localiza pelo identificador
+  existente — nunca invente outro nome para ele. Crie identificador novo só
+  para elemento novo desta task.
+- Todo critério listado em `interface.criterios` é homologação: escreva teste
+  para cada um. Só deixe de fora o que for puramente subjetivo ("visual
+  minimalista"), sem nada observável na página.
 - A tela pode ainda não existir: o teste é a especificação dela. Localize
   por IDENTIFICADOR ÚNICO: `page.get_by_test_id("<nome>")`, que corresponde ao
   atributo `data-testid` — o coder lê este arquivo e põe nas telas exatamente
@@ -120,6 +135,9 @@ aplicação no ar:
   `page.get_by_test_id("item-ensaio").filter(has_text=titulo)`. Aja DENTRO do
   item: `item.get_by_test_id("btn-enviar-fotos").click()`. Nunca escolha
   item por posição (`.first`, `.nth(i)`) para fugir de ambiguidade.
+- Um caminho só: nada de `try/except`, de "se não achar X, tente Y" (`if
+  ...count()`), de seletor por classe CSS. Asserções do Playwright recebem
+  texto, número ou regex — nunca `lambda`. A ferramenta recusa esses casos.
 - ORDEM: só afirme ordem quando o critério pedir ("na ordem definida",
   "mais recentes primeiro"). Aí compare a sequência inteira de uma vez:
   `expect(lista.get_by_test_id("item-foto")).to_have_text([a, b, c])` (ou

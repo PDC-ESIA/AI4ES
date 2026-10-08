@@ -443,3 +443,133 @@ def test_prompts_exigem_identificador_unico_listas_e_ordem():
     assert "filter(has_text=" in instruction and "`.nth(i)`" in instruction
     assert "só afirme ordem quando o critério pedir" in instruction
     assert 'data-testid="item-ensaio"' in SECAO_PRODUTO_WEB
+
+
+# ── Robustez dos testes de interface (11ª validação) ───────────────────────
+
+import ast  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "trecho_codigo, trecho_erro",
+    [
+        ("expect(fotos).to_have_count(lambda c: c >= 1)", "nunca função"),
+        ("expect(item).to_have_text(lambda t: 'x' in t)", "nunca função"),
+        ("page.get_by_test_id('item-foto').first.click()", "`.first`"),
+        ("page.get_by_test_id('item-foto').nth(2).click()", "`.nth(...)`"),
+        ("page.locator('button.btn-upload').click()", "classe CSS"),
+        ("try:\n        page.get_by_test_id('a').click()\n    except Exception:\n        pass", "try/except"),
+        ("if page.get_by_test_id('a').count() > 0:\n        page.get_by_test_id('a').click()", "não ramifique"),
+    ],
+)
+def test_robustez_recusa_padroes_frageis(trecho_codigo, trecho_erro):
+    codigo = f"def test_CA_01(page):\n    page.goto('/')\n    {trecho_codigo}\n"
+    assert any(trecho_erro in v for v in jn.violacoes_de_robustez(ast.parse(codigo)))
+
+
+def test_robustez_aceita_o_exemplo_do_prompt_e_campo_de_arquivo():
+    codigo = (
+        "def test_CA_01(page):\n"
+        "    page.goto('/')\n"
+        "    item = page.get_by_test_id('item-ensaio').filter(has_text='x')\n"
+        "    item.locator('input[type=file]').set_input_files([])\n"
+        "    expect(item.get_by_test_id('item-foto')).to_have_count(3)\n"
+        "    expect(item).to_have_text(['a.png', 'b.png'])\n"
+    )
+    assert jn.violacoes_de_robustez(ast.parse(codigo)) == []
+
+
+def test_interface_com_lambda_e_recusada_ao_salvar(ws):
+    codigo = _UI_OK.replace(
+        'expect(page.get_by_text("ok")).to_be_visible()',
+        'expect(page.get_by_test_id("item")).to_have_count(lambda c: c > 0)',
+    )
+    resposta = ws.modulo.tool_salvar_teste_interface(codigo, _ctx())
+    assert resposta["sucesso"] is False and "nunca função" in resposta["erro"]
+
+
+def test_inventario_de_identificadores_das_telas_e_dos_testes(tmp_path):
+    (tmp_path / "app" / "templates").mkdir(parents=True)
+    (tmp_path / "app" / "templates" / "g.html").write_text(
+        '<ul data-testid="galeria-ensaio"><li data-testid="item-foto-{{ f.id }}"></li></ul>'
+    )
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "t.py").write_text('page.get_by_test_id("form-novo-ensaio")')
+    (tmp_path / "venv").mkdir()
+    (tmp_path / "venv" / "x.html").write_text('<a data-testid="nao-conta">')
+    assert jn.identificadores_existentes(tmp_path) == ["form-novo-ensaio", "galeria-ensaio"]
+
+
+@pytest.mark.parametrize(
+    "saida, do_teste",
+    [
+        ("E   playwright._impl._errors.Error: value must be a string or regular expression", True),
+        ("E   TypeError: 'Locator' object is not callable", True),
+        ("E   fixture 'pagina' not found", True),
+        ("E   playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.", False),
+        ("E   AssertionError: Locator expected to be visible", False),
+    ],
+)
+def test_classifica_erro_do_proprio_teste(saida, do_teste):
+    assert jn.erro_do_proprio_teste(saida) is do_teste
+
+
+def test_web_app_manda_homologacao_ao_autor_mesmo_nao_automatizavel(ws):
+    state = _ctx().state
+    task = state["tasks"]["tasks"][0]
+    task["acceptance_criteria"].append({"id": "CA-03", "description": "upload pela tela", "automatable": False})
+    assert ws.modulo.dividir_criterios(state, task, ws.coder) == (["CA-01"], ["CA-02", "CA-03"])
+
+
+def _relatorio_de_reparo(tmp_path, saida, *, iteracao=2, task="TASK-001"):
+    caminho = tmp_path / "r.json"
+    caminho.write_text(json.dumps({
+        "work_item_id": task, "iteration": iteracao,
+        "stages": [{"stage": "testes_automatizados", "evidence": {"resultados": [
+            {"comando": f"venv/bin/python -m pytest -v {_ARQ_UI}", "exit_code": 1, "saida_tail": saida},
+        ]}}],
+    }))
+    return str(caminho)
+
+
+def test_gate_devolve_ao_autor_o_teste_com_erro_proprio(ws, tmp_path):
+    gate = ws.modulo.gate
+    mapa = {"arquivos": [_ARQ, _ARQ_UI]}
+    erro = "E   playwright._impl._errors.Error: value must be a string or regular expression"
+    state = {"report_path": _relatorio_de_reparo(tmp_path, erro)}
+
+    reparo = gate._reparo_pendente(state, "TASK-001", mapa)
+    assert reparo["arquivo"] == _ARQ_UI and reparo["iteracao"] == 2
+
+    # Mesma rodada não é reparada duas vezes; e há teto por task.
+    assert gate._reparo_pendente({**state, "aceite_reparos": {"TASK-001": [2]}}, "TASK-001", mapa) is None
+    assert gate._reparo_pendente({**state, "aceite_reparos": {"TASK-001": [1, 3]}}, "TASK-001", mapa) is None
+
+
+def test_gate_nao_repara_falha_do_produto_nem_relatorio_de_outra_task(ws, tmp_path):
+    gate = ws.modulo.gate
+    mapa = {"arquivos": [_ARQ_UI]}
+    produto = {"report_path": _relatorio_de_reparo(tmp_path, "E   AssertionError: expected visible")}
+    assert gate._reparo_pendente(produto, "TASK-001", mapa) is None
+    outra = {"report_path": _relatorio_de_reparo(tmp_path, "E   TypeError: x", task="TASK-002")}
+    assert gate._reparo_pendente(outra, "TASK-001", mapa) is None
+
+
+@pytest.mark.asyncio
+async def test_gate_invoca_o_autor_em_modo_reparo_mesmo_com_mapa_completo(ws, ligada, tmp_path):
+    from tests.unit.test_aceite_independente import _rodar_gate
+
+    ai.gravar_mapa(ws.tasks, "TASK-001", _ARQ, {"CA-01": [f"{_ARQ}::a"]})
+    ai.gravar_mapa(ws.tasks, "TASK-001", _ARQ_UI, {"CA-02": [f"{_ARQ_UI}::b"]}, mesclar=True)
+    erro = "E   playwright._impl._errors.Error: value must be a string or regular expression"
+    estado = {**_ctx().state, "report_path": _relatorio_de_reparo(tmp_path, erro)}
+
+    chamadas, final = await _rodar_gate(ws.modulo, estado)
+    assert len(chamadas) == 1
+    assert json.loads(chamadas[0])["reparo"]["arquivo"] == _ARQ_UI
+    assert final["aceite_reparos"] == {"TASK-001": [2]}
+    assert "aceite_tentativas" not in final  # reparo não gasta tentativa de autoria
+
+    # A mesma rodada não dispara outro reparo.
+    chamadas, _ = await _rodar_gate(ws.modulo, {**estado, "aceite_reparos": {"TASK-001": [2]}})
+    assert chamadas == []
