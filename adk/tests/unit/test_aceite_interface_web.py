@@ -1,9 +1,9 @@
-"""Critérios de interface em produto web — sempre pelo navegador.
+"""Homologação pela interface em produto web — sempre pelo navegador.
 
-Em `web_app`, toda funcionalidade voltada ao usuário tem critério de interface
-(`interface: true`); o autor de aceite o comprova num arquivo próprio,
-`test_interface_<TASK>.py`, com Playwright contra a aplicação no ar, partindo
-da página inicial.
+Critério de aceite é homologação. Em `web_app`, todo critério não técnico é
+comprovado por `test_interface_<TASK>.py`, com Playwright contra a aplicação no
+ar, partindo da página inicial. Critério técnico (`tecnico: true`) é testado,
+mas nunca reprova: vira nota no relatório.
 """
 
 from __future__ import annotations
@@ -34,23 +34,23 @@ def ligada(monkeypatch):
 # ── Critério e prompts ─────────────────────────────────────────────────────
 
 
-def test_criterio_le_a_marca_de_interface():
+def test_criterio_le_a_marca_de_tecnico():
     criterios = normalizar_criterios(
         [
-            {"id": "CA-01", "description": "persiste", "automatable": True},
-            {"id": "CA-02", "description": "pela tela", "automatable": True, "interface": True},
-            {"id": "CA-03", "description": "pela tela", "via_interface": "true"},
+            {"id": "CA-01", "description": "pela tela", "automatable": True},
+            {"id": "CA-02", "description": "sqlite", "automatable": True, "tecnico": True},
+            {"id": "CA-03", "description": "5s", "técnico": "true"},
             "formato antigo",
         ]
     )
-    assert [c.interface for c in criterios] == [False, True, True, False]
+    assert [c.tecnico for c in criterios] == [False, True, True, False]
 
 
 def test_context_engineer_exige_criterio_de_interface_em_web_app():
     from src.agents.workflow_coding_review.context_engineer.prompt import instruction
 
     assert "PRODUTO WEB (product_type = web_app) — REGRA FIXA, VALE SEMPRE" in instruction
-    assert '"interface": true' in instruction
+    assert '"tecnico": true' in instruction and "HOMOLOGAÇÃO" in instruction
 
 
 @pytest.mark.parametrize(
@@ -140,8 +140,8 @@ def _tasks(produto="web_app"):
                 "id": "TASK-001",
                 "description": "Ensaios",
                 "acceptance_criteria": [
-                    {"id": "CA-01", "description": "persiste", "automatable": True},
-                    {"id": "CA-02", "description": "pela tela", "automatable": True, "interface": True},
+                    {"id": "CA-01", "description": "persiste", "automatable": True, "tecnico": True},
+                    {"id": "CA-02", "description": "pela tela", "automatable": True},
                 ],
             }
         ],
@@ -190,13 +190,15 @@ def test_salva_os_dois_arquivos_e_o_conftest(ws):
     r1 = ws.modulo.tool_salvar_teste_aceite(principal, _ctx())
     r2 = ws.modulo.tool_salvar_teste_interface(_UI_OK, _ctx())
 
-    assert r1["criterios_cobertos"] == ["CA-01"]  # CA-02 é de interface
+    assert r1["criterios_cobertos"] == ["CA-01"]  # CA-02 é homologação pela interface
+    assert "tool_salvar_teste_interface" in r1["pendente"]
     assert r2["sucesso"] is True and r2["criterios_cobertos"] == ["CA-02"]
     assert (ws.coder / _ARQ_UI).read_text() == _UI_OK
     assert (ws.coder / ai.PASTA_ACEITE / "conftest.py").read_text() == jn.CONFTEST_JORNADA
     mapa = ai.ler_mapa(ws.tasks, "TASK-001")
     assert mapa["arquivos"] == [_ARQ, _ARQ_UI]
     assert set(mapa["por_criterio"]) == {"CA-01", "CA-02"}
+    assert mapa["tecnicos"] == ["CA-01"]
 
 
 @pytest.mark.parametrize(
@@ -217,7 +219,7 @@ def test_interface_recusa_atalhos_que_pulam_a_tela(ws, codigo, trecho):
 def test_task_so_de_interface_recusa_o_arquivo_principal(ws):
     ctx = _ctx()
     ctx.state["tasks"]["tasks"][0]["acceptance_criteria"] = [
-        {"id": "CA-01", "description": "pela tela", "automatable": True, "interface": True}
+        {"id": "CA-01", "description": "pela tela", "automatable": True}
     ]
     resposta = ws.modulo.tool_salvar_teste_aceite("def test_CA_01_x():\n    assert 1\n", ctx)
     assert resposta["sucesso"] is False and "tool_salvar_teste_interface" in resposta["erro"]
@@ -240,8 +242,8 @@ def _cenario(tmp_path, saida_ui: str, *, healthcheck=200):
     th._write_task(
         tasks,
         criteria=[
-            {"id": "CA-01", "description": "persiste", "automatable": True},
-            {"id": "CA-02", "description": "pela tela", "automatable": True, "interface": True},
+            {"id": "CA-01", "description": "persiste", "automatable": True, "tecnico": True},
+            {"id": "CA-02", "description": "pela tela", "automatable": True},
         ],
     )
     th._write_macro(tasks, "web_app")
@@ -251,7 +253,8 @@ def _cenario(tmp_path, saida_ui: str, *, healthcheck=200):
     (coder / _ARQ_UI).write_text(_UI_OK)
     ai.gravar_mapa(tasks, "TASK-001", _ARQ, {"CA-01": [f"{_ARQ}::test_CA_01_a"]})
     ai.gravar_mapa(
-        tasks, "TASK-001", _ARQ_UI, {"CA-02": [f"{_ARQ_UI}::test_CA_02_cria_pela_tela"]}, mesclar=True
+        tasks, "TASK-001", _ARQ_UI, {"CA-02": [f"{_ARQ_UI}::test_CA_02_cria_pela_tela"]},
+        mesclar=True, tecnicos=["CA-01"],
     )
     sandbox = th.FakeSandbox(
         exec_results={
@@ -313,3 +316,120 @@ def test_conftest_nao_afeta_testes_sem_navegador(tmp_path):
         env={"PATH": "/usr/bin:/bin"},
     )
     assert "1 passed" in res.stdout, res.stdout + res.stderr
+
+
+# ── Técnico nunca reprova: vira nota ───────────────────────────────────────
+
+
+def test_falha_so_em_teste_tecnico_nao_reprova_a_suite(ligada, tmp_path):
+    coder, execution, tasks = th._dirs(tmp_path)
+    th._write_task(tasks, criteria=[
+        {"id": "CA-01", "description": "sqlite", "automatable": True, "tecnico": True},
+        {"id": "CA-02", "description": "outro", "automatable": True},
+    ])
+    th._write_manifest(coder, th._manifest_command(test=["venv/bin/python -m pytest -v tests/t.py"]))
+    (coder / ai.PASTA_ACEITE).mkdir(parents=True)
+    (coder / _ARQ).write_text("def test_CA_01_a():\n    pass\n")
+    ai.gravar_mapa(tasks, "TASK-001", _ARQ,
+                   {"CA-01": [f"{_ARQ}::test_CA_01_a"], "CA-02": [f"{_ARQ}::test_CA_02_b"]},
+                   tecnicos=["CA-01"])
+
+    def _rodar(falha_b: bool):
+        saida = f"{_ARQ}::test_CA_01_a FAILED\n{_ARQ}::test_CA_02_b {'FAILED' if falha_b else 'PASSED'}\n"
+        sandbox = th.FakeSandbox(exec_results={
+            _ARQ: CommandResult(exit_code=1, stdout=saida, stderr=""),
+            "pytest": CommandResult(exit_code=0, stdout="1 passed", stderr=""),
+        })
+        return th._run("TASK-001", coder, execution, tasks, sandbox)
+
+    from src.agents.workflow_coding_review.executor.loop_policy import protegidos_falharam
+
+    so_tecnico = _rodar(False)
+    testes = next(s for s in so_tecnico["stages"] if s["stage"] == "testes_automatizados")
+    assert testes["status"] == "sucesso"
+    assert protegidos_falharam(so_tecnico) is False
+    por_id = {e["criterion_id"]: e for e in so_tecnico["criteria_evidence"]}
+    assert por_id["CA-01"]["outcome"] == "nao_atendido" and por_id["CA-01"]["tecnico"] is True
+
+    homologacao = _rodar(True)
+    testes = next(s for s in homologacao["stages"] if s["stage"] == "testes_automatizados")
+    assert testes["status"] == "falha"
+    assert protegidos_falharam(homologacao) is True
+
+
+def _report_tecnico():
+    return {
+        "work_item_id": "TASK-001",
+        "overall_status": "sucesso",
+        "stages": [],
+        "criteria_evidence": [
+            {"criterion": "pela tela", "criterion_id": "CA-01", "outcome": "atendido",
+             "observed": "", "check_performed": "", "checkable": True},
+            {"criterion": "sqlite", "criterion_id": "CA-02", "outcome": "nao_atendido", "tecnico": True,
+             "observed": "id repetido", "check_performed": "", "checkable": True},
+        ],
+    }
+
+
+def test_validador_aprova_com_tecnico_nao_atendido_e_registra_nota(ligada):
+    from src.agents.implementation_validator.agent import montar_veredito
+    from src.agents.implementation_validator.schemas import VerdictStatus
+
+    veredito = montar_veredito(_report_tecnico())
+    assert veredito.status == VerdictStatus.APROVADO
+    assert "Notas técnicas (não bloqueiam): CA-02: nao_atendido" in veredito.summary
+
+
+def test_nota_de_aceite_exclui_tecnico_e_lista_a_nota():
+    from src.agents.workflow_coding_review.executor.acceptance_score import calcular_nota_aceite
+
+    nota = calcular_nota_aceite(_report_tecnico())
+    assert (nota.total, nota.atendidos, nota.nao_atendidos, nota.nota) == (1, 1, 0, 1.0)
+    assert nota.como_dict()["notas_tecnicas"] == [
+        {"id": "CA-02", "criterio": "sqlite", "resultado": "nao_atendido", "observado": "id repetido"}
+    ]
+
+
+def test_manifesto_publica_as_notas_tecnicas():
+    from src.agents.workflow_coding_review.executor.acceptance_score import calcular_nota_aceite
+    from src.agents.workflow_coding_review import manifest
+
+    aceite = calcular_nota_aceite(_report_tecnico()).como_dict()
+    bloco = manifest.resumo_de_aceite({"task_results": {"TASK-001": {"aceite": aceite, "criterios_esperados": 1}}})
+    assert bloco["criterios_nao_atendidos"] == 0
+    assert bloco["notas_tecnicas"][0]["task_id"] == "TASK-001"
+
+
+# ── Context engineer: task web sem homologação é recusada ──────────────────
+
+
+@pytest.fixture
+def ce(tmp_path, monkeypatch):
+    monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
+    from shared.tools.coding_tools import context_engineer_tools as cet
+
+    return cet
+
+
+def _task(criterios, **extra):
+    return json.dumps({"id": "TASK-002", "acceptance_criteria": criterios, **extra})
+
+
+_SO_TECNICO = [{"id": "CA-01", "description": "POST /upload retorna 202", "automatable": True, "tecnico": True}]
+
+
+def test_task_web_sem_criterio_de_homologacao_e_recusada(ce):
+    ce.tool_salvar_macro_context_cr(json.dumps({"product_type": "web_app"}))
+    resposta = ce.tool_salvar_task_cr("TASK-002", _task(_SO_TECNICO))
+    assert resposta["sucesso"] is False and "homologação" in resposta["erro"]
+
+    com_tela = _SO_TECNICO + [{"id": "CA-02", "description": "A partir da página inicial, enviar fotos"}]
+    assert ce.tool_salvar_task_cr("TASK-002", _task(com_tela))["sucesso"] is True
+    assert ce.tool_salvar_task_cr("TASK-002", _task(_SO_TECNICO, tecnica=True))["sucesso"] is True
+
+
+@pytest.mark.parametrize("macro", [{"product_type": "api_service"}, None])
+def test_fora_de_web_app_ou_sem_macro_nao_ha_trava(ce, macro):
+    if macro:
+        ce.tool_salvar_macro_context_cr(json.dumps(macro))
+    assert ce.tool_salvar_task_cr("TASK-002", _task(_SO_TECNICO))["sucesso"] is True

@@ -240,6 +240,7 @@ def resumo_de_aceite(task_summary: Any) -> dict:
 
     por_task: dict[str, dict] = {}
     total = decididos = atendidos = nao_atendidos = 0
+    notas_tecnicas: list[dict] = []
 
     for task_id, resultado in sorted(resultados.items()):
         if not isinstance(resultado, dict):
@@ -261,6 +262,12 @@ def resumo_de_aceite(task_summary: Any) -> dict:
         decididos += n_decididos
         atendidos += n_atendidos
         nao_atendidos += n_nao_atendidos
+        notas_da_task = [
+            {"task_id": task_id, **n}
+            for n in aceite.get("notas_tecnicas") or []
+            if isinstance(n, dict)
+        ]
+        notas_tecnicas += notas_da_task
 
         por_task[task_id] = {
             "nota_final": _numero(resultado.get("nota_final")),
@@ -274,6 +281,7 @@ def resumo_de_aceite(task_summary: Any) -> dict:
             "criterios_atendidos": n_atendidos,
             "criterios_nao_atendidos": n_nao_atendidos,
             "criterios_sem_cobertura": max(n_total - n_decididos, 0),
+            **({"notas_tecnicas": notas_da_task} if notas_da_task else {}),
         }
 
     return {
@@ -286,6 +294,8 @@ def resumo_de_aceite(task_summary: Any) -> dict:
         "nota_aceite": round(atendidos / decididos, 4) if decididos else None,
         "cobertura_criterios": round(decididos / total, 4) if total else 0.0,
         "por_task": por_task,
+        # Critérios técnicos (não homologação): registrados, nunca reprovam.
+        **({"notas_tecnicas": notas_tecnicas} if notas_tecnicas else {}),
     }
 
 

@@ -690,9 +690,9 @@ Este produto é uma aplicação web: o usuário só usa o que a INTERFACE oferec
   precisa aceitar esse formato.
 - Imagens, CSS e scripts referenciados pelas páginas precisam responder (sem
   404), na configuração padrão do `run.json`.
-- Critérios com `"interface": true` são verificados por um navegador real
-  (Playwright) contra a aplicação no ar: ele abre "/", clica, preenche e lê
-  o que a página mostra. Use rótulos (`<label for>`), textos de botão e
+- Critério de aceite é homologação: todo critério não técnico é verificado
+  por um navegador real (Playwright) contra a aplicação no ar — ele abre
+  "/", clica, preenche e lê o que a página mostra. Use rótulos (`<label for>`), textos de botão e
   títulos claros — é por eles que o teste encontra os elementos. Os testes
   ficam em `tests/acceptance/test_interface_<TASK>.py` (só leitura): leia-os
   para saber que links, rótulos e botões a tela precisa ter.

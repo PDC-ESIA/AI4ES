@@ -46,6 +46,7 @@ from shared.tools.coding_tools.aceite_independente import (
     PASTA_ACEITE,
     comando_de_aceite,
     falhas_aceitas_por_arquivo,
+    testes_tecnicos,
     ler_mapa,
 )
 from shared.tools.coding_tools import harness_docker as hd
@@ -912,6 +913,8 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
     # passava quando a task dele fechou: falhas já aceitas ficam registradas.
     protegidos = _arquivos_protegidos(ctx)
     aceitas = falhas_aceitas_por_arquivo(ctx.tasks_dir) if protegidos else {}
+    # Critério técnico nunca reprova — nem a task dele, nem as seguintes.
+    tecnicos = testes_tecnicos(ctx.tasks_dir) if protegidos else set()
     da_task = set((ctx.mapa_independente or {}).get("arquivos") or [])
     for arquivo in protegidos:
         comando = comando_de_aceite(ctx.manifest.test, arquivo)
@@ -953,11 +956,14 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
         linhas.append(f"$ {comando}\n{saida}")
         testes = _testes_da_saida(saida)
         falhos = {t["nodeid"] for t in testes if t["outcome"] in ("falhou", "erro")}
+        falhas_tecnicas = sorted(f for f in falhos if f.split("[", 1)[0] in tecnicos)
+        restantes = falhos - set(falhas_tecnicas)
         toleradas = (
-            sorted(falhos)
-            if arquivo not in da_task and falhos and falhos <= aceitas.get(arquivo, set())
+            sorted(restantes)
+            if arquivo not in da_task and restantes and restantes <= aceitas.get(arquivo, set())
             else []
         )
+        bloqueantes = restantes - set(toleradas)
         resultado = {
             "comando": comando,
             "exit_code": res.exit_code,
@@ -969,10 +975,14 @@ def _estagio_testes(ctx: _HarnessContext) -> StageResult:
         }
         if toleradas:
             resultado["falhas_ja_aceitas"] = toleradas
+        if falhas_tecnicas:
+            resultado["falhas_tecnicas"] = falhas_tecnicas
+        if falhos and not bloqueantes:
+            resultado["so_falhas_toleradas"] = True
         resultados.append(resultado)
         if res.timed_out:
             any_timeout = True
-        elif res.exit_code not in (0, None) and not toleradas:
+        elif res.exit_code not in (0, None) and (bloqueantes or not falhos):
             any_fail = True
 
     if any_timeout:
@@ -1191,9 +1201,10 @@ def _estagio_validacoes_work_item(
     evidencias: list[CriterionEvidence] = []
     for c in ctx.acceptance_criteria:
         if independentes.get(c.id):
-            evidencias.append(
-                _evidencia_aceite_independente(c, independentes[c.id], ctx.desfecho_dos_testes)
+            evidencia = _evidencia_aceite_independente(
+                c, independentes[c.id], ctx.desfecho_dos_testes
             )
+            evidencias.append(evidencia.model_copy(update={"tecnico": c.tecnico}))
             continue
 
         vinculados = ctx.mapa_de_testes.por_criterio.get(c.id, [])

@@ -111,11 +111,13 @@ def gravar_mapa(
     por_criterio: dict[str, list[str]],
     *,
     mesclar: bool = False,
+    tecnicos: Iterable[str] = (),
 ) -> Path:
     """Grava o mapa da task. Com `mesclar`, soma ao mapa já gravado.
 
     Em produto web a task tem dois arquivos (o principal e o de interface); cada
     um é salvo por uma ferramenta própria e substitui só os próprios testes.
+    `tecnicos`: ids dos critérios técnicos da task (nunca reprovam).
     """
     destino = caminho_mapa(tasks_dir, task_id)
     destino.parent.mkdir(parents=True, exist_ok=True)
@@ -130,6 +132,7 @@ def gravar_mapa(
         for criterio, testes in por_criterio.items():
             mapa.setdefault(criterio, []).extend(testes)
         principal = existente["arquivo"]
+        tecnicos = set(tecnicos) | set(existente["tecnicos"])
     else:
         arquivos, mapa, principal = [arquivo_rel], dict(por_criterio), arquivo_rel
     destino.write_text(
@@ -139,6 +142,7 @@ def gravar_mapa(
                 "arquivo": principal,
                 "arquivos": arquivos,
                 "por_criterio": mapa,
+                "tecnicos": sorted(set(tecnicos)),
             },
             ensure_ascii=False,
             indent=2,
@@ -175,6 +179,7 @@ def ler_mapa(tasks_dir: Path, task_id: str) -> Optional[dict]:
         "arquivo": arquivo,
         "arquivos": arquivos,
         "por_criterio": limpo,
+        "tecnicos": [t for t in dados.get("tecnicos") or [] if isinstance(t, str)],
         "falhas_aceitas": [t for t in aceitas if isinstance(t, str)]
         if isinstance(aceitas, list)
         else [],
@@ -213,6 +218,22 @@ def falhas_aceitas_por_arquivo(tasks_dir: Path) -> dict[str, set[str]]:
         for nodeid in mapa["falhas_aceitas"]:
             aceitas.setdefault(_arquivo_do_nodeid(nodeid), set()).add(nodeid)
     return aceitas
+
+
+def testes_tecnicos(tasks_dir: Path) -> set[str]:
+    """Nodeids dos testes ligados a critérios técnicos, em todas as tasks.
+
+    Falha neles nunca reprova (nem a task deles, nem as seguintes): critério
+    técnico vira nota no relatório.
+    """
+    tecnicos: set[str] = set()
+    for caminho in Path(tasks_dir).glob("*.acceptance.json"):
+        mapa = ler_mapa(tasks_dir, caminho.name[: -len(".acceptance.json")])
+        if not mapa:
+            continue
+        for criterio in mapa["tecnicos"]:
+            tecnicos.update(mapa["por_criterio"].get(criterio, []))
+    return tecnicos
 
 
 def comando_de_aceite(comandos_de_teste: Iterable[str], arquivo_rel: str) -> Optional[str]:

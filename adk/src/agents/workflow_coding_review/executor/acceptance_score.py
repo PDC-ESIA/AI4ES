@@ -60,7 +60,7 @@ entre rodadas para a mesma evidência.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from shared.tools.coding_tools.harness_schemas import (
@@ -118,6 +118,9 @@ class NotaAceite:
     criterios_enderecaveis: list[str]
     mapa_fora_de_escopo: bool = False
     task_id_do_mapa: Optional[str] = None
+    # Critérios técnicos: fora da nota e da cobertura (não são homologação) e
+    # nunca reprovam; o desfecho de cada um vai para o relatório como nota.
+    notas_tecnicas: list[dict] = field(default_factory=list)
 
     @property
     def atendidos(self) -> int:
@@ -144,6 +147,7 @@ class NotaAceite:
             "criterios_enderecaveis": list(self.criterios_enderecaveis),
             "mapa_fora_de_escopo": self.mapa_fora_de_escopo,
             "task_id_do_mapa": self.task_id_do_mapa,
+            "notas_tecnicas": list(self.notas_tecnicas),
         }
 
 
@@ -227,6 +231,20 @@ def calcular_nota_aceite(execution_report: Any) -> NotaAceite:
     enderecaveis: list[str] = []
     atendidos = nao_atendidos = 0
 
+    notas_tecnicas: list[dict] = []
+    if any(e.get("tecnico") for e in evidencias):
+        notas_tecnicas = [
+            {
+                "id": e.get("criterion_id") or "",
+                "criterio": e.get("criterion") or "",
+                "resultado": e.get("outcome") or "",
+                "observado": str(e.get("observed") or "")[:300],
+            }
+            for e in evidencias
+            if e.get("tecnico")
+        ]
+        evidencias = [e for e in evidencias if not e.get("tecnico")]
+
     for evidencia in evidencias:
         outcome = _outcome(evidencia)
         chave = outcome.value if outcome is not None else "desconhecido"
@@ -260,6 +278,7 @@ def calcular_nota_aceite(execution_report: Any) -> NotaAceite:
         criterios_enderecaveis=enderecaveis,
         mapa_fora_de_escopo=fora_de_escopo,
         task_id_do_mapa=task_id_do_mapa,
+        notas_tecnicas=notas_tecnicas,
     )
 
 

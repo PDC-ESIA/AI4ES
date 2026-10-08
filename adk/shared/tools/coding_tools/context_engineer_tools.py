@@ -467,6 +467,40 @@ async def aguardar_resolucao_bloqueio(
     _ = (fase_bloqueada, motivo, acao_necessaria)
     return None
 
+def _sem_homologacao_em_web(task_data: Any) -> Optional[str]:
+    """Erro quando uma task de produto web não tem critério de homologação.
+
+    Critério de aceite é homologação; em web_app ela é feita pela interface.
+    Na 9ª validação a task de upload saiu só com critérios de endpoint, e a
+    tela de upload — que faltava desde a primeira run — nunca foi cobrada.
+    Vale só com o macro_context já salvo (o prompt manda salvá-lo primeiro).
+    """
+    if not isinstance(task_data, dict) or task_data.get("tecnica") is True:
+        return None
+    try:
+        macro = json.loads(
+            (get_agent_workspace("cr_context_engineer") / MACRO_CONTEXT_FILENAME).read_text(
+                encoding="utf-8"
+            )
+        )
+    except (OSError, ValueError):
+        return None
+    if str((macro or {}).get("product_type") or "").strip().lower() != "web_app":
+        return None
+    from shared.tools.coding_tools.criterios_aceite import normalizar_criterios
+
+    criterios = normalizar_criterios(task_data.get("acceptance_criteria"))
+    if any(c.automatable and not c.tecnico for c in criterios):
+        return None
+    return (
+        "Produto web: a task não tem critério de homologação. Critério de aceite "
+        "é o que o usuário faz e vê PELA INTERFACE — inclua ao menos um, não "
+        "técnico, no formato 'A partir da página inicial, <ação> e <o que a "
+        "página mostra>'. Se a task for puramente interna (nada que o usuário "
+        "faça ou veja), marque \"tecnica\": true na task."
+    )
+
+
 def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
     """Salva task contextualizada em workspace_output/coder/tasks/.
     """
@@ -491,6 +525,10 @@ def tool_salvar_task_cr(task_id: str, task_json: str) -> dict:
             ),
             "caminho": None,
         }
+
+    sem_homologacao = _sem_homologacao_em_web(task_data)
+    if sem_homologacao:
+        return {"sucesso": False, "erro": sem_homologacao, "caminho": None}
 
     output_dir = get_agent_workspace("cr_context_engineer")
     output_file = output_dir / (dados.task_id + ".json")

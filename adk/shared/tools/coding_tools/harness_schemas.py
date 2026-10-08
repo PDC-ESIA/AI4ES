@@ -146,6 +146,13 @@ class CriterionEvidence(BaseModel):
         default_factory=list,
         description="Testes declarados no manifesto como cobertura deste critério",
     )
+    tecnico: bool = Field(
+        default=False,
+        description=(
+            "Critério técnico (não homologação): o resultado é registrado como "
+            "nota e nunca reprova a task."
+        ),
+    )
 
 
 class StageResult(BaseModel):

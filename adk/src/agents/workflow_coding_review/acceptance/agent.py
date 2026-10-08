@@ -8,11 +8,12 @@ gravado em `coder/tasks/`, fora do alcance do coder. O harness passa a decidir
 esses critérios pelos testes (atendido/não atendido), e o validador reprova a
 rodada quando algum não é atendido.
 
-Produto web (`product_type` web_app) — SEMPRE: os critérios marcados com
-`interface` vão para um segundo arquivo, `test_interface_<TASK>.py`, escrito
-para o navegador (Playwright) e executado contra a aplicação no ar, partindo
-da página inicial. Endpoint funcionando sem tela não atende critério de
-interface.
+Produto web (`product_type` web_app) — SEMPRE: critério de aceite é
+homologação, e o usuário só vê a interface. Todo critério não técnico vai para
+`test_interface_<TASK>.py`, escrito para o navegador (Playwright) e executado
+contra a aplicação no ar, partindo da página inicial; endpoint funcionando sem
+tela não atende. O arquivo principal fica com os critérios técnicos
+(`tecnico`), que nunca reprovam a task.
 """
 
 from __future__ import annotations
@@ -106,17 +107,21 @@ def _sobe_servico(coder_dir) -> bool:
 def dividir_criterios(state: Any, task: dict, coder_dir) -> tuple[list[str], list[str]]:
     """(critérios do arquivo principal, critérios de interface pelo navegador).
 
-    Em produto web que sobe como serviço, todo critério automatizável marcado
-    com `interface` é comprovado pelo navegador — sempre. Fora disso (não é
-    web, ou não há serviço para navegar) a lista de interface é vazia e todos
-    vão para o arquivo principal, como antes.
+    Em produto web que sobe como serviço, todo critério automatizável que não
+    é técnico é homologação e se comprova pelo navegador — sempre. Fora disso
+    (não é web, ou não há serviço para navegar) a lista de interface é vazia e
+    todos vão para o arquivo principal, como antes.
     """
     criterios = [c for c in normalizar_criterios(task.get("acceptance_criteria")) if c.automatable]
     if _produto_web(state) and _sobe_servico(coder_dir):
-        interface = [c.id for c in criterios if c.interface]
+        interface = [c.id for c in criterios if not c.tecnico]
     else:
         interface = []
     return [c.id for c in criterios if c.id not in interface], interface
+
+
+def _tecnicos(task: dict) -> list[str]:
+    return [c.id for c in normalizar_criterios(task.get("acceptance_criteria")) if c.tecnico]
 
 
 def _destino(coder_dir, arquivo_rel: str):
@@ -149,8 +154,9 @@ def tool_salvar_teste_aceite(conteudo: str, tool_context: ToolContext) -> dict:
         return {
             "sucesso": False,
             "erro": (
-                "Todos os critérios automatizáveis desta task são de interface "
-                f"({', '.join(de_interface)}): use tool_salvar_teste_interface."
+                "Todos os critérios automatizáveis desta task são de homologação "
+                f"pela interface ({', '.join(de_interface)}): use "
+                "tool_salvar_teste_interface."
             ),
         }
     arquivo_rel = caminho_relativo(task_id)
@@ -173,17 +179,30 @@ def tool_salvar_teste_aceite(conteudo: str, tool_context: ToolContext) -> dict:
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(conteudo, encoding="utf-8")
     gravar_mapa(
-        get_agent_workspace("cr_context_engineer"), task_id, arquivo_rel, mapa, mesclar=True
+        get_agent_workspace("cr_context_engineer"),
+        task_id,
+        arquivo_rel,
+        mapa,
+        mesclar=True,
+        tecnicos=_tecnicos(task),
     )
 
     faltando = sorted(set(automatizaveis) - set(mapa))
     logger.info("[ACEITE][%s] testes de aceite gravados: %s", task_id, sorted(mapa))
-    return {
+    resposta = {
         "sucesso": True,
         "caminho": arquivo_rel,
         "criterios_cobertos": sorted(mapa),
         "criterios_sem_teste": faltando,
     }
+    if de_interface:
+        # Na 9ª validação o autor salvou só este arquivo, duas vezes, e a task
+        # foi aprovada sem nenhum teste de homologação pela interface.
+        resposta["pendente"] = (
+            f"Faltam os testes de homologação pela interface ({', '.join(de_interface)}): "
+            "escreva-os com Playwright e salve com tool_salvar_teste_interface."
+        )
+    return resposta
 
 
 def tool_executar_teste_aceite(tool_context: ToolContext) -> dict:
@@ -262,7 +281,12 @@ def tool_salvar_teste_interface(conteudo: str, tool_context: ToolContext) -> dic
     destino.write_text(conteudo, encoding="utf-8")
     instalar_conftest(coder_dir / _workdir(coder_dir), PASTA_ACEITE)
     gravar_mapa(
-        get_agent_workspace("cr_context_engineer"), task_id, arquivo_rel, mapa, mesclar=True
+        get_agent_workspace("cr_context_engineer"),
+        task_id,
+        arquivo_rel,
+        mapa,
+        mesclar=True,
+        tecnicos=_tecnicos(task),
     )
     logger.info("[ACEITE][%s] testes de interface gravados: %s", task_id, sorted(mapa))
     return {

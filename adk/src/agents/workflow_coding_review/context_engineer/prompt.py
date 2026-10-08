@@ -257,10 +257,10 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
         um critério automatizável marcado como `false` nunca ganha teste e some da medição.
       - Exceção — produto web (`product_type` = web_app): critérios de interface
         SÃO automatizáveis (há navegador automatizado); veja a seção PRODUTO WEB.
-    - **interface** (só em web_app; omita nos demais produtos): `true` quando o
-      critério descreve o que o usuário faz PELA INTERFACE, partindo da página
-      inicial. Ele será comprovado por um navegador real que só clica, preenche e
-      lê a página — nunca chamando o endpoint direto.
+    - **tecnico** (opcional, padrão false): `true` para verificação TÉCNICA que o
+      usuário não observa — desempenho, estrutura de pastas, detalhe de
+      persistência ou de API interna. É testado, mas NUNCA reprova a task: vira
+      nota no relatório. Critério de aceite é homologação; técnico é exceção.
 
     Exemplo do campo completo (produto que NÃO é web):
     "acceptance_criteria": [
@@ -269,8 +269,9 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
     ]
     Exemplo em web_app:
     "acceptance_criteria": [
-      {"id": "CA-01", "description": "Persistir o ensaio com título, data e cliente ao criar", "automatable": true},
-      {"id": "CA-02", "description": "A partir da página inicial, criar um ensaio pelo formulário e vê-lo listado", "automatable": true, "interface": true}
+      {"id": "CA-01", "description": "A partir da página inicial, criar um ensaio pelo formulário e vê-lo na lista de ensaios", "automatable": true},
+      {"id": "CA-02", "description": "A partir da página inicial, abrir o ensaio criado e ver título, data e cliente", "automatable": true},
+      {"id": "CA-03", "description": "Gravar o ensaio no SQLite com identificador único", "automatable": true, "tecnico": true}
     ]
 
 - **contract**: defina as fronteiras com base nos artefatos de design:
@@ -293,27 +294,34 @@ Para CADA requisito funcional (RF) encontrado nos artefatos de requirements, ger
   - Inclua análises técnicas, diagramas e protótipos relevantes. Não referencie por referenciar — apenas inclua o que de fato foi usado.
 
 ## PRODUTO WEB (product_type = web_app) — REGRA FIXA, VALE SEMPRE
-Em aplicação web o usuário só usa o que a INTERFACE oferece. Endpoint sem tela
-não é funcionalidade entregue. Por isso, SEMPRE que o product_type for web_app:
+Critério de aceite é HOMOLOGAÇÃO: a primeira validação, automática, do que o
+usuário vai conferir. Em aplicação web o usuário só usa o que a INTERFACE
+oferece; o backend é o habilitador. Endpoint sem tela não é funcionalidade
+entregue. Por isso, SEMPRE que o product_type for web_app:
+- Todo critério que NÃO é técnico será comprovado por um navegador real que
+  abre a página inicial, clica, preenche e lê a página. Escreva-o do ponto de
+  vista do usuário: "A partir da página inicial, <ação pela interface> e <o que
+  a página mostra>". Ex.: "A partir da página inicial, abrir um ensaio, enviar
+  3 fotos pelo formulário de upload e ver as 3 miniaturas na galeria".
+  NÃO escreva critério de homologação citando endpoint, status HTTP ou JSON.
 - Toda task que entrega algo que o usuário faz ou vê (criar, enviar arquivo,
-  listar, selecionar, filtrar, visualizar...) tem AO MENOS UM critério com
-  `"interface": true` e `"automatable": true`, no formato "A partir da página
-  inicial, <ação do usuário pela interface> e <o que a página mostra>".
-  Ex.: "A partir da página inicial, abrir um ensaio, enviar 3 fotos pelo
-  formulário de upload e ver as 3 miniaturas na galeria".
+  listar, selecionar, filtrar, visualizar...) tem AO MENOS UM critério de
+  homologação (não técnico). A ferramenta de salvar recusa a task sem ele.
 - O caminho até a funcionalidade faz parte do critério: a página precisa ser
   alcançável por links e botões desde "/" — sem digitar URL.
 - A description da task cita a(s) tela(s) e o(s) elemento(s) de interface que
   a task entrega (página, formulário, botão, link no menu), e `contract.outputs`
   inclui os templates/páginas correspondentes.
-- Tasks puramente internas (modelo de dados, configuração, infraestrutura) não
-  precisam de critério de interface.
-- Critérios de API/persistência continuam valendo junto: o critério de interface
-  não substitui os demais, ele garante que a funcionalidade chegou ao usuário.
+- O que o usuário não observa (desempenho, estrutura de pastas, persistência,
+  formato de API interna) vira critério com `"tecnico": true`: é verificado,
+  nunca reprova, e aparece como nota no relatório.
+- Task puramente interna (modelo de dados, configuração, infraestrutura), sem
+  nada que o usuário faça ou veja, leva `"tecnica": true` NA TASK e só
+  critérios técnicos.
 
 ## Passo 5 — Persistir no Workspace
-Após gerar todas as tasks, chame tool_salvar_task_cr para cada uma individualmente.
-Em seguida, chame tool_salvar_macro_context_cr UMA vez com o macro_context (summary, product_type, tech_stack, global_rules) serializado. Este passo é obrigatório: os estágios downstream (executor/harness) dependem do product_type persistido para escolher a superfície de execução correta.
+PRIMEIRO chame tool_salvar_macro_context_cr UMA vez com o macro_context (summary, product_type, tech_stack, global_rules) serializado. Este passo é obrigatório: os estágios downstream (executor/harness) dependem do product_type persistido para escolher a superfície de execução correta, e o salvamento das tasks o usa para validar os critérios.
+Em seguida, chame tool_salvar_task_cr para cada task individualmente. Se a ferramenta recusar uma task, corrija-a conforme o erro e salve de novo — e use a versão corrigida na saída final.
 
 ## Passo 6 — Retornar Saída Estruturada
 Retorne o JSON completo conforme o schema do sistema, contendo:

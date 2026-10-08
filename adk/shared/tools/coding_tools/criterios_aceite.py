@@ -35,10 +35,12 @@ classificação da época; como elas são efêmeras (vivem no workspace de uma
 execução), não há migração a fazer.
 
 Foi o que aconteceu com o navegador: em produto web (`product_type` web_app),
-o fluxo passou a ter Playwright, e critérios de interface ("a partir da página
-inicial, o usuário cria um ensaio") passaram a ser automatizáveis. Eles vêm
-marcados com `interface=True`, e o autor de aceite os comprova SEMPRE pelo
-navegador, partindo da página inicial — nunca chamando o endpoint direto.
+o fluxo passou a ter Playwright. Critério de aceite é HOMOLOGAÇÃO — a primeira
+validação, automática, do que o usuário fará: em web_app, todo critério é
+comprovado pela interface, partindo da página inicial, e o backend é só o
+habilitador. O que não se observa pela tela (desempenho, estrutura de pastas,
+detalhe de persistência) vem marcado `tecnico=True`: é verificado, mas nunca
+reprova a task — vira nota no relatório.
 
 NÃO confundir `automatable` com `CriterionEvidence.checkable` (ver
 `harness_schemas.py`). São perguntas diferentes:
@@ -106,9 +108,9 @@ _CHAVES_AUTOMATABLE = ("automatable", "automatizavel")
 # cobertura sem que ninguém perceba que ele PODERIA ter sido comprovado.
 _AUTOMATABLE_PADRAO = True
 
-# Chaves aceitas para a marca de critério de interface (mesmo motivo do alias
-# de `automatable`).
-_CHAVES_INTERFACE = ("interface", "via_interface")
+# Chaves aceitas para a marca de critério técnico (mesmo motivo do alias de
+# `automatable`).
+_CHAVES_TECNICO = ("tecnico", "técnico", "technical")
 
 
 class AcceptanceCriterion(BaseModel):
@@ -130,13 +132,13 @@ class AcceptanceCriterion(BaseModel):
             "minimalista', 'consigo ver a página final do álbum')."
         ),
     )
-    interface: bool = Field(
+    tecnico: bool = Field(
         default=False,
         description=(
-            "Critério comprovado PELA INTERFACE de um produto web: navegador "
-            "partindo da página inicial, só cliques, preenchimentos e o que a "
-            "página mostra. Em web_app, toda funcionalidade voltada ao usuário "
-            "tem ao menos um critério assim."
+            "Verificação técnica (desempenho, estrutura interna, persistência), "
+            "não homologação: é testada, mas NUNCA reprova a task — o resultado "
+            "vira nota no relatório. Em web_app, todo critério não técnico é "
+            "comprovado pela interface, com navegador."
         ),
     )
 
@@ -193,8 +195,8 @@ def _automatable_do_dict(dados: dict) -> bool:
     return _AUTOMATABLE_PADRAO
 
 
-def _interface_do_dict(dados: dict) -> bool:
-    for chave in _CHAVES_INTERFACE:
+def _tecnico_do_dict(dados: dict) -> bool:
+    for chave in _CHAVES_TECNICO:
         valor = dados.get(chave)
         if isinstance(valor, bool):
             return valor
@@ -204,14 +206,14 @@ def _interface_do_dict(dados: dict) -> bool:
 
 
 def _extrair(item: Any) -> Optional[tuple[Optional[str], str, bool, bool]]:
-    """Reduz um item da lista a `(id_proposto, description, automatable, interface)`.
+    """Reduz um item da lista a `(id_proposto, description, automatable, tecnico)`.
 
     Returns:
         None quando o item não carrega critério aproveitável — o que inclui o
         formato antigo com string vazia e qualquer tipo inesperado.
     """
     if isinstance(item, AcceptanceCriterion):
-        return canonizar_id(item.id), item.description, item.automatable, item.interface
+        return canonizar_id(item.id), item.description, item.automatable, item.tecnico
 
     # Formato antigo: lista de strings, sem id nem classificação.
     if isinstance(item, str):
@@ -227,7 +229,7 @@ def _extrair(item: Any) -> Optional[tuple[Optional[str], str, bool, bool]]:
             canonizar_id(item.get("id")),
             texto,
             _automatable_do_dict(item),
-            _interface_do_dict(item),
+            _tecnico_do_dict(item),
         )
 
     logger.warning(
@@ -298,9 +300,9 @@ def normalizar_criterios(valor: Any) -> list[AcceptanceCriterion]:
             id=id_final,
             description=descricao,
             automatable=automatable,
-            interface=interface,
+            tecnico=tecnico,
         )
-        for id_final, (_, descricao, automatable, interface) in zip(ids, brutos)
+        for id_final, (_, descricao, automatable, tecnico) in zip(ids, brutos)
     ]
 
 

@@ -845,8 +845,9 @@ class TaskIterator(BaseAgent):
             # mesmo se o arquivo da task ou o report desaparecer durante a run.
             # Sem este denominador, uma task perdida contribuiria com 0/0 e
             # inflaria artificialmente a cobertura agregada do manifesto.
+            # Critério técnico não é homologação: fica fora do denominador.
             resultado["criterios_esperados"] = len(
-                normalizar_criterios(task.get("acceptance_criteria"))
+                [c for c in normalizar_criterios(task.get("acceptance_criteria")) if not c.tecnico]
             )
 
             task_results[task_id] = resultado

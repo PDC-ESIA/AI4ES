@@ -155,6 +155,9 @@ def _criterios_decididos(report: dict) -> dict[str, CriterionVerdict]:
     for evidencia in report.get("criteria_evidence") or []:
         if not isinstance(evidencia, dict):
             continue
+        if evidencia.get("tecnico"):
+            # Critério técnico nunca decide a task: vira nota (ver `_notas_tecnicas`).
+            continue
         status = _STATUS_DECIDIDO.get(evidencia.get("outcome"))
         criterio = evidencia.get("criterion")
         if status is None or not isinstance(criterio, str):
@@ -289,9 +292,19 @@ def montar_veredito(
         blocking_reason=None,
         summary=(
             "Aprovado: o sistema gerado foi construído, iniciou e passou nos "
-            "próprios testes."
+            "próprios testes." + _notas_tecnicas(report)
         ),
     )
+
+
+def _notas_tecnicas(report: dict) -> str:
+    """Critérios técnicos não atendidos: nota no relatório, nunca reprovação."""
+    notas = [
+        f"{e.get('criterion_id') or e.get('criterion')}: {e.get('outcome')}"
+        for e in report.get("criteria_evidence") or []
+        if isinstance(e, dict) and e.get("tecnico") and e.get("outcome") != "atendido"
+    ]
+    return f" Notas técnicas (não bloqueiam): {'; '.join(notas)}." if notas else ""
 
 
 def _resumo_nao_atendidos(decididos: dict[str, CriterionVerdict]) -> str:
