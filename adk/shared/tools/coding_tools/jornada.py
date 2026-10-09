@@ -18,7 +18,7 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 from shared.execution.manifest import ManifestError, load_manifest
 from shared.execution.sandbox import create_sandbox
@@ -213,6 +213,51 @@ _METODOS_PROIBIDOS = frozenset(
 # detalhe que só o código atual conhece.
 _SELETOR_DE_CLASSE = re.compile(r"(^|[\s>+~,(])[\w-]*\.[A-Za-z_][\w-]*")
 _ASSERCOES = re.compile(r"^(to_|not_to_)")
+_LEITURAS_IMEDIATAS = frozenset(
+    {"count", "is_visible", "is_hidden", "is_enabled", "is_checked", "inner_text", "text_content", "input_value"}
+)
+
+# Prefixos que dizem o PAPEL do elemento; o resto do nome diz QUAL é.
+_PAPEIS = {
+    "campo": "campo", "input": "campo", "field": "campo", "txt": "campo",
+    "btn": "botao", "botao": "botao", "button": "botao",
+    "link": "link", "form": "form", "formulario": "form",
+    "item": "item", "lista": "lista", "list": "lista", "grid": "lista",
+}
+
+
+def _assinatura_id(identificador: str) -> tuple[Optional[str], frozenset]:
+    partes = [p for p in re.split(r"[-_]", identificador.lower()) if p]
+    papel = None
+    palavras = set()
+    for parte in partes:
+        if parte in _PAPEIS and papel is None:
+            papel = _PAPEIS[parte]
+            continue
+        palavras.add(parte[:-1] if len(parte) > 3 and parte.endswith("s") else parte)
+    return papel, frozenset(palavras)
+
+
+def identificador_equivalente(novo: str, existentes: Iterable[str]) -> Optional[str]:
+    """Identificador já existente que nomeia o MESMO elemento que `novo`.
+
+    Na 14ª validação o autor da TASK-007 chamou de `campo-titulo-ensaio` o
+    campo que as TASK-001..006 chamavam de `ensaios-titulo`; para atender o
+    teste novo o coder renomeou o campo e quebrou cinco tasks de uma vez. Mesmas
+    palavras (sem plural) e papel compatível (igual, ou um dos dois sem papel) =
+    mesmo elemento.
+    """
+    papel, palavras = _assinatura_id(novo)
+    if not palavras:
+        return None
+    for existente in existentes:
+        if existente == novo:
+            return None
+    for existente in sorted(existentes):
+        papel_e, palavras_e = _assinatura_id(existente)
+        if palavras_e == palavras and (papel is None or papel_e is None or papel == papel_e):
+            return existente
+    return None
 
 
 def violacoes_de_robustez(arvore: ast.AST) -> list[str]:
@@ -226,6 +271,20 @@ def violacoes_de_robustez(arvore: ast.AST) -> list[str]:
     """
     erros: list[str] = []
     for no in ast.walk(arvore):
+        if isinstance(no, ast.Assert) and any(
+            isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr in _LEITURAS_IMEDIATAS
+            for c in ast.walk(no.test)
+        ):
+            erros.append(
+                "`assert ...count()/is_visible()/inner_text()`: lê a página no instante, "
+                "sem esperar a atualização; use `expect(...).to_have_count/to_be_visible/"
+                "to_have_text`, que espera."
+            )
+        if isinstance(no, ast.Attribute) and no.attr == "url" and isinstance(no.value, ast.Name):
+            erros.append(
+                f"`{no.value.id}.url`: o usuário homologa o que vê, não o endereço; afirme "
+                "o conteúdo da página."
+            )
         if isinstance(no, ast.Try):
             erros.append(
                 "`try/except` no teste: não tente alternativas nem engula falhas; "
@@ -239,6 +298,11 @@ def violacoes_de_robustez(arvore: ast.AST) -> list[str]:
         if not (isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)):
             continue
         metodo = no.func.attr
+        if metodo == "to_have_url":
+            erros.append(
+                "`to_have_url(...)`: a URL é detalhe de implementação (o redirecionamento "
+                "pode mudar entre tasks); afirme o que a página mostra."
+            )
         if metodo == "nth":
             erros.append("`.nth(...)`: não escolha elemento por posição.")
         if _ASSERCOES.match(metodo) and any(
@@ -266,8 +330,14 @@ def violacoes_de_robustez(arvore: ast.AST) -> list[str]:
     return sorted(set(erros))
 
 
-def identificadores_existentes(workdir: Path, limite: int = 200) -> list[str]:
-    """`data-testid` já usados nas telas e nos testes de interface anteriores."""
+def identificadores_existentes(
+    workdir: Path, limite: int = 200, ignorar: Iterable[str] = ()
+) -> list[str]:
+    """`data-testid` já usados nas telas e nos testes de interface anteriores.
+
+    `ignorar`: caminhos relativos ao workdir fora da varredura (ex.: o próprio
+    arquivo de teste sendo salvo de novo)."""
+    ignorados = {Path(workdir) / i for i in ignorar}
     encontrados: set[str] = set()
     padroes = (
         re.compile(r"""data-testid\s*=\s*["']([^"'{}<>]+)["']"""),
@@ -277,6 +347,8 @@ def identificadores_existentes(workdir: Path, limite: int = 200) -> list[str]:
         if not caminho.is_file() or caminho.suffix not in (".html", ".jinja", ".jinja2", ".j2", ".py", ".js"):
             continue
         if any(p in ("venv", ".venv", "node_modules", "__pycache__") for p in caminho.parts):
+            continue
+        if caminho in ignorados:
             continue
         try:
             texto = caminho.read_text(encoding="utf-8", errors="replace")

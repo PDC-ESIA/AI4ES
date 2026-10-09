@@ -126,6 +126,13 @@ aplicação no ar:
   o item de ensaio, o formulário de criação) se localiza pelo identificador
   existente — nunca invente outro nome para ele. Crie identificador novo só
   para elemento novo desta task.
+- ANTES de escrever, leia os testes de interface aprovados de tasks anteriores
+  (`tests/acceptance/test_interface_*.py`, com `tool_ler_arquivo`) e REAPROVEITE
+  os passos de navegação deles (ex.: como se cria um ensaio) com os MESMOS
+  identificadores. A ferramenta recusa identificador novo equivalente a um
+  existente (`campo-titulo-ensaio` quando já há `ensaios-titulo`).
+- Nada de URL (`to_have_url`, `page.url`) nem `assert ...count()`: afirme o
+  conteúdo com `expect(...)`, que espera a página atualizar.
 - Todo critério listado em `interface.criterios` é homologação: escreva teste
   para cada um. Só deixe de fora o que for puramente subjetivo ("visual
   minimalista"), sem nada observável na página.

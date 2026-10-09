@@ -51,6 +51,7 @@ from shared.tools.coding_tools.aceite_independente import (
 )
 from shared.tools.coding_tools.jornada import (
     erro_do_proprio_teste,
+    identificador_equivalente,
     identificadores_existentes,
     instalar_conftest,
     violacoes_de_robustez,
@@ -244,6 +245,19 @@ def tool_executar_teste_aceite(tool_context: ToolContext) -> dict:
     return {"exit_code": exit_code, "saida": saida}
 
 
+def _ids_usados(arvore: ast.AST) -> set[str]:
+    return {
+        no.args[0].value
+        for no in ast.walk(arvore)
+        if isinstance(no, ast.Call)
+        and isinstance(no.func, ast.Attribute)
+        and no.func.attr == "get_by_test_id"
+        and no.args
+        and isinstance(no.args[0], ast.Constant)
+        and isinstance(no.args[0].value, str)
+    }
+
+
 def tool_salvar_teste_interface(conteudo: str, tool_context: ToolContext) -> dict:
     """Salva os testes dos critérios de INTERFACE da task (produto web).
 
@@ -279,6 +293,25 @@ def tool_salvar_teste_interface(conteudo: str, tool_context: ToolContext) -> dic
             "erro": "Critério de interface se comprova PELA INTERFACE: " + " ".join(violacoes),
         }
     arquivo_rel = caminho_relativo_interface(task_id)
+    existentes = identificadores_existentes(
+        coder_dir / _workdir(coder_dir), ignorar=[arquivo_rel]
+    )
+    conflitos = sorted(
+        {
+            f"`{novo}` → use `{igual}`, que já existe"
+            for novo in _ids_usados(arvore)
+            if (igual := identificador_equivalente(novo, existentes))
+        }
+    )
+    if conflitos:
+        return {
+            "sucesso": False,
+            "erro": (
+                "Identificador novo para elemento que já existe (um elemento só tem "
+                "um data-testid; renomear quebra os testes de tasks anteriores): "
+                + "; ".join(conflitos)
+            ),
+        }
     mapa = extrair_mapa(conteudo, de_interface, arquivo_rel)
     if not mapa:
         return {

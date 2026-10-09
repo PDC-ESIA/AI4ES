@@ -729,3 +729,53 @@ def test_rodada_com_erro_do_proprio_teste_nao_conta_para_o_teto(ws, ligada, tmp_
     assert executor._teste_a_reparar(produto) is False
     esgotado = {**state, "aceite_reparos": {"TASK-001": [7, 8]}}
     assert executor._teste_a_reparar(esgotado) is False
+
+
+# ── 14ª validação: URL, leitura imediata e identificador equivalente ───────
+
+
+@pytest.mark.parametrize(
+    "trecho_codigo, trecho_erro",
+    [
+        ("expect(page).to_have_url(re.compile('/ensaios/x$'))", "`to_have_url(...)`"),
+        ("assert '/gallery' in page.url", "`page.url`"),
+        ("assert page.get_by_test_id('item-foto').count() == 1", "lê a página no instante"),
+        ("assert page.get_by_test_id('aviso').is_visible()", "lê a página no instante"),
+    ],
+)
+def test_robustez_recusa_url_e_leitura_imediata(trecho_codigo, trecho_erro):
+    codigo = f"def test_CA_01(page):\n    page.goto('/')\n    {trecho_codigo}\n"
+    assert any(trecho_erro in v for v in jn.violacoes_de_robustez(ast.parse(codigo)))
+
+
+@pytest.mark.parametrize(
+    "novo, existentes, esperado",
+    [
+        ("campo-titulo-ensaio", ["ensaios-titulo", "form-criar-ensaio"], "ensaios-titulo"),
+        ("input-titulo-ensaio", ["campo-titulo-ensaio"], "campo-titulo-ensaio"),
+        ("btn-criar-ensaio", ["form-criar-ensaio"], None),  # papéis distintos
+        ("ensaios-titulo", ["ensaios-titulo"], None),  # é o próprio
+        ("campo-titulo-album", ["ensaios-titulo"], None),
+        ("lista-fotos", ["grid-foto"], "grid-foto"),
+    ],
+)
+def test_identificador_equivalente(novo, existentes, esperado):
+    assert jn.identificador_equivalente(novo, existentes) == esperado
+
+
+def test_interface_recusa_identificador_equivalente_a_um_existente(ws):
+    (ws.coder / "app" / "templates").mkdir(parents=True, exist_ok=True)
+    (ws.coder / "app" / "templates" / "index.html").write_text('<input data-testid="ensaios-titulo">')
+    codigo = (
+        "def test_CA_02_x(page):\n"
+        "    page.goto('/')\n"
+        "    page.get_by_test_id('campo-titulo-ensaio').fill('a')\n"
+    )
+    resposta = ws.modulo.tool_salvar_teste_interface(codigo, _ctx())
+    assert resposta["sucesso"] is False
+    assert "`campo-titulo-ensaio` → use `ensaios-titulo`" in resposta["erro"]
+
+    # Salvar de novo o mesmo arquivo não conflita com ele mesmo.
+    ok = codigo.replace("campo-titulo-ensaio", "ensaios-titulo")
+    assert ws.modulo.tool_salvar_teste_interface(ok, _ctx())["sucesso"] is True
+    assert ws.modulo.tool_salvar_teste_interface(ok, _ctx())["sucesso"] is True
