@@ -26,23 +26,37 @@ _CONTRATO = {
             "prototipo": "design/prototypes/painel_fotografo.html",
             "tasks": ["TASK-001"],
             "elementos": [
+                {"testid": "tela-painel", "papel": "tela"},
                 {"testid": "form-criar-ensaio", "papel": "form", "task": "TASK-001"},
                 {"testid": "campo-titulo-ensaio", "papel": "campo", "task": "TASK-001"},
                 {"testid": "btn-criar-ensaio", "papel": "botao", "task": "TASK-001"},
                 {"testid": "item-ensaio", "papel": "item", "task": "TASK-001"},
+                {"testid": "link-galeria-ensaio", "papel": "link", "task": "TASK-002"},
             ],
         },
         {
             "id": "galeria",
             "rota": "/ensaios/{ensaio_id}",
             "tasks": ["TASK-002"],
-            "elementos": [{"testid": "btn-enviar-fotos", "papel": "botao", "task": "TASK-002"}],
+            "elementos": [
+                {"testid": "tela-galeria", "papel": "tela"},
+                {"testid": "btn-enviar-fotos", "papel": "botao", "task": "TASK-002"},
+                {"testid": "link-voltar-painel", "papel": "link", "task": "TASK-002"},
+            ],
         },
     ],
     "rotas": [
         {"metodo": "POST", "caminho": "/ensaios", "formato": "form", "campos": ["titulo"], "task": "TASK-001"},
         {"metodo": "POST", "caminho": "/ensaios/{ensaio_id}/upload", "formato": "multipart", "task": "TASK-002"},
     ],
+    "navegacao": [
+        {"origem": "painel", "acao": "abrir o ensaio", "elemento": "link-galeria-ensaio",
+         "dentro_de": "item-ensaio", "destino": "galeria"},
+        {"origem": "galeria", "acao": "voltar", "elemento": "link-voltar-painel", "destino": "painel"},
+    ],
+    "estilo": {"origem": "design/prototypes/global.css", "url": "/static/global.css"},
+    "decisoes": ["ingestão assíncrona"],
+    "suposicoes": ["cliente é texto livre"],
     "convencoes": ["UUID com hífens"],
 }
 
@@ -54,7 +68,8 @@ def test_contrato_valido():
     contrato, erros = cw.validar(_CONTRATO, ["TASK-001", "TASK-002"])
     assert erros == [] and contrato is not None
     assert cw.testids(contrato) == [
-        "form-criar-ensaio", "campo-titulo-ensaio", "btn-criar-ensaio", "item-ensaio", "btn-enviar-fotos",
+        "tela-painel", "form-criar-ensaio", "campo-titulo-ensaio", "btn-criar-ensaio", "item-ensaio",
+        "link-galeria-ensaio", "tela-galeria", "btn-enviar-fotos", "link-voltar-painel",
     ]
 
 
@@ -68,6 +83,9 @@ def test_contrato_valido():
         (lambda c: c["rotas"].append({"metodo": "POST", "caminho": "/x", "formato": "xml"}), "formato"),
         (lambda c: c["telas"][0].update(rota="/painel"), "tela inicial"),
         (lambda c: c["telas"][0]["tasks"].append("TASK-099"), "task desconhecida"),
+        (lambda c: c["telas"][1]["elementos"].pop(0), "falta o elemento `tela-galeria`"),
+        (lambda c: c["navegacao"].append({"origem": "painel", "elemento": "btn-x", "destino": "galeria"}), "não é elemento da tela painel"),
+        (lambda c: c["navegacao"].append({"origem": "painel", "elemento": "btn-criar-ensaio", "destino": "nada"}), "tela inexistente"),
     ],
 )
 def test_contrato_invalido(mutacao, trecho):
@@ -89,10 +107,10 @@ def test_grava_e_le(tmp_path):
 
 def test_secao_detalha_so_as_telas_da_task():
     contrato, _ = cw.validar(_CONTRATO)
-    texto = cw.secao_prompt(contrato, "TASK-002")
+    texto = cw.secao_prompt(contrato, "TASK-001")
     assert "CONTRATO DE INTERFACE" in texto
-    assert "`btn-enviar-fotos` (botao)" in texto  # tela da task: detalhada
-    assert "`campo-titulo-ensaio`" not in texto  # outra tela: só o cabeçalho
+    assert "`campo-titulo-ensaio` (campo)" in texto  # tela da task: detalhada
+    assert "`btn-enviar-fotos`" not in texto  # outra tela: só o cabeçalho
     assert "- Tela `painel` em GET /" in texto
     assert "POST /ensaios/{ensaio_id}/upload (multipart) [TASK-002]" in texto
     assert cw.secao_prompt(None, "TASK-001") == ""
@@ -163,7 +181,7 @@ def test_ferramenta_do_autor_valida_e_grava(ws):
     ruim = tool_salvar_contrato_web(json.dumps({"telas": []}), ctx)
     assert ruim["sucesso"] is False and any("tela inicial" in e for e in ruim["erros"])
     ok = tool_salvar_contrato_web(json.dumps(_CONTRATO), ctx)
-    assert ok == {"sucesso": True, "telas": 2, "elementos": 5, "rotas": 2}
+    assert ok == {"sucesso": True, "telas": 2, "elementos": 9, "rotas": 2}
     assert cw.ler(ws.tasks) is not None
 
 
@@ -266,3 +284,81 @@ def test_fase_do_contrato_so_em_web_app_e_esqueleto_so_em_python_web(ws):
     assert (ws.coder / "app" / "ids.py").is_file()
     # Contrato já existe: não chama o autor de novo.
     assert asyncio.run(_rodar(web)) == []
+
+
+# ── Navegação gerada e conformidade (design ↔ implementação) ───────────────
+
+
+def test_teste_de_navegacao_gerado_do_mapa():
+    import ast
+
+    contrato, _ = cw.validar(_CONTRATO)
+    codigo, inalcancaveis = cw.gerar_teste_navegacao(contrato)
+    ast.parse(codigo)
+    assert inalcancaveis == []
+    assert "def test_navegacao_00_tela_inicial" in codigo
+    assert "def test_navegacao_01_painel_galeria" in codigo
+    assert '_dentro(page, "item-ensaio").get_by_test_id("link-galeria-ensaio").click()' in codigo
+    # Volta da galeria: chega à galeria pelo caminho mais curto e clica em voltar.
+    trecho = codigo[codigo.index("def test_navegacao_02_galeria_painel"):]
+    assert trecho.index("link-galeria-ensaio") < trecho.index("link-voltar-painel")
+    assert 'expect(page.get_by_test_id("tela-painel")).to_be_visible()' in trecho
+
+
+def test_tela_inalcancavel_no_mapa():
+    dados = json.loads(json.dumps(_CONTRATO))
+    dados["navegacao"] = dados["navegacao"][1:]  # só galeria → painel
+    contrato, erros = cw.validar(dados)
+    assert erros == []
+    assert cw.gerar_teste_navegacao(contrato)[1] == ["galeria"]
+
+
+def test_conformidade_so_anota(tmp_path):
+    contrato, _ = cw.validar(_CONTRATO)
+    (tmp_path / "templates").mkdir()
+    (tmp_path / "templates" / "base.html").write_text(
+        '<link href="/static/global.css"><main data-testid="tela-painel">'
+        '<form data-testid="form-criar-ensaio"></form></main>'
+    )
+    rel = cw.conformidade(contrato, tmp_path, rotas_do_codigo=[("GET", "/")], navegacao={"arestas": 2})
+    assert rel["estilo_referenciado"] is True
+    assert rel["telas_sem_marcador"] == ["galeria"]
+    assert "btn-enviar-fotos" in rel["elementos_ausentes"]
+    assert rel["aderencia_elementos"] == round(2 / 9, 3)
+    assert "POST /ensaios [TASK-001]" in rel["rotas_ausentes"]
+    assert rel["navegacao"] == {"arestas": 2}
+
+
+def test_estilo_do_design_copiado_na_trilha_python_web(tmp_path):
+    contrato, _ = cw.validar(_CONTRATO)
+    raiz, workdir = tmp_path / "sessao", tmp_path / "src"
+    (raiz / "design" / "prototypes").mkdir(parents=True)
+    (raiz / "design" / "prototypes" / "global.css").write_text(":root{--accent:#0ea5a4}")
+    assert cw.instalar_estilo_python_web(raiz, workdir, contrato.estilo) == "static/global.css"
+    assert "--accent" in (workdir / "static" / "global.css").read_text()
+    assert cw.instalar_estilo_python_web(raiz, workdir, contrato.estilo) is None  # não sobrescreve
+
+
+def test_secao_traz_navegacao_estilo_marcadores_decisoes():
+    contrato, _ = cw.validar(_CONTRATO)
+    texto = cw.secao_prompt(contrato, "TASK-001")
+    for trecho in (
+        "## Navegação", "painel → galeria: clicar `link-galeria-ensaio` dentro de `item-ensaio`",
+        "## Design system", "`/static/global.css`", "`tela-painel`", "## Decisões de arquitetura do design",
+        "ingestão assíncrona", "## Suposições do design", "cliente é texto livre",
+    ):
+        assert trecho in texto, trecho
+
+
+def test_navegacao_gerada_so_percorre_links_e_rota_sem_query():
+    dados = json.loads(json.dumps(_CONTRATO))
+    dados["navegacao"].append(
+        {"origem": "painel", "acao": "criar ensaio", "elemento": "btn-criar-ensaio", "destino": "painel"}
+    )
+    contrato, erros = cw.validar(dados)
+    assert erros == []
+    codigo, _ = cw.gerar_teste_navegacao(contrato)
+    assert "btn-criar-ensaio" not in codigo  # envio de formulário: fica com os testes das tasks
+    dados["rotas"].append({"metodo": "GET", "caminho": "/ensaios/{ensaio_id}/photos?selected=true", "formato": "json"})
+    contrato, erros = cw.validar(dados)
+    assert contrato is None and any("sem query string" in e for e in erros)

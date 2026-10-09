@@ -501,7 +501,10 @@ def esperar_servico(url: str, timeout: float = _TIMEOUT_SUBIDA) -> Optional[str]
 
 
 def executar_jornada(
-    coder_dir: Path, trilha: Optional[dict] = None, arquivo: str = ARQUIVO_JORNADA
+    coder_dir: Path,
+    trilha: Optional[dict] = None,
+    arquivo: str = ARQUIVO_JORNADA,
+    extras: tuple[str, ...] = (),
 ) -> ResultadoJornada:
     """Constrói o artefato, sobe o serviço COMO O `run.json` MANDA e percorre a jornada.
 
@@ -520,14 +523,15 @@ def executar_jornada(
     except ManifestError as exc:
         return ResultadoJornada(NAO_EXECUTADA, motivo=f"run.json inválido: {exc}")
     workdir = (coder_dir / manifest.workdir).resolve()
-    if not (workdir / arquivo).is_file():
+    arquivos = [a for a in (arquivo, *extras) if (workdir / a).is_file()]
+    if not arquivos:
         return ResultadoJornada(NAO_EXECUTADA, motivo=f"{arquivo} não foi escrito")
-    comando = comando_de_aceite(manifest.test, arquivo)
+    comando = comando_de_aceite(manifest.test, " ".join(arquivos))
     if comando is None:
         return ResultadoJornada(NAO_EXECUTADA, motivo="o run.json não usa pytest")
 
-    navegador = usa_navegador(
-        (workdir / arquivo).read_text(encoding="utf-8", errors="replace"), arquivo
+    navegador = any(
+        usa_navegador((workdir / a).read_text(encoding="utf-8", errors="replace"), a) for a in arquivos
     )
     sandbox = create_sandbox(
         "direct",

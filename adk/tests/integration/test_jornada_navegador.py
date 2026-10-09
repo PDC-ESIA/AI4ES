@@ -131,3 +131,54 @@ def test_criterio_de_interface_da_task_roda_pelo_navegador(tmp_path):
     assert [t["nodeid"] for t in resultado.testes] == [
         f"{arquivo}::test_CA_02_envia_foto_pela_tela[chromium]"
     ]
+
+
+_APP_NAV = '''
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
+app = FastAPI()
+
+@app.get("/", response_class=HTMLResponse)
+def painel():
+    return """<html><body><main data-testid="tela-painel">
+      <ul><li data-testid="item-ensaio"><a data-testid="link-galeria-ensaio" href="/ensaios/1">Abrir</a></li></ul>
+    </main></body></html>"""
+
+@app.get("/ensaios/{ensaio_id}", response_class=HTMLResponse)
+def galeria(ensaio_id: str):
+    return """<html><body><main data-testid="tela-galeria">
+      <a data-testid="link-voltar-painel" href="LINK_VOLTAR">Voltar</a>
+    </main></body></html>"""
+'''
+
+
+def _produto_nav(raiz: Path, link_voltar: str) -> Path:
+    from shared.tools.coding_tools import contrato_web as cw
+    from tests.unit.test_contrato_web import _CONTRATO
+
+    raiz.mkdir(parents=True)
+    (raiz / "loja.py").write_text(_APP_NAV.replace("LINK_VOLTAR", link_voltar))
+    contrato, _ = cw.validar(_CONTRATO)
+    codigo, _ = cw.gerar_teste_navegacao(contrato)
+    (raiz / cw.ARQUIVO_NAVEGACAO).parent.mkdir(parents=True)
+    (raiz / cw.ARQUIVO_NAVEGACAO).write_text(codigo)
+    porta = _porta()
+    (raiz / "run.json").write_text(json.dumps({
+        "surface": "service", "build": [],
+        "run": f"{PY} -m uvicorn loja:app --port {porta}",
+        "port": porta, "healthcheck": "/", "test": [f"{PY} -m pytest -v"],
+    }))
+    return raiz
+
+
+def test_navegacao_gerada_do_contrato_homologa_o_mapa(tmp_path):
+    from shared.tools.coding_tools.contrato_web import ARQUIVO_NAVEGACAO
+
+    ok = executar_jornada(_produto_nav(tmp_path / "ok", "/"), extras=(ARQUIVO_NAVEGACAO,))
+    assert ok.status == PASSOU, ok.saida
+    assert len(ok.testes) == 3
+
+    quebrado = executar_jornada(_produto_nav(tmp_path / "quebrado", "/nao-existe"), extras=(ARQUIVO_NAVEGACAO,))
+    assert quebrado.status == FALHOU
+    assert any("galeria_painel" in f for f in quebrado.falhas)

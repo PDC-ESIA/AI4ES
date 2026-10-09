@@ -421,6 +421,12 @@ def emit_coding_manifest(callback_context: CallbackContext) -> None:
             "doubts":     doubts,
             "aceite":     aceite,
             **({"jornada": jornada} if isinstance(jornada, dict) else {}),
+            # Aderência ao design (AI4ES_CONTRATO_WEB): nota técnica, não muda o status.
+            **(
+                {"conformidade_design": task_summary["conformidade_design"]}
+                if isinstance(task_summary, dict) and isinstance(task_summary.get("conformidade_design"), dict)
+                else {}
+            ),
             "summary": _build_summary(
                 artifacts,
                 doubts,

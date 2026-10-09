@@ -687,6 +687,63 @@ class TaskIterator(BaseAgent):
         """Autor do contrato de interface (`AI4ES_CONTRATO_WEB`), quando configurado."""
         return next((a for a in self.sub_agents[1:] if a.name == NOME_AUTOR_CONTRATO), None)
 
+    @staticmethod
+    def _workdir(coder_dir: Path) -> Path:
+        from shared.execution.manifest import ManifestError, load_manifest
+
+        try:
+            return coder_dir / (load_manifest(coder_dir / "run.json").workdir or ".")
+        except ManifestError:
+            return coder_dir
+
+    def _preparar_navegacao(self, coder_dir: Path, tasks_dir: Path) -> tuple[str, ...]:
+        """Grava o teste de navegação gerado do contrato (sem LLM), se houver contrato."""
+        if not contrato_web():
+            return ()
+        contrato = contrato_web_mod.ler(tasks_dir)
+        if contrato is None or not contrato.navegacao:
+            return ()
+        codigo, inalcancaveis = contrato_web_mod.gerar_teste_navegacao(contrato)
+        workdir = self._workdir(coder_dir)
+        destino = workdir / contrato_web_mod.ARQUIVO_NAVEGACAO
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(codigo, encoding="utf-8")
+        if inalcancaveis:
+            logger.warning("[CONTRATO] Telas inalcançáveis no mapa de navegação: %s", inalcancaveis)
+        return (contrato_web_mod.ARQUIVO_NAVEGACAO,)
+
+    def _conformidade_design(self, state, coder_dir, tasks_dir, resultado, extras) -> Optional[dict]:
+        """Aderência ao design (técnico: anotado no summary/manifesto, nunca reprova)."""
+        if not contrato_web():
+            return None
+        contrato = contrato_web_mod.ler(tasks_dir)
+        if contrato is None:
+            return None
+        workdir = self._workdir(coder_dir)
+        rotas = None
+        if (state.get(CHAVE_TRILHA) or {}).get("id") == "python-web":
+            from shared.tools.coding_tools.quadro import _rotas_e_modelos
+
+            rotas = []
+            for linha in _rotas_e_modelos(workdir)[0]:
+                partes = linha[2:].split(" ", 2)
+                if len(partes) >= 2:
+                    rotas.append((partes[0], partes[1]))
+        nav = None
+        if extras:
+            dos_extras = [t for t in resultado.testes if any(t["nodeid"].startswith(e) for e in extras)]
+            nav = {
+                "arestas": len(contrato.navegacao),
+                "passaram": sum(1 for t in dos_extras if t["outcome"] == "passou"),
+                "falharam": [t["nodeid"] for t in dos_extras if t["outcome"] in ("falhou", "erro")],
+                "puladas": [t["nodeid"] for t in dos_extras if t["outcome"] == "pulado"],
+            }
+        try:
+            return contrato_web_mod.conformidade(contrato, workdir, rotas_do_codigo=rotas, navegacao=nav)
+        except Exception:  # noqa: BLE001 — relatório auxiliar
+            logger.exception("[CONTRATO] Falha ao medir a conformidade com o design.")
+            return None
+
     async def _fase_contrato(self, ctx: InvocationContext, state: dict, tasks: list[dict]) -> AsyncGenerator[Event, None]:
         """Contrato de interface do produto web, uma vez, antes da primeira task.
 
@@ -718,7 +775,16 @@ class TaskIterator(BaseAgent):
         if contrato_web_mod.ler(tasks_dir) is None:
             logger.warning("[CONTRATO] Sem contrato de interface; tasks seguem sem ele.")
         if (state.get(CHAVE_TRILHA) or {}).get("id") == "python-web":
-            criados = contrato_web_mod.instalar_esqueleto_python_web(get_agent_workspace("cr_coder"))
+            from shared.workspace import get_workspace_root
+
+            coder_dir = get_agent_workspace("cr_coder")
+            criados = contrato_web_mod.instalar_esqueleto_python_web(coder_dir)
+            contrato = contrato_web_mod.ler(tasks_dir)
+            estilo = contrato_web_mod.instalar_estilo_python_web(
+                get_workspace_root(), coder_dir, contrato.estilo if contrato else None
+            )
+            if estilo:
+                criados.append(estilo)
             if criados:
                 logger.info("[CONTRATO] Esqueleto python-web instalado: %s", criados)
 
@@ -758,7 +824,8 @@ class TaskIterator(BaseAgent):
         except Exception:  # noqa: BLE001 — a jornada nunca derruba o pipeline
             logger.exception("[JORNADA] Autor da jornada falhou.")
 
-        resultado = executar_jornada(coder_dir, state.get("trilha"))
+        extras = self._preparar_navegacao(coder_dir, tasks_dir)
+        resultado = executar_jornada(coder_dir, state.get("trilha"), extras=extras)
         rodadas = 0
         while resultado.status == FALHOU and rodadas < config_inteiro(
             "AI4ES_JORNADA_MAX_RODADAS", 1, minimo=0
@@ -775,15 +842,27 @@ class TaskIterator(BaseAgent):
                 ARQUIVO_JORNADA,
                 {"CA-01": [t["nodeid"] for t in resultado.testes] or [ARQUIVO_JORNADA]},
             )
+            for extra_arquivo in extras:
+                # O teste de navegação gerado roda como protegido na integração.
+                gravar_mapa(
+                    tasks_dir,
+                    task_id,
+                    extra_arquivo,
+                    {"CA-01": [t["nodeid"] for t in resultado.testes if t["nodeid"].startswith(extra_arquivo)]},
+                    mesclar=True,
+                )
             envelope = state.get("tasks")
             if isinstance(envelope, dict) and isinstance(envelope.get("tasks"), list):
                 envelope["tasks"].append(task_int)
             logger.info("[JORNADA] Jornada falhou; rodada de integração %s.", task_id)
             async for event in processar(len(tasks) + rodadas - 1, task_int, len(tasks) + rodadas):
                 yield event
-            resultado = executar_jornada(coder_dir, state.get("trilha"))
+            resultado = executar_jornada(coder_dir, state.get("trilha"), extras=extras)
 
         logger.info("[JORNADA] Resultado final: %s (%s).", resultado.status, resultado.motivo)
+        conformidade = self._conformidade_design(state, coder_dir, tasks_dir, resultado, extras)
+        if conformidade is not None:
+            extra["conformidade_design"] = conformidade
         extra["jornada"] = {
             "status": resultado.status,
             "motivo": resultado.motivo,

@@ -179,6 +179,17 @@ def _render_task_outcomes(state) -> str:
             + (f"; falhas: {', '.join(map(str, falhas))}" if isinstance(falhas, list) and falhas else "")
             + f"; rodadas de integração: {jornada.get('rodadas', 0)}"
         )
+    conformidade = summary.get("conformidade_design")
+    if isinstance(conformidade, Mapping):
+        # AI4ES_CONTRATO_WEB: aderência ao design — técnico, só anotado.
+        lines.append(
+            "Conformidade com o design (nota técnica, não reprova): "
+            f"aderência de elementos {conformidade.get('aderencia_elementos')}; "
+            f"elementos ausentes {conformidade.get('elementos_ausentes') or 'nenhum'}; "
+            f"estilo do design referenciado {conformidade.get('estilo_referenciado')}; "
+            f"rotas ausentes {conformidade.get('rotas_ausentes') or 'nenhuma'}; "
+            f"navegação {conformidade.get('navegacao')}"
+        )
     if not isinstance(expected, list) or not isinstance(results, Mapping):
         return "\n".join(lines)
 
