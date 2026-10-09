@@ -100,6 +100,31 @@ def _como_content(report: ErrorReport) -> types.Content:
     )
 
 
+def _identificadores_ausentes(state) -> list[str]:
+    """Produto web: `data-testid` exigidos pelos testes protegidos e ausentes no código."""
+    macro = (state.get("tasks") or {}).get("macro_context") or {}
+    if not aceite_independente() or str(macro.get("product_type") or "").strip().lower() != "web_app":
+        return []
+    from shared.execution.manifest import ManifestError, load_manifest
+    from shared.tools.coding_tools.aceite_independente import PASTA_ACEITE
+    from shared.tools.coding_tools.contrato_web import identificadores_ausentes
+
+    coder_dir = get_agent_workspace("cr_coder")
+    try:
+        workdir = coder_dir / (load_manifest(coder_dir / "run.json").workdir or ".")
+    except ManifestError:
+        workdir = coder_dir
+    arquivos = [
+        p.relative_to(workdir).as_posix()
+        for p in sorted((workdir / PASTA_ACEITE).glob("test_interface_*.py"))
+    ]
+    try:
+        return identificadores_ausentes(workdir, arquivos)
+    except Exception:  # noqa: BLE001 — dica, nunca derruba o relatório
+        logger.exception("cr_executor: falha ao calcular identificadores ausentes")
+        return []
+
+
 def _teste_a_reparar(state) -> bool:
     """O teste protegido da task falhou por erro dele mesmo, com reparo disponível?"""
     if not aceite_independente():
@@ -702,6 +727,7 @@ def montar_error_report(callback_context) -> Optional[types.Content]:
             failed_criteria=criterios,
             failed_stages=estagios,
             report_path=callback_context.state.get("report_path"),
+            identificadores_ausentes=_identificadores_ausentes(callback_context.state),
             notas_tecnicas=notas,
         )
     except Exception:

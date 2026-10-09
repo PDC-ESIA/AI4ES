@@ -79,6 +79,14 @@ class ErrorReport(BaseModel):
     report_path: Optional[str] = Field(
         default=None, description="Caminho do ExecutionReport completo em disco"
     )
+    identificadores_ausentes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Produto web: `data-testid` que os testes de homologação procuram e "
+            "que nenhuma tela/código define. Acrescente-os aos elementos "
+            "correspondentes."
+        ),
+    )
     notas_tecnicas: list[str] = Field(
         default_factory=list,
         description=(

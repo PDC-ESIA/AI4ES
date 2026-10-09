@@ -245,6 +245,24 @@ def tool_executar_teste_aceite(tool_context: ToolContext) -> dict:
     return {"exit_code": exit_code, "saida": saida}
 
 
+def _contrato():
+    from shared.pipeline_flags import contrato_web
+    from shared.tools.coding_tools import contrato_web as contrato_web_mod
+
+    if not contrato_web():
+        return None
+    return contrato_web_mod.ler(get_agent_workspace("cr_context_engineer"))
+
+
+def _contrato_no_contexto(task: dict) -> dict:
+    from shared.tools.coding_tools import contrato_web as contrato_web_mod
+
+    contrato = _contrato()
+    if contrato is None:
+        return {}
+    return {"contrato_de_interface": contrato_web_mod.secao_prompt(contrato, task.get("id"))}
+
+
 def _ids_usados(arvore: ast.AST) -> set[str]:
     return {
         no.args[0].value
@@ -303,6 +321,21 @@ def tool_salvar_teste_interface(conteudo: str, tool_context: ToolContext) -> dic
             if (igual := identificador_equivalente(novo, existentes))
         }
     )
+    contrato = _contrato()
+    if contrato is not None:
+        from shared.tools.coding_tools import contrato_web as contrato_web_mod
+
+        do_contrato = set(contrato_web_mod.testids(contrato))
+        fora = sorted(i for i in _ids_usados(arvore) if i not in do_contrato)
+        if fora:
+            return {
+                "sucesso": False,
+                "erro": (
+                    "Identificador fora do contrato de interface: "
+                    + ", ".join(f"`{i}`" for i in fora)
+                    + ". Use só os `data-testid` do contrato (seção contrato_de_interface)."
+                ),
+            }
     if conflitos:
         return {
             "sucesso": False,
@@ -449,6 +482,7 @@ def montar_aceite_task(state: Any, task: dict, coder_dir) -> str:
             "workdir": _workdir(coder_dir),
             "arquivos_do_projeto": _inventario(coder_dir),
             **({"quadro_do_produto": state["quadro_produto"]} if state.get("quadro_produto") else {}),
+            **_contrato_no_contexto(task),
             **extra,
         },
         ensure_ascii=False,

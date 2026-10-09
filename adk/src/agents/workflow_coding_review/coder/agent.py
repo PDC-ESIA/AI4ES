@@ -80,9 +80,23 @@ async def _INSTRUCTION(readonly_context) -> str:
     # que o `inject_session_state` tentaria resolver como variáveis.
     from shared.tools.coding_tools.quadro import secao_prompt as secao_quadro
 
-    return secao_quadro(state.get("quadro_produto")) + await inject_session_state(
-        instrucao, readonly_context
+    return (
+        _secao_contrato(state)
+        + secao_quadro(state.get("quadro_produto"))
+        + await inject_session_state(instrucao, readonly_context)
     )
+
+
+def _secao_contrato(state) -> str:
+    """Contrato de interface do produto web (`AI4ES_CONTRATO_WEB`), se houver."""
+    from shared.pipeline_flags import contrato_web
+    from shared.tools.coding_tools import contrato_web as contrato_web_mod
+
+    if not contrato_web():
+        return ""
+    contrato = contrato_web_mod.ler(get_agent_workspace("cr_context_engineer"))
+    task_id = state.get("task_id")
+    return contrato_web_mod.secao_prompt(contrato, task_id if isinstance(task_id, str) else None)
 
 
 agent = LlmAgent(

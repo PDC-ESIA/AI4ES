@@ -38,10 +38,12 @@ from shared.pipeline_flags import (
     aceite_cobertura_minima,
     aceite_independente,
     coder_contexto_enxuto,
+    contrato_web,
     jornada,
     quadro_produto,
     trilhas,
 )
+from shared.tools.coding_tools import contrato_web as contrato_web_mod
 from shared.tools.coding_tools.quadro import montar_quadro
 from shared.tools.coding_tools.aceite_independente import (
     gravar_mapa,
@@ -133,6 +135,27 @@ CHAVE_TASK_ATUAL = "current_task"
 CHAVE_TRILHA = "trilha"
 # Quadro do produto (`AI4ES_QUADRO_PRODUTO`): ver shared/tools/coding_tools/quadro.py.
 CHAVE_QUADRO = "quadro_produto"
+# Contrato de interface (`AI4ES_CONTRATO_WEB`): ver shared/tools/coding_tools/contrato_web.py.
+CHAVE_CONTEXTO_CONTRATO = "contrato_contexto"
+NOME_AUTOR_CONTRATO = "cr_contract_author"
+
+
+def _artefatos_de_design() -> list[str]:
+    """Caminhos (relativos à raiz da sessão) dos artefatos de design úteis ao contrato."""
+    from shared.workspace import get_workspace_root
+
+    raiz = get_workspace_root()
+    design = raiz / "design"
+    if not design.is_dir():
+        return []
+    return [
+        p.relative_to(raiz).as_posix()
+        for p in sorted(design.rglob("*"))
+        if p.is_file()
+        and p.suffix in (".md", ".html", ".mmd")
+        and "backup" not in p.name
+        and not any(parte.startswith(".") for parte in p.relative_to(raiz).parts)
+    ][:40]
 
 
 def montar_task_atual(task: dict, macro_context: Optional[dict]) -> str:
@@ -647,17 +670,57 @@ class TaskIterator(BaseAgent):
     @property
     def _sub_loop(self) -> BaseAgent:
         """O `code_execute_loop` — primeiro (e, sem jornada, único) sub-agente."""
-        if len(self.sub_agents) not in (1, 2):
+        if len(self.sub_agents) not in (1, 2, 3):
             raise RuntimeError(
-                "TaskIterator exige o code_execute_loop e, opcionalmente, o autor "
-                f"da jornada; recebeu {len(self.sub_agents)} sub_agents."
+                "TaskIterator exige o code_execute_loop e, opcionalmente, os autores "
+                f"da jornada e do contrato; recebeu {len(self.sub_agents)} sub_agents."
             )
         return self.sub_agents[0]
 
     @property
     def _autor_jornada(self) -> Optional[BaseAgent]:
         """Autor do teste de jornada (`AI4ES_JORNADA`), quando configurado."""
-        return self.sub_agents[1] if len(self.sub_agents) == 2 else None
+        return next((a for a in self.sub_agents[1:] if a.name != NOME_AUTOR_CONTRATO), None)
+
+    @property
+    def _autor_contrato(self) -> Optional[BaseAgent]:
+        """Autor do contrato de interface (`AI4ES_CONTRATO_WEB`), quando configurado."""
+        return next((a for a in self.sub_agents[1:] if a.name == NOME_AUTOR_CONTRATO), None)
+
+    async def _fase_contrato(self, ctx: InvocationContext, state: dict, tasks: list[dict]) -> AsyncGenerator[Event, None]:
+        """Contrato de interface do produto web, uma vez, antes da primeira task.
+
+        Vale para web_app em QUALQUER stack; na trilha python-web também instala
+        o esqueleto de convenções (`app/ids.py`).
+        """
+        macro = (state.get("tasks") or {}).get("macro_context") or {}
+        if str(macro.get("product_type") or "").strip().lower() != "web_app":
+            return
+        tasks_dir = get_agent_workspace("cr_context_engineer")
+        for tentativa in range(2):
+            if contrato_web_mod.ler(tasks_dir) is not None:
+                break
+            contexto = contrato_web_mod.contexto_autor(tasks, macro, _artefatos_de_design())
+            state[CHAVE_CONTEXTO_CONTRATO] = contexto
+            yield Event(
+                invocation_id=ctx.invocation_id,
+                author=self.name,
+                branch=ctx.branch,
+                actions=EventActions(state_delta={CHAVE_CONTEXTO_CONTRATO: contexto}),
+            )
+            logger.info("[CONTRATO] Invocando o autor do contrato (tentativa %d).", tentativa + 1)
+            contrato_ctx = ctx.model_copy(update={"branch": f"{ctx.branch or self.name}.contrato"})
+            try:
+                async for event in self._autor_contrato.run_async(contrato_ctx):
+                    yield event
+            except Exception:  # noqa: BLE001 — sem contrato, segue como antes
+                logger.exception("[CONTRATO] Autor do contrato falhou.")
+        if contrato_web_mod.ler(tasks_dir) is None:
+            logger.warning("[CONTRATO] Sem contrato de interface; tasks seguem sem ele.")
+        if (state.get(CHAVE_TRILHA) or {}).get("id") == "python-web":
+            criados = contrato_web_mod.instalar_esqueleto_python_web(get_agent_workspace("cr_coder"))
+            if criados:
+                logger.info("[CONTRATO] Esqueleto python-web instalado: %s", criados)
 
     async def _fase_jornada(
         self,
@@ -794,6 +857,10 @@ class TaskIterator(BaseAgent):
             evento = self._evento_trilha(ctx, state)
             if evento is not None:
                 yield evento
+
+        if contrato_web() and self._autor_contrato is not None:
+            async for event in self._fase_contrato(ctx, state, tasks):
+                yield event
 
         async def _processar(indice: int, task: dict, total: int):
             """Uma task pelo loop coder ↔ executor (também a de integração)."""

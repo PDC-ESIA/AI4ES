@@ -149,6 +149,20 @@ def _rotas_e_modelos(workdir: Path) -> tuple[list[str], list[str], list[str]]:
     return rotas, estaticos, modelos
 
 
+def _rotas_do_contrato_ausentes(tasks_dir: Path, rotas: list[str]) -> list[str]:
+    from shared.tools.coding_tools import contrato_web
+
+    contrato = contrato_web.ler(tasks_dir)
+    if contrato is None:
+        return []
+    no_codigo = []
+    for linha in rotas:  # "- GET /x → arquivo:func"
+        partes = linha[2:].split(" ", 2)
+        if len(partes) >= 2:
+            no_codigo.append((partes[0], partes[1]))
+    return [f"- {r}" for r in contrato_web.rotas_divergentes(contrato, no_codigo)]
+
+
 def _convencoes_python_web(workdir: Path) -> list[str]:
     linhas = []
     ids = workdir / "app" / "ids.py"
@@ -195,6 +209,9 @@ def montar_quadro(
         secoes.append(("`data-testid` em uso (não renomeie nem reutilize)", [", ".join(ids)]))
     if trilha and trilha.get("id") == "python-web":
         rotas, estaticos, modelos = _rotas_e_modelos(workdir)
+        divergentes = _rotas_do_contrato_ausentes(tasks_dir, rotas)
+        if divergentes:
+            secoes.append(("Rotas do contrato de interface ainda ausentes no código", divergentes))
         secoes += [
             ("Rotas existentes", rotas),
             ("Arquivos estáticos/mídia servidos", estaticos),

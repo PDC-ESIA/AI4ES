@@ -95,6 +95,10 @@ def jornada() -> bool:
     return flag("AI4ES_JORNADA")
 
 
+def contrato_web() -> bool:
+    return flag("AI4ES_CONTRATO_WEB")
+
+
 def quadro_produto() -> bool:
     return flag("AI4ES_QUADRO_PRODUTO")
 

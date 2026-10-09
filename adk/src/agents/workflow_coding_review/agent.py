@@ -28,11 +28,12 @@ este arquivo slim e facilitar manutenção independente.
 
 from google.adk.agents import LoopAgent, SequentialAgent
 
-from shared.pipeline_flags import aceite_independente, jornada
+from shared.pipeline_flags import aceite_independente, contrato_web, jornada
 
 from .context_engineer import agent as _context_engineer
 from .memory_feedforward import agent as _memory_feedforward
 from .acceptance.agent import gate as _acceptance_gate
+from .contract.agent import author as _contract_author
 from .coder import agent as _coder
 from .journey.agent import author as _journey_author
 from .executor.agent import agent as _executor
@@ -104,8 +105,12 @@ _task_iterator = TaskIterator(
     ),
     # Com `AI4ES_JORNADA` (lida no import), o autor do teste de jornada é o
     # segundo sub-agente: roda uma vez, depois da última task.
+    # Com `AI4ES_CONTRATO_WEB`, o autor do contrato de interface (produto web)
+    # roda uma vez, antes da primeira task. Os autores são achados pelo nome.
     sub_agents=(
-        [_code_execute_loop, _journey_author] if jornada() else [_code_execute_loop]
+        [_code_execute_loop]
+        + ([_journey_author] if jornada() else [])
+        + ([_contract_author] if contrato_web() else [])
     ),
 )
 

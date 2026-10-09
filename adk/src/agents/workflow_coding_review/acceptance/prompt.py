@@ -118,6 +118,9 @@ aplicação no ar:
   (httpx, requests, `page.request`), importar a aplicação e executar ou
   injetar JavaScript (`evaluate`, `add_script_tag`, `route`,
   `dispatch_event`...). A ferramenta recusa o arquivo nesses casos.
+- `contrato_de_interface`, quando presente, é o contrato FIXO do produto:
+  telas, rotas e o `data-testid` de cada elemento. Use SÓ esses
+  identificadores — a ferramenta recusa qualquer outro.
 - `quadro_do_produto`, quando presente, resume o que as tasks anteriores já
   entregaram (telas, rotas, testes de regressão). Para chegar à funcionalidade
   desta task, percorra as telas que já existem.
