@@ -1,0 +1,25 @@
+{
+  "challenge": {
+    "title": "Validador de colchetes com ruído",
+    "description": "Implemente solve(data: str) -> str. Analise todos os caracteres de data. Considere somente (), [] e {}; quaisquer outros caracteres, inclusive espaços e quebras de linha, devem ser ignorados. Retorne VALID se os delimitadores estiverem corretamente aninhados e fechados; caso contrário, retorne INVALID. Uma entrada sem delimitadores é válida. O programa executável deve ler todo o stdin e imprimir solve(data).",
+    "constraints": {
+      "forbidden": ["eval", "exec", "expressões regulares"],
+      "required": ["função solve(data: str) -> str", "pilha"]
+    },
+    "examples": [
+      {"input": "a+(b*[c-{d}])\n", "expected_output": "VALID\n"},
+      {"input": "([)]\n", "expected_output": "INVALID\n"},
+      {"input": "texto sem delimitadores\n", "expected_output": "VALID\n"},
+      {"input": "]\n", "expected_output": "INVALID\n"}
+    ]
+  },
+  "solutionsRequested": 1,
+  "variations": [
+    {
+      "label": "pilha-explicita",
+      "strategy": "Usar uma pilha e um mapa de fechamento para abertura.",
+      "use": ["list", "dict", "for"],
+      "avoid": ["regex", "eval", "exec"]
+    }
+  ]
+}

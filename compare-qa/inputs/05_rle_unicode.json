@@ -1,0 +1,24 @@
+{
+  "challenge": {
+    "title": "Codificação RLE Unicode",
+    "description": "Implemente solve(data: str) -> str. Remova no máximo uma quebra de linha terminal usada como transporte: primeiro CRLF, ou então LF. Preserve todos os demais caracteres, inclusive espaços e quebras de linha internas. Agrupe caracteres Unicode consecutivos iguais. Para cada grupo, produza '<quantidade>:U+<codepoint hexadecimal em maiúsculas>', com no mínimo quatro dígitos hexadecimais, e separe os grupos por um espaço. Entrada vazia produz string vazia. O programa executável deve ler todo o stdin e escrever exatamente solve(data), acrescentando apenas a quebra de linha normal de print.",
+    "constraints": {
+      "forbidden": ["eval", "exec", "bibliotecas externas"],
+      "required": ["função solve(data: str) -> str", "ord", "varredura única"]
+    },
+    "examples": [
+      {"input": "aaabbc\n", "expected_output": "3:U+0061 2:U+0062 1:U+0063\n"},
+      {"input": "  aa \n", "expected_output": "2:U+0020 2:U+0061 1:U+0020\n"},
+      {"input": "\n", "expected_output": "\n"}
+    ]
+  },
+  "solutionsRequested": 1,
+  "variations": [
+    {
+      "label": "rle-varredura",
+      "strategy": "Percorrer o texto uma vez, acumulando o tamanho do grupo atual.",
+      "use": ["ord", "format", "for"],
+      "avoid": ["groupby", "eval", "exec"]
+    }
+  ]
+}

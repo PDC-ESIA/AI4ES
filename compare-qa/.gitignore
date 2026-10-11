@@ -1,0 +1,4 @@
+.venv-locked/
+workspaces/
+__pycache__/
+*.log

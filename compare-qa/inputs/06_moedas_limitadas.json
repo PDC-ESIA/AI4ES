@@ -1,0 +1,24 @@
+{
+  "challenge": {
+    "title": "Troco mínimo com moedas limitadas",
+    "description": "Implemente solve(data: str) -> str. A primeira linha contém o valor alvo inteiro não negativo. A segunda linha contém N. Cada uma das N linhas seguintes contém 'valor quantidade', ambos inteiros, com valor positivo e quantidade não negativa; os valores das moedas são distintos. Retorne o menor número de moedas necessário para formar exatamente o alvo respeitando os estoques. Retorne IMPOSSIBLE quando não houver combinação. Para alvo zero, retorne 0. O programa executável deve ler todo o stdin e imprimir solve(data).",
+    "constraints": {
+      "forbidden": ["eval", "exec", "bibliotecas externas"],
+      "required": ["função solve(data: str) -> str", "programação dinâmica"]
+    },
+    "examples": [
+      {"input": "11\n3\n5 1\n2 3\n1 0\n", "expected_output": "4\n"},
+      {"input": "6\n2\n4 1\n3 1\n", "expected_output": "IMPOSSIBLE\n"},
+      {"input": "0\n0\n", "expected_output": "0\n"}
+    ]
+  },
+  "solutionsRequested": 1,
+  "variations": [
+    {
+      "label": "dp-estoque",
+      "strategy": "Atualizar uma tabela de menor quantidade por soma para cada tipo de moeda e seu estoque.",
+      "use": ["list", "for", "min"],
+      "avoid": ["recursão exponencial", "eval", "exec"]
+    }
+  ]
+}

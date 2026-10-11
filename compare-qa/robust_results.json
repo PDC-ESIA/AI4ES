@@ -1,0 +1,1703 @@
+{
+  "generated_at": "2026-10-11T19:11:26.741358-03:00",
+  "status": "complete",
+  "configuration": {
+    "model": "github_copilot/gemini-3.7-flash",
+    "temperature": 0.0,
+    "repetitions": 3,
+    "max_iterations": 3,
+    "timeout_s": 12,
+    "case_ids": [
+      "01_soma",
+      "02_colchetes",
+      "03_intervalos",
+      "04_janela_minima",
+      "05_rle_unicode",
+      "06_moedas_limitadas"
+    ],
+    "paired_design": "um snapshot inicial compartilhado pelos dois ramos em cada repetição",
+    "hidden_oracle_cases_per_repetition": 43
+  },
+  "environment": {
+    "python": "3.14.7",
+    "packages": {
+      "google-adk": "1.33.0",
+      "litellm": "1.105.0",
+      "pytest": "9.0.3",
+      "pytest-cov": "7.1.0",
+      "pytest-json-report": "1.5.0",
+      "coverage": "7.14.0",
+      "psycopg2-binary": "2.9.12"
+    },
+    "model": "github_copilot/gemini-3.7-flash",
+    "git_head": "f4efc6461ab6a4ae5d0a84093cd9a8223f04949b",
+    "benchmark_sha256": "672b61621ecd2e45767b50a9bb8df928d52238ba28f2a201ca68033bcee799b7",
+    "inputs_sha256": "27a14e401d8aeb7a2b8b46f0705788fb829427315f40cf7b17028c81caa8c8ed",
+    "agents_sha256": "4cc7a0290331cfac7dffa084e5f25eee00d4c27cb0eaa9a1e9f9614fb480cab2",
+    "lock_exception": "uv.lock fixa litellm 1.85.0, que declara Python <3.14; o projeto exige Python >=3.14. Foi mantido google-adk 1.33.0 e usado litellm 1.105.0."
+  },
+  "pairs": [
+    {
+      "pair_id": "01_soma-r1",
+      "case_id": "01_soma",
+      "title": "Soma de dois inteiros",
+      "repetition": 1,
+      "initial_generation": {
+        "input_tokens": 107414,
+        "output_tokens": 2200,
+        "total_tokens": 109614,
+        "llm_calls": 10,
+        "latency_s": 32.638,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 4,
+        "hidden_failed": 0,
+        "coverage_percent": 90.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 42.048,
+        "input_tokens": 108531,
+        "output_tokens": 3086,
+        "total_tokens": 111617,
+        "llm_calls": 11,
+        "source_sha256": "a37878062f9571affe716116154eed0fcf43e988a7a3818b90ffbb2f0d3f8ffb",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 4,
+        "hidden_failed": 0,
+        "coverage_percent": 90.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 80.0,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 23,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 80.0,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 11.333
+          }
+        ],
+        "latency_s": 54.332,
+        "input_tokens": 109164,
+        "output_tokens": 3877,
+        "total_tokens": 113041,
+        "llm_calls": 12,
+        "source_sha256": "a37878062f9571affe716116154eed0fcf43e988a7a3818b90ffbb2f0d3f8ffb",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "02_colchetes-r1",
+      "case_id": "02_colchetes",
+      "title": "Validador de colchetes com ruído",
+      "repetition": 1,
+      "initial_generation": {
+        "input_tokens": 148896,
+        "output_tokens": 3034,
+        "total_tokens": 151930,
+        "llm_calls": 13,
+        "latency_s": 38.911,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 52.391,
+        "input_tokens": 150226,
+        "output_tokens": 4034,
+        "total_tokens": 154260,
+        "llm_calls": 14,
+        "source_sha256": "291c688cbf93c7ae10b6a6a77227e487d04f8b65630b5e80e7f97b8c99d5589c",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 7,
+        "hidden_failed": 1,
+        "coverage_percent": 83.33,
+        "iterations": 2,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 47.22,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "falha",
+              "passed": 26,
+              "failed": 1,
+              "skipped": 0,
+              "source_coverage": 44.74,
+              "errors": [
+                "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_02_colchetes\nplugins: cov-7.1.0, json-report-1.5.0, metadata-3.1.1, anyio-4.15.1\ncollected 27 items\n\ntest_rf_02_colchetes.py .....F.....................                      [100%]\n\n=================================== FAILURES ===================================\n____________________________ test_valid_with_noise _____________________________\ntest_rf_02_colchetes.py:32: in test_valid_with_noise\n    assert solve(data) == \"VALID\"\nE   AssertionError: assert 'INVALID' == 'VALID'\nE     \nE     - VALID\nE     + INVALID\nE     ? ++\n--------------------------------- JSON report ----------------------------------\nreport saved to: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_02_colchetes/report.json\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nCoverage JSON written to file coverage.json\n=========================== short test summary info ============================\nFAILED test_rf_02_colchetes.py::test_valid_with_noise - AssertionError: asser...\n========================= 1 failed, 26 passed in 0.03s =========================\n"
+              ]
+            },
+            "converged": false,
+            "duration_s": 6.437
+          },
+          {
+            "index": 2,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 20,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 47.22,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 15.807
+          }
+        ],
+        "latency_s": 107.709,
+        "input_tokens": 356910,
+        "output_tokens": 7309,
+        "total_tokens": 364219,
+        "llm_calls": 32,
+        "source_sha256": "6589b3155b75b65d0f63af2b3ac6e27705c822a00300888b8e9bca934a34edf6",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "03_intervalos-r1",
+      "case_id": "03_intervalos",
+      "title": "Mesclar intervalos inteiros adjacentes",
+      "repetition": 1,
+      "initial_generation": {
+        "input_tokens": 111489,
+        "output_tokens": 2814,
+        "total_tokens": 114303,
+        "llm_calls": 10,
+        "latency_s": 32.848,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 6,
+        "hidden_failed": 0,
+        "coverage_percent": 94.29,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 42.259,
+        "input_tokens": 113234,
+        "output_tokens": 3851,
+        "total_tokens": 117085,
+        "llm_calls": 11,
+        "source_sha256": "1fc27eb27b4a971f74691105ed1ae3a1a3af2aa0e6bf8d60d1d9da3a1300dc02",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 6,
+        "hidden_failed": 0,
+        "coverage_percent": 94.29,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 80.0,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 14,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 80.0,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 15.46
+          }
+        ],
+        "latency_s": 57.836,
+        "input_tokens": 114254,
+        "output_tokens": 4477,
+        "total_tokens": 118731,
+        "llm_calls": 12,
+        "source_sha256": "1fc27eb27b4a971f74691105ed1ae3a1a3af2aa0e6bf8d60d1d9da3a1300dc02",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "04_janela_minima-r1",
+      "case_id": "04_janela_minima",
+      "title": "Menor janela com soma mínima",
+      "repetition": 1,
+      "initial_generation": {
+        "input_tokens": 148861,
+        "output_tokens": 2922,
+        "total_tokens": 151783,
+        "llm_calls": 13,
+        "latency_s": 39.594,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 0,
+        "public_failed": 3,
+        "hidden_passed": 0,
+        "hidden_failed": 9,
+        "coverage_percent": 50.0,
+        "iterations": 1,
+        "converged": false,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 49.907,
+        "input_tokens": 150017,
+        "output_tokens": 3689,
+        "total_tokens": 153706,
+        "llm_calls": 14,
+        "source_sha256": "e6570ed2c9cbeeb3ec991bdec054941d32f8e96ec08e21e9d63ebe9ec36311cf",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 0,
+        "public_failed": 3,
+        "hidden_passed": 0,
+        "hidden_failed": 9,
+        "coverage_percent": 50.0,
+        "iterations": 3,
+        "converged": false,
+        "qa": {
+          "status": "sucesso",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 85.71,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 0,
+            "public_failed": 3,
+            "qa": {
+              "status": "sucesso",
+              "passed": 15,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 83.33,
+              "errors": []
+            },
+            "converged": false,
+            "duration_s": 13.0
+          },
+          {
+            "index": 2,
+            "public_passed": 0,
+            "public_failed": 3,
+            "qa": {
+              "status": "sucesso",
+              "passed": 17,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 83.33,
+              "errors": []
+            },
+            "converged": false,
+            "duration_s": 18.33
+          },
+          {
+            "index": 3,
+            "public_passed": 0,
+            "public_failed": 3,
+            "qa": {
+              "status": "sucesso",
+              "passed": 15,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 85.71,
+              "errors": []
+            },
+            "converged": false,
+            "duration_s": 11.584
+          }
+        ],
+        "latency_s": 168.349,
+        "input_tokens": 730070,
+        "output_tokens": 7855,
+        "total_tokens": 737925,
+        "llm_calls": 59,
+        "source_sha256": "e6570ed2c9cbeeb3ec991bdec054941d32f8e96ec08e21e9d63ebe9ec36311cf",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "05_rle_unicode-r1",
+      "case_id": "05_rle_unicode",
+      "title": "Codificação RLE Unicode",
+      "repetition": 1,
+      "initial_generation": {
+        "input_tokens": 112151,
+        "output_tokens": 3040,
+        "total_tokens": 115191,
+        "llm_calls": 10,
+        "latency_s": 33.469,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 44.002,
+        "input_tokens": 113714,
+        "output_tokens": 3922,
+        "total_tokens": 117636,
+        "llm_calls": 11,
+        "source_sha256": "bb65479fa1649f7d8ea54afc638269b6948e08a0a8da4ab93171e02124ed2854",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 91.67,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 18,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 91.67,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 16.957
+          }
+        ],
+        "latency_s": 59.378,
+        "input_tokens": 114646,
+        "output_tokens": 5135,
+        "total_tokens": 119781,
+        "llm_calls": 12,
+        "source_sha256": "bb65479fa1649f7d8ea54afc638269b6948e08a0a8da4ab93171e02124ed2854",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "06_moedas_limitadas-r1",
+      "case_id": "06_moedas_limitadas",
+      "title": "Troco mínimo com moedas limitadas",
+      "repetition": 1,
+      "initial_generation": {
+        "input_tokens": 126657,
+        "output_tokens": 3597,
+        "total_tokens": 130254,
+        "llm_calls": 11,
+        "latency_s": 43.051,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 97.5,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 54.34,
+        "input_tokens": 128343,
+        "output_tokens": 4921,
+        "total_tokens": 133264,
+        "llm_calls": 12,
+        "source_sha256": "e97a6c798391e8a10d1975c54834782ef230b5105de7b6a9f4be845cac84a4a8",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 97.5,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 92.5,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 13,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 92.5,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 10.991
+          }
+        ],
+        "latency_s": 66.437,
+        "input_tokens": 129471,
+        "output_tokens": 5684,
+        "total_tokens": 135155,
+        "llm_calls": 13,
+        "source_sha256": "e97a6c798391e8a10d1975c54834782ef230b5105de7b6a9f4be845cac84a4a8",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "01_soma-r2",
+      "case_id": "01_soma",
+      "title": "Soma de dois inteiros",
+      "repetition": 2,
+      "initial_generation": {
+        "input_tokens": 95650,
+        "output_tokens": 2158,
+        "total_tokens": 97808,
+        "llm_calls": 9,
+        "latency_s": 28.955,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 4,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 38.825,
+        "input_tokens": 96767,
+        "output_tokens": 3025,
+        "total_tokens": 99792,
+        "llm_calls": 10,
+        "source_sha256": "74a5ed1bcaaf300ee705495de81730e538e7fcae00026e564eb4b605b6e238f1",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 4,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 66.67,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 7,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 66.67,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 9.993
+          }
+        ],
+        "latency_s": 48.978,
+        "input_tokens": 97400,
+        "output_tokens": 3577,
+        "total_tokens": 100977,
+        "llm_calls": 11,
+        "source_sha256": "74a5ed1bcaaf300ee705495de81730e538e7fcae00026e564eb4b605b6e238f1",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "02_colchetes-r2",
+      "case_id": "02_colchetes",
+      "title": "Validador de colchetes com ruído",
+      "repetition": 2,
+      "initial_generation": {
+        "input_tokens": 121604,
+        "output_tokens": 2733,
+        "total_tokens": 124337,
+        "llm_calls": 11,
+        "latency_s": 34.785,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 44.845,
+        "input_tokens": 122902,
+        "output_tokens": 3647,
+        "total_tokens": 126549,
+        "llm_calls": 12,
+        "source_sha256": "2f932309418c13e42b4542d60eb3179336e48a73d8ceb2f39aa0c953b8624e06",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 88.89,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 37,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 88.89,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 12.795
+          }
+        ],
+        "latency_s": 59.62,
+        "input_tokens": 123651,
+        "output_tokens": 4488,
+        "total_tokens": 128139,
+        "llm_calls": 13,
+        "source_sha256": "2f932309418c13e42b4542d60eb3179336e48a73d8ceb2f39aa0c953b8624e06",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "03_intervalos-r2",
+      "case_id": "03_intervalos",
+      "title": "Mesclar intervalos inteiros adjacentes",
+      "repetition": 2,
+      "initial_generation": {
+        "input_tokens": 124782,
+        "output_tokens": 3113,
+        "total_tokens": 127895,
+        "llm_calls": 11,
+        "latency_s": 38.495,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 6,
+        "hidden_failed": 0,
+        "coverage_percent": 88.57,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 49.611,
+        "input_tokens": 126516,
+        "output_tokens": 4396,
+        "total_tokens": 130912,
+        "llm_calls": 12,
+        "source_sha256": "673aa0d97b994d5e612b285576db113aa8e5e2ec7384bff31c2cad7a372b3ea9",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 6,
+        "hidden_failed": 0,
+        "coverage_percent": 88.57,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 88.57,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 13,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 88.57,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 11.333
+          }
+        ],
+        "latency_s": 57.822,
+        "input_tokens": 127525,
+        "output_tokens": 4599,
+        "total_tokens": 132124,
+        "llm_calls": 13,
+        "source_sha256": "673aa0d97b994d5e612b285576db113aa8e5e2ec7384bff31c2cad7a372b3ea9",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "04_janela_minima-r2",
+      "case_id": "04_janela_minima",
+      "title": "Menor janela com soma mínima",
+      "repetition": 2,
+      "initial_generation": {
+        "input_tokens": 109545,
+        "output_tokens": 2547,
+        "total_tokens": 112092,
+        "llm_calls": 10,
+        "latency_s": 32.669,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 9,
+        "hidden_failed": 0,
+        "coverage_percent": 92.86,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 42.507,
+        "input_tokens": 110948,
+        "output_tokens": 3307,
+        "total_tokens": 114255,
+        "llm_calls": 11,
+        "source_sha256": "26326525b32ebc6d66546b1ed11035ac044449a3f1d4ecae43beeefcadea95d2",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 9,
+        "hidden_failed": 0,
+        "coverage_percent": 96.3,
+        "iterations": 3,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 92.59,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "falha",
+              "passed": 9,
+              "failed": 1,
+              "skipped": 0,
+              "source_coverage": 89.29,
+              "errors": [
+                "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_04_janela_minima\nplugins: cov-7.1.0, json-report-1.5.0, metadata-3.1.1, anyio-4.15.1\ncollected 10 items\n\ntest_rf_04_janela_minima.py ..F.......                                   [100%]\n\n=================================== FAILURES ===================================\n____________________ test_solve_todos_elementos_necessarios ____________________\ntest_rf_04_janela_minima.py:17: in test_solve_todos_elementos_necessarios\n    assert solve(data) == \"9\"\nE   AssertionError: assert '8' == '9'\nE     \nE     - 9\nE     + 8\n--------------------------------- JSON report ----------------------------------\nreport saved to: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_04_janela_minima/report.json\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nCoverage JSON written to file coverage.json\n=========================== short test summary info ============================\nFAILED test_rf_04_janela_minima.py::test_solve_todos_elementos_necessarios - ...\n========================= 1 failed, 9 passed in 0.02s ==========================\n"
+              ]
+            },
+            "converged": false,
+            "duration_s": 20.141
+          },
+          {
+            "index": 2,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "falha",
+              "passed": 11,
+              "failed": 1,
+              "skipped": 0,
+              "source_coverage": 89.66,
+              "errors": [
+                "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_04_janela_minima\nplugins: cov-7.1.0, json-report-1.5.0, metadata-3.1.1, anyio-4.15.1\ncollected 12 items\n\ntest_rf_04_janela_minima.py ........F...                                 [100%]\n\n=================================== FAILURES ===================================\n__________________ test_solve_with_extra_spaces_and_newlines ___________________\ntest_rf_04_janela_minima.py:46: in test_solve_with_extra_spaces_and_newlines\n    assert solve(data) == \"2\"\nE   AssertionError: assert '3' == '2'\nE     \nE     - 2\nE     + 3\n--------------------------------- JSON report ----------------------------------\nreport saved to: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_04_janela_minima/report.json\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nCoverage JSON written to file coverage.json\n=========================== short test summary info ============================\nFAILED test_rf_04_janela_minima.py::test_solve_with_extra_spaces_and_newlines\n========================= 1 failed, 11 passed in 0.02s =========================\n"
+              ]
+            },
+            "converged": false,
+            "duration_s": 13.691
+          },
+          {
+            "index": 3,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 11,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 92.59,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 11.125
+          }
+        ],
+        "latency_s": 123.7,
+        "input_tokens": 326599,
+        "output_tokens": 6353,
+        "total_tokens": 332952,
+        "llm_calls": 32,
+        "source_sha256": "cf3e129aba35bf4208bef5969bd750333d699298521e6439037237b0476f04b8",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "05_rle_unicode-r2",
+      "case_id": "05_rle_unicode",
+      "title": "Codificação RLE Unicode",
+      "repetition": 2,
+      "initial_generation": {
+        "input_tokens": 124272,
+        "output_tokens": 3532,
+        "total_tokens": 127804,
+        "llm_calls": 11,
+        "latency_s": 40.566,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 95.65,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 49.71,
+        "input_tokens": 125748,
+        "output_tokens": 4389,
+        "total_tokens": 130137,
+        "llm_calls": 12,
+        "source_sha256": "f9d96c7824f38eb1e5041ed48a79ea6526415ba2bd990d9deb5ef0bedd4708fd",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 95.65,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 91.3,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 27,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 91.3,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 17.427
+          }
+        ],
+        "latency_s": 68.158,
+        "input_tokens": 126593,
+        "output_tokens": 5528,
+        "total_tokens": 132121,
+        "llm_calls": 13,
+        "source_sha256": "f9d96c7824f38eb1e5041ed48a79ea6526415ba2bd990d9deb5ef0bedd4708fd",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "06_moedas_limitadas-r2",
+      "case_id": "06_moedas_limitadas",
+      "title": "Troco mínimo com moedas limitadas",
+      "repetition": 2,
+      "initial_generation": {
+        "input_tokens": 99350,
+        "output_tokens": 3677,
+        "total_tokens": 103027,
+        "llm_calls": 9,
+        "latency_s": 43.701,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 95.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 56.765,
+        "input_tokens": 100998,
+        "output_tokens": 5130,
+        "total_tokens": 106128,
+        "llm_calls": 10,
+        "source_sha256": "890fa48b2ea5b05772d14970d2cd405dca6c39d69569cc35c0d5ad09c7e53262",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 95.24,
+        "iterations": 2,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 92.86,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "falha",
+              "passed": 14,
+              "failed": 1,
+              "skipped": 0,
+              "source_coverage": 92.5,
+              "errors": [
+                "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_06_moedas_limitadas\nplugins: cov-7.1.0, json-report-1.5.0, metadata-3.1.1, anyio-4.15.1\ncollected 15 items\n\ntest_rf_06_moedas_limitadas.py .............F.                           [100%]\n\n=================================== FAILURES ===================================\n______________________________ test_larger_target ______________________________\ntest_rf_06_moedas_limitadas.py:78: in test_larger_target\n    assert solve(input_data) == \"10\"\nE   AssertionError: assert '7' == '10'\nE     \nE     - 10\nE     + 7\n--------------------------------- JSON report ----------------------------------\nreport saved to: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_06_moedas_limitadas/report.json\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nCoverage JSON written to file coverage.json\n=========================== short test summary info ============================\nFAILED test_rf_06_moedas_limitadas.py::test_larger_target - AssertionError: a...\n========================= 1 failed, 14 passed in 0.02s =========================\n"
+              ]
+            },
+            "converged": false,
+            "duration_s": 6.933
+          },
+          {
+            "index": 2,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 19,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 92.86,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 16.267
+          }
+        ],
+        "latency_s": 94.412,
+        "input_tokens": 177038,
+        "output_tokens": 7746,
+        "total_tokens": 184784,
+        "llm_calls": 18,
+        "source_sha256": "46c79acd23eca70006777a6f5f8642aa2c8d0a1b48acfaeae78e9b65e1144e15",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "01_soma-r3",
+      "case_id": "01_soma",
+      "title": "Soma de dois inteiros",
+      "repetition": 3,
+      "initial_generation": {
+        "input_tokens": 107678,
+        "output_tokens": 2809,
+        "total_tokens": 110487,
+        "llm_calls": 10,
+        "latency_s": 39.173,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 4,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 48.971,
+        "input_tokens": 108785,
+        "output_tokens": 3610,
+        "total_tokens": 112395,
+        "llm_calls": 11,
+        "source_sha256": "78858c5e458d9f70ca7bf93fbe1099d422c1b59e4cc0013e03b12374c4db8f25",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 4,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 62.5,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 25,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 62.5,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 11.247
+          }
+        ],
+        "latency_s": 58.432,
+        "input_tokens": 109408,
+        "output_tokens": 4321,
+        "total_tokens": 113729,
+        "llm_calls": 12,
+        "source_sha256": "78858c5e458d9f70ca7bf93fbe1099d422c1b59e4cc0013e03b12374c4db8f25",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "02_colchetes-r3",
+      "case_id": "02_colchetes",
+      "title": "Validador de colchetes com ruído",
+      "repetition": 3,
+      "initial_generation": {
+        "input_tokens": 109986,
+        "output_tokens": 2615,
+        "total_tokens": 112601,
+        "llm_calls": 10,
+        "latency_s": 41.469,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 51.303,
+        "input_tokens": 111379,
+        "output_tokens": 3587,
+        "total_tokens": 114966,
+        "llm_calls": 11,
+        "source_sha256": "d527778a9a6e065bb048a9c6438b715d86a58c4c032b33f3a06be5dda2737b44",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 6,
+        "hidden_failed": 2,
+        "coverage_percent": 83.67,
+        "iterations": 3,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 91.84,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "falha",
+              "passed": 33,
+              "failed": 1,
+              "skipped": 0,
+              "source_coverage": 81.82,
+              "errors": [
+                "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_02_colchetes\nplugins: cov-7.1.0, json-report-1.5.0, metadata-3.1.1, anyio-4.15.1\ncollected 34 items\n\ntest_rf_02_colchetes.py ..........F.......................               [100%]\n\n=================================== FAILURES ===================================\n_________ test_solve_valid_cases[if (a[i] == '{'): { return (True); }] _________\ntest_rf_02_colchetes.py:30: in test_solve_valid_cases\n    assert solve(valid_input) == \"VALID\"\nE   AssertionError: assert 'INVALID' == 'VALID'\nE     \nE     - VALID\nE     + INVALID\nE     ? ++\n--------------------------------- JSON report ----------------------------------\nreport saved to: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_02_colchetes/report.json\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nCoverage JSON written to file coverage.json\n=========================== short test summary info ============================\nFAILED test_rf_02_colchetes.py::test_solve_valid_cases[if (a[i] == '{'): { return (True); }]\n========================= 1 failed, 33 passed in 0.03s =========================\n"
+              ]
+            },
+            "converged": false,
+            "duration_s": 14.769
+          },
+          {
+            "index": 2,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "falha",
+              "passed": 9,
+              "failed": 1,
+              "skipped": 0,
+              "source_coverage": 59.57,
+              "errors": [
+                "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_02_colchetes\nplugins: cov-7.1.0, json-report-1.5.0, metadata-3.1.1, anyio-4.15.1\ncollected 10 items\n\ntest_rf_02_colchetes.py ....F.....                                       [100%]\n\n=================================== FAILURES ===================================\n______________________ test_comments_and_strings_ignored _______________________\ntest_rf_02_colchetes.py:40: in test_comments_and_strings_ignored\n    assert solve(\"(#)\\n()//[\\n{}\") == \"VALID\"\nE   AssertionError: assert 'INVALID' == 'VALID'\nE     \nE     - VALID\nE     + INVALID\nE     ? ++\n--------------------------------- JSON report ----------------------------------\nreport saved to: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_02_colchetes/report.json\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nCoverage JSON written to file coverage.json\n=========================== short test summary info ============================\nFAILED test_rf_02_colchetes.py::test_comments_and_strings_ignored - Assertion...\n========================= 1 failed, 9 passed in 0.03s ==========================\n"
+              ]
+            },
+            "converged": false,
+            "duration_s": 13.008
+          },
+          {
+            "index": 3,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 15,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 91.84,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 19.296
+          }
+        ],
+        "latency_s": 142.662,
+        "input_tokens": 349646,
+        "output_tokens": 7987,
+        "total_tokens": 357633,
+        "llm_calls": 33,
+        "source_sha256": "1b685fbfeb36ebff453a3eca8c43fedb4d15f2374ff5df5a14c63bd2c41f5558",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "03_intervalos-r3",
+      "case_id": "03_intervalos",
+      "title": "Mesclar intervalos inteiros adjacentes",
+      "repetition": 3,
+      "initial_generation": {
+        "input_tokens": 110554,
+        "output_tokens": 2804,
+        "total_tokens": 113358,
+        "llm_calls": 10,
+        "latency_s": 31.908,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 6,
+        "hidden_failed": 0,
+        "coverage_percent": 88.89,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 42.097,
+        "input_tokens": 112280,
+        "output_tokens": 3728,
+        "total_tokens": 116008,
+        "llm_calls": 11,
+        "source_sha256": "c139c926cb1d351795f5d3f40b2bcda45e96e35b7818f4cf8fc47538c3ce2735",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 4,
+        "public_failed": 0,
+        "hidden_passed": 6,
+        "hidden_failed": 0,
+        "coverage_percent": 88.89,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 86.11,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 4,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 14,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 86.11,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 13.885
+          }
+        ],
+        "latency_s": 54.738,
+        "input_tokens": 113281,
+        "output_tokens": 4730,
+        "total_tokens": 118011,
+        "llm_calls": 12,
+        "source_sha256": "c139c926cb1d351795f5d3f40b2bcda45e96e35b7818f4cf8fc47538c3ce2735",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "04_janela_minima-r3",
+      "case_id": "04_janela_minima",
+      "title": "Menor janela com soma mínima",
+      "repetition": 3,
+      "initial_generation": {
+        "input_tokens": 150952,
+        "output_tokens": 3019,
+        "total_tokens": 153971,
+        "llm_calls": 13,
+        "latency_s": 38.879,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 9,
+        "hidden_failed": 0,
+        "coverage_percent": 87.5,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 49.542,
+        "input_tokens": 152388,
+        "output_tokens": 4118,
+        "total_tokens": 156506,
+        "llm_calls": 14,
+        "source_sha256": "0f8c2e72251c0355e13e82384fe0ea481cc9e9c7efabe9290b90be98943d794d",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 9,
+        "hidden_failed": 0,
+        "coverage_percent": 87.5,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 46.88,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 12,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 46.88,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 4.97
+          }
+        ],
+        "latency_s": 56.282,
+        "input_tokens": 153670,
+        "output_tokens": 4851,
+        "total_tokens": 158521,
+        "llm_calls": 15,
+        "source_sha256": "0f8c2e72251c0355e13e82384fe0ea481cc9e9c7efabe9290b90be98943d794d",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "05_rle_unicode-r3",
+      "case_id": "05_rle_unicode",
+      "title": "Codificação RLE Unicode",
+      "repetition": 3,
+      "initial_generation": {
+        "input_tokens": 126038,
+        "output_tokens": 3796,
+        "total_tokens": 129834,
+        "llm_calls": 11,
+        "latency_s": 40.336,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 51.61,
+        "input_tokens": 127531,
+        "output_tokens": 4824,
+        "total_tokens": 132355,
+        "llm_calls": 12,
+        "source_sha256": "6d6406439834dbf76598937a1eac5b3c1fe7de52480968a0d820900aad961aba",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 100.0,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 91.67,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 10,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 91.67,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 17.036
+          }
+        ],
+        "latency_s": 67.359,
+        "input_tokens": 128393,
+        "output_tokens": 5752,
+        "total_tokens": 134145,
+        "llm_calls": 13,
+        "source_sha256": "6d6406439834dbf76598937a1eac5b3c1fe7de52480968a0d820900aad961aba",
+        "error": null
+      }
+    },
+    {
+      "pair_id": "06_moedas_limitadas-r3",
+      "case_id": "06_moedas_limitadas",
+      "title": "Troco mínimo com moedas limitadas",
+      "repetition": 3,
+      "initial_generation": {
+        "input_tokens": 100422,
+        "output_tokens": 4392,
+        "total_tokens": 104814,
+        "llm_calls": 9,
+        "latency_s": 48.766,
+        "error": null
+      },
+      "baseline": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 95.12,
+        "iterations": 1,
+        "converged": true,
+        "qa": {
+          "status": "not_run",
+          "passed": 0,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": null,
+          "errors": []
+        },
+        "latency_s": 61.653,
+        "input_tokens": 102095,
+        "output_tokens": 5766,
+        "total_tokens": 107861,
+        "llm_calls": 10,
+        "source_sha256": "8b582fe3ae0b93d019df8553828c68fffceb01357ee8f6b698f543ba59fef44f",
+        "error": null
+      },
+      "qa_loop": {
+        "public_passed": 3,
+        "public_failed": 0,
+        "hidden_passed": 8,
+        "hidden_failed": 0,
+        "coverage_percent": 95.0,
+        "iterations": 3,
+        "converged": true,
+        "qa": {
+          "status": "sucesso",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "source_coverage": 92.5,
+          "errors": []
+        },
+        "iteration_details": [
+          {
+            "index": 1,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "falha",
+              "passed": 14,
+              "failed": 1,
+              "skipped": 0,
+              "source_coverage": 92.68,
+              "errors": [
+                "============================= test session starts ==============================\nplatform darwin -- Python 3.14.7, pytest-9.0.3, pluggy-1.6.0\nrootdir: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_06_moedas_limitadas\nplugins: cov-7.1.0, json-report-1.5.0, metadata-3.1.1, anyio-4.15.1\ncollected 15 items\n\ntest_rf_06_moedas_limitadas.py ....F..........                           [100%]\n\n=================================== FAILURES ===================================\n________________________ test_standard_coin_combination ________________________\ntest_rf_06_moedas_limitadas.py:28: in test_standard_coin_combination\n    assert solve(input_data) == \"3\"\nE   AssertionError: assert '2' == '3'\nE     \nE     - 3\nE     + 2\n--------------------------------- JSON report ----------------------------------\nreport saved to: /Users/leonardo/dev/AI4ES/compare-qa/workspaces/robust_native/tests/inputs/rf_06_moedas_limitadas/report.json\n================================ tests coverage ================================\n_______________ coverage: platform darwin, python 3.14.7-final-0 _______________\n\nCoverage JSON written to file coverage.json\n=========================== short test summary info ============================\nFAILED test_rf_06_moedas_limitadas.py::test_standard_coin_combination - Asser...\n========================= 1 failed, 14 passed in 0.02s =========================\n"
+              ]
+            },
+            "converged": false,
+            "duration_s": 7.66
+          },
+          {
+            "index": 2,
+            "public_passed": 1,
+            "public_failed": 2,
+            "qa": {
+              "status": "sucesso",
+              "passed": 12,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 92.5,
+              "errors": []
+            },
+            "converged": false,
+            "duration_s": 12.598
+          },
+          {
+            "index": 3,
+            "public_passed": 3,
+            "public_failed": 0,
+            "qa": {
+              "status": "sucesso",
+              "passed": 15,
+              "failed": 0,
+              "skipped": 0,
+              "source_coverage": 92.5,
+              "errors": []
+            },
+            "converged": true,
+            "duration_s": 6.162
+          }
+        ],
+        "latency_s": 132.053,
+        "input_tokens": 338768,
+        "output_tokens": 9726,
+        "total_tokens": 348494,
+        "llm_calls": 32,
+        "source_sha256": "ce38ad1062bfee9cc867693a5b43670e788f2fd2d84687d32da19d1a1ee1679f",
+        "error": null
+      }
+    }
+  ],
+  "summary": {
+    "baseline": {
+      "runs": 18,
+      "runs_all_hidden_passed": 17,
+      "hidden_passed": 120,
+      "hidden_failed": 9,
+      "hidden_pass_rate": 0.9302,
+      "mean_coverage_percent": 93.08,
+      "mean_iterations": 1.0,
+      "qa_passed": 0,
+      "qa_failed": 0,
+      "qa_pass_rate": null,
+      "total_tokens": 2235432,
+      "mean_tokens": 124190.7,
+      "total_latency_s": 872.386,
+      "mean_latency_s": 48.466,
+      "llm_calls": 209
+    },
+    "qa_loop": {
+      "runs": 18,
+      "runs_all_hidden_passed": 15,
+      "hidden_passed": 117,
+      "hidden_failed": 12,
+      "hidden_pass_rate": 0.907,
+      "mean_coverage_percent": 91.44,
+      "mean_iterations": 1.56,
+      "qa_passed": 308,
+      "qa_failed": 0,
+      "qa_pass_rate": 1.0,
+      "total_tokens": 3830482,
+      "mean_tokens": 212804.6,
+      "total_latency_s": 1478.257,
+      "mean_latency_s": 82.125,
+      "llm_calls": 357
+    },
+    "paired_delta": {
+      "hidden_pass_rate_pp": {
+        "mean": -2.083,
+        "median": 0.0,
+        "bootstrap_95_ci_mean": [
+          -5.556,
+          0.0
+        ]
+      },
+      "coverage_pp": {
+        "mean": -1.636,
+        "median": 0.0,
+        "bootstrap_95_ci_mean": [
+          -4.408,
+          0.382
+        ]
+      },
+      "tokens": {
+        "mean": 88613.889,
+        "median": 1993.5,
+        "bootstrap_95_ci_mean": [
+          26714.222,
+          165405.222
+        ]
+      },
+      "latency_s": {
+        "mean": 33.66,
+        "median": 15.476,
+        "bootstrap_95_ci_mean": [
+          19.338,
+          50.093
+        ]
+      }
+    },
+    "discordant_runs": {
+      "loop_only_passed_all_hidden": 0,
+      "baseline_only_passed_all_hidden": 2,
+      "exact_sign_test_p": 0.5
+    }
+  },
+  "completed_at": "2026-10-11T19:39:18.395662-03:00"
+}

@@ -1,0 +1,25 @@
+{
+  "challenge": {
+    "title": "Mesclar intervalos inteiros adjacentes",
+    "description": "Implemente solve(data: str) -> str. A primeira linha contém N. As N linhas seguintes contêm dois inteiros a e b; normalize cada intervalo para (min(a,b), max(a,b)). Ordene e mescle intervalos fechados que se sobreponham OU sejam adjacentes no domínio inteiro: [x,y] e [u,v] devem ser unidos quando u <= y + 1. Produza um intervalo por linha como 'inicio fim'. Para N=0, retorne a string vazia. O programa executável deve ler todo o stdin e escrever exatamente solve(data), sem linha de diagnóstico.",
+    "constraints": {
+      "forbidden": ["eval", "exec", "bibliotecas externas"],
+      "required": ["função solve(data: str) -> str", "ordenação", "varredura linear após ordenar"]
+    },
+    "examples": [
+      {"input": "5\n1 3\n2 6\n10 12\n9 9\n15 13\n", "expected_output": "1 6\n9 15\n"},
+      {"input": "3\n5 1\n8 6\n20 20\n", "expected_output": "1 8\n20 20\n"},
+      {"input": "0\n", "expected_output": ""},
+      {"input": "4\n-5 -3\n-2 0\n2 2\n1 1\n", "expected_output": "-5 2\n"}
+    ]
+  },
+  "solutionsRequested": 1,
+  "variations": [
+    {
+      "label": "ordenacao-varredura",
+      "strategy": "Normalizar, ordenar pelo início e mesclar em uma única varredura.",
+      "use": ["sorted", "list", "for"],
+      "avoid": ["eval", "exec"]
+    }
+  ]
+}

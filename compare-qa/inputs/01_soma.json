@@ -1,0 +1,24 @@
+{
+  "challenge": {
+    "title": "Soma de dois inteiros",
+    "description": "Implemente solve(data: str) -> str. A entrada contém exatamente dois inteiros separados por espaços em branco. Retorne a soma em base decimal, sem texto adicional. O programa executável deve ler todo o stdin e imprimir solve(data). Deve aceitar números negativos e zeros.",
+    "constraints": {
+      "forbidden": ["eval", "exec"],
+      "required": ["função solve(data: str) -> str"]
+    },
+    "examples": [
+      {"input": "3 5\n", "expected_output": "8\n"},
+      {"input": "-17 9\n", "expected_output": "-8\n"},
+      {"input": "0 0\n", "expected_output": "0\n"}
+    ]
+  },
+  "solutionsRequested": 1,
+  "variations": [
+    {
+      "label": "leitura-direta",
+      "strategy": "Separar os dois tokens, convertê-los para inteiro e somar.",
+      "use": ["split", "int", "sum"],
+      "avoid": ["eval", "exec"]
+    }
+  ]
+}

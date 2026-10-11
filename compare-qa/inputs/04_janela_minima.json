@@ -1,0 +1,24 @@
+{
+  "challenge": {
+    "title": "Menor janela com soma mínima",
+    "description": "Implemente solve(data: str) -> str. A primeira linha contém um alvo inteiro positivo. A segunda linha contém uma sequência possivelmente vazia de inteiros não negativos separados por espaços. Retorne o menor comprimento de um segmento contíguo cuja soma seja maior ou igual ao alvo. Retorne 0 quando nenhum segmento satisfizer o alvo. O programa executável deve ler todo o stdin e imprimir solve(data).",
+    "constraints": {
+      "forbidden": ["eval", "exec", "bibliotecas externas"],
+      "required": ["função solve(data: str) -> str", "janela deslizante em tempo linear"]
+    },
+    "examples": [
+      {"input": "7\n2 3 1 2 4 3\n", "expected_output": "2\n"},
+      {"input": "4\n1 4 4\n", "expected_output": "1\n"},
+      {"input": "100\n1 2 3\n", "expected_output": "0\n"}
+    ]
+  },
+  "solutionsRequested": 1,
+  "variations": [
+    {
+      "label": "janela-deslizante",
+      "strategy": "Expandir a janela pela direita e contrair pela esquerda quando a soma atingir o alvo.",
+      "use": ["while", "for", "list"],
+      "avoid": ["for aninhado", "eval", "exec"]
+    }
+  ]
+}
