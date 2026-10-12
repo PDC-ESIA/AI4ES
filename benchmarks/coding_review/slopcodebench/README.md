@@ -106,8 +106,9 @@ python -m benchmarks.coding_review.slopcodebench.run --model github_copilot/gpt-
 - **Falha na avaliação não conta como falha do coder.** Se o avaliador não chega
   a um veredito (Docker fora, imagem não construída, timeout do container), o
   checkpoint fica como `error`, o problema segue para o próximo checkpoint e a
-  retomada (`--resume-dir`) o refaz — como o harness oficial faz com checkpoints
-  com erro. Enquanto houver checkpoint pendente, o `report.md` traz o aviso
+  retomada (`--resume-dir`) reavalia o snapshot salvo, **sem rodar o coder de
+  novo** — os checkpoints seguintes já partiram desse código, e gerar outro
+  misturaria a trajetória. Enquanto houver checkpoint pendente, o `report.md` traz o aviso
   "RELATÓRIO INCOMPLETO" e o run sai com código 1.
 - **Retomada segura.** O `--resume-dir` só aceita continuar se modelo, seed,
   problemas, timeout, hash do prompt do coder, commits do harness e do catálogo e

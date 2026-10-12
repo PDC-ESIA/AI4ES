@@ -215,14 +215,14 @@ def _construir_nome_run(args: argparse.Namespace, timestamp: str, n: int) -> str
 def _carregar_progresso(progress_path: Path) -> dict[tuple[str, str], dict]:
     """Lê o checkpoint incremental e devolve {(problema, checkpoint): detalhe}.
 
-    Checkpoints cuja AVALIAÇÃO falhou (`grading_error`) não contam como
-    concluídos: a retomada os refaz, como o harness oficial faz com checkpoints
-    com erro (`resume.py`, `HAD_ERROR` → inválido → reexecuta).
+    Checkpoints cuja AVALIAÇÃO falhou (`grading_error`) entram também: a
+    retomada reavalia o snapshot já salvo, sem rodar o coder de novo (ver
+    `_reavaliar`). Uma linha posterior do mesmo checkpoint (a reavaliação)
+    substitui a anterior.
     """
     concluidos: dict[tuple[str, str], dict] = {}
     if not progress_path.is_file():
         return concluidos
-    refazer = 0
     for linha in progress_path.read_text(encoding="utf-8").splitlines():
         linha = linha.strip()
         if not linha:
@@ -233,12 +233,13 @@ def _carregar_progresso(progress_path: Path) -> dict[tuple[str, str], dict]:
         except json.JSONDecodeError, KeyError:
             print(f"[run] Aviso: linha inválida em {progress_path.name}, ignorada.")
             continue
-        if detalhe.get("grading_error"):
-            refazer += 1
-            continue
         concluidos[chave] = detalhe
-    if refazer:
-        print(f"[run] {refazer} checkpoint(s) com falha de avaliação serão refeitos.")
+    reavaliar = sum(1 for d in concluidos.values() if d.get("grading_error"))
+    if reavaliar:
+        print(
+            f"[run] {reavaliar} checkpoint(s) com falha de avaliação serão "
+            "reavaliados (sem rodar o coder)."
+        )
     return concluidos
 
 
@@ -279,9 +280,56 @@ def _interrompe_trajetoria(detalhe: dict) -> bool:
     `passed_policy` não entra: com a política padrão `any` ele só fica falso
     quando a AVALIAÇÃO falha (ver `PassPolicy.check` no harness), e falha do
     avaliador não é erro do agente — o checkpoint fica como `error`, o problema
-    segue, e a retomada o refaz (ver `_carregar_progresso`).
+    segue, e a retomada o reavalia (ver `_reavaliar`).
     """
     return bool(detalhe.get("coder_error"))
+
+
+def _reavaliar(problema, checkpoint: str, save_dir: Path, detalhe: dict) -> dict:
+    """Retomada de um checkpoint cuja avaliação falhou: avalia o snapshot salvo.
+
+    O coder não roda de novo: os checkpoints seguintes já foram gerados a partir
+    deste snapshot, e gerar outro código misturaria a trajetória. Os dados do
+    coder (tokens, duração, arquivos) vêm do registro original; só o resultado
+    da avaliação é trocado.
+    """
+    from benchmarks.coding_review.slopcodebench import grading
+
+    snapshot_dir = save_dir / grading.SNAPSHOT_DIR_NAME
+    if not snapshot_dir.is_dir():
+        raise RuntimeError(
+            f"Snapshot de {problema.name}/{checkpoint} não encontrado em "
+            f"{snapshot_dir}: não dá para reavaliar sem gerar o código de novo, "
+            "o que misturaria a trajetória."
+        )
+    grade = grading.grade_checkpoint(problema, checkpoint, save_dir)
+    return {
+        **detalhe,
+        "passed_policy": grade.passed_policy,
+        "pass_counts": grade.pass_counts,
+        "total_counts": grade.total_counts,
+        "grading_error": grade.error,
+    }
+
+
+def _status(detalhe: dict) -> str:
+    """Resumo do checkpoint para o terminal."""
+    if detalhe.get("coder_error"):
+        return "ERRO DO CODER"
+    if detalhe.get("grading_error"):
+        return "FALHA NA AVALIAÇÃO"
+    passou = sum(detalhe["pass_counts"].values())
+    total = sum(detalhe["total_counts"].values())
+    return f"{passou}/{total} testes"
+
+
+def _avisar_falha_de_avaliacao(rotulo: str, detalhe: dict) -> None:
+    if detalhe.get("grading_error"):
+        print(
+            f"[run] {rotulo}: a avaliação falhou ({detalhe['grading_error']}). O "
+            "checkpoint fica como `error`, o problema segue, e a retomada "
+            "(--resume-dir) reavalia o snapshot salvo."
+        )
 
 
 @dataclass
@@ -312,11 +360,20 @@ async def _executar_problema(
         save_dir = grading.checkpoint_output_dir(problema, problem_dir, checkpoint)
         snapshot_dir = save_dir / grading.SNAPSHOT_DIR_NAME
 
-        # Retomada: reaproveita o checkpoint já concluído.
+        # Retomada: reaproveita o checkpoint já concluído; se só a avaliação
+        # falhou, reavalia o snapshot salvo sem rodar o coder.
         if (problema.name, checkpoint) in concluidos:
             detalhe = concluidos[(problema.name, checkpoint)]
+            if detalhe.get("grading_error"):
+                detalhe = _reavaliar(problema, checkpoint, save_dir, detalhe)
+                _append_progresso(progress_path, detalhe)
+                print(
+                    f"[run] {rotulo}: REAVALIADO, {_status(detalhe)} (coder não rodou)"
+                )
+                _avisar_falha_de_avaliacao(rotulo, detalhe)
+            else:
+                print(f"[run] {rotulo}: CACHE")
             detalhes.append(detalhe)
-            print(f"[run] {rotulo}: CACHE")
             if _interrompe_trajetoria(detalhe):
                 break
             continue
@@ -418,21 +475,8 @@ async def _executar_problema(
         detalhes.append(detalhe)
         _append_progresso(progress_path, detalhe)
 
-        passou = sum(grade.pass_counts.values())
-        total = sum(grade.total_counts.values())
-        if geracao.error:
-            status = "ERRO DO CODER"
-        elif grade.error:
-            status = "FALHA NA AVALIAÇÃO"
-        else:
-            status = f"{passou}/{total} testes"
-        print(f"[run] {rotulo}: {status} (coder {duracao_coder}s)")
-        if grade.error:
-            print(
-                f"[run] {rotulo}: a avaliação falhou ({grade.error}). O checkpoint "
-                "fica como `error`, o problema segue, e a retomada (--resume-dir) "
-                "o refaz."
-            )
+        print(f"[run] {rotulo}: {_status(detalhe)} (coder {duracao_coder}s)")
+        _avisar_falha_de_avaliacao(rotulo, detalhe)
 
         if _interrompe_trajetoria(detalhe):
             print(f"[run] {problema.name}: trajetória interrompida (erro do coder).")
@@ -524,13 +568,13 @@ async def _executar(args: argparse.Namespace, run_dir: Path, problemas: list) ->
 def _pendencias(detalhes: list[dict], metrics: dict) -> list[str]:
     """Motivos pelos quais o relatório NÃO é um resultado final (vazio = completo).
 
-    Checkpoints com falha de avaliação ainda serão refeitos na retomada, e um
+    Checkpoints com falha de avaliação ainda serão reavaliados na retomada, e um
     run sem nenhum checkpoint rodado não diz nada sobre o modelo: publicar
     qualquer um dos dois como resultado confundiria "avaliador falhou" com
     "modelo ruim".
     """
     motivos = [
-        f"{d['problem']}/{d['checkpoint']}: falha na avaliação (refazer com --resume-dir)"
+        f"{d['problem']}/{d['checkpoint']}: falha na avaliação (reavaliar com --resume-dir)"
         for d in detalhes
         if d.get("grading_error")
     ]

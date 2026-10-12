@@ -121,15 +121,18 @@ def test_validar_e_persistir_config_resume_proveniencia(tmp_path):
         )
 
 
-def test_carregar_progresso_ignora_falha_de_avaliacao(tmp_path):
-    """Checkpoint com falha de avaliação não é cache: a retomada o refaz."""
+def test_carregar_progresso_mantem_falha_de_avaliacao_para_reavaliar(tmp_path):
+    """Falha de avaliação entra (para ser reavaliada); a linha mais nova vale."""
     progresso = tmp_path / "progress.jsonl"
     linhas = [
-        {"problem": "alpha", "checkpoint": "checkpoint_1", "grading_error": None},
+        {"problem": "alpha", "checkpoint": "checkpoint_1", "grading_error": "docker"},
         {"problem": "alpha", "checkpoint": "checkpoint_2", "grading_error": "docker"},
+        {"problem": "alpha", "checkpoint": "checkpoint_1", "grading_error": None},
     ]
     progresso.write_text("".join(json.dumps(x) + "\n" for x in linhas))
-    assert set(run._carregar_progresso(progresso)) == {("alpha", "checkpoint_1")}
+    concluidos = run._carregar_progresso(progresso)
+    assert concluidos[("alpha", "checkpoint_1")]["grading_error"] is None
+    assert concluidos[("alpha", "checkpoint_2")]["grading_error"] == "docker"
 
 
 def test_pendencias_marcam_relatorio_incompleto():
@@ -481,7 +484,7 @@ def test_regression_breaks_compara_teste_a_teste(tmp_path):
 def _simular_problema(monkeypatch, tmp_path, coder_runner, avaliacao_falha_em=()):
     """Liga `_executar_problema` a um coder e um avaliador falsos (sem LLM/Docker).
 
-    Devolve (problema, checkpoints em que o coder rodou).
+    Devolve (problema, checkpoints em que o coder rodou, checkpoints avaliados).
     """
     from benchmarks.coding_review.slopcodebench import grading
 
@@ -491,6 +494,7 @@ def _simular_problema(monkeypatch, tmp_path, coder_runner, avaliacao_falha_em=()
         _catalogo(catalogo, nomes=("alpha",), n_cp=3), names=["alpha"]
     )
     rodou = []
+    avaliou = []
 
     async def _coder(mensagem, contrato, **_kwargs):
         rodou.append(contrato["contract"]["checkpoint"])
@@ -502,6 +506,7 @@ def _simular_problema(monkeypatch, tmp_path, coder_runner, avaliacao_falha_em=()
         return pasta
 
     def _avaliar(_problema, checkpoint, _save_dir):
+        avaliou.append(checkpoint)
         if checkpoint in avaliacao_falha_em:
             return grading.GradeResult(passed_policy=False, error="docker fora")
         return grading.GradeResult(
@@ -514,22 +519,25 @@ def _simular_problema(monkeypatch, tmp_path, coder_runner, avaliacao_falha_em=()
     monkeypatch.setattr(grading, "grade_checkpoint", _avaliar)
     monkeypatch.setattr(coder_runner, "iniciar_problema", lambda: None)
     monkeypatch.setattr(coder_runner, "restaurar_de_snapshot", lambda *a: None)
-    monkeypatch.setattr(coder_runner, "salvar_snapshot", lambda *a: None)
+    monkeypatch.setattr(
+        coder_runner, "salvar_snapshot", lambda d: d.mkdir(parents=True, exist_ok=True)
+    )
     monkeypatch.setattr(coder_runner, "run_coder", _coder)
-    return problema, rodou
+    return problema, rodou, avaliou
 
 
-def test_falha_de_avaliacao_nao_interrompe_e_e_refeita(
+def test_falha_de_avaliacao_nao_interrompe_e_e_reavaliada(
     monkeypatch, tmp_path, coder_runner
 ):
     """Cenário da revisão: avaliação falha no checkpoint 1 de um problema de 3.
 
-    No run, o problema segue até o checkpoint 3. Na retomada, o checkpoint 1 é
-    refeito (não vira CACHE) e os seguintes não ficam presos atrás dele.
+    No run, o problema segue até o checkpoint 3. Na retomada, o snapshot do
+    checkpoint 1 é reavaliado SEM rodar o coder (os checkpoints 2 e 3 partiram
+    dele), e os seguintes ficam em CACHE.
     """
     import asyncio
 
-    problema, rodou = _simular_problema(
+    problema, rodou, _ = _simular_problema(
         monkeypatch, tmp_path, coder_runner, avaliacao_falha_em=("checkpoint_1",)
     )
     progresso = tmp_path / "progress.jsonl"
@@ -546,13 +554,48 @@ def test_falha_de_avaliacao_nao_interrompe_e_e_refeita(
         "checkpoint_3": "ran",
     }
 
-    # Retomada com o progress.jsonl que ficou: só o checkpoint 1 roda de novo.
-    problema, rodou = _simular_problema(monkeypatch, tmp_path / "r", coder_runner)
+    # Retomada com o progress.jsonl que ficou: só a avaliação do checkpoint 1.
+    problema, rodou, avaliou = _simular_problema(
+        monkeypatch, tmp_path / "r", coder_runner
+    )
     concluidos = run._carregar_progresso(progresso)
-    asyncio.run(
+    detalhes = asyncio.run(
         run._executar_problema(problema, args, tmp_path / "scb", progresso, concluidos)
     )
-    assert rodou == ["checkpoint_1"]
+    assert rodou == []
+    assert avaliou == ["checkpoint_1"]
+    assert detalhes[0]["grading_error"] is None
+    assert detalhes[0]["files"] == 0  # dados do coder vêm do registro original
+    assert (
+        run._carregar_progresso(progresso)[("alpha", "checkpoint_1")]["grading_error"]
+        is None
+    )
+
+
+def test_reavaliacao_sem_snapshot_interrompe(monkeypatch, tmp_path, coder_runner):
+    """Sem snapshot, a retomada para em vez de gerar o código de novo."""
+    import asyncio
+
+    progresso = tmp_path / "progress.jsonl"
+    progresso.write_text(
+        json.dumps(
+            {"problem": "alpha", "checkpoint": "checkpoint_1", "grading_error": "x"}
+        )
+        + "\n"
+    )
+    problema, rodou, _ = _simular_problema(monkeypatch, tmp_path, coder_runner)
+    args = argparse.Namespace(model="m", checkpoint_timeout=10)
+    with pytest.raises(RuntimeError, match="Snapshot"):
+        asyncio.run(
+            run._executar_problema(
+                problema,
+                args,
+                tmp_path / "scb",
+                progresso,
+                run._carregar_progresso(progresso),
+            )
+        )
+    assert rodou == []
 
 
 def test_retomada_de_progresso_antigo_parado_na_falha_de_avaliacao(
@@ -561,6 +604,7 @@ def test_retomada_de_progresso_antigo_parado_na_falha_de_avaliacao(
     """progress.jsonl antigo, parado no checkpoint 1 por falha de avaliação."""
     import asyncio
 
+    (tmp_path / "scb" / "alpha" / "checkpoint_1" / "snapshot").mkdir(parents=True)
     progresso = tmp_path / "progress.jsonl"
     progresso.write_text(
         json.dumps(
@@ -573,7 +617,7 @@ def test_retomada_de_progresso_antigo_parado_na_falha_de_avaliacao(
         )
         + "\n"
     )
-    problema, rodou = _simular_problema(monkeypatch, tmp_path, coder_runner)
+    problema, rodou, avaliou = _simular_problema(monkeypatch, tmp_path, coder_runner)
     args = argparse.Namespace(model="m", checkpoint_timeout=10)
     asyncio.run(
         run._executar_problema(
@@ -584,8 +628,10 @@ def test_retomada_de_progresso_antigo_parado_na_falha_de_avaliacao(
             run._carregar_progresso(progresso),
         )
     )
-    # Antes: só CACHE do checkpoint 1 e parada. Agora: segue até o fim.
-    assert rodou == ["checkpoint_1", "checkpoint_2", "checkpoint_3"]
+    # Antes: só CACHE do checkpoint 1 e parada. Agora: reavalia o 1 (sem coder)
+    # e segue gerando os que nunca rodaram.
+    assert rodou == ["checkpoint_2", "checkpoint_3"]
+    assert avaliou == ["checkpoint_1", "checkpoint_2", "checkpoint_3"]
 
 
 def test_trajetorias_exigem_metrica_no_primeiro_e_no_ultimo(tmp_path):
