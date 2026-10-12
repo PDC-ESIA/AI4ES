@@ -324,3 +324,34 @@ def test_root_agent_tem_after_agent_callback_de_manifesto():
 
     callbacks = agent.canonical_after_agent_callbacks
     assert emit_design_manifest in callbacks
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# M2 — mesma regra de bloqueio de check_active_blocks; severidade "Aviso"
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_doubt_execucao_pausada_pendente_e_bloqueante(tmp_path):
+    root = _design_tree(tmp_path, validation="pass", doubt=None)
+    _write(root / "Doubt_Artifact_Clarification.md",
+           "> EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA\n\nStatus: Pendente\n")
+    m = build_design_manifest(root)
+    assert m.status == PhaseStatus.BLOCKED
+    assert [d.bloqueante for d in m.doubts] == [True]
+
+
+def test_doubt_execucao_pausada_resolvido_nao_bloqueia(tmp_path):
+    root = _design_tree(tmp_path, validation="pass", doubt=None)
+    _write(root / "Doubt_Artifact_Clarification.md",
+           "> EXECUÇÃO PAUSADA — INTERVENÇÃO NECESSÁRIA\n\nStatus: Resolvido\n")
+    m = build_design_manifest(root)
+    assert m.status == PhaseStatus.OK
+    assert not any(d.bloqueante for d in m.doubts)
+
+
+def test_doubt_aviso_nao_bloqueia_e_tem_severidade_baixa(tmp_path):
+    root = _design_tree(tmp_path, validation="pass", doubt=None)
+    _write(root / "doubts" / "Doubt_Artifact_HU-004_2026-10-03.md", "**Status:** Aviso\n")
+    m = build_design_manifest(root)
+    assert m.status == PhaseStatus.OK
+    (d,) = m.doubts
+    assert d.bloqueante is False and d.severidade == "baixa"

@@ -12,6 +12,7 @@ import litellm
 from litellm import completion
 
 from shared.llm import copilot_completion_kwargs
+from shared.token_usage import record_litellm_response
 from shared.testing import executar_teste_unitario, get_unit_test_profile
 
 litellm.drop_params = True
@@ -361,6 +362,7 @@ def _completion_content(system_prompt: str, user_prompt: str) -> str:
         temperature=0,
         **llm_kwargs,
     )
+    record_litellm_response(response)
     choices = getattr(response, "choices", None)
     if choices:
         message = getattr(choices[0], "message", None)

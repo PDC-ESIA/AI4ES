@@ -126,7 +126,7 @@ def test_coder_instruction_contem_execution_result_placeholder(tmp_path, monkeyp
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = cr_coder.render_instruction()
     assert "{execution_result?}" in instr, (
         "Placeholder {execution_result?} ausente na instrução do coder. "
         "O LoopAgent não conseguirá injetar logs de erro do executor."
@@ -141,7 +141,7 @@ def test_coder_instruction_contem_modo_operacao(tmp_path, monkeypatch):
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = cr_coder.render_instruction()
     assert "MODO DE OPERAÇÃO" in instr
     assert "RESULTADO DA EXECUÇÃO ANTERIOR" in instr
 
@@ -159,7 +159,7 @@ def test_executor_output_key_matches_coder_placeholder(tmp_path, monkeypatch):
     output_key = cr_executor.agent.output_key
     assert output_key == "execution_result"
     # Confirm the placeholder in coder matches
-    assert f"{{{output_key}?}}" in cr_coder.agent.instruction
+    assert f"{{{output_key}?}}" in cr_coder.render_instruction()
 
 
 # ===========================================================================
@@ -468,7 +468,7 @@ def test_coder_instruction_exige_readme(tmp_path, monkeypatch):
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = cr_coder.render_instruction()
     assert "README.md" in instr
     assert "http://localhost:8000" in instr
 
@@ -481,7 +481,7 @@ def test_coder_instruction_exige_run_json(tmp_path, monkeypatch):
 
     importlib.reload(cr_coder)
 
-    instr = cr_coder.agent.instruction
+    instr = cr_coder.render_instruction()
     # run.json é o novo artefato de execução obrigatório (substitui Docker).
     assert "run.json" in instr
     # A superfície (service/command/none) deriva o comportamento do harness.

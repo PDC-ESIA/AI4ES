@@ -3,7 +3,11 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 
-from shared.agent_factory import _bind_tool_to_workspace
+from shared.agent_factory import (
+    _bind_tool_to_workspace,
+    lazy_agent_workspace,
+    lazy_workspace_root,
+)
 from shared.tools import (
     run_slicer,
     extract_text,
@@ -15,7 +19,6 @@ from shared.tools import (
     add_to_glossary,
     ler_artefatos_gerados,
 )
-from shared.workspace import get_agent_workspace, get_workspace_root
 from . import prompt
 from .validation import (
     auditar_saida_final,
@@ -26,14 +29,15 @@ from .validation import (
 
 _DEFAULT_MODEL = os.environ.get("ADK_LLM_MODEL", "gemini-2.5-flash")
 
-# Workspace binding (resolvido no import-time, igual ao workflow_coding_review).
-_WS_ROOT = str(get_workspace_root())
-_REQ_WS = str(get_agent_workspace("requirements_agent"))
-_GLOS_WS = str(get_agent_workspace("glossario_agent"))
+# Workspace binding lazy: resolvido a cada chamada (raiz depende da sessão).
+_REQ_WS = "requirements_agent"
+_GLOS_WS = "glossario_agent"
 
 
-def _bind(tool, agent_ws):
-    return _bind_tool_to_workspace(tool, agent_ws, _WS_ROOT)
+def _bind(tool, agent_subdir):
+    return _bind_tool_to_workspace(
+        tool, lazy_agent_workspace(agent_subdir), lazy_workspace_root()
+    )
 
 # ── Sub-Agente de Glossário (DESLIGADO DO PIPELINE) ──────────────────────────
 # Fora do fluxo temporariamente: as ETAPAS 1 e 3 dependem de `data/matrix/`, que

@@ -2,10 +2,12 @@ from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
 from shared.agent_factory import create_se_agent
+from shared.tools.design_hitl_tool import remover_clarificacao_generica
 from shared.tools.design_date import current_date
 from shared.tools.design_filesystem import (
     save_artifact,
     list_design_files,
+    read_analysis_sections,
     append_artifact,
     patch_section,
     acquire_lock,
@@ -24,6 +26,7 @@ agent = create_se_agent(
         current_date,
         save_artifact,
         list_design_files,
+        read_analysis_sections,
         append_artifact,
         patch_section,
         acquire_lock,
@@ -35,3 +38,4 @@ agent = create_se_agent(
         max_output_tokens=16384,
     ),
 )
+remover_clarificacao_generica(agent)

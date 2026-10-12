@@ -200,7 +200,7 @@ def test_coder_agent_conecta_o_guard(tmp_path, monkeypatch):
 
     assert coder_agent.agent.before_tool_callback is coder_agent.bloquear_sobrescrita_herdada
     assert coder_agent.anunciar_arquivos_herdados in coder_agent.agent.after_tool_callback
-    assert "SOMENTE QUANDO execution_result ESTIVER AUSENTE" in coder_agent.agent.instruction
+    assert "SOMENTE QUANDO execution_result ESTIVER AUSENTE" in coder_agent.render_instruction()
 
 
 # ---------------------------------------------------------------------------

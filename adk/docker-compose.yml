@@ -6,8 +6,10 @@ services:
       - UV_PROJECT_ENVIRONMENT=/venv
     command: >
       sh -c "uv sync --no-dev && uv run uvicorn app.main:app --host 0.0.0.0 --port 8081"
+    # Porta do HOST configurável via ADK_HOST_PORT (default 8081); a porta
+    # interna do container é sempre 8081. Ex.: homologação usa 60050.
     ports:
-      - "8081:8081"
+      - "${ADK_HOST_PORT:-8081}:8081"
     env_file:
       - .env
     volumes:

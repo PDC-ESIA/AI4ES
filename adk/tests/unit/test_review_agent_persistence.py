@@ -59,7 +59,7 @@ def test_discover_coder_files_lista_arquivos_relativos(tmp_path, monkeypatch):
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    coder_ws = Path(cr_reviewer._CODER_WS)
+    coder_ws = Path(cr_reviewer._coder_ws())
     (coder_ws / "app").mkdir(parents=True, exist_ok=True)
     (coder_ws / "app" / "main.py").write_text("# main")
     (coder_ws / "app" / "models.py").write_text("# models")
@@ -82,7 +82,7 @@ def test_discover_coder_files_ignora_pycache(tmp_path, monkeypatch):
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    coder_ws = Path(cr_reviewer._CODER_WS)
+    coder_ws = Path(cr_reviewer._coder_ws())
     (coder_ws / "app" / "__pycache__").mkdir(parents=True, exist_ok=True)
     (coder_ws / "app" / "__pycache__" / "main.cpython-312.pyc").write_bytes(b"x")
     (coder_ws / "app" / "main.py").write_text("# main")
@@ -106,7 +106,7 @@ def test_review_analyzer_instruction_provider_inclui_arquivos_descobertos(
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    coder_ws = Path(cr_reviewer._CODER_WS)
+    coder_ws = Path(cr_reviewer._coder_ws())
     coder_ws.mkdir(parents=True, exist_ok=True)
     (coder_ws / "app").mkdir(exist_ok=True)
     (coder_ws / "app" / "main.py").write_text("# main")
@@ -184,7 +184,7 @@ def test_review_analyzer_instruction_preserva_bloqueios_criticos(tmp_path, monke
 
 
 def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monkeypatch):
-    """tool_ler_arquivo do analyzer resolve paths relativos contra _CODER_WS."""
+    """tool_ler_arquivo do analyzer resolve paths relativos contra o workspace do coder."""
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
     import importlib
@@ -194,7 +194,7 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    coder_ws = Path(cr_reviewer._CODER_WS)
+    coder_ws = Path(cr_reviewer._coder_ws())
     coder_ws.mkdir(parents=True, exist_ok=True)
     target_file = coder_ws / "test_file.py"
     target_file.write_text("CONTEUDO_ESPERADO")
@@ -258,7 +258,7 @@ def test_persist_review_cria_arquivo_no_review_ws(tmp_path, monkeypatch):
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    review_ws = Path(cr_reviewer._REVIEW_WS)
+    review_ws = Path(cr_reviewer._review_ws())
     review_ws.mkdir(parents=True, exist_ok=True)
 
     class _FakeCallbackContext:
@@ -291,7 +291,7 @@ def test_persist_review_nao_cria_arquivo_se_analysis_vazia(tmp_path, monkeypatch
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    review_ws = Path(cr_reviewer._REVIEW_WS)
+    review_ws = Path(cr_reviewer._review_ws())
     review_ws.mkdir(parents=True, exist_ok=True)
 
     relatorio = review_ws / "verificacao_revisao.md"
@@ -388,7 +388,7 @@ def test_adk_runner_dispara_after_agent_callback(tmp_path, monkeypatch):
     importlib.reload(review_tools)
     importlib.reload(cr_reviewer)
 
-    review_ws = Path(cr_reviewer._REVIEW_WS)
+    review_ws = Path(cr_reviewer._review_ws())
     review_ws.mkdir(parents=True, exist_ok=True)
 
     from google.adk.models.llm_response import LlmResponse

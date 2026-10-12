@@ -19,9 +19,13 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from google.genai import types
 
-from shared.agent_factory import _bind_tool_to_workspace
+from shared.agent_factory import (
+    _bind_tool_to_workspace,
+    lazy_agent_workspace,
+    lazy_workspace_root,
+)
 from shared.review import run_capabilities
-from shared.workspace import get_agent_workspace, get_workspace_root
+from shared.workspace import get_agent_workspace
 from shared.tools.coding_tools.filesystem_coding import tool_salvar_relatorio
 
 if TYPE_CHECKING:
@@ -32,22 +36,29 @@ else:
 _STATIC_ANALYSIS_ENABLED = os.environ.get("REVIEWER_STATIC_ANALYSIS", "1") != "0"
 _MAX_FINDINGS = 30
 
-_WORKSPACE_ROOT = str(get_workspace_root())
-_CODER_WS = str(get_agent_workspace("cr_coder"))
-_REVIEW_WS = str(get_agent_workspace("cr_reviewer"))
+# Workspaces resolvidos a cada uso: a raiz depende da sessão corrente.
+def _coder_ws() -> str:
+    return str(get_agent_workspace("cr_coder"))
 
 
-def _bind(tool, agent_ws):
-    return _bind_tool_to_workspace(tool, agent_ws, _WORKSPACE_ROOT)
+def _review_ws() -> str:
+    return str(get_agent_workspace("cr_reviewer"))
+
+
+def _bind(tool, agent_subdir: str):
+    """Bind lazy: ``agent_subdir`` é nome em AGENT_DIRS (ex.: "cr_coder")."""
+    return _bind_tool_to_workspace(
+        tool, lazy_agent_workspace(agent_subdir), lazy_workspace_root()
+    )
 
 
 def _discover_coder_files() -> str:
-    """Lista arquivos no _CODER_WS (relativo), formato bullet.
+    """Lista arquivos no workspace do coder (relativo), formato bullet.
 
     Executado no momento da invocação do agente (via InstructionProvider).
     Quando o coder ainda não rodou, retorna marker informativo.
     """
-    coder_dir = Path(_CODER_WS)
+    coder_dir = Path(_coder_ws())
     if not coder_dir.exists():
         return "- (nenhum arquivo ainda — coder será executado antes de você)"
     files = sorted(
@@ -80,7 +91,7 @@ def _inject_static_findings(callback_context: CallbackContext) -> None:
     """
     if not _STATIC_ANALYSIS_ENABLED:
         return None
-    coder_path = Path(_CODER_WS)
+    coder_path = Path(_coder_ws())
     if not coder_path.exists():
         callback_context.state["static_findings_block"] = (
             "Workspace do coder não encontrado — análise estática ignorada."
@@ -278,7 +289,7 @@ def _salvar_relatorio(conteudo: str) -> None:
     result = tool_salvar_relatorio(
         conteudo=conteudo,
         nome_arquivo="verificacao_revisao.md",
-        base_dir=_REVIEW_WS,
+        base_dir=_review_ws(),
     )
     if not result.get("sucesso"):
         raise RuntimeError(

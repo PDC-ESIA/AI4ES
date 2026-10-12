@@ -76,3 +76,34 @@ async def aguardar_decisao_validacao(
     """
     _ = (checkpoint_id, approval_question, allowed_decisions, pause_reason)
     return None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Clarificação genérica da fábrica — removida dos agentes de design
+# ──────────────────────────────────────────────────────────────────────────────
+
+CLARIFICATION_TOOL_NAME = "tool_ask_clarification"
+
+
+def remover_clarificacao_generica(agent):
+    """Retira do agente de design a via genérica de "parar e perguntar".
+
+    Chamada logo após create_se_agent (shared/agent_factory.py, que não é
+    alterado). A fábrica injeta tool_ask_clarification (FunctionTool comum:
+    não pausa de verdade e grava um Doubt_Artifact com "EXECUÇÃO PAUSADA",
+    que bloqueia check_active_blocks) e anexa _SE_AGENT_POLICY ao prompt.
+    O design tem protocolo próprio de Aviso/Doubt e de pausa (as tools
+    acima), então as duas coisas são removidas aqui, sem texto substituto.
+
+    Depende do nome _SE_AGENT_POLICY; test_design_agent_policy.py falha se
+    ele mudar ou se a política voltar a aparecer.
+    """
+    from shared.agent_factory import _SE_AGENT_POLICY
+
+    agent.tools = [
+        t for t in agent.tools
+        if (getattr(t, "name", None) or getattr(t, "__name__", "")) != CLARIFICATION_TOOL_NAME
+    ]
+    if isinstance(agent.instruction, str):
+        agent.instruction = agent.instruction.replace(_SE_AGENT_POLICY, "")
+    return agent

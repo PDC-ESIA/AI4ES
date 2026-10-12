@@ -28,15 +28,19 @@ def _find_root(start_path: Path, target: str = "adk") -> Path:
 ADK_DIR = _find_root(Path(__file__).resolve())
 # Artefatos seguem WORKSPACE_OUTPUT_DIR (como o resto do projeto): no container
 # o código em ADK_DIR é read-only e o workspace é um volume à parte.
-DESIGN_DIR = get_workspace_root() / "design"
+# A pasta é resolvida a cada uso (<workspace da sessão>/design) via
+# _design_dir()/_locks_dir(). DESIGN_DIR/LOCKS_DIR ficam como override
+# explícito (None = seguir a sessão corrente) — usado pelos testes.
+DESIGN_DIR: Path | None = None
+LOCKS_DIR: Path | None = None
 
-ANALYSIS_DIR = DESIGN_DIR / "analysis"
-DIAGRAMS_DIR = DESIGN_DIR / "diagrams"
-PROTOTYPE_DIR = DESIGN_DIR / "prototypes"
-REPORT_DIR = DESIGN_DIR / "reports"
-DOUBT_DIR = DESIGN_DIR / "doubts"
-OFFICIAL_DIR = DESIGN_DIR / "entrega_final" # Sujeito a mudanças
-LOCKS_DIR = DESIGN_DIR / ".locks"
+
+def _design_dir() -> Path:
+    return DESIGN_DIR if DESIGN_DIR is not None else get_workspace_root() / "design"
+
+
+def _locks_dir() -> Path:
+    return LOCKS_DIR if LOCKS_DIR is not None else _design_dir() / ".locks"
 
 TEMPLATE_DIR = ADK_DIR / "shared" / "templates"
 LOG_FILENAME = "io_operations.log"
@@ -52,6 +56,26 @@ STATUS_BLOCKED = "**Status:** Bloqueado"
 #: conta como bloqueio.
 BLOCK_MARKERS = (STATUS_BLOCKED, "EXECUÇÃO PAUSADA")
 BACKUP_PREFIX = "_backup_"
+#: Doubt de qualidade, não bloqueante (ex.: defeito que sobrou após autocorreção).
+STATUS_WARNING = "**Status:** Aviso"
+#: Linha de status marcando resolução, em qualquer das convenções vigentes:
+#: "**Status:** Resolvido", "Status: Resolvido", "- **Status:** ✅ Resolvida".
+_RESOLVED_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?\**Status:\**\s*(?:✅\s*)?Resolvid[oa]\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def is_blocking_doubt(content: str) -> bool:
+    """True se o conteúdo de um Doubt_Artifact representa bloqueio ativo.
+
+    Uma linha de status "Resolvido" ou "Aviso" sempre vence: sem isso, um
+    doubt gerado pela clarificação genérica ("EXECUÇÃO PAUSADA" no cabeçalho)
+    continuaria bloqueando mesmo depois de resolvido ou rebaixado a aviso.
+    """
+    if _RESOLVED_RE.search(content) or STATUS_WARNING in content:
+        return False
+    return any(marker in content for marker in BLOCK_MARKERS)
 _SECTION_SEPARATOR = "\n<<<FIM_SECAO>>>\n"
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -75,7 +99,7 @@ def _resolve_dirs(base_dir: str | None = None) -> Dict[str, Path]:
     ⚠️  templates NUNCA são escopados por base_dir — são sempre lidos do
     TEMPLATE_DIR global do projeto.
     """
-    root = Path(base_dir).resolve() if base_dir else DESIGN_DIR
+    root = Path(base_dir).resolve() if base_dir else _design_dir()
     return {
         "root": root,
         "analysis": root / "analysis",
@@ -97,7 +121,7 @@ def _safety_root(base_dir: str | None = None) -> Path:
     aponta para outro lugar). Com base_dir, a área permitida é restrita ao
     próprio workspace isolado. TEMPLATE_DIR é sempre liberado em _is_safe_path.
     """
-    return Path(base_dir).resolve() if base_dir else DESIGN_DIR.resolve()
+    return Path(base_dir).resolve() if base_dir else _design_dir().resolve()
 
 
 def _ensure_dirs(dirs: Dict[str, Path]) -> None:
@@ -123,6 +147,18 @@ def _is_safe_path(path: Path, root: Path) -> bool:
         return resolved_path.is_relative_to(TEMPLATE_DIR.resolve())
     except (ValueError, RuntimeError):
         return False
+
+
+_MD_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})[^\n]*$", re.MULTILINE)
+
+
+def _sanitize_mermaid(content: str) -> str:
+    """Remove cercas de código Markdown (```mermaid ... ```) de um .mmd.
+
+    LLMs costumam embrulhar o diagrama em cercas; o gatekeeper trata a
+    primeira linha "```mermaid" como tipo de diagrama inválido e reprova.
+    """
+    return _MD_FENCE_RE.sub("", content).strip("\n") + "\n"
 
 
 def _next_version(path: Path) -> Path:
@@ -315,7 +351,7 @@ def _find_existing_file(filename: str, dirs: Dict[str, Path], root: Path) -> "Pa
 
 def _lock_path(filename: str) -> Path:
     safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", filename)
-    return LOCKS_DIR / f"{safe_name}.lock"
+    return _locks_dir() / f"{safe_name}.lock"
 
 
 def _read_lock(lock_file: Path) -> "Dict[str, Any] | None":
@@ -703,6 +739,8 @@ def save_artifact(filename: str, content: str, caller: str | None = "unknown", b
             shutil.move(str(destination), str(backup_path))
             versioned_backup = str(backup_path)
 
+        if destination.suffix == ".mmd":
+            content = _sanitize_mermaid(content)
         destination.write_text(content, encoding="utf-8")
         timestamp = datetime.now().isoformat()
 
@@ -893,7 +931,8 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
         equivalente a "**Status:** Bloqueado" — cobre Doubt_Artifacts que
         usam outra convenção de status (ex.: "Status: Pendente") mas que
         já se autodeclaram como pausa de execução.
-    Isso é aditivo: nenhum caso que já era detectado deixa de ser.
+    Uma linha de status Resolvido sempre libera o arquivo (mesmo com o
+    cabeçalho "EXECUÇÃO PAUSADA"); "**Status:** Aviso" nunca bloqueia.
 
     Args:
         caller:   Nome do agente solicitante (usado apenas para rastreabilidade).
@@ -921,7 +960,7 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
         for f in sorted(root.rglob("*")):
             if not f.is_file():
                 continue
-            if LOCKS_DIR.resolve() in f.resolve().parents:
+            if _locks_dir().resolve() in f.resolve().parents:
                 continue
             if f.name.startswith("Doubt_Artifact") and BACKUP_PREFIX not in f.name:
                 resolved = f.resolve()
@@ -929,7 +968,7 @@ def check_active_blocks(caller: str | None = "unknown", base_dir: str | None = N
                     continue
                 seen_paths.add(resolved)
                 content = f.read_text(encoding="utf-8")
-                if any(marker in content for marker in BLOCK_MARKERS):
+                if is_blocking_doubt(content):
                     parts = f.stem.split("_")
                     hu_id = parts[2] if len(parts) >= 3 else "desconhecido"
                     rel_folder = f.parent.relative_to(root)
@@ -1422,7 +1461,7 @@ def acquire_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
         if not filename:
             return {"status": "error", "error": "Nome de arquivo vazio."}
 
-        LOCKS_DIR.mkdir(parents=True, exist_ok=True)
+        _locks_dir().mkdir(parents=True, exist_ok=True)
         lock_file = _lock_path(filename)
         payload = json.dumps(
             {"owner": caller, "filepath": filename, "acquired_at": datetime.now().isoformat()},
@@ -1581,12 +1620,12 @@ def release_lock(filepath: str, caller: str | None = "unknown") -> Dict[str, Any
 # Ponto crítico confirmado (ver `extracao_manifesto_requisitos.md`, seção 5):
 # os `path` gravados pelo emissor de Requisitos são relativos à RAIZ DO
 # WORKSPACE (`get_workspace_root()`, que já É `workspace_output/`) — ex.:
-# "requirements/HUs/HU-001.md", SEM o prefixo "workspace_output/". Isso é
-# diferente da convenção que o próprio manifesto de Design usa para os SEUS
-# artifacts (`workflow_design_pipeline/manifest.py::_repo_relative`, relativo
-# à raiz do repo, COM o prefixo "workspace_output/"). `read_phase_artifact`
-# resolve pela convenção confirmada (sem prefixo) e normaliza defensivamente
-# um prefixo "workspace_output/" caso apareça — ver docstring da função.
+# "requirements/HUs/HU-001.md", SEM o prefixo "workspace_output/". O manifesto
+# de Design segue a mesma convenção para os SEUS artifacts
+# (`workflow_design_pipeline/manifest.py::_repo_relative`, ex.:
+# "design/analysis/x.md"). `read_phase_artifact` resolve por essa convenção e
+# normaliza defensivamente um prefixo legado ("workspace_output/" ou o nome da
+# pasta da sessão) caso apareça — ver docstring da função.
 
 def read_phase_manifest(
     phase: str,
@@ -1689,13 +1728,12 @@ def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, 
     `path` via `f.relative_to(ws_root)`). Um `path` real hoje se parece com
     "requirements/HUs/HU-001.md" — SEM o prefixo "workspace_output/".
 
-    Isso é diferente da convenção que o próprio manifesto de Design usa
-    (`workflow_design_pipeline/manifest.py::_repo_relative`, relativo à raiz
-    do repo, COM o prefixo "workspace_output/"). Como essa divergência entre
-    fases é uma possibilidade real (cada emissor decide sua própria
-    convenção hoje), esta função resolve primeiro pela convenção confirmada
-    (sem prefixo) e, defensivamente, tenta de novo removendo um eventual
-    prefixo "workspace_output/" antes de desistir — nunca aceita o path como
+    O manifesto de Design usa a mesma convenção
+    (`workflow_design_pipeline/manifest.py::_repo_relative`). Como manifestos
+    antigos ainda podem trazer um prefixo ("workspace_output/" ou, numa versão
+    intermediária, o nome da pasta da sessão), esta função resolve primeiro
+    pela convenção (sem prefixo) e, defensivamente, tenta de novo removendo
+    esses prefixos antes de desistir — nunca aceita o path como
     absoluto nem sai de dentro de workspace_output/, porque `path` vem de um
     manifesto de OUTRA fase (dado externo ao design, não confiável por
     padrão).
@@ -1723,9 +1761,10 @@ def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, 
         # aceita também — sem isso, um manifesto de outra fase que adote essa
         # convenção seria recusado por engano.
         if not candidate.exists():
-            prefix = f"{workspace_root.name}/"
-            if path.startswith(prefix):
-                candidate = (workspace_root / path[len(prefix):]).resolve()
+            for prefix in ("workspace_output/", f"{workspace_root.name}/"):
+                if path.startswith(prefix):
+                    candidate = (workspace_root / path[len(prefix):]).resolve()
+                    break
 
         if not candidate.is_relative_to(workspace_root):
             return {
@@ -1753,3 +1792,23 @@ def read_phase_artifact(path: str, caller: str | None = "unknown") -> Dict[str, 
 def list_versions(filepath: str) -> dict:
     """Mock: lista versões anteriores de um artefato."""
     return {"status": "ok", "versions": [], "filepath": filepath}
+
+
+def validate_analysis_sections_vinculada(agent_subdir: str):
+    """validate_analysis_sections presa à pasta de design da sessão corrente.
+
+    A tool não está na allowlist de binding de shared/agent_factory.py
+    (_FILESYSTEM_TOOL_NAMES), então create_se_agent a expõe com `base_dir`
+    visível no schema — o LLM poderia apontar outro workspace e passar o gate
+    de completude com a análise de outra sessão. Aqui o binding é feito no
+    próprio design, com o mesmo mecanismo da fábrica (closure que esconde
+    `base_dir`), sem alterar a fábrica.
+    """
+    from google.adk.tools import FunctionTool
+    from shared.agent_factory import _make_bound_closure, lazy_agent_workspace
+
+    return FunctionTool(
+        _make_bound_closure(
+            validate_analysis_sections, "base_dir", lazy_agent_workspace(agent_subdir)
+        )
+    )

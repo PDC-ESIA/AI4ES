@@ -42,11 +42,15 @@ class CoderGeneration:
     final_text: str = ""
     error: str | None = None
 
-    # Telemetria de execução: contagem de chamadas ao LLM e consumo de tokens
-    # (entrada/saída), agregados a partir do `usage_metadata` dos eventos.
+    # Telemetria de execução: contagem de chamadas ao LLM e consumo de tokens,
+    # agregados a partir do `usage_metadata` dos eventos. `cached_tokens` é a
+    # parcela de `prompt_tokens` servida do cache do provider (cobrada mais
+    # barato); `reasoning_tokens` já está contida em `completion_tokens`.
     llm_interactions: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    cached_tokens: int = 0
+    reasoning_tokens: int = 0
 
     @property
     def has_solution(self) -> bool:
@@ -109,6 +113,7 @@ async def run_coder(
     model: str | None = None,
     *,
     user_id: str = "mbpp-bench",
+    lean: bool = False,
 ) -> CoderGeneration:
     """Roda o coder para um problema e devolve os artefatos gerados.
 
@@ -127,12 +132,19 @@ async def run_coder(
     _limpar_dir(src_dir)
     _persistir_task(problem)
 
-    mensagem = build_coder_message(problem)
+    mensagem = build_coder_message(problem, lean=lean)
 
     # Telemetria agregada ao longo dos eventos emitidos pelo Runner.
-    prompt_tokens = 0
-    completion_tokens = 0
-    llm_interactions = 0
+    uso = dict.fromkeys(
+        (
+            "llm_interactions",
+            "prompt_tokens",
+            "completion_tokens",
+            "cached_tokens",
+            "reasoning_tokens",
+        ),
+        0,
+    )
 
     try:
         runner = Runner(
@@ -155,13 +167,14 @@ async def run_coder(
             new_message=content,
         ):
             # Cada evento com `usage_metadata` representa uma resposta finalizada
-            # do LLM; acumulamos tokens de entrada/saída e contamos a interação.
-            if event.usage_metadata:
-                prompt_tokens += event.usage_metadata.prompt_token_count or 0
-                completion_tokens += (
-                    event.usage_metadata.candidates_token_count or 0
-                )
-                llm_interactions += 1
+            # do LLM; acumulamos tokens e contamos a interação.
+            um = event.usage_metadata
+            if um:
+                uso["llm_interactions"] += 1
+                uso["prompt_tokens"] += um.prompt_token_count or 0
+                uso["completion_tokens"] += um.candidates_token_count or 0
+                uso["cached_tokens"] += um.cached_content_token_count or 0
+                uso["reasoning_tokens"] += um.thoughts_token_count or 0
             if event.content and event.content.parts:
                 for part in event.content.parts:
                     if part.text:
@@ -173,9 +186,7 @@ async def run_coder(
             solution_dir=src_dir,
             solution_file=None,
             error=f"{type(exc).__name__}: {exc}",
-            llm_interactions=llm_interactions,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
+            **uso,
         )
 
     solution_file = _localizar_solucao(src_dir, problem.entry_point)
@@ -188,7 +199,5 @@ async def run_coder(
         solution_file=solution_file,
         files=arquivos,
         final_text=final_text,
-        llm_interactions=llm_interactions,
-        prompt_tokens=prompt_tokens,
-        completion_tokens=completion_tokens,
+        **uso,
     )

@@ -63,6 +63,9 @@ A partir da raiz do repositório:
 # Smoke test: 3 problemas, 1 amostra cada (pass@1)
 python -m benchmarks.coding_review.mbpp.run --model github_copilot/gpt-4 --limit 3
 
+# Run econômico: split oficial de teste (257 problemas) em modo enxuto
+python -m benchmarks.coding_review.mbpp.run --model openrouter/openai/gpt-5-mini --split test --lean
+
 # Problemas específicos
 python -m benchmarks.coding_review.mbpp.run --model github_copilot/gpt-4 --task-ids Mbpp/2 Mbpp_3
 
@@ -83,7 +86,9 @@ python -m benchmarks.coding_review.mbpp.run \
 | Flag | Default | Descrição |
 | ---- | ------- | --------- |
 | `--model` | **obrigatório** | Modelo LLM a utilizar (ex.: `github_copilot/gpt-4`). |
-| `--limit` | todos (~427) | Máximo de problemas. |
+| `--limit` | todos | Máximo de problemas, aplicado depois de `--split`. |
+| `--split` | `all` | `all` (427 problemas) ou `test` (257, `task_id` 11–510 — o split reportado na literatura). |
+| `--lean` | desligado | Modo enxuto: o coder grava só o `solution.py` (ver [Custo](#custo)). |
 | `--task-ids` | — | Filtra por `task_id` específicos (`Mbpp/2`, `Mbpp_2` ou `2`). |
 | `--samples` | 1 | Amostras por problema (n). |
 | `--k` | 1 | Valores de k para pass@k. |
@@ -97,20 +102,21 @@ Cada execução cria um diretório em `results/` com nome **descritivo**, formad
 pelo timestamp e pelos parâmetros que caracterizam o run:
 
 ```
-run_<timestamp>_<modelo>_n<samples>_k<k>[_lim<limit>]
+run_<timestamp>_<modelo>_n<samples>_k<k>[_lim<limit>][_<split>][_lean]
 ```
 
-Exemplos:
+O split só aparece quando não é `all`. Exemplos:
 
 - `run_20260822_120000_github_copilot-gpt-4_n1_k1`
 - `run_20260822_120000_github_copilot-gpt-4_n5_k1-5_lim20`
+- `run_20261007_120000_openrouter-openai-gpt-5-mini_n1_k1_test_lean`
 
 O id do modelo é sanitizado (barras e caracteres inseguros viram `-`) para ser
 um nome de diretório válido. Cada diretório contém:
 
 - `report.json` — relatório completo (métricas + por problema + por amostra).
 - `report.md` — resumo legível.
-- `metadata.json` — parâmetros da execução (`model`, `samples`, `k`, `timeout`).
+- `metadata.json` — parâmetros da execução (`model`, `samples`, `k`, `timeout`, `lean`, `split`).
 - `progress.jsonl` — checkpoint incremental (um problema concluído por linha).
 - `workspace/` — workspace do coder usado na execução (para inspeção).
 
@@ -118,11 +124,43 @@ um nome de diretório válido. Cada diretório contém:
 
 Ao usar `--resume-dir`, o benchmark lê o `progress.jsonl` e **pula** os problemas
 já concluídos, completando apenas os restantes. Antes de retomar, um _guard_
-valida que os parâmetros atuais (`model`, `samples`, `k`, `timeout`) coincidem
-com os originais persistidos no `metadata.json` — abortando com erro em caso de
-divergência, para evitar misturar resultados de configurações diferentes. Runs
-antigos sem `metadata.json` são validados retroativamente a partir do
-`progress.jsonl`/`report.json` e migrados automaticamente.
+valida que os parâmetros atuais (`model`, `samples`, `k`, `timeout`, `lean`,
+`split`) coincidem com os originais persistidos no `metadata.json` — abortando
+com erro em caso de divergência, para evitar misturar resultados de
+configurações diferentes. Um `metadata.json` anterior a `--lean`/`--split` vale
+como modo completo sobre o dataset inteiro. Runs antigos sem `metadata.json`
+são validados retroativamente a partir do `progress.jsonl`/`report.json` e
+migrados automaticamente (e só podem ser retomados nesse mesmo modo).
+
+## Custo
+
+Quase todo o custo vem de tokens de **entrada**: o prompt de sistema do coder
+(~8 mil tokens) e as tools são reenviados a cada turno, e cada amostra leva
+vários turnos. Três alavancas, medidas com `openrouter/openai/gpt-5-mini` em
+2 problemas do split `test` (preços de tabela US$ 0,25 / 0,025 em cache / 2,00
+por milhão de tokens):
+
+| Configuração | Turnos/amostra | Entrada em cache | US$/amostra | MBPP `test` (257) |
+| ------------ | -------------- | ---------------- | ----------- | ----------------- |
+| Completo, preço cheio (sem considerar cache) | 5 | — | 0,0202 | 5,19 |
+| Completo, com cache | 5 | 87% | 0,0093 | 2,38 |
+| `--lean`, com cache | 2 | 58% | 0,0045 | 1,15 |
+
+- **Cache de prompt** — automático na OpenAI (prefixos ≥ 1024 tokens) e
+  implícito no Gemini; não requer mudança. O relatório registra
+  `cached_tokens` por amostra e `cache_hit_ratio` no total, para estimar o
+  custo real. O Claude (Anthropic) só faz cache com marcação explícita, que o
+  ADK/LiteLLM não fazem por padrão.
+- **`--split test`** — 257 em vez de 427 problemas (−40%), e é o subconjunto
+  comparável com outros trabalhos.
+- **`--lean`** — o coder deixa de gravar `PLAN.md`, `README.md` e `run.json`,
+  que não entram na nota. Mede o modelo de forma menos fiel ao fluxo real do
+  coder, por isso fica registrado em `metadata.json`/`report.json`, no nome do
+  diretório e no resume guard. Sem `--lean`, a mensagem enviada ao coder é a
+  mesma de antes desta opção.
+
+As contagens vêm de 2 problemas: rode um piloto (`--limit 10`) antes de
+extrapolar para outros modelos.
 
 ## Sandbox
 

@@ -27,10 +27,8 @@ seus base_dirs default — coder/src (get_agent_workspace("cr_coder"), entrada d
 coder), coder/execution ("cr_executor", saída da execução) e coder/tasks
 ("cr_context_engineer", a Task). Esses são exatamente os diretórios deste
 workflow; por isso compomos o harness direto, sem reinjetar paths. NÃO resolvemos
-esses caminhos no import de propósito: get_agent_workspace CRIA o diretório sem o
-marker `.ai4se_workspace`, e isso faria `init_workspace()` recusar limpar o
-workspace. Resolvê-los em tempo de chamada (após init_workspace) evita esse
-efeito colateral.
+esses caminhos no import de propósito: a raiz do workspace depende da sessão
+corrente (ver shared/workspace.py), só conhecida em tempo de chamada.
 
 Vive no LoopAgent [coder → executor]; o validador é AgentTool interna do
 executor. O reviewer permanece fora do loop.
