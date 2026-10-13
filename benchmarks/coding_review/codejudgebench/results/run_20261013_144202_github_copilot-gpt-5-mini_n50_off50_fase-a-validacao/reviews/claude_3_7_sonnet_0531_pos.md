@@ -1,0 +1,10 @@
+## Status: APROVADO
+
+## Issues
+- [warning] (completude) solution.py: Nenhum arquivo de testes (unit tests) foi incluído para validar a implementação contra casos simples, limites e a falha observada. A DoD esperava correção funcional automatizável (CA-01, CA-02) e não foram entregues testes que verifiquem isso.
+- [warning] (testes) solution.py: Não há testes cobrindo cenários críticos (por exemplo n mínimo 2, n pequeno como 4, n grande, e casos onde custos geram diferentes escolhas). Sem testes automatizados, regressões futuras são fáceis de passar despercebidas.
+- [info] (arquitetura) solution.py: A implementação usa uma tabela DP completa dp[0..n/2-1][3][3]. Embora assintoticamente correta e com complexidade O(n) (constante 81 por iteração), a representação com várias listas aninhadas gera overhead de objetos Python (muitas listas pequenas). Para n = 1e5 isso é aceitável em memórias típicas, mas não é a opção mais eficiente — recomenda-se reduzir para DP em dois níveis (rolling array) para diminuir a alocação de muitos objetos e melhorar locality.
+- [info] (corretude) solution.py: A função retorna um float (usando float('inf') e soma de floats). O resultado válido nunca será não-inteiro, mas por fidelidade ao tipo esperado seria melhor converter o resultado final para int antes de retornar (ex.: return int(min_cost)). Isso não invalida a correção, mas melhora aderência à assinatura/expectativa do problema.
+
+## Resumo
+A implementação entregue em solution.py corrige o problema da abordagem recursiva (evita estouro de pilha) e aplica um DP iterativo por pares equidistantes, respeitando as restrições de não repetição entre adjacentes e entre casas equidistantes. A solução é correta em lógica e tem complexidade linear em n com fator constante pequeno — deve executar dentro dos limites para n ≤ 1e5. Não foram encontradas falhas críticas que bloqueiem a aceitação; as observações levantadas são melhorias (teste ausente, otimização de memória, coerência de tipo de retorno). Recomendo adicionar testes automatizados e, se desejar otimizar memória/tempo, reescrever para usar apenas duas camadas de DP em vez de alocar toda a tabela.
