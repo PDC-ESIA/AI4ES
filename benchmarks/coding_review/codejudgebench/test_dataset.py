@@ -55,6 +55,25 @@ def test_amostra_menor_e_prefixo_da_maior(pares):
     assert [p.pair_id for p in grande[:4]] == [p.pair_id for p in pequena]
 
 
+def test_offset_devolve_as_posicoes_seguintes_sem_sobrepor():
+    pares = [_par(i, f"Q{i}") for i in range(30)]
+    desenvolvimento = dataset.select_pairs(pares, limit=10, seed=42)
+    validacao = dataset.select_pairs(pares, limit=10, offset=10, seed=42)
+    tudo = dataset.select_pairs(pares, limit=20, seed=42)
+    assert {p.pair_id for p in desenvolvimento}.isdisjoint({p.pair_id for p in validacao})
+    assert [p.pair_id for p in tudo] == [p.pair_id for p in desenvolvimento + validacao]
+
+
+def test_offset_aplica_depois_do_limite_por_questao(pares):
+    # 30 pares em 10 problemas: com 1 por problema restam 10; o offset corta essa lista.
+    assert len(dataset.select_pairs(pares, offset=7, seed=42)) == 3
+
+
+def test_offset_negativo_e_recusado(pares):
+    with pytest.raises(ValueError, match="offset"):
+        dataset.select_pairs(pares, offset=-1)
+
+
 def test_um_par_por_questao_por_padrao(pares):
     amostra = dataset.select_pairs(pares, seed=42)
     questoes = [p.question_id for p in amostra]
