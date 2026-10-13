@@ -1,0 +1,1319 @@
+{
+  "generated_at": "2026-10-05T15:38:40.529620+00:00",
+  "model": "github_copilot/gpt-4",
+  "num_problems": 50,
+  "samples_per_problem": 1,
+  "pass_at_k": {
+    "pass@1": 0.94
+  },
+  "usage_metrics": {
+    "total_llm_interactions": 194,
+    "total_prompt_tokens": 2085068,
+    "total_completion_tokens": 26702,
+    "total_tokens": 2111770,
+    "total_duration_s": 567.63
+  },
+  "problems": [
+    {
+      "task_id": "HumanEval/0",
+      "entry_point": "has_close_elements",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 38.82,
+          "llm_interactions": 3,
+          "prompt_tokens": 32165,
+          "completion_tokens": 505
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/1",
+      "entry_point": "separate_paren_groups",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 12.06,
+          "llm_interactions": 4,
+          "prompt_tokens": 43191,
+          "completion_tokens": 559
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/2",
+      "entry_point": "truncate_number",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 11.23,
+          "llm_interactions": 4,
+          "prompt_tokens": 42613,
+          "completion_tokens": 402
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/3",
+      "entry_point": "below_zero",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 11.31,
+          "llm_interactions": 4,
+          "prompt_tokens": 43046,
+          "completion_tokens": 527
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/4",
+      "entry_point": "mean_absolute_deviation",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.56,
+          "llm_interactions": 4,
+          "prompt_tokens": 43075,
+          "completion_tokens": 573
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/5",
+      "entry_point": "intersperse",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.82,
+          "llm_interactions": 4,
+          "prompt_tokens": 42965,
+          "completion_tokens": 569
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/6",
+      "entry_point": "parse_nested_parens",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 15.74,
+          "llm_interactions": 4,
+          "prompt_tokens": 43291,
+          "completion_tokens": 599
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/7",
+      "entry_point": "filter_by_substring",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.88,
+          "llm_interactions": 4,
+          "prompt_tokens": 42775,
+          "completion_tokens": 483
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/8",
+      "entry_point": "sum_product",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.83,
+          "llm_interactions": 4,
+          "prompt_tokens": 42947,
+          "completion_tokens": 533
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/9",
+      "entry_point": "rolling_max",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.23,
+          "llm_interactions": 4,
+          "prompt_tokens": 42865,
+          "completion_tokens": 490
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/10",
+      "entry_point": "make_palindrome",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.77,
+          "llm_interactions": 4,
+          "prompt_tokens": 43432,
+          "completion_tokens": 642
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/11",
+      "entry_point": "string_xor",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 12.4,
+          "llm_interactions": 4,
+          "prompt_tokens": 42657,
+          "completion_tokens": 458
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/12",
+      "entry_point": "longest",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.29,
+          "llm_interactions": 4,
+          "prompt_tokens": 42896,
+          "completion_tokens": 510
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/13",
+      "entry_point": "greatest_common_divisor",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.57,
+          "llm_interactions": 4,
+          "prompt_tokens": 42662,
+          "completion_tokens": 448
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/14",
+      "entry_point": "all_prefixes",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.0,
+          "llm_interactions": 4,
+          "prompt_tokens": 42573,
+          "completion_tokens": 429
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/15",
+      "entry_point": "string_sequence",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.19,
+          "llm_interactions": 4,
+          "prompt_tokens": 42554,
+          "completion_tokens": 451
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/16",
+      "entry_point": "count_distinct_characters",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "PLAN.md",
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.78,
+          "llm_interactions": 2,
+          "prompt_tokens": 21579,
+          "completion_tokens": 666
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/17",
+      "entry_point": "parse_music",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.32,
+          "llm_interactions": 4,
+          "prompt_tokens": 43576,
+          "completion_tokens": 682
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/18",
+      "entry_point": "how_many_times",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.99,
+          "llm_interactions": 4,
+          "prompt_tokens": 42911,
+          "completion_tokens": 505
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/19",
+      "entry_point": "sort_numbers",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 7.75,
+          "llm_interactions": 3,
+          "prompt_tokens": 32150,
+          "completion_tokens": 542
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/20",
+      "entry_point": "find_closest_elements",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.11,
+          "llm_interactions": 4,
+          "prompt_tokens": 43746,
+          "completion_tokens": 716
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/21",
+      "entry_point": "rescale_to_unit",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.65,
+          "llm_interactions": 4,
+          "prompt_tokens": 43130,
+          "completion_tokens": 531
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/22",
+      "entry_point": "filter_integers",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.08,
+          "llm_interactions": 4,
+          "prompt_tokens": 42813,
+          "completion_tokens": 456
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/23",
+      "entry_point": "strlen",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.23,
+          "llm_interactions": 4,
+          "prompt_tokens": 42334,
+          "completion_tokens": 390
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/24",
+      "entry_point": "largest_divisor",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.12,
+          "llm_interactions": 4,
+          "prompt_tokens": 42545,
+          "completion_tokens": 455
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/25",
+      "entry_point": "factorize",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.88,
+          "llm_interactions": 4,
+          "prompt_tokens": 43180,
+          "completion_tokens": 605
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/26",
+      "entry_point": "remove_duplicates",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.23,
+          "llm_interactions": 4,
+          "prompt_tokens": 42791,
+          "completion_tokens": 490
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/27",
+      "entry_point": "flip_case",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.17,
+          "llm_interactions": 4,
+          "prompt_tokens": 42381,
+          "completion_tokens": 385
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/28",
+      "entry_point": "concatenate",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.81,
+          "llm_interactions": 4,
+          "prompt_tokens": 42466,
+          "completion_tokens": 430
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/29",
+      "entry_point": "filter_by_prefix",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 13.63,
+          "llm_interactions": 4,
+          "prompt_tokens": 42721,
+          "completion_tokens": 464
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/30",
+      "entry_point": "get_positive",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 11.18,
+          "llm_interactions": 4,
+          "prompt_tokens": 42838,
+          "completion_tokens": 469
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/31",
+      "entry_point": "is_prime",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.09,
+          "llm_interactions": 4,
+          "prompt_tokens": 42969,
+          "completion_tokens": 541
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/32",
+      "entry_point": "find_zero",
+      "n": 1,
+      "correct": 0,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": false,
+          "reason": "Avaliação falhou (exit=1).",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 1,
+          "timed_out": false,
+          "stderr_tail": "Traceback (most recent call last):\n  File \"/tmp/ai4se-sandbox-5j02qtug/_ai4se_humaneval_grade.py\", line 28, in <module>\n    check(_candidate)\n    ~~~~~^^^^^^^^^^^^\n  File \"/tmp/ai4se-sandbox-5j02qtug/_ai4se_humaneval_grade.py\", line 24, in check\n    assert math.fabs(poly(coeffs, solution)) < 1e-4\n                     ^^^^\nNameError: name 'poly' is not defined\n",
+          "duration_s": 14.84,
+          "llm_interactions": 4,
+          "prompt_tokens": 45054,
+          "completion_tokens": 1000
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/33",
+      "entry_point": "sort_third",
+      "n": 1,
+      "correct": 0,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": false,
+          "reason": "Avaliação falhou (exit=1).",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 1,
+          "timed_out": false,
+          "stderr_tail": "Traceback (most recent call last):\n  File \"/tmp/ai4se-sandbox-vg7vdayz/_ai4se_humaneval_grade.py\", line 21, in <module>\n    check(_candidate)\n    ~~~~~^^^^^^^^^^^^\n  File \"/tmp/ai4se-sandbox-vg7vdayz/_ai4se_humaneval_grade.py\", line 11, in check\n    assert tuple(candidate([1, 2, 3])) == tuple(sort_third([1, 2, 3]))\n                                                ^^^^^^^^^^\nNameError: name 'sort_third' is not defined\n",
+          "duration_s": 14.43,
+          "llm_interactions": 4,
+          "prompt_tokens": 43500,
+          "completion_tokens": 653
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/34",
+      "entry_point": "unique",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 11.37,
+          "llm_interactions": 3,
+          "prompt_tokens": 31819,
+          "completion_tokens": 432
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/35",
+      "entry_point": "max_element",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 11.64,
+          "llm_interactions": 4,
+          "prompt_tokens": 42760,
+          "completion_tokens": 479
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/36",
+      "entry_point": "fizz_buzz",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.78,
+          "llm_interactions": 4,
+          "prompt_tokens": 42769,
+          "completion_tokens": 459
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/37",
+      "entry_point": "sort_even",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.02,
+          "llm_interactions": 4,
+          "prompt_tokens": 43278,
+          "completion_tokens": 580
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/38",
+      "entry_point": "decode_cyclic",
+      "n": 1,
+      "correct": 0,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": false,
+          "reason": "Avaliação falhou (exit=1).",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 1,
+          "timed_out": false,
+          "stderr_tail": "Traceback (most recent call last):\n  File \"/tmp/ai4se-sandbox-vkmd4327/_ai4se_humaneval_grade.py\", line 22, in <module>\n    check(_candidate)\n    ~~~~~^^^^^^^^^^^^\n  File \"/tmp/ai4se-sandbox-vkmd4327/_ai4se_humaneval_grade.py\", line 17, in check\n    encoded_str = encode_cyclic(str)\n                  ^^^^^^^^^^^^^\nNameError: name 'encode_cyclic' is not defined\n",
+          "duration_s": 14.99,
+          "llm_interactions": 4,
+          "prompt_tokens": 43737,
+          "completion_tokens": 736
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/39",
+      "entry_point": "prime_fib",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.41,
+          "llm_interactions": 4,
+          "prompt_tokens": 43340,
+          "completion_tokens": 636
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/40",
+      "entry_point": "triples_sum_to_zero",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.58,
+          "llm_interactions": 4,
+          "prompt_tokens": 43421,
+          "completion_tokens": 590
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/41",
+      "entry_point": "car_race_collision",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.26,
+          "llm_interactions": 4,
+          "prompt_tokens": 43298,
+          "completion_tokens": 545
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/42",
+      "entry_point": "incr_list",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.25,
+          "llm_interactions": 4,
+          "prompt_tokens": 42857,
+          "completion_tokens": 499
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/43",
+      "entry_point": "pairs_sum_to_zero",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 7.67,
+          "llm_interactions": 3,
+          "prompt_tokens": 32389,
+          "completion_tokens": 590
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/44",
+      "entry_point": "change_base",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 11.54,
+          "llm_interactions": 4,
+          "prompt_tokens": 42893,
+          "completion_tokens": 564
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/45",
+      "entry_point": "triangle_area",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.55,
+          "llm_interactions": 4,
+          "prompt_tokens": 42364,
+          "completion_tokens": 387
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/46",
+      "entry_point": "fib4",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 10.21,
+          "llm_interactions": 4,
+          "prompt_tokens": 43610,
+          "completion_tokens": 644
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/47",
+      "entry_point": "median",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.23,
+          "llm_interactions": 4,
+          "prompt_tokens": 42771,
+          "completion_tokens": 483
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/48",
+      "entry_point": "is_palindrome",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 8.29,
+          "llm_interactions": 4,
+          "prompt_tokens": 42570,
+          "completion_tokens": 441
+        }
+      ]
+    },
+    {
+      "task_id": "HumanEval/49",
+      "entry_point": "modp",
+      "n": 1,
+      "correct": 1,
+      "samples": [
+        {
+          "sample": 0,
+          "passed": true,
+          "reason": "",
+          "solution_file": "solution.py",
+          "files": [
+            "README.md",
+            "run.json",
+            "solution.py"
+          ],
+          "exit_code": 0,
+          "timed_out": false,
+          "stderr_tail": "",
+          "duration_s": 9.79,
+          "llm_interactions": 4,
+          "prompt_tokens": 42801,
+          "completion_tokens": 479
+        }
+      ]
+    }
+  ]
+}
