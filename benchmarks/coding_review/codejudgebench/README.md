@@ -48,6 +48,8 @@ família do reviewer.
 | --- | --- | --- |
 | `--model` | obrigatório | Modelo do reviewer (sobrescreve `ADK_LLM_MODEL`) |
 | `--limit` | todos | Número de pares |
+| `--offset` | `0` | Pula as N primeiras posições da amostra (`--offset 50 --limit 50` = validação) |
+| `--label` | — | Rótulo do experimento, anexado ao nome da pasta (ex.: `fase-b-v1`) |
 | `--split` | `claude_3.7_sonnet` | Modelo que gerou as respostas: `claude_3.7_sonnet`, `gemini_2.5_flash`, `gemini_2.5_pro` |
 | `--seed` | `42` | Semente da amostragem |
 | `--max-per-question` | `1` | Pares por problema (`0` = sem limite) |
@@ -80,6 +82,37 @@ Relê os markdowns de `reviews/`, refaz a leitura das issues (severidade, camada
 com o parser atual e regrava `report.json` e `report.md`. Os vereditos não mudam:
 vêm do manifesto no momento do run. Use depois de corrigir o parser, sem pagar
 um novo run.
+
+### Comparar dois runs
+
+```bash
+python -m benchmarks.coding_review.codejudgebench.compare <run_referencia> <run_candidato> --output comparacao.md
+```
+
+Compara par a par as métricas principais (acurácia, aprovou código que falha,
+bloqueou código que passa), com o teste de McNemar exato, e lista os pares que
+mudaram de desfecho — o ponto de partida para ler as revisões e entender por quê.
+Use sempre que uma mudança no reviewer for medida contra o baseline.
+
+### Desenvolvimento e validação
+
+Ajustar o reviewer olhando os mesmos pares até o número subir decora a amostra.
+Por isso a amostra é dividida:
+
+| Conjunto | Comando | Uso |
+| --- | --- | --- |
+| Desenvolvimento | `--limit 50` (posições 1–50) | Iterar, comparar, ler os erros |
+| Validação | `--offset 50 --limit 50` (posições 51–100) | Rodar **uma vez**, só na versão final de cada mudança |
+
+As posições 51–100 são problemas distintos das 1–50 (máx. 1 par por problema).
+
+### Versão do código
+
+O `metadata.json` registra o commit e se o harness ou o reviewer tinham
+alterações não commitadas (`code.dirty`, com os arquivos em `code.dirty_paths`).
+Um run de iteração, feito antes do commit, aparece como
+`código <commit> + alterações não commitadas` no relatório — o rótulo
+(`--label`) diz qual iteração foi.
 
 ## Métricas
 
