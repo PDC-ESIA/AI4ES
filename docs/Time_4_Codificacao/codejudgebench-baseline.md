@@ -151,6 +151,36 @@ O metadata desses runs registra o commit `19b1e6f9`, feito segundos depois do
 início; o código executado foi o de `c0cebe2c`, que difere só no README do
 benchmark. O harness passou a capturar a versão no início do processo.
 
+### Fase B — rigor com desempenho (investigada, não adotada)
+
+**Hipótese:** o gpt-5-mini bloqueia respostas corretas por prever Time Limit
+Exceeded; como o reviewer não executa código, suspeita de desempenho deveria
+ser `warning`, não `critical`.
+
+**Antes de mudar o prompt**, a hipótese foi testada sem LLM: as issues que o
+reviewer já escreveu nas 200 revisões salvas foram reclassificadas por regra e o
+veredito recalculado (`severity_simulation.py`). Sem regra nenhuma (V0), o
+simulador concorda com o veredito real em 96/100 revisões nos dois conjuntos.
+
+| Regra | Desenvolvimento: acertos · aprovou neg · bloqueou pos | Validação: idem |
+| --- | --- | --- |
+| V0 — sem mudança | 27 · 6 · 18 | 32 · 10 · 10 |
+| V1 — crítica só de desempenho vira `warning` | **21** · 19 · 10 | **25** · 22 · 8 |
+| V2 — idem, exceto se a falha original foi TLE | 28 · 9 · 14 | 31 · 12 · 10 |
+
+**Resultado negativo.** A V1 piora o reviewer: libera respostas corretas, mas
+triplica a aprovação de código que falha — muitas `neg` falham nos testes
+justamente por tempo (15 das 18 `neg` bloqueadas só por desempenho no
+desenvolvimento vinham de código original com TLE). A V2 fica neutra. Nenhuma
+justifica um run pago.
+
+**Por quê:** nos bloqueios indevidos que sobram, a análise do reviewer é
+plausível — "laços aninhados, O(N²) com N até 3×10⁵" — e ainda assim a resposta
+passa nos testes ocultos. A informação que decide se há TLE só existe
+executando. Desempenho deve ser verificado pela execução (o executor do
+pipeline, com limite de tempo nos testes), não por uma regra no prompt do
+reviewer.
+
 ## Próximos passos (outras issues)
 
 - Decidir o modelo oficial do reviewer: os dados mostram que o gpt-4.1 não serve
