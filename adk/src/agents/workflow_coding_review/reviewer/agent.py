@@ -78,63 +78,14 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
-# Analyzer (usa a "alma" do prompt local)
+# Analyzer
 # ---------------------------------------------------------------------------
-# Composição: prompt base ajustado para:
-# - Ler arquivos do workspace (não diff git)
-# - Produzir markdown — persistência feita via after_agent_callback
-# - Não chamar tool_salvar_relatorio — responsabilidade do callback
+# O prompt.py já traz a instrução na forma usada aqui (lê os arquivos do
+# workspace, produz markdown, persistência pelo callback). Antes ele era escrito
+# para "diff git" e adaptado com .replace() de strings exatas — uma edição de um
+# espaço no prompt.py desfazia a adaptação em silêncio.
 
-_ANALYZER_BASE = (
-    reviewer_prompt.instruction.replace(
-        "para ir à branch principal.",
-        "para prosseguir no pipeline.",
-    )
-    .replace(
-        "Consulte o diff acumulado da branch para listar TODOS os arquivos modificados/criados.",
-        "Leia os arquivos criados pelo coder no workspace (listados abaixo em ARQUIVOS A REVISAR).",
-    )
-    .replace(
-        "Examine os arquivos modificados no diff.",
-        "Examine os arquivos listados em ARQUIVOS A REVISAR.",
-    )
-    .replace(
-        "Examine o corpo das funções de lógica core no diff.",
-        "Examine o corpo das funções de lógica core nos arquivos.",
-    )
-    .replace(
-        "Verifique se arquivos de teste foram criados no diff.",
-        "Verifique se arquivos de teste foram criados no workspace.",
-    )
-    .replace(
-        "# SAÍDA FINAL\n"
-        "Após completar as 4 camadas:\n"
-        '1. Salve o relatório detalhado da verificação em Markdown com nome "verificacao_revisao.md".\n'
-        "2. Sua **última mensagem** DEVE ser EXCLUSIVAMENTE um JSON conforme o schema\n"
-        "   ReviewOutput do sistema:\n"
-        "\n"
-        "{\n"
-        '  "status": "APROVADO",\n'
-        '  "issues": [\n'
-        '    {"severity": "critical", "description": "Função X não trata exceção Y", "file": "src/service.py", "layer": "corretude"},\n'
-        '    {"severity": "warning", "description": "Falta docstring", "file": "src/utils.py", "layer": "arquitetura"}\n'
-        "  ],\n"
-        '  "report_path": "verificacao_revisao.md"\n'
-        "}\n"
-        "\n"
-        'Use "APROVADO" ou "BLOQUEADO" no campo `status`.',
-        "# SAÍDA\n"
-        "Sua responsabilidade é PRODUZIR A ANÁLISE em markdown — a persistência em disco\n"
-        "é feita automaticamente pelo pipeline após sua resposta.\n"
-        "\n"
-        "Produza markdown com seções:\n"
-        '- "## Status: APROVADO" ou "## Status: BLOQUEADO"\n'
-        '- "## Issues" (lista por severidade com arquivo/camada/descrição)\n'
-        '- "## Resumo" (1 parágrafo)\n'
-        "\n"
-        "NÃO produza JSON literal.",
-    )
-)
+_ANALYZER_BASE = reviewer_prompt.instruction
 
 # Template final: injeta análise estática, workspace e lista de arquivos em runtime
 _ANALYZER_INSTRUCTION_TEMPLATE = (
