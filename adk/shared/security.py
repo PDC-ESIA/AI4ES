@@ -19,6 +19,17 @@ import re
 from collections import Counter
 from urllib.parse import urlparse
 
+# Esquema de URI genérico (RFC 3986 §3.1): credenciais embutidas em URL não
+# aparecem só em http(s) — strings de conexão como
+# `postgresql://user:senha@host`, `mysql://`, `mongodb+srv://`, `redis://`,
+# `amqp://` ou `ssh://` carregam a mesma senha e precisam da mesma redação.
+# O userinfo é opcional (`*`) porque a forma canônica do Redis omite o
+# usuário: `redis://:senha@host`.
+_ESQUEMA_URI = r"[A-Za-z][A-Za-z0-9+.\-]*"
+_PADRAO_URL_CREDENCIAL_REDACAO = re.compile(
+    rf"(?i)({_ESQUEMA_URI}://)([^/\s:@]*):([^@\s/]+)@"
+)
+
 
 def redigir_segredos(texto: str) -> str:
     """Redige credenciais de um texto livre (logs, stdout, tracebacks).
@@ -34,8 +45,10 @@ def redigir_segredos(texto: str) -> str:
     api_key/access_token/token/password/secret (com ou sem aspas ao redor da
     chave e/ou do valor — cobre tanto `api_key=valor`/`api_key: valor`
     quanto o formato JSON `"api_key": "valor"` e o YAML com valor entre
-    aspas `api_key: "valor"`), e credenciais embutidas em URL
-    (https://user:senha@host).
+    aspas `api_key: "valor"`), e credenciais embutidas em URI de qualquer
+    esquema (https://user:senha@host, postgresql://user:senha@host,
+    mongodb+srv://..., redis://..., amqp://..., ssh://... — ver
+    ``_ESQUEMA_URI``).
     """
     texto = re.sub(
         r"(?i)\b(authorization\s*[:=]\s*)[^\r\n,;]+",
@@ -74,10 +87,9 @@ def redigir_segredos(texto: str) -> str:
         texto,
     )
     return re.sub(
-        r"(https?://)([^/\s:@]+):([^@\s/]+)@",
+        _PADRAO_URL_CREDENCIAL_REDACAO,
         r"\1[REDACTED]@",
         texto,
-        flags=re.IGNORECASE,
     )
 
 
@@ -123,6 +135,115 @@ def ambiente_minimo_python(pythonpath: list[str] | None = None) -> dict[str, str
     env["PYTHONIOENCODING"] = "utf-8"
     if pythonpath:
         env["PYTHONPATH"] = os.pathsep.join(pythonpath)
+    return env
+
+
+# ---------------------------------------------------------------------------
+# Allowlist de ambiente para os runners de teste que executam NO HOST
+# (shared/testing/unit_runner.py e shared/testing/integration_adapters.py).
+# Mesmo princípio de ambiente_minimo_python, estendido às stacks não Python:
+# os dois faziam `os.environ.copy()`, entregando o ambiente inteiro da
+# máquina — GOOGLE_API_KEY, DATABASE_URL e o resto — a código de teste
+# gerado por LLM.
+# ---------------------------------------------------------------------------
+
+# Variáveis de SO comuns a qualquer runner. Paridade com _ALLOWLIST_PYTHON,
+# mais locale: as mensagens parseadas por result_normalization.py são em
+# inglês (surefire, jest, mocha, vitest), mas LANG/LC_ALL ainda definem o
+# encoding com que o runner lê os arquivos de teste — herdar o do host
+# preserva o tratamento de UTF-8 que o os.environ.copy() dava.
+_ALLOWLIST_RUNNER_SO = frozenset({
+    "SYSTEMROOT",
+    "WINDIR",
+    "PATH",
+    "PATHEXT",
+    "TEMP",
+    "TMP",
+    "HOME",
+    "USERPROFILE",
+    "LANG",
+    "LC_ALL",
+    "LANGUAGE",
+})
+
+_ALLOWLIST_RUNNER_POR_STACK = {
+    # Mesmo conjunto de runtime de ambiente_minimo_python.
+    "python": frozenset({"PYTHONIOENCODING", "PYTHONUTF8"}),
+    # Node resolve o runner por caminho local do projeto
+    # (node_modules/jest/bin/jest.js etc., ver execution_adapters.py), não
+    # por ambiente — não há variável necessária aqui.
+    "node": frozenset(),
+    # `mvnw`/`gradlew` exigem JAVA_HOME. Os caches ficam em ~/.m2 e
+    # ~/.gradle (cobertos por HOME) ou em GRADLE_USER_HOME, quando o dev
+    # customiza. M2_HOME ainda é lido por instalações antigas do script
+    # `mvn`.
+    "java": frozenset({"JAVA_HOME", "M2_HOME", "GRADLE_USER_HOME"}),
+    # Sem GOPATH/GOCACHE/GOMODCACHE o `go test` cai nos defaults derivados
+    # de HOME e recompila tudo; GOROOT normalmente vem do próprio binário,
+    # mas há instalações que dependem da variável. Nenhuma delas é caminho
+    # de import no modo módulos (go.mod), só de cache.
+    "go": frozenset({"GOROOT", "GOPATH", "GOCACHE", "GOMODCACHE"}),
+}
+
+# `stack` vem do catálogo de perfis, que não é uniforme: os perfis unitários
+# usam "javascript-typescript" e os de integração usam "node".
+_FAMILIA_DE_STACK = {
+    "python": "python",
+    "node": "node",
+    "javascript-typescript": "node",
+    "java": "java",
+    "go": "go",
+}
+
+# NÃO herdadas de propósito — não é esquecimento:
+#   NODE_OPTIONS, _JAVA_OPTIONS, JAVA_TOOL_OPTIONS, MAVEN_OPTS, GRADLE_OPTS,
+#   GOFLAGS      → injetam argumento/código no runner, contornando o argv
+#                  fechado que execution_adapters.py monta (o caso clássico
+#                  é NODE_OPTIONS=--require ./qualquer-coisa.js).
+#   NODE_PATH, PYTHONPATH, CLASSPATH
+#                → mudam de onde o runner carrega módulo; mesma razão de
+#                  ambiente_minimo_python nunca herdar PYTHONPATH.
+#   GOPROXY, GOPRIVATE, NPM_TOKEN, npm_config_*, credencial de repositório
+#                → podem embutir segredo. Sem elas, Go e Maven caem nos
+#                  defaults públicos (proxy.golang.org, Maven Central).
+# Qualquer outra variável do host fica fora por ser allowlist, não denylist.
+
+_logger_ambiente = logging.getLogger("qa_agent")
+
+
+def ambiente_minimo_runner(stack: str) -> dict[str, str]:
+    """Allowlist de ambiente para um runner de teste executado no host.
+
+    Substitui o `os.environ.copy()` de unit_runner/integration_adapters:
+    código de teste gerado por LLM roda com um ambiente explícito, não com o
+    do processo pai. `CI=1` é mantido (vários runners dependem dele para
+    saída não interativa).
+
+    Uma variável da allowlist ausente no host simplesmente não aparece no
+    dict (sem erro, sem string vazia), igual a ambiente_minimo_python.
+
+    Stack desconhecida falha fechada — devolve só o conjunto de SO, sem os
+    extras de nenhuma linguagem — e registra aviso. Levantar aqui derrubaria
+    a fronteira da tool, que não trata exceção na montagem do ambiente.
+    """
+    familia = _FAMILIA_DE_STACK.get(stack.strip().lower())
+    if familia is None:
+        _logger_ambiente.warning(
+            "Stack sem allowlist de ambiente definida (%r); usando somente o "
+            "conjunto de SO. Adicione a stack em _ALLOWLIST_RUNNER_POR_STACK.",
+            stack,
+        )
+    permitidas = _ALLOWLIST_RUNNER_SO | _ALLOWLIST_RUNNER_POR_STACK.get(
+        familia, frozenset()
+    )
+    env = {
+        chave: valor
+        for chave in sorted(permitidas)
+        if (valor := os.environ.get(chave)) is not None
+    }
+    env["CI"] = "1"
+    if familia == "python":
+        env["PYTHONIOENCODING"] = "utf-8"
     return env
 
 
@@ -421,7 +542,9 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
 
 _PADRAO_AUTHORIZATION = re.compile(r"(?i)\bauthorization[\"']?\s*[:=]\s*\S+")
 _PADRAO_BEARER = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
-_PADRAO_URL_CREDENCIAL = re.compile(r"(?i)https?://[^/\s:@]+:[^@\s/]+@")
+_PADRAO_URL_CREDENCIAL = re.compile(
+    rf"(?i){_ESQUEMA_URI}://[^/\s:@]*:[^@\s/]+@"
+)
 _PADRAO_ATRIBUICAO_SUSPEITA = re.compile(
     r"""(?ix)
     \b(api[_-]?key|access[_-]?token|token|password|passwd|secret|senha)\w*
@@ -534,7 +657,12 @@ def validar_seguranca_codigo(codigo: str, identificador: str) -> None:
 
 _PADRAO_PROCESS_ENV = re.compile(r"\bprocess\s*(?:\.\s*env\b|\[\s*['\"]env['\"]\s*\])")
 _PADRAO_REQUIRE_PERIGOSO = re.compile(
-    r"(?:\b(?:require|import)\s*\(\s*|\bfrom\s*|\bimport\s*)"
+    # `module['require'](...)` chega ao mesmo `require` sem o identificador
+    # — o mesmo bypass por element-access que validate-spec.cjs bloqueia na
+    # camada do contêiner; aqui é a defesa que roda ANTES de persistir.
+    r"(?:\b(?:require|import)\s*\(\s*"
+    r"|\[\s*[\"']require[\"']\s*\]\s*\(\s*"
+    r"|\bfrom\s*|\bimport\s*)"
     r"[\"'](?:node:)?(?:child_process|fs|net|http|https|http2|tls|dgram|dns)"
     r"(?:/[^\"']*)?[\"']"
 )

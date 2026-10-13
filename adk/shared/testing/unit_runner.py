@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 from pathlib import Path
 from typing import Any
 
+from shared.security import ambiente_minimo_runner
 from shared.workspace import get_agent_workspace
 
 from . import execution_adapters as runtime_adapters
@@ -35,11 +35,21 @@ def _blocked(profile_id: str, code: str, message: str) -> dict[str, Any]:
 def unit_profile_execution_environment(
     profile_id: str, executable: str
 ) -> dict[str, str]:
-    """Monta o ambiente comum sem instalar ou alterar runtimes."""
-    del profile_id, executable
-    environment = os.environ.copy()
-    environment["CI"] = "1"
-    return environment
+    """Monta o ambiente mínimo do runner, sem instalar ou alterar runtimes.
+
+    Antes era `os.environ.copy()`, o que entregava o ambiente inteiro da
+    máquina — GOOGLE_API_KEY e qualquer outro segredo do processo pai — a
+    código de teste gerado por LLM. Agora é allowlist explícita por stack
+    (ver `ambiente_minimo_runner`), mesmo princípio do
+    `ambiente_minimo_python` usado no caminho sandboxado.
+    """
+    del executable  # o runner vem do argv fechado, não do ambiente
+    try:
+        stack = get_unit_test_profile(profile_id).stack
+    except ValueError:
+        # Perfil fora do catálogo: falha fechada no ambiente mínimo de SO.
+        stack = ""
+    return ambiente_minimo_runner(stack)
 
 
 def _go_command(

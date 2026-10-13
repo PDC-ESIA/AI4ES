@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
+
+from shared.security import ambiente_minimo_runner
 
 from . import execution_adapters as runtime_adapters
 from .integration_profiles import INTEGRATION_TEST_PROFILES
@@ -101,7 +102,8 @@ def execute_integration_adapter(
     timeout_seconds: int = _DEFAULT_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     """Executa o adaptador e devolve o resultado bruto ao normalizador."""
-    if INTEGRATION_TEST_PROFILES.get(profile_id) is None:
+    profile = INTEGRATION_TEST_PROFILES.get(profile_id)
+    if profile is None:
         return _blocked(profile_id, "PERFIL_DESCONHECIDO", "Perfil não registrado.")
     try:
         root, test = validate_test_path(
@@ -119,8 +121,11 @@ def execute_integration_adapter(
             blocker or "Executor de integração indisponível.",
         )
 
-    environment = os.environ.copy()
-    environment["CI"] = "1"
+    # Allowlist explícita em vez de os.environ.copy(): o teste de integração
+    # é código gerado por LLM e não pode receber o ambiente inteiro do host
+    # (GOOGLE_API_KEY, DATABASE_URL, ...). Mesmo princípio do
+    # ambiente_minimo_python usado no caminho sandboxado.
+    environment = ambiente_minimo_runner(profile.stack)
     try:
         process = subprocess.run(
             command,
