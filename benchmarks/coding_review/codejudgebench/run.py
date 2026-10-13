@@ -51,6 +51,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--model", default=None, help="Modelo LLM do reviewer (obrigatório, ex.: github_copilot/gpt-4).")
     p.add_argument("--limit", type=int, default=None, help="Máximo de pares a avaliar (default: todos os elegíveis).")
+    p.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="Pula as N primeiras posições da amostra; --offset 50 --limit 50 = conjunto de validação (default: 0).",
+    )
+    p.add_argument(
+        "--label",
+        default=None,
+        help="Rótulo do experimento, anexado ao nome da pasta do run (ex.: fase-b-v1).",
+    )
     p.add_argument("--split", default=ds.DEFAULT_SPLIT, choices=ds.SPLITS, help=f"Split do CodeRepair (default: {ds.DEFAULT_SPLIT}).")
     p.add_argument("--seed", type=int, default=ds.DEFAULT_SEED, help=f"Semente da amostragem (default: {ds.DEFAULT_SEED}).")
     p.add_argument(
@@ -144,8 +155,13 @@ def _sanitizar_componente(valor: str) -> str:
 
 
 def _construir_nome_run(args: argparse.Namespace, timestamp: str, n_pares: int) -> str:
-    """Formato da issue #421: ``run_<timestamp>_<modelo>_n<N>``."""
-    return f"run_{timestamp}_{_sanitizar_componente(args.model)}_n{n_pares}"
+    """Formato da issue #421: ``run_<timestamp>_<modelo>_n<N>[_off<O>][_<label>]``."""
+    nome = f"run_{timestamp}_{_sanitizar_componente(args.model)}_n{n_pares}"
+    if args.offset:
+        nome += f"_off{args.offset}"
+    if args.label:
+        nome += f"_{_sanitizar_componente(args.label)}"
+    return nome
 
 
 def _carregar_progresso(progress_path: Path) -> dict[str, dict]:
@@ -212,6 +228,42 @@ def _validar_e_persistir_config(run_dir: Path, args: argparse.Namespace, context
     return metadata
 
 
+# Código cuja versão define o resultado medido: o harness e o reviewer.
+_CAMINHOS_VERSIONADOS = (
+    "benchmarks/coding_review/codejudgebench",
+    "adk/src/agents/workflow_coding_review/reviewer",
+    "adk/shared/tools/coding_tools/review_tools.py",
+)
+
+
+def _versao_do_codigo() -> dict:
+    """Commit atual e se o harness/reviewer tinham alterações não commitadas.
+
+    Um run com `dirty=True` foi medido com código que não está em nenhum commit
+    (ex.: uma iteração de prompt em andamento) — o rótulo do run diz qual.
+    """
+    import subprocess
+
+    raiz = Path(__file__).resolve().parents[3]
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=raiz, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--", *_CAMINHOS_VERSIONADOS],
+            cwd=raiz,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        alterados = [
+            linha[3:] for linha in status.splitlines() if linha.strip() and "/results/" not in linha
+        ]
+        return {"commit": commit, "dirty": bool(alterados), "dirty_paths": alterados}
+    except Exception:  # noqa: BLE001 — sem git, o run segue; só perde o registro
+        return {"commit": None, "dirty": None, "dirty_paths": []}
+
+
 def _contexto_do_ambiente(args: argparse.Namespace, pares: list[ds.RepairPair]) -> dict:
     """Protocolo §5/§6: registrar ambiente, versões e parâmetros do experimento."""
     try:
@@ -224,6 +276,9 @@ def _contexto_do_ambiente(args: argparse.Namespace, pares: list[ds.RepairPair]) 
     return {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "limit": args.limit,
+        "offset": args.offset,
+        "label": args.label,
+        "code": _versao_do_codigo(),
         "pair_ids": [p.pair_id for p in pares],
         "dataset": ds.dataset_metadata(args.dataset_dir, args.split),
         "mode": "pointwise",
@@ -338,16 +393,20 @@ def _render_markdown(relatorio: dict) -> str:
     cfg = meta["config"]
     dataset_meta = meta.get("dataset") or {}
     j, d, f = m["judgment"], m["decision"], m["format"]
+    offset = meta.get("offset") or 0
+    codigo = meta.get("code") or {}
+    versao = (codigo.get("commit") or "?")[:8] + (" + alterações não commitadas" if codigo.get("dirty") else "")
     linhas = [
         "# Benchmark CodeJudgeBench (CodeRepair) — Reviewer Agent",
         "",
         f"- **Gerado em:** {relatorio['generated_at']}",
         f"- **Status do run:** {'completo' if relatorio['complete'] else 'INTERROMPIDO (resultados parciais)'}",
+        f"- **Experimento:** `{meta.get('label') or 'sem rótulo'}` · código `{versao}`",
         f"- **Modelo do reviewer:** `{cfg['model']}`",
         f"- **Dataset:** `{dataset_meta.get('dataset', ds.DATASET_ID)}` · config `{ds.CONFIG}` · "
         f"split `{cfg['split']}` · revisão `{(dataset_meta.get('revision') or '?')[:12]}`",
-        f"- **Amostra:** {m['pairs']['total']} pares · seed {cfg['seed']} · "
-        f"máx. {cfg['max_per_question'] or 'ilimitado'} par(es) por problema",
+        f"- **Amostra:** {m['pairs']['total']} pares (posições {offset + 1}–{offset + m['pairs']['total']}) · "
+        f"seed {cfg['seed']} · máx. {cfg['max_per_question'] or 'ilimitado'} par(es) por problema",
         f"- **Modo:** pontual (cada resposta revisada separadamente) · relato do coder: "
         f"{'sim' if cfg['include_explanation'] else 'não'} · retries: {cfg['max_retries']} · "
         f"análise estática: {'ligada' if meta.get('reviewer_static_analysis') else 'desligada'}",
@@ -459,6 +518,7 @@ def main(argv: list[str] | None = None) -> int:
         args.dataset_dir,
         split=args.split,
         limit=args.limit,
+        offset=args.offset,
         seed=args.seed,
         max_per_question=args.max_per_question or None,
         pair_ids=args.pair_ids,
