@@ -10,6 +10,11 @@ benchmarks/coding_review/humaneval/datasets/
 benchmarks/coding_review/humaneval/results/
 benchmarks/coding_review/mbpp/datasets/
 benchmarks/coding_review/mbpp/results/
+# BigCodeBench: o parquet é baixado dinamicamente; os resultados (report/metadata) são
+# versionados, mas não o workspace do coder nem o checkpoint de cada run.
+benchmarks/coding_review/bigcodebench/datasets/
+benchmarks/coding_review/bigcodebench/results/*/workspace/
+benchmarks/coding_review/bigcodebench/results/*/progress.jsonl
 benchmarks/construcao/resultados/
 
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
