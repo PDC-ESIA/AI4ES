@@ -133,7 +133,10 @@ def ambiente_minimo_python(pythonpath: list[str] | None = None) -> dict[str, str
 # rede, o objetivo é barrar isso antes de o código ser persistido/executado).
 # ---------------------------------------------------------------------------
 
-_PREFIXOS_RISCO_REDE = ("socket.", "requests.", "httpx.", "aiohttp.", "urllib.request.")
+_PREFIXOS_RISCO_REDE = (
+    "socket.", "requests.", "httpx.", "aiohttp.", "urllib.request.",
+    "http.client.", "urllib3.", "ftplib.", "smtplib.",
+)
 
 _LOOPBACK_HOSTNAMES = {"localhost"}
 
@@ -143,10 +146,23 @@ _SEGMENTOS_IMPORT_PROIBIDOS = {"coder", "workspace_output"}
 
 
 def _dotted(node: ast.expr) -> str:
-    """Reconstrói `a.b.c` a partir de uma cadeia de ast.Attribute/ast.Name."""
+    """Reconstrói `a.b.c` a partir de uma cadeia de ast.Attribute/ast.Name.
+
+    Atravessa uma chamada intermediária na cadeia (`a.b().c` -> "a.b.c"),
+    sem incluir os "()" no nome — necessário para reconhecer padrões como
+    `urllib3.PoolManager().request(...)`, onde o alvo de risco só aparece
+    depois de uma chamada de construtor no meio da cadeia de atributos. Isso
+    NÃO resolve o caso de uma instância guardada numa variável antes de ser
+    usada (`s = requests.Session(); s.get(url)`) — esse continua sendo o
+    limite aceito documentado em detectar_riscos_codigo, porque ali não há
+    uma única expressão para percorrer, e sim duas instruções separadas.
+    """
     partes: list[str] = []
     atual = node
-    while isinstance(atual, ast.Attribute):
+    while isinstance(atual, (ast.Attribute, ast.Call)):
+        if isinstance(atual, ast.Call):
+            atual = atual.func
+            continue
         partes.append(atual.attr)
         atual = atual.value
     if isinstance(atual, ast.Name):
@@ -216,17 +232,30 @@ def _eh_loopback(host: str) -> bool:
         return False
 
 
-def _host_de_chamada(node: ast.Call) -> str | None:
-    """Extrai, quando estaticamente determinável, o host/URL alvo da chamada."""
-    if node.args:
-        primeiro = node.args[0]
-        if isinstance(primeiro, ast.Constant) and isinstance(primeiro.value, str):
-            return primeiro.value
+def _host_de_chamada(node: ast.Call, dotted: str = "") -> str | None:
+    """Extrai, quando estaticamente determinável, o host/URL alvo da chamada.
+
+    A convenção `.request(metodo, url, ...)` (requests.request, httpx.request,
+    urllib3 PoolManager.request) tem o alvo no SEGUNDO argumento posicional,
+    não no primeiro (que é o verbo HTTP) — por isso `dotted` é consultado
+    para inverter a ordem de tentativa só nesse caso. Sem isso,
+    `requests.request("GET", "https://attacker.example")` extrairia "GET"
+    como se fosse o host, e uma chamada equivalente para localhost seria
+    incorretamente sinalizada como risco (o "host" extraído nunca bate com
+    localhost/loopback porque na verdade é o verbo).
+    """
+    indices = (1, 0) if dotted.endswith(".request") else (0,)
+    for indice in indices:
+        if len(node.args) <= indice:
+            continue
+        candidato = node.args[indice]
+        if isinstance(candidato, ast.Constant) and isinstance(candidato.value, str):
+            return candidato.value
         # socket.connect(("host", porta)) / create_connection(("host", porta))
-        if isinstance(primeiro, ast.Tuple) and primeiro.elts:
-            candidato = primeiro.elts[0]
-            if isinstance(candidato, ast.Constant) and isinstance(candidato.value, str):
-                return candidato.value
+        if isinstance(candidato, ast.Tuple) and candidato.elts:
+            primeiro = candidato.elts[0]
+            if isinstance(primeiro, ast.Constant) and isinstance(primeiro.value, str):
+                return primeiro.value
     for kw in node.keywords:
         if kw.arg in {"url", "host"} and isinstance(kw.value, ast.Constant):
             if isinstance(kw.value.value, str):
@@ -245,24 +274,31 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
     dotenv.load_dotenv), execução de processo/código dinâmico (subprocess.*,
     os.system, os.popen, eval, exec, compile), import dinâmico (__import__,
     importlib.*) e requisição de rede a host que não seja localhost/loopback
-    (socket, requests, httpx, aiohttp, urllib.request) — mesma política de
+    (socket, requests, httpx, aiohttp, urllib.request, http.client, urllib3,
+    ftplib, smtplib) — mesma política de
     "execução autônoma restrita a loopback" já aplicada pelo
     e2e_test_generator (ver LIMITES em e2e_test_generator/prompt.py e
     `_url_loopback` em validar_contrato_e2e.py). Quando o host não pode ser
-    determinado estaticamente (variável, f-string, objeto retornado por
-    `Session()` reutilizado depois), o padrão é bloquear — falha fechada,
-    consistente com o resto do pipeline (ex.: normalização de paths do
-    pytest_runner).
+    determinado estaticamente (variável não rastreável, f-string), o padrão
+    é bloquear — falha fechada, consistente com o resto do pipeline (ex.:
+    normalização de paths do pytest_runner).
 
     Resolve aliases simples de import (`import x as y`,
-    `from x import y as z`) e atribuições diretas de funções/módulos. Não
-    acompanha instâncias retornadas por chamadas — por
-    exemplo, `s = requests.Session(); s.get(url)` não é detectado nessa
-    segunda chamada. É uma limitação aceita: esta função é uma camada de
-    defesa em profundidade complementar ao allowlist de ambiente do
-    pytest_runner (P0), não a única barreira. Também não tenta detectar
-    ofuscação de import/sys.path via `getattr`/nomes indiretos — fora de
-    escopo, mesma limitação aceita.
+    `from x import y as z`) e atribuições diretas de funções/módulos —
+    incluindo o padrão `s = requests.Session()` / `pool =
+    urllib3.PoolManager()` (fábrica sem args atribuída a uma variável): a
+    chamada de construção em si é ignorada (ver guard "chamada sem nenhum
+    argumento" logo abaixo), mas o nome da variável passa a apontar para o
+    módulo de origem, então uma chamada posterior nessa variável (`s.get(url)`,
+    `pool.request(...)`) É detectada como se fosse `requests.Session.get`/
+    `urllib3.PoolManager.request`. O que continua fora do alcance: instância
+    passada como parâmetro de função, guardada em atributo de `self`, ou
+    construída num escopo que a propagação conservadora (até 8 passadas
+    sobre atribuições diretas) não alcança. É uma limitação aceita: esta
+    função é uma camada de defesa em profundidade complementar ao allowlist
+    de ambiente do pytest_runner (P0), não a única barreira. Também não
+    tenta detectar ofuscação de import/sys.path via `getattr`/nomes
+    indiretos — fora de escopo, mesma limitação aceita.
 
     Também detecta import (não regex — só `ast.Import`/`ast.ImportFrom`
     reais) cujo módulo tenha "coder" ou "workspace_output" como segmento
@@ -343,8 +379,32 @@ def detectar_riscos_codigo(codigo: str) -> list[str]:
                 "contornar as restrições acima carregando módulos em runtime"
             )
         elif dotted.startswith(_PREFIXOS_RISCO_REDE):
-            host = _host_de_chamada(node)
+            host = _host_de_chamada(node, dotted)
             if host is not None and _eh_loopback(host):
+                continue
+            if host is None and not node.args and not node.keywords:
+                # Chamada sem nenhum argumento (ex.: urllib3.PoolManager())
+                # não carrega host/URL nessa posição — é só uma fábrica de
+                # conexão. `ast.walk` visita essa chamada separadamente da
+                # chamada de método que vem depois na mesma expressão (ex.:
+                # `.request(...)`), que já é resolvida e sinalizada por si
+                # só. Sem essa exceção, `PoolManager().request("GET",
+                # "http://localhost")` seria sinalizado mesmo sendo loopback,
+                # só por causa do `PoolManager()` interno sem argumentos.
+                #
+                # Isso vale igual para `requests.Session()`/`httpx.Client()`/
+                # `httpx.AsyncClient()`/`aiohttp.ClientSession()` — todas
+                # fábricas sem args que, sozinhas, também não carregam URL.
+                # Não precisa de allowlist explícita de "quais fábricas são
+                # seguras" nem de restringir esta isenção só ao PoolManager:
+                # o cenário de ataque real não é a fábrica isolada, é a
+                # CHAMADA DE MÉTODO na instância guardada (`s.get(url)`,
+                # `pool.request(...)`) — e essa é resolvida à parte, com o
+                # host real, porque `_mapa_aliases_import` propaga o nome da
+                # variável para o módulo de origem (ver docstring da função).
+                # Testado explicitamente em test_security_guardrails.py:
+                # `requests.Session()` guardado em variável e usado depois
+                # continua gerando risco.
                 continue
             riscos.append(
                 f"linha {node.lineno}: requisição de rede a host externo ou "
@@ -480,9 +540,19 @@ _PADRAO_REQUIRE_PERIGOSO = re.compile(
 )
 _PADRAO_CHAMADA_REDE_TS = re.compile(
     r"\b(?:fetch|request(?:\s*\.\s*\w+)?|axios(?:\s*\.\s*\w+)?|"
-    r"page\s*\.\s*goto)\s*\(\s*"
+    r"page\s*\.\s*goto|new\s+WebSocket)\s*\(\s*"
 )
 _PADRAO_ALVO_TS = re.compile(r"([\"'`])((?:\\.|(?!\1)[^\\])*)\1\s*(?=[,)])")
+
+# XMLHttpRequest não recebe a URL no construtor (`new XMLHttpRequest()` não
+# tem argumento nenhum) — ela só aparece depois, em `.open(metodo, url)`.
+# Por isso não entra em _PADRAO_CHAMADA_REDE_TS: precisa de uma extração
+# diferente (2º argumento, não o 1º logo após o `(`). O padrão `.open(` é
+# genérico — pode bater em outros usos de `.open()` sem relação com XHR;
+# aceito porque só sinaliza quando de fato encontra dois literais de string
+# na posição de metodo/URL (ex.: window.open() com um único argumento nunca
+# bate nas duas literais exigidas abaixo).
+_PADRAO_XHR_OPEN = re.compile(r"\.\s*open\s*\(\s*")
 
 
 def _host_ts_ou_none(alvo: str) -> str | None:
@@ -499,7 +569,8 @@ def detectar_riscos_spec_ts(codigo_ts: str) -> list[str]:
     Detecta: leitura de variável de ambiente do processo Node
     (`process.env`), import de módulo Node de baixo nível
     (`require('child_process')`/`require('fs')`) e requisição de rede
-    (`fetch`/`request`/`axios`) para um host literal que não seja
+    (`fetch`/`request`/`axios`/`new WebSocket(...)`/`xhr.open(metodo, url)`)
+    para um host literal que não seja
     localhost/127.0.0.1/::1 — mesma política de "execução autônoma restrita
     a loopback" de `detectar_riscos_codigo`. Uma URL relativa (`fetch('/api/x')`)
     é tratada como mesma origem do `base_url` (já validado alhures) e não é
@@ -542,4 +613,37 @@ def detectar_riscos_spec_ts(codigo_ts: str) -> list[str]:
             f"linha {numero}: requisição de rede a host externo "
             "— execução autônoma só pode acessar localhost/127.0.0.1/::1"
         )
+
+    # XMLHttpRequest: a URL está no 2º argumento de .open(metodo, url), não
+    # logo após o `(` como nos casos acima — por isso precisa consumir dois
+    # literais em sequência (metodo, depois url) em vez de um só.
+    for match in _PADRAO_XHR_OPEN.finditer(codigo_ts):
+        numero = codigo_ts.count("\n", 0, match.start()) + 1
+        metodo = _PADRAO_ALVO_TS.match(codigo_ts, match.end())
+        if not metodo:
+            # Não é `.open("algo", ...)` — provavelmente um `.open()` sem
+            # relação com XHR (ex.: window.open(url) de um argumento só).
+            continue
+        resto = codigo_ts[metodo.end():]
+        virgula = re.match(r"\s*,\s*", resto)
+        if not virgula:
+            continue
+        pos_url = metodo.end() + virgula.end()
+        literal = _PADRAO_ALVO_TS.match(codigo_ts, pos_url)
+        alvo = literal.group(2) if literal else ""
+        if not literal or "${" in alvo or "\\" in alvo:
+            riscos.append(
+                f"linha {numero}: requisição de rede com host não "
+                "verificável estaticamente — execução autônoma só pode "
+                "acessar localhost/127.0.0.1"
+            )
+            continue
+        host = _host_ts_ou_none(alvo)
+        if host is None or _eh_loopback(host):
+            continue
+        riscos.append(
+            f"linha {numero}: requisição de rede a host externo "
+            "— execução autônoma só pode acessar localhost/127.0.0.1/::1"
+        )
+
     return riscos
