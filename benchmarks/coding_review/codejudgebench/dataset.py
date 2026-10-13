@@ -230,6 +230,7 @@ def select_pairs(
     pares: list[RepairPair],
     *,
     limit: int | None = None,
+    offset: int = 0,
     seed: int = DEFAULT_SEED,
     max_per_question: int | None = DEFAULT_MAX_PER_QUESTION,
     pair_ids: list[str] | None = None,
@@ -241,9 +242,14 @@ def select_pairs(
     amostra de `limit=50` está contida na de `limit=100`, e um run maior pode
     ser comparado (ou retomado) a partir de um menor.
 
+    O `offset` pula as primeiras posições da mesma ordem: `offset=50, limit=50`
+    devolve as posições 51–100, disjuntas das 50 primeiras. É o conjunto de
+    validação — problemas nunca vistos durante os ajustes no reviewer.
+
     Args:
         pares: todos os pares do split (saída de `load_all`).
         limit: tamanho máximo da amostra (None = todos os elegíveis).
+        offset: quantas posições pular antes de cortar (default 0).
         seed: semente do embaralhamento.
         max_per_question: máximo de pares por `question_id` (None ou 0 = sem limite).
         pair_ids: se informado, ignora a amostragem e devolve exatamente esses
@@ -266,6 +272,9 @@ def select_pairs(
                 filtrados.append(par)
         ordem = filtrados
 
+    if offset < 0:
+        raise ValueError("offset não pode ser negativo.")
+    ordem = ordem[offset:]
     if limit is not None:
         ordem = ordem[:limit]
     return ordem
@@ -276,6 +285,7 @@ def load_pairs(
     *,
     split: str = DEFAULT_SPLIT,
     limit: int | None = None,
+    offset: int = 0,
     seed: int = DEFAULT_SEED,
     max_per_question: int | None = DEFAULT_MAX_PER_QUESTION,
     pair_ids: list[str] | None = None,
@@ -284,6 +294,7 @@ def load_pairs(
     return select_pairs(
         load_all(cache_dir, split),
         limit=limit,
+        offset=offset,
         seed=seed,
         max_per_question=max_per_question,
         pair_ids=pair_ids,
