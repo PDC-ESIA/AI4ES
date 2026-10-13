@@ -111,6 +111,26 @@ def test_saida_redirecionada_em_cp1252_nao_quebra(monkeypatch):
     assert "→ correct · Conexão" in buffer.getvalue().decode("utf-8")
 
 
+def test_nome_do_run_com_offset_e_rotulo(tmp_path):
+    args = _args(tmp_path, model="github_copilot/gpt-5-mini", offset=50, label="fase b/v1")
+    assert run._construir_nome_run(args, "20261013_100000", 50) == (
+        "run_20261013_100000_github_copilot-gpt-5-mini_n50_off50_fase-b-v1"
+    )
+
+
+def test_versao_do_codigo_registra_o_commit():
+    versao = run._versao_do_codigo()
+    assert len(versao["commit"] or "") == 40
+    assert isinstance(versao["dirty"], bool)
+
+
+def test_contexto_registra_offset_rotulo_e_codigo(tmp_path, monkeypatch):
+    monkeypatch.setattr(run.ds, "dataset_metadata", lambda *_: {"revision": "abc"})
+    contexto = run._contexto_do_ambiente(_args(tmp_path, offset=50, label="validacao"), [_par(1)])
+    assert contexto["offset"] == 50 and contexto["label"] == "validacao"
+    assert set(contexto["code"]) == {"commit", "dirty", "dirty_paths"}
+
+
 def test_nome_do_run_segue_a_issue(tmp_path):
     nome = run._construir_nome_run(_args(tmp_path, model="github_copilot/gpt-4"), "20261001_090000", 50)
     assert nome == "run_20261001_090000_github_copilot-gpt-4_n50"
