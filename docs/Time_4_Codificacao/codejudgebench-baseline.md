@@ -119,6 +119,38 @@ python -m benchmarks.coding_review.codejudgebench.run --model github_copilot/gpt
 python -m benchmarks.coding_review.codejudgebench.regrade benchmarks/coding_review/codejudgebench/results/run_<ts>_<modelo>_n50
 ```
 
+## Evolução do reviewer
+
+Mudanças medidas contra o baseline, uma de cada vez. Cada uma é ajustada nos 50
+pares de **desenvolvimento** (posições 1–50) e confirmada uma única vez nos 50 de
+**validação** (posições 51–100, `--offset 50`), problemas distintos e nunca vistos
+durante o ajuste — para não decorar a amostra.
+
+### Fase A — modelo dedicado ao reviewer
+
+**Mudança:** variável `REVIEWER_LLM_MODEL`, com fallback para `ADK_LLM_MODEL`.
+Antes, trocar o modelo do reviewer trocava o de todos os agentes.
+
+**Validação** (posições 51–100):
+
+| Métrica | gpt-4.1 | gpt-5-mini | McNemar p |
+| --- | --- | --- | --- |
+| Acurácia do julgamento | 12,0% (6/50) | **70,0%** (35/50) · IC 56,2–80,9% | < 0,001 |
+| Aprovou código que falha nos testes | 88,0% (44/50) | 14,0% (7/50) | < 0,001 |
+| Bloqueou código que passa nos testes | 0,0% (0/50) | 18,0% (9/50) | 0,004 |
+| Acurácia quando decidiu | 100% (6/6) | 97,2% (35/36) | — |
+
+O gpt-5-mini acertou 31 pares que o gpt-4.1 errou; o inverso ocorreu em 2. Os
+números repetem o desenvolvimento (gpt-4.1: 12% nos dois conjuntos; gpt-5-mini:
+58% → 70%): a vantagem do modelo não é efeito da amostra. O bloqueio indevido do
+gpt-5-mini ficou menor na validação (32% → 18%), mas continua o alvo da Fase B.
+
+Resultados: `results/run_20261013_144202_github_copilot-{gpt-4,gpt-5-mini}_n50_off50_fase-a-validacao/`
+e a comparação em `results/comparacoes/fase-a-validacao_gpt-4_vs_gpt-5-mini.md`.
+O metadata desses runs registra o commit `19b1e6f9`, feito segundos depois do
+início; o código executado foi o de `c0cebe2c`, que difere só no README do
+benchmark. O harness passou a capturar a versão no início do processo.
+
 ## Próximos passos (outras issues)
 
 - Decidir o modelo oficial do reviewer: os dados mostram que o gpt-4.1 não serve
