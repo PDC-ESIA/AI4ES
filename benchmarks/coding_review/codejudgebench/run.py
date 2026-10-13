@@ -264,8 +264,14 @@ def _versao_do_codigo() -> dict:
         return {"commit": None, "dirty": None, "dirty_paths": []}
 
 
-def _contexto_do_ambiente(args: argparse.Namespace, pares: list[ds.RepairPair]) -> dict:
-    """Protocolo §5/§6: registrar ambiente, versões e parâmetros do experimento."""
+def _contexto_do_ambiente(
+    args: argparse.Namespace, pares: list[ds.RepairPair], codigo: dict | None = None
+) -> dict:
+    """Protocolo §5/§6: registrar ambiente, versões e parâmetros do experimento.
+
+    `codigo` deve ser capturado no INÍCIO do processo: o metadata só é gravado
+    depois do pre-flight, e um commit feito nesse intervalo seria atribuído ao run.
+    """
     try:
         from importlib.metadata import version
 
@@ -278,7 +284,7 @@ def _contexto_do_ambiente(args: argparse.Namespace, pares: list[ds.RepairPair]) 
         "limit": args.limit,
         "offset": args.offset,
         "label": args.label,
-        "code": _versao_do_codigo(),
+        "code": codigo if codigo is not None else _versao_do_codigo(),
         "pair_ids": [p.pair_id for p in pares],
         "dataset": ds.dataset_metadata(args.dataset_dir, args.split),
         "mode": "pointwise",
@@ -499,6 +505,7 @@ def _saida_utf8() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     _saida_utf8()
+    codigo = _versao_do_codigo()  # antes de tudo: é o código que este processo executa
     args = _parse_args(argv)
     if not args.model:
         raise ValueError(
@@ -543,7 +550,7 @@ def main(argv: list[str] | None = None) -> int:
             shutil.rmtree(run_dir, ignore_errors=True)
         raise
 
-    metadata = _validar_e_persistir_config(run_dir, args, _contexto_do_ambiente(args, pares))
+    metadata = _validar_e_persistir_config(run_dir, args, _contexto_do_ambiente(args, pares, codigo))
 
     from benchmarks.coding_review.codejudgebench.metrics import compute_metrics
 
