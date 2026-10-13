@@ -44,7 +44,24 @@ from . import prompt as reviewer_prompt
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
-_model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
+
+
+def _resolver_modelo() -> str:
+    """Modelo do reviewer: REVIEWER_LLM_MODEL > ADK_LLM_MODEL > padrão.
+
+    A qualidade do julgamento do reviewer depende muito do modelo: no benchmark
+    CodeJudgeBench (#421), a acurácia foi de 12% com github_copilot/gpt-4 e de
+    58% com github_copilot/gpt-5-mini. A variável própria permite trocar o modelo
+    do reviewer sem trocar o do coder e dos demais agentes.
+    """
+    return (
+        os.environ.get("REVIEWER_LLM_MODEL", "").strip()
+        or os.environ.get("ADK_LLM_MODEL", "").strip()
+        or _DEFAULT_MODEL
+    )
+
+
+_model = _resolver_modelo()
 
 # Re-exportados para uso/teste via atributo do módulo (ex.: agent._coder_ws(),
 # agent._discover_coder_files) — mantém compatibilidade com quem referencia esses
