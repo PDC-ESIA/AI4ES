@@ -200,6 +200,12 @@ que o pipeline normalmente fornece.
 - **Ruff com `import *`.** Com o cabeçalho do ambiente, o Ruff não distingue um
   nome realmente indefinido de um nome vindo dos `import *` (F405 suprimido). É
   o mesmo comportamento do ambiente real; o reviewer continua lendo o código.
+- **Bandit pode não rodar no Windows.** Com Controle de Aplicativo ativo, o
+  `bandit.exe` é bloqueado (`Permission denied`) e `shared/review/capability.py`
+  engole o erro como "nenhum achado". Os runs versionados aqui foram medidos
+  assim: o reviewer recebeu só os achados do Ruff. Em Docker/Linux o Bandit
+  roda; em soluções de programação competitiva o efeito esperado é pequeno
+  (o Bandit procura falhas de segurança, raras nesse tipo de código).
 - **Uma execução por par.** O protocolo sugere 10 a 20 repetições por problema
   para medir estabilidade; este baseline tem uma. A variação entre execuções não
   é medida.
