@@ -95,5 +95,20 @@ Produza markdown com seções:
 - "## Issues" (lista por severidade com arquivo/camada/descrição)
 - "## Resumo" (1 parágrafo)
 
-NÃO produza JSON literal.
+Encerre a resposta com um bloco ```json que repete o veredito e as MESMAS issues
+do markdown, no formato:
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {"severity": "critical", "description": "Laço não trata lista vazia", "file": "solution.py", "layer": "corretude"}
+  ]
+}
+```
+
+- status: "APROVADO" ou "BLOQUEADO"
+- severity: "critical", "warning" ou "info"
+- layer: "completude", "arquitetura", "corretude" ou "testes"
+- Sem issues: "issues": []. O bloco JSON é a última coisa da resposta.
 """
