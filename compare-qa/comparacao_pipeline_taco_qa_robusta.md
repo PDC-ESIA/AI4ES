@@ -158,3 +158,24 @@ Com a implementação atual, o uso mais seguro do QA é **consultivo e com gate 
 - SHA-256 dos agentes envolvidos: `4cc7a0290331cfac7dffa084e5f25eee00d4c27cb0eaa9a1e9f9614fb480cab2`
 - Tempo de parede do experimento: 27 min 51,7 s
 - Evidências por par: `compare-qa/workspaces/robust_evidence/`
+
+## Complemento: integração determinística e testes próprios
+
+A comparação com o contrato TACO-QA e o executor isolado está em
+[Comparação dos três cenários](comparacao_pipeline_taco_qa_tres_cenarios.md).
+O complemento segue a mesma estrutura deste relatório e inclui tabela dos
+três cenários, resultados por entrada, bootstrap por tarefa, metodologia,
+limitações, conclusão e testes de integração diferentes dos exercícios.
+
+A nova amostra apresentou 129/129 aprovações ocultas em cada cenário. O loop
+acrescentou 1,54% de tokens e 34,83% de latência. O gate determinístico
+preservou o código e os tokens, com 1,56 segundo adicional por pedido em média.
+Também passaram 96 testes automatizados e oito casos reais do console Docker.
+
+Esses resultados pertencem a outro experimento e não substituem os números
+acima. Diferenças entre as rodadas não podem ser atribuídas isoladamente ao QA.
+Os intervalos estatísticos do complemento são calculados por tarefa; este
+relatório original permanece como evidência da entrega do colega.
+
+O complemento é documental. A implementação e as evidências da nova comparação
+ficam preservadas separadamente para possível publicação em outra branch.
