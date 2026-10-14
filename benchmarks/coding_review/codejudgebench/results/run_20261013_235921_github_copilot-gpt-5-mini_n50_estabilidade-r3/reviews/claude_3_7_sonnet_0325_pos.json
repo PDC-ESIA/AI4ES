@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (arquivo(s) de teste ausentes). Recomenda-se adicionar casos unitários cobrindo: casos simples, todos negativos, valores com muitos empates de diff (nums[i]-i), e tamanhos máximos/limites para evitar regressões.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Comentário diz \"Initialize segment tree for range maximum query\" mas a estrutura implementada é um Binary Indexed Tree (Fenwick) adaptado para operação de máximo. É um detalhe de nomenclatura; não afeta a corretude, mas confunde leitores e manutenção.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

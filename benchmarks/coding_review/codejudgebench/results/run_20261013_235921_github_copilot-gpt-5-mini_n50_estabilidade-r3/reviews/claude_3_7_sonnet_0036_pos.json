@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo por consulta é O(n) (duas iterações sobre n//2) — no pior caso, com n e queries ambos ~10^5, o tempo total pode chegar a O(n * q) ≈ 10^10 operações, o que levará a TLE nas entradas dentro das restrições do enunciado. Isso faz com que a solução não atenda aos limites descritos em CA-01 e falhe em testes de escala.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste/unitários no workspace. Não foram entregues testes que verifiquem casos básicos, borda e casos grandes (incluindo o caso que exerce limites de performance).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A correção implementada resolve o defeito relatado (caso 'cu' com query [0,0,1,1]) e, para entradas pequenas/medianas, a lógica de balanceamento de contadores (remover exigências por pares fixos e comparar multisets remanescentes) é correta e suficiente para determinar possibilidade de palíndromo.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "info",
+      "description": "Há aviso de linter (imports de nível de módulo não no topo) gerado pelo analisador estático — isso é devido ao bloco de ambiente pré-carregado mencionado no enunciado e não afeta a lógica da solução.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

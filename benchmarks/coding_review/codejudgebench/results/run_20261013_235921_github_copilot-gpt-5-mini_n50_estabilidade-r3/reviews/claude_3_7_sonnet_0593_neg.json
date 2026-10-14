@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação ainda faz uma varredura linear (for person in range(1, N + 1)) para encontrar a pessoa da frente em cada evento, resultando em complexidade O(N * M) no pior caso. Com N, M até 2e5 isso causará Time Limit Exceeded; a correção não eliminou a falha observada (CA-02).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Estrutura de dados inadequada para a operação mais crítica. Em vez de escanear linearmente, deve-se manter um heap/min-heap de pessoas atualmente disponíveis (inicializado com 1..N), pop para obter a frente e push quando a pessoa retorna, limpando do heap elementos marcados como \"out\" (lazy deletion). A mistura atual de set + varredura não é escalável.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace nem casos de regressão (por exemplo, os samples do enunciado). Ausência de testes automatizados dificulta a validação contra TLE/regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Apenas solution.py foi entregue (conforme contrato). Não há documentação adicional nem comentários explicando a escolha de estrutura de dados ou complexidade esperada.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

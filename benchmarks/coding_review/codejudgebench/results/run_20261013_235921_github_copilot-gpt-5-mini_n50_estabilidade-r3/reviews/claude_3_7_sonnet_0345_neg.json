@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação atual está incorreta e tem complexidade algorítmica inaceitável para os limites do problema. A função incrementa result apenas quando count_max >= k para o par (i, j) corrente, contabilizando somente o subarray que termina em j, em vez de contabilizar também todos os subarrays com o mesmo início i e fim >= j (ou usar uma formula combinatória). Além disso o algoritmo é quadrático (duplo for), o que causa Time Limit Exceeded para n ~ 10^5. Isso faz com que os critérios de aceite CA-01 e CA-02 não sejam atendidos: resultados errados para muitos casos e falha observada de TLE não foi eliminada.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste/unitários no workspace cobrindo a função. Tests automatizados (happy path e edge cases: k > count, k = 1, ocorrências consecutivas, início/fim do vetor) não foram fornecidos, o que dificulta verificações de regressão.",
+      "file": "(workspace)",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

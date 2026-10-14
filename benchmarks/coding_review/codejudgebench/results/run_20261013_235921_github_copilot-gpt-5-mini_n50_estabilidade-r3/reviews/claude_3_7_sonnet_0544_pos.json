@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue no workspace. A solução está implementada, mas não há testes unitários ou casos de integração que verifiquem a correção em cenários fornecidos pelo enunciado (happy path e edge cases).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A solução usa um laço sobre os valores distintos de d = k - num e, para cada d, constrói um vetor diff e aplica Kadane. Isso é correto e aceitável dado o domínio restrito de valores (nums[i], k ∈ [1,50]), porém poderia ser otimizado evitando a alocação de um vetor inteiro por d (por exemplo percorrendo uma lista de índices por valor). Não é um defeito funcional.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

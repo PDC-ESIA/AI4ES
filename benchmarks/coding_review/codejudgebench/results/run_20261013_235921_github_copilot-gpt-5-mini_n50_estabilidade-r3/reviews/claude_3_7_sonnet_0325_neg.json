@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue com a implementação — não há testes automatizados no workspace para validar comportamento em regressões.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O arquivo contém o bloco de 'AMBIENTE DE EXECUÇÃO' (imports pré-carregados) — isso faz parte da plataforma e não da solução em si; avaliado apenas o código abaixo desse bloco.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

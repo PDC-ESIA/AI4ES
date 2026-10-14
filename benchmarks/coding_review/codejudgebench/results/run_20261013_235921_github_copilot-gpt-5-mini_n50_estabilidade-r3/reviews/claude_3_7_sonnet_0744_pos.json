@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste entregues. Embora os critérios de aceite não exijam testes, seria recomendável fornecer testes automatizados cobrindo casos com H_i grandes (ex.: 1e9), casos pequenos e alinhamentos de T (início com T%3 diferente) para regressão.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A variável N é lida (N = int(input())) mas não é referenciada posteriormente; isso causa um aviso de lint (F841). A leitura é funcional (consome a entrada) e não afeta a corretude, mas pode ser removida ou usada para validação de tamanho.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "O cabeçalho contém muitos imports — conforme instrução esses imports fazem parte do ambiente pré-carregado e não da solução; não é um problema funcional aqui, apenas poluição visual se o arquivo for usado fora do ambiente.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

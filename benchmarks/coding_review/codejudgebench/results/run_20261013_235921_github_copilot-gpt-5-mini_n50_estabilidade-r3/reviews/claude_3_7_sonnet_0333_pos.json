@@ -1,0 +1,14 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram incluídos testes automatizados no workspace (ex.: arquivos em tests/). Sem testes, não há verificação automatizada dos cenários (happy path e edge cases). Recomenda-se adicionar testes unitários cobrindo casos pequenos, limites (n=1, n grande), k=0, e exemplos fornecidos.",
+      "file": "workspace (nenhum arquivo de teste encontrado)",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

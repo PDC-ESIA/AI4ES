@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo atual é O(N * M) e causa Time Limit Exceeded em entradas grandes — a solução não eliminou a falha observada.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Lógica percorre todos os acompanhamentos por prato em vez de usar uma estratégia eficiente (ordenar acompanhamentos decrescentemente ou usar heap de candidatos). A representação dos pares proibidos está OK, mas o padrão de iteração é ineficiente.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos testes automatizados no workspace para validar correção e desempenho (casos do enunciado e casos limites).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Ausência de arquivo(s) de teste. Recomenda-se incluir testes cobrindo L=0, L=NM-1, exemplos do enunciado e um caso grande representativo.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}
