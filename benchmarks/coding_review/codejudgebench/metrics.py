@@ -16,6 +16,11 @@ Três famílias, que respondem a perguntas diferentes:
    - ``false_block_rate``: ``pos`` (passa nos testes) bloqueadas / ``pos`` julgadas.
 
 3. **Aderência de formato**:
+   - ``structured_output_valid``: respostas cuja tentativa final trouxe o bloco
+     JSON válido no formato do ``ReviewOutput`` (só quando o reviewer medido já
+     grava ``verificacao_revisao.json``; senão n = 0).
+   - ``status_adjusted_by_rule``: revisões em que a regra em código ("critical ⇒
+     BLOQUEADO") corrigiu o status escrito pelo LLM.
    - ``invalid_first_attempt_rate``: respostas cuja 1ª tentativa não trouxe status
      reconhecível pelo manifesto, entre as que o reviewer chegou a responder.
    - ``invalid_final_rate``: o mesmo, após os retries.
@@ -85,6 +90,8 @@ def compute_metrics(registros: list[dict]) -> dict:
     finais = [r for r in respostas if r["outcome_kind"] in ("ok", "invalid")]
     invalidas_final = sum(1 for r in finais if r["outcome_kind"] == "invalid")
     tentativas = [a for r in respostas for a in r.get("attempts", [])]
+    finais_com_json = [r["attempts"][-1] for r in respostas if r.get("attempts")]
+    estruturadas = [a for a in finais_com_json if a.get("structured_valid") is not None]
     so_formato = sum(
         1
         for a in tentativas
@@ -135,6 +142,12 @@ def compute_metrics(registros: list[dict]) -> dict:
             "responses_with_retry": sum(1 for r in respostas if len(r.get("attempts", [])) > 1),
             "format_only_failures": so_formato,
             "gate_applied": sum(1 for a in tentativas if a.get("gate_applied")),
+            # Aderência ao ReviewOutput: só se aplica quando o reviewer medido
+            # grava verificacao_revisao.json (structured_valid não é None).
+            "structured_output_valid": _proporcao(
+                sum(1 for a in estruturadas if a["structured_valid"]), len(estruturadas)
+            ),
+            "status_adjusted_by_rule": sum(1 for a in estruturadas if a.get("status_adjusted")),
         },
         "operational": {
             "responses_with_operational_error": sum(1 for r in respostas if r["outcome_kind"] == "operational"),
