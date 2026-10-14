@@ -155,6 +155,19 @@ def _validation_verdict(coder_ws: Path) -> str:
     if not review_dir.exists():
         return "absent"
 
+    # Saída estruturada do reviewer (ReviewOutput validado, status decidido em
+    # código). Ausente ou inválida, cai para a leitura do markdown abaixo.
+    estruturada = review_dir / "verificacao_revisao.json"
+    if estruturada.is_file():
+        try:
+            status = json.loads(estruturada.read_text(encoding="utf-8")).get("status")
+        except (OSError, ValueError, AttributeError):
+            status = None
+        if status == "BLOQUEADO":
+            return "fail"
+        if status == "APROVADO":
+            return "pass"
+
     saw_pass = False
     for f in review_dir.iterdir():
         if not f.is_file() or f.name in _IGNORED or f.suffix in _IGNORED_SUFFIXES:
