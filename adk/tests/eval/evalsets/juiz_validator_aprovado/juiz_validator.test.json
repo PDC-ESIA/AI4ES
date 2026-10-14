@@ -1,7 +1,7 @@
 {
-  "eval_set_id": "ai4es_validator_aprovado",
-  "name": "validator-report-verde",
-  "description": "Caminho feliz do implementation_validator, com session_input.state semeado (task_id + report_path). Sem esse state o guard de seguranca rejeita o caminho e o agente cai no fail-safe. Alem da trajetoria, ancora a RESPOSTA: desde o #406 o veredito e decidido so pela execucao (overall_status == sucesso) e todo criterio com outcome nao_avaliado e forcado a inconclusivo com texto fixo — a resposta final e 100% gerada em Python por montar_veredito, entao o ROUGE e estavel.",
+  "eval_set_id": "ai4es_juiz_validator_aprovado",
+  "name": "validator-report-verde-juiz-llm",
+  "description": "Fixture: tests/eval/fixtures/validator_verde/, copiada para o workspace por test_juiz_llm_aprova_o_veredito_correto (test_eval_implementation_validator.py). Mesmo caso do validator_aprovado (caminho feliz do implementation_validator, com session_input.state semeado), mas a resposta e julgada por um LLM em vez do ROUGE: a metrica final_response_match_v2 do ADK pergunta ao modelo-juiz (AI4ES_EVAL_JUDGE_MODEL, ou o ADK_LLM_MODEL) se a resposta do agente e valida diante da referencia, com 5 amostras por invocacao e voto da maioria. Com uma invocacao, o limiar 0.8 exige que a maioria das amostras diga valido. Opt-in adicional (AI4ES_EVAL_JUIZ=1), porque o juiz multiplica as chamadas.",
   "eval_cases": [
     {
       "eval_id": "aprova_quando_execucao_verde_e_criterios_atendidos",

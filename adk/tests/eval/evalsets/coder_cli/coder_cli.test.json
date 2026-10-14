@@ -1,7 +1,7 @@
 {
   "eval_set_id": "ai4es_coder_cli",
   "name": "coder-projeto-aceito-pelo-gate-do-executor",
-  "description": "O cr_coder_agent recebe a saida do context engineer (uma task de CLI em Python so com a biblioteca padrao) e tem o contrato da task em disco, em coder/tasks/. As metricas conferem que ele le o contrato do disco antes de escrever e que o modelo recebe exatamente as 6 tools do coder, nenhuma de git. A ancora de resultado fica no teste, depois de cada execucao: o gate de executabilidade do executor aceita coder/src, ha README.md e a surface do run.json e 'command'.",
+  "description": "Fixture: tests/eval/fixtures/coder_cli/, copiada para o workspace por test_coder_entrega_projeto_que_o_executor_aceita (test_eval_coder.py). O cr_coder_agent recebe a saida do context engineer (uma task de CLI em Python so com a biblioteca padrao) e tem o contrato da task em disco, em coder/tasks/. As metricas conferem que ele le o contrato do disco antes de escrever e que o modelo recebe exatamente as 6 tools do coder, nenhuma de git. A ancora de resultado fica no teste, depois de cada execucao: o gate de executabilidade do executor aceita coder/src, ha README.md e a surface do run.json e 'command'.",
   "eval_cases": [
     {
       "eval_id": "entrega_projeto_executavel_a_partir_do_contrato",

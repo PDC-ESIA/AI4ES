@@ -1,7 +1,7 @@
 {
   "eval_set_id": "ai4es_validator_reprovado_execucao",
   "name": "validator-execucao-falhou-reprova",
-  "description": "ExecutionReport com overall_status=falha. O implementation_validator reprova de imediato e marca todos os criterios como inconclusivo, INDEPENDENTE do que o LLM julgar — a politica vive em montar_veredito, nao no texto do modelo. Como a resposta final e montada em Python, o ROUGE aqui e estavel.",
+  "description": "Fixture: tests/eval/fixtures/validator_falha/, copiada para o workspace por test_reprova_quando_a_execucao_falhou (test_eval_implementation_validator.py). ExecutionReport com overall_status=falha. O implementation_validator reprova de imediato e marca todos os criterios como inconclusivo, INDEPENDENTE do que o LLM julgar — a politica vive em montar_veredito, nao no texto do modelo. Como a resposta final e montada em Python, o ROUGE aqui e estavel.",
   "eval_cases": [
     {
       "eval_id": "reprova_quando_execucao_falhou",
