@@ -250,8 +250,31 @@ def test_validation_verdict_fail_tem_prioridade(tmp_path):
         "review/r2.md": "## Status: BLOQUEADO",
     })
     assert _validation_verdict(tmp_path) == "fail"
- 
- 
+
+
+def test_validation_verdict_json_tem_precedencia_sobre_markdown(tmp_path):
+    # O status do JSON é o decidido em código; o markdown pode estar desatualizado.
+    _make_ws(tmp_path, {
+        "review/verificacao_revisao.md": "## Status: APROVADO",
+        "review/verificacao_revisao.json": '{"status": "BLOQUEADO", "issues": []}',
+    })
+    assert _validation_verdict(tmp_path) == "fail"
+
+
+def test_validation_verdict_json_aprovado(tmp_path):
+    _make_ws(tmp_path, {"review/verificacao_revisao.json": '{"status": "APROVADO", "issues": []}'})
+    assert _validation_verdict(tmp_path) == "pass"
+
+
+@pytest.mark.parametrize("conteudo", ["não é json", '["lista"]', '{"status": "TALVEZ"}'])
+def test_validation_verdict_json_invalido_cai_para_markdown(tmp_path, conteudo):
+    _make_ws(tmp_path, {
+        "review/verificacao_revisao.md": "## Status: BLOQUEADO",
+        "review/verificacao_revisao.json": conteudo,
+    })
+    assert _validation_verdict(tmp_path) == "fail"
+
+
 # ---------------------------------------------------------------------------
 # _derive_status
 # ---------------------------------------------------------------------------
