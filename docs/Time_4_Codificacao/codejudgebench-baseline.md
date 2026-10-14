@@ -181,6 +181,50 @@ executando. Desempenho deve ser verificado pela execução (o executor do
 pipeline, com limite de tempo nos testes), não por uma regra no prompt do
 reviewer.
 
+### Fase C — robustez estrutural (adotada)
+
+**Mudanças** (sem alterar o critério de julgamento):
+
+- **Ferramenta bloqueada vira diagnóstico.** Um `PermissionError` ao executar
+  Ruff ou Bandit caía num `except` genérico e virava "nenhum achado"; agora o
+  reviewer recebe `tool-unavailable` com o motivo.
+- **Prompt sem remendos.** O `prompt.py` era escrito para "diff git" e adaptado
+  em runtime por cinco `.replace()` de strings exatas, que falhavam em silêncio a
+  qualquer edição. Agora o texto é o usado de fato — idêntico byte a byte ao que
+  o reviewer recebia — e testes guardam o que as substituições garantiam.
+- **Saída estruturada e decisão em código.** O reviewer encerra a análise com um
+  bloco JSON no formato do `ReviewOutput`. Em Python, o JSON é validado e o status
+  é decidido pela regra que vivia só no prompt (qualquer `critical` bloqueia; o
+  gate de cobertura continua tendo precedência). O resultado vai para
+  `verificacao_revisao.json`, que o manifesto lê antes do markdown; sem JSON
+  válido, nada muda em relação ao comportamento anterior.
+
+**Não-regressão** (desenvolvimento, mesmos 50 pares do baseline):
+
+| Métrica | gpt-4.1: baseline → fase C | gpt-5-mini: baseline → fase C |
+| --- | --- | --- |
+| Acurácia do julgamento | 12,0% → 12,0% (p = 1,000) | 58,0% → 58,0% (p = 1,000) |
+| Aprovou código que falha nos testes | 88,0% → 88,0% | 12,0% → 14,0% (p = 1,000) |
+| Bloqueou código que passa nos testes | 0,0% → 0,0% | 32,0% → 28,0% (p = 0,727) |
+| Saída estruturada válida (`ReviewOutput`) | — → **100% (100/100)** | — → **100% (100/100)** |
+| Status corrigido pela regra em código | — → 0 | — → 0 |
+| Pares que mudaram de desfecho | 2 | 18 (8 para melhor, 8 para pior) |
+
+Nenhuma métrica mudou de forma significativa, e a aderência ao `ReviewOutput` —
+que antes não tinha como ser medida — ficou em 100% nos dois modelos.
+
+**Variação entre execuções.** A mudança no prompt foi pequena (um bloco JSON no
+fim), e ainda assim 18 dos 50 pares do gpt-5-mini mudaram de desfecho, com saldo
+zero; no gpt-4.1, só 2. A maior parte dessas trocas é a variação natural do modelo
+entre execuções: com o gpt-5-mini, uma diferença de poucos pares entre dois runs
+isolados pode ser só ruído.
+
+No run do gpt-4.1, dois pares tiveram `Connection error` com a API do Copilot e
+foram refeitos com `--resume-dir`, sem repetir os demais.
+
+Resultados: `results/run_20261013_210125_github_copilot-{gpt-4,gpt-5-mini}_n50_fase-c/`
+e as comparações em `results/comparacoes/fase-c_*`.
+
 ## Próximos passos (outras issues)
 
 - Decidir o modelo oficial do reviewer: os dados mostram que o gpt-4.1 não serve
