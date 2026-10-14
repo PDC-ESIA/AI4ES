@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação aloca uma tabela binomial 2D com dimensões (n+1) x (k+1) usando inteiros Python. Com n até 1e5 e k até 70 isso cria ~7e6 entradas Python — memória e overhead de objeto tornam isso impraticável em Python (provável MemoryError / swap agressivo). Essa escolha de design pode bloquear a execução no ambiente de avaliação. Sugestão de correção: não construir a matriz completa. Em vez disso, calcular combinações de forma eficiente usando fatoriais + inversos mod (arrays de tamanho O(n)), ou gerar C(r, j) iterativamente por j para cada r (multiplicativo), ou pré-computar prefixos de binomiais somente quando necessário. Qualquer dessas alternativas reduz muito o uso de memória mantendo complexidade aceitável.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste/unitários no workspace. Não há testes automatizados accompaing a implementação para validar casos limite e desempenho.",
+      "file": "(workspace)",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A lógica algorítmica está correta: para cada elemento a solução soma as contagens de subsequências em que ele é mínimo (sum_{j=0..k-1} C(n-i-1, j)) e em que ele é máximo (sum_{j=0..k-1} C(i, j)). Resolve os exemplos, mas precisa de refatoração para uso real em grande n.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

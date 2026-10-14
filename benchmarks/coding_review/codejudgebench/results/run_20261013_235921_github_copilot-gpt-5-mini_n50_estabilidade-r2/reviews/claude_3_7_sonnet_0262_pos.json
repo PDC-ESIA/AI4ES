@@ -1,0 +1,14 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste no workspace. Recomenda-se adicionar testes unitários cobrindo pelo menos: cadeia toda de 'a' (ex.: 'a', 'aaa'), sem 'a' (ex.: 'bcdef'), e casos mistos com prefixos/sufixos de 'a' para garantir comportamento esperado e evitar regressões.",
+      "file": "tests (ausentes)",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

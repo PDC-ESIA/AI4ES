@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Lógica de transição incorreta — dupla contagem ao computar dp[i][0]; o código soma dp[i-1] e também uma agregação que já inclui dp[i-1], resultando em contagens erradas (ex.: N=1, A=[1], K=3 produz 2 em vez de 1).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Estrutura ps_to_dp1 é atualizada mas nunca utilizada; código tem complexidade/estado desnecessário.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (unit tests) cobrindo casos básicos e limites; acrescentar testes ajuda a detectar esse tipo de regressão.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

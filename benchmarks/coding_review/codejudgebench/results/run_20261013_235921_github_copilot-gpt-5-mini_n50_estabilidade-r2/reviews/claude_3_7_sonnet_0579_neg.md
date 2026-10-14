@@ -1,0 +1,46 @@
+## Status: APROVADO
+
+## Issues
+- severity: warning  
+  file: solution.py  
+  layer: completude  
+  description: Não há nenhum teste automático (unit/integration) entregue junto com a solução. Sem testes, regressões de performance ou correção não são detectadas automaticamente.
+
+- severity: warning  
+  file: solution.py  
+  layer: arquitetura  
+  description: A correção trata o caso N = 0 com uma fórmula matemática (resolve o TLE observado), porém para N > 0 o algoritmo volta ao enfoque ingênuo: itera sobre todas as posições (i, j) e cresce n até encontrar um furo usando prefix sums. No pior caso (por exemplo, poucos furos espalhados) esse comportamento ainda pode ser extremamente lento (complexidade aproximada O(H * W * min(H, W)) no pior caso) e pode provocar TLE em instâncias grandes. Recomenda-se substituir a parte geral por uma solução O(H * W): usar a DP clássica que computa, para cada célula como bottom-right, o tamanho do maior quadrado sem furos (dp[i][j] = 0 se há furo, senão 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])) e somar dp[i][j] para obter o total de quadrados sem furos.
+
+- severity: info  
+  file: solution.py  
+  layer: corretude  
+  description: A solução atual produz resultados corretos para os casos verificados e resolve especificamente o problema relatado (entrada 3000 3000 0). A implementação com prefix sums está correta logicamente; o único risco remanescente é a performance em casos com poucos furos.
+
+## Resumo
+A solução corrige o problema observado (TLE no caso sem furos) implementando um tratamento especial quando não há furos, usando a fórmula combinatória fechada, e mantém a lógica baseada em prefix sums para casos com furos. Funcionalmente o programa está correto. Porém a abordagem geral continua com complexidade potencialmente alta para instâncias grandes e esparsas em furos; recomendo trocar a enumeração por uma DP O(H * W) (maior quadrado com bottom-right em cada célula) para garantir desempenho aceitável em todos os casos. Também faltaram testes automatizados na entrega.
+
+```json
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há nenhum teste automático (unit/integration) entregue junto com a solução. Sem testes, regressões de performance ou correção não são detectadas automaticamente.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "A correção trata o caso N = 0 com uma fórmula matemática (resolve o TLE observado), porém para N > 0 o algoritmo volta ao enfoque ingênuo: itera sobre todas as posições (i, j) e cresce n até encontrar um furo usando prefix sums. No pior caso (por exemplo, poucos furos espalhados) esse comportamento ainda pode ser extremamente lento (complexidade aproximada O(H * W * min(H, W)) no pior caso) e pode provocar TLE em instâncias grandes. Recomenda-se substituir a parte geral por uma solução O(H * W): usar a DP clássica que computa, para cada célula como bottom-right, o tamanho do maior quadrado sem furos (dp[i][j] = 0 se há furo, senão 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])) e somar dp[i][j] para obter o total de quadrados sem furos.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "A solução atual produz resultados corretos para os casos verificados e resolve especificamente o problema relatado (entrada 3000 3000 0). A implementação com prefix sums está correta logicamente; o único risco remanescente é a performance em casos com poucos furos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ]
+}
+```

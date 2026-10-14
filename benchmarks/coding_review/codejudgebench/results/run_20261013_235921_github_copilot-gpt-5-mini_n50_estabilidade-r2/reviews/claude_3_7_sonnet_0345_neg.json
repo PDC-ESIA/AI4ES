@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação atual usa um algoritmo O(n^2) (dois loops aninhados) que irá estourar o tempo limite para entradas grandes; reimplemente usando os índices das ocorrências do máximo e soma combinatória (left_options * right_options) por janela de tamanho k.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos arquivos de teste/unitários no workspace; faltam testes que cubram casos grandes, k > ocorrências e os exemplos do enunciado.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

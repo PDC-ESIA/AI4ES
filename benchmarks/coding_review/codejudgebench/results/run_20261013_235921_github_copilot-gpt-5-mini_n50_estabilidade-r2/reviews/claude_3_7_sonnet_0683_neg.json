@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Atualização incorreta do DP: dp[A] é atribuída com dp[B] em vez do departure_time calculado, quebrando a semântica de dp e produzindo respostas erradas.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Uso de float('inf') / -float('inf') como sentinelas e mistura float/int em cálculos. Isso causa perda de precisão e propagação de 'inf' em train_idx/tempos, levando a resultados inválidos; deve usar sentinela inteiro e cálculos inteiros.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Separação de responsabilidades confusa: a função compute_f_values propaga valores incorretos e mistura tipos. Recomenda-se limpar responsabilidade e manter dp como inteiro.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes automatizados no workspace cobrindo os exemplos e casos limites do enunciado (incluindo o caso que falhou).",
+      "file": "workspace",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

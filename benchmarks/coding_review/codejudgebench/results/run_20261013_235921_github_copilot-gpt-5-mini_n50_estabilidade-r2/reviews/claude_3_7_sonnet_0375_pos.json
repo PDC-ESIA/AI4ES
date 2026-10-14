@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Arquivo(s) de teste ausente — nenhum teste unitário foi entregue para validar a solução automaticamente. Recomenda-se incluir testes que cubram o happy path e casos limites (valores grandes, todos negativos, k = 1, k = n).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Uso de float('-inf') como sentinela e mistura de floats com inteiros no DP. O código funciona na prática para os limites do problema, mas misturar tipos pode levar a perda de precisão ou comportamento inesperado em cenários limites; sugerir usar um sentinel inteiro (por exemplo um valor suficientemente pequeno como -10**30) ou manter todos os valores como ints.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "O método pode devolver um float (ex.: 22.0) em vez de int; embora comparações numéricas normalmente passem, é preferível garantir return int(dp[n][k]) para seguir a assinatura esperada.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

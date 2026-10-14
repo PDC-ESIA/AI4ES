@@ -1,0 +1,57 @@
+## Status: BLOQUEADO
+
+## Issues
+- severity: critical  
+  file: solution.py  
+  layer: corretude  
+  description: A lógica principal está incorreta. O código assume que a estrutura de Snowflake pode ser identificada apenas contando nós a distância 1 (mid-level) e distância 2 (folhas) do nó central e divide uniformemente as folgas de distância 2 entre os mids (y_max = dist_counts[2] // x). Isso ignora que as folhas precisam estar diretamente ligadas a cada mid-level específico, que os mid-levels podem ter números diferentes de folhas, e que podemos escolher um subconjunto de vizinhos como mid-levels. Também ignora a possibilidade de transformar vértices internos em folhas ao deletar outros vértices, o que é permitido pelo enunciado. Em suma: o resultado máximo do subgrafo Snowflake calculado pelo programa pode estar incorreto para muitos casos — isto é a causa funcional de respostas erradas.
+
+- severity: critical  
+  file: solution.py  
+  layer: arquitetura  
+  description: Complexidade assintótica inviável para os limites do problema. O programa executa, para cada vértice candidato a central (N escolhas), uma BFS completa (O(N)), resultando em O(N^2) no pior caso. Com N ≤ 3×10^5 isso é impraticável e causará timeouts e/ou memória/tempo de processamento excessivo na plataforma de avaliação. A solução precisa de uma estratégia linear ou quase linear (por exemplo, processamento por raízes candidatas limitadas, DP em árvore, ou análise por vizinhança com informações agregadas).
+
+- severity: warning  
+  file: solution.py  
+  layer: completude  
+  description: Não há arquivos de teste incluídos no workspace. Não foram entregues testes unitários ou de integração que validem casos críticos (happy path, casos limites, e o exemplo que falhava). Entregar uma suíte de testes ajudaria a comprovar a correção da correção.
+
+- severity: info  
+  file: solution.py  
+  layer: corretude  
+  description: O código conta apenas distâncias 1 e 2 a partir do central. Mesmo para árvores em que todos os mid-levels e folhas realmente estão a distância 1 e 2, a distribuição dos nós de distância 2 entre diferentes mid-levels não é considerada — a divisão uniforme (// x) é incorreta. Também há lógica redundante/ínutil (por exemplo, o loop "for dist in dist_counts" com condição somente para dist == 1).
+
+## Resumo
+O arquivo solution.py existe, mas contém defeitos funcionais e de complexidade que o tornam inaceitável para os limites do problema. A abordagem atual simplifica demais a definição do Snowflake Tree (considerando apenas contagens por distância) e assume distribuição uniforme de folhas entre mid-levels, levando a resultados errados. Além disso, a solução tem complexidade O(N^2), inviável para N até 3×10^5 — isto é um bloqueio prático (provável TLE). Recomendo reimplementar usando uma abordagem por raiz candidata com agregação correta por vizinho (contagem de folhas disponíveis por subárvore) e selecionar optimalmente um subconjunto de mid-levels por central, ou usar DP na árvore para encontrar o maior subgrafo que seja Snowflake, garantindo complexidade O(N log N) ou O(N).
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica principal está incorreta. O código assume que a estrutura de Snowflake pode ser identificada apenas contando nós a distância 1 (mid-level) e distância 2 (folhas) do nó central e divide uniformemente as folgas de distância 2 entre os mids (y_max = dist_counts[2] // x). Isso ignora que as folhas precisam estar diretamente ligadas a cada mid-level específico, que os mid-levels podem ter números diferentes de folhas, e que podemos escolher um subconjunto de vizinhos como mid-levels. Também ignora a possibilidade de transformar vértices internos em folhas ao deletar outros vértices, o que é permitido pelo enunciado. Em suma: o resultado máximo do subgrafo Snowflake calculado pelo programa pode estar incorreto para muitos casos — isto é a causa funcional de respostas erradas.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Complexidade assintótica inviável para os limites do problema. O programa executa, para cada vértice candidato a central (N escolhas), uma BFS completa (O(N)), resultando em O(N^2) no pior caso. Com N ≤ 3×10^5 isso é impraticável e causará timeouts e/ou memória/tempo de processamento excessivo na plataforma de avaliação. A solução precisa de uma estratégia linear ou quase linear (por exemplo, processamento por raízes candidatas limitadas, DP em árvore, ou análise por vizinhança com informações agregadas).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste incluídos no workspace. Não foram entregues testes unitários ou de integração que validem casos críticos (happy path, casos limites, e o exemplo que falhava). Entregar uma suíte de testes ajudaria a comprovar a correção da correção.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O código conta apenas distâncias 1 e 2 a partir do central. Mesmo para árvores em que todos os mid-levels e folhas realmente estão a distância 1 e 2, a distribuição dos nós de distância 2 entre diferentes mid-levels não é considerada — a divisão uniforme (// x) é incorreta. Também há lógica redundante/ínutil (por exemplo, o loop \"for dist in dist_counts\" com condição somente para dist == 1).",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ]
+}
+```

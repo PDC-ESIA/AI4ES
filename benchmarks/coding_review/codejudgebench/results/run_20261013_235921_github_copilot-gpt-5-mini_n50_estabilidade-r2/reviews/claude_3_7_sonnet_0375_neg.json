@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Inicialização incorreta de max_prev para j == 1. O código usa o valor 0 (via \"else: max_prev = max(max_prev, 0 - prefix[0] * coef)\") em vez de usar dp[i-1][0]. Para i > 1, dp[i-1][0] é -inf (impossibilidade de escolher >0 subarrays de 0 elementos), mas o uso de 0 permite transições inválidas que consideram estados impossíveis e levam a resultados incorretos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Mistura de sentinela de ponto flutuante (-float('inf')) com aritmética inteira. dp e max_prev são inicializados com -float('inf'), mas depois armazenam e combinam grandes inteiros. Isso causa mistura de tipos (float vs int) e pode induzir perda de precisão em valores muito grandes. Recomenda-se usar um sentinela inteiro suficientemente negativo (ex.: -10**30) para manter aritmética inteira e evitar conversões para float.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (arquivo(s) de teste ausente). A entrega não inclui casos de unidade que comprovem correção (happy path e edge cases). Segundo a DoD, a ausência de testes deve ser registrada como ressalva.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

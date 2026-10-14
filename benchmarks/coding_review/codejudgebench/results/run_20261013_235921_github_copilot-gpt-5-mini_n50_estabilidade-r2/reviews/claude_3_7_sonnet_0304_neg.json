@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Memoization bug — o código faz `if mask in memo: return memo[memo]` em vez de `return memo[mask]`. Isso causará um TypeError/KeyError quando for atingida uma entrada em memo e impede a execução correta da função.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Abordagem incorreta/insustentável — o algoritmo usa programação dinâmica por máscara de bits sobre as posições divergentes (estado com 2^n combinações). Com n potencialmente até 500 (conforme restrições), essa estratégia é exponencial e impraticável (estouro de tempo/memória). Mesmo que o bug de memo fosse corrigido, o método não escala e falhará em entradas de tamanho moderado.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Não foram entregues testes automatizados cobrindo exemplos (happy path) nem casos de borda (p. ex. strings idênticas, todas diferentes, n pequeno e n grande), o que impede verificação automatizada da correção.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Uso de recursão com DP por máscara (mesmo com sys.setrecursionlimit aumentado) é arriscado e, aliado ao ponto exponencial, causa problemas de performance e risco de estouro de pilha para entradas realistas. Uma solução linear/DP por índice ou estratégica de emparelhamento é necessária.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

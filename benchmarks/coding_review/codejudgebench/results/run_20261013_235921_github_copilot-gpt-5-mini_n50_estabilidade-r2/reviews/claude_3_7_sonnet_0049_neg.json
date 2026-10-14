@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A função is_possible implementa a lógica de alocação de segundos incorretamente. Ela acumula available_ops somando marking_time para cada índice, o que está errado e produz falsos negativos (por exemplo, a entrada nums = [1,3], changeIndices = [1,1,1,2,1,1,1] faz is_possible(6) retornar False embora 6 seja viável). A verificação correta é, em ordem crescente do tempo de marcação, checar se last_occurrence[i] - tempo_usado_ate_agora >= nums[i]; depois incrementar tempo_usado_ate_agora por nums[i] + 1.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (unit tests) cobrindo os casos chave (ex.: exemplos do enunciado, casos com zeros em nums, caso onde algum índice não aparece em changeIndices).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Cabeçalho contém muitos imports (parte do ambiente pré-carregado). O corpo da solução é compacto e com separação razoável de responsabilidades.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}
