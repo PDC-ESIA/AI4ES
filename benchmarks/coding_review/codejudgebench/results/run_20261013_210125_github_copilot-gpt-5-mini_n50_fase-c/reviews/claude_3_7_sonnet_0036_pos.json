@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação processa cada query iterando por todos os pares de posições da metade esquerda (O(n * q)), o que causa TLE para n, q até 10^5.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes automatizados no workspace cobrindo casos críticos (casos limite/escala e o caso falho fornecido).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A correção lógica do bug observado foi aplicada: o código agora compara as multisets remanescentes (Counter equality) em vez de comparar apenas tamanhos, corrigindo o caso 'cu'.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

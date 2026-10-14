@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A estratégia de detecção de ciclos é incorreta e perigosa: o código cria uma chave de estado com tuple(queue) a cada iteração (O(n) por iteração) e armazena esses estados, o que causa alto uso de CPU e memória; além disso o mecanismo de \"skip ahead\" (pular ciclos) modifica somente games_played e usa continue sem alterar a fila/estado, o que pode levar a um loop infinito ou a saltos incorretos, produzindo Time Limit Exceeded ou resultado errado.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "A detecção de ciclos baseada no estado completo da fila é desnecessária e viola responsabilidade única (mistura simulação com heurística de compressão de passos). Há uma solução correta e muito mais simples: se k >= n (ou k grande o suficiente), o jogador com maior skill vence; caso contrário simular com deque é suficiente (no máximo O(n) partidas). Recomenda-se remover o hashing completo do estado e adotar a abordagem conhecida para este problema.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos testes automatizados (arquivos de teste ausentes). Entregas de correção de algoritmos competitivos devem incluir testes que cubram cenários representativos (happy path e casos limite como k >= n, k = 1 e n pequeno/maior).",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

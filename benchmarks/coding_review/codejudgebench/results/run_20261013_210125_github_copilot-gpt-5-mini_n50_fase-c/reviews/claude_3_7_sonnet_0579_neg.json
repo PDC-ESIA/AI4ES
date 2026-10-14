@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação aloca matrizes 2D completas `grid` e `prefix_sum` de tamanho (H+1) × (W+1). Para H = W = 3000 isso corresponde a ~9e6 entradas, o que em Python consome memória suficiente para causar MemoryError ou violar limites de execução em judges.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "A correção trata o caso N == 0 com fórmula matemática (correto), mas o algoritmo geral continua com laços aninhados que podem causar TLE em instâncias com furos; a complexidade no pior caso permanece alta para Python com H,W=3000.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes automatizados entregues cobrindo casos críticos (N=0, N grande, furos distribuídos).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O tratamento especial para N == 0 é adequado e resolve o TLE observado para esse caso. Recomenda-se reestruturar a solução geral para evitar estruturas O(H·W) (usar mapas por linha/coluna, DP adaptado, busca binária ou varredura por furos).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

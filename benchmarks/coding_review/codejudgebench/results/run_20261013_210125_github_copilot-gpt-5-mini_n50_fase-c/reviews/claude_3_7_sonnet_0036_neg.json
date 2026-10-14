@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Complexidade assintótica por query é O(n), levando a O(n * q) no pior caso; isto causará TLE para n, q até 10^5. Use pré‑computação (prefix frequency arrays) para reduzir custo por query a O(26).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Recalcula Counters e itera toda a metade da string por query. Falta separação entre pré‑processamento e respostas rápidas por query; reestruturar para prefix counts por letra.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste automatizados que cubram casos pequenos, limites e o caso de performance; adicionar testes é recomendado.",
+      "file": "(nenhum)",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Análise estática (ruff) sinalizou import em nível de módulo relacionado ao bloco de ambiente pré-carregado; não afeta a lógica funcional, mas pode gerar alertas de lint.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

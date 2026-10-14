@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Lógica de transição incorreta quando nums[i] > nums[i-1]. O código usa upper_bound = min(max(0, j - diff), nums[i-1]) — isto converte um valor negativo de (j - diff) em 0, permitindo transições que deveriam ser inválidas. A condição correta exige que o limite superior para valores anteriores seja ub = j - max(0, diff); se ub < 0 então não há estados anteriores válidos (dp[i][j] deve ser 0). A implementação atual conta configurações extras, causando overcount (ex.: para [2,3,2] produz 7 em vez de 4).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram incluídos arquivos de teste automatizados que verifiquem o comportamento (happy path e casos limite como arrays crescentes, decrescentes e casos com aumento de nums). Sem testes, a correção não pode ser validada automaticamente no pipeline.",
+      "file": "workspace (solution.py)",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O DP é alocado em 2D com largura max(nums)+1; isso é aceitável para as restrições (n <= 2000, nums[i] <= 50). Poderia ser otimizado para duas linhas (rolling array) para reduzir uso de memória, mas não é necessário para correção funcional.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

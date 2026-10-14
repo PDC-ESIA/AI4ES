@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A solução aloca e preenche uma tabela binomial de tamanho (n+1) x (n+1), causando custo O(n^2) em tempo e memória. Com n até 10^5 isso é inviável (estouro de memória/timeout), tornando o programa não executável para entradas grandes.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram incluídos arquivos de teste/unitários no workspace. Não há casos automatizados que comprovem a correção sobre os limites e casos de borda (p.ex. n grande, k = 1, k >= n, elementos iguais).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "warning",
+      "description": "A implementação calcula toda a tabela binomial quando apenas valores com j <= k-1 são necessários. Como k <= min(70, n), a memória e o tempo podem ser reduzidos limitando a tabela às primeiras k colunas ou usando factorials/inversos modulares.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

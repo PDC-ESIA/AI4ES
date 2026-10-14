@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A solução constrói uma matriz de custo N x N e roda Hungarian. Para N até 10^5 isso é intratável (memória e tempo), levando a TLE/OOM.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Implementação do Kuhn–Munkres/Hungarian incorreta: uso de índices match que podem ser -1 sem checagem, lógica de augmenting path e atualizações de potenciais (u/v) inconsistentes, resultando em atribuições incorretas ou exceções.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Design excessivamente complexo: o problema pode ser resolvido em O(N) (somar todos os pesos e subtrair a soma dos maiores pesos por caixa). A escolha de modelar como assignment aumenta risco e erros.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste entregues. Falta suite de testes para verificar correção (casos simples, limites) e desempenho.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica de transição está incorreta e provoca contagens duplicadas. O código soma separadamente a contribuição 'no_cut' (dp[i-1]) e também uma soma global (sum_dp0) que já inclui dp[i-1], resultando em double-counting. As fórmulas corretas são dp[i][0] = sum_dp0 - target_dp0 e dp[i][1] = sum_dp1 + target_dp0. Exemplo simples: N=1, A=[x] com x != K deveria dar dp[1][0]=1, mas o código atual produz 2.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Mantém o dicionário ps_to_dp1 e o array dp 2D quando ps_to_dp1 não é utilizado nas transições (target_dp1 nunca lido). Estado desnecessário aumenta complexidade cognitiva; prefira manter apenas os acumuladores estritamente necessários.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. É recomendado incluir testes unitários e casos de regressão (incluindo os exemplos do enunciado e casos pequenos/limites) para detectar regressões como esta durante desenvolvimento.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A abordagem assintótica é adequada (O(N) esperado usando hashmap por prefix sum). Após corrigir a fórmula (remover a soma no_cut separada), a solução deverá atender aos requisitos de desempenho.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

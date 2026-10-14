@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica em is_possible está incorreta: ela acumula marking_time (índice do segundo de marcação) em available_ops e compara esse total com nums[i] + 1. Isso duplica a contagem de segundos quando há múltiplos índices com marcações em diferentes momentos, levando a decisões erradas (ex.: retorna False/True no tempo errado). Exemplo concreto: nums=[1,3], changeIndices=[1,1,1,2,1,1,1] (1-based) deveria ser possível em 6s, mas a função atual pode falhar. Correção: ao iterar índices ordenados por último aparecimento t_i, rastrear used = número de segundos já alocados; verificar used + nums[i] <= t_i (há tempo suficiente antes do segundo de marcação) e então fazer used += nums[i] + 1 (consumindo os decrements e o segundo de marcação). A implementação atual não segue esse teste e portanto produz respostas incorretas.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste/unitários junto com a implementação. Embora o enunciado não os exigisse explicitamente, testes automatizados (casos de borda e os exemplos falhos) ajudariam a evitar regressões e confirmassem a correção da solução.",
+      "file": "workspace (solution.py)",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

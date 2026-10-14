@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "info",
+      "description": "Nenhum arquivo de teste/unitário foi fornecido no workspace. A task não exigia explicitamente testes, mas adicionar testes automatizados (casos limites e exemplos) ajudaria a evitar regressões.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Cálculo do binomial usa inverso modular por pow(...) dentro de um laço; isso é correto e suficiente para os limites (n ≤ 1e5), porém poderia ser levemente otimizado com pré-cálculo de fatoriais e inversos se desejado.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

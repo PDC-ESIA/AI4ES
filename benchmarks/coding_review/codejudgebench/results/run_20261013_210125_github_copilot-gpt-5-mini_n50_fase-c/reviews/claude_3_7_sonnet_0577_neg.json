@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A pruning condition in backtracking is incorrect and can prematurely discard valid assignments. The block `if teams_in_use[0] + remaining_players > T: reuse_count = (teams_in_use[0] + remaining_players) - T if teams_in_use[0] < reuse_count: return` misunderstands the reuse requirement: multiple remaining players can be assigned to the same existing team, so this check can return early on valid states and will undercount solutions.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "No tests were delivered alongside the implementation. Automated tests that cover happy path and edge cases (including the reported failing case N=6, T=4, M=0 and some nontrivial incompatible-pair scenarios) are missing.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "The solution uses canonical/team-order labeling (creating new teams with increasing indices) which is appropriate to avoid symmetries for counting unlabeled partitions as required by the problem statement. However, this relies on careful pruning logic — see the critical issue above.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

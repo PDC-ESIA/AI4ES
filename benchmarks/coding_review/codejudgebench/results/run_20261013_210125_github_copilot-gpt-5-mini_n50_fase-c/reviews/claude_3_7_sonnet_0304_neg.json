@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Incorrect memoization lookup — the code uses `if mask in memo: return memo[memo]`. This is a bug (should be `return memo[mask]`) and will raise a KeyError / return wrong value when the branch is reached, breaking correctness at runtime.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Algorithmic complexity is exponential (bitmask DP over `n = len(diffs)` up to ~500). A full bitmask recursion is infeasible for n beyond ~20 and will TLE / exhaust memory on realistic inputs. The expected solution must run in polynomial time (O(n^2) or better) given constraints; the current design is not acceptable for production/test-suite execution.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "No test files were delivered with the submission. The repository/patch does not include unit or integration tests exercising happy path and edge cases (e.g., examples in the prompt, odd count of diffs, large inputs). Add deterministic unit tests to validate correctness and performance.",
+      "file": "(workspace)",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

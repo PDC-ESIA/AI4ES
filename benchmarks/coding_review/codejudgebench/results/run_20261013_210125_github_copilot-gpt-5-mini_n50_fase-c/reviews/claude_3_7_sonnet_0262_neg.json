@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo tem complexidade O(n^2) no pior caso (loop aninhado que gera e compara transformações para cada j). Isso vai provocar Time Limit Exceeded para entradas longas (n até 3e5), falhando o critério automatizável CA-02 (eliminar TLE). É necessário reduzir para O(n) — por exemplo, decrementar apenas o segmento contíguo de caracteres != 'a' começando na primeira posição não-'a'.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste entregues no workspace. Não foram fornecidos casos unitários que cubram happy path e cenários limites (cadeia toda de 'a', alternância longa que causa TLE, strings curtas). Entregar testes automatizados ajudaria a validar correção e a evitar regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A implementação atual muta uma cópia da string por cada possível final j (construindo uma lista e juntando). Além do custo temporal, isso gera cópia O(n) repetida desnecessariamente. Uma única varredura que modifica caracteres até encontrar um 'a' é mais simples e eficiente.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

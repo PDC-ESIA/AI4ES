@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste entregues no workspace cobrindo a implementação (nenhum teste unitário). Recomenda-se adicionar testes automatizados (happy path e edge cases) para evitar regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "O código depende do bloco de ambiente pré-carregado (wildcard imports). Isso é especificado pelo enunciado, mas torna o arquivo menos independente. Considerar tornar dependências explícitas caso o código seja extraído para outro contexto.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

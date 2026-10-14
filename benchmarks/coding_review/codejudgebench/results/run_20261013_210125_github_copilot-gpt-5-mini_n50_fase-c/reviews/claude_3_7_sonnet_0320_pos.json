@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi incluído no workspace. Não há testes unitários que validem caminhos felizes e casos de borda (ex.: todas as categorias de k).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "O código acessa nums[0] diretamente ao verificar k = 0. Isso é seguro segundo as restrições (n >= 1), mas resultaria em IndexError se chamado com lista vazia. Considerar checagem explícita se for necessário suportar n = 0.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

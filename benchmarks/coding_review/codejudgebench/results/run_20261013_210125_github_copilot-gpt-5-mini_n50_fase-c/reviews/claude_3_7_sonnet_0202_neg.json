@@ -1,0 +1,38 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo incorreto — a lógica que calcula se a distribuição é possível e a fórmula de custo estão equivocadas. O código usa uma variável stones_left de forma incorreta (subtrai espaços entre posições antes de acrescentar as pedras do próprio X_i) e tenta computar custos com uma soma por posições vagamente relacionada ao problema real. Como consequência, o programa continua falhando no caso indicado (Sample Input 2) e devolve resultados errados para muitos casos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Complexidade/iterações impossíveis — o código contém loops do tipo \"for i in range(current_pos + 1, pos)\" e \"for i in range(current_pos + 1, N + 1)\" que, no pior caso (N até 2×10^9), são intratáveis e acarretam timeouts ou tentativa de iteração por intervalos gigantes. A solução deve trabalhar com M (até 2×10^5) e não com N iterável elemento a elemento.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Verificações de viabilidade equivocadas — o teste para total_stones == N é correto, mas a verificação posterior (stones_left logic e a comparação final stones_left != N - current_pos) não implementa corretamente o teste de prefixos necessário para decidir possibilidade (para ser válido é necessário checar que, para todo p, soma_{xi<=p} ai >= p). O código atual pode aceitar instâncias impossíveis e rejeitar outras válidas.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Estrutura confusa e mistura de responsabilidades — leitura de input, lógica de validação e cálculo do resultado estão acopladas num único bloco sem decomposição clara. Variáveis como current_pos e stones_left têm semântica pouco clara e a função min_operations realiza iterações que não correspondem a operações elementares do problema. Recomenda-se separar parsing, validação de prefixos e cálculo de custo com uma estratégia que opere sobre os M pares (X_i, A_i) de forma comprimida.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados/unitários que validem a correção sobre os casos do enunciado (samples) e casos limite. Ausência de testes dificulta inspeção e garante regressões não detectadas.",
+      "file": "(workspace)",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

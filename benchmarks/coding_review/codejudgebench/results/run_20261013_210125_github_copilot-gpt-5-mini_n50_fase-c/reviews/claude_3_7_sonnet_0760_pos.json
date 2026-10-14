@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de teste foi entregue no workspace. Não há testes automatizados que verifiquem a correção nem a regressão da performance (CA-01/CA-02 não têm provas automatizadas aqui).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Existem imports redundantes/duplicados e declarações de import em posições que geraram avisos de lint (ruff E402/F811). Isso não quebra a execução, mas polui o módulo e pode gerar ruído do linter.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

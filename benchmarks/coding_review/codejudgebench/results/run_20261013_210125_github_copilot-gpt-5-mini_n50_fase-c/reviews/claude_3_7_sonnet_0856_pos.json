@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The algorithm is exponential in Q (DFS branching 2 choices per operation) and will not run within time/memory limits for the stated constraints (N,Q up to 5000). Memoizing segment tuples does not asymptotically fix the explosion of reachable states; in practical large tests this will TLE / blow memory. This violates the acceptance criterion CA-02 (eliminate the previous TLE).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "No test harness or unit tests were provided in the workspace. There are no automated tests covering correctness, performance or edge cases (e.g. maximal N,Q), so regressions or performance problems cannot be validated locally.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "warning",
+      "description": "The choice to represent whole-array state as a tuple of segments and memoize on it is reasonable for some inputs but not for worst-case inputs: the number of distinct segmentations can grow large and the memo table can explode. The design lacks an overall polynomial-time DP strategy required by the problem constraints.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Minor code issue — an unnecessary inner conditional appears in the prefix-handling branch (if end < P: if start <= P: ... else ...). The else branch is unreachable; this is a small code smell but not directly causing incorrect results.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}
