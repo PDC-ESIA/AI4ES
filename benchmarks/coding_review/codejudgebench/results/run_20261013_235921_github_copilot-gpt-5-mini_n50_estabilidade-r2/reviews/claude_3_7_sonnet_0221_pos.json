@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algorithmic complexity is O(N^2) in the worst case (nested loops over j and i with ~j iterations each). With N up to 3e5 this will not finish within time limits (TLE).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Off-by-one / invalid partition: the inner loop iterates i from j-1 down to 0 and uses prefix[i+1] and middle built from A[i+1..j-1], which includes iteration i==j-1 corresponding to an empty middle subarray (invalid per problem). This can produce incorrect answers.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "No test files or automated tests were provided alongside the solution. Acceptance criteria require eliminating the observed TLE; no tests are present to assert correctness or performance.",
+      "file": "(workspace)",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

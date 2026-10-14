@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste fornecidos. Nenhum teste unitário ou de integração acompanha a implementação para validar automaticamente cenários (happy path e edge cases).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Uso do 'magic number' 60 para limitar shifts grandes. É correto e seguro dado N ≤ 1e18 (2^60 > 1e18), mas seria mais claro documentar essa escolha ou derivá-la de log2(N) para legibilidade.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

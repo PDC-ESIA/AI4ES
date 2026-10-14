@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O código usa collections.deque e faz indexing direto (head_history[p-1]). O acesso por índice em deque é O(k), então consultas do tipo 2 podem custar tempo linear e causar TLE em entradas grandes.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Estrutura inadequada para o padrão de acesso: mistura appendleft/pop com acessos indexados aleatórios. Use lista com append e indexação negativa para O(1) em consultas.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados cobrindo casos críticos (performance e limites).",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

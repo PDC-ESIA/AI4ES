@@ -1,0 +1,57 @@
+## Status: BLOQUEADO
+
+## Issues
+- severity: critical  
+  file: solution.py  
+  layer: corretude  
+  description: A abordagem atual ainda é assintoticamente inviável para os limites do problema (|s| ≤ 10^4). O algoritmo explora estados (i, mod_idx, new_char) com mod_idx ∈ [0..n-1] e new_char ∈ alfabeto, e a rotina principal tenta todas as posições e todas as letras alternativas, resultando em complexidade e espaço aproximadamente O(26 * n^2) no pior caso. Isso leva a Time Limit Exceeded ou esgotamento de memória para entradas grandes (o mesmo problema observado na solução anterior não foi eliminado).
+
+- severity: warning  
+  file: solution.py  
+  layer: arquitetura  
+  description: A memoização atual inclui new_char no key, multiplicando o espaço de estados por até 26. Além disso, a implementação recalcula o avanço do ponteiro j repetidamente sem reutilizar informação de prefixos/limites previamente calculados — um desenho mais eficiente evitaria tentar todas as 25 substituições por posição e refinaria os estados a explorar (ex.: considerar apenas mudanças que alteram a fronteira de prefixo, usar DP em prefixos/partições, ou estratégias baseadas em varredura linear).
+
+- severity: warning  
+  file: solution.py  
+  layer: completude  
+  description: Não foram entregues arquivos de teste automatizados. Os critérios de aceite incluem corrigir a falha de TLE/eficiência (CA-02) e não há testes que validem comportamento em casos limites (ex.: n≈10^4). Fornecer testes que cubram entradas grandes e casos triviais é necessário para comprovar a correção e performance.
+
+- severity: info  
+  file: solution.py  
+  layer: corretude  
+  description: Ausência de atalhos simples que evitariam trabalho desnecessário — por exemplo, se o número distinto de caracteres em s é ≤ k a resposta é 1; implementar essa verificação curta evita trabalho em muitos casos triviais.
+
+## Resumo
+A solução implementa uma simulação correta do processo para uma dada modificação e adiciona memoização, mas a estratégia de enumerar todas as posições e letras modificadas combinada com memo keys que distinguem cada letra produz um espaço de estados e tempo de execução que ainda são impraticáveis para n até 10^4. Isso mantém a falha observada (TLE/uso excessivo de memória). Também não foram fornecidos testes automatizados. Por esses motivos a entrega fica BLOQUEADA até que a complexidade seja reduzida (p.ex. restringir as modificações a candidatos relevantes, usar DP/greedy linear, ou outra formulação que opere em tempo aproximadamente O(n·alphabet) ou O(n log n) no pior caso) e tests que comprovem a correção e o ganho de desempenho sejam adicionados.
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A abordagem atual ainda é assintoticamente inviável para os limites do problema (|s| ≤ 10^4). O algoritmo explora estados (i, mod_idx, new_char) com mod_idx ∈ [0..n-1] e new_char ∈ alfabeto, e a rotina principal tenta todas as posições e todas as letras alternativas, resultando em complexidade e espaço aproximadamente O(26 * n^2) no pior caso. Isso leva a Time Limit Exceeded ou esgotamento de memória para entradas grandes (o mesmo problema observado na solução anterior não foi eliminado).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "A memoização atual inclui new_char no key, multiplicando o espaço de estados por até 26. Além disso, a implementação recalcula o avanço do ponteiro j repetidamente sem reutilizar informação de prefixos/limites previamente calculados — um desenho mais eficiente evitaria tentar todas as 25 substituições por posição e refinaria os estados a explorar (ex.: considerar apenas mudanças que alteram a fronteira de prefixo, usar DP em prefixos/partições, ou estratégias baseadas em varredura linear).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste automatizados. Os critérios de aceite incluem corrigir a falha de TLE/eficiência (CA-02) e não há testes que validem comportamento em casos limites (ex.: n≈10^4). Fornecer testes que cubram entradas grandes e casos triviais é necessário para comprovar a correção e performance.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Ausência de atalhos simples que evitariam trabalho desnecessário — por exemplo, se o número distinto de caracteres em s é ≤ k a resposta é 1; implementar essa verificação curta evita trabalho em muitos casos triviais.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ]
+}
+```

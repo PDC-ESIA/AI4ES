@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Logic incorrectly excludes valid triples by checking and skipping rows r2 that contain 'o' in both columns, causing undercounting.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Algorithmic complexity is too high (nested pair loops and per-pair scans). Will TLE for N up to 2000. Use per-column counts and the formula contrib_row = (k_r - 1) * sum_{c in row r} (col_count[c] - 1) for O(M) runtime.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "No tests or examples provided with the implementation; add unit tests or sample-run checks (use provided sample inputs).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Both row->cols and col->rows are built; with the corrected formula only row->cols and a column counts array are needed. Current structures lead to unnecessary complexity.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

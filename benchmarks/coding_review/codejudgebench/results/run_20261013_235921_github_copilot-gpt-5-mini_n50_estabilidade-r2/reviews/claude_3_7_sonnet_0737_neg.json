@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação atual conta permutações duplicadas quando S contém caracteres repetidos. O código itera sobre itertools.permutations(s) sem deduplicar as strings resultantes, incrementando count para cada permutação posicional idêntica (por exemplo, 'aab' gera 'aba' duas vezes), enquanto o enunciado requer contar as strings distintas obtidas por permutar os caracteres de S. Isso leva a resultados incorretos em casos com letras repetidas (ex.: S='aab', K=2 retornará 2 em vez de 1).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste automatizados (unit tests / casos de teste). A ausência de testes deve ser registrada — os critérios automatizáveis de aceitação não têm cobertura de teste no workspace.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Há importações redundantes e imports posicionados após o bloco de ambiente carregado; o analisador estático (ruff) já apontou E402 (module level import not at top of file). Não é crítico para execução, mas reduz a qualidade e gera ruído de lint.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivo de testes cobrindo cenários críticos (happy path e casos com caracteres repetidos/únicos). Recomenda-se adicionar testes que validem corretamente a deduplicação de permutações e casos limite (N=10, com e sem repetição, K variando).",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

@@ -1,0 +1,32 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue. Não há testes unitários/integração para validar o comportamento em casos limites ou regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues artefatos adicionais (ex.: README ou instruções de execução). Apenas solution.py foi fornecido — suficiente para execução, mas reduz rastreabilidade e reprodutibilidade.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "A função solve() mistura I/O e lógica de negócio. Separar a lógica de resolução (função pura que recebe A, B e retorna resultado) do código de leitura/escrita facilitaria testes automatizados e manutenção.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "O cabeçalho inclui uma grande lista de imports pré-carregados pela plataforma (marcado como 'AMBIENTE DE EXECUÇÃO'). Isto não faz parte da solução e pode poluir o namespace, mas não afeta a corretude do código abaixo.",
+      "file": "N/A",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

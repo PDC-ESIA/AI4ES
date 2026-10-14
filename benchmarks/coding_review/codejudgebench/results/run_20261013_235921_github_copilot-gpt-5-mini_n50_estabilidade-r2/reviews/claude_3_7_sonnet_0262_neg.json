@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação atual tenta todas as posições finais possíveis (loop j de i até n) e, para cada uma, constrói/transforma a string novamente — comportamento O(n^2) no pior caso. Com |s| ≤ 3·10^5 isso causa Time Limit Exceeded em entradas longas (p. ex. quando não há 'a' ou muitos caracteres não-'a'). A solução correta deve ser O(n): encontrar o primeiro caractere != 'a' e decrementar apenas o bloco contíguo de caracteres não-'a' a partir daí (parando ao encontrar um 'a'), com caso especial de toda a string sendo 'a' (já tratado).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (nenhum arquivo de teste presente). Critérios de aceite automáticos (CA-01/CA-02) dependem de execuções que verificam correção e desempenho — adicionar testes que cobrem big-O (caso limite longo) e exemplos do enunciado é necessário.",
+      "file": "(workspace)",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A rotina recria e modifica uma lista inteira para cada candidate de fim de substring, o que é desnecessário. Um design de responsabilidade única e baixo custo temporal recomenda fazer uma única varredura linear e aplicar a transformação apenas uma vez.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

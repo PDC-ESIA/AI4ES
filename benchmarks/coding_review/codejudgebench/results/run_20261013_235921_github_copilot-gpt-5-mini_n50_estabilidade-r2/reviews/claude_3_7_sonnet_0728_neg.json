@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Escolha e implementação do algoritmo: o código tenta resolver o problema com o algoritmo de atribuição (Hungarian / Kuhn–Munkres). Além de a implementação estar incorreta (lógica do kuhn_munkres está quebrada, por exemplo uso indevido de match[j] = -1 que será indexado, atualizações de potenciais mal formuladas e fluxo de augmentação errôneo), o método não é necessário para o problema e causa comportamento incorreto/indefinido e possivelmente exceções em entradas reais.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Complexidade inaceitável para os limites do problema: construir uma matriz de custo N×N e usar um algoritmo de atribuição leva a O(N^2) memória e pelo menos O(N^3) tempo no pior caso. Com N até 1e5 (especificado), isso é inviável e leva a Time Limit Exceeded / MemoryError. A falha observada (TLE) não foi corrigida.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes automatizados no workspace. Não foram entregues casos de teste (unitários ou integração) que provem correção para casos pequenos, limites e casos de exemplo do enunciado.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

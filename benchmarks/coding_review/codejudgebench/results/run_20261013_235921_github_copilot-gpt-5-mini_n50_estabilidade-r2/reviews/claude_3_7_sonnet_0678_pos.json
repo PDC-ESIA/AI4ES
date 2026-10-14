@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Arquivos de teste não foram fornecidos no workspace. Não há testes automatizados (unit/integration) para validar a correção nem para prevenir regressões.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Risco de desempenho no pior caso — a complexidade aproximada do algoritmo é O(sum_{edges} (W_u + W_v)) de atualizações de DP (até cerca de 50M iterações em entradas extremas). A memoização elimina o trabalho repetido que causava o TLE anterior, então o problema observado foi tratado; porém, em limites muito adversos isso pode ficar próximo do limite de tempo em algumas plataformas. Não há erro lógico aparente.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "info",
+      "description": "A solução usa recursão com memoização e explora a propriedade W[adj] < W[vertex] para orientar transições (grafo dirigido implícito por pesos estritamente decrescentes), o que garante ausência de ciclos nas chamadas recursivas. O limite de recursão foi aumentado no preâmbulo (sys.setrecursionlimit), o que é apropriado para profundidades até N=5000.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

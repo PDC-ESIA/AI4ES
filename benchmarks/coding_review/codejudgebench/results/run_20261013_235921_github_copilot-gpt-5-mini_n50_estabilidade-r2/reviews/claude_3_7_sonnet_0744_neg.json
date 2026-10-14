@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Lógica incorreta ao tratar o caso remainder == 2 quando T % 3 == 2. O código sempre adiciona 2 ataques, mas nesse caso um único ataque (de 3 de dano) é suficiente, causando overcount de T e resposta errada. Exemplo reprodutível: entrada N=2, healths=[2,2]. Saída esperada: 3, saída do programa: 4. Correção: na ramificação remainder==2, tratar o subcaso T%3==2 como T += 1 (não 2).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace cobrindo cenários críticos (happy path e casos limites, p.ex. sequências que produzem T%3 variados entre inimigos). Recomenda-se adicionar testes unitários incluindo contraexemplos (ex.: [2,2], grandes valores e combinações que mudam T%3) para evitar regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A variável N é lida do input mas não é usada para validar o comprimento de healths; linter aponta N como atribuído e não usado. Não é um erro funcional, mas pode confundir leitores ou ferramentas estáticas.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

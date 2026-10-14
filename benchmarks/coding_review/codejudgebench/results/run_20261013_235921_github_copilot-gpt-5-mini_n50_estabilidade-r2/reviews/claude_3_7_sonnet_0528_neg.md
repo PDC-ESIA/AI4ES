@@ -1,0 +1,46 @@
+## Status: BLOQUEADO
+
+## Issues
+- severity: critical  
+  file: solution.py  
+  layer: arquitetura  
+  description: O código pré-computa uma tabela completa de binomial binom de tamanho (n+1) x (n+1). Com n até 10^5 isso é inviável em memória e tempo (O(n^2) memória e tempo). Na prática a solução vai falhar por OOM/TLE em entradas grandes. Dado o limite do problema (k <= 70) a tabela completa não é necessária — a implementação deve limitar a profundidade em k ou usar fatoriais/inversos/mod combinatórios em O(n) ou O(n·k).
+
+- severity: warning  
+  file: solution.py  
+  layer: completude  
+  description: Não há arquivos de teste/unitários entregues no workspace. Os critérios automatizáveis (CA-01, CA-02) exigem verificação automática; sem testes, a validação por pipeline fica incompleta. Recomendo adicionar testes para casos pequenos, limites e o caso da falha observada.
+
+- severity: info  
+  file: solution.py  
+  layer: arquitetura  
+  description: A lógica combinatória (contagem de subsequências com um elemento fixo como mínimo/máximo) parece correta: soma de C(n-1-i, r) para r=0..min(k-1, n-1-i) para mínimos e similar para máximos. O problema principal é a estratégia de pré-computação; substituir por uma pré-computação limitada até k (O(n·k)) ou por factorials + inversos mod (O(n)) resolve o desempenho.
+
+## Resumo
+A solução implementa corretamente a lógica combinatória para contar as aparições de cada elemento como mínimo e máximo, e aplica o modulo corretamente. Contudo a implementação pré-computa uma tabela binomial completa de tamanho O(n^2), o que a torna inviável para os limites do problema (n até 10^5) — isso é um bloqueio crítico que impedirá execução em inputs grandes. Além disso faltam arquivos de teste para comprovar correção e prevenir regressões. Para desbloquear, recomendo reimplementar a pré-computação de combinações limitando-se a k (usar tabela de dimensão (n+1) x (k) ou calcular C(n, r) incrementalmente) ou usar factorials+inversos mod para obter memória e tempo aceitáveis.
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O código pré-computa uma tabela completa de binomial binom de tamanho (n+1) x (n+1). Com n até 10^5 isso é inviável em memória e tempo (O(n^2) memória e tempo). Na prática a solução vai falhar por OOM/TLE em entradas grandes. Dado o limite do problema (k <= 70) a tabela completa não é necessária — a implementação deve limitar a profundidade em k ou usar fatoriais/inversos/mod combinatórios em O(n) ou O(n·k).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste/unitários entregues no workspace. Os critérios automatizáveis (CA-01, CA-02) exigem verificação automática; sem testes, a validação por pipeline fica incompleta. Recomendo adicionar testes para casos pequenos, limites e o caso da falha observada.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A lógica combinatória (contagem de subsequências com um elemento fixo como mínimo/máximo) parece correta: soma de C(n-1-i, r) para r=0..min(k-1, n-1-i) para mínimos e similar para máximos. O problema principal é a estratégia de pré-computação; substituir por uma pré-computação limitada até k (O(n·k)) ou por factorials + inversos mod (O(n)) resolve o desempenho.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ]
+}
+```

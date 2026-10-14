@@ -1,0 +1,32 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace cobrindo a solução (nenhum teste unitário ou de integração foi entregue). Recomenda-se adicionar testes que verifiquem os casos limites e as amostras do enunciado.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Uso de dist.get(..., 0) como valor padrão: se por qualquer motivo um vértice esperado não estiver presente no dicionário de distâncias (entrada inválida ou violação implícita das garantias), o código usará 0 e poderá produzir um resultado incorreto. No contexto do enunciado isso não acontece (cada subconjunto é conectado), mas o uso de um valor por omissão mais explícito (ex.: KeyError, inf) tornaria a intenção mais robusta.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Conversão para set(u_neighbors) é feita dentro do loop para cada u, o que força a travessia completa da lista de adjacência de u (incluindo arestas internas ao mesmo componente). Isso é assintoticamente aceitável (soma das conversões é O(M)), mas poderia ser otimizado (p.ex. converter apenas os vizinhos inter-componentes ou pré-construir sets para os vértices da primeira parte) para reduzir trabalho constante e melhorar performance em instâncias com muitos vizinhos internos.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Leitura de entrada usa input() em um laço para M linhas. Para entradas máximas (≈3e5 linhas) é preferível usar leitura rápida (sys.stdin.buffer.read + parsing) para reduzir risco de overhead de I/O em limites apertados de tempo.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

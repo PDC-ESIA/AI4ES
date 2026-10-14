@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação não atualiza nums[i] após reduzir o valor local (faltou atribuir nums[i] = curr). Como o algoritmo processa os elementos da direita para a esquerda, os índices anteriores dependem do valor já reduzido à direita; ao não gravar a redução no array, as comparações subsequentes usam valores originais e o resultado final (e a contagem de operações) fica incorreto. Isso produz saídas erradas para muitos casos e viola o critério CA-01.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste (nenhum test_xxx.py no workspace). Falta cobertura automatizada que valide casos críticos (happy path e edge cases) e permita verificar automaticamente a correção.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes unitários incluídos. Sem testes, regressões e casos limites não podem ser verificados automaticamente (CA-01 / CA-02 não ficam plenamente comprováveis).",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

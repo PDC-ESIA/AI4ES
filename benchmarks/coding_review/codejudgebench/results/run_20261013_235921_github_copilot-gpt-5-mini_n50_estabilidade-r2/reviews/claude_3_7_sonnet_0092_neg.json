@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação atual faz cópia da lista e soma dos elementos restantes para cada candidato outlier, resultando em O(n^2) e causando Time Limit Exceeded para n grande. Use um Counter para obter O(n).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste automatizados no workspace; falta cobertura para o caso que causou TLE e outros cenários.",
+      "file": "(workspace)",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A checagem sum(temp) == sum_element é redundante dado que sum_element é definido por fórmula. A arquitetura deve evitar cópias e somas repetidas e usar um mapa de frequências.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}
