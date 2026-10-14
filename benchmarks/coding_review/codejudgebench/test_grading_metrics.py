@@ -152,3 +152,27 @@ def test_sem_registros():
     m = metrics.compute_metrics([])
     assert m["judgment"]["accuracy"]["value"] is None
     assert m["judgment"]["accuracy"]["ci95"] is None
+
+
+def _com_json(verdict: str, valido, ajustado=None) -> dict:
+    resposta = _resp(verdict)
+    resposta["attempts"][0]["structured_valid"] = valido
+    resposta["attempts"][0]["status_adjusted"] = ajustado
+    return resposta
+
+
+def test_aderencia_ao_review_output_e_status_ajustado():
+    registros = [
+        _registro(_com_json("pass", True), _com_json("fail", True, ajustado=True)),
+        _registro(_com_json("pass", False), _com_json("fail", True)),
+    ]
+    f = metrics.compute_metrics(registros)["format"]
+    assert (f["structured_output_valid"]["k"], f["structured_output_valid"]["n"]) == (3, 4)
+    assert f["status_adjusted_by_rule"] == 1
+
+
+def test_aderencia_nao_se_aplica_a_reviewer_sem_json():
+    # Runs anteriores à fase C: structured_valid ausente ou None.
+    f = metrics.compute_metrics([_registro(_resp("pass"), _resp("fail"))])["format"]
+    assert f["structured_output_valid"]["n"] == 0
+    assert f["structured_output_valid"]["value"] is None
