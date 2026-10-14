@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O algoritmo está incorreto: deve priorizar cortes de maior valor (guloso invertido), multiplicando pelo número de segmentos na direção oposta. Fails cases com cortes caros.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivo de teste entregue junto com a solução.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O código está todo em uma classe única, condizente ao contexto de problema competitivo, mas sem modularização.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

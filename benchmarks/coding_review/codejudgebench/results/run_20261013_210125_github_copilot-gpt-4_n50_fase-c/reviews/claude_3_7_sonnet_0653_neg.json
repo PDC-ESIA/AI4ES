@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Import não está no topo do arquivo (ruff/E402) — mas é resultado do ambiente injetado pela plataforma e não afeta a solução.",
+      "file": "src/solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Não há arquivo de teste separado — esperado, dado o contexto de solução única e padrões de competitivas.",
+      "file": "src/solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

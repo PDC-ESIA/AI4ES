@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Import `heapq` reaparece em nível de módulo, apesar de já ser incluso pelo ambiente pré-carregado.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Import no meio do arquivo (`heapq`) (Ruff E402), movê-lo para o topo.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Redefinição não usada de `heapq` em linha 40 (Ruff F811).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

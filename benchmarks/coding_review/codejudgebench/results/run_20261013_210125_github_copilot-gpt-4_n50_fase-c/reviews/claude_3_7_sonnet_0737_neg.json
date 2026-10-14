@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Imports `permutations` e `factorial` do topo poderiam ser removidos da posição após o bloco de ambiente, visto que já estão disponíveis pelo pré-carregamento.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Imports ao meio do arquivo causam alertas estáticos (E402), mas não afetam execução no ambiente atual.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

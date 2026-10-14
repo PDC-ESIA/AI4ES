@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação da função kuhn_munkres (Hungarian Algorithm) está incorreta para o caso geral e não é adequada para N até 1e5. Pode gerar resultados incorretos ou laços infinitos, não elimina o problema de TLE.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há nenhum teste automatizado entregue para garantir a cobertura dos casos principais e de borda.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

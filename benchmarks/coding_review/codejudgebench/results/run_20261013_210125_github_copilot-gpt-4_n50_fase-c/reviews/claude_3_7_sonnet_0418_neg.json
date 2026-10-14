@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "O código implementa detecção de ciclos e lógica de \"skip\" ao detectar ciclos que não altera o estado da fila nem avança a simulação — é mais complexa do que necessário, mas não introduz bug funcional grave.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "A solução poderia ser otimizada: se k >= n, o vencedor é sempre o índice do maior skill.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

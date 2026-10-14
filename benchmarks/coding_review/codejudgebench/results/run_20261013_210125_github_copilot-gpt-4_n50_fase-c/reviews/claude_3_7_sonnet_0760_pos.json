@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Import redundante de `heapq` ao topo do arquivo; já foi importado pelo ambiente.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Redefinição de `heapq` do ambiente (relatado por linter).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Import no meio do arquivo (linha fora do topo), sem impacto funcional, mas fere convenção de estilo.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}
