@@ -18,6 +18,7 @@ nenhum — é o equivalente, no pipeline, a uma revisão sem status utilizável.
 
 from __future__ import annotations
 
+import json
 import shutil
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -41,6 +42,21 @@ from .contract import (
 from .dataset import RepairPair
 
 REPORT_FILENAME = "verificacao_revisao.md"
+STRUCTURED_FILENAME = "verificacao_revisao.json"
+
+
+def _reviewer_produz_saida_estruturada() -> bool:
+    """O reviewer medido já grava verificacao_revisao.json (fase C, #421)?
+
+    Distingue "o reviewer não produz JSON" (versões anteriores: métrica não se
+    aplica) de "produz, mas esta resposta veio sem JSON válido" (falha de
+    aderência ao ReviewOutput).
+    """
+    try:
+        from src.agents.workflow_coding_review.reviewer import structured_output  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 
 @dataclass
@@ -55,6 +71,10 @@ class ReviewAttempt:
     llm_interactions: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    # Saída estruturada (verificacao_revisao.json): None quando o reviewer
+    # medido ainda não a produzia; True/False quando produzia.
+    structured_valid: bool | None = None
+    status_adjusted: bool | None = None
 
 
 @dataclass
@@ -68,6 +88,7 @@ class ReviewerVerdict:
     attempts: list[ReviewAttempt] = field(default_factory=list)
     review_output: dict | None = None  # ReviewOutput.model_dump()
     markdown: str = ""
+    structured: dict | None = None  # verificacao_revisao.json, quando gravado
 
     @property
     def first_attempt_valid(self) -> bool:
@@ -129,10 +150,28 @@ def _ler_relatorio() -> str:
     return relatorio.read_text(encoding="utf-8", errors="replace")
 
 
-def _review_output(markdown: str, verdict: str) -> dict:
-    """Markdown → `ReviewOutput` do schema do reviewer (reviewer/schemas.py)."""
+def _ler_estruturada() -> dict | None:
+    """`verificacao_revisao.json` gravado pelo reviewer, se existir e for JSON."""
+    caminho = _review_dir() / STRUCTURED_FILENAME
+    if not caminho.is_file():
+        return None
+    try:
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+    except ValueError:
+        return None
+    return dados if isinstance(dados, dict) else None
+
+
+def _review_output(markdown: str, verdict: str, estruturada: dict | None = None) -> dict:
+    """`ReviewOutput` da revisão: o JSON do reviewer quando existe, senão o markdown."""
     from src.agents.workflow_coding_review.reviewer.schemas import ReviewIssue, ReviewOutput
 
+    if estruturada is not None:
+        return ReviewOutput(
+            status=estruturada.get("status") or "INVALIDO",
+            issues=[ReviewIssue(**issue) for issue in estruturada.get("issues") or []],
+            report_path=REPORT_FILENAME,
+        ).model_dump()
     lido = parse_review_markdown(markdown)
     status = {"pass": "APROVADO", "fail": "BLOQUEADO"}.get(verdict, "INVALIDO")
     return ReviewOutput(
@@ -144,7 +183,7 @@ def _review_output(markdown: str, verdict: str) -> dict:
 
 async def _uma_revisao(
     pair: RepairPair, response: str, *, user_id: str, include_explanation: bool
-) -> tuple[ReviewAttempt, str]:
+) -> tuple[ReviewAttempt, str, dict | None]:
     import time
 
     from src.agents.workflow_coding_review.manifest import _validation_verdict
@@ -195,6 +234,8 @@ async def _uma_revisao(
 
     markdown = _ler_relatorio()
     lido = parse_review_markdown(markdown)
+    estruturada = _ler_estruturada()
+    produz_json = _reviewer_produz_saida_estruturada()
     tentativa = ReviewAttempt(
         verdict=_validation_verdict(_review_dir().parent),
         lenient_status=lido.lenient_status,
@@ -204,8 +245,10 @@ async def _uma_revisao(
         llm_interactions=llm_interactions,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
+        structured_valid=(estruturada is not None) if produz_json and not erro else None,
+        status_adjusted=estruturada.get("status_ajustado") if estruturada else None,
     )
-    return tentativa, markdown
+    return tentativa, markdown, estruturada
 
 
 async def run_reviewer(
@@ -238,8 +281,9 @@ async def run_reviewer(
 
     tentativas: list[ReviewAttempt] = []
     markdown = ""
+    estruturada: dict | None = None
     for _ in range(1 + max(0, max_retries)):
-        tentativa, markdown = await _uma_revisao(
+        tentativa, markdown, estruturada = await _uma_revisao(
             pair, response, user_id=user_id, include_explanation=include_explanation
         )
         tentativas.append(tentativa)
@@ -253,6 +297,7 @@ async def run_reviewer(
         verdict=final,
         code_found=True,
         attempts=tentativas,
-        review_output=_review_output(markdown, final) if markdown else None,
+        review_output=_review_output(markdown, final, estruturada) if markdown else None,
         markdown=markdown,
+        structured=estruturada,
     )
