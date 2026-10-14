@@ -225,6 +225,35 @@ foram refeitos com `--resume-dir`, sem repetir os demais.
 Resultados: `results/run_20261013_210125_github_copilot-{gpt-4,gpt-5-mini}_n50_fase-c/`
 e as comparações em `results/comparacoes/fase-c_*`.
 
+### Estabilidade entre execuções
+
+A configuração final (gpt-5-mini com o reviewer da fase C) rodou 3 vezes nos
+mesmos 50 pares de desenvolvimento (`stability.py`):
+
+| Métrica | Por execução | Média ± desvio |
+| --- | --- | --- |
+| Acurácia do julgamento | 58% · 64% · 58% | **60,0% ± 3,5 p.p.** |
+| Aprovou código que falha nos testes | 14% · 12% · 10% | 12,0% ± 2,0 p.p. |
+| Bloqueou código que passa nos testes | 28% · 26% · 38% | 30,7% ± 6,4 p.p. |
+
+**O número agregado é estável; o veredito individual, não.** A acurácia varia
+cerca de ±3,5 p.p. entre execuções — um run de 50 pares estima bem o
+desempenho. Mas só 24 dos 50 pares tiveram o mesmo desfecho nas 3 execuções, e
+29 das 100 respostas receberam vereditos diferentes entre elas: 19 pares foram
+acertados sempre, 8 errados sempre e 23 oscilaram.
+
+**Votar não resolve.** Com o veredito mais frequente das 3 revisões, a acurácia
+fica igual (29/50); o voto só troca aprovação de código que falha (3) por
+bloqueio de código que passa (18), ao triplo do custo.
+
+**Implicação para o pipeline:** o mesmo código revisado duas vezes pode receber
+vereditos diferentes em cerca de 3 a cada 10 respostas. Para pôr o reviewer
+dentro do loop coder↔executor, essa instabilidade precisa ser considerada: um
+juiz que muda de ideia pode fazer o loop oscilar entre bloquear e aprovar.
+
+Resultados: os runs `fase-c`, `estabilidade-r2` e `estabilidade-r3` do gpt-5-mini
+e `results/comparacoes/estabilidade_gpt-5-mini_3-execucoes.md`.
+
 ## Próximos passos (outras issues)
 
 - Decidir o modelo oficial do reviewer: os dados mostram que o gpt-4.1 não serve
