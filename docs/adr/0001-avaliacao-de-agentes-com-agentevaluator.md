@@ -1,153 +1,79 @@
-# ADR 0001 — Avaliação de agentes com o `AgentEvaluator` do ADK
+# ADR 0001 — Avaliação de agentes com o módulo de avaliação do ADK
 
-- **Status:** proposto (issue #373, PR #419)
-- **Data:** 2026-09-28
-- **Escopo:** `adk/tests/eval/`; as limitações descritas valem para qualquer pipeline do projeto
+- **Status:** proposto
+- **Data:** 2026-09-28, reescrito em 2026-10-13
+- **Origem:** PR #419
+- **Onde está:** `adk/tests/eval/`. O [README](../../adk/tests/eval/README.md) explica como usar, e as
+  [notas](../../adk/tests/eval/NOTAS.md) trazem o que foi medido para chegar a esta decisão.
 
 ## Contexto
 
-A suíte de `adk/tests/` não chama LLM, por construção: os agentes aparecem por stubs e mocks, e
-os prompts por asserções de substring. Ela cobre bem o código determinístico (tools, gates,
-parsers, políticas em Python), mas não alcança o comportamento do agente: se ele chama as tools
-do seu contrato, na ordem certa, e se a resposta final é a que a política manda.
+Nossos testes automatizados não usam LLM: onde haveria um agente, entra uma simulação. Isso
+garante que o código ao redor funciona (as ferramentas, as validações, a montagem das
+respostas), mas não diz nada sobre o agente em si: se ele usa as ferramentas certas, na ordem
+certa, e chega ao resultado esperado. Hoje, uma mudança de prompt, de modelo ou de ferramenta
+pode piorar um agente sem que nenhum teste perceba. A piora só aparece quando alguém roda o
+pipeline e lê o que saiu.
 
-A issue #373 pede avaliação desse comportamento no pipeline de codificação. O ADK (1.33.0) já
-traz o pacote `google.adk.evaluation`: o `AgentEvaluator`, chamável do pytest, a CLI `adk eval`,
-a aba Eval da Dev UI, métricas nativas e um ponto de extensão para métricas próprias
-(`custom_metrics` no `test_config.json`).
+Avaliar o agente de verdade tem um preço. Cada caso chama o LLM, leva minutos e consome cota, e
+o mesmo agente pode responder diferente em duas execuções. O ADK, framework em que os agentes
+são escritos, já traz um módulo de avaliação que roda a partir do pytest.
 
 ## Decisão
 
-1. **Usar o `AgentEvaluator` nativo, chamado do pytest**, em `adk/tests/eval/`. O pytest é o
-   gate. A Dev UI serve só para rascunhar casos: a captura dela grava `session_input.state`
-   vazio, e aqui o state faz parte do contrato do agente.
-2. **Opt-in por `AI4ES_EVAL=1`.** Sem a variável, tudo é pulado, inclusive num `uv run pytest`
-   sem argumentos. O juiz LLM é um segundo opt-in (`AI4ES_EVAL_JUIZ=1`), por custo.
-3. **Todo caso se ancora no resultado, não só na trajetória:** resposta determinística
-   (`response_match_score` com limiar 1.0), marcador literal (`ai4es_resposta_contem`) ou o que
-   o agente deixou em disco, conferido pelo próprio teste.
-4. **Métricas próprias onde a nativa não serve**, registradas pelo ponto de extensão oficial:
-   `ai4es_tool_sequence_in_order` (nomes de tool em ordem, tolerando extras, porque a nativa
-   exige igualdade exata de argumentos, e os argumentos aqui são texto livre do LLM; chamada
-   que devolveu erro não conta),
-   `ai4es_contrato_de_tools` (as tools oferecidas ao modelo) e `ai4es_resposta_contem`.
-5. **As dependências do pacote de avaliação ficam num grupo `eval`** do `pyproject.toml`, fora
-   do grupo padrão: `uv run --group eval`.
+Vamos usar o módulo de avaliação que já vem com o ADK, em vez de construir o nosso. Cada agente
+ganha alguns casos. Um caso tem a entrada, o que o agente encontra no disco e o resultado
+esperado. A avaliação roda o agente de verdade, com LLM, e compara o que ele fez e respondeu com
+o esperado. Como isso consome LLM e é lento, a suíte só roda quando alguém pede, fora dos testes
+do dia a dia. E um caso só passa se o resultado final estiver certo: vimos que um agente pode
+seguir os passos certos e ainda assim entregar a resposta errada.
 
-## Evidência
+## Alternativas consideradas
 
-### 1. Trajetória sozinha não é gate
-
-No primeiro experimento com a ferramenta, o `implementation_validator` rodou sem o
-`session_input.state` que o caso exige. Sem `task_id` no state, o guard do validador rejeita o
-caminho do report e o agente cai no fail-safe (reprova por falta de evidência). Mesmo assim ele
-chama `tool_ler_arquivo` com o caminho certo, então a trajetória é idêntica à do caminho feliz:
-`tool_trajectory_avg_score` marcou 1.0 e o caso **passou** com o agente degradado. O mesmo caso
-ancorado na resposta reprova (`response_match_score` 0,255 contra limiar 0,7, em 16/09).
-
-Por isso a decisão 3. Os dois eval sets do experimento e os testes que os rodavam estão no
-histórico deste PR, no commit `56c9c37`, em `adk/tests/eval/evalsets/armadilha_*` e em
-`test_eval_implementation_validator.py`.
-
-### 2. Um `LongRunningFunctionTool` some da trajetória
-
-No ADK 1.33.0, `Event.is_final_response()` devolve `True` assim que o evento tem
-`long_running_tool_ids` (`events/event.py`), e `_convert_events_to_invocations`
-(`evaluation/evaluation_generator.py`) monta os eventos intermediários excluindo o evento final.
-A chamada da tool long-running acaba em `final_response` e some de `intermediate_data`, que é de
-onde toda métrica de trajetória lê.
-
-Medido: o caso do protocolo de bloqueio do `cr_context_engineer` reportava, em 4 de 4 execuções,
-a sequência parando em `tool_emitir_manifesto_bloqueado`. O mesmo agente num `Runner` cru, sem o
-eval, mostrou as três chamadas e o `long_running_tool_ids` preenchido: o agente estava certo, e a
-leitura da trajetória é que estava incompleta. O script que faz essa verificação é o
-`adk/tests/eval/_probe_longrunning.py` do commit `56c9c37`.
-
-Consequência: `tool_trajectory_avg_score` dá falso negativo em todo caso de HITL, e todo HITL do
-projeto é um `LongRunningFunctionTool` (`aguardar_resolucao_bloqueio` no pipeline de codificação,
-`aguardar_resolucao_doubt` no de design, `aguardar_aprovacao_humana` no de QA,
-`aguardar_decisao_validacao` no `validator`). A métrica `ai4es_tool_sequence_in_order` lê também
-as chamadas do `final_response` por isso.
-
-### 3. O session state é invisível ao framework
-
-`Invocation` não carrega state, os eventos intermediários guardam só `author` e `content`, e
-`EvalCase.final_session_state` existe no modelo, mas nenhuma métrica o lê. Os handoffs por state
-do pipeline de codificação (`tasks`, `validation`, `task_iteration_summary`) não são avaliáveis
-por métrica. É teto da ferramenta: quando o contrato está no state ou no disco, quem confere é o
-próprio teste, depois da avaliação.
-
-### 4. O prompt renderizado e as tools oferecidas são visíveis
-
-`Invocation.app_details.agent_details[].instructions` e `tool_declarations` vêm preenchidos a
-partir do `LlmRequest` real também com `LiteLlm` (medido com o Copilot: 8.789 caracteres de
-instrução renderizada no `implementation_validator`). Dá para fazer asserções sobre o prompt e
-sobre as tools oferecidas ao modelo sem servidor. O `ai4es_contrato_de_tools` usa isso: pega
-tool removida, renomeada ou acrescentada, que muda o espaço de ações do agente sem quebrar
-nenhum teste unitário. A métrica de instrumentação que fez essa medição (`sonda`, em
-`metrics.py`) e o teste que a rodava estão no commit `56c9c37`.
-
-### 5. O que a suíte já pegou
-
-- **Mudança de comportamento do validador (PR #406, 16/09).** O #406 passou a decidir o status
-  só pela execução, e o julgamento do LLM por critério virou registro. Rodada como estava (fixture
-  e resposta esperada de 07/09) sobre a `develop` já com o #406, a suíte reprovou o caminho feliz
-  do validador: `response_match_score` 0,609 contra limiar 0,7, com trajetória 1.0 e contrato de
-  tools 1.0. Nenhum teste unitário acusou: o #406 entrou com 412 testes novos, todos verdes.
-- **Limiar frouxo esconde mudança.** Na mesma rodada, o caso do caminho de falha **passou** com
-  limiar 0,7, embora o texto da resposta tivesse mudado. Onde a resposta é gerada em Python de
-  ponta a ponta, o limiar passou a 1.0.
-- **Mudança de política no context engineer (PR #411, 23/09).** O PR acabou com o bloqueio por
-  nome do arquivo de design. O caso que assertava o bloqueio foi invertido e confirmou a política
-  nova com LLM real, em 2 de 2 execuções. Não foi medido se a suíte antiga teria reprovado antes
-  da atualização.
-- **O coder encerra o turno respondendo ao próprio prompt (01/10).** Na primeira rodada com LLM,
-  o caso do `cr_coder_agent` reprovou em 2 de 4 execuções, as duas do mesmo jeito: uma chamada ao
-  modelo, nenhuma tool e a resposta final "Sim, o bloco está vazio.". O prompt do coder, desde o
-  PR #406, abre com "Responda a UMA pergunta antes de agir: o bloco acima está vazio?" para
-  escolher entre criar o projeto e incrementá-lo. Às vezes o modelo responde em texto, e um agente
-  que devolve texto sem chamada de tool termina a vez. Pela leitura do prompt, não por medição: no
-  pipeline, o executor recusaria a rodada por falta de `run.json` e de código, e o coder voltaria
-  no modo de incremento, sem plano. A correção é da redação do prompt, não do caso.
-
-Um caso que falha pode querer dizer "o sistema regrediu" ou "a regra mudou de propósito". Só
-quem lê o PR que mudou o sistema sabe qual. No segundo caso o eval set se atualiza junto, e o
-diff dele registra a mudança.
-
-### 6. Relação com os benchmarks do coder
-
-Os benchmarks de `benchmarks/coding_review/` (HumanEval e MBPP) também rodam o `cr_coder_agent`
-isolado, mas medem capacidade: `pass@k` sobre centenas de problemas, com os testes oficiais de
-cada conjunto. Para isso, eles impõem regras próprias ao coder (um único `solution.py`,
-`surface: none`) e declaram que `run.json` e `README.md` não entram na avaliação. O caso do coder
-desta suíte mede o contrário: se ele lê o contrato da task, fica nas suas tools e entrega o que o
-executor exige para rodar. São perguntas complementares, e nenhuma substitui a outra.
-
-### 7. Custo
-
-Em 23/09, a suíte de então (10 testes, com o juiz), com `github_copilot/gpt-5.3-codex` e duas
-execuções por caso: 60 chamadas de LLM, 296.942 tokens, 3min36s, sem 429. O caso com juiz custa
-cerca de 3 vezes um caso sem juiz (13 das 21 chamadas numa rodada de 16/09), porque o juiz
-amostra 5 vezes por invocação. O `conftest.py` imprime chamadas, tokens e tempo ao fim de cada
-rodada, porque o `AgentEvaluator` não reporta custo.
-
-Em 01/10, a suíte atual (8 testes, com o juiz e o caso do coder), mesmo modelo e duas execuções
-por caso: 74 chamadas, 553.575 tokens, 5min11s, sem 429. Com três testes de investigação a menos
-e o caso do coder a mais, o total de tokens quase dobrou. O custo do caso do coder sozinho não foi
-isolado: nas duas rodadas só dele, o coder parou na primeira chamada (evidência 5).
+- **Construir um framework de avaliação próprio**, com executor de casos, métricas e juiz
+  escritos por nós. Daria controle total sobre o formato dos casos e dos relatórios, mas
+  reimplementaria o que o ADK já faz: rodar o agente com uma sessão preparada, registrar as
+  ferramentas que ele chamou e as que lhe foram oferecidas, comparar respostas e usar um LLM
+  como juiz. Também teria de acompanhar sozinho cada mudança do ADK. Onde o módulo do ADK não
+  basta, ele aceita métricas escritas por nós, e foi o que fizemos.
+- **Usar uma plataforma externa de avaliação**, como LangSmith, Langfuse ou a avaliação do
+  Vertex AI. Elas oferecem painéis, histórico e comparação entre versões, que o ADK não tem.
+  Em troca, exigem integrar e operar um serviço fora do projeto (no Vertex AI, uma conta do
+  Google Cloud) e enviar para fora as execuções dos agentes. Um levantamento recente dessas
+  ferramentas (Yehudai et al., versão de 2026) também observa que boa parte do que elas oferecem para
+  avaliar agentes ainda está em fase inicial. Vale rever se o projeto passar a precisar de
+  acompanhamento contínuo.
+- **Avaliar pela interface web do ADK (Dev UI) ou pela linha de comando (`adk eval`)**, em vez
+  do pytest. As duas usam o mesmo motor, mas a interface grava a conversa sem o estado inicial
+  da sessão, do qual vários agentes do pipeline dependem, e só avalia o agente principal de cada
+  app. Nenhuma das duas deixa conferir, depois de cada execução, o que o agente deixou no disco.
+  A interface ficou como forma de rascunhar casos a partir de sessões reais.
+- **Ter um LLM como juiz como critério principal.** Nesse modelo, um segundo LLM lê a resposta e
+  diz se ela está certa. É flexível, mas multiplica as chamadas de cada caso e pode dar notas
+  diferentes para a mesma resposta. Além disso, por padrão o juiz seria o mesmo modelo avaliado,
+  que tende a favorecer as próprias respostas (Zheng et al., 2023). Ficou como verificação
+  opcional, num caso só. Os outros comparam com resultados que não dependem de opinião.
 
 ## Consequências
 
-- Mudança de comportamento e de contrato de tools passa a ter onde aparecer, mas **só quando
-  alguém roda a suíte**: ela é opt-in, gasta LLM e nenhum workflow a executa hoje.
-- O custo cresce com cada caso novo. Com duas execuções por caso e limiar 1.0, o gate exige
-  conformidade em todas: o não-determinismo aparece como falha, não como média. Duas execuções
-  não medem dispersão.
-- O juiz usa, por padrão, o mesmo modelo do agente (`ADK_LLM_MODEL`), a condição de
-  auto-preferência descrita por Zheng et al. (2023). Fica declarado como limite. Outro modelo se
-  escolhe por `AI4ES_EVAL_JUDGE_MODEL`.
-- Risco de 429 do Copilot: `app/main.py` registra de novo os prefixos de modelo com a classe
-  `LiteLlm` base, o que anula as subclasses de `shared/llm.py`, e o header `X-Initiator: user`
-  não é enviado. A suíte não corrige isso: roda como a aplicação roda.
-- Fixtures são contrato. Mudou o schema do `ExecutionReport` ou das tasks, as fixtures precisam
-  ser revalidadas contra os modelos Pydantic.
+- Uma piora de agente passa a ter onde aparecer, mas só quando alguém roda a suíte. Nenhum
+  processo automático a executa, e o README diz quando rodar.
+- Cada caso novo aumenta o custo de uma rodada. O custo medido está no README.
+- O mesmo agente pode responder diferente de uma execução para outra. Cada caso roda mais de uma
+  vez e precisa passar em todas, então essa variação aparece como falha, em vez de sumir numa
+  média. Falha intermitente é informação sobre o agente: vai para uma issue do agente, e o caso
+  não é afrouxado.
+- Os casos dependem do que está no disco antes da execução. Se mudar o formato dos arquivos que
+  os agentes trocam entre si, esses arquivos de partida mudam junto.
+- O módulo do ADK tem limites: não enxerga o estado da sessão e lê de forma incompleta as
+  chamadas que pausam o pipeline à espera de uma pessoa. Onde isso importa, o próprio teste
+  confere o resultado, e as métricas próprias completam a leitura. O detalhe está nas notas.
+- As métricas próprias se apoiam numa peça interna do ADK, então uma atualização do ADK pode
+  exigir ajuste. Depois de atualizar, rode a suíte.
+
+## Referências
+
+- Yehudai, A. et al. *A Survey on Evaluation of LLM-based Agents.* arXiv:2503.16416, v2
+  (abril de 2026). Os frameworks de avaliação e o aviso sobre a maturidade deles estão na §6.
+- Zheng, L. et al. (2023). *Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.* NeurIPS 2023,
+  Datasets and Benchmarks.

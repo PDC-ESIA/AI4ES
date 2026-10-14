@@ -1,9 +1,11 @@
 # Avaliação de agentes com o `AgentEvaluator` do ADK
 
-Casos que avaliam o **comportamento** de agentes do pipeline de codificação com LLM real:
-trajetória de tools, resposta final e tools oferecidas ao modelo. Complementam a suíte
-unitária, que não chama LLM. A decisão, as limitações do ADK e o que esta suíte já pegou
-estão no [ADR 0001](../../../docs/adr/0001-avaliacao-de-agentes-com-agentevaluator.md).
+Um caso é um pedido feito a um agente do pipeline de codificação, junto com o que deve estar
+no disco antes e o resultado esperado. A suíte roda o agente de verdade, com LLM, e compara o
+que ele fez e respondeu com o esperado.
+
+Por que fazemos assim: [ADR 0001](../../../docs/adr/0001-avaliacao-de-agentes-com-agentevaluator.md).
+O que foi medido para chegar aqui: [NOTAS.md](NOTAS.md).
 
 ## Como rodar
 
@@ -19,28 +21,74 @@ O grupo `eval` do `pyproject.toml` traz `pandas`, `rouge-score` e `tabulate`, qu
 avaliação do ADK exige, e não é instalado por padrão. Ao final, a rodada imprime chamadas de
 LLM, tokens e tempo.
 
+## Quando rodar
+
+Nenhum workflow roda esta suíte. Ela só pega uma piora se quem muda o agente lembrar de rodá-la.
+Rode quando:
+
+- mudar o prompt, as tools ou os callbacks de um dos agentes da tabela abaixo;
+- trocar o modelo ou o provedor de LLM;
+- atualizar o ADK;
+- mudar um schema que as fixtures usam (`ExecutionReport`, `Task`, `MacroContext`);
+- for aprovar um PR que mexa nesses agentes.
+
 ## O que está garantido
 
-| Agente | Teste | Garante |
+| Agente | Casos | Garante |
 |---|---|---|
-| `implementation_validator` | `test_aprova_report_verde_com_state_semeado` | Com execução verde, lê o report pelo caminho do state e aprova com a resposta exata |
-| `implementation_validator` | `test_reprova_quando_a_execucao_falhou` | Com a execução falha, reprova, qualquer que seja o julgamento do LLM |
-| `implementation_validator` | `test_juiz_llm_aprova_o_veredito_correto` | Um juiz LLM considera a resposta do caminho feliz equivalente à referência (opt-in) |
-| `cr_context_engineer` | `test_protocolo_de_bloqueio_emite_as_tres_tools` | Com requisitos bloqueados, chama as três tools do protocolo na ordem, até a que pausa o pipeline, e o `coder/manifest.json` sai `blocked`, listando o doubt do agente |
-| `cr_context_engineer` | `test_nao_bloqueia_por_nome_de_arquivo_do_design` | Não bloqueia só porque a análise técnica tem nome fora da convenção: persiste contexto macro e tasks válidos contra os schemas |
-| `cr_context_engineer` | `test_caminho_feliz_age_em_vez_de_narrar` | Com requisitos e design completos, lê as duas fases e persiste contexto macro e tasks válidos contra os schemas, em vez de só anunciar |
-| `cr_coder_agent` | `test_coder_entrega_projeto_que_o_executor_aceita` | Lê o contrato da task em disco e deixa em `coder/src` um projeto que o gate do executor aceita, com `README.md` e a `surface` certa no `run.json` |
-| `cr_review_analyzer` | `test_gate_de_cobertura_sobrepoe_o_veredito_do_llm` | Lê o código, sem erro na leitura, antes de opinar e, sem cobertura comprovada, o status sai BLOQUEADO |
+| `implementation_validator` | 3 (um com juiz LLM) | Aprova a execução verde e reprova a que falhou, com a resposta exata |
+| `cr_context_engineer` | 3 | Segue o protocolo de bloqueio até pausar o pipeline e, com requisitos e design completos, grava contexto e tasks válidos em vez de só anunciar |
+| `cr_coder_agent` | 1 | Lê o contrato da task e entrega um projeto que o gate do executor aceita |
+| `cr_review_analyzer` | 1 | Lê o código antes de opinar e, sem cobertura comprovada, sai BLOQUEADO |
 
-O caminho feliz do validador, o protocolo de bloqueio, o coder e o reviewer conferem também
-as tools oferecidas ao modelo: tool removida, renomeada ou acrescentada reprova o caso.
+O detalhe de cada caso está na docstring do teste. Quatro casos conferem também as tools
+oferecidas ao modelo: tool removida, renomeada ou acrescentada reprova o caso.
+
+## Como adicionar um caso
+
+Um caso tem quatro peças. Exemplo: o caminho feliz do validador.
+
+1. **A fixture: o que o agente encontra no disco.** `fixtures/validator_verde/` tem o relatório
+   de execução que o validador vai ler. Antes de rodar, o teste apaga o workspace da avaliação e
+   copia a pasta para dentro dele.
+2. **O eval set: o pedido e o gabarito.** `evalsets/validator_aprovado/validator_aprovado.test.json`
+   tem a mensagem do usuário, o estado inicial da sessão, as tools que o agente deve chamar, a
+   resposta esperada e as tools que o modelo deve receber. `{{WORKSPACE}}` vira o caminho real do
+   workspace. O `description` começa dizendo qual fixture o caso usa e qual teste a copia.
+3. **O `test_config.json`, na mesma pasta: os critérios.** Cada métrica com seu limiar. Uma
+   métrica própria (`ai4es_*`) também precisa de uma entrada em `custom_metrics` com o caminho da
+   função em `metrics.py`.
+4. **O teste Python: o único lugar que junta as peças.**
+   `test_eval_implementation_validator.py::test_aprova_report_verde_com_state_semeado` copia a
+   fixture, prepara o eval set e roda o agente:
+
+   ```python
+   workspace_semeado("validator_verde")
+   await rodar_eval(evalset("validator_aprovado"), agent_module=MODULO)
+   ```
+
+   Quando o resultado fica no disco ou no estado da sessão, que as métricas não enxergam, a
+   conferência mora aqui, depois da avaliação (veja `test_eval_context_engineer.py`).
+
+Escolha o critério da resposta pelo que é fixo nela:
+
+- **Resposta montada em Python, sem texto do modelo:** `response_match_score` com limiar 1.0.
+  É o caso do validador.
+- **Só parte da resposta é fixa:** um marcador por linha, com `ai4es_resposta_contem`. É o caso do
+  reviewer.
+- **Nada na resposta é fixo:** não avalie a resposta. Confira no disco, no teste.
+
+Para fechar, rode só o caso novo com `AI4ES_EVAL_DETALHE=1` e rode
+`uv run pytest tests/unit/test_eval_caminhos_das_metricas.py`, que confere sem LLM se os
+`test_config.json` apontam para funções que existem. A Dev UI do ADK ajuda a rascunhar o eval set
+a partir de uma sessão real, mas grava o estado inicial vazio, e ele tem de ser preenchido à mão.
 
 ## Variáveis
 
 | Variável | Efeito | Default |
 |---|---|---|
 | `AI4ES_EVAL=1` | Liga a avaliação | desligado |
-| `AI4ES_EVAL_JUIZ=1` | Liga também o caso com juiz LLM (cerca de 3 vezes o custo de um caso) | desligado |
+| `AI4ES_EVAL_JUIZ=1` | Liga também o caso com juiz LLM | desligado |
 | `AI4ES_EVAL_JUDGE_MODEL` | Modelo-juiz (`{{JUDGE_MODEL}}` nos `test_config.json`) | o `ADK_LLM_MODEL` do `.env` |
 | `AI4ES_EVAL_NUM_RUNS` | Execuções por caso; limiar 1.0 exige conformidade em todas | `2` |
 | `AI4ES_EVAL_DETALHE=1` | Tabela por invocação do ADK (`print_detailed_results`) | desligado |
@@ -54,11 +102,29 @@ as tools oferecidas ao modelo: tool removida, renomeada ou acrescentada reprova 
 | `ai4es_contrato_de_tools` | As tools oferecidas ao modelo são exatamente as esperadas |
 | `ai4es_resposta_contem` | Cada linha da resposta esperada aparece na obtida, para respostas só em parte determinísticas |
 
+Uma chamada conta como erro quando a tool devolve `sucesso: False` ou um texto que começa com
+"Erro", que é a convenção das tools dos agentes acima. Tools de outros pipelines sinalizam erro de
+outro jeito; um caso de outro pipeline precisa antes estender o `_falhou` de `metrics.py`.
+
+## Custo
+
+A última rodada completa, em 01/10, com os 8 testes (juiz incluído), `github_copilot/gpt-5.3-codex`
+e duas execuções por caso: 74 chamadas de LLM, 553.575 tokens, 5min11s.
+
+- O caso com juiz custa cerca de 3 vezes um caso sem juiz, porque o juiz é consultado 5 vezes por
+  resposta.
+- `AI4ES_EVAL_NUM_RUNS` multiplica o custo de todos os casos.
+- O `AgentEvaluator` não reporta custo; o conftest imprime chamadas, tokens e tempo ao fim de cada
+  rodada. Ao mudar a suíte, atualize o número acima.
+
 ## Quando um caso falha
 
 - **Leia o PR que mudou o sistema antes de mexer no eval set.** A falha pode ser regressão ou
   mudança de regra feita de propósito; no segundo caso, o eval set muda junto, e o diff registra.
 - **Sequência de tools divergente:** o log de `metrics.py` imprime o esperado e o obtido.
-- **Caso com score 0.5 em duas execuções:** é não-determinismo do agente. Registre o número em vez
-  de baixar o limiar.
-- **429 do Copilot:** não é da suíte; o motivo está no ADR.
+- **Falha intermitente** (por exemplo, uma de duas execuções): é variação do agente, não do caso.
+  Não baixe o limiar. Registre numa issue do agente a taxa medida, a data, o modelo e a resposta da
+  falha (rode com `AI4ES_EVAL_DETALHE=1` para vê-la). Exemplo: a falha do caso do coder, descrita
+  em `NOTAS.md`.
+- **429 do Copilot:** não é da suíte. O registro de modelos em `app/main.py` anula as subclasses de
+  `shared/llm.py`, e o header `X-Initiator: user` não chega a ser enviado.
