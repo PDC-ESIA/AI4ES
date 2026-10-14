@@ -40,6 +40,7 @@ from shared.tools.coding_tools.review_tools import (
 
 from ..memory_feedforward import stack_key
 from . import prompt as reviewer_prompt
+from .structured_output import registrar_saida_estruturada
 
 logger = logging.getLogger(__name__)
 
@@ -361,7 +362,20 @@ async def _escrever_memoria(callback_context) -> None:
 
 
 _analyzer.before_agent_callback = _inject_static_findings
-_analyzer.after_agent_callback = [_persist_review, _escrever_memoria]
+def _persistir_revisao(callback_context):
+    """Gate de cobertura + markdown (`_persist_review`), depois a saída estruturada.
+
+    Um callback só, e não dois na lista: o ADK interrompe a lista no primeiro
+    callback que devolve conteúdo, e o gate devolve conteúdo quando bloqueia.
+    Aqui a ordem é explícita — o gate roda primeiro e a decisão em código o
+    respeita (sem cobertura comprovada, o status é BLOQUEADO).
+    """
+    conteudo_gate = _persist_review(callback_context)
+    conteudo_estruturado = registrar_saida_estruturada(callback_context)
+    return conteudo_estruturado or conteudo_gate
+
+
+_analyzer.after_agent_callback = [_persistir_revisao, _escrever_memoria]
 
 # agent é exportado como LlmAgent (not SequentialAgent) — a persistência acontece
 # via after_agent_callback, sem necessidade de um segundo agente no pipeline.
