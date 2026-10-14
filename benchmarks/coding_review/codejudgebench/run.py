@@ -332,10 +332,16 @@ def _contexto_do_ambiente(
     }
 
 
-def _salvar_markdown(run_dir: Path, par: ds.RepairPair, which: str, markdown: str) -> None:
+def _salvar_markdown(
+    run_dir: Path, par: ds.RepairPair, which: str, markdown: str, estruturada: dict | None = None
+) -> None:
     destino = run_dir / "reviews" / f"{par.slug}_{which}.md"
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text(markdown or "", encoding="utf-8")
+    if estruturada is not None:
+        destino.with_suffix(".json").write_text(
+            json.dumps(estruturada, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
 
 async def _executar(args: argparse.Namespace, run_dir: Path, pares: list[ds.RepairPair]) -> tuple[list[dict], bool]:
@@ -370,7 +376,7 @@ async def _executar(args: argparse.Namespace, run_dir: Path, pares: list[ds.Repa
                 include_explanation=not args.no_explanation,
                 backoff_s=args.backoff,
             )
-            _salvar_markdown(run_dir, par, which, veredito.markdown)
+            _salvar_markdown(run_dir, par, which, veredito.markdown, getattr(veredito, "structured", None))
             resultados[which] = veredito.to_record()
 
         registro = {
@@ -521,6 +527,13 @@ def _render_markdown(relatorio: dict) -> str:
         "",
         "## Aderência e execução",
         "",
+        (
+            f"- Saída estruturada válida (`ReviewOutput`): {_pct(f['structured_output_valid']['value'])} "
+            f"({f['structured_output_valid']['k']}/{f['structured_output_valid']['n']}) · "
+            f"status corrigido pela regra em código: {f['status_adjusted_by_rule']}"
+            if f.get("structured_output_valid", {}).get("n")
+            else "- Saída estruturada: não se aplica (o reviewer medido não gravava `verificacao_revisao.json`)"
+        ),
         f"- Respostas com retry: {f['responses_with_retry']}",
         f"- Falhas só de formato (status existe, mas fora do padrão do manifesto): {f['format_only_failures']}",
         f"- Gate de cobertura aplicado: {f['gate_applied']} (esperado 0 — senão o summary sintético está errado)",
