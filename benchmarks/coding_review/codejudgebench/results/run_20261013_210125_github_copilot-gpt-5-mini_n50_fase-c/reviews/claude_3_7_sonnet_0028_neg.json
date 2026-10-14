@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Off-by-one / negative-index bug: the code tests `if i > freq * num:` then accesses `dp[i - (freq + 1) * num]`, which can be negative (e.g. num=3,freq=1,i=4 → dp[-2]) and yields incorrect results.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue. Add unit tests covering happy path and edge cases (including the case that triggers the negative-index bug).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "In-place DP update is fragile and hard to reason about. Consider using remainder-group sliding windows producing an explicit ndp or explicit index guards to improve clarity and avoid subtle bugs.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Variable name `l` is ambiguous and flagged by linters (ruff/E741); consider renaming to `low` or `L`.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

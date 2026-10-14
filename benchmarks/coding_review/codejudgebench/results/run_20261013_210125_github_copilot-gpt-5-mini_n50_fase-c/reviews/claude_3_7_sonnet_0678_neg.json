@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O algoritmo usa um limite fixo de iterações (`for _ in range(100):`) para atingir o ponto fixo. A convergência não é garantida em 100 iterações e, em casos com cadeias longas de dependência, isso produzirá resultado incorreto.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Risco de TLE: a implementação executa um knapsack por vértice e ainda repete isso em iterações sucessivas. A complexidade combinada pode exceder os limites; é preferível ordenar vértices por W e computar F em uma única passagem.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos testes automatizados (unit/integration) junto com a implementação — impossibilita verificação local e regressões.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Muitos imports no topo (pré-carregados) geraram aviso de linter (module level import not at top of file). Não bloqueante, mas polui o cabeçalho.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

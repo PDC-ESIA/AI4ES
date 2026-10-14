@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste (unit tests / casos de exemplo automatizados). Os critérios de aceite CA-01/CA-02 são automatizáveis — recomenda-se incluir testes para validação contínua e regressão.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de teste presente no workspace. Não há cobertura automatizada para happy path e edge cases (ex.: limites N=M, requisitos B muito grandes, entradas com valores repetidos).",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

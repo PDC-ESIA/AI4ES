@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue. A solução funciona, mas não há testes automatizados para validar regressões ou cenários de borda (happy path e edge cases).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Importações duplicadas / conflito com o bloco de ambiente pré-carregado. Recomenda-se remover imports redundantes para evitar avisos de linters.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

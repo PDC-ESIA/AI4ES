@@ -1,0 +1,32 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "A função greatest_proper_divisor usa trial division até sqrt(n) para cada chamada. No pior caso (len(nums) até 1e5 e valores até 1e6) isso resulta em cerca de O(n * sqrt(maxA)) = ~1e8 operações de módulo, o que muito provavelmente causa Time Limit Exceeded para entradas grandes (o caso de falha anterior). Recomenda-se pré-computar o menor fator primo (SPF) por crivo até max(nums) (<= 1e6) para tornar cada consulta O(1) e a solução O(n + maxA).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "A correção entregue não traz evidência (tests ou micro-benchmarks) de que a falha observada (TLE) foi resolvida. O critério de aceite CA-02 ('Eliminar a falha observada') fica pendente/insuportado sem otimização por crivo ou similar.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes/unitários foi entregue. Recomenda-se incluir testes que cubram: casos pequenos e grandes, arrays já não decrescentes, presença de primos impossíveis de reduzir, e o caso extremo usado no relato (muitos elementos grandes) para validar desempenho.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "operations_to_reduce executa um loop 'while num > target', mas matematicamente a primeira operação em um número composto reduz o valor para seu menor fator primo (ou, se for primo, não muda). Portanto, na prática são 0 ou 1 iterações úteis por elemento — o loop pode ser simplificado para clareza e micro-otimização.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

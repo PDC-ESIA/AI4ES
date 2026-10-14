@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação atual ainda tem complexidade O(n^2) no pior caso e vai resultar em Time Limit Exceeded para n ~ 1e5. Para cada k (0..n) o código faz um while que começa em 0, recalculando do início o count_less; com arrays grandes isso soma tempo quadrático e não atende o critério CA-02 (eliminar a falha de TLE).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste entregues junto com a implementação. Nenhum teste automatizado cobre a solução (happy path e casos grandes/limite), portanto não é possível validar no workspace que a correção elimina a TLE sem executar novos testes.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "A solução se beneficiaria de uma das duas melhorias simples: usar bisect_left/bisect (O(log n) por busca) ou manter um ponteiro que avança com k (O(n) no total). O comentário do coder menciona bisect, mas o código não o utiliza — isso indica desalinhamento entre intenção e implementação.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

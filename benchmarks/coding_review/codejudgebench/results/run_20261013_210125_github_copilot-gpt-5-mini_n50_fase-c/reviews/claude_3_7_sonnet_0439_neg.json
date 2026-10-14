@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "A lógica para o caso de subsequência com paridade alternada está incompleta. O código calcula alternating_parity_length = 2 * min(even_count, odd_count), mas é possível usar uma unidade adicional da paridade majoritária (quando counts são diferentes) formando uma subsequência alternada com comprimento 2*min + 1. Ex.: even=5, odd=2 → máximo alternado = 5 (não 4). Corrigir para alternating_parity_length = 2*min + (1 if max>min else 0).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (arquivo(s) de teste ausente). A DoD esperada inclui verificação de correção; sem testes não há garantia automatizada de regressão.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Ausência de casos de teste cobrindo cenários críticos — por exemplo: (i) equal counts (e==o), (ii) counts differ by more than 1, (iii) small arrays de tamanho 2, (iv) arrays grandes com desequilíbrio de paridades. Recomenda-se adicionar testes unitários exemplares para each scenario.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

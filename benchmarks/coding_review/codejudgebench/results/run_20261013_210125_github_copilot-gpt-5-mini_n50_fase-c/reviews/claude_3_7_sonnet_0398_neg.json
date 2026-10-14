@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação só ajusta a contagem de elementos < k para n//2, mas isso não assegura que o elemento mediano (posição m = n//2) seja igual a k. Ex.: nums = [1,2,3,5,6,7], k = 4 → código retorna 0, resposta correta é 1.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Abordagem por contagem (<k, ==k, >k) ignora posições relativas no array ordenado; isso cria fragilidade lógica e viola a garantia necessária sobre o elemento mediano.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste que validem a função, incluindo casos limites e cenários que expõem a falha observada.",
+      "file": "",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Ausência de testes automatizados no workspace; falta cobertura de happy path e edge cases.",
+      "file": "",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

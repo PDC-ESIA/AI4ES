@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The solution uses a recursive DFS with depth up to O(N). The environment's recursion limit (50000) is below the problem's max N (3e5), so a deep chain will raise RecursionError at runtime.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "No automated tests were provided to validate correctness and edge cases (e.g., deep chain trees, small N).",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

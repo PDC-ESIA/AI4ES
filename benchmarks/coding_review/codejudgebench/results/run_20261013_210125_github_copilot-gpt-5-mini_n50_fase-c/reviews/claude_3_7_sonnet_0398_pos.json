@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum teste automatizado foi incluído com a entrega (nenhum arquivo de teste no workspace). Recomenda-se adicionar testes unitários cobrindo happy path e edge cases (n ímpar/par, elementos já iguais a k, todos maiores/menores que k).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Cálculo de median_idx usa condicional redundante: (n-1)//2 if n%2==1 else n//2. Em Python integer division floor faz com que n//2 seja suficiente para ambos os casos; expressão mais simples melhora legibilidade.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

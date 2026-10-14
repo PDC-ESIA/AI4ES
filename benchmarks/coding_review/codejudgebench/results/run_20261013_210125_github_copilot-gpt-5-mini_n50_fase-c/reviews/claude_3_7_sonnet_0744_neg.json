@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Lógica incorreta ao tratar remainder == 2. O código sempre adiciona 2 ataques para remainder 2, mas quando o estado atual T%3 == 2 a primeira próxima investida causa 3 de dano, então apenas 1 ataque basta. Isso produz saída incorreta em casos simples — por exemplo, entrada: N=2 H = [2, 2] Saída esperada: 3 Saída do programa: 4",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados. Não há nenhum arquivo de teste cobrindo os cenários críticos (happy path e casos que demonstram a falha encontrada). Entregar testes reproduzindo exemplos (inclusive o caso que demonstra a falha) facilitaria verificação e regressão.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

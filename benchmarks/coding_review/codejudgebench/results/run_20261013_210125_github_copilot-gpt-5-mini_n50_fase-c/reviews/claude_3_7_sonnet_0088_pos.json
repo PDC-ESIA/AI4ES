@@ -1,0 +1,38 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Cálculo incorreto do valor posicional ao verificar divisibilidade por k. pow10_mod_k[i] contém 10^i (i=0 é unidade), porém o backtracking trata pos como índice a partir do dígito mais significativo (MSB). O código usa pow10_mod_k[pos] e pow10_mod_k[mirror_pos], o que corresponde a expoentes invertidos (usa 10^pos onde deveria usar 10^(n-1-pos)). Isso faz com que o resto modulo k seja calculado erroneamente e produz respostas incorretas (ex.: o caso n=3, k=5 continua suscetível a erro).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Lógica de montagem do resto do número (inclusive a inicialização do resto para o primeiro dígito) baseia-se na mesma indexação errada, portanto nem mesmo tentativas de contornar combinatórias do palíndromo corrigem a premissa equivocada. Em suma: a verificação \"é divisível por k\" está conceptualmente incorreta para qualquer n>1.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. A entrega não inclui testes unitários que comprovem correção para os casos do enunciado (por exemplo os exemplos fornecidos) nem para limites; isso dificulta validação automatizada da correção.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Presença de código morto / variáveis não usadas (por exemplo `remainders` em can_form_k_palindrome e o parâmetro `used_first` dentro do backtrack). Limpeza aumentaria legibilidade.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Complexidade/performace — a estratégia atual enumera combinações de frequências via DP recursivo que, embora reduzida por memoização, ainda pode ser custosa; não há comentários sobre limites de tempo nem garantia de que é a abordagem mais eficiente (mas para n<=10 pode ser aceitável).",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}
