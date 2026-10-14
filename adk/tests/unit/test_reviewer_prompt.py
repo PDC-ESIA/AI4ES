@@ -34,3 +34,16 @@ def test_persistencia_fica_com_o_callback():
 def test_template_injeta_os_blocos_de_runtime():
     for marcador in ("__TASK_OUTCOMES__", "__STATIC_FINDINGS__", "__CODER_WS__", "__FILES__"):
         assert marcador in cr_reviewer._ANALYZER_INSTRUCTION_TEMPLATE
+
+
+def test_prompt_pede_bloco_json_no_formato_do_review_output():
+    # A saída estruturada (structured_output.py) lê o último bloco ```json.
+    assert "```json" in prompt.instruction
+    for campo in ('"status"', '"issues"', '"severity"', '"layer"'):
+        assert campo in prompt.instruction
+    assert "NÃO produza JSON" not in prompt.instruction
+
+
+def test_callback_de_persistencia_inclui_a_saida_estruturada():
+    callbacks = cr_reviewer.agent.after_agent_callback
+    assert callbacks[0] is cr_reviewer._persistir_revisao
