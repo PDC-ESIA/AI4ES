@@ -5,8 +5,13 @@ score por invocação (1.0 conforme, 0.0 não conforme). O limiar não chega aqu
 `test_config.json` e o `AgentEvaluator` o aplica sobre a média das invocações, então
 limiar 1.0 exige conformidade em todas as execuções.
 
+O `test_config.json` liga cada métrica à sua função por texto
+(`custom_metrics.<métrica>.code_config.name`), e o ADK só importa esse caminho quando a
+rodada começa. `tests/unit/test_eval_caminhos_das_metricas.py` faz a mesma resolução sem
+LLM, para que renomear uma função aqui não quebre a suíte em silêncio.
+
 Por que estas métricas existem e o que o framework não deixa ver (session state, chamadas
-de `LongRunningFunctionTool`): `docs/adr/0001-avaliacao-de-agentes-com-agentevaluator.md`.
+de `LongRunningFunctionTool`): `tests/eval/NOTAS.md`.
 """
 
 from __future__ import annotations
@@ -30,11 +35,22 @@ METRICA_SEQUENCIA_EM_ORDEM = "ai4es_tool_sequence_in_order"
 METRICA_CONTRATO_DE_TOOLS = "ai4es_contrato_de_tools"
 METRICA_RESPOSTA_CONTEM = "ai4es_resposta_contem"
 
-# Caminhos de import usados no bloco `custom_metrics` do test_config.json.
-CAMINHOS_DAS_FUNCOES = {
-    METRICA_SEQUENCIA_EM_ORDEM: "tests.eval.metrics.tool_sequence_in_order",
-    METRICA_CONTRATO_DE_TOOLS: "tests.eval.metrics.contrato_de_tools",
-    METRICA_RESPOSTA_CONTEM: "tests.eval.metrics.resposta_contem",
+# As métricas que `registrar_metricas_ai4es()` registra, com a descrição que vai para o
+# registry do ADK. O teste unitário dos `test_config.json` lê daqui os nomes válidos.
+DESCRICOES = {
+    METRICA_SEQUENCIA_EM_ORDEM: (
+        "Tools esperadas ocorrem na ordem esperada e sem erro no retorno, "
+        "ignorando argumentos e tolerando chamadas extras. 1.0 quando conforme, "
+        "0.0 caso contrário."
+    ),
+    METRICA_CONTRATO_DE_TOOLS: (
+        "As tools declaradas ao modelo são exatamente as esperadas, por agente. "
+        "Olha o que foi oferecido, não o que foi chamado. 1.0 quando conforme."
+    ),
+    METRICA_RESPOSTA_CONTEM: (
+        "Cada linha não-vazia da resposta esperada aparece na resposta obtida. "
+        "Score é a fração de marcadores presentes."
+    ),
 }
 
 
@@ -45,6 +61,13 @@ CAMINHOS_DAS_FUNCOES = {
 
 def _falhou(resposta: Optional[genai_types.FunctionResponse]) -> bool:
     """O retorno da tool sinaliza erro: `sucesso: False`, ou texto que começa com "Erro".
+
+    É a convenção das tools dos agentes avaliados hoje (context engineer, coder,
+    reviewer e validador), conferida tool a tool. Tool que levanta exceção não chega
+    aqui: o ADK relança a exceção e a rodada cai. Outros pipelines usam outras
+    convenções, que esta função não reconhece: `tool_salvar_artefato_requisito`
+    devolve "ERRO ao salvar artefato: …" e o `design_filesystem` devolve
+    `{"status": "blocked"}`. Um caso de outro pipeline precisa estender esta função.
 
     O ADK embrulha retorno que não é dict em `{"result": ...}`. Chamada sem retorno
     registrado não conta como erro.
@@ -62,7 +85,7 @@ def _chamadas(invocation: Optional[Invocation]) -> list[tuple[str, bool]]:
     """(nome, falhou) de cada chamada de tool de uma invocação, na ordem em que ocorreram.
 
     Lê também o `final_response`, onde o ADK deixa a chamada de um
-    `LongRunningFunctionTool` (ver o ADR 0001); essa chamada não tem retorno.
+    `LongRunningFunctionTool` (ver `NOTAS.md`); essa chamada não tem retorno.
     """
     if invocation is None:
         return []
@@ -282,6 +305,11 @@ def registrar_metricas_ai4es() -> list[str]:
     topo, este módulo seria inimportável sem o grupo `eval`, e o conftest precisa dele
     para pular a suíte com a mensagem certa.
     """
+    # `_CustomMetricEvaluator` é interno do ADK (o `_` diz isso) e pode mudar numa
+    # atualização. O `AgentEvaluator` não registra as `custom_metrics` do
+    # test_config.json; a CLI `adk eval` registra, com esta mesma classe
+    # (`google/adk/cli/cli_tools_click.py`), e esta função faz o mesmo. Conferido no
+    # ADK 1.33.0. Se quebrar depois de atualizar o ADK, compare primeiro com a CLI.
     from google.adk.evaluation.custom_metric_evaluator import _CustomMetricEvaluator
     from google.adk.evaluation.eval_metrics import (
         Interval,
@@ -292,23 +320,7 @@ def registrar_metricas_ai4es() -> list[str]:
         DEFAULT_METRIC_EVALUATOR_REGISTRY,
     )
 
-    descricoes = {
-        METRICA_SEQUENCIA_EM_ORDEM: (
-            "Tools esperadas ocorrem na ordem esperada e sem erro no retorno, "
-            "ignorando argumentos e tolerando chamadas extras. 1.0 quando conforme, "
-            "0.0 caso contrário."
-        ),
-        METRICA_CONTRATO_DE_TOOLS: (
-            "As tools declaradas ao modelo são exatamente as esperadas, por agente. "
-            "Olha o que foi oferecido, não o que foi chamado. 1.0 quando conforme."
-        ),
-        METRICA_RESPOSTA_CONTEM: (
-            "Cada linha não-vazia da resposta esperada aparece na resposta obtida. "
-            "Score é a fração de marcadores presentes."
-        ),
-    }
-
-    for nome, descricao in descricoes.items():
+    for nome, descricao in DESCRICOES.items():
         DEFAULT_METRIC_EVALUATOR_REGISTRY.register_evaluator(
             metric_info=MetricInfo(
                 metric_name=nome,
@@ -320,4 +332,4 @@ def registrar_metricas_ai4es() -> list[str]:
             evaluator=_CustomMetricEvaluator,
         )
 
-    return list(descricoes)
+    return list(DESCRICOES)
