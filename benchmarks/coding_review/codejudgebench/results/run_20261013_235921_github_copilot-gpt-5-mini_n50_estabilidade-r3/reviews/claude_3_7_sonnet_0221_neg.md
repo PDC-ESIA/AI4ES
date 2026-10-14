@@ -1,0 +1,57 @@
+## Status: BLOQUEADO
+
+## Issues
+- severity: critical  
+  file: solution.py  
+  layer: corretude  
+  description: Incorrect indexing when building the middle distinct set. The inner loop uses `for j in range(i, N): middle_set.add(A[j-1])` and only skips computing the sum when `j == i`. That causes A[i-1] (the last element of the left segment) to be added to `middle_set` for every i, so the "middle" distinct count is computed over the wrong elements. This produces incorrect sums for many (i,j) partitions.
+
+- severity: critical  
+  file: solution.py  
+  layer: corretude  
+  description: Algorithmic complexity is still quadratic (O(N^2)) in the worst case: the code iterates over all pairs (i,j) with an inner loop that grows with N and maintains a set per i. With N up to 3·10^5 this will not finish within time limits (TLE) and therefore does not meet acceptance criteria CA-01 / CA-02.
+
+- severity: warning  
+  file: solution.py  
+  layer: completude  
+  description: No test files or automated checks were provided in the workspace to validate correctness, edge cases or performance (unit/integration tests missing). The change cannot be validated automatically here.
+
+- severity: warning  
+  file: solution.py  
+  layer: testes  
+  description: There are no tests exercising critical cases (large N, worst-case patterns, and representative edge cases). Tests that prove the algorithm meets the required time limit and correctness for edge cases are absent.
+
+## Resumo
+A correção no repositório melhora a versão inicial ao evitar recriar sets com slicing por (i,j), mas contém um bug de indexação que faz o conjunto do segmento do meio englobar elementos da porção esquerda (portanto produz resultados incorretos). Além disso, a solução permanece com complexidade O(N^2), insuficiente para N ≤ 3·10^5 e levará a Time Limit Exceeded. Não há arquivos de teste no workspace para comprovar correções ou performance, por isso a entrega está bloqueada até corrigir o índice do meio e substituir o algoritmo por uma abordagem com complexidade adequada (ou provar via testes que o caso de uso atende limites).
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Incorrect indexing when building the middle distinct set. The inner loop uses `for j in range(i, N): middle_set.add(A[j-1])` and only skips computing the sum when `j == i`. That causes A[i-1] (the last element of the left segment) to be added to `middle_set` for every i, so the \"middle\" distinct count is computed over the wrong elements.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Algorithmic complexity is still quadratic (O(N^2)) in the worst case: the code iterates over all pairs (i,j) with an inner loop that grows with N and maintains a set per i. With N up to 3·10^5 this will not finish within time limits (TLE) and therefore does not meet acceptance criteria CA-01 / CA-02.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "No test files or automated checks were provided in the workspace to validate correctness, edge cases or performance (unit/integration tests missing).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "There are no tests exercising critical cases (large N, worst-case patterns, and representative edge cases). Tests that prove the algorithm meets the required time limit and correctness for edge cases are absent.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ]
+}
+```

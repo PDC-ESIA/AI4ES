@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A transição de DP está incorreta quando nums[i] > nums[i-1]. O código usa upper_bound = min(max(0, j - diff), nums[i-1]) — o clamp para 0 permite somar prefix_sum mesmo quando j - diff é negativo, produzindo contagens inválidas (ex.: conta combinações com a_{i} > a_{i+1}). Isso explica a diferença observada no exemplo (retorna 7 em vez de 4). A correção é não clamar para 0: usar upper = j - diff; se upper < 0 então não há contribuições (dp[i][j] = 0), caso contrário usar upper = min(upper, nums[i-1]) e somar prefix_sum[upper+1].",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste/validação entregues no workspace (nenhum test_*.py). Falta cobertura automatizada para validar correções e evitar regressões (happy path e casos limites, p.ex. diferenças positivas/negativas entre elementos, n = 1, valores extremos).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Uso de matriz 2D dp de tamanho n x (max(nums)+1) é aceitável dado max(nums) <= 50, mas pode ser otimizada para duas linhas (rolling array) para reduzir memória. Não é crítico, só sugestão de melhoria.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

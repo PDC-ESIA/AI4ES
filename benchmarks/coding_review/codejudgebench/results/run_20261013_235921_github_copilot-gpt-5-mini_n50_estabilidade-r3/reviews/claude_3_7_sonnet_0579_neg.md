@@ -1,0 +1,46 @@
+## Status: BLOQUEADO
+
+## Issues
+- severity: critical  
+  file: solution.py  
+  layer: arquitetura  
+  description: Código aloca uma grade completa grid e prefix_sum de tamanho (H+1)×(W+1) com inteiros Python quando houver ao menos um quadrado holed. Para H=W=3000 isso cria ≈9e6 entradas em listas de Python, consumindo memória excessiva e provavelmente provocando MemoryError em entradas válidas (por exemplo H=3000, W=3000, N=1). A alocação maciça de objetos inteiros torna a solução inviável para limites máximos do problema.
+
+- severity: warning  
+  file: solution.py  
+  layer: corretude  
+  description: A otimização aplicada cobre apenas o caso special (N == 0). Para casos com alguns buracos a solução mantém a estratégia ingênua O(H * W * min(H, W)) com checagem incremental por tamanho de quadrado usando prefix sum; isso permanece suscetível a Time Limit Exceeded em instâncias grandes onde muitos top-left permitem extensões grandes. É recomendável usar uma abordagem O(H * W) (ex.: DP que calcula o maior quadrado de zeros começando em cada célula/terminando em cada célula) ou representar a matriz com estruturas de menor custo (bytearray / arrays/sets e técnicas por linha/coluna) para evitar TLE/MLE.
+
+- severity: info  
+  file: solution.py  
+  layer: completude  
+  description: Correção pontual foi aplicada para o caso sem buracos: a soma matemática sum_{n=1..min(H,W)} (H-n+1)*(W-n+1) resolve o TLE relatado originalmente para a entrada H=W=3000, N=0. Isso atende ao relato do coder e ao critério CA-02 para esse cenário específico.
+
+## Resumo
+A entrega contém uma correção funcional e simples para o caso sem buracos — ela calcula a fórmula combinatória e resolve o TLE observado para H=W=3000, N=0. Porém, a solução ainda cria estruturas de dados imensas (grid e prefix_sum) sempre que N > 0, o que pode causar falha por falta de memória para entradas válidas e mantém uma complexidade que pode TLE em outros casos grandes. Por esses riscos de execução (MemoryError/TLE) a task não pode ser aprovada enquanto não for substituída a representação da matriz por uma estrutura de custo de memória controlado e/ou não for adotado um algoritmo O(H*W) seguro.
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Código aloca uma grade completa grid e prefix_sum de tamanho (H+1)×(W+1) com inteiros Python quando houver ao menos um quadrado holed. Para H=W=3000 isso cria ≈9e6 entradas em listas de Python, consumindo memória excessiva e provavelmente provocando MemoryError em entradas válidas (por exemplo H=3000, W=3000, N=1). A alocação maciça de objetos inteiros torna a solução inviável para limites máximos do problema.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "A otimização aplicada cobre apenas o caso special (N == 0). Para casos com alguns buracos a solução mantém a estratégia ingênua O(H * W * min(H, W)) com checagem incremental por tamanho de quadrado usando prefix sum; isso permanece suscetível a Time Limit Exceeded em instâncias grandes onde muitos top-left permitem extensões grandes. É recomendável usar uma abordagem O(H * W) (ex.: DP que calcula o maior quadrado de zeros começando em cada célula/terminando em cada célula) ou representar a matriz com estruturas de menor custo (bytearray / arrays/sets e técnicas por linha/coluna) para evitar TLE/MLE.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "info",
+      "description": "Correção pontual foi aplicada para o caso sem buracos: a soma matemática sum_{n=1..min(H,W)} (H-n+1)*(W-n+1) resolve o TLE relatado originalmente para a entrada H=W=3000, N=0. Isso atende ao relato do coder e ao critério CA-02 para esse cenário específico.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ]
+}
+```

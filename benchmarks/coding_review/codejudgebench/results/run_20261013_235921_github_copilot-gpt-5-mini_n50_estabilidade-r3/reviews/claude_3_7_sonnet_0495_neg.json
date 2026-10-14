@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica do DP calcula incorretamente o número de slots ímpares disponíveis (o_slots = odd_positions - (even_positions - e_slots)). Isso não considera quantos slots ímpares já foram ocupados e leva a contagens inválidas — resultados incorretos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Arquivo(s) de teste não foram criados. Não há testes unitários para validar exemplos do enunciado nem casos grandes (necessários para comprovar CA-01/CA-02).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A variável velunexorai é atribuída mas nunca usada (variável declarada sem propósito aparente).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue. Não há testes automatizados para validar a solução em diferentes casos (happy path e edge cases).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Leitura da entrada usa input() em três chamadas; para entradas muito grandes a leitura em bloco via sys.stdin.buffer.read() pode ser mais eficiente. A solução atual provavelmente é suficiente para os limites dados, mas sugerir otimização de I/O como melhoria.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

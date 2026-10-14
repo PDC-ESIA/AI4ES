@@ -1,0 +1,38 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo gera todas as permutações e mantém um set 'seen' de strings únicas. Para entradas com todos os caracteres distintos e K != 2 (ex.: N=10, K=3) o código gera e armazena 10! ≈ 3.6M strings, causando TLE ou uso de memória excessivo. Falta otimização geral para 'todos os caracteres distintos' ou abordagem sem enumeração.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Uso de permutations + seen causa alto custo de tempo/espaco; a deduplicação em memória e a iteração sobre n! tuplas é ineficiente. Recomenda-se gerar permutações distintas diretamente ou usar uma contagem combinatória/DP.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Nenhum teste automatizado foi incluído para validar correções e casos limites (p.ex. N=10 com chars distintos e vários K). Ausência de testes impede verificação automática da regressão observada.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Ramo para k == 1 (return 0) é redundante, pois o enunciado garante K >= 2.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "info",
+      "description": "Não foram fornecidos arquivos de teste no workspace para reproduzir o TLE observado; adicionar testes é recomendado.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica de seleção dos B está incorreta: o código mantém um heap com K valores (os K menores do prefixo) e, ao avaliar um índice i como candidato ao máximo A, usa a soma desses K B's sem garantir que B_i esteja incluído. Quando B_i não é um dos K menores do prefixo, o algoritmo calcula um produto que não corresponde a nenhum subconjunto S válido. A correção é manter os K-1 menores B anteriores e, ao avaliar i, usar A_i * (B_i + sum_dos_K-1_menores_anteriores).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (nenhum arquivo de teste no workspace). Adicione testes cobrindo casos básicos e limites (K=1, K=N, valores iguais, grandes N).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O topo do arquivo contém múltiplos imports duplicados devido ao bloco de 'AMBIENTE DE EXECUÇÃO' — mencionado no enunciado que esse bloco é pré-carregado e não faz parte da correção. Provoca avisos de linter, mas não impede execução na plataforma.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

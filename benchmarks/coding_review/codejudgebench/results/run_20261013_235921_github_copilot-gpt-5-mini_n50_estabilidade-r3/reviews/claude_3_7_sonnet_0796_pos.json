@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O algoritmo é quadraticamente/mais que quadraticamente lento para N grande. A função build_rooted_tree executa uma DFS completa para cada escolha de vértice central (O(N) por central), e há loops aninhados adicionais (x e y) — resultado provável: TLE / memória / estouro de recursão para N ≤ 3e5. Correção sugerida: não reconstruir a árvore \"enraizada\" por DFS para cada central; em vez disso use deg[neighbor]-1 para obter o número de vizinhos de nível folha possível para cada vizinho do central, e para cada x tome y = min dos top-x contadores (aproveitando a ordenação). Remover o loop redundante sobre y e evitar DFS repetidas resolverá a complexidade.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "A função build_rooted_tree e o uso de DFS por central duplicam trabalho e misturam responsabilidades. A lógica necessária é local (para um central basta conhecer degree[v]-1 dos vizinhos), logo a separação atual adiciona acoplamento e custo desnecessário. Refatorar para usar apenas graus/adjacências diretas melhoraria legibilidade e desempenho.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de testes entregues (nenhum test_*.py). O repositório carece de testes automatizados que validem casos básicos, fronteira e o caso grande que comprovaria a performance/escala (por exemplo N ~ 3e5). Adicionar testes unitários e testes de stress é recomendado.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Os laços internos iteram y de 1..n mesmo quando isso é desnecessário; logicamente isso acaba encontrando o mesmo y que seria y = min(children_counts[:x]), mas causa custo extra enorme. Substituir pelo cálculo direto de y (ex.: y = children_counts[x-1] após ordenar desc) tornará iteração linear por central.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

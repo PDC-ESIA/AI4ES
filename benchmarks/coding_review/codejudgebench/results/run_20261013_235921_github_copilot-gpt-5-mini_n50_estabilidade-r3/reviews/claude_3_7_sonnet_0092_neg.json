@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação atual tem complexidade O(n^2) no pior caso (para cada candidato faz copy/remove/sum sobre a lista). Com n até 1e5 isso causa Time Limit Exceeded — a solução falha nos critérios de aceite (CA-01, CA-02). Use um contador (collections.Counter ou dict de frequências) e itere sobre os valores únicos para reduzir a complexidade para O(k) onde k é o número de valores distintos (≤ 2001), ou O(n) total.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Projeto ineficiente: lógica core mistura verificação algébrica com operações pesadas de I/O de lista (copy, remove, sum) repetidas. A responsabilidade de validação pode ser concentrada numa verificação por contagem de ocorrências sem recriar/somar a lista a cada teste.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste/unitários entregues. Não foram providos testes que cubram o caminho feliz e casos de borda (por exemplo valores repetidos, sum_element == outlier, lista grande que demonstraria performance).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A verificação final `if sum(temp) == sum_element:` é logicamente redundante dado que sum_element foi derivado de (total_sum - outlier) // 2 — se sum_element existe com índice distinto do outlier a condição é algebraicamente satisfeita. Essa operação adicional custa O(n) e pode ser removida se a verificação de contagens for feita corretamente.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

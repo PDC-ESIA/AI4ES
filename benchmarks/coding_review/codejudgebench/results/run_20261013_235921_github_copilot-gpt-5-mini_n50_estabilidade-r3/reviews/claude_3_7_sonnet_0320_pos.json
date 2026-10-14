@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi fornecido no workspace. Não há testes automatizados que verifiquem caminhos críticos (caso base, duplicatas, presença de zeros, valores fora do esperado). Recomenda-se adicionar unit tests cobrindo happy path e edge cases.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "O código assume n >= 1 e usa nums[0] para checar k = 0; isso é consistente com o enunciado (1 <= nums.length), mas se a pré-condição mudasse seria necessário um guard extra. Não é um bug sob as restrições dadas.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

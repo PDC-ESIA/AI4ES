@@ -1,0 +1,14 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue no workspace. Recomenda-se incluir testes unitários cobrindo casos básicos e limites (ex.: toda a string 'a', primeiras e últimas posições afetadas, strings longas para performance) para prevenir regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

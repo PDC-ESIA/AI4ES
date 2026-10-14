@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum teste unitário ou casos de validação foram entregues junto com a implementação. Recomenda-se incluir testes (happy path e edge cases) para garantir regressões e facilitar validação automática.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Uso de float('-inf') como sentinela para valores inteiros funciona corretamente aqui, mas é uma mistura de tipos (float vs int). Para evitar qualquer conversão/precisão implícita e melhorar clareza, poderia ser usado um inteiro muito pequeno (ex: -10**30) ou math.inf com consistência de tipos.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

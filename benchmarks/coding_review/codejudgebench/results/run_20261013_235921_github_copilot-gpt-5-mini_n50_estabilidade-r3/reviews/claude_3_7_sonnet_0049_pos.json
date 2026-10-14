@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos arquivos de teste (unit tests) nem exemplos de execução no workspace. A entrega contém apenas solution.py — recomendo adicionar testes automatizados que verifiquem os exemplos do enunciado e casos de borda.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Único módulo com responsabilidade clara (class Solution e um método). Poderia incluir docstring breve no método explicando a estratégia (aval. por legibilidade), mas a organização está adequada.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Nenhum arquivo de teste foi entregue. Isso impede validação automatizada no pipeline; crie testes que cubram happy path e casos limite (ex.: índices não presentes, nums muito grandes, zeros iniciais).",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

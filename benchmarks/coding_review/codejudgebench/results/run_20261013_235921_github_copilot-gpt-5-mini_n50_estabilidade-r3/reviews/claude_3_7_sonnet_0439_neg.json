@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica para alternância usa 2 * min(even_count, odd_count) assumindo que todos os evens/odds podem ser intercalados independente da ordem. Isso é incorreto (ex.: [2,4,1,3] faz o código retornar 4 enquanto o máximo válido é 2).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes automatizados fornecidos cobrindo cenários críticos (alternância limitada pela ordem, todos mesmos pares, casos mínimos).",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

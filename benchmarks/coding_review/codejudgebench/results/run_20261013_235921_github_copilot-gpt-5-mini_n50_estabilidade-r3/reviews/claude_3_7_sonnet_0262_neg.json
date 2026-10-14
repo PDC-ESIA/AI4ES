@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo com complexidade O(n^2) no pior caso — o código tenta todos os finais j e faz transformação O(n) para cada um, o que causa Time Limit Exceeded para entradas grandes (n até 3·10^5). A solução deve ser O(n) (algoritmo guloso que decrementa o bloco contínuo de caracteres não-'a' a partir do primeiro não-'a', ou então altera apenas o último caractere quando toda a string é 'a').",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Implementação faz busca exaustiva sobre substrings apesar de existir uma solução gulosa simples e linear. Recomenda-se refatorar para aplicar diretamente a regra conhecida: começando no primeiro caractere != 'a', decrementar cada caractere consecutivo enquanto for != 'a' (parar ao encontrar o primeiro 'a'); se toda a string for 'a', trocar o último caractere por 'z'. Isso elimina o laço duplo e simplifica a lógica.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (casos unitários) para validar correção e desempenho (happy path, todo-'a', alternância de caracteres e casos grandes que comprovem ausência de TLE). Criar testes que incluam entradas máximas ajudará a prevenir regressões de performance.",
+      "file": "(workspace)",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

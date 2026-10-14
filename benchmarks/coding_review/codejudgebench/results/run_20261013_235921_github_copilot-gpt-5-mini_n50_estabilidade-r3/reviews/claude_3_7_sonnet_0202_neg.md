@@ -1,0 +1,59 @@
+## Status: BLOQUEADO
+
+## Issues
+
+- Severity: critical  
+  File: solution.py  
+  Layer: corretude  
+  Description: The algorithm that computes the number of operations is incorrect. The code accumulates a fixed triangular cost for each gap (sum of 1..gap) without taking into account the number of stones being carried across the gap. This yields wrong answers (example: the provided Sample Input 2 should produce -1 but the implementation returns 11). The logic must track carried surplus stones and use the correct compressed formula (or an equivalent correct simulation) to compute the sum of carried stones across gaps.
+
+- Severity: critical  
+  File: solution.py  
+  Layer: arquitetura  
+  Description: The implementation iterates with Python range() across index gaps: for i in range(current_pos + 1, pos) and similarly for the tail (current_pos+1 .. N). Because N and positions X_i can be up to 2×10^9, these loops are potentially enormous and will either never finish or crash the process. This makes the solution infeasible for the problem constraints and effectively non-executable in realistic inputs.
+
+- Severity: warning  
+  File: solution.py  
+  Layer: corretude  
+  Description: The final feasibility check uses stones_left != N - current_pos which is not the correct condition. The correct overall feasibility checks are (1) sum(A) == N and (2) for every prefix (including gaps) there is enough stones to fill that prefix; the current check is logically wrong and redundant given earlier checks and the intended algorithm. This contributes to incorrect determinations of impossibility.
+
+- Severity: warning  
+  File: solution.py  
+  Layer: testes  
+  Description: No unit tests or automated test harness are present in the workspace to validate correctness across edge cases (large gaps, impossible prefixes, large N). At minimum, include tests for the provided samples and critical edge cases (very large gaps, first X != 1, total stones != N, etc.).
+
+## Resumo
+
+O arquivo solution.py existe, mas a solução está fundamentalmente incorreta e inviabilizada para entradas dentro das restrições do problema. O cálculo do número de operações não modela corretamente o transporte de pedras (não considera o número de pedras carregadas sobre um gap) e, pior, usa iterações explícitas sobre gaps que podem chegar a 2×10^9, o que torna o programa impraticável (ou impossível) de executar para entradas grandes. Há também uma checagem final incorreta de viabilidade e falta de testes automatizados. Em consequência há falhas de corretude e de arquitetura que bloqueiam a aceitação — é necessária reescrita para (1) aplicar a verificação de prefixos correta e (2) usar a versão compacta/analítica do somatório de operações (ou outra técnica equivalente) que não itere por cada célula individual.
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The algorithm that computes the number of operations is incorrect. The code accumulates a fixed triangular cost for each gap (sum of 1..gap) without taking into account the number of stones being carried across the gap. This yields wrong answers (example: the provided Sample Input 2 should produce -1 but the implementation returns 11). The logic must track carried surplus stones and use the correct compressed formula (or an equivalent correct simulation) to compute the sum of carried stones across gaps.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "The implementation iterates with Python range() across index gaps: for i in range(current_pos + 1, pos) and similarly for the tail (current_pos+1 .. N). Because N and positions X_i can be up to 2×10^9, these loops are potentially enormous and will either never finish or crash the process. This makes the solution infeasible for the problem constraints and effectively non-executable in realistic inputs.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "The final feasibility check uses stones_left != N - current_pos which is not the correct condition. The correct overall feasibility checks are (1) sum(A) == N and (2) for every prefix (including gaps) there is enough stones to fill that prefix; the current check is logically wrong and redundant given earlier checks and the intended algorithm. This contributes to incorrect determinations of impossibility.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "No unit tests or automated test harness are present in the workspace to validate correctness across edge cases (large gaps, impossible prefixes, large N). At minimum, include tests for the provided samples and critical edge cases (very large gaps, first X != 1, total stones != N, etc.).",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ]
+}
+```
