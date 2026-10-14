@@ -1,0 +1,14 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Module level import not at top of file",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

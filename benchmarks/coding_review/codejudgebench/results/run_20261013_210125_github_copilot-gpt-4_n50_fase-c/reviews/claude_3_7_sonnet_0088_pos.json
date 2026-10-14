@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "A variável local `remainders` é declarada mas nunca utilizada (linha 39, aviso ruff/F841)",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "bandit não pôde ser executado ('tool-unavailable'), não impacta o código entregue.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

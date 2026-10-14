@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "info",
+      "description": "O import no meio do arquivo foi detectado pelo linter (import sys após bloco de ambiente), mas não impacta a execução na plataforma.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Não há arquivos de teste unitário explícitos, porém, para problemas de programação competitiva CLI, este é comportamento padrão.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A solução recorre ao memoization do vetor inteiro (`S`, de até 5000 posições) para cada etapa da recursão, causando explosão de estados (O(2^Q * V^N)) e não resolve a falha `Time Limit Exceeded` indicada no enunciado.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "critical",
+      "description": "Não há otimização relevante implementada versus a versão anterior, tornando a entrega não suficiente para solucionar os critérios CA-01 e CA-02 (\"produzir saída correta para toda entrada válida\" e \"eliminar a falha observada\").",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Não há testes automatizados incluídos, embora não exigidos explicitamente para esse tipo de problema competitivo.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}
