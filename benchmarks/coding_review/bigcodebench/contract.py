@@ -52,8 +52,25 @@ def build_task_contract(problem: BigCodeBenchProblem) -> dict:
     }
 
 
-def build_coder_message(problem: BigCodeBenchProblem) -> str:
-    """Monta a mensagem de entrada do coder (o "contrato" da sessão)."""
+_REGRA_ENTREGA_PADRAO = """4. NÃO escreva a suíte de testes: a avaliação usa testes oficiais próprios.
+   Você ainda deve entregar `run.json` e `README.md` conforme suas regras padrão
+   (use `surface: none`), mas eles não afetam a avaliação do benchmark."""
+
+# Modo enxuto: elimina os turnos que só gravam artefatos não avaliados
+# (PLAN.md, README.md, run.json), que dominam o custo de tokens de entrada.
+_REGRA_ENTREGA_ENXUTA = f"""4. MODO ENXUTO: esta execução é avaliada SOMENTE pelo `{SOLUTION_FILENAME}`. Esta
+   regra substitui a ETAPA 0 e a regra do manifesto do seu prompt de sistema:
+   NÃO crie `PLAN.md`, `README.md`, `run.json`, `requirements.txt` nem testes.
+   Grave `{SOLUTION_FILENAME}` com uma única chamada a `tool_criar_arquivo` e encerre."""
+
+
+def build_coder_message(problem: BigCodeBenchProblem, *, lean: bool = False) -> str:
+    """Monta a mensagem de entrada do coder (o "contrato" da sessão).
+
+    Com `lean`, dispensa os artefatos que não entram na nota (ver
+    `_REGRA_ENTREGA_ENXUTA`).
+    """
+    regra_entrega = _REGRA_ENTREGA_ENXUTA if lean else _REGRA_ENTREGA_PADRAO
     return f"""# CONTRATO DE EXECUÇÃO (benchmark BigCodeBench — split complete)
 
 ## Stack e produto
@@ -79,9 +96,7 @@ documentadas):
 2. A função `{problem.entry_point}` DEVE ser definida no NÍVEL DE MÓDULO
    (top-level) de `{SOLUTION_FILENAME}`, com a MESMA assinatura do enunciado.
 3. Funções auxiliares e imports adicionais podem existir no mesmo arquivo.
-4. NÃO escreva a suíte de testes: a avaliação usa testes oficiais próprios.
-   Você ainda deve entregar `run.json` e `README.md` conforme suas regras padrão
-   (use `surface: none`), mas eles não afetam a avaliação do benchmark.
+{regra_entrega}
 
 Entregue o código agora, persistindo os arquivos via `tool_criar_arquivo`.
 """
