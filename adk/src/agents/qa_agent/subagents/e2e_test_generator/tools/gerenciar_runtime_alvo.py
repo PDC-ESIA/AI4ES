@@ -1,24 +1,15 @@
 """Inicialização controlada do sistema alvo para execução E2E local."""
 
 import hashlib
-import json
-import os
 import re
-import socket
-import subprocess
-import sys
-import time
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from urllib.error import HTTPError, URLError
-from urllib.request import urlopen
 
-from shared.workspace import get_agent_workspace, get_workspace_root
+from shared.workspace import get_agent_workspace
 
 from ..schemas import EntradaE2ENormalizada, ProjetoInspecionadoE2E
 
 _RAIZ_ADK = Path(__file__).resolve().parents[6]
-_TIMEOUT_INICIALIZACAO_SEGUNDOS = 15
 _ENTRYPOINT_UVICORN = re.compile(
     r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*$"
 )
@@ -34,21 +25,9 @@ class RuntimeAlvoE2E:
     logs: list[str] = field(default_factory=list)
     tentativas: int = 0
     encerrado: bool = False
-    _processo: subprocess.Popen[str] | None = field(
-        default=None,
-        repr=False,
-    )
 
     def encerrar(self) -> None:
-        if self._processo is None:
-            return
-        if self._processo.poll() is None:
-            self._processo.terminate()
-            try:
-                self._processo.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self._processo.kill()
-                self._processo.wait(timeout=5)
+        # O executor já removeu o contêiner; não existe processo no host.
         self.encerrado = True
 
     def como_dict(self) -> dict:
@@ -70,12 +49,6 @@ def _esta_contido(caminho: Path, raiz: Path) -> bool:
         return True
     except ValueError:
         return False
-
-
-def _porta_loopback_livre() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidor:
-        servidor.bind(("127.0.0.1", 0))
-        return int(servidor.getsockname()[1])
 
 
 def _materializar_codigo_inline(
@@ -133,65 +106,12 @@ def _resolver_workspace(
     if not candidato.is_absolute():
         candidato = _RAIZ_ADK / candidato
     candidato = candidato.resolve()
-    raizes = {_RAIZ_ADK.resolve(), get_workspace_root().resolve()}
+    raizes = {get_agent_workspace(nome).resolve() for nome in ("coder", "e2e_test_generator")}
     if not any(_esta_contido(candidato, raiz) for raiz in raizes):
         return None, ["workspace_projeto fora das raízes permitidas."]
     if not candidato.is_dir():
         return None, ["workspace_projeto não existe ou não é um diretório."]
     return candidato, []
-
-
-def _ambiente_minimo_runtime(workspace: Path) -> dict[str, str]:
-    """Evita expor credenciais do processo pai ao código sob teste."""
-
-    permitidas = {
-        "SYSTEMROOT",
-        "WINDIR",
-        "PATH",
-        "PATHEXT",
-        "TEMP",
-        "TMP",
-        "PYTHONIOENCODING",
-        "PYTHONUTF8",
-    }
-    env = {
-        chave: valor
-        for chave in permitidas
-        if (valor := os.environ.get(chave)) is not None
-    }
-    env["PYTHONPATH"] = str(workspace)
-    env["PYTHONIOENCODING"] = "utf-8"
-    return env
-
-
-def _runtime_responde(
-    base_url: str,
-    processo: subprocess.Popen[str],
-    rotas_esperadas: set[str],
-) -> bool:
-    url = base_url.rstrip("/") + "/openapi.json"
-    limite = time.monotonic() + _TIMEOUT_INICIALIZACAO_SEGUNDOS
-    while time.monotonic() < limite:
-        if processo.poll() is not None:
-            return False
-        try:
-            with urlopen(url, timeout=1) as resposta:
-                if 200 <= resposta.status < 500:
-                    try:
-                        contrato = json.loads(resposta.read())
-                    except (json.JSONDecodeError, UnicodeDecodeError):
-                        contrato = {}
-                    rotas_runtime = set(contrato.get("paths", {}))
-                    if not rotas_esperadas or rotas_esperadas.intersection(
-                        rotas_runtime
-                    ):
-                        return True
-        except HTTPError:
-            pass
-        except (OSError, URLError):
-            pass
-        time.sleep(0.2)
-    return False
 
 
 def iniciar_runtime_alvo(
@@ -200,92 +120,17 @@ def iniciar_runtime_alvo(
     workspace_projeto: str | None,
     max_tentativas: int = 2,
 ) -> RuntimeAlvoE2E:
-    """Inicia somente perfis locais conhecidos e sempre em loopback."""
-
+    """Prepara o alvo; sua inicialização só ocorre dentro do sandbox E2E."""
     if inspecao.perfil_inicializacao != "uvicorn" or not inspecao.entrypoint:
-        return RuntimeAlvoE2E(
-            status="nao_gerenciado",
-            base_url=entrada.base_url,
-            logs=["O perfil do sistema alvo não possui inicializador controlado."],
-        )
+        return RuntimeAlvoE2E(status="bloqueado", logs=[
+            "E2E isolado exige alvo Uvicorn gerenciado; serviços do host não são acessíveis."])
     if not _ENTRYPOINT_UVICORN.fullmatch(inspecao.entrypoint):
-        return RuntimeAlvoE2E(
-            status="bloqueado",
-            logs=["Entrypoint Uvicorn fora do formato permitido."],
-        )
-
+        return RuntimeAlvoE2E(status="bloqueado", logs=["Entrypoint não permitido."])
     workspace, erros = _resolver_workspace(workspace_projeto, entrada)
     if workspace is None:
-        return RuntimeAlvoE2E(status="bloqueado", logs=erros)
-
-    max_tentativas = max(1, min(int(max_tentativas), 3))
-    creationflags = (
-        subprocess.CREATE_NO_WINDOW
-        if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW")
-        else 0
-    )
-    logs: list[str] = []
-    rotas_esperadas = {rota.rota for rota in inspecao.rotas}
-    for tentativa in range(1, max_tentativas + 1):
-        porta = _porta_loopback_livre()
-        base_url = f"http://127.0.0.1:{porta}"
-        argv = [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            inspecao.entrypoint,
-            "--host",
-            "127.0.0.1",
-            "--port",
-            str(porta),
-        ]
-        try:
-            processo = subprocess.Popen(
-                argv,
-                cwd=workspace,
-                env=_ambiente_minimo_runtime(workspace),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                shell=False,
-                creationflags=creationflags,
-            )
-        except OSError as exc:
-            logs.append(f"Tentativa {tentativa}: falha ao iniciar Uvicorn: {exc}")
-            continue
-
-        if _runtime_responde(base_url, processo, rotas_esperadas):
-            logs.append(
-                f"Tentativa {tentativa}: runtime e rotas validados em loopback."
-            )
-            return RuntimeAlvoE2E(
-                status="pronto",
-                base_url=base_url,
-                iniciado_pelo_agente=True,
-                workspace=str(workspace),
-                comando=argv,
-                logs=logs,
-                tentativas=tentativa,
-                _processo=processo,
-            )
-
-        codigo_saida = processo.poll()
-        if codigo_saida is None:
-            processo.terminate()
-            try:
-                processo.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                processo.kill()
-                processo.wait(timeout=5)
-        logs.append(
-            f"Tentativa {tentativa}: healthcheck ou rotas não confirmados "
-            f"(codigo_saida={codigo_saida})."
-        )
-
+        return RuntimeAlvoE2E(status="bloqueado", logs=["Workspace do alvo não permitido."])
     return RuntimeAlvoE2E(
-        status="erro_inicializacao",
-        workspace=str(workspace),
-        logs=logs,
-        tentativas=max_tentativas,
-        encerrado=True,
+        status="pronto", base_url="http://127.0.0.1:8765", workspace=str(workspace),
+        comando=["uvicorn", inspecao.entrypoint],
+        logs=["Alvo preparado; inicialização e healthcheck ocorrerão no contêiner."],
     )
