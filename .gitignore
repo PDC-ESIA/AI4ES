@@ -10,6 +10,14 @@ benchmarks/coding_review/humaneval/datasets/
 benchmarks/coding_review/humaneval/results/
 benchmarks/coding_review/mbpp/datasets/
 benchmarks/coding_review/mbpp/results/
+# SlopCodeBench: a issue pede o run commitado em results/ (report.json,
+# report.md, metadata.json). Só o material bruto fica fora — o workspace do
+# coder e qualquer cópia de spec/teste do benchmark (os arquivos do SCBench
+# trazem canary pedindo que não entrem em corpora públicos).
+benchmarks/coding_review/slopcodebench/results/*/workspace/
+# Catálogo de problemas (specs, testes ocultos, soluções) e harness oficial com
+# seu venv, ambos baixados dinamicamente.
+benchmarks/coding_review/slopcodebench/datasets/
 # BigCodeBench: o parquet é baixado dinamicamente; os resultados (report/metadata) são
 # versionados, mas não o workspace do coder nem o checkpoint de cada run.
 benchmarks/coding_review/bigcodebench/datasets/
