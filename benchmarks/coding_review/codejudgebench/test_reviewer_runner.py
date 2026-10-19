@@ -39,7 +39,7 @@ def _simular(monkeypatch, runner_mod, tentativas):
         tentativa = runner_mod.ReviewAttempt(
             verdict=verdict, lenient_status=None, gate_applied=False, duration_s=0.0, error=erro
         )
-        return tentativa, "" if verdict == "absent" else f"## Status: {verdict}"
+        return tentativa, "" if verdict == "absent" else f"## Status: {verdict}", None
 
     async def dormir(segundos):
         esperas.append(segundos)
