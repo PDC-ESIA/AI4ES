@@ -21,7 +21,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from benchmarks.coding_review.codejudgebench.contract import parse_review_markdown
-from benchmarks.coding_review.codejudgebench.metrics import compute_metrics
+from benchmarks.coding_review.codejudgebench.metrics import compute_metrics, compute_metrics_by_split
 from benchmarks.coding_review.codejudgebench.run import _persistir_relatorio
 
 
@@ -42,6 +42,7 @@ def regrade(run_dir: Path) -> dict:
                 texto = md.read_text(encoding="utf-8", errors="replace")
                 registro[which]["issues"] = parse_review_markdown(texto).issues
     relatorio["metrics"] = compute_metrics(relatorio["pairs"])
+    relatorio["metrics_by_split"] = compute_metrics_by_split(relatorio["pairs"])
     relatorio["regraded_at"] = datetime.now(timezone.utc).isoformat()
     _persistir_relatorio(relatorio, run_dir)
     return relatorio
