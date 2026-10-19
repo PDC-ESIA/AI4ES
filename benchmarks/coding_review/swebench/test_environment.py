@@ -258,3 +258,40 @@ def test_seed_workspace_registra_ignorados_ja_existentes(tmp_path: Path):
     cliente = _Client(_tar_de_diretorio(repo))
     resultado = environment.seed_workspace(tmp_path / "coder" / "src", IMAGEM, client=cliente)
     assert resultado.baseline_ignored == frozenset({"pkg/_ext.so"})
+
+
+# --- limpeza das imagens oficiais (cada uma ocupa ~2,4 GB) -----------------------
+
+
+class _ImagensFalsas:
+    def __init__(self, erro: Exception | None = None):
+        self.erro, self.removidas = erro, []
+
+    def remove(self, image):
+        if self.erro is not None:
+            raise self.erro
+        self.removidas.append(image)
+
+
+class _ClienteFalso:
+    def __init__(self, erro: Exception | None = None):
+        self.images = _ImagensFalsas(erro)
+
+
+def test_remove_a_imagem_da_instancia():
+    cliente = _ClienteFalso()
+    assert environment.remove_image("swebench/x:latest", client=cliente) == "removida"
+    assert cliente.images.removidas == ["swebench/x:latest"]
+
+
+def test_imagem_que_ja_nao_existe_nao_e_erro():
+    cliente = _ClienteFalso(ImageNotFound("sumiu"))
+    assert environment.remove_image("swebench/x:latest", client=cliente) == "ausente"
+
+
+def test_falha_ao_remover_nunca_derruba_o_run():
+    from docker.errors import APIError
+
+    cliente = _ClienteFalso(APIError("image is being used by running container"))
+    resultado = environment.remove_image("swebench/x:latest", client=cliente)
+    assert resultado.startswith("falhou:") and "being used" in resultado

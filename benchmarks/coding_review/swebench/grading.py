@@ -152,10 +152,16 @@ def installed_version(python: str) -> str:
     return saida.stdout.strip()
 
 
-def run_official_grading(command: list[str], *, grading_dir: Path) -> int:
-    """Executa o harness oficial; a saída vai para `run_evaluation.log`."""
+def run_official_grading(
+    command: list[str], *, grading_dir: Path, log_name: str = GRADING_LOG, append: bool = False
+) -> int:
+    """Executa o harness oficial; a saída vai para `log_name` (padrão `run_evaluation.log`).
+
+    `append=True` acrescenta ao log em vez de sobrescrevê-lo, para a correção por
+    instância não apagar a saída das instâncias anteriores.
+    """
     grading_dir.mkdir(parents=True, exist_ok=True)
-    with (grading_dir / GRADING_LOG).open("w", encoding="utf-8") as log:
+    with (grading_dir / log_name).open("a" if append else "w", encoding="utf-8") as log:
         processo = subprocess.run(
             command, cwd=grading_dir, stdout=log, stderr=subprocess.STDOUT
         )

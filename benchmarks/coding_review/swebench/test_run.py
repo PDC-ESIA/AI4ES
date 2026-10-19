@@ -182,7 +182,7 @@ def test_fase_de_correcao_com_harness_falso(tmp_path, monkeypatch):
     modelo = run.model_name_for_predictions(args.model)
     chamadas = []
 
-    def _harness_falso(comando, *, grading_dir):
+    def _harness_falso(comando, *, grading_dir, **_):
         chamadas.append(comando)
         caminho = grading.instance_report_path(grading_dir, run_dir.name, modelo, "a__a-1")
         caminho.parent.mkdir(parents=True)
@@ -247,7 +247,7 @@ def test_correcao_nao_reaproveita_resultado_de_outro_patch(tmp_path, monkeypatch
     (antigo.parent / "patch.diff").write_text("patch ANTIGO\n")
     existia_na_chamada = []
 
-    def _harness_falso(comando, *, grading_dir):
+    def _harness_falso(comando, *, grading_dir, **_):
         existia_na_chamada.append(antigo.exists())  # o harness só vê o que sobrou no disco
         antigo.parent.mkdir(parents=True, exist_ok=True)
         antigo.write_text(json.dumps({"a__a-1": {"resolved": True,
@@ -270,7 +270,7 @@ def test_sanidade_gold_lista_quem_nao_resolve_nem_com_o_gabarito(tmp_path, monke
                               grading_timeout=1800)
     comandos = []
 
-    def _harness_falso(comando, *, grading_dir):
+    def _harness_falso(comando, *, grading_dir, **_):
         comandos.append(comando)
         run_id = f"{run_dir.name}_gold"
         for iid, resolvido in (("django__django-11099", True), ("django__django-11133", False)):
@@ -451,6 +451,244 @@ def _preparar_laco(tmp_path, monkeypatch, erros):
     args = argparse.Namespace(instance_timeout=10, provider_retries=2, provider_wait=60,
                               max_tokens_per_minute=0)
     return run_dir, args, preparacoes, esperas
+
+
+def _laco_com_limpeza(tmp_path, monkeypatch, *, patch="diff x\n", keep=False, skip=False,
+                      resultado_oficial=True, log_sem_report=None, dataset=True):
+    """Roda UMA instância pelo laço, com correção e remoção de imagem falsas."""
+    import asyncio
+
+    from benchmarks.coding_review.swebench import environment
+    from benchmarks.coding_review.swebench import patch as patch_mod
+
+    run_dir, args, _, _ = _preparar_laco(tmp_path, monkeypatch, [None])
+    inst = _instancias()[0]
+    args.model, args.swebench_python = "github_copilot/gpt-5", "/venv/bin/python"
+    args.grading_timeout, args.keep_images, args.skip_grading = 1800, keep, skip
+    monkeypatch.setattr(patch_mod, "extract_patch", lambda *a, **k: patch_mod.PatchResult(
+        patch=patch, files=["x.py"] if patch else []))
+    modelo = run.model_name_for_predictions(args.model)
+    eventos = []
+
+    def _harness_falso(comando, *, grading_dir, **_):
+        eventos.append("corrigiu")
+        if log_sem_report is not None:  # o harness não grava report.json nestes casos
+            log = grading.instance_report_path(
+                grading_dir, run_dir.name, modelo, inst.instance_id).with_name("run_instance.log")
+            log.parent.mkdir(parents=True, exist_ok=True)
+            log.write_text(log_sem_report)
+        elif resultado_oficial:
+            caminho = grading.instance_report_path(grading_dir, run_dir.name, modelo, inst.instance_id)
+            caminho.parent.mkdir(parents=True, exist_ok=True)
+            caminho.write_text(json.dumps({inst.instance_id: {"resolved": True,
+                                                              "patch_successfully_applied": True}}))
+        return 0
+
+    monkeypatch.setattr(grading, "run_official_grading", _harness_falso)
+    monkeypatch.setattr(environment, "remove_image",
+                        lambda image, **k: eventos.append(f"removeu {image}") or "removida")
+    asyncio.run(run._executar_loop(args, run_dir, [inst], tmp_path / "t.parquet" if dataset else None))
+    return eventos, inst
+
+
+def test_corrige_a_instancia_e_so_depois_apaga_a_imagem(tmp_path, monkeypatch):
+    eventos, inst = _laco_com_limpeza(tmp_path, monkeypatch)
+    assert eventos == ["corrigiu", f"removeu {inst.image}"]  # nesta ordem
+
+
+def test_sem_resultado_oficial_a_imagem_fica_para_a_correcao_final(tmp_path, monkeypatch):
+    eventos, _ = _laco_com_limpeza(tmp_path, monkeypatch, resultado_oficial=False)
+    assert eventos == ["corrigiu"]  # não removeu: a fase final ainda vai precisar dela
+
+
+def test_patch_vazio_nao_vai_ao_harness_mas_libera_a_imagem(tmp_path, monkeypatch):
+    eventos, inst = _laco_com_limpeza(tmp_path, monkeypatch, patch="")
+    assert eventos == [f"removeu {inst.image}"]
+
+
+def test_keep_images_nao_corrige_nem_apaga_durante_o_loop(tmp_path, monkeypatch):
+    eventos, _ = _laco_com_limpeza(tmp_path, monkeypatch, keep=True)
+    assert eventos == []
+
+
+def test_skip_grading_mantem_as_imagens(tmp_path, monkeypatch):
+    eventos, _ = _laco_com_limpeza(tmp_path, monkeypatch, skip=True)
+    assert eventos == []
+
+
+def test_patch_que_nao_aplica_conta_como_resultado_e_libera_a_imagem(tmp_path, monkeypatch):
+    """Regressão: o harness não grava report.json aqui, e a imagem ficava no disco."""
+    eventos, inst = _laco_com_limpeza(
+        tmp_path, monkeypatch, log_sem_report=">>>>> Patch Apply Failed:\nerro\n")
+    assert eventos == ["corrigiu", f"removeu {inst.image}"]
+
+
+def test_timeout_dos_testes_tambem_conta_como_resultado(tmp_path, monkeypatch):
+    eventos, inst = _laco_com_limpeza(
+        tmp_path, monkeypatch, log_sem_report="Test timed out after 1800 seconds.\n")
+    assert eventos == ["corrigiu", f"removeu {inst.image}"]
+
+
+def test_erro_de_avaliacao_sem_causa_conhecida_mantem_a_imagem(tmp_path, monkeypatch):
+    eventos, _ = _laco_com_limpeza(tmp_path, monkeypatch, log_sem_report="algo estranho\n")
+    assert eventos == ["corrigiu"]  # sem resultado definitivo: a fase final tenta de novo
+
+
+def test_sem_dataset_path_o_laco_nao_corrige_nem_apaga(tmp_path, monkeypatch):
+    eventos, _ = _laco_com_limpeza(tmp_path, monkeypatch, dataset=False)
+    assert eventos == []
+
+
+def test_fase_final_nao_reexecuta_instancia_com_resultado_definitivo_sem_report(tmp_path, monkeypatch):
+    """O harness só pula quem tem report.json; sem isto, reexecutaria e rebaixaria a imagem."""
+    run_dir = tmp_path / "run_x"
+    (run_dir / run.PATCHES_DIR).mkdir(parents=True)
+    (run_dir / "patches" / "a__a-1.diff").write_text("patch A\n")
+    (run_dir / "patches" / "b__b-2.diff").write_text("patch B\n")
+    args = argparse.Namespace(model="github_copilot/gpt-5", swebench_python="/venv/bin/python",
+                              grading_workers=2, grading_timeout=1800)
+    modelo = run.model_name_for_predictions(args.model)
+    # a__a-1: o patch não aplicou (sem report.json, com o motivo no log e o patch.diff igual)
+    pasta = grading.instance_report_path(run_dir / run.GRADING_DIR, run_dir.name, modelo, "a__a-1").parent
+    pasta.mkdir(parents=True)
+    (pasta / "run_instance.log").write_text(">>>>> Patch Apply Failed\n")
+    (pasta / "patch.diff").write_text("patch A\n")
+    comandos = []
+
+    def _harness_falso(comando, *, grading_dir, **_):
+        comandos.append(comando)
+        caminho = grading.instance_report_path(grading_dir, run_dir.name, modelo, "b__b-2")
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        caminho.write_text(json.dumps({"b__b-2": {"resolved": True, "patch_successfully_applied": True}}))
+        return 0
+
+    monkeypatch.setattr(grading, "run_official_grading", _harness_falso)
+    resultados, _ = run._fase_grading(
+        args, run_dir, [_registro("a__a-1", "patches/a__a-1.diff"), _registro("b__b-2", "patches/b__b-2.diff")],
+        tmp_path / "t.parquet", "5.0.2",
+    )
+    assert comandos[0][comandos[0].index("--instance_ids") + 1:] == ["b__b-2"]  # a__a-1 fora do comando
+    assert resultados["a__a-1"]["status"] == "unresolved"
+    assert resultados["a__a-1"]["causa"] == "patch_nao_aplicou"
+    assert resultados["b__b-2"]["status"] == "resolved"
+
+
+def test_varredura_final_remove_so_as_imagens_de_instancias_com_resultado(monkeypatch):
+    from benchmarks.coding_review.swebench import environment
+
+    removidas = []
+    monkeypatch.setattr(environment, "remove_image", lambda image, **k: removidas.append(image) or "removida")
+    a, b, c, d = (_instancias()[0].__class__(
+        instance_id=f"django__django-{n}", repo="django/django", base_commit="abc", version="4.0",
+        problem_statement="x", image=f"img{n}") for n in (1, 2, 3, 4))
+    run._varrer_imagens([a, b, c, d], {
+        "django__django-1": {"status": "resolved"},
+        "django__django-2": {"status": "unresolved"},
+        "django__django-3": {"status": "error"},              # sem resultado definitivo
+        # django-4 sem registro: fica
+    })
+    assert removidas == ["img1", "img2"]
+
+
+def test_aviso_de_disco(tmp_path, monkeypatch):
+    import collections
+
+    uso = collections.namedtuple("uso", "total used free")
+    monkeypatch.setattr(run.shutil, "disk_usage", lambda p: uso(100e9, 90e9, 10e9))
+    assert "10 GB livres" in run._aviso_de_disco(tmp_path, minimo_gb=20)
+    monkeypatch.setattr(run.shutil, "disk_usage", lambda p: uso(500e9, 100e9, 400e9))
+    assert run._aviso_de_disco(tmp_path, minimo_gb=20) is None
+
+
+@pytest.mark.parametrize(
+    "keep, skip, esperado",
+    [(False, False, True), (True, False, False), (False, True, False), (True, True, False)],
+)
+def test_regra_unica_da_limpeza_de_imagens(keep, skip, esperado):
+    args = argparse.Namespace(keep_images=keep, skip_grading=skip)
+    assert run._limpeza_ativa(args) is esperado
+    assert run._limpeza_ativa(argparse.Namespace()) is False  # sem os atributos: desligada
+
+
+def test_fase_final_sem_nada_para_o_harness_nao_o_chama(tmp_path, monkeypatch):
+    """Todos os resultados são definitivos sem report.json: o harness nem é chamado."""
+    run_dir = tmp_path / "run_x"
+    (run_dir / run.PATCHES_DIR).mkdir(parents=True)
+    (run_dir / "patches" / "a__a-1.diff").write_text("patch A\n")
+    args = argparse.Namespace(model="github_copilot/gpt-5", swebench_python="/venv/bin/python",
+                              grading_workers=2, grading_timeout=1800)
+    modelo = run.model_name_for_predictions(args.model)
+    pasta = grading.instance_report_path(run_dir / run.GRADING_DIR, run_dir.name, modelo, "a__a-1").parent
+    pasta.mkdir(parents=True)
+    (pasta / "run_instance.log").write_text("Test timed out after 1800 seconds\n")
+    (pasta / "patch.diff").write_text("patch A\n")
+    chamadas = []
+    monkeypatch.setattr(grading, "run_official_grading", lambda *a, **k: chamadas.append(a) or 0)
+    resultados, correcao = run._fase_grading(
+        args, run_dir, [_registro("a__a-1", "patches/a__a-1.diff")], tmp_path / "t.parquet", "5.0.2"
+    )
+    assert chamadas == []
+    assert correcao["comando"] is None and correcao["returncode"] == 0
+    assert resultados["a__a-1"]["status"] == "unresolved"
+    assert resultados["a__a-1"]["causa"] == "timeout_dos_testes"
+
+
+def test_log_de_tentativa_antiga_com_patch_novo_nao_vira_resultado_definitivo(tmp_path, monkeypatch):
+    """A invalidação roda ANTES: um log velho de OUTRO patch não pode pular a reavaliação."""
+    run_dir = tmp_path / "run_x"
+    (run_dir / run.PATCHES_DIR).mkdir(parents=True)
+    (run_dir / "patches" / "a__a-1.diff").write_text("patch NOVO\n")
+    args = argparse.Namespace(model="github_copilot/gpt-5", swebench_python="/venv/bin/python",
+                              grading_workers=2, grading_timeout=1800)
+    modelo = run.model_name_for_predictions(args.model)
+    pasta = grading.instance_report_path(run_dir / run.GRADING_DIR, run_dir.name, modelo, "a__a-1").parent
+    pasta.mkdir(parents=True)
+    (pasta / "run_instance.log").write_text(">>>>> Patch Apply Failed\n")  # do patch antigo
+    (pasta / "patch.diff").write_text("patch ANTIGO\n")
+    comandos = []
+
+    def _harness_falso(comando, *, grading_dir, **_):
+        comandos.append(comando)
+        return 0
+
+    monkeypatch.setattr(grading, "run_official_grading", _harness_falso)
+    run._fase_grading(args, run_dir, [_registro("a__a-1", "patches/a__a-1.diff")],
+                      tmp_path / "t.parquet", "5.0.2")
+    assert comandos and comandos[0][comandos[0].index("--instance_ids") + 1:] == ["a__a-1"]
+
+
+def test_log_inline_acrescenta_em_vez_de_sobrescrever(tmp_path):
+    import sys
+
+    for texto in ("primeira", "segunda"):
+        grading.run_official_grading(
+            [sys.executable, "-c", f"print('{texto}')"], grading_dir=tmp_path,
+            log_name="inline.log", append=True,
+        )
+    assert (tmp_path / "inline.log").read_text().split() == ["primeira", "segunda"]
+    grading.run_official_grading([sys.executable, "-c", "print('so esta')"], grading_dir=tmp_path,
+                                 log_name="inline.log")  # padrão: sobrescreve
+    assert (tmp_path / "inline.log").read_text().split() == ["so", "esta"]
+
+
+def test_falha_do_harness_na_correcao_inline_nao_derruba_o_run(tmp_path, monkeypatch):
+    import asyncio
+
+    from benchmarks.coding_review.swebench import environment
+
+    run_dir, args, _, _ = _preparar_laco(tmp_path, monkeypatch, [None])
+    args.model, args.swebench_python = "github_copilot/gpt-5", "/venv/bin/python"
+    args.grading_timeout, args.keep_images, args.skip_grading = 1800, False, False
+
+    def _quebra(comando, *, grading_dir, **_):
+        raise OSError("docker caiu")
+
+    monkeypatch.setattr(grading, "run_official_grading", _quebra)
+    removidas = []
+    monkeypatch.setattr(environment, "remove_image", lambda image, **k: removidas.append(image))
+    asyncio.run(run._executar_loop(args, run_dir, [_instancias()[0]], tmp_path / "t.parquet"))
+    assert removidas == []  # o run seguiu, e a imagem ficou
+    assert run._carregar_progresso(run_dir / run.PROGRESS_FILE)  # o resultado do loop foi gravado
 
 
 def test_rate_limit_espera_e_refaz_a_instancia(tmp_path, monkeypatch):

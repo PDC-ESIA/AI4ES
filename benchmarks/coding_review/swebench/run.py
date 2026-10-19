@@ -34,8 +34,10 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -56,9 +58,12 @@ from benchmarks.coding_review.swebench.dataset import (
     SWEInstance,
 )
 from benchmarks.coding_review.swebench.metrics import (
+    GRADE_EMPTY_PATCH,
     GRADE_NOT_GRADED,
     GRADE_PREP_FAILED,
     GRADE_PROVIDER_FAILED,
+    GRADE_RESOLVED,
+    GRADE_UNRESOLVED,
     aggregate,
 )
 from benchmarks.coding_review.swebench.report import render_markdown
@@ -76,6 +81,11 @@ GRADING_FILE = "grading.json"
 PATCHES_DIR = "patches"
 GRADING_DIR = "grading"
 GOLD_GRADING_DIR = "grading_gold"
+GRADING_INLINE_LOG = "run_evaluation_inline.log"
+# Abaixo disto de disco livre, o run avisa (as imagens oficiais têm de 4 a 11 GB).
+_DISCO_LIVRE_MINIMO_GB = 20
+# Status em que há um resultado oficial definitivo: a imagem da instância já não é necessária.
+_STATUS_COM_RESULTADO = frozenset({GRADE_RESOLVED, GRADE_UNRESOLVED, GRADE_EMPTY_PATCH})
 GOLD_FILE = "sanidade_gold.json"
 _GOLD_MODEL = "gold"
 EXECUTOR_SANITY_FILE = "sanidade_executor.json"
@@ -140,6 +150,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="Workers do harness oficial (default: 2).")
     p.add_argument("--grading-timeout", type=int, default=1800,
                    help="Timeout (s) por instância no harness oficial (default: 1800).")
+    p.add_argument("--keep-images", action="store_true",
+                   help=("Não apaga a imagem Docker de cada instância depois de corrigi-la. "
+                         "Por padrão, cada instância é corrigida pelo harness oficial logo após "
+                         "o loop e a imagem (~2,4 GB) é removida, para o disco não encher."))
     p.add_argument("--skip-grading", action="store_true",
                    help="Roda só o loop; corrija depois com --grade-only.")
     p.add_argument("--grade-only", action="store_true",
@@ -564,9 +578,150 @@ def _montar_registro(inst: SWEInstance, run, seed, patch_result, patch_rel: str 
     }
 
 
+def _limpeza_ativa(args: argparse.Namespace) -> bool:
+    """A limpeza de imagens está ativa? (padrão; desligada por `--keep-images`/`--skip-grading`)
+
+    Centraliza a regra usada pelo laço (correção por instância), pelo `metadata.json` e
+    pela varredura final, para os três nunca divergirem. Sem os atributos (chamadas
+    de teste), vale "desligada".
+    """
+    return not getattr(args, "keep_images", True) and not getattr(args, "skip_grading", False)
+
+
+def _resultado_conhecido(
+    grading_dir: Path, run_id: str, modelo: str, instance_id: str
+) -> bool:
+    """Há resultado oficial definitivo para a instância?
+
+    Vale o `report.json` e também os casos em que o harness não o grava mas o log diz
+    o motivo (patch que não aplicou, testes que estouraram o timeout): para o SWE-bench
+    são "não resolvida". Só o erro de avaliação sem causa conhecida conta como
+    "ainda sem resultado".
+    """
+    saida = grading.parse_results(
+        grading_dir, run_id=run_id, model_name_or_path=modelo,
+        instance_ids=[instance_id], empty_patch_ids=set(),
+    )
+    return saida[instance_id].status in _STATUS_COM_RESULTADO
+
+
+def _sem_report_definitivos(
+    grading_dir: Path, run_id: str, modelo: str, patches: list[tuple[str, str]]
+) -> set[str]:
+    """Instâncias com resultado definitivo SEM `report.json` (patch não aplicou, timeout).
+
+    O harness só pula instâncias que têm `report.json`; estas seriam reexecutadas (e a
+    imagem, baixada de novo) a cada correção final.
+    """
+    return {
+        iid for iid, patch in patches
+        if patch.strip()
+        and not grading.instance_report_path(grading_dir, run_id, modelo, iid).is_file()
+        and _resultado_conhecido(grading_dir, run_id, modelo, iid)
+    }
+
+
+def _aviso_de_disco(caminho: Path, minimo_gb: int = _DISCO_LIVRE_MINIMO_GB) -> str | None:
+    """Aviso se o disco de `caminho` tem menos de `minimo_gb` GB livres; `None` se ok.
+
+    Heurística: assume que o Docker usa o mesmo disco do diretório dos resultados.
+    """
+    try:
+        livre_gb = shutil.disk_usage(caminho).free / 1e9
+    except OSError:
+        return None
+    if livre_gb >= minimo_gb:
+        return None
+    return (f"[run] Aviso: {livre_gb:.0f} GB livres em {caminho}; as imagens oficiais têm de "
+            f"4 a 11 GB e o run precisa de ~{minimo_gb} GB livres.")
+
+
+def _varrer_imagens(instancias: list[SWEInstance], resultados: dict[str, dict[str, Any]]) -> None:
+    """Remove as imagens de toda instância que já tem resultado oficial definitivo.
+
+    Pega o que a limpeza por instância deixou: uma queda ou Ctrl-C entre o registro da
+    instância e a limpeza, uma retomada, ou instâncias que o harness deixou sem
+    `report.json`. É idempotente (imagem ausente não conta).
+    """
+    from benchmarks.coding_review.swebench import environment
+
+    removidas = 0
+    for inst in instancias:
+        saida = resultados.get(inst.instance_id)
+        if saida and saida.get("status") in _STATUS_COM_RESULTADO:
+            if environment.remove_image(inst.image) == "removida":
+                removidas += 1
+    print(f"[grading] Varredura final: {removidas} imagem(ns) de instâncias já corrigidas "
+          "removida(s).")
+
+
+def _corrigir_instancia(
+    args: argparse.Namespace, run_dir: Path, inst: SWEInstance, patch: str, dataset_path: Path
+) -> bool:
+    """Corrige UMA instância no harness oficial; devolve se o resultado foi obtido.
+
+    Usa o mesmo `run_id` e o mesmo diretório da correção final, então a fase final
+    encontra o resultado em cache (e não precisa mais da imagem). Patch vazio não vai
+    ao harness. "Resultado" inclui o patch que não aplicou e o timeout dos testes (o
+    harness não grava `report.json` nesses casos). Nunca levanta exceção: a imagem só
+    é apagada quando isto devolve `True`.
+    """
+    if not patch.strip():
+        return True
+    modelo = model_name_for_predictions(args.model)
+    run_id = run_dir.name
+    grading_dir = run_dir / GRADING_DIR
+    try:
+        grading.invalidate_stale_reports(
+            grading_dir, run_id=run_id, model_name_or_path=modelo,
+            patches=[(inst.instance_id, patch)],
+        )
+        with tempfile.TemporaryDirectory(prefix="swebench-inline-") as tmp:
+            predicoes = Path(tmp) / PREDICTIONS_FILE
+            grading.write_predictions(
+                predicoes, [(inst.instance_id, patch)], model_name_or_path=modelo
+            )
+            comando = grading.build_command(
+                args.swebench_python,
+                dataset_path=dataset_path.resolve(),
+                predictions_path=predicoes,
+                run_id=run_id,
+                instance_ids=[inst.instance_id],
+                max_workers=1,
+                timeout=args.grading_timeout,
+            )
+            grading.run_official_grading(
+                comando, grading_dir=grading_dir, log_name=GRADING_INLINE_LOG, append=True
+            )
+    except Exception as exc:  # noqa: BLE001 — a fase final tenta de novo
+        print(f"[grading] {inst.instance_id}: falha ao corrigir logo após o loop ({exc!r}).")
+        return False
+    return _resultado_conhecido(grading_dir, run_id, modelo, inst.instance_id)
+
+
+def _corrigir_e_limpar(
+    args: argparse.Namespace, run_dir: Path, inst: SWEInstance, patch: str,
+    dataset_path: Path, prefixo: str,
+) -> None:
+    """Corrige a instância e, só se o resultado existe, apaga a imagem dela do disco."""
+    from benchmarks.coding_review.swebench import environment
+
+    if not _corrigir_instancia(args, run_dir, inst, patch, dataset_path):
+        print(f"{prefixo}: sem resultado oficial; a imagem fica para a correção final.")
+        return
+    resultado = environment.remove_image(inst.image)
+    print(f"{prefixo}: imagem {resultado}.")
+
+
 async def _executar_loop(args: argparse.Namespace, run_dir: Path,
-                         instancias: list[SWEInstance]) -> None:
-    """Fase 2: uma instância por vez, sempre no mesmo workspace."""
+                         instancias: list[SWEInstance],
+                         dataset_path: Path | None = None) -> None:
+    """Fase 2: uma instância por vez, sempre no mesmo workspace.
+
+    Com `dataset_path`, e sem `--keep-images` nem `--skip-grading`, cada instância é
+    corrigida pelo harness oficial logo após o loop e sua imagem Docker é apagada.
+    """
+    limpar_imagens = dataset_path is not None and _limpeza_ativa(args)
     from benchmarks.coding_review.swebench import environment, loop_runner
     from benchmarks.coding_review.swebench import patch as patch_mod
     from benchmarks.coding_review.swebench.guard_plugin import BenchmarkGuardPlugin
@@ -666,6 +821,8 @@ async def _executar_loop(args: argparse.Namespace, run_dir: Path,
             f"patch={'vazio' if patch_result.empty else f'{len(patch_result.files)} arquivo(s)'} "
             f"({run.duration_s}s)"
         )
+        if limpar_imagens:
+            _corrigir_e_limpar(args, run_dir, inst, patch_result.patch, dataset_path, prefixo)
 
 
 # ---------------------------------------------------------------------------
@@ -724,19 +881,25 @@ def _fase_grading(
         if invalidadas:
             print("[grading] Resultado antigo descartado (o patch mudou desde a última "
                   "correção): " + ", ".join(invalidadas))
-        comando = grading.build_command(
-            args.swebench_python,
-            dataset_path=dataset_path.resolve(),
-            predictions_path=predictions_path.resolve(),
-            run_id=run_id,
-            instance_ids=instance_ids,
-            max_workers=args.grading_workers,
-            timeout=args.grading_timeout,
-        )
         grading_dir = run_dir / GRADING_DIR
-        print(f"[grading] Harness oficial (swebench {swebench_version}) em {grading_dir} …")
+        # Resultado definitivo sem report.json (patch não aplicou, timeout): o harness o
+        # reexecutaria e baixaria a imagem de novo; o resultado já está no log.
+        definitivos = _sem_report_definitivos(grading_dir, run_id, modelo, patches)
+        a_rodar = [iid for iid in instance_ids if iid not in definitivos]
         t0 = time.time()
-        retorno = grading.run_official_grading(comando, grading_dir=grading_dir)
+        comando, retorno = None, 0
+        if a_rodar:
+            comando = grading.build_command(
+                args.swebench_python,
+                dataset_path=dataset_path.resolve(),
+                predictions_path=predictions_path.resolve(),
+                run_id=run_id,
+                instance_ids=a_rodar,
+                max_workers=args.grading_workers,
+                timeout=args.grading_timeout,
+            )
+            print(f"[grading] Harness oficial (swebench {swebench_version}) em {grading_dir} …")
+            retorno = grading.run_official_grading(comando, grading_dir=grading_dir)
         resultados = grading.parse_results(
             grading_dir,
             run_id=run_id,
@@ -1006,9 +1169,20 @@ def main(argv: list[str] | None = None) -> int:
 
         ambiente = _coletar_ambiente(_code_execute_loop.max_iterations, swebench_version)
         ambiente["max_tokens_por_minuto"] = args.max_tokens_per_minute
+        ambiente["limpeza_de_imagens"] = _limpeza_ativa(args)
+        if args.skip_grading and not args.keep_images:
+            print("[run] Aviso: com --skip-grading as imagens ficam no disco (a correção "
+                  "posterior precisa delas); apague-as depois do --grade-only.")
+        if ambiente["limpeza_de_imagens"]:
+            print("[run] Limpeza de imagens ativa: a imagem oficial de cada instância (inclusive "
+                  "uma que você já tinha baixado) é removida depois de corrigida. Use "
+                  "--keep-images para mantê-las.")
+            aviso = _aviso_de_disco(run_dir.parent if run_dir.parent.exists() else Path("."))
+            if aviso:
+                print(aviso)
         _registrar_ambiente(metadata, ambiente)
         _gravar_metadata(run_dir, metadata)
-        asyncio.run(_executar_loop(args, run_dir, instancias))
+        asyncio.run(_executar_loop(args, run_dir, instancias, parquet))
     elif swebench_version is not None:
         metadata.setdefault("ambiente", {})["swebench_version"] = swebench_version
         _gravar_metadata(run_dir, metadata)
@@ -1023,6 +1197,8 @@ def main(argv: list[str] | None = None) -> int:
         resultados, correcao = _fase_grading(
             args, run_dir, registros, parquet, swebench_version or ""
         )
+        if _limpeza_ativa(args) and not args.grade_only:
+            _varrer_imagens(instancias, resultados)
 
     relatorio = _consolidar(
         metadata, registros, resultados,

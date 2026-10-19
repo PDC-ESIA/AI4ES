@@ -72,7 +72,14 @@ Detalhes de cálculo:
    como `GIT binary patch` em vez de corromper o patch inteiro. Arquivos novos
    escondidos pelo `.gitignore` do repositório não entram, mas ficam registrados
    (`ignorado_pelo_gitignore`).
-5. **Correção** (depois de todas as instâncias). `predictions.jsonl` →
+5. **Correção.** Por padrão, cada instância é corrigida **logo depois do loop dela**,
+   e só então a imagem Docker é apagada. Conta como resultado o `report.json` e também
+   o patch que não aplicou ou os testes que estouraram o timeout (o harness não grava
+   `report.json` nesses casos, mas o log diz o motivo); sem nenhum dos dois, a imagem
+   fica para a fase final tentar de novo. Com `--keep-images` ou `--skip-grading`,
+   a correção roda depois de todas as instâncias. Em ambos os casos, a fase final
+   reconstrói o relatório com os resultados em cache (sem precisar das imagens).
+   `predictions.jsonl` →
    `swebench.harness.run_evaluation` → `resolved` por instância. Quando o harness
    não grava o `report.json`, o log da instância diz se o patch não aplicou ou se
    os testes estouraram o timeout (não resolvida, como no SWE-bench) ou se foi
@@ -123,9 +130,43 @@ estourou no 1º turno de uma instância do astropy. A linha de base usa o
 
 - Ambiente do `adk/` instalado e credencial do LLM no `adk/.env`.
 - Docker funcionando, em máquina **x86_64** (as imagens oficiais são x86_64).
-- Disco: medido no primeiro run, cerca de **2,4 GB por instância** (imagens
-  oficiais). Reserve ~70 GB para 30 instâncias. Para liberar depois:
-  `docker rmi $(docker images 'swebench/sweb.eval.*' -q)`.
+- Disco. Cada instância usa uma imagem oficial `swebench/sweb.eval.*`, de 4 a 8 GB
+  na maioria dos casos (a maior medida tem 10,8 GB). O que o run precisa de disco
+  depende da limpeza:
+  - **Com a limpeza (padrão):** cada instância é corrigida pelo harness oficial logo
+    depois do loop e a imagem dela é **apagada**. O pico é de **uma imagem por vez**
+    (o tamanho bruto dela, já que as outras não estão no disco para dividir camadas),
+    mais o workspace e os logs. O espaço das **imagens** não cresce com o número de
+    instâncias; só os logs e resultados crescem, na casa de poucos MB por instância.
+    Reserve ~20 GB livres (margem sobre os 10,8 GB da maior imagem; não é uma medição
+    de ponta a ponta). O run avisa se houver menos que isso.
+    **Custo:** como a imagem é apagada, cada instância **baixa a imagem inteira de
+    novo** (4 a 8 GB por instância), então o tempo e o tráfego de rede crescem com o
+    número de instâncias.
+  - **Sem a limpeza (`--keep-images` ou `--skip-grading`):** as imagens se acumulam.
+    Medido: 30 imagens ocupavam 72 GB de espaço único (média de 2,4 GB, porque as
+    camadas se compartilham). Extrapolando, ≈ 1,2 TB para 500; é uma extrapolação, e
+    o valor real depende de quantas camadas as instâncias compartilham.
+  - **A limpeza apaga as imagens das instâncias do run, inclusive as que você já tinha
+    baixado antes.** O run avisa no início. Use `--keep-images` para preservá-las.
+  - Ao fim de um run (ou de uma retomada), uma **varredura final** remove as imagens
+    de toda instância que já tem resultado oficial. Isso cobre o que sobra de uma
+    queda ou de um Ctrl-C **quando você retoma o run normalmente**; as imagens
+    sobrando ocupam disco até lá. O `--grade-only` nunca apaga imagens.
+  - **Não rode duas execuções ao mesmo tempo na mesma máquina com a limpeza ativa:**
+    uma pode apagar a imagem que a outra está usando (a outra a baixa de novo, ou
+    falha). Para isso, use `--keep-images`.
+  - A correção por instância usa **1 worker** (`--grading-workers` vale só para a
+    correção final e para o `--gold-sanity`) e não é paralela. Numa instância pequena,
+    com Docker real, a correção levou ~60 s no total, já incluindo os testes oficiais;
+    o custo de instâncias maiores não foi medido. Sua saída fica em
+    `grading/run_evaluation_inline.log`.
+  - O Docker mantém também um cache de build (`docker builder prune` o libera). Esse
+    cache **não** é limpo pelo benchmark, para não mexer em outros projetos da máquina.
+    Se o run for interrompido à força, o sandbox do executor pode deixar imagens
+    `ai4se-sandbox:*` que prendem o espaço da imagem oficial:
+    `docker rmi $(docker images 'ai4se-sandbox' -q)`.
+  - Para liberar imagens que sobraram: `docker rmi $(docker images 'swebench/sweb.eval.*' -q)`.
 - Venv separado com o harness oficial, a partir da raiz do repositório:
 
 ```bash
@@ -191,7 +232,8 @@ diretório antes do commit: ele não é ignorado pelo git.
 | `--dry-run` | — | Só sorteio + tasks/mensagens |
 | `--gold-sanity` | — | Corrige os patches oficiais (valida o ambiente de correção) |
 | `--executor-sanity` | — | Aplica a solução oficial e roda o harness do executor (valida o ambiente do executor) |
-| `--skip-grading` / `--grade-only` | — | Separa o loop da correção |
+| `--keep-images` | — | Não apaga a imagem Docker de cada instância. Por padrão, cada instância é corrigida logo após o loop e a imagem (4 a 8 GB, até 10,8 GB) é removida; se a correção da instância não produz resultado, a imagem fica para a correção final tentar de novo |
+| `--skip-grading` / `--grade-only` | — | Separa o loop da correção. Com `--skip-grading` as imagens ficam no disco (a correção posterior precisa delas) |
 
 ## Saídas
 

@@ -194,6 +194,30 @@ def _ensure_image(client, image: str) -> None:
         client.images.pull(repositorio, tag=tag or "latest")
 
 
+def remove_image(image: str, *, client=None) -> str:
+    """Remove a imagem oficial de uma instância do disco; nunca levanta exceção.
+
+    Cada imagem ocupa ~2,4 GB de espaço único (medido), então um run grande enche o
+    disco se elas não forem apagadas. Devolve `"removida"`, `"ausente"` (já não existia)
+    ou `"falhou: <motivo>"` (por exemplo, a imagem está em uso por outro contêiner);
+    uma falha aqui não pode derrubar o run, só deixar a imagem no disco.
+    """
+    try:
+        if client is None:
+            import docker
+
+            client = docker.from_env()
+        from docker.errors import ImageNotFound
+
+        try:
+            client.images.remove(image)
+        except ImageNotFound:
+            return "ausente"
+        return "removida"
+    except Exception as exc:  # noqa: BLE001 — limpeza é "melhor esforço"
+        return f"falhou: {exc}"[:200]
+
+
 def extract_testbed(image: str, dest: Path, *, client=None) -> list[str]:
     """Copia o `/testbed` da imagem para `dest` (que deve estar vazio).
 
