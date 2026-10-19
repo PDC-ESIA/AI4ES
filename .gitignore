@@ -23,6 +23,15 @@ benchmarks/coding_review/slopcodebench/datasets/
 benchmarks/coding_review/bigcodebench/datasets/
 benchmarks/coding_review/bigcodebench/results/*/workspace/
 benchmarks/coding_review/bigcodebench/results/*/progress.jsonl
+# CodeJudgeBench: dataset baixado dinamicamente; report/metadata/reviews versionados,
+# mas não o workspace do reviewer nem o checkpoint de cada run.
+benchmarks/coding_review/codejudgebench/datasets/
+benchmarks/coding_review/codejudgebench/results/*/workspace/
+benchmarks/coding_review/codejudgebench/results/*/progress.jsonl
+# Revisões em markdown/JSON de cada par: ~4 arquivos por par (9.600+ num run completo).
+# Ficam locais (regrade.py e stability.py as usam); os runs de referência de 50 pares
+# foram versionados explicitamente com git add -f.
+benchmarks/coding_review/codejudgebench/results/*/reviews/
 benchmarks/construcao/resultados/
 
 # Workspace centralizado dos agentes (Phase 2 — workspace_output/<agente>/...)
