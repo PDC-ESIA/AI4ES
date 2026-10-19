@@ -149,7 +149,8 @@ python -m benchmarks.coding_review.codejudgebench.regrade benchmarks/coding_revi
 ## Próximos passos
 
 As mudanças no reviewer ficam fora desta entrega ("mede; não corrige") e seguem na
-mesma #421, em branches próprias, medidas com este benchmark:
+mesma #421, em branches próprias, medidas com este benchmark — registradas em
+[`codejudgebench-melhorias-reviewer.md`](codejudgebench-melhorias-reviewer.md):
 
 - **Melhorias do reviewer:** modelo dedicado ao reviewer (os dados mostram que o
   gpt-4.1 não serve para essa função), saída validada pelo `ReviewOutput`, regra de
