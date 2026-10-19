@@ -62,7 +62,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Rótulo do experimento, anexado ao nome da pasta do run (ex.: fase-b-v1).",
     )
-    p.add_argument("--split", default=ds.DEFAULT_SPLIT, choices=ds.SPLITS, help=f"Split do CodeRepair (default: {ds.DEFAULT_SPLIT}).")
+    p.add_argument(
+        "--split",
+        default=ds.DEFAULT_SPLIT,
+        choices=(*ds.SPLITS, ds.ALL_SPLITS),
+        help=(
+            f"Split do CodeRepair (default: {ds.DEFAULT_SPLIT}); `all` percorre os três num único run, "
+            "com --limit/--offset aplicados a cada split."
+        ),
+    )
     p.add_argument("--seed", type=int, default=ds.DEFAULT_SEED, help=f"Semente da amostragem (default: {ds.DEFAULT_SEED}).")
     p.add_argument(
         "--max-per-question",
@@ -72,6 +80,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--pair-ids", nargs="*", default=None, help="Avalia só estes pares (ex.: claude_3.7_sonnet/262).")
     p.add_argument("--max-retries", type=int, default=1, help="Retries quando a revisão vem sem status (default: 1).")
+    p.add_argument(
+        "--backoff",
+        type=float,
+        default=5.0,
+        help="Espera inicial (s) antes de repetir uma revisão que falhou por erro de API; dobra a cada tentativa (default: 5).",
+    )
     p.add_argument(
         "--no-explanation",
         action="store_true",
@@ -157,6 +171,8 @@ def _sanitizar_componente(valor: str) -> str:
 def _construir_nome_run(args: argparse.Namespace, timestamp: str, n_pares: int) -> str:
     """Formato da issue #421: ``run_<timestamp>_<modelo>_n<N>[_off<O>][_<label>]``."""
     nome = f"run_{timestamp}_{_sanitizar_componente(args.model)}_n{n_pares}"
+    if args.split == ds.ALL_SPLITS:
+        nome += "_all"
     if args.offset:
         nome += f"_off{args.offset}"
     if args.label:
@@ -264,6 +280,23 @@ def _versao_do_codigo() -> dict:
         return {"commit": None, "dirty": None, "dirty_paths": []}
 
 
+def _metadados_dataset(args: argparse.Namespace) -> dict:
+    """Metadados do cache: de um split, ou dos três quando `--split all`."""
+    if args.split != ds.ALL_SPLITS:
+        return ds.dataset_metadata(args.dataset_dir, args.split)
+    por_split = {s: ds.dataset_metadata(args.dataset_dir, s) for s in ds.SPLITS}
+    revisoes = {m.get("revision") for m in por_split.values()}
+    return {
+        "dataset": ds.DATASET_ID,
+        "config": ds.CONFIG,
+        "split": ds.ALL_SPLITS,
+        # Os splits vêm do mesmo repositório; revisões diferentes indicariam
+        # caches baixados em momentos diferentes — None força a recusa na retomada.
+        "revision": revisoes.pop() if len(revisoes) == 1 else None,
+        "splits": por_split,
+    }
+
+
 def _contexto_do_ambiente(
     args: argparse.Namespace, pares: list[ds.RepairPair], codigo: dict | None = None
 ) -> dict:
@@ -286,7 +319,7 @@ def _contexto_do_ambiente(
         "label": args.label,
         "code": codigo if codigo is not None else _versao_do_codigo(),
         "pair_ids": [p.pair_id for p in pares],
-        "dataset": ds.dataset_metadata(args.dataset_dir, args.split),
+        "dataset": _metadados_dataset(args),
         "mode": "pointwise",
         "reviewer_static_analysis": os.environ.get("REVIEWER_STATIC_ANALYSIS", "1") != "0",
         "memory_enabled": False,
@@ -335,12 +368,14 @@ async def _executar(args: argparse.Namespace, run_dir: Path, pares: list[ds.Repa
                 model=args.model,
                 max_retries=args.max_retries,
                 include_explanation=not args.no_explanation,
+                backoff_s=args.backoff,
             )
             _salvar_markdown(run_dir, par, which, veredito.markdown)
             resultados[which] = veredito.to_record()
 
         registro = {
             "pair_id": par.pair_id,
+            "split": par.split,
             "question_id": par.question_id,
             "difficulty": par.difficulty,
             "platform": par.platform,
@@ -391,6 +426,29 @@ def _ic(proporcao: dict) -> str:
 
 def _linha_proporcao(nome: str, proporcao: dict) -> str:
     return f"| {nome} | {_pct(proporcao['value'])} | {_ic(proporcao)} | {proporcao['k']}/{proporcao['n']} |"
+
+
+def _secao_por_split(relatorio: dict) -> list[str]:
+    """Tabela por split; vazia quando o run cobre um split só."""
+    por_split = relatorio.get("metrics_by_split") or {}
+    if len(por_split) < 2:
+        return []
+    linhas = [
+        "## Por split",
+        "",
+        "Split = modelo que gerou as respostas avaliadas.",
+        "",
+        "| Split | Pares | Acurácia | IC 95% | Aprovou código que falha | Bloqueou código que passa |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for split, m in por_split.items():
+        acc = m["judgment"]["accuracy"]
+        linhas.append(
+            f"| `{split}` | {m['pairs']['total']} | {_pct(acc['value'])} ({acc['k']}/{acc['n']}) | {_ic(acc)} "
+            f"| {_pct(m['decision']['false_approve_rate']['value'])} "
+            f"| {_pct(m['decision']['false_block_rate']['value'])} |"
+        )
+    return [*linhas, ""]
 
 
 def _render_markdown(relatorio: dict) -> str:
@@ -454,6 +512,7 @@ def _render_markdown(relatorio: dict) -> str:
         "| --- | --- |",
         *[f"| `{k}` | {v} |" for k, v in m["pairs"]["outcomes"].items()],
         "",
+        *_secao_por_split(relatorio),
         "## Por dificuldade",
         "",
         "| Dificuldade | Acurácia | IC 95% | k/n |",
@@ -521,15 +580,19 @@ def main(argv: list[str] | None = None) -> int:
     # carregado com override=False, então este valor prevalece sobre ele.
     os.environ["AI4ES_MEMORY_ENABLED"] = "false"
 
-    pares = ds.load_pairs(
-        args.dataset_dir,
-        split=args.split,
-        limit=args.limit,
-        offset=args.offset,
-        seed=args.seed,
-        max_per_question=args.max_per_question or None,
-        pair_ids=args.pair_ids,
-    )
+    pares = [
+        par
+        for split in ds.resolve_splits(args.split)
+        for par in ds.load_pairs(
+            args.dataset_dir,
+            split=split,
+            limit=args.limit,
+            offset=args.offset,
+            seed=args.seed,
+            max_per_question=args.max_per_question or None,
+            pair_ids=args.pair_ids,
+        )
+    ]
     if not pares:
         raise ValueError("Nenhum par selecionado — confira --limit, --pair-ids e --split.")
 
@@ -552,7 +615,7 @@ def main(argv: list[str] | None = None) -> int:
 
     metadata = _validar_e_persistir_config(run_dir, args, _contexto_do_ambiente(args, pares, codigo))
 
-    from benchmarks.coding_review.codejudgebench.metrics import compute_metrics
+    from benchmarks.coding_review.codejudgebench.metrics import compute_metrics, compute_metrics_by_split
 
     t_inicio = time.time()
     registros, completo = asyncio.run(_executar(args, run_dir, pares))
@@ -562,6 +625,7 @@ def main(argv: list[str] | None = None) -> int:
         "total_duration_s": round(time.time() - t_inicio, 2),
         "metadata": metadata,
         "metrics": compute_metrics(registros),
+        "metrics_by_split": compute_metrics_by_split(registros),
         "pairs": registros,
     }
     json_path, md_path = _persistir_relatorio(relatorio, run_dir)
