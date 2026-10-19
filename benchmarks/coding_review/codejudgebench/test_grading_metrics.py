@@ -152,3 +152,15 @@ def test_sem_registros():
     m = metrics.compute_metrics([])
     assert m["judgment"]["accuracy"]["value"] is None
     assert m["judgment"]["accuracy"]["ci95"] is None
+
+
+def test_metricas_por_split():
+    registros = [
+        {**_registro(_resp("pass"), _resp("fail")), "pair_id": "claude_3.7_sonnet/1"},
+        {**_registro(_resp("pass"), _resp("pass")), "pair_id": "claude_3.7_sonnet/2"},
+        {**_registro(_resp("pass"), _resp("fail")), "pair_id": "gemini_2.5_pro/7"},
+    ]
+    por_split = metrics.compute_metrics_by_split(registros)
+    assert list(por_split) == ["claude_3.7_sonnet", "gemini_2.5_pro"]
+    assert por_split["claude_3.7_sonnet"]["judgment"]["accuracy"]["k"] == 1
+    assert por_split["gemini_2.5_pro"]["pairs"]["total"] == 1
