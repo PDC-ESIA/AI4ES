@@ -18,6 +18,7 @@ nenhum — é o equivalente, no pipeline, a uma revisão sem status utilizável.
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -41,6 +42,7 @@ from .contract import (
 from .dataset import RepairPair
 
 REPORT_FILENAME = "verificacao_revisao.md"
+_BACKOFF_MAX_S = 120.0
 
 
 @dataclass
@@ -215,6 +217,7 @@ async def run_reviewer(
     model: str | None = None,
     max_retries: int = 1,
     include_explanation: bool = True,
+    backoff_s: float = 5.0,
     user_id: str = "codejudgebench-bench",
 ) -> ReviewerVerdict:
     """Avalia a resposta `which` ("pos" ou "neg") do par com o reviewer real."""
@@ -238,7 +241,11 @@ async def run_reviewer(
 
     tentativas: list[ReviewAttempt] = []
     markdown = ""
-    for _ in range(1 + max(0, max_retries)):
+    for numero in range(1 + max(0, max_retries)):
+        if numero and tentativas[-1].error:
+            # Erro de API (cota, 503, conexão): repetir na hora tende a falhar de
+            # novo. A espera dobra a cada tentativa, com teto de 2 minutos.
+            await asyncio.sleep(min(backoff_s * 2 ** (numero - 1), _BACKOFF_MAX_S))
         tentativa, markdown = await _uma_revisao(
             pair, response, user_id=user_id, include_explanation=include_explanation
         )
