@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O algoritmo itera sobre todos os pares (i, j) verificando forbidden_pairs, resultando em complexidade O(N*M) que leva a Time Limit Exceeded para os limites do problema. Reformular para evitar varredura completa (ex.: ordenar sides decrescentemente e testar apenas top candidates ou usar heap sobre somas).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Uso de set de tuplas é adequado para consultas, mas a estratégia atual mistura lógica de dados e busca ineficiente; separar pré-processamento (ordenações) e busca eficiente reduziria acoplamento e melhoraria performance.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos arquivos de teste no workspace. Adicionar testes automatizados (ex.: exemplos do enunciado, L=0, L=NM-1, casos grandes) é recomendado.",
+      "file": "workspace",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes no repositório para validar correção e performance da solução; criar script de testes/casos é recomendado.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

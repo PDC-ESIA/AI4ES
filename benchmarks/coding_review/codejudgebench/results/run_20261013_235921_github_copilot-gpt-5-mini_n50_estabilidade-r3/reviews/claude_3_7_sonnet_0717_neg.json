@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo com complexidade O(N * M) no pior caso. O código itera sobre toda a lista de boxes para cada pessoa (laço aninhado implícito), o que causa Time Limit Exceeded em entradas grandes (N, M até 2e5). Esta falha torna a solução inexequível no ambiente de avaliação e bloqueia a entrega.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram incluídos arquivos de teste (unit tests, casos de borda ou testes de performance) no workspace. Critério CA-02 (eliminar TLE observado) não pode ser comprovado por testes entregues; falta de testes deve ser registrada como ressalva.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Estratégia atual mantém a lista completa de boxes e usa um conjunto de índices usados, mas revarre a lista do início para cada pessoa. Isso revela acoplamento entre a escolha (pesquisa linear repetida) e o armazenamento dos boxes. Recomenda-se usar uma abordagem com ordenação + heap/pointer (ex.: processar pessoas por requisito decrescente e empilhar boxes elegíveis, retirando sempre o menor preço), o que reduz complexidade para O((N+M) log N).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

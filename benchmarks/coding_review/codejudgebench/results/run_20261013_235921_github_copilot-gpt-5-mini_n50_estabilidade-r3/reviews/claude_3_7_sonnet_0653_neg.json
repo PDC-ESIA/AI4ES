@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A algorithm está incorreta — produz respostas erradas (não atende CA-01 / CA-02). A solução ainda falha no exemplo fornecido no enunciado. Para a Entrada de exemplo 1 a função retorna um valor diferente do esperado. O DP/recorrência atual (usar sum(children) - max(children) + 1 com caso especial para um único filho) não reflete corretamente o processo de remoção de folhas em geral e produz resultados incorretos para várias topologias de árvore.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Risco de estouro de pilha (RecursionError) em casos limites. O ambiente define recursionlimit=50000 mas N pode ser até 3e5; a DFS recursiva usada pode ultrapassar esse limite e falhar em entradas grandes.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes automatizados (unit tests / casos de borda) no workspace. Casos do enunciado e casos extremos (linha, estrela, root já folha, N=2, etc.) deveriam ser adicionados.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Dependência do ambiente pré-carregado (imports e recursionlimit) está correta segundo o enunciado, mas o código deveria ser explícito quanto à necessidade de uma travessia iterativa ou um ajuste seguro do recursionlimit para N máximo.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A solução itera explicitamente por todos os índices de 1 até N-1 (for i in range(1, N)). Com N até 2·10^9 isso é inviável (tempo de execução e uso de CPU impossíveis na prática) — a solução vai TLE / não será executável nos limites do problema. O algoritmo deve iterar apenas sobre as posições que têm pedras (ou usar saltos calculados entre posições) em O(M log M) ou O(M).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Nenhum caso de unidade/integração foi entregue para verificar a correção, performance ou regressões.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

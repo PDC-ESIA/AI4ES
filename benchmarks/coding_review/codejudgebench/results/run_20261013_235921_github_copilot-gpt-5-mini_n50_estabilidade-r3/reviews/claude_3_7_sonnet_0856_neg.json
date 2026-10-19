@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A abordagem atual memoiza todo o vetor S (key = (i, tuple(S))) e faz cópias completas de S em cada ramo da recursão. Com N, Q ≤ 5000 isso gera explosão do espaço de estados e cópias O(N) por nó da árvore de chamadas, resultando em Time Limit Exceeded ou OOM. O algoritmo é exponencial na natureza e inviável para os limites do enunciado — precisa ser substituído por uma formulação DP/greedy que não mantenha o vetor inteiro como parte do estado (ex.: DP por operações/valores comprimidos, tratamento reverso/por valores ou contar escolhas por blocos/intervalos).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "A correção entregue não elimina a falha observada (TLE) descrita na task (CRITÉRIO CA-02). O objetivo explícito de corrigir o código para lidar com os grandes limites não foi atendido.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Conversão repetida de listas para tuplas (tuple(S) em cada chamada) e cópias S.copy() são operações custosas que amplificam o problema de performance. O design atual acopla fortemente o estado completo do array à recursão, violando escalabilidade e separação de preocupações (deveria representar estado de forma compacta/implicitamente).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Não há testes automatizados no workspace para validar comportamento em instâncias grandes ou para capturar regressões de performance. Testes de estresse e casos limites ajudariam a detectar a o TLE observável.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

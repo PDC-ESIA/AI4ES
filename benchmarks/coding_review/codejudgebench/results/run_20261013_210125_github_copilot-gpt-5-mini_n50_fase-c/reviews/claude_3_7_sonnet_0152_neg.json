@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Implementação atual faz loop duplo sobre N e M (for i in 1..N, for j in 1..M), resultando em complexidade O(N*M). Com N,M ≤ 1e5 isso pode chegar a 1e10 iterações e causa Time Limit Exceeded em entradas grandes (o problema relatado). A estrutura de dados (set de pares proibidos) é adequada para checagem O(1), mas o algoritmo ainda é assintoticamente inaceitável para os limites do problema. É necessário um algoritmo que evite varrer todas as combinações (por exemplo: ordenar os custos das guarnições com seus índices e, para cada prato principal, testar apenas os maiores custos até achar um permitido — O(N * k) onde k é pequeno na prática, ou usar um max-heap global de somas com marcação de proibidos), garantindo complexidade aceitável para os limites dados.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "A decisão de trocar o dicionário de conjuntos por um set de tuplas melhora a checagem de pares proibidos, mas não resolve o problema central (algoritmo quadrático). A responsabilidade do módulo está concentrada em um único fluxo; seria melhor separar leitura, pré-processamento (ordenar b com índices), e busca do melhor par para facilitar testes e manutenção.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos arquivos de teste automatizados (unit tests ou testes de integração). Falta cobertura automatizada que valide casos limites e o caso de grande entrada que causou TLE (CA-02). Adicionar testes que incluam casos grandes e casos com muitos pares proibidos ajudaria a prevenir regressões.",
+      "file": "(nenhum arquivo de teste entregue)",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "O repositório contém apenas solution.py; não há documentação, scripts de execução, ou testes. Os critérios de aceite CA-01 e CA-02 exigem correção do TLE — atualmente não atendidos.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

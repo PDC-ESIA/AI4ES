@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica de atualização do DP está incorreta: o algoritmo atual atualiza dp in-place em ordem crescente sem preservar o estado anterior necessário para convolução com o polinômio (1 + x^v + ... + x^(v*freq)). Isso causa contagem errada de sub-multisets — há leituras de dp já atualizadas para a mesma iteração do valor, produzindo resultados negativos temporários e respostas incorretas. Exemplo simples que demonstra o bug: nums = [1,2], l = 0, r = 3. O código produz um valor errado (2) em vez do esperado 4. Correção recomendada: usar uma cópia dp_prev para a iteração do valor atual, ou aplicar corretamente o algoritmo de janela deslizante por classes de resto (processando j = rem, rem+v, ... e somando sobre dp_prev), garantindo que as leituras sejam do estado anterior à inclusão do valor atual.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Risco de estouro de tempo (TLE) permanece. A implementação atual tem um loop aninhado que, no pior caso, itera aproximadamente O(r * distinct_values). Com r e número de valores distintos próximos aos limites (≈2e4), isso pode exceder limites de tempo. Uma implementação por classes de resto com janela deslizante corretamente aplicada (ou técnicas de transformação por FFT/NTT em outras linguagens) tende a ser necessária para casos limites; ao menos é preciso garantir a complexidade prática O(r) por valor distinto com constante pequena.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste/validação incluídos no workspace. Não foram fornecidos testes unitários que demonstrem correção para casos pequenos (sanity checks) e casos limites que causaram falha (ex.: entradas grandes que levaram a TLE anteriormente). Recomenda-se adicionar testes que cubram: pequenas instâncias triviais, instâncias com repetição de elementos iguais, casos com zeros e casos no limite de soma para validar desempenho e correção.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

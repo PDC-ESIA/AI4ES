@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Nenhum teste unitário foi fornecido para validar automaticamente a correção (coverage/tests ausentes para CA-01/CA-02). Recomenda-se adicionar testes que cubram casos simples, casos limite e a entrada grande que causou TLE na versão anterior.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A solução é uma implementação simples e focada (classe Solution com o método requerido). Observação: o cabeçalho do arquivo contém muitos imports pré-carregados pela plataforma — isso é parte do ambiente e não da correção.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

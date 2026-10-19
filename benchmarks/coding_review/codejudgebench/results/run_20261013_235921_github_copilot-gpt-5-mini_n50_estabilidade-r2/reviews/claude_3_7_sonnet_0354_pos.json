@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A abordagem DP usa um bitmask de 26 bits no estado e tenta todas as 26 letras quando ainda não foi usada a alteração, levando a um espaço de estados e branching factor exponenciais. Isso causa TLE/memória impraticáveis para n até 10^4 — falha na correção do problema de performance reportado.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Ausência de testes automatizados impede verificar localmente correção e desempenho.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Recalcula distinct_count com bin(mask).count('1') em muitos pontos; o estado poderia incluir distinct_count para evitar recomputação e otimizar desempenho. Mais importante, o uso do mask como parte do estado aumenta muito a cardinalidade do memo.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "A base do DP retorna 1 quando idx == len(s). Embora funcional para a convenção do autor, a semântica é atípica e merece documentação ou alteração para maior clareza (por exemplo, retornar 0 e contar partições de forma explícita).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

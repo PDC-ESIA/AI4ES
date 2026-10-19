@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação usa, a cada evento, um loop for de 1..N para achar o primeiro presente, resultando em O(N*M) e causando Time Limit Exceeded para N,M até 2e5. Substituir por estrutura que obtenha o primeiro presente em O(log N) ou melhor.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Design misto: heap para retornos + varredura linear para front_person. Recomenda-se manter representação única e eficiente (conjunto ordenado / Fenwick + busca binária / árvore balanceada).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste fornecidos no workspace. Adicionar testes (samples e casos limites) para validação automática.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Imports redundantes/duplicados e avisos estáticos (ruff) sobre import fora do topo e redefinição de heapq. Limpar imports para melhor legibilidade.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

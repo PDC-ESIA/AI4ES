@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Implementação incorreta — o algoritmo resolve outro problema (\"maximum frequency after at most k increments\") confundindo o parâmetro k. No enunciado k é o valor alvo (valor que queremos maximizar a frequência depois de aplicar uma única translação a um subarray), enquanto o código trata k como orçamento de incrementos. Resultado: respostas equivocadas (ex.: caso de falha citado no enunciado).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Interpretação errada do requisito lógico. A escolha de um algoritmo de \"sliding window sobre array ordenado somando valores\" não corresponde à operação descrita (adicionar um mesmo x a todos elementos de um subarray, o que desloca valores e pode remover ocorrências de k dentro do subarray). A responsabilidade do módulo (resolver o enunciado fornecido) não está sendo cumprida.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram adicionados testes unitários nem casos de verificação no repositório para validar correção e prevenir regressões (incluindo o caso que falhou anteriormente). Pelo enunciado, a correção deveria eliminar a falha observada — não há artefatos de teste que comprovem isso.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O trecho superior (imports pré-carregados) contém muitos imports que não são usados pelo código; isso vem do ambiente e não é erro do autor, apenas polui visualmente — sem impacto funcional.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

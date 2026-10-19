@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes/unitários foi entregue com a implementação. Não há casos de teste automatizados no workspace para validar regressões ou cenários limites.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "A memoização usa um dict; o grafo de dependência é acíclico por causa do teste W[adj] < W[vertex], mas a implementação recursiva poderia ser substituída por uma passagem iterativa (processando vértices em ordem crescente de W) para reduzir overhead de chamada recursiva e melhorar clareza/performace. Não é um erro funcional, apenas uma oportunidade de otimização/clareza.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "A abordagem corrige o TLE da solução anterior e está correta do ponto de vista algorítmico. Entretanto, no pior caso teórico a soma dos trabalhos do knapsack (sum_v deg(v) * W[v]) pode ficar na casa das dezenas de milhões de atualizações de DP — isso é agora o ponto crítico de desempenho. Recomenda-se micro-otimizações (usar lista para memo em vez de dict, armazenar referências locais para dp e ops, ordenar/processar vértices por peso) se observar ainda alguma instabilidade de tempo de execução.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

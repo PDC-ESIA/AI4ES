@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos testes automatizados (arquivos de teste ausentes). Recomenda-se adicionar testes unitários/funcionais cobrindo cenários: caminho feliz, eventos com ninguém na fila, múltiplos retornos no mesmo tempo e limites grandes.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Há imports redundantes/duplicados no topo do arquivo (bloco de 'AMBIENTE DE EXECUÇÃO' pré-carregado e import adicional de heapq). Isso gerou avisos de linter (E402/F811) conforme análise estática. Funcionalmente não afeta a solução, mas limpar importações melhora manutenção.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "O algoritmo usa dois heaps (in_row e return_events) e pressupõe que não haverá entradas duplicadas para a mesma pessoa em in_row. Pelo modelo do problema isso é seguro (cada retorno é gerado apenas quando a pessoa sai da fila), porém não há proteção explícita contra inserções duplicadas caso o fluxo fosse alterado. Sem impacto prático aqui, apenas observação.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Recomenda-se adicionar testes unitários cobrindo os exemplos do enunciado e casos limites (p.ex. n=1, m=1, k=0; m=1 com k<n-1; valores grandes para n e k) para prevenir regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Cálculo do coeficiente binomial usa a propriedade de simetria C(n-1,k)=C(n-1,n-1-k) e computa inversos modulares em cada iteração via pow(..., MOD-2, MOD). Isso está correto, porém a chamada repetida a pow poderia ser substituída por pré-cálculo de fatoriais/inversos se fosse necessário otimizar ainda mais para múltiplas consultas.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

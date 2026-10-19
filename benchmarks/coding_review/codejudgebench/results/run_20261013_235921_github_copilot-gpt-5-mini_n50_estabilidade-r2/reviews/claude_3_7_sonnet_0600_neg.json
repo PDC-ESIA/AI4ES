@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de teste automatizado foi entregue no workspace. Não há testes unitários/funcionais para validar automaticamente a implementação contra casos adicionais.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Não foram fornecidos casos de teste no repositório; a cobertura de cenários edge/happy-path não pôde ser verificada por execução local aqui.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

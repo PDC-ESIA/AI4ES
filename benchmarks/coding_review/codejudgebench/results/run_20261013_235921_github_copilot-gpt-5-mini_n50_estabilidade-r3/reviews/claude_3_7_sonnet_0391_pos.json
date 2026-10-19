@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Arquivos de teste/instrumentação não foram entregues. Não há testes unitários no workspace cobrindo cenários (happy path e edge cases).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Se a função for chamada com wordsContainer vazio (entrada fora das restrições do enunciado), o código devolve -1 para cada query. As restrições do problema indicam wordsContainer.length >= 1, mas este comportamento não é explicitamente tratado no código.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

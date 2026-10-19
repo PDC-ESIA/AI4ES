@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram fornecidos arquivos de teste no workspace. A entrega contém apenas solution.py — recomendo adicionar testes automatizados cobrindo os casos de exemplo e borda (n par/ímpar, todos maiores/menores que k, valores iguais a k) para evitar regressões.",
+      "file": "",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Cálculo de median_idx usa uma expressão condicional redundante ((n-1)//2 if n%2==1 else n//2). Para clareza, poderia ser substituído por median_idx = n // 2, que já atende ao requisito 'se houver duas escolhas, escolha a maior' e funciona para n ímpar e par.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

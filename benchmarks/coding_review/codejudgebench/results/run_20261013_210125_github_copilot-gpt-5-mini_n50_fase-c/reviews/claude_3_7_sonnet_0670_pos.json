@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste entregues no workspace. Recomenda-se adicionar testes automatizados (casos de borda e cargas maiores) para regressão e validação contínua.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O topo do arquivo contém um bloco grande de imports gerados pelo ambiente de execução; o linter (ruff) sinalizou 'module level import not at top of file'. Conforme a especificação do pipeline, esse bloco é pré-carregado e não faz parte da correção entregue — é seguro ignorar esta advertência.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

@@ -71,6 +71,10 @@ class RuffCapability:
             return _diagnostic(self.name, "ruff não encontrado — instale ruff>=0.4.0")
         except subprocess.TimeoutExpired:
             return _diagnostic(self.name, f"ruff excedeu timeout de {_SUBPROCESS_TIMEOUT}s")
+        except OSError as exc:
+            # Ex.: PermissionError quando o executável é bloqueado (Controle de
+            # Aplicativo no Windows). Sem isto, a falha virava "nenhum achado".
+            return _diagnostic(self.name, f"ruff não pôde ser executado ({type(exc).__name__}: {exc})")
         except json.JSONDecodeError:
             return _diagnostic(self.name, "ruff retornou JSON inválido")
         except Exception:
@@ -117,6 +121,10 @@ class BanditCapability:
             return _diagnostic(self.name, "bandit não encontrado — instale bandit>=1.9.4")
         except subprocess.TimeoutExpired:
             return _diagnostic(self.name, f"bandit excedeu timeout de {_SUBPROCESS_TIMEOUT}s")
+        except OSError as exc:
+            # Ex.: PermissionError quando o executável é bloqueado (Controle de
+            # Aplicativo no Windows). Sem isto, a falha virava "nenhum achado".
+            return _diagnostic(self.name, f"bandit não pôde ser executado ({type(exc).__name__}: {exc})")
         except json.JSONDecodeError:
             return _diagnostic(self.name, "bandit retornou JSON inválido")
         except Exception:

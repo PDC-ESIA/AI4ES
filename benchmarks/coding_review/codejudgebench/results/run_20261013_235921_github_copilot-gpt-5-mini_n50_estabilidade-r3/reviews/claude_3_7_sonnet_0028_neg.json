@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica de atualização do DP usa a condição `if i > freq * num:` e em seguida acessa `dp[i - (freq + 1) * num]`. Essa condição permite entrar no ramo quando `i` ainda é menor que `(freq + 1) * num`, causando índices negativos (ex.: num=2, freq=1, i=3 → acessa dp[-1]) e leituras incorretas de memória do array. Isso produz resultados errados em muitos casos — é um bug funcional que bloqueia a solução. Correção mínima: só subtrair `dp[i - (freq + 1) * num]` quando `i >= (freq + 1) * num`. Alternativa mais robusta: aplicar a técnica correta por classes de resto (iterar j = rem, rem+num, rem+2*num ...) com janela deslizante ou usar um ndp temporário para cada valor.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (arquivos de teste) acompanhando a implementação. Isso dificulta a validação e regressão da correção. Recomenda-se adicionar testes unitários cobrindo caminhos felizes e edge cases (ex.: zeros, grandes frequências, valores altos próximos a r, casos com muitos valores distintos).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Há uma redundância/pequena inconsistência: o código remove explicitamente `0` da `counter` (del counter[0]) e depois dentro do loop faz `if num == 0: continue`. A segunda verificação é desnecessária após a remoção.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "A variável de parâmetro `l` gera um aviso de lint (nome ambíguo). Não é erro funcional, mas trocar para `left`/`low` melhoraria legibilidade e evita avisos de linter.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

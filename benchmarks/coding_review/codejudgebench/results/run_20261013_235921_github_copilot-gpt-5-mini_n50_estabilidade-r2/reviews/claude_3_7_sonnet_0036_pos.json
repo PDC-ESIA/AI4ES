@@ -1,0 +1,38 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A solução atual executa, para cada query, loops que percorrem metade da string (O(n/2) por query). Com n e queries até 10^5 isso resulta em complexidade ~O(n * q) (até ~10^10 operações) e irá exceder os limites de tempo da plataforma. É necessário usar pré-processamento (prefix sums / prefix frequency arrays por caractere) para responder cada query em tempo O(26) ou similar.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Não foram incluídos testes unitários que cubram casos simples, casos de borda e casos grandes para verificar tanto corretude quanto performance.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Design por query faz varredura completa da metade da string e recontagem via Counter sem aproveitamento de pré-computação. Recomenda-se separar responsabilidade: pré-processar prefixos de contagem de caracteres (26 letras) e então responder cada query com diferenças de prefixos, reduzindo acoplamento entre queries e possibilitando escala.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Mudança aplicada corrige o erro observado (caso 'cu' com query [0,0,1,1]) — agora a comparação de multiconjuntos entre regiões rearranjáveis é feita por igualdade dos Counters após ajustes. Isso resolve o bug relatado pelo coder.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "info",
+      "description": "Analisador estático sinalizou import nível de módulo não no topo (ruff E402) devido ao bloco de imports marcado como ambiente — isso é esperado pelo formato da plataforma e pode ser ignorado.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

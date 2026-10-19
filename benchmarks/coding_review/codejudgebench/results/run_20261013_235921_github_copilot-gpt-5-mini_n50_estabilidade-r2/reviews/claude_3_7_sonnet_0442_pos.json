@@ -1,0 +1,14 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace (nenhum teste unitário ou de integração foi entregue). Recomenda-se adicionar casos de teste cobrindo happy path e edge cases para garantir regressões futuras sejam detectadas.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

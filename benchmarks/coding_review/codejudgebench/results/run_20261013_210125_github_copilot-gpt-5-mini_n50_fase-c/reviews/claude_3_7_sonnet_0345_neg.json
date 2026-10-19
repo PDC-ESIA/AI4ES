@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação é O(n^2) (dois laços aninhados) e vai causar Time Limit Exceeded para entradas grandes; precisa ser substituída por um método que use as posições do máximo e conte janelas de k ocorrências em O(m) tempo.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados (unit tests) cobrindo casos básicos e limites; inclua testes para validar corretude e desempenho.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Arquitetura: uso de laços aninhados sem abstração torna difícil alterar a estratégia. Recomenda-se refatorar extraindo helpers (coletar posições do máximo, calcular contribuições por janela).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

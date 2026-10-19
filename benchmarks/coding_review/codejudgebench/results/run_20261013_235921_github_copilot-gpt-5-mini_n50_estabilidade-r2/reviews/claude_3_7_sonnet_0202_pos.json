@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O algoritmo itera de 1 até N, o que é inviável para N até 2e9 — causará TLE/uso excessivo de recursos. Requer reescrever para iterar apenas sobre posições com pedras e usar gaps para multiplicar passos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Arquivo de testes não foi criado; faltam testes automatizados para exemplos e bordas (ex.: exemplos do enunciado, grandes gaps, M=1, M=N).",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

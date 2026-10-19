@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de teste unitário foi entregue. Não há testes automatizados no workspace para validar a correção (happy path e edge cases). Recomenda-se adicionar casos de teste que cubram: queries sem sufixo comum, sufixo comum completo, empates por comprimento e por ordem, e entradas grandes para performance.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A solução usa uma trie de sufixos (inserção de palavras de trás para frente) que armazena em cada nó o índice da melhor palavra segundo as regras de desempate. Estrutura clara e com responsabilidade única, mas em piores casos (nós ~= soma dos comprimentos das palavras, até 5e5) o consumo de memória pode ser alto devido ao overhead de objetos Python por node. Se a memória for crítica, considerar otimizações (nódulos compactados, arrays fixos para 26 letras ou armazenamento em arrays/strings) ou uma implementação iterativa mais compacta.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

@@ -40,11 +40,29 @@ from shared.tools.coding_tools.review_tools import (
 
 from ..memory_feedforward import stack_key
 from . import prompt as reviewer_prompt
+from .structured_output import registrar_saida_estruturada
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = "gemini-2.5-flash"
-_model = os.environ.get("ADK_LLM_MODEL", _DEFAULT_MODEL)
+
+
+def _resolver_modelo() -> str:
+    """Modelo do reviewer: REVIEWER_LLM_MODEL > ADK_LLM_MODEL > padrão.
+
+    A qualidade do julgamento do reviewer depende muito do modelo: no benchmark
+    CodeJudgeBench (#421), a acurácia foi de 12% com github_copilot/gpt-4 e de
+    58% com github_copilot/gpt-5-mini. A variável própria permite trocar o modelo
+    do reviewer sem trocar o do coder e dos demais agentes.
+    """
+    return (
+        os.environ.get("REVIEWER_LLM_MODEL", "").strip()
+        or os.environ.get("ADK_LLM_MODEL", "").strip()
+        or _DEFAULT_MODEL
+    )
+
+
+_model = _resolver_modelo()
 
 # Re-exportados para uso/teste via atributo do módulo (ex.: agent._coder_ws(),
 # agent._discover_coder_files) — mantém compatibilidade com quem referencia esses
@@ -61,63 +79,14 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
-# Analyzer (usa a "alma" do prompt local)
+# Analyzer
 # ---------------------------------------------------------------------------
-# Composição: prompt base ajustado para:
-# - Ler arquivos do workspace (não diff git)
-# - Produzir markdown — persistência feita via after_agent_callback
-# - Não chamar tool_salvar_relatorio — responsabilidade do callback
+# O prompt.py já traz a instrução na forma usada aqui (lê os arquivos do
+# workspace, produz markdown, persistência pelo callback). Antes ele era escrito
+# para "diff git" e adaptado com .replace() de strings exatas — uma edição de um
+# espaço no prompt.py desfazia a adaptação em silêncio.
 
-_ANALYZER_BASE = (
-    reviewer_prompt.instruction.replace(
-        "para ir à branch principal.",
-        "para prosseguir no pipeline.",
-    )
-    .replace(
-        "Consulte o diff acumulado da branch para listar TODOS os arquivos modificados/criados.",
-        "Leia os arquivos criados pelo coder no workspace (listados abaixo em ARQUIVOS A REVISAR).",
-    )
-    .replace(
-        "Examine os arquivos modificados no diff.",
-        "Examine os arquivos listados em ARQUIVOS A REVISAR.",
-    )
-    .replace(
-        "Examine o corpo das funções de lógica core no diff.",
-        "Examine o corpo das funções de lógica core nos arquivos.",
-    )
-    .replace(
-        "Verifique se arquivos de teste foram criados no diff.",
-        "Verifique se arquivos de teste foram criados no workspace.",
-    )
-    .replace(
-        "# SAÍDA FINAL\n"
-        "Após completar as 4 camadas:\n"
-        '1. Salve o relatório detalhado da verificação em Markdown com nome "verificacao_revisao.md".\n'
-        "2. Sua **última mensagem** DEVE ser EXCLUSIVAMENTE um JSON conforme o schema\n"
-        "   ReviewOutput do sistema:\n"
-        "\n"
-        "{\n"
-        '  "status": "APROVADO",\n'
-        '  "issues": [\n'
-        '    {"severity": "critical", "description": "Função X não trata exceção Y", "file": "src/service.py", "layer": "corretude"},\n'
-        '    {"severity": "warning", "description": "Falta docstring", "file": "src/utils.py", "layer": "arquitetura"}\n'
-        "  ],\n"
-        '  "report_path": "verificacao_revisao.md"\n'
-        "}\n"
-        "\n"
-        'Use "APROVADO" ou "BLOQUEADO" no campo `status`.',
-        "# SAÍDA\n"
-        "Sua responsabilidade é PRODUZIR A ANÁLISE em markdown — a persistência em disco\n"
-        "é feita automaticamente pelo pipeline após sua resposta.\n"
-        "\n"
-        "Produza markdown com seções:\n"
-        '- "## Status: APROVADO" ou "## Status: BLOQUEADO"\n'
-        '- "## Issues" (lista por severidade com arquivo/camada/descrição)\n'
-        '- "## Resumo" (1 parágrafo)\n'
-        "\n"
-        "NÃO produza JSON literal.",
-    )
-)
+_ANALYZER_BASE = reviewer_prompt.instruction
 
 # Template final: injeta análise estática, workspace e lista de arquivos em runtime
 _ANALYZER_INSTRUCTION_TEMPLATE = (
@@ -393,7 +362,20 @@ async def _escrever_memoria(callback_context) -> None:
 
 
 _analyzer.before_agent_callback = _inject_static_findings
-_analyzer.after_agent_callback = [_persist_review, _escrever_memoria]
+def _persistir_revisao(callback_context):
+    """Gate de cobertura + markdown (`_persist_review`), depois a saída estruturada.
+
+    Um callback só, e não dois na lista: o ADK interrompe a lista no primeiro
+    callback que devolve conteúdo, e o gate devolve conteúdo quando bloqueia.
+    Aqui a ordem é explícita — o gate roda primeiro e a decisão em código o
+    respeita (sem cobertura comprovada, o status é BLOQUEADO).
+    """
+    conteudo_gate = _persist_review(callback_context)
+    conteudo_estruturado = registrar_saida_estruturada(callback_context)
+    return conteudo_estruturado or conteudo_gate
+
+
+_analyzer.after_agent_callback = [_persistir_revisao, _escrever_memoria]
 
 # agent é exportado como LlmAgent (not SequentialAgent) — a persistência acontece
 # via after_agent_callback, sem necessidade de um segundo agente no pipeline.

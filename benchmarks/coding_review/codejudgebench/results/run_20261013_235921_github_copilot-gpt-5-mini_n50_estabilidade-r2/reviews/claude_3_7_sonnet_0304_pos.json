@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de teste (unit tests) foi incluído no workspace. Recomenda-se adicionar casos de teste cobrindo happy path e edge cases (strings sem diferenças, número ímpar de diferenças, pares adjacentes e não adjacentes, x small/large) para evitar regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A inicialização dp[1] = x é funcional para a recursão usada, porém diverge da formulação mais explícita (dp[1] = +inf) frequentemente vista em editoriais. Trocar para +inf e ajustar a recursão tornaria a intenção mais clara para futuros leitores.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

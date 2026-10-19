@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação cria e armazena todas as substrings-sufixo de cada palavra e gera todos os sufixos das queries, causando comportamento quadrático (Time Limit / Memory Error) em entradas grandes; não elimina a falha observada (TLE).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Uso de um dicionário de sufixos (variável chamada 'trie') provoca redundância e alto consumo de memória; deveria usar uma trie reversa por caracteres com armazenamento do melhor índice em cada nó para garantir complexidade linear.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Nenhum arquivo de teste foi incluído no workspace para validar correções ou regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

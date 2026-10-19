@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de teste/unitário foi entregue junto com a implementação. Os critérios automatizáveis (CA-01, CA-02) exigem verificação por testes; a ausência de testes deve ser registrada como ressalva.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "O código devolve 'z' para string vazia (s == \"\"). As restrições do enunciado garantem len(s) >= 1, portanto isso não é um bug prático, mas é um comportamento não documentado para entradas fora das restrições.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

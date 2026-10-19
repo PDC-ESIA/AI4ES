@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi entregue no workspace. A solução não vem acompanhada de testes automatizados que validem cenários de borda e o caso observado anteriormente (TLE).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A variável 'velunexorai' é atribuída mas não é utilizada no restante da função (linter: F841). Se a intenção era usar/validar essa variável, incluir seu uso ou remover/justificar a atribuição.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "O código calcula inversos fatoriais usando pow(fact[i], MOD-2) em um laço. É correto e suficiente para n<=80, mas pode ser micro-otimizado (computar inv_fact[n] e derivar demais) se desejado.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

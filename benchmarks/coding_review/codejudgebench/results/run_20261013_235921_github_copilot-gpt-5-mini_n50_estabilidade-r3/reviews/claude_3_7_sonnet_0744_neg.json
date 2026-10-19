@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O tratamento para remainder == 2 está incorreto. O código soma sempre 2 ataques, mas em algumas fases basta 1 ataque de 3 (quando T % 3 == 2). Isso leva a respostas erradas. Exemplo: entrada '2\\n2 2' -> correto 3, programa atual retorna 4.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste automatizados no workspace para validar casos críticos e regressões. Recomenda-se incluir testes que cubram fases de T % 3 e casos grandes.",
+      "file": "(workspace)",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A variável N é lida mas não é utilizada posteriormente (assigned but unused). É redundante e deve ser removida ou usada.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

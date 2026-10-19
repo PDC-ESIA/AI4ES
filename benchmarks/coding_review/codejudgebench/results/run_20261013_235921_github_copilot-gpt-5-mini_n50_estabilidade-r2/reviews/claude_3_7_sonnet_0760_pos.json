@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica central está incorreta. O algoritmo mantém os K menores B na prefixo inclusive o elemento i e usa essa soma para calcular A_i * sum_B, mas para que A_i seja o máximo do subconjunto a soma deve incluir obrigatoriamente B_i (ou seja, deve ser B_i + os K-1 menores B entre os primeiros i elementos). O código atual pode excluir B_i da soma e, portanto, avalia produtos que não correspondem a subconjuntos válidos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes automatizados. Adicionar testes para K=1, K=N, A repetidos e limites de entrada.",
+      "file": "(workspace)",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Há imports redundantes/duplicados (seção pré-carregada e re-imports como heapq). Limpar imports melhora a qualidade e remove avisos de linter.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

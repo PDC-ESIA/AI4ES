@@ -1,0 +1,38 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "The core DP update is incorrect: dp[A] is set to dp[B] instead of to the valid departure_time when arrival_time <= dp[B]. This produces wrong answers (e.g., the provided sample).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Algorithmic complexity is O(N * M) due to N outer iterations over all M train infos; this will TLE for N, M up to 2e5 and is not scalable.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Uses float('inf') / -float('inf') sentinels mixed with integer time arithmetic. This can cause precision issues and unexpected behavior for very large integer times; dp should use integers or handle sentinels explicitly.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "The observed failing sample from the task description was not eliminated by this correction (acceptance criterion CA-02 not satisfied).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "No tests are included. Add the provided sample tests and additional edge/performance tests to validate correctness and scalability.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

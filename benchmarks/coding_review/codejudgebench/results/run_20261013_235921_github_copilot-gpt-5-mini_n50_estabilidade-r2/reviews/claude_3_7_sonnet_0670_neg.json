@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A solução atual usa collections.deque e indexa positions[p-1] em consultas; deque.__getitem__ é O(k) e armazenar N tuplas (N ≤ 10^6) é custoso em memória. Isso causa TLE/MLE para os limites do problema.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Inicializar uma deque com N tuplas cria muitos objetos Python (tuplas e inteiros) e é ineficiente em memória. A estrutura escolhida não separa bem responsabilidades e não minimiza o estado necessário.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Não foram entregues testes automatizados que verifiquem correção e desempenho (casos limites).",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Parsing e output estão corretos para o formato do problema, mas faltam testes; recomenda-se incluir casos limites e casos de stress.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

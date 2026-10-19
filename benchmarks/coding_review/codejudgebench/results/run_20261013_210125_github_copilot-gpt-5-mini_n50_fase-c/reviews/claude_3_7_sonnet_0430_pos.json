@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "A abordagem por recursão com memoização usando o par (idx, total) é funcionalmente correta, porém não escala para os limites do problema. total pode crescer até sum(rewardValues) (até 4_000_000 nos piores casos), então o espaço de estados memoizados pode atingir O(n * sum(rewards)), o que leva a uso excessivo de memória e tempo (possível TLE/MLE). Recomenda-se uma solução baseada em bitset/bitmask dinâmica (usar um inteiro como bitset ou dp booleano otimizado) ou outro DP com custo controlado.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste entregues no workspace. A Definition of Done do pipeline costuma esperar testes autocontidos que validem os casos fornecidos (happy path e os exemplos/edge cases); sem testes, a verificação automatizada fica incompleta.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A correção elimina a falha observada: a recursão que explora 'pegar' ou 'pular' cada recompensa em ordem crescente encontra a melhor combinação (o algoritmo lógico é correto e resolve o caso de exemplo [1,6,4,3,2], entregando 11).",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

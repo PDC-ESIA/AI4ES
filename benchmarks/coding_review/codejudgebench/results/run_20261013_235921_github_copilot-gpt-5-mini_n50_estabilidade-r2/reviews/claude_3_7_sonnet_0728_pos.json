@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste automatizados para validar comportamento (cenários de borda e casos de amostra). Recomenda-se adicionar testes unitários/funcionais para regressão.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Variável `empty_boxes` é calculada mas não é utilizada; removê-la melhora clareza.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "Ordenação final de `items_to_move` (items_to_move.sort(...)) é desnecessária, pois só se soma os pesos; pode ser removida para evitar trabalho extra.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

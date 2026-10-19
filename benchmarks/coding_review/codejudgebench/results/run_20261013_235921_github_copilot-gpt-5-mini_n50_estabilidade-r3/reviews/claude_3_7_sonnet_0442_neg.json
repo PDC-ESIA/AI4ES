@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação está incorreta: ela considera apenas duas estratégias extremas (fazer todos os cortes horizontais primeiro ou todos os cortes verticais primeiro) e escolhe a menor destas, em vez de usar a estratégia gulosa correta que intercala cortes entre as direções com base no custo decrescente. O algoritmo conhecido e correto ordena os cortes por custo decrescente e, a cada passo, aplica o corte de maior custo multiplicado pelo número atual de segmentos na outra direção. Como consequência, a função produz respostas erradas (por exemplo, no caso fornecido que falhava anteriormente a saída esperada é 13988 mas o código atual produz 24228).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "O código modifica as listas de entrada in-place chamando horizontalCut.sort() e verticalCut.sort(). Isso pode causar efeitos colaterais inesperados fora do método. É preferível trabalhar sobre cópias (ou usar sorted()) e ordenar em ordem decrescente para a estratégia gulosa correta.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes automatizados entregues. Deve-se incluir, no mínimo, casos unitários que cubram: (a) o exemplo que falhou originalmente; (b) pequenos casos de borda (m=1 ou n=1, cortes com mesmo custo) e (c) um caso aleatório para validação adicional.",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "warning",
+      "description": "Os critérios de aceite CA-01 (correção para toda entrada válida) e CA-02 (eliminar a falha observada) não são atendidos — o problema original relatado continua presente.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

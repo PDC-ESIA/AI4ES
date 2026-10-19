@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A implementação permanece com o mesmo erro lógico da versão anterior — selecionando os elementos em ordem crescente pode perder combinações de soma maiores. Por exemplo, para rewardValues=[1,6,4,3,2], ela retorna 7 (1+6), quando deveria retornar 11 (1+4+6), pois a ordem ótima pode exigir pular elementos menores em favor de acumular e habilitar maiores.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há testes implementados na entrega, dificultando a garantia automatizada da corretude.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

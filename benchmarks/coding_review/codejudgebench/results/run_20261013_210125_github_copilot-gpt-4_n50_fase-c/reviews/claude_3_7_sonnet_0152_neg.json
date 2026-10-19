@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O algoritmo segue sendo O(NM): para N,M até 1e5 isso gera TLE. A falha da versão anterior persiste e critérios CA-01/CA-02 não são atendidos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foi entregue arquivo de testes cobrindo as amostras do enunciado.",
+      "file": "solution.py",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

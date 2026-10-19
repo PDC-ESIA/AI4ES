@@ -1,0 +1,26 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A solução itera em todos os pares (u,v) entre os subconjuntos (O(N1*N2)), causando Time Limit Exceeded. Deve-se usar max(dist_from_1) + 1 + max(dist_from_N1N2) em vez de testar todos os pares.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes foi criado no workspace; não há testes automatizados cobrindo os samples e os casos limites que causaram TLE.",
+      "file": "tests (missing)",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "O uso de existing_edges e a verificação por par é redundante (não existem arestas inter-subconjunto segundo o enunciado) e adiciona overhead; remova para simplificar e evitar custos desnecessários.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

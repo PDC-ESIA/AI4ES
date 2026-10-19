@@ -208,12 +208,13 @@ def test_review_analyzer_tool_ler_arquivo_esta_bound_ao_coder_ws(tmp_path, monke
 
 
 def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
-    """_analyzer.after_agent_callback inclui _persist_review.
+    """O primeiro after_agent_callback persiste o relatório via _persist_review.
 
-    Desde o PoC de memória (mem0), o callback é uma lista — ADK roda cada
-    item em ordem (google/adk/agents/base_agent.py::_handle_after_agent_callback)
-    — e _persist_review continua sendo o primeiro, responsável pela
-    persistência do relatório em disco.
+    Desde o PoC de memória (mem0), o callback é uma lista — o ADK roda os itens
+    em ordem e PARA no primeiro que devolve conteúdo
+    (google/adk/agents/base_agent.py::_handle_after_agent_callback). Por isso a
+    persistência (gate + markdown) e a saída estruturada ficam num callback só,
+    _persistir_revisao, que chama _persist_review primeiro.
     """
     monkeypatch.setenv("WORKSPACE_OUTPUT_DIR", str(tmp_path / "ws"))
 
@@ -226,7 +227,14 @@ def test_analyzer_tem_after_agent_callback(tmp_path, monkeypatch):
 
     callbacks = cr_reviewer._analyzer.after_agent_callback
     assert isinstance(callbacks, list)
-    assert callbacks[0] is cr_reviewer._persist_review
+    assert callbacks[0] is cr_reviewer._persistir_revisao
+
+    chamadas = []
+    monkeypatch.setattr(cr_reviewer, "_persist_review", lambda ctx: chamadas.append(ctx))
+    monkeypatch.setattr(cr_reviewer, "registrar_saida_estruturada", lambda ctx: None)
+    contexto = object()
+    callbacks[0](contexto)
+    assert chamadas == [contexto]
 
 
 def test_agent_e_alias_do_analyzer(tmp_path, monkeypatch):

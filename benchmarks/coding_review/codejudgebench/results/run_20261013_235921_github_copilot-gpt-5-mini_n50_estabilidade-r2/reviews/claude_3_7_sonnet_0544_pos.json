@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum caso de teste automatizado foi fornecido no workspace. Recomenda-se adicionar testes (happy path e edge cases) para validar correção e prevenir regressões, especialmente dado o histórico de Wrong Answer reportado (CA-01/CA-02).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Implementação simples e de responsabilidade única — boa separação. Pequena sugestão de manutenção: documentar brevemente a escolha algorítmica (por que iterar sobre d = k - num e por que Kadane produz o ganho líquido) para facilitar futuras revisões.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

@@ -122,6 +122,20 @@ def test_run_capabilities_multiplas_caps_agrupadas(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.integration
+def test_falha_de_permissao_vira_diagnostico(tmp_path, monkeypatch):
+    """Executável bloqueado (ex.: Controle de Aplicativo) não pode virar "nenhum achado"."""
+    import subprocess
+
+    def bloqueado(*_a, **_k):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(subprocess, "run", bloqueado)
+    for capability in (RuffCapability(), BanditCapability()):
+        findings = capability.run(tmp_path)
+        assert [f.regra for f in findings] == ["tool-unavailable"]
+        assert "PermissionError" in findings[0].mensagem
+
+
 def test_ruff_detecta_import_nao_usado(tmp_path):
     """RuffCapability detecta import não usado (F401) em código real."""
     (tmp_path / "bad.py").write_text("import os\n\nx = 1\n")
@@ -136,7 +150,12 @@ def test_bandit_detecta_senha_hardcoded(tmp_path):
     """BanditCapability detecta senha hardcoded (B105/B106) em código real."""
     (tmp_path / "insecure.py").write_text('password = "hardcoded_secret_123"\n')
     findings = BanditCapability().run(tmp_path)
-    assert len(findings) > 0, "Bandit deveria detectar senha hardcoded"
+    indisponivel = [f for f in findings if f.regra == "tool-unavailable"]
+    if indisponivel:
+        pytest.skip(f"bandit não pôde rodar neste ambiente: {indisponivel[0].mensagem}")
+    assert any(f.regra.startswith("B10") for f in findings), (
+        f"Bandit deveria detectar senha hardcoded, obteve: {[f.regra for f in findings]}"
+    )
 
 
 @pytest.mark.integration
@@ -145,4 +164,5 @@ def test_run_capabilities_com_registry_padrao(tmp_path):
     (tmp_path / "app.py").write_text("import sys\npassword = '12345'\n")
     findings = run_capabilities(tmp_path)
     assert isinstance(findings, list)
-    assert len(findings) > 0, "Esperava ao menos 1 finding de ruff ou bandit"
+    reais = [f for f in findings if f.regra != "tool-unavailable"]
+    assert len(reais) > 0, "Esperava ao menos 1 finding real de ruff ou bandit"

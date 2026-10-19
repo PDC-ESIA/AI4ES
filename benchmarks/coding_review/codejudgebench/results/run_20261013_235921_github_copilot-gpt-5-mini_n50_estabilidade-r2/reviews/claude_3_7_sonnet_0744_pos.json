@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace cobrindo a solução entregue. Recomenda-se incluir testes unitários (cenários de amostra e casos limites, ex.: exemplos do enunciado, valores máximos como H_i = 10^9).",
+      "file": "tests (nenhum fornecido)",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "A variável N é lida (N = int(input())) mas não é usada explicitamente no restante do código. Isso não afeta a correção, porém gerou um aviso de linter (F841).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "info",
+      "description": "O código não valida se o número de valores lidos em `healths` corresponde a N. Isto é comum em soluções de competição e não é um problema funcional aqui, mas pode ser considerado para robustez.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

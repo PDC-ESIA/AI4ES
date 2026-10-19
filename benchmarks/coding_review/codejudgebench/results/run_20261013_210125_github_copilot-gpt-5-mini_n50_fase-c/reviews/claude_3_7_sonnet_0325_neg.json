@@ -1,0 +1,20 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica de transição do DP está incorreta: o código sempre estende a melhor subsequência anterior (prev_max) sem considerar que iniciar uma nova subsequência pode ser melhor quando prev_max é negativo. Concretamente, a implementação faz dp[i] = nums[i] + prev_max (quando prev_max != -inf), mas o correto é dp[i] = nums[i] + max(0, prev_max). Como resultado a solução produz respostas erradas em casos com somas parciais negativas (ex.: nums = [-2, -1] devolve -2 em vez de -1).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues arquivos de teste/unitários junto com a implementação. Recomenda-se adicionar testes que cubram os exemplos do enunciado e casos com somas negativas, duplicatas de diff e comprimentos extremos.",
+      "file": "(workspace)",
+      "layer": "completude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

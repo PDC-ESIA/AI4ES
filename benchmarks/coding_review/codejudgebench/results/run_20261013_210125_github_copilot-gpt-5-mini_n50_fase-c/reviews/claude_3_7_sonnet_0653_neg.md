@@ -1,0 +1,57 @@
+## Status: BLOQUEADO
+
+## Issues
+- severity: critical  
+  file: solution.py  
+  layer: corretude  
+  description: A lógica de cálculo está incorreta — a função produz respostas erradas (ex.: para o Sample Input 1 a saída do programa é 4 enquanto o esperado é 5). A implementação atual do DP (operações retornadas por operations_to_delete) subestima o número de passos necessários em configurações onde a raiz (vértice 1) tem vários ramos: a recursão e a fórmula sum(ops) - max(ops) + 1 / ops[0] + 1 não modelam corretamente a sequência mínima de remoções para tornar o vértice 1 um leaf e removê‑lo. Isto viola os critérios de aceite (CA-01 / CA-02).
+
+- severity: critical  
+  file: solution.py  
+  layer: corretude  
+  description: Risco de estouro de pilha (RecursionError) para N grande. A solução usa DFS recursivo sem conversão para iteração; o ambiente força sys.setrecursionlimit(50000), que é menor do que N máximo (3×10^5). Em árvores degeneradas (cadeia) a profundidade de recursão pode chegar a N e o programa falhará em entradas válidas. É necessário reescrever para DFS iterativo ou garantir recursionlimit >= N (mas a solução iterativa é preferível).
+
+- severity: warning  
+  file: solution.py  
+  layer: testes  
+  description: Não há arquivos de teste no workspace. Não foram fornecidos testes unitários (casos de borda, cadeia longa, raiz com muitos ramos) para validar correção e regressões — isso dificulta a verificação automática da correção (critério CA-01/CA-02).
+
+- severity: info  
+  file: solution.py  
+  layer: arquitetura  
+  description: O código inclui um bloco grande de imports pré-carregados (conforme nota do ambiente). Isso não faz parte da solução, mas o uso de recursão combinada com esse ambiente deveria ter sido considerado. Recomenda-se separar claramente a lógica do processamento de I/O e usar uma implementação iterativa/stack-based para DFS.
+
+## Resumo
+A solução entregue não atende ao requisito funcional: a estratégia de DP/recursão usada está equivocada e produz resultados incorretos em casos como o Sample 1 (falha direta em CA-01/CA-02). Além disso, a implementação recursiva pode falhar por RecursionError em entradas com profundidade grande (N até 3e5). Não há testes fornecidos para validar correções. Em conjunto, esses problemas bloqueiam a aceitação da entrega. Recomendações imediatas: (1) revisar/repensar a formulação DP — ou usar uma abordagem que calcule o custo de remover por subárvores corretamente (por exemplo, modelar explicitamente número mínimo de passos para apagar completas subárvores e contabilizar a etapa final para apagar o vértice 1), (2) reimplementar a travessia de árvore de forma iterativa (stack/BFS) para suportar N grandes, e (3) adicionar testes automatizados incluindo os samples e casos extremos (cadeia, estrela, raiz já folha).
+
+```json
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica de cálculo está incorreta — a função produz respostas erradas (ex.: para o Sample Input 1 a saída do programa é 4 enquanto o esperado é 5). A implementação atual do DP (operações retornadas por operations_to_delete) subestima o número de passos necessários em configurações onde a raiz (vértice 1) tem vários ramos: a recursão e a fórmula sum(ops) - max(ops) + 1 / ops[0] + 1 não modelam corretamente a sequência mínima de remoções para tornar o vértice 1 um leaf e removê‑lo. Isto viola os critérios de aceite (CA-01 / CA-02).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Risco de estouro de pilha (RecursionError) para N grande. A solução usa DFS recursivo sem conversão para iteração; o ambiente força sys.setrecursionlimit(50000), que é menor do que N máximo (3×10^5). Em árvores degeneradas (cadeia) a profundidade de recursão pode chegar a N e o programa falhará em entradas válidas. É necessário reescrever para DFS iterativo ou garantir recursionlimit >= N (mas a solução iterativa é preferível).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Não foram fornecidos testes unitários (casos de borda, cadeia longa, raiz com muitos ramos) para validar correção e regressões — isso dificulta a verificação automática da correção (critério CA-01/CA-02).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "O código inclui um bloco grande de imports pré-carregados (conforme nota do ambiente). Isso não faz parte da solução, mas o uso de recursão combinada com esse ambiente deveria ter sido considerado. Recomenda-se separar claramente a lógica do processamento de I/O e usar uma implementação iterativa/stack-based para DFS.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ]
+}
+```

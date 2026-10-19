@@ -1,0 +1,14 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Não foram incluídos arquivos de teste (unit tests) no workspace. Recomenda-se adicionar testes automatizados cobrindo o exemplo do enunciado, casos limites (n=1, nums[i]=1 e nums[i]=50) e casos variados para prevenir regressões.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

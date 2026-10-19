@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "Algoritmo com complexidade O(N^2) no pior caso devido a bisect.insort em cada iteração e soma repetida de b_values[:K]; causa Time Limit Exceeded e falha no critério CA-02.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Importação de bisect dentro do laço e uso de lista ordenada completa para manter os K menores B. Reimportações/reescritas detectadas; usar heap (max-heap de tamanho K) com soma incremental é mais eficiente.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram incluídos testes automatizados (unit tests / casos de borda) junto com a implementação.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "Estratégia funcional (varrer A ordenado e tomar K menores B no prefixo) está correta; problema é apenas a estrutura de dados/complexidade.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

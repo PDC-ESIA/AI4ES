@@ -1,0 +1,26 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "A implementação recalcula a soma das distâncias absolutas para a mediana para cada janela, resultando em complexidade O(n^2). Com n até 1e5 isso provavelmente causará TLE. Use prefix sums / fórmulas para computar a soma em O(1) por janela.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste/unitários entregues no workspace. Adicionar testes que cubram o caso que falhava, casos limites e de desempenho é necessário para validação.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A lógica (usar a mediana e somar |a_i - median| para cada janela) é correta e resolve o caso de exemplo, mas o algoritmo atual não escala.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

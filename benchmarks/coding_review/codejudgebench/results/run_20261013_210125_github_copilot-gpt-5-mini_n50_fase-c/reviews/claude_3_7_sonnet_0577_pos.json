@@ -1,0 +1,20 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Nenhum arquivo de testes/unitários foi entregue no workspace. Recomenda-se adicionar testes automatizados cobrindo cenários principais (ex.: M=0, N=T, N<T, casos com incompatibilidades) para validar regressões futuras.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A canonicalização das equipes é feita via used_teams (apêndice LIFO de rótulos numéricos). A implementação está correta, mas a semântica de used_teams (rótulos criados vs. membros atuais) pode ser confusa. Comente a intenção ou use um contador de membros por equipe para melhorar legibilidade e manutenção.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}

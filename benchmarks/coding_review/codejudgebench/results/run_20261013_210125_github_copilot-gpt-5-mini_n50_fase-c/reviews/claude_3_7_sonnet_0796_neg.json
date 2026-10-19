@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "A lógica está incorreta: o código usa apenas contagens por distância (nós a distância 1 e 2 do candidato central) e calcula y como dist_counts[2] // x. Isso não respeita a distribuição por subárvore de cada vizinho do central — para cada vizinho (potencial mid-level) devemos checar quantos filhos imediatos ele tem (degree-1 no lado da subárvore) e só vizinhos com pelo menos y filhos podem ser usados. O algoritmo atual pode contar vizinhos que não têm filhos suficientes e assim produzir respostas erradas (ex.: o caso já reportado), além de não considerar selecionar um subconjunto ótimo de vizinhos quando necessário.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "critical",
+      "description": "Complexidade inadequada para as restrições: o código faz um BFS por cada vértice candidato a central (O(N^2) em geral). Com N até 3e5 isso não é viável (provável TLE / execução impraticável).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não foram entregues testes (unitários / de integração) ou um runner para validar a solução contra os exemplos e casos limites.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "warning",
+      "description": "Os exemplos do enunciado não estão codificados como testes nem executados no arquivo. Sem testes fica difícil validar regressões como a falha previamente reportada.",
+      "file": "solution.py",
+      "layer": "testes"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

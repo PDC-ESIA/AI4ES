@@ -1,0 +1,32 @@
+{
+  "status": "BLOQUEADO",
+  "issues": [
+    {
+      "severity": "critical",
+      "description": "O código calcula reductions locais em `curr` mas NÃO atualiza `nums[i]` com o valor reduzido. Como o laço principal itera da direita para a esquerda e espera que reduções em posições mais à direita influenciem decisões para índices menores, a ausência da escrita de volta faz com que decisões subsequentes usem os valores originais em vez dos valores reduzidos. Isso leva a contagens de operações incorretas e a soluções incorretas para muitos casos.",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "A função greatest_proper_divisor faz fatoração por tentativa (itera até sqrt(n)) a cada chamada. É recomendável pré-computar o menor fator primo (sieve SPF) para todos os valores até 1e6 para obter consultas O(1) e evitar risco de TLE em entradas adversas.",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste automatizados no workspace que validem os cenários críticos (happy path, cadeias de dependência entre reduções, casos impossíveis e limites). É necessário adicionar testes para garantir correção e prevenir regressões.",
+      "file": "solution.py",
+      "layer": "completude"
+    },
+    {
+      "severity": "info",
+      "description": "A função greatest_proper_divisor retorna 1 para números primos e para n==1, e o código detecta operações inócuas (new_curr == curr) retornando -1 quando apropriado — comportamento conceitualmente coerente.",
+      "file": "solution.py",
+      "layer": "corretude"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "BLOQUEADO",
+  "status_ajustado": false
+}

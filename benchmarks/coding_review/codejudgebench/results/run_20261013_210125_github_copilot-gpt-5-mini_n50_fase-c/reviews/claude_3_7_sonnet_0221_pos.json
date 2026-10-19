@@ -1,0 +1,32 @@
+{
+  "status": "APROVADO",
+  "issues": [
+    {
+      "severity": "warning",
+      "description": "Complexidade temporal quadrática: o loop duplo (j de 1..N-1 e i de j-1..0) faz O(N^2) iterações e chamadas/set-add por elemento. Para N ≤ 3e5 isso levará a Time Limit Exceeded em entradas grandes (observada na solução anterior).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Casos inválidos incluídos na enumeração: quando i == j-1 a implementação considera um 'split' onde a subarray do meio está vazia (middle_distinct == 0). O enunciado exige três subarrays não vazios (1 ≤ i < j ≤ N-1).",
+      "file": "solution.py",
+      "layer": "corretude"
+    },
+    {
+      "severity": "warning",
+      "description": "Não há arquivos de teste no workspace. Não foram entregues testes unitários ou casos de borda automatizados para validar correção e desempenho (CA-01 e CA-02 não podem ser verificados automaticamente sem conjuntos de teste).",
+      "file": "solution.py",
+      "layer": "testes"
+    },
+    {
+      "severity": "info",
+      "description": "Código aceitável para solução de concurso (entrada/saída no módulo principal). Contudo a estratégia algorítémica atual (varrer j e reconstruir/atualizar middle_set por cada j) não escala; recomenda-se substituir por uma abordagem O(N log N) ou O(N) (ex.: uso de Fenwick/Segment Tree com rastreamento de última ocorrência, ou técnica que construa um 'best prefix+middle' incremental sem revarrer todos os i para cada j).",
+      "file": "solution.py",
+      "layer": "arquitetura"
+    }
+  ],
+  "report_path": "verificacao_revisao.md",
+  "status_llm": "APROVADO",
+  "status_ajustado": false
+}
