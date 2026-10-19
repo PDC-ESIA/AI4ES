@@ -131,6 +131,43 @@ def test_contexto_registra_offset_rotulo_e_codigo(tmp_path, monkeypatch):
     assert set(contexto["code"]) == {"commit", "dirty", "dirty_paths"}
 
 
+def test_nome_do_run_com_split_all(tmp_path):
+    args = _args(tmp_path, model="github_copilot/gpt-4", split="all", max_per_question=0)
+    assert run._construir_nome_run(args, "20261019_100000", 2409) == (
+        "run_20261019_100000_github_copilot-gpt-4_n2409_all"
+    )
+
+
+def test_metadados_do_dataset_com_split_all(tmp_path, monkeypatch):
+    revisoes = {"claude_3.7_sonnet": "abc", "gemini_2.5_flash": "abc", "gemini_2.5_pro": "abc"}
+    monkeypatch.setattr(run.ds, "dataset_metadata", lambda _d, s: {"split": s, "revision": revisoes[s]})
+    meta = run._metadados_dataset(_args(tmp_path, split="all"))
+    assert meta["split"] == "all" and meta["revision"] == "abc"
+    assert set(meta["splits"]) == set(run.ds.SPLITS)
+
+    revisoes["gemini_2.5_pro"] = "xyz"  # caches baixados em momentos diferentes
+    assert run._metadados_dataset(_args(tmp_path, split="all"))["revision"] is None
+
+
+def test_registro_guarda_o_split(tmp_path, reviewer_falso):
+    registros, _ = asyncio.run(run._executar(_args(tmp_path), tmp_path, [_par(1)]))
+    assert registros[0]["split"] == "claude_3.7_sonnet"
+
+
+def test_relatorio_tem_secao_por_split_so_com_varios_splits(tmp_path):
+    from benchmarks.coding_review.codejudgebench.metrics import compute_metrics_by_split
+
+    def _reg(pair_id):
+        resposta = lambda v: {"verdict": v, "outcome_kind": "ok", "attempts": [], "issues": []}
+        return {"pair_id": pair_id, "difficulty": "easy", "outcome": "correct", "pos": resposta("pass"), "neg": resposta("fail")}
+
+    um = {"metrics_by_split": compute_metrics_by_split([_reg("claude_3.7_sonnet/1")])}
+    varios = {"metrics_by_split": compute_metrics_by_split([_reg("claude_3.7_sonnet/1"), _reg("gemini_2.5_pro/2")])}
+    assert run._secao_por_split(um) == []
+    secao = " ".join(run._secao_por_split(varios))
+    assert "## Por split" in secao and "`gemini_2.5_pro`" in secao
+
+
 def test_nome_do_run_segue_a_issue(tmp_path):
     nome = run._construir_nome_run(_args(tmp_path, model="github_copilot/gpt-4"), "20261001_090000", 50)
     assert nome == "run_20261001_090000_github_copilot-gpt-4_n50"
