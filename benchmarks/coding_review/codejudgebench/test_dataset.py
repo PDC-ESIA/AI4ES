@@ -215,3 +215,14 @@ def test_cache_em_utf8(tmp_path, monkeypatch):
     assert pares[0].question_content == "Ação — ≤ 10⁵"
     bruto = dataset.cache_path(tmp_path, "claude_3.7_sonnet").read_text(encoding="utf-8")
     assert json.loads(bruto.splitlines()[0])["question_content"] == "Ação — ≤ 10⁵"
+
+
+def test_resolve_splits_all_e_um_split():
+    assert dataset.resolve_splits("all") == dataset.SPLITS
+    assert dataset.resolve_splits("gemini_2.5_pro") == ("gemini_2.5_pro",)
+    with pytest.raises(ValueError, match="inválido"):
+        dataset.resolve_splits("gpt_4")
+
+
+def test_split_of_pair_id():
+    assert dataset.split_of("claude_3.7_sonnet/42") == "claude_3.7_sonnet"
