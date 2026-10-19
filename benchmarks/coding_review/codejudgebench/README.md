@@ -50,11 +50,12 @@ família do reviewer.
 | `--limit` | todos | Número de pares |
 | `--offset` | `0` | Pula as N primeiras posições da amostra (`--offset 50 --limit 50` = validação) |
 | `--label` | — | Rótulo do experimento, anexado ao nome da pasta (ex.: `fase-b-v1`) |
-| `--split` | `claude_3.7_sonnet` | Modelo que gerou as respostas: `claude_3.7_sonnet`, `gemini_2.5_flash`, `gemini_2.5_pro` |
+| `--split` | `claude_3.7_sonnet` | Modelo que gerou as respostas: `claude_3.7_sonnet`, `gemini_2.5_flash`, `gemini_2.5_pro`, ou `all` para os três num único run (`--limit`/`--offset` valem para cada split) |
 | `--seed` | `42` | Semente da amostragem |
 | `--max-per-question` | `1` | Pares por problema (`0` = sem limite) |
 | `--pair-ids` | — | Avalia só os pares listados |
-| `--max-retries` | `1` | Retries quando a revisão vem sem status |
+| `--max-retries` | `1` | Retries quando a revisão vem sem status ou falha por erro de API |
+| `--backoff` | `5` | Espera inicial (s) antes de repetir após erro de API (429, 503, conexão); dobra a cada tentativa, até 2 min |
 | `--no-explanation` | — | Não envia o relato do coder (texto da resposta sem o código) |
 | `--max-consecutive-operational` | `3` | Interrompe após N pares seguidos com falha de API |
 
@@ -69,8 +70,34 @@ results/run_<timestamp>_<modelo>_n<N>/
 └── reviews/         markdown de cada revisão (<par>_pos.md, <par>_neg.md), para auditoria
 ```
 
-`workspace/` (rascunho do reviewer durante o run) e `progress.jsonl` (checkpoint;
-o `report.json` já contém todos os pares) não são versionados.
+Com `--split all`, o relatório traz o total e uma seção **Por split**.
+
+`workspace/` (rascunho do reviewer), `progress.jsonl` (checkpoint; o `report.json`
+já contém todos os pares) e `reviews/` não são versionados. As revisões ficam no
+disco — `regrade.py` e `stability.py` as usam —, mas um run completo gera mais de
+9.600 arquivos. Os runs de referência de 50 pares em `results/` tiveram as revisões
+versionadas explicitamente (`git add -f`), como evidência.
+
+### Run completo
+
+Os três splits, todos os pares (2.409 pares, 4.818 revisões), num comando:
+
+```bash
+python -m benchmarks.coding_review.codejudgebench.run --model <modelo> --split all --max-per-question 0
+```
+
+Estimativa a partir dos tempos medidos nos runs de 50 pares (sequencial, um par
+por vez):
+
+| Modelo | Tempo por par (medido) | Tempo total | Custo |
+| --- | --- | --- | --- |
+| `github_copilot/gpt-4` (gpt-4.1) | 9–65 s, conforme a latência da API | ~6 h a ~43 h | 0 — modelo incluído no plano Copilot Business |
+| `github_copilot/gpt-5-mini` | 39–72 s | ~26 h a ~48 h | ~3,4 créditos por par → ~8.200 créditos |
+
+O run tolera interrupção: retome com `--resume-dir` e só os pares que faltam (ou
+que falharam por erro de API) são feitos. Para reduzir o tempo de parede, é
+possível rodar cada split num processo separado (`--split <s>`, em paralelo) —
+ao custo de três relatórios em vez de um.
 
 ### Recalcular sem chamar o LLM
 
