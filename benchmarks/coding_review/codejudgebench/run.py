@@ -551,6 +551,20 @@ def _persistir_relatorio(relatorio: dict, run_dir: Path) -> tuple[Path, Path]:
     return json_path, md_path
 
 
+def _executaveis_do_ambiente_no_path() -> None:
+    """Põe no PATH a pasta de executáveis do Python que roda o benchmark.
+
+    A análise estática do reviewer chama `ruff` e `bandit` pelo nome. Sem a
+    venv ativada no terminal, eles não seriam achados, e o reviewer receberia
+    "ferramenta indisponível" no lugar dos achados — medindo outro reviewer
+    sem ninguém perceber.
+    """
+    pasta = str(Path(sys.executable).parent)
+    atual = os.environ.get("PATH", "")
+    if pasta not in atual.split(os.pathsep):
+        os.environ["PATH"] = pasta + os.pathsep + atual
+
+
 def _saida_utf8() -> None:
     """No Windows, saída redirecionada (arquivo, pipe, CI) usa cp1252 e quebra
     no primeiro `→` ou acento impresso — derrubando o run no meio. Também
@@ -579,6 +593,7 @@ def main(argv: list[str] | None = None) -> int:
     # O benchmark nunca escreve lições na memória de produção (mem0). O .env é
     # carregado com override=False, então este valor prevalece sobre ele.
     os.environ["AI4ES_MEMORY_ENABLED"] = "false"
+    _executaveis_do_ambiente_no_path()
 
     pares = [
         par

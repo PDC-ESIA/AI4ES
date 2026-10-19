@@ -168,6 +168,19 @@ def test_relatorio_tem_secao_por_split_so_com_varios_splits(tmp_path):
     assert "## Por split" in secao and "`gemini_2.5_pro`" in secao
 
 
+def test_executaveis_da_venv_entram_no_path(monkeypatch):
+    import os
+    from pathlib import Path
+
+    monkeypatch.setenv("PATH", "C:/outro")
+    run._executaveis_do_ambiente_no_path()
+    pastas = os.environ["PATH"].split(os.pathsep)
+    assert pastas[0] == str(Path(sys.executable).parent)
+
+    run._executaveis_do_ambiente_no_path()  # idempotente
+    assert os.environ["PATH"].split(os.pathsep).count(pastas[0]) == 1
+
+
 def test_nome_do_run_segue_a_issue(tmp_path):
     nome = run._construir_nome_run(_args(tmp_path, model="github_copilot/gpt-4"), "20261001_090000", 50)
     assert nome == "run_20261001_090000_github_copilot-gpt-4_n50"
