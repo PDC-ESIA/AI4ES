@@ -1,0 +1,20 @@
+{
+  "criteria": {
+    "ai4es_tool_sequence_in_order": 1.0,
+    "ai4es_contrato_de_tools": 1.0
+  },
+  "custom_metrics": {
+    "ai4es_tool_sequence_in_order": {
+      "code_config": {
+        "name": "tests.eval.metrics.tool_sequence_in_order"
+      },
+      "description": "O coder leu o contrato da task em disco antes de escrever."
+    },
+    "ai4es_contrato_de_tools": {
+      "code_config": {
+        "name": "tests.eval.metrics.contrato_de_tools"
+      },
+      "description": "O cr_coder_agent declarou ao modelo exatamente as 6 tools esperadas."
+    }
+  }
+}

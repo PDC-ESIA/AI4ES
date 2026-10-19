@@ -1,0 +1,35 @@
+{
+  "id": "TASK-001",
+  "type": "component",
+  "complexity": "low",
+  "description": "Implementar a CLI do contador de palavras: recebe o caminho de um arquivo de texto como único argumento, imprime na saída padrão o número de palavras do arquivo e termina com código 0. Se o arquivo não existir, escreve uma mensagem de erro na saída de erro e termina com código 1.",
+  "business_rules": [
+    "Palavra é qualquer sequência de caracteres separada por espaço em branco.",
+    "Arquivo vazio tem 0 palavras."
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "CA-01",
+      "description": "Dado um arquivo com o texto 'um dois tres', a CLI imprime 3 e termina com código 0.",
+      "automatable": true
+    },
+    {
+      "id": "CA-02",
+      "description": "Dado um caminho de arquivo inexistente, a CLI escreve uma mensagem de erro na saída de erro e termina com código 1.",
+      "automatable": true
+    }
+  ],
+  "contract": {
+    "inputs": [],
+    "outputs": [
+      "Módulo da CLI do contador de palavras",
+      "Testes que cobrem CA-01 e CA-02"
+    ],
+    "interfaces": [
+      "CLI: python -m contador <caminho_do_arquivo>"
+    ]
+  },
+  "requirement_id": "RF-001",
+  "requirement_refs": [],
+  "design_refs": []
+}

@@ -1,0 +1,88 @@
+{
+  "work_item_id": "TASK-EVAL-001",
+  "iteration": 1,
+  "generated_at": "2026-09-16T10:00:00-03:00",
+  "acceptance_criteria": [
+    "A API expoe GET /health retornando 200 com corpo {\"status\": \"ok\"}",
+    "A suite de testes automatizados executa e passa integralmente"
+  ],
+  "overall_status": "sucesso",
+  "stages": [
+    {
+      "stage": "preparacao_ambiente",
+      "status": "sucesso",
+      "duration_seconds": 12.4,
+      "summary": "Dependencias instaladas a partir de requirements.txt",
+      "evidence": {
+        "comando": "python -m pip install -r requirements.txt",
+        "exit_code": 0
+      },
+      "error_code": null
+    },
+    {
+      "stage": "implantacao_artefato",
+      "status": "sucesso",
+      "duration_seconds": 3.1,
+      "summary": "Artefato implantado no sandbox direct",
+      "evidence": { "workdir": "." },
+      "error_code": null
+    },
+    {
+      "stage": "inicializacao_aplicacao",
+      "status": "sucesso",
+      "duration_seconds": 2.8,
+      "summary": "Aplicacao subiu na porta 8000 e respondeu ao healthcheck",
+      "evidence": { "healthcheck": "/health", "http_status": 200 },
+      "error_code": null
+    },
+    {
+      "stage": "testes_automatizados",
+      "status": "sucesso",
+      "duration_seconds": 5.6,
+      "summary": "pytest: 7 passed",
+      "evidence": {
+        "comando": "python -m pytest -q",
+        "exit_code": 0,
+        "saida": "7 passed in 5.42s"
+      },
+      "error_code": null
+    },
+    {
+      "stage": "validacoes_work_item",
+      "status": "sucesso",
+      "duration_seconds": 1.2,
+      "summary": "Evidência coletada para 2 critérios (0 avaliados). Testes automatizados não são usados para inferir atendimento.",
+      "evidence": {
+        "total_criterios": 2,
+        "verificaveis": 1,
+        "criterios_avaliados": 0,
+        "por_resultado": { "nao_avaliado": 2 }
+      },
+      "error_code": null
+    }
+  ],
+  "criteria_evidence": [
+    {
+      "criterion": "A API expoe GET /health retornando 200 com corpo {\"status\": \"ok\"}",
+      "check_performed": "Requisição HTTP GET /health",
+      "observed": "GET /health → HTTP 200",
+      "checkable": true,
+      "criterion_id": "CA-01",
+      "automatable": true,
+      "outcome": "nao_avaliado",
+      "linked_tests": []
+    },
+    {
+      "criterion": "A suite de testes automatizados executa e passa integralmente",
+      "check_performed": "Testes vinculados coletados apenas como evidência técnica: tests/test_main.py::test_health.",
+      "observed": "tests/test_main.py::test_health → passou. Resultados não usados para avaliar semanticamente o critério.",
+      "checkable": false,
+      "criterion_id": "CA-02",
+      "automatable": true,
+      "outcome": "nao_avaliado",
+      "linked_tests": ["tests/test_main.py::test_health"]
+    }
+  ],
+  "report_path": null,
+  "total_duration_seconds": 25.1
+}

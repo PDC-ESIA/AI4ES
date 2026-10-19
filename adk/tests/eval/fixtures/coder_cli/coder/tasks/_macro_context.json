@@ -1,0 +1,12 @@
+{
+  "summary": "Contador de palavras de arquivo de texto, em linha de comando.",
+  "product_type": "cli",
+  "tech_stack": [
+    "Python 3",
+    "somente a biblioteca padrão"
+  ],
+  "global_rules": [
+    "Sem dependências de terceiros: apenas a biblioteca padrão do Python.",
+    "Testes com unittest, da biblioteca padrão."
+  ]
+}

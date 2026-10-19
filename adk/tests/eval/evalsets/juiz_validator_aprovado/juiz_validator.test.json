@@ -1,0 +1,61 @@
+{
+  "eval_set_id": "ai4es_juiz_validator_aprovado",
+  "name": "validator-report-verde-juiz-llm",
+  "description": "Fixture: tests/eval/fixtures/validator_verde/, copiada para o workspace por test_juiz_llm_aprova_o_veredito_correto (test_eval_implementation_validator.py). Mesmo caso do validator_aprovado (caminho feliz do implementation_validator, com session_input.state semeado), mas a resposta e julgada por um LLM em vez do ROUGE: a metrica final_response_match_v2 do ADK pergunta ao modelo-juiz (AI4ES_EVAL_JUDGE_MODEL, ou o ADK_LLM_MODEL) se a resposta do agente e valida diante da referencia, com 5 amostras por invocacao e voto da maioria. Com uma invocacao, o limiar 0.8 exige que a maioria das amostras diga valido. Opt-in adicional (AI4ES_EVAL_JUIZ=1), porque o juiz multiplica as chamadas.",
+  "eval_cases": [
+    {
+      "eval_id": "aprova_quando_execucao_verde_e_criterios_atendidos",
+      "conversation": [
+        {
+          "invocation_id": "val-aprov-001",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "report_path: {{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json\n\nValide o Work Item TASK-EVAL-001 a partir do ExecutionReport nesse caminho."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "{\"work_item_id\": \"TASK-EVAL-001\", \"status\": \"aprovado\", \"criteria_verdicts\": [{\"criterion\": \"A API expoe GET /health retornando 200 com corpo {\\\"status\\\": \\\"ok\\\"}\", \"status\": \"inconclusivo\", \"reasoning\": \"Critério não avaliado pelo harness; evidências técnicas e testes do coder não autorizam conclusão semântica.\", \"evidence_ref\": null}, {\"criterion\": \"A suite de testes automatizados executa e passa integralmente\", \"status\": \"inconclusivo\", \"reasoning\": \"Critério não avaliado pelo harness; evidências técnicas e testes do coder não autorizam conclusão semântica.\", \"evidence_ref\": null}], \"blocking_reason\": null, \"summary\": \"Aprovado: o sistema gerado foi construído, iniciou e passou nos próprios testes.\"}"
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "tool_ler_arquivo",
+                "args": {
+                  "caminho": "{{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json"
+                }
+              }
+            ],
+            "intermediate_responses": []
+          },
+          "app_details": {
+            "agent_details": {
+              "implementation_validator": {
+                "name": "implementation_validator",
+                "tool_declarations": [
+                  "tool_ask_clarification",
+                  "tool_ler_arquivo"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "test_app",
+        "user_id": "ai4es_eval",
+        "state": {
+          "task_id": "TASK-EVAL-001",
+          "report_path": "{{WORKSPACE}}/coder/execution/TASK-EVAL-001.report.json"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "criteria": {
+    "tool_trajectory_avg_score": 1.0,
+    "response_match_score": 1.0,
+    "ai4es_contrato_de_tools": 1.0
+  },
+  "custom_metrics": {
+    "ai4es_contrato_de_tools": {
+      "code_config": {
+        "name": "tests.eval.metrics.contrato_de_tools"
+      },
+      "description": "As tools declaradas ao modelo sao exatamente as esperadas."
+    }
+  }
+}
