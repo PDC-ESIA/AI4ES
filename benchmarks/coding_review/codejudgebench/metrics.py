@@ -149,3 +149,11 @@ def compute_metrics(registros: list[dict]) -> dict:
             "review_duration_s": round(sum(a.get("duration_s", 0.0) for a in tentativas), 2),
         },
     }
+
+
+def compute_metrics_by_split(registros: list[dict]) -> dict[str, dict]:
+    """Métricas de cada split separadamente (o split vem do prefixo do `pair_id`)."""
+    grupos: dict[str, list[dict]] = defaultdict(list)
+    for registro in registros:
+        grupos[registro["pair_id"].rpartition("/")[0]].append(registro)
+    return {split: compute_metrics(grupos[split]) for split in sorted(grupos)}
