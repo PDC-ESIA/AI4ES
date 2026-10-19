@@ -131,6 +131,16 @@ Para execuções repetidas da mesma configuração nos mesmos pares: média e de
 de cada métrica, quantos pares mantêm o desfecho e quantas respostas mantêm o
 veredito entre as execuções, e o resultado do voto da maioria.
 
+### Simulação de regras de severidade
+
+```bash
+python -m benchmarks.coding_review.codejudgebench.severity_simulation <run_dir>
+```
+
+Reaplica regras de severidade às issues já salvas em `reviews/`, sem chamar o
+LLM, para estimar o efeito de uma mudança antes de pagar um run (usada para
+descartar a fase B; ver a nota de melhorias do reviewer).
+
 ### Desenvolvimento e validação
 
 Ajustar o reviewer olhando os mesmos pares até o número subir decora a amostra.
@@ -160,6 +170,7 @@ Um run de iteração, feito antes do commit, aparece como
 | Acurácia do julgamento | Pares em que o reviewer aprovou a `pos` e bloqueou a `neg`. Empate conta como erro. Chute = 50% no melhor caso |
 | Viés posicional | **Não se aplica ao modo pontual** — ver "Desenho do experimento" |
 | Resposta inválida | Revisões sem status que o manifesto reconheça, na 1ª tentativa e após os retries. Mede se o pipeline consegue ler o veredito, não aderência ao `ReviewOutput`: o reviewer produz markdown, e o harness converte para o schema depois |
+| Saída estruturada válida | Revisões cuja resposta final trouxe o bloco JSON válido no formato do `ReviewOutput` (só quando o reviewer medido grava `verificacao_revisao.json`) |
 
 **Decisão por resposta** — responde diretamente à pergunta da issue:
 
@@ -191,20 +202,26 @@ dataset sem código).
 
 ## Desenho do experimento
 
-O reviewer é medido **como está em produção**: prompt, schema, análise estática
-(Ruff + Bandit) e gate de cobertura intactos. O harness recria em volta dele o
-que o pipeline normalmente fornece.
+O harness **não altera o reviewer**: mede o reviewer do código em que roda, com
+o prompt, a saída e a análise estática (Ruff + Bandit) que ele tiver, e o gate de
+cobertura. O harness recria em volta dele o que o pipeline normalmente fornece.
+As mudanças no reviewer medidas com este benchmark estão em
+`docs/Time_4_Codificacao/codejudgebench-melhorias-reviewer.md`.
 
 - **Modo pontual.** O reviewer avalia um workspace e devolve APROVADO/BLOQUEADO;
   não há campo de preferência entre duas respostas. Cada resposta é revisada
   sozinha e a escolha é derivada dos dois vereditos. Por isso não existe ordem
   A/B a inverter, e o viés posicional não se aplica.
 - **Veredito do pipeline.** O status é lido com a mesma função que o manifesto
-  usa em produção (`manifest._validation_verdict`). Uma leitura tolerante do
+  usa em produção (`manifest._validation_verdict`): primeiro o
+  `verificacao_revisao.json`, depois o markdown. Uma leitura tolerante do
   markdown registra à parte os casos em que o reviewer decidiu, mas escreveu o
   status fora do padrão.
-- **`ReviewOutput`.** O reviewer produz markdown (o schema de `reviewer/schemas.py`
-  não é usado pelo agente). O harness converte o markdown em `ReviewOutput`.
+- **`ReviewOutput`.** O reviewer encerra a análise com um bloco JSON no formato do
+  `ReviewOutput`, validado em código e gravado em `verificacao_revisao.json`. O
+  harness usa esse JSON e mede a aderência a ele (`structured_output_valid`). Ao
+  medir uma versão do reviewer anterior à saída estruturada, a métrica não se
+  aplica e o harness converte o markdown em `ReviewOutput`.
 - **Gate de cobertura.** Sem `task_iteration_summary` no state, o gate força
   BLOQUEADO em toda revisão. O harness injeta um summary mínimo e válido; o
   resultado da task diz `status=nao_executado`, sem alegar que testes passaram.
