@@ -40,6 +40,7 @@ SPLITS = ("claude_3.7_sonnet", "gemini_2.5_flash", "gemini_2.5_pro")
 # Split padrão: respostas geradas por um modelo de família diferente do modelo
 # padrão do reviewer (gemini-2.5-flash), para reduzir viés de auto-preferência.
 DEFAULT_SPLIT = "claude_3.7_sonnet"
+ALL_SPLITS = "all"  # valor de --split que percorre os três splits num único run
 DEFAULT_SEED = 42
 DEFAULT_MAX_PER_QUESTION = 1
 
@@ -71,6 +72,19 @@ class RepairPair:
     def slug(self) -> str:
         """Identificador seguro para nomes de arquivo (ex.: ``claude_3_7_sonnet_0042``)."""
         return f"{self.split.replace('.', '_')}_{self.row_idx:04d}"
+
+
+def resolve_splits(split: str) -> tuple[str, ...]:
+    """`all` → os três splits do CodeRepair; um split → só ele."""
+    if split == ALL_SPLITS:
+        return SPLITS
+    _validar_split(split)
+    return (split,)
+
+
+def split_of(pair_id: str) -> str:
+    """Split de um `pair_id` (``claude_3.7_sonnet/42`` → ``claude_3.7_sonnet``)."""
+    return pair_id.rpartition("/")[0]
 
 
 def _validar_split(split: str) -> None:
