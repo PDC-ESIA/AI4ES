@@ -121,6 +121,16 @@ bloqueou código que passa), com o teste de McNemar exato, e lista os pares que
 mudaram de desfecho — o ponto de partida para ler as revisões e entender por quê.
 Use sempre que uma mudança no reviewer for medida contra o baseline.
 
+### Estabilidade entre execuções
+
+```bash
+python -m benchmarks.coding_review.codejudgebench.stability <run_1> <run_2> <run_3> --output estabilidade.md
+```
+
+Para execuções repetidas da mesma configuração nos mesmos pares: média e desvio
+de cada métrica, quantos pares mantêm o desfecho e quantas respostas mantêm o
+veredito entre as execuções, e o resultado do voto da maioria.
+
 ### Desenvolvimento e validação
 
 Ajustar o reviewer olhando os mesmos pares até o número subir decora a amostra.
