@@ -84,6 +84,30 @@ Resultados versionados em:
 - **O formato de saída não foi gargalo:** zero respostas inválidas em 200 revisões.
   O ruído SDLC esperado (bloquear por falta de testes ou README) não apareceu.
 
+## Confirmação no conjunto de validação
+
+Para descartar que a diferença entre os modelos fosse efeito da amostra, os dois
+modelos rodaram — com o reviewer **inalterado** — em 50 pares nunca vistos: as
+posições 51–100 da mesma ordem embaralhada (`--offset 50 --limit 50`), problemas
+distintos dos 50 primeiros.
+
+| Métrica | gpt-4.1 | gpt-5-mini | McNemar p |
+| --- | --- | --- | --- |
+| Acurácia do julgamento | 12,0% (6/50) | **70,0%** (35/50) · IC 56,2–80,9% | < 0,001 |
+| Aprovou código que falha nos testes | 88,0% (44/50) | 14,0% (7/50) | < 0,001 |
+| Bloqueou código que passa nos testes | 0,0% (0/50) | 18,0% (9/50) | 0,004 |
+| Acurácia quando decidiu | 100% (6/6) | 97,2% (35/36) | — |
+
+O gpt-5-mini acertou 31 pares que o gpt-4.1 errou; o inverso ocorreu em 2. Os
+números repetem o desenvolvimento (gpt-4.1: 12% nos dois conjuntos; gpt-5-mini:
+58% → 70%).
+
+Resultados: `results/run_20261013_144202_github_copilot-{gpt-4,gpt-5-mini}_n50_off50_fase-a-validacao/`
+e `results/comparacoes/fase-a-validacao_gpt-4_vs_gpt-5-mini.md`. O rótulo
+`fase-a-validacao` vem do plano de melhorias do reviewer, que é tratado em outra
+branch da #421; estes runs medem o reviewer como está na develop, só trocando o
+modelo pelo `--model` do harness.
+
 ## Desvios em relação à issue
 
 - **Viés posicional:** a issue pede cada par nas duas ordens (A/B e B/A). No modo
@@ -115,17 +139,22 @@ Resultados versionados em:
 python -m benchmarks.coding_review.codejudgebench.run --model github_copilot/gpt-4 --limit 50
 python -m benchmarks.coding_review.codejudgebench.run --model github_copilot/gpt-5-mini --limit 50
 
+# benchmark completo: os três splits, todos os pares (ver estimativa de tempo e custo no README)
+python -m benchmarks.coding_review.codejudgebench.run --model github_copilot/gpt-4 --split all --max-per-question 0
+
 # reler as revisões salvas com o parser atual, sem chamar o LLM
 python -m benchmarks.coding_review.codejudgebench.regrade benchmarks/coding_review/codejudgebench/results/run_<ts>_<modelo>_n50
 ```
 
-## Próximos passos (outras issues)
+## Próximos passos
 
-- Decidir o modelo oficial do reviewer: os dados mostram que o gpt-4.1 não serve
-  para essa função.
-- Reduzir o rigor com desempenho: suspeita de TLE sem execução como `warning`, não
-  `critical`; medir nos mesmos 50 pares.
-- Melhorias estruturais do reviewer: saída validada pelo `ReviewOutput`, regra de
-  decisão em código e prompt sem remendos via `.replace()`.
-- Avaliar o reviewer dentro do loop coder↔executor.
+As mudanças no reviewer ficam fora desta entrega ("mede; não corrige") e seguem na
+mesma #421, em branches próprias, medidas com este benchmark:
+
+- **Melhorias do reviewer:** modelo dedicado ao reviewer (os dados mostram que o
+  gpt-4.1 não serve para essa função), saída validada pelo `ReviewOutput`, regra de
+  decisão em código, prompt sem remendos via `.replace()` e o rigor com
+  desempenho do gpt-5-mini.
+- **Reviewer dentro do loop coder↔executor:** mudança mais profunda, medida pelo
+  efeito no pipeline e não só pelo julgamento isolado.
 - Re-rodar este benchmark, com os mesmos pares e a mesma seed, após cada mudança.
