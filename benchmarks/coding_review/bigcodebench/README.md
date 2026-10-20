@@ -63,7 +63,9 @@ python -m benchmarks.coding_review.bigcodebench.run --model <modelo> --limit 50 
   --resume-dir benchmarks/coding_review/bigcodebench/results/<run>
 ```
 
-O baseline vem de um run do HumanEval **com o mesmo modelo**:
+A comparação é opcional: sem `--baseline` o benchmark roda normalmente e o relatório
+só omite a seção 3. O módulo não importa código do HumanEval; apenas lê o
+`report.json` de um run dele, feito **com o mesmo modelo**:
 
 ```bash
 python -m benchmarks.coding_review.humaneval.run --model <modelo> --limit 50
@@ -84,15 +86,36 @@ python -m benchmarks.coding_review.humaneval.run --model <modelo> --limit 50
 | `--allow-network` | off | Liga a rede no container (default: sem rede). |
 | `--output-dir` | `results/` | Base dos relatórios. |
 | `--resume-dir` | — | Retoma um run (valida `metadata.json`). |
+| `--lean` | off | Modo enxuto: o coder grava só o `solution.py` (ver [Custo](#custo)). |
+| `--shard` | — | `I/N`: roda só a fatia I de N das tarefas (ver [Execução paralela](#execução-paralela)). |
 
 ## Saídas
 
-Cada run cria `results/run_<timestamp>_<modelo>_n<N>/` com:
+Cada run cria `results/run_<timestamp>_<modelo>_n<N>[_lean]/` com:
 
 - `report.json` — relatório completo (métricas + por tarefa).
 - `report.md` — resumo legível com as três métricas.
-- `metadata.json` — parâmetros do run (`model`, `limit`, `seed`, `timeout`, …).
+- `metadata.json` — parâmetros do run (`model`, `limit`, `seed`, `timeout`, `lean`, …).
 - `progress.jsonl` e `workspace/` — checkpoint e workspace do coder (não versionados).
+
+Falhas de infraestrutura (`generation_error`, p.ex. rate limit do LLM, e
+`sandbox_error`, do Docker) **não são falhas do modelo**: não entram no checkpoint
+nem no pass@1. Ficam em `pending` no `report.json` e num aviso no topo do
+`report.md`; retome o run com `--resume-dir` para refazê-las.
+
+## Custo
+
+Quase todo o custo vem de tokens de **entrada**: o prompt de sistema do coder e as
+tools são reenviados a cada turno, e cada tarefa leva vários turnos (o run de 50
+tarefas da rodada inicial usou ~3,9 chamadas e ~44 mil tokens de entrada por
+tarefa). O relatório registra `cached_tokens` (entrada servida do cache do
+provider, cobrada mais barato) e `reasoning_tokens` por tarefa, e
+`cache_hit_ratio` no total — use-os para estimar o custo real.
+
+- **`--lean`** — o coder deixa de gravar `PLAN.md`, `README.md` e `run.json`, que
+  não entram na nota. Mede o modelo de forma menos fiel ao fluxo real do coder,
+  por isso fica registrado em `metadata.json`/`report.json`, no nome do diretório
+  e no resume guard. Sem `--lean`, a mensagem enviada ao coder é a mesma de antes.
 
 ## O que cada métrica significa
 
@@ -114,6 +137,36 @@ Cada run cria `results/run_<timestamp>_<modelo>_n<N>/` com:
 3. **Comparação com o HumanEval** — pass@1 do mesmo modelo nos dois benchmarks,
    variação em pontos percentuais e queda relativa. Quantifica o quanto o
    desempenho cai quando há bibliotecas reais.
+
+## Execução paralela
+
+Para rodar muitas tarefas, divida-as em N processos com `--shard I/N` (fatias
+intercaladas, que equilibram a dificuldade) e junte os resultados no final:
+
+```bash
+# 1) prepara dataset e imagem uma vez (evita download/build concorrentes)
+python -m benchmarks.coding_review.bigcodebench.run --model <modelo> --limit 1 --verify-canonical
+
+# 2) 8 processos; cada shard grava num diretório próprio (`..._shard<I>of8`)
+for i in 0 1 2 3 4 5 6 7; do
+  python -m benchmarks.coding_review.bigcodebench.run --model <modelo> --limit 1140 \
+    --lean --shard $i/8 > shard$i.log 2>&1 &
+done
+wait
+
+# 3) junta os 8 diretórios num relatório único (`..._merged`)
+python -m benchmarks.coding_review.bigcodebench.merge \
+  benchmarks/coding_review/bigcodebench/results/*_shard*of8
+```
+
+- O `merge` exige o conjunto completo de shards (0..N-1) com os mesmos parâmetros.
+  Tarefas sem resultado ficam pendentes, e o diretório `_merged` pode ser retomado
+  com `run --resume-dir <dir_merged>` e os mesmos parâmetros, sem `--shard`.
+- Paralelismo aumenta a chance de rate limit do provider. Suba as retentativas do
+  LiteLLM (`AI4ES_LLM_NUM_RETRIES`, default 1) e, se ainda sobrarem pendentes,
+  retome os shards (ou o `_merged`).
+- Paralelizar reduz o tempo de parede, não o custo em tokens. No `_merged`,
+  `total_duration_s` é o tempo do shard mais lento.
 
 ## Sandbox
 
@@ -146,12 +199,13 @@ O código gerado por LLM roda **somente** em container (`DockerSandbox` do
 
 ## Arquitetura dos módulos
 
-- `bootstrap.py` — reutiliza o do HumanEval (`sys.path`, `.env`, provider, workspace).
+- `bootstrap.py` — prepara `sys.path`, `.env`, provider LiteLLM e workspace do coder.
 - `dataset.py` — download do parquet (HF), parsing e amostragem com seed.
 - `contract.py` — tarefa → contrato de task + mensagem de entrada do coder.
-- `coder_runner.py` — invoca o `cr_coder_agent` (reusa helpers do HumanEval).
+- `coder_runner.py` — invoca o `cr_coder_agent` e localiza o `solution.py` gerado.
 - `grading.py` — teste oficial no container + classificação da falha.
 - `categories.py` — categorias/grupos de falha.
 - `sandbox_image.py` + `sandbox/` — imagem Docker de avaliação.
 - `metrics.py` — pass@1, falhas por categoria, baseline.
-- `run.py` — orquestrador CLI.
+- `run.py` — orquestrador CLI (inclui `--shard`).
+- `merge.py` — junta os shards de um run paralelo num relatório único.
